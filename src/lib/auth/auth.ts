@@ -51,6 +51,10 @@ export function getAuth() {
 
     secret: authSecret,
 
+    // Derive baseURL from the environment so BetterAuth can build callback URLs correctly.
+    // BETTER_AUTH_URL is set in production; fall back to localhost for dev.
+    baseURL: process.env.BETTER_AUTH_URL || process.env.AIRO_PREVIEW_URL || 'http://localhost:5173',
+
     // Protect admin status field from user input
     user: {
       additionalFields: {

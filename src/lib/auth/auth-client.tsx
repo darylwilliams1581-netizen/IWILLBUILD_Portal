@@ -139,11 +139,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (timedOut) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-600">Session check timed out. Please try again.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0F1117]">
+        <p className="text-white/50 text-sm">Session check timed out. Please try again.</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-orange-600 text-sm font-medium"
         >
           Retry
         </button>
@@ -153,8 +153,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
