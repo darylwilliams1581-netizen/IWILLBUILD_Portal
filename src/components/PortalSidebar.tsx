@@ -10,19 +10,34 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Users,
+  Settings,
+  FileText,
+  FolderOpen,
+  Calculator,
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Jobs', icon: HardHat, href: '/jobs' },
-  { label: 'Fleet', icon: Truck, href: '/fleet' },
-  { label: 'Downloads', icon: Download, href: '/downloads' },
-  { label: 'Dazza AI', icon: Bot, href: '/dazza-ai' },
+  { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'Jobs',       icon: HardHat,         href: '/jobs' },
+  { label: 'Fleet',      icon: Truck,           href: '/fleet' },
+  { label: 'Forms',      icon: FileText,        href: '/forms',      soon: true },
+  { label: 'Files',      icon: FolderOpen,      href: '/files',      soon: true },
+  { label: 'Estimating', icon: Calculator,      href: '/estimating', soon: true },
+  { label: 'Downloads',  icon: Download,        href: '/downloads' },
+  { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai' },
+];
+
+const bottomItems = [
+  { label: 'Team',     icon: Users,    href: '/team' },
+  { label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
 export default function PortalSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+
+  const isActive = (href: string) => location.pathname === href;
 
   return (
     <motion.aside
@@ -32,63 +47,110 @@ export default function PortalSidebar() {
       style={{ minWidth: collapsed ? 72 : 240 }}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-white/10">
-        <img
-          src="/airo-assets/images/logo/horizontal"
-          alt="IWILLBUILD"
-          className="h-8 w-auto object-contain shrink-0"
-        />
+      <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0">
+        <div className="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-lg flex items-center justify-center shrink-0">
+          <span className="text-white font-black text-sm">IW</span>
+        </div>
         {!collapsed && (
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="ml-2 font-heading font-bold text-sm tracking-widest text-white uppercase truncate"
+            className="ml-2.5 font-heading font-black text-sm tracking-widest text-white uppercase truncate"
           >
-            Portal
+            IWILLBUILD
           </motion.span>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 overflow-y-auto">
+      {/* Main nav */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
+          const Icon = item.icon;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               to={item.href}
-              className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-md transition-all duration-150 group ${
-                isActive
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
+                active
                   ? 'bg-primary text-white'
-                  : 'text-white/60 hover:text-white hover:bg-white/10'
+                  : 'text-white/60 hover:bg-white/8 hover:text-white'
               }`}
             >
-              <item.icon size={18} className="shrink-0" />
+              <Icon size={17} className="shrink-0" />
               {!collapsed && (
-                <span className="text-sm font-medium truncate">{item.label}</span>
+                <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
+              )}
+              {!collapsed && item.soon && (
+                <span className="text-[10px] font-bold bg-white/10 text-white/50 px-1.5 py-0.5 rounded-full shrink-0">
+                  Soon
+                </span>
+              )}
+              {/* Tooltip when collapsed */}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  {item.label}
+                  {item.soon && ' (Coming soon)'}
+                </div>
               )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className="border-t border-white/10 p-3">
+      {/* Divider */}
+      <div className="mx-3 border-t border-white/10" />
+
+      {/* Bottom nav */}
+      <div className="py-3 px-2 flex flex-col gap-0.5">
+        {bottomItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
+                active
+                  ? 'bg-primary text-white'
+                  : 'text-white/60 hover:bg-white/8 hover:text-white'
+              }`}
+            >
+              <Icon size={17} className="shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-semibold truncate">{item.label}</span>
+              )}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  {item.label}
+                </div>
+              )}
+            </Link>
+          );
+        })}
+
+        {/* Logout */}
         <button
-          className="flex items-center gap-3 w-full px-2 py-2 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-all duration-150"
-          onClick={() => {}}
+          title={collapsed ? 'Log out' : undefined}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/40 hover:bg-white/8 hover:text-red-400 transition-colors duration-150 group relative w-full"
         >
-          <LogOut size={16} className="shrink-0" />
-          {!collapsed && <span className="text-sm">Sign Out</span>}
+          <LogOut size={17} className="shrink-0" />
+          {!collapsed && <span className="text-sm font-semibold">Log out</span>}
+          {collapsed && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+              Log out
+            </div>
+          )}
         </button>
       </div>
 
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 z-10 flex items-center justify-center w-6 h-6 rounded-full bg-[#1A1D23] border border-white/20 text-white/60 hover:text-white transition-colors duration-150"
+        className="absolute top-[52px] -right-3 w-6 h-6 bg-[#1A1D23] border border-white/20 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition-colors z-10"
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
