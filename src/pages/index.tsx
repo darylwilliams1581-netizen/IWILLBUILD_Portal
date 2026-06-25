@@ -13,6 +13,8 @@ export default function LoginPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
       <Helmet>
         <title>Sign In — IWILLBUILD Portal</title>
+        <meta name="description" content="Sign in to the IWILLBUILD internal portal to manage jobs, crews, fleet, and more." />
+        <link rel="canonical" href="https://iwillbuild.com.au/" />
         <meta name="robots" content="noindex" />
       </Helmet>
 

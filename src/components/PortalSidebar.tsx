@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Bell,
 } from 'lucide-react';
 
 const navItems = [
