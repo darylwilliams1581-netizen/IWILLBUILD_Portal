@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   HardHat,
@@ -15,6 +15,8 @@ import {
   FileText,
   FolderOpen,
   Calculator,
+  Menu,
+  X,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 
@@ -34,8 +36,14 @@ const bottomItems = [
   { label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
-export default function PortalSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+// ─── Shared nav content ───────────────────────────────────────────────────────
+function SidebarContent({
+  collapsed,
+  onClose,
+}: {
+  collapsed: boolean;
+  onClose?: () => void;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSession();
@@ -47,27 +55,31 @@ export default function PortalSidebar() {
     navigate('/login', { replace: true });
   }
 
+  const linkClass = (active: boolean) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
+      active ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'
+    }`;
+
   return (
-    <motion.aside
-      animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ duration: 0.2, ease: 'easeInOut' as const }}
-      className="relative flex flex-col h-screen bg-[#1A1D23] text-white shrink-0 overflow-hidden"
-      style={{ minWidth: collapsed ? 72 : 240 }}
-    >
+    <>
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0">
         <div className="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-lg flex items-center justify-center shrink-0">
           <span className="text-white font-black text-sm">IW</span>
         </div>
         {!collapsed && (
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.15 }}
-            className="ml-2.5 font-heading font-black text-sm tracking-widest text-white uppercase truncate"
-          >
+          <span className="ml-2.5 font-heading font-black text-sm tracking-widest text-white uppercase truncate">
             IWILLBUILD
-          </motion.span>
+          </span>
+        )}
+        {/* Mobile close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="ml-auto p-1 text-white/40 hover:text-white transition-colors"
+          >
+            <X size={18} />
+          </button>
         )}
       </div>
 
@@ -80,12 +92,9 @@ export default function PortalSidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onClick={onClose}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-                active
-                  ? 'bg-primary text-white'
-                  : 'text-white/60 hover:bg-white/8 hover:text-white'
-              }`}
+              className={linkClass(active)}
             >
               <Icon size={17} className="shrink-0" />
               {!collapsed && (
@@ -96,11 +105,9 @@ export default function PortalSidebar() {
                   Soon
                 </span>
               )}
-              {/* Tooltip when collapsed */}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}
-                  {item.soon && ' (Coming soon)'}
+                  {item.label}{item.soon ? ' (Coming soon)' : ''}
                 </div>
               )}
             </Link>
@@ -120,12 +127,9 @@ export default function PortalSidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onClick={onClose}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-                active
-                  ? 'bg-primary text-white'
-                  : 'text-white/60 hover:bg-white/8 hover:text-white'
-              }`}
+              className={linkClass(active)}
             >
               <Icon size={17} className="shrink-0" />
               {!collapsed && (
@@ -168,14 +172,106 @@ export default function PortalSidebar() {
           </div>
         )}
       </div>
-
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute top-[52px] -right-3 w-6 h-6 bg-[#1A1D23] border border-white/20 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition-colors z-10"
-      >
-        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-      </button>
-    </motion.aside>
+    </>
   );
+}
+
+// ─── Mobile hamburger button (exported for use in top bar) ───────────────────
+export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+      aria-label="Open menu"
+    >
+      <Menu size={20} />
+    </button>
+  );
+}
+
+// ─── Main export ─────────────────────────────────────────────────────────────
+export default function PortalSidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <>
+      {/* ── Desktop sidebar (md+) ── */}
+      <motion.aside
+        animate={{ width: collapsed ? 72 : 240 }}
+        transition={{ duration: 0.2, ease: 'easeInOut' as const }}
+        className="relative hidden md:flex flex-col h-screen bg-[#1A1D23] text-white shrink-0 overflow-hidden"
+        style={{ minWidth: collapsed ? 72 : 240 }}
+      >
+        <SidebarContent collapsed={collapsed} />
+
+        {/* Collapse toggle */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute top-[52px] -right-3 w-6 h-6 bg-[#1A1D23] border border-white/20 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition-colors z-10"
+        >
+          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+        </button>
+      </motion.aside>
+
+      {/* ── Mobile: hamburger button lives in top bar via MobileMenuButton ── */}
+      {/* ── Mobile: overlay drawer ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 bg-black/60 z-40 md:hidden"
+            />
+            {/* Drawer */}
+            <motion.aside
+              key="drawer"
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.25, ease: 'easeOut' as const }}
+              className="fixed top-0 left-0 h-full w-64 bg-[#1A1D23] text-white flex flex-col z-50 md:hidden"
+            >
+              <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Expose open handler via a hidden trigger — consumed by MobileMenuButton in top bar */}
+      {/* We use a global custom event so the top bar can open the drawer without prop drilling */}
+      <MobileMenuTrigger onOpen={() => setMobileOpen(true)} />
+    </>
+  );
+}
+
+// Listens for a custom event dispatched by MobileMenuButton in the top bar
+function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
+  useEffect(() => {
+    const handler = () => onOpen();
+    window.addEventListener('portal:open-menu', handler);
+    return () => window.removeEventListener('portal:open-menu', handler);
+  }, [onOpen]);
+  return null;
 }

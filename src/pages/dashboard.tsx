@@ -6,71 +6,71 @@ import {
   Truck,
   Download,
   Bot,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
   Bell,
   ChevronRight,
+  Plus,
+  Menu,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
 
+// ─── Metric card data ─────────────────────────────────────────────────────────
 const metrics = [
   {
     label: 'Active Jobs',
-    value: '14',
-    sub: '3 starting this week',
+    value: '0',
+    sub: 'No jobs added yet',
     icon: HardHat,
     color: 'text-primary',
     bg: 'bg-orange-50',
+    href: '/jobs',
+    cta: 'Add first job',
   },
   {
     label: 'Crew On-Site',
-    value: '87',
-    sub: '12 sites staffed',
+    value: '0',
+    sub: 'No crew assigned',
     icon: Users,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
+    href: '/team',
+    cta: 'Add team members',
   },
   {
     label: 'Fleet Active',
-    value: '23/31',
-    sub: '8 in maintenance',
+    value: '0',
+    sub: 'No vehicles added',
     icon: Truck,
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
+    href: '/fleet',
+    cta: 'Add fleet asset',
   },
   {
     label: 'Downloads',
-    value: '142',
-    sub: '18 new this month',
+    value: '0',
+    sub: 'No files uploaded',
     icon: Download,
     color: 'text-purple-600',
     bg: 'bg-purple-50',
+    href: '/downloads',
+    cta: 'Upload a file',
   },
 ];
 
-const recentJobs = [
-  { name: 'Riverside Commercial Complex', status: 'In Progress', progress: 68, due: '14 Aug 2026' },
-  { name: 'Northgate Residential Stage 2', status: 'In Progress', progress: 42, due: '22 Sep 2026' },
-  { name: 'CBD Office Fitout — Level 12', status: 'On Hold', progress: 25, due: '01 Oct 2026' },
-  { name: 'Warehouse Extension — Acacia Ridge', status: 'Completed', progress: 100, due: '10 Jun 2026' },
+// ─── Quick actions ────────────────────────────────────────────────────────────
+const quickActions = [
+  { label: 'Add a Job',       icon: HardHat,  href: '/jobs',      desc: 'Track a new site or project' },
+  { label: 'Add Fleet Asset', icon: Truck,    href: '/fleet',     desc: 'Register a vehicle or plant' },
+  { label: 'Invite Team',     icon: Users,    href: '/team',      desc: 'Add crew members' },
+  { label: 'Ask Dazza AI',    icon: Bot,      href: '/dazza-ai',  desc: 'Your on-site AI assistant' },
 ];
 
-const statusConfig: Record<string, { color: string; icon: typeof CheckCircle2 }> = {
-  'In Progress': { color: 'text-blue-600 bg-blue-50', icon: Clock },
-  'On Hold': { color: 'text-amber-600 bg-amber-50', icon: AlertCircle },
-  'Completed': { color: 'text-emerald-600 bg-emerald-50', icon: CheckCircle2 },
-};
-
+// ─── Animation variants ───────────────────────────────────────────────────────
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
 } as const;
 
 const itemVariants = {
@@ -78,80 +78,140 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
 } as const;
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
+
   const initials = user?.name
-    ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : (user?.email?.[0] ?? '?').toUpperCase();
-  const displayName = user?.name ? user.name.split(' ')[0] + ' ' + (user.name.split(' ')[1]?.[0] ?? '') + '.' : 'User';
-  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const displayName = user?.name
+    ? user.name.split(' ')[0] + (user.name.split(' ')[1] ? ' ' + user.name.split(' ')[1][0] + '.' : '')
+    : 'User';
+
+  const today = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  function openMobileMenu() {
+    window.dispatchEvent(new Event('portal:open-menu'));
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
-        <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew on-site, fleet status, and quick access to all portal modules." />
-        <link rel="canonical" href="https://iwillbuild.com.au/dashboard" />
+        <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <link rel="canonical" href="https://iwillbuild.com/dashboard" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       <PortalSidebar />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0">
-          <div>
-            <h1 className="font-heading font-bold text-lg text-foreground">Dashboard</h1>
-            <p className="text-xs text-muted-foreground">{today}</p>
-          </div>
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={openMobileMenu}
+              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <h1 className="font-heading font-bold text-base md:text-lg text-foreground leading-tight">Dashboard</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-3">
             <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
               <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
             </button>
-            <div className="flex items-center gap-2 pl-3 border-l border-border">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {initials}
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
-                <p className="text-xs text-muted-foreground">{user?.email ?? ''}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[140px]">{user?.email ?? ''}</p>
               </div>
             </div>
           </div>
         </header>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {/* Metrics */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+
+          {/* ── Welcome banner (empty state) ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' as const }}
+            className="mb-6 rounded-xl bg-[#1A1D23] text-white px-5 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Getting started</p>
+              <h2 className="font-heading font-bold text-lg leading-snug">
+                Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Your portal is ready.
+              </h2>
+              <p className="text-sm text-white/50 mt-1">
+                Add your first job, fleet asset, or team member to get started.
+              </p>
+            </div>
+            <Link
+              to="/jobs"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+            >
+              <Plus size={15} />
+              Add First Job
+            </Link>
+          </motion.div>
+
+          {/* ── Metric cards ── */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6"
           >
             {metrics.map((m) => (
               <motion.div
                 key={m.label}
                 variants={itemVariants}
                 whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
-                className="bg-white rounded-lg border border-border p-5 cursor-default transition-shadow duration-150"
+                className="bg-white rounded-lg border border-border p-4 md:p-5 cursor-default"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className={`p-2 rounded-md ${m.bg}`}>
-                    <m.icon size={18} className={m.color} />
+                    <m.icon size={16} className={m.color} />
                   </div>
-                  <TrendingUp size={14} className="text-muted-foreground" />
                 </div>
                 <p className="font-heading font-bold text-2xl text-foreground">{m.value}</p>
                 <p className="text-sm font-medium text-foreground mt-0.5">{m.label}</p>
-                <p className="text-xs text-muted-foreground mt-1">{m.sub}</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">{m.sub}</p>
+                <Link
+                  to={m.href}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                >
+                  {m.cta} <ChevronRight size={11} />
+                </Link>
               </motion.div>
             ))}
           </motion.div>
 
+          {/* ── Bottom panels ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Recent Jobs */}
+
+            {/* Recent Jobs — empty state */}
             <motion.div
               variants={itemVariants}
               initial="hidden"
@@ -167,38 +227,27 @@ export default function DashboardPage() {
                   View all <ChevronRight size={12} />
                 </Link>
               </div>
-              <div className="divide-y divide-border">
-                {recentJobs.map((job) => {
-                  const sc = statusConfig[job.status];
-                  const StatusIcon = sc.icon;
-                  return (
-                    <div key={job.name} className="px-5 py-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm font-medium text-foreground leading-snug">{job.name}</p>
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${sc.color}`}>
-                          <StatusIcon size={11} />
-                          {job.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${job.progress}%` }}
-                            transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' as const }}
-                            className={`h-full rounded-full ${job.progress === 100 ? 'bg-emerald-500' : 'bg-primary'}`}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground shrink-0">{job.progress}%</span>
-                        <span className="text-xs text-muted-foreground shrink-0">Due {job.due}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+
+              {/* Empty state */}
+              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+                  <HardHat size={22} className="text-primary" />
+                </div>
+                <p className="text-sm font-semibold text-foreground mb-1">No jobs yet</p>
+                <p className="text-xs text-muted-foreground mb-5 max-w-xs">
+                  Once you add jobs they'll appear here with progress and status.
+                </p>
+                <Link
+                  to="/jobs"
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors duration-150"
+                >
+                  <Plus size={13} />
+                  Add First Job
+                </Link>
               </div>
             </motion.div>
 
-            {/* Quick Access */}
+            {/* Quick Actions */}
             <motion.div
               variants={itemVariants}
               initial="hidden"
@@ -206,28 +255,23 @@ export default function DashboardPage() {
               className="bg-white rounded-lg border border-border"
             >
               <div className="px-5 py-4 border-b border-border">
-                <h2 className="font-heading font-semibold text-sm text-foreground">Quick Access</h2>
+                <h2 className="font-heading font-semibold text-sm text-foreground">Quick Actions</h2>
               </div>
               <div className="p-4 flex flex-col gap-2">
-                {[
-                  { label: 'Manage Jobs', icon: HardHat, href: '/jobs', desc: '14 active sites' },
-                  { label: 'Fleet Status', icon: Truck, href: '/fleet', desc: '23 vehicles active' },
-                  { label: 'Downloads', icon: Download, href: '/downloads', desc: 'Plans & compliance' },
-                  { label: 'Dazza AI', icon: Bot, href: '/dazza-ai', desc: 'Ask anything' },
-                ].map((item) => (
+                {quickActions.map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
                     className="flex items-center gap-3 p-3 rounded-md hover:bg-muted transition-colors duration-150 group"
                   >
-                    <div className="p-2 rounded-md bg-muted group-hover:bg-primary/10 transition-colors duration-150">
-                      <item.icon size={16} className="text-muted-foreground group-hover:text-primary transition-colors duration-150" />
+                    <div className="p-2 rounded-md bg-muted group-hover:bg-primary/10 transition-colors duration-150 shrink-0">
+                      <item.icon size={15} className="text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
                     </div>
-                    <ChevronRight size={14} className="ml-auto text-muted-foreground group-hover:text-primary transition-colors duration-150" />
+                    <ChevronRight size={14} className="ml-auto text-muted-foreground group-hover:text-primary transition-colors duration-150 shrink-0" />
                   </Link>
                 ))}
               </div>
@@ -238,7 +282,9 @@ export default function DashboardPage() {
                   <Bot size={16} className="text-primary" />
                   <span className="text-sm font-semibold">Dazza AI</span>
                 </div>
-                <p className="text-xs text-white/60 mb-3">Your on-site AI assistant. Ask about jobs, crew, or compliance.</p>
+                <p className="text-xs text-white/60 mb-3">
+                  Your on-site AI assistant. Ask about jobs, crew, or compliance.
+                </p>
                 <Link
                   to="/dazza-ai"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
