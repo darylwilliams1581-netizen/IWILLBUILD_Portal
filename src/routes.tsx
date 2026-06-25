@@ -1,6 +1,7 @@
 import { RouteObject } from 'react-router-dom';
 import { lazy } from 'react';
 import HomePage from './pages/index';
+import LoginPage from './pages/login';
 import DashboardPage from './pages/dashboard';
 import ProdNotFoundPage from './pages/_404';
 
@@ -14,6 +15,10 @@ export const routes: RouteObject[] = [
     element: <HomePage />,
   },
   {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
     path: '/dashboard',
     element: <DashboardPage />,
   },
@@ -23,5 +28,5 @@ export const routes: RouteObject[] = [
   },
 ];
 
-export type Path = '/' | '/dashboard';
+export type Path = '/' | '/login' | '/dashboard';
 export type Params = Record<string, string | undefined>;
