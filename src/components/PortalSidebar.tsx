@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Calculator,
 } from 'lucide-react';
+import { signOut, useSession } from '@/lib/auth/auth-client';
 
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
@@ -36,8 +37,15 @@ const bottomItems = [
 export default function PortalSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useSession();
 
   const isActive = (href: string) => location.pathname === href;
+
+  async function handleLogout() {
+    await signOut();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <motion.aside
@@ -134,6 +142,7 @@ export default function PortalSidebar() {
 
         {/* Logout */}
         <button
+          onClick={handleLogout}
           title={collapsed ? 'Log out' : undefined}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/40 hover:bg-white/8 hover:text-red-400 transition-colors duration-150 group relative w-full"
         >
@@ -145,6 +154,19 @@ export default function PortalSidebar() {
             </div>
           )}
         </button>
+
+        {/* User strip */}
+        {!collapsed && user && (
+          <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+              {(user.name || user.email || '?')[0].toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-white/80 truncate">{user.name || 'User'}</div>
+              <div className="text-[10px] text-white/35 truncate">{user.email}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Collapse toggle */}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
+import { useSession } from '@/lib/auth/auth-client';
 
 const metrics = [
   {
@@ -78,6 +79,12 @@ const itemVariants = {
 } as const;
 
 export default function DashboardPage() {
+  const { user } = useSession();
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : (user?.email?.[0] ?? '?').toUpperCase();
+  const displayName = user?.name ? user.name.split(' ')[0] + ' ' + (user.name.split(' ')[1]?.[0] ?? '') + '.' : 'User';
+  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
       <Helmet>
@@ -95,7 +102,7 @@ export default function DashboardPage() {
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0">
           <div>
             <h1 className="font-heading font-bold text-lg text-foreground">Dashboard</h1>
-            <p className="text-xs text-muted-foreground">Thursday, 25 June 2026</p>
+            <p className="text-xs text-muted-foreground">{today}</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
@@ -104,11 +111,11 @@ export default function DashboardPage() {
             </button>
             <div className="flex items-center gap-2 pl-3 border-l border-border">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-                DM
+                {initials}
               </div>
               <div className="hidden sm:block">
-                <p className="text-sm font-medium text-foreground leading-none">Darren M.</p>
-                <p className="text-xs text-muted-foreground">Site Manager</p>
+                <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{user?.email ?? ''}</p>
               </div>
             </div>
           </div>

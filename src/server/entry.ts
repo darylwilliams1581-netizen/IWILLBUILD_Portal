@@ -4,7 +4,11 @@ import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 
 // <api-imports>
-import health_get_0 from "./api/health/GET";
+import auth_action_get_0 from "./api/auth/[action]/GET";
+import auth_action_post_1 from "./api/auth/[action]/POST";
+import auth_action_detail_get_2 from "./api/auth/[action]/[detail]/GET";
+import auth_action_detail_post_3 from "./api/auth/[action]/[detail]/POST";
+import health_get_4 from "./api/health/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -84,7 +88,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // <api-registrations>
-app.get("/api/health", health_get_0);
+app.get("/api/auth/:action", auth_action_get_0);
+app.post("/api/auth/:action", auth_action_post_1);
+app.get("/api/auth/:action/:detail", auth_action_detail_get_2);
+app.post("/api/auth/:action/:detail", auth_action_detail_post_3);
+app.get("/api/health", health_get_4);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

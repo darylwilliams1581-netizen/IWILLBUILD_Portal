@@ -1,5 +1,6 @@
 import { RouteObject } from 'react-router-dom';
 import { lazy } from 'react';
+import { ProtectedRoute } from '@/lib/auth/auth-client';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import DashboardPage from './pages/dashboard';
@@ -18,20 +19,23 @@ const NotFoundPage = import.meta.env.DEV
   ? lazy(() => import('../dev-tools/src/PageNotFound'))
   : ProdNotFoundPage;
 
+function protect(element: React.ReactElement) {
+  return <ProtectedRoute>{element}</ProtectedRoute>;
+}
+
 export const routes: RouteObject[] = [
   { path: '/',           element: <HomePage /> },
   { path: '/login',      element: <LoginPage /> },
-  { path: '/dashboard',  element: <DashboardPage /> },
-  { path: '/jobs',       element: <JobsPage /> },
-  { path: '/fleet',      element: <FleetPage /> },
-  { path: '/forms',      element: <FormsPage /> },
-  { path: '/files',      element: <FilesPage /> },
-  { path: '/estimating', element: <EstimatingPage /> },
-  { path: '/downloads',  element: <DownloadsPage /> },
-  { path: '/downloads',  element: <DownloadsPage /> },
-  { path: '/dazza-ai',   element: <DazzaAIPage /> },
-  { path: '/team',       element: <TeamPage /> },
-  { path: '/settings',   element: <SettingsPage /> },
+  { path: '/dashboard',  element: protect(<DashboardPage />) },
+  { path: '/jobs',       element: protect(<JobsPage />) },
+  { path: '/fleet',      element: protect(<FleetPage />) },
+  { path: '/forms',      element: protect(<FormsPage />) },
+  { path: '/files',      element: protect(<FilesPage />) },
+  { path: '/estimating', element: protect(<EstimatingPage />) },
+  { path: '/downloads',  element: protect(<DownloadsPage />) },
+  { path: '/dazza-ai',   element: protect(<DazzaAIPage />) },
+  { path: '/team',       element: protect(<TeamPage />) },
+  { path: '/settings',   element: protect(<SettingsPage />) },
   { path: '*',           element: <NotFoundPage /> },
 ];
 

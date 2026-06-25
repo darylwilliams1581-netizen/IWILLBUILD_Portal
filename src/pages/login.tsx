@@ -1,13 +1,50 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
+import { signIn, useSession } from '@/lib/auth/auth-client';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useSession();
+
+  // If already logged in, redirect to dashboard
+  if (isAuthenticated) {
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+    navigate(from, { replace: true });
+    return null;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signIn.email({ email, password });
+      if (result.error) {
+        setError(result.error.message || 'Invalid email or password.');
+        setLoading(false);
+        return;
+      }
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
@@ -68,8 +105,16 @@ export default function LoginPage() {
           </div>
 
           {/* Form */}
-          <div className="px-8 py-6">
+          <form onSubmit={handleSubmit} className="px-8 py-6">
             <div className="flex flex-col gap-4">
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400">
+                  <AlertCircle size={14} className="shrink-0" />
+                  {error}
+                </div>
+              )}
+
               {/* Email */}
               <div>
                 <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
@@ -82,6 +127,8 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@iwillbuild.com.au"
+                    autoComplete="email"
+                    required
                     className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
                   />
                 </div>
@@ -99,6 +146,8 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
                     className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
                   />
                   <button
@@ -111,23 +160,26 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Forgot */}
-              <div className="flex justify-end">
-                <button className="text-xs text-white/40 hover:text-primary transition-colors duration-150">
-                  Forgot password?
-                </button>
-              </div>
-
               {/* CTA */}
-              <Link
-                to="/dashboard"
-                className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
               >
-                Sign In
-                <ArrowRight size={15} />
-              </Link>
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in…
+                  </span>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
             </div>
-          </div>
+          </form>
 
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
