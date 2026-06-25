@@ -1,45 +1,76 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
-import { signIn, useSession } from '@/lib/auth/auth-client';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { signIn } from '@/lib/auth/auth-client';
 
-export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
+// Password policy checks
+function getPasswordStrength(pw: string) {
+  return {
+    length: pw.length >= 8,
+    letter: /[a-zA-Z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    symbol: /[^a-zA-Z0-9]/.test(pw),
+  };
+}
+
+function StrengthRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div className={`flex items-center gap-1.5 text-xs transition-colors duration-150 ${ok ? 'text-emerald-400' : 'text-white/30'}`}>
+      <CheckCircle2 size={11} className={ok ? 'text-emerald-400' : 'text-white/20'} />
+      {label}
+    </div>
+  );
+}
+
+export default function SignupPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
-  const { isAuthenticated } = useSession();
-
-  // If already logged in, redirect to dashboard
-  if (isAuthenticated) {
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-    navigate(from, { replace: true });
-    return null;
-  }
+  const strength = getPasswordStrength(password);
+  const passwordValid = strength.length && strength.letter && strength.number && strength.symbol;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
+    if (!name.trim()) { setError('Please enter your full name.'); return; }
+    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (!passwordValid) { setError('Password does not meet the requirements below.'); return; }
+
     setError('');
     setLoading(true);
+
     try {
-      const result = await signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message || 'Invalid email or password.');
+      // Call our custom signup endpoint (handles profile + role assignment)
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), password }),
+        credentials: 'include',
+      });
+
+      const data = await res.json() as { ok?: boolean; error?: string };
+
+      if (!res.ok) {
+        setError(data.error || 'Signup failed. Please try again.');
         setLoading(false);
         return;
       }
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+
+      // Auto sign-in after successful signup
+      const loginResult = await signIn.email({ email: email.trim().toLowerCase(), password });
+      if (loginResult.error) {
+        // Signup worked but auto-login failed — send to login page
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      navigate('/dashboard', { replace: true });
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -49,13 +80,13 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
       <Helmet>
-        <title>Sign In — IWILLBUILD Portal</title>
-        <meta name="description" content="Sign in to the IWILLBUILD internal portal to manage jobs, crews, fleet, and more." />
-        <link rel="canonical" href="https://iwillbuild.com.au/login" />
+        <title>Create Account — IWILLBUILD Portal</title>
+        <meta name="description" content="Create your IWILLBUILD portal account to manage jobs, crews, fleet, and more." />
+        <link rel="canonical" href="https://iwillbuild.com.au/signup" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* Blueprint grid background */}
+      {/* Blueprint grid */}
       <div
         className="absolute inset-0 opacity-[0.06]"
         style={{
@@ -66,20 +97,16 @@ export default function LoginPage() {
           backgroundSize: '40px 40px',
         }}
       />
-
-      {/* Subtle radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(249,115,22,0.07) 0%, transparent 70%)',
         }}
       />
-
-      {/* Geometric accent lines */}
       <div className="absolute top-0 left-0 w-64 h-64 border-r border-b border-white/5 rounded-br-[80px]" />
       <div className="absolute bottom-0 right-0 w-64 h-64 border-l border-t border-white/5 rounded-tl-[80px]" />
 
-      {/* Login card */}
+      {/* Card */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -97,7 +124,7 @@ export default function LoginPage() {
               />
             </div>
             <h1 className="font-heading font-bold text-xl text-white text-center">
-              Portal Sign In
+              Create Account
             </h1>
             <p className="text-sm text-white/40 text-center mt-1">
               Internal access only
@@ -114,6 +141,25 @@ export default function LoginPage() {
                   {error}
                 </div>
               )}
+
+              {/* Full name */}
+              <div>
+                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Darren Walsh"
+                    autoComplete="name"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
+                  />
+                </div>
+              </div>
 
               {/* Email */}
               <div>
@@ -146,7 +192,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     required
                     className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
                   />
@@ -158,6 +204,16 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
+
+                {/* Strength indicators — only show once user starts typing */}
+                {password.length > 0 && (
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 px-0.5">
+                    <StrengthRow ok={strength.length} label="8+ characters" />
+                    <StrengthRow ok={strength.letter} label="1 letter" />
+                    <StrengthRow ok={strength.number} label="1 number" />
+                    <StrengthRow ok={strength.symbol} label="1 symbol" />
+                  </div>
+                )}
               </div>
 
               {/* CTA */}
@@ -169,21 +225,21 @@ export default function LoginPage() {
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in…
+                    Creating account…
                   </span>
                 ) : (
                   <>
-                    Sign In
+                    Create Account
                     <ArrowRight size={15} />
                   </>
                 )}
               </button>
 
-              {/* Signup link */}
+              {/* Login link */}
               <p className="text-center text-xs text-white/35 mt-1">
-                Don&apos;t have an account?{' '}
-                <Link to="/signup" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">
-                  Create one
+                Already have an account?{' '}
+                <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">
+                  Sign in
                 </Link>
               </p>
             </div>

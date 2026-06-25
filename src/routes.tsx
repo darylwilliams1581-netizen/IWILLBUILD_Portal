@@ -3,6 +3,7 @@ import { lazy } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
+import SignupPage from './pages/signup';
 import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
 import FleetPage from './pages/fleet';
@@ -26,6 +27,7 @@ function protect(element: React.ReactElement) {
 export const routes: RouteObject[] = [
   { path: '/',           element: <HomePage /> },
   { path: '/login',      element: <LoginPage /> },
+  { path: '/signup',     element: <SignupPage /> },
   { path: '/dashboard',  element: protect(<DashboardPage />) },
   { path: '/jobs',       element: protect(<JobsPage />) },
   { path: '/fleet',      element: protect(<FleetPage />) },
@@ -42,6 +44,7 @@ export const routes: RouteObject[] = [
 export type Path =
   | '/'
   | '/login'
+  | '/signup'
   | '/dashboard'
   | '/jobs'
   | '/fleet'
