@@ -95,7 +95,7 @@ export default function HomePage() {
           </a>
 
           {/* Nav */}
-          <nav className="hidden md:flex" style={{ gap: 20, alignItems: 'center', color: '#5f6f86', fontWeight: 800, fontSize: 14, display: 'flex' }}>
+          <nav className="hidden md:flex" style={{ gap: 20, alignItems: 'center', color: '#5f6f86', fontWeight: 800, fontSize: 14 }}>
             <a href="#features" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Features</a>
             <a href="#dazza" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Dazza AI</a>
             <a href="#workflow" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Workflow</a>
