@@ -4,7 +4,7 @@ import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 
 // <api-imports>
-import healthGet from "./api/health/GET";
+import health_get_0 from "./api/health/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -84,7 +84,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // <api-registrations>
-app.get("/api/health", healthGet);
+app.get("/api/health", health_get_0);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
