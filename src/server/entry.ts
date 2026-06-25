@@ -9,7 +9,7 @@ import auth_action_post_1 from "./api/auth/[action]/POST";
 import auth_action_detail_get_2 from "./api/auth/[action]/[detail]/GET";
 import auth_action_detail_post_3 from "./api/auth/[action]/[detail]/POST";
 import health_get_4 from "./api/health/GET";
-import signup_post from "./api/signup/POST";
+import signup_post_5 from "./api/signup/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -94,7 +94,7 @@ app.post("/api/auth/:action", auth_action_post_1);
 app.get("/api/auth/:action/:detail", auth_action_detail_get_2);
 app.post("/api/auth/:action/:detail", auth_action_detail_post_3);
 app.get("/api/health", health_get_4);
-app.post("/api/signup", signup_post);
+app.post("/api/signup", signup_post_5);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
