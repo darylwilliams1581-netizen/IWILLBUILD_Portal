@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   BookOpen,
   ArrowRight,
+  Link2,
+  Cloud,
+  BotOff,
 } from 'lucide-react';
 
 const features = [
@@ -64,15 +67,18 @@ const steps = [
 
 const problems = [
   {
+    icon: Link2,
     title: 'Fragmented tools',
     desc: 'Jobs in one app, photos in another, safety forms in a third, estimating in a spreadsheet. Nothing talks to each other.',
   },
   {
+    icon: Cloud,
     title: 'Cloud lock-in',
     desc: "Your critical project data lives on someone else's servers. Expensive subscriptions. No offline access when you need it most.",
   },
   {
-    title: 'AI that can\'t be trusted',
+    icon: BotOff,
+    title: "AI that can't be trusted",
     desc: "Generic AI tools that hallucinate on construction details and can't safely learn your rates, processes, or documents.",
   },
 ];
@@ -140,9 +146,9 @@ export default function HomePage() {
             {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-xl flex items-center justify-center shrink-0">
-                <span className="text-white font-black text-lg tracking-tighter">IW</span>
+                <span className="text-white font-black text-2xl tracking-tighter">IW</span>
               </div>
-              <span className="font-black text-xl tracking-tight">IWILLBUILD</span>
+              <span className="font-black text-2xl tracking-tight">IWILLBUILD</span>
             </div>
 
             {/* Links */}
@@ -155,17 +161,16 @@ export default function HomePage() {
 
             {/* CTAs */}
             <div className="flex items-center gap-3">
-              <Link
-                to="/login"
-                className="hidden sm:inline-flex items-center px-5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-2xl text-sm transition-all"
-              >
-                Sign In
-              </Link>
               <a
                 href="#download"
-                className="inline-flex items-center gap-2 px-5 py-2 bg-[#1263d8] hover:bg-[#0f4aa8] text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-blue-500/30"
+                className="hidden sm:inline-flex items-center px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-2xl text-sm transition-all"
               >
-                <Download size={14} />
+                Download
+              </a>
+              <a
+                href="#download"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1263d8] hover:bg-[#0f4aa8] text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-blue-500/30"
+              >
                 Start Free Trial
               </a>
             </div>
@@ -249,6 +254,9 @@ export default function HomePage() {
         >
           {problems.map((p) => (
             <motion.div key={p.title} variants={fadeUp} className="bg-white border border-slate-200 rounded-3xl p-7">
+              <div className="text-red-500 mb-4">
+                <p.icon size={32} />
+              </div>
               <h3 className="font-bold text-xl mb-2">{p.title}</h3>
               <p className="text-slate-600">{p.desc}</p>
             </motion.div>
