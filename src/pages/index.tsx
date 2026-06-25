@@ -113,19 +113,20 @@ export default function HomePage() {
             </Link>
           </nav>
 
-          {/* Mobile CTA */}
-          <Link
-            to="/login"
-            className="md:hidden"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#1263d8', color: '#fff',
-              padding: '9px 14px', borderRadius: 8, fontWeight: 900, fontSize: 13,
-              textDecoration: 'none',
-            }}
-          >
-            Launch Portal
-          </Link>
+          {/* Mobile CTA — only shown when nav is hidden (below md breakpoint) */}
+          <div className="md:hidden">
+            <Link
+              to="/login"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: '#1263d8', color: '#fff',
+                padding: '9px 14px', borderRadius: 8, fontWeight: 900, fontSize: 13,
+                textDecoration: 'none',
+              }}
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       </header>
 
