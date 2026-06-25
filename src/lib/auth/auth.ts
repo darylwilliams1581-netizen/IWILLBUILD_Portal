@@ -14,10 +14,9 @@
 
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { eq } from 'drizzle-orm';
 
 import { db } from '@/server/db/client';
-import { user, session, account, verification, profiles, companies } from '@/server/db/schema';
+import { user, session, account, verification } from '@/server/db/schema';
 import { getSecret } from '#airo/secrets';
 
 // Lazy singleton — betterAuth() must NOT run at module init time.
@@ -106,32 +105,6 @@ export function getAuth() {
     }),
 
     emailAndPassword: { enabled: true },
-
-    // Auto-create a profile row when a new user signs up
-    hooks: {
-      after: async (context: { path: string; context: unknown }) => {
-        if (context.path !== '/sign-up/email') return;
-        const userId = (context.context as { newSession?: { userId?: string } })?.newSession?.userId;
-        if (!userId || !db) return;
-        try {
-          const existing = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
-          if (existing.length > 0) return;
-
-          let companyId: number | null = null;
-          const existingCompanies = await db.select().from(companies).limit(1);
-          if (existingCompanies.length > 0) {
-            companyId = existingCompanies[0].id;
-          } else {
-            const [newCompany] = await db.insert(companies).values({ name: 'My Company' }).$returningId();
-            companyId = newCompany?.id ?? null;
-          }
-
-          await db.insert(profiles).values({ userId, companyId, role: 'admin' });
-        } catch (err) {
-          console.error('auth.hook.profile-create.failed', err);
-        }
-      },
-    },
 
     // socialProviders: {
     //   google: {
