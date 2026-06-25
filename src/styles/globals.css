@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,44 +9,44 @@
     /* Core Colors */
     --background: 0 0% 100%;
     --foreground: 0 0% 4%;
-    --card: 0 0% 96%;
+    --card: 210 17% 98%;
     --card-foreground: 0 0% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 4%;
-    --primary: 0 0% 25%;
+    --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 45%;
+    --secondary: 217 19% 27%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 4%;
-    --accent: 0 0% 15%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 25%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 25 95% 53%;
 
     /* Extended Colors */
-    --chart-1: 0 0% 55%;
-    --chart-2: 0 0% 40%;
-    --chart-3: 0 0% 25%;
-    --chart-4: 0 0% 10%;
-    --chart-5: 0 0% 0%;
+    --chart-1: 25 95% 83%;
+    --chart-2: 25 95% 68%;
+    --chart-3: 25 95% 53%;
+    --chart-4: 25 95% 38%;
+    --chart-5: 25 95% 23%;
 
     /* Sidebar Colors */
-    --sidebar: 0 0% 96%;
+    --sidebar: 210 17% 95%;
     --sidebar-foreground: 0 0% 4%;
-    --sidebar-primary: 0 0% 25%;
+    --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent: 25 95% 53%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 0 0% 25%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 25 95% 53%;
 
     /* Typography */
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
     --font-serif: ui-serif, Georgia, "Times New Roman", serif;
     --font-mono: ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
 
@@ -68,6 +70,8 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+  
+    font-family: var(--font-sans);
   }
 
   h1, h2, h3, h4, h5, h6 {

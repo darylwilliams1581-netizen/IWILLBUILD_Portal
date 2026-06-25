@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IWILLBUILD — Practical Construction Management for Builders & Site Teams</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --brand: #1263d8;
+      --brand-2: #0f8b8d;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .section {
+      scroll-margin-top: 80px;
+    }
+    .nav-active {
+      color: #1263d8;
+      font-weight: 700;
+    }
+    .feature-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+    .stat-number {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+  <!-- Navigation -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-xl flex items-center justify-center">
+            <span class="text-white font-black text-2xl tracking-tighter">IW</span>
+          </div>
+          <div>
+            <span class="font-black text-2xl tracking-tight">IWILLBUILD</span>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-8 text-sm font-semibold">
+          <a href="#features" class="hover:text-[#1263d8] transition-colors">Features</a>
+          <a href="#dazza" class="hover:text-[#1263d8] transition-colors">Dazza AI</a>
+          <a href="#how" class="hover:text-[#1263d8] transition-colors">How it Works</a>
+          <a href="#whitepaper" class="hover:text-[#1263d8] transition-colors">White Paper</a>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a href="#download" 
+             class="hidden sm:inline-flex items-center px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-2xl text-sm transition-all active:scale-[0.985]">
+            Download
+          </a>
+          <a href="#download" 
+             class="inline-flex items-center px-6 py-2.5 bg-[#1263d8] hover:bg-[#0f4aa8] text-white font-bold rounded-2xl text-sm transition-all active:scale-[0.985] shadow-lg shadow-blue-500/30">
+            Start Free Trial
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="max-w-5xl mx-auto px-6 pt-16 pb-20 text-center">
+    <div class="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 mb-6 text-sm font-semibold shadow-sm">
+      <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+      <span class="text-slate-600">Now in public trial • Version 95</span>
+    </div>
+
+    <h1 class="text-6xl md:text-7xl font-black tracking-tighter leading-none mb-6">
+      Construction management<br>
+      that actually works<br>
+      <span class="bg-gradient-to-r from-[#1263d8] to-[#0f8b8d] bg-clip-text text-transparent">in the field.</span>
+    </h1>
+
+    <p class="max-w-2xl mx-auto text-xl text-slate-600 mb-10">
+      A powerful local-first system for jobs, fleet, estimating, forms and photos — 
+      with a controlled AI assistant that learns safely from your data and documents.
+    </p>
+
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <a href="#download" 
+         class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-9 py-4 bg-[#1263d8] hover:bg-[#0f4aa8] text-white font-black text-lg rounded-3xl transition-all active:scale-[0.985] shadow-xl shadow-blue-500/40">
+        <i class="fa-solid fa-download"></i>
+        <span>Download Free Trial</span>
+      </a>
+      <a href="#whitepaper" 
+         class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-white border-2 border-slate-300 hover:bg-slate-50 font-bold text-lg rounded-3xl transition-all">
+        <i class="fa-solid fa-file-lines"></i>
+        <span>Read the White Paper</span>
+      </a>
+    </div>
+
+    <div class="mt-8 flex items-center justify-center gap-8 text-sm text-slate-500">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-check text-emerald-500"></i>
+        <span>Works offline</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-check text-emerald-500"></i>
+        <span>Saves to your OneDrive / SharePoint</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-check text-emerald-500"></i>
+        <span>No subscription required to try</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trust / Built by builders -->
+  <div class="border-y border-slate-200 bg-white py-5">
+    <div class="max-w-5xl mx-auto px-6 text-center">
+      <p class="text-sm font-semibold text-slate-500 tracking-wider">BUILT BY BUILDERS, FOR BUILDERS</p>
+    </div>
+  </div>
+
+  <!-- Problem -->
+  <div class="max-w-5xl mx-auto px-6 py-16">
+    <div class="text-center mb-10">
+      <h2 class="text-4xl font-black tracking-tight mb-3">The tools most contractors use are broken.</h2>
+      <p class="text-lg text-slate-600 max-w-md mx-auto">Too many disconnected apps. Data trapped in the cloud. Nothing works properly offline on regional jobs.</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="text-red-500 mb-4"><i class="fa-solid fa-link text-3xl"></i></div>
+        <h3 class="font-bold text-xl mb-2">Fragmented tools</h3>
+        <p class="text-slate-600">Jobs in one app, photos in another, safety forms in a third, estimating in a spreadsheet. Nothing talks to each other.</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="text-red-500 mb-4"><i class="fa-solid fa-cloud text-3xl"></i></div>
+        <h3 class="font-bold text-xl mb-2">Cloud lock-in</h3>
+        <p class="text-slate-600">Your critical project data lives on someone else’s servers. Expensive subscriptions. No offline access when you need it most.</p>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="text-red-500 mb-4"><i class="fa-solid fa-robot text-3xl"></i></div>
+        <h3 class="font-bold text-xl mb-2">AI that can’t be trusted</h3>
+        <p class="text-slate-600">Generic AI tools that hallucinate on construction details and can’t safely learn your rates, processes, or documents.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solution -->
+  <div id="features" class="bg-white border-y border-slate-200 py-16">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="flex flex-col md:flex-row gap-12 items-center">
+        <div class="flex-1">
+          <h2 class="text-5xl font-black tracking-tighter leading-none mb-6">One practical system.<br>Built for how you actually work.</h2>
+          <p class="text-xl text-slate-600">IWILLBUILD is a complete construction management platform that runs locally in your browser and saves directly to your OneDrive or SharePoint.</p>
+        </div>
+        <div class="flex-1">
+          <div class="bg-slate-900 text-white rounded-3xl p-8 text-sm leading-relaxed">
+            <div class="font-mono text-emerald-400 text-xs tracking-[3px] mb-3">NO CLOUD LOCK-IN • WORKS OFFLINE • YOUR DATA</div>
+            <p class="text-slate-300">Clean Blocks gives you jobs, fleet prestarts, estimating with reusable recipes, a powerful form builder with signatures and media, photo management, and a structured file register — all in one clean interface.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Features -->
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <h2 class="text-center text-4xl font-black tracking-tight mb-12">Everything you need on site and in the office</h2>
+    
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Feature 1 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-blue-100 text-[#1263d8] rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-briefcase text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">Jobs &amp; Progress</h3>
+        <p class="text-slate-600">Full job register, to-do lists, notes, photo linking, and live progress tracking against approved estimates.</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-truck text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">Fleet &amp; Daily Prestarts</h3>
+        <p class="text-slate-600">Asset register, daily prestart logging with issue flagging, service tracking, and dashboard attention items.</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-calculator text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">Estimating &amp; Recipes</h3>
+        <p class="text-slate-600">Cost guide, reusable recipe packs, line items, markup, GST, and approved estimates that feed job progress.</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-violet-100 text-violet-600 rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-file-lines text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">Powerful Form Builder</h3>
+        <p class="text-slate-600">Drag-and-drop forms with conditional logic, signatures, media capture, map pickers, and role-based routing.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-images text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">Photos &amp; Documentation</h3>
+        <p class="text-slate-600">Job-linked photos with labels, drag-and-drop organisation, and clean export for reports and records.</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="feature-card bg-white border border-slate-200 rounded-3xl p-7">
+        <div class="w-12 h-12 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center mb-5">
+          <i class="fa-solid fa-folder-open text-2xl"></i>
+        </div>
+        <h3 class="font-bold text-2xl mb-2">File Register</h3>
+        <p class="text-slate-600">Structured file management mapped to your SharePoint/OneDrive folders with job linking and status tracking.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dazza AI Section -->
+  <div id="dazza" class="bg-gradient-to-br from-slate-900 to-slate-950 text-white py-16">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="flex flex-col lg:flex-row gap-12 items-center">
+        <div class="flex-1">
+          <div class="inline-block bg-white/10 text-white text-xs font-bold tracking-[2px] px-4 py-1.5 rounded-full mb-4">CONTROLLED AI</div>
+          <h2 class="text-5xl font-black tracking-tighter mb-6">Dazza AI.<br>Smart, but never in charge.</h2>
+          <p class="text-xl text-slate-300 mb-8">Dazza is your construction-aware assistant that reads your live project data and can be safely extended with new capabilities.</p>
+          
+          <div class="space-y-4">
+            <div class="flex gap-4">
+              <div class="mt-1"><i class="fa-solid fa-shield-halved text-emerald-400 text-xl"></i></div>
+              <div>
+                <div class="font-bold">Passcode protected learning</div>
+                <div class="text-slate-400 text-sm">Only you (or people you trust) can add new capabilities using the 123456 passcode gate.</div>
+              </div>
+            </div>
+            <div class="flex gap-4">
+              <div class="mt-1"><i class="fa-solid fa-book text-emerald-400 text-xl"></i></div>
+              <div>
+                <div class="font-bold">Two safe learning paths</div>
+                <div class="text-slate-400 text-sm"><b>/update</b> for structured rate packs &amp; calculators • <b>/learn</b> for PDFs, guides, NCC docs, SWMS and policies.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 bg-white/5 border border-white/10 rounded-3xl p-8 text-sm">
+          <div class="font-mono text-xs text-emerald-400 tracking-widest mb-4">WHAT DAZZA CAN DO TODAY</div>
+          <ul class="space-y-3 text-slate-200">
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Summarise any job with estimates, todos, photos and forms</li>
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Find fleet assets needing attention or overdue rego</li>
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Help build and check estimates using your loaded rates</li>
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Review form completeness and suggest improvements</li>
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Point to the right reference documents you’ve taught it</li>
+            <li class="flex gap-3"><span class="text-emerald-400">→</span> Run data health checks before things go wrong</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it Works -->
+  <div id="how" class="max-w-5xl mx-auto px-6 py-20">
+    <h2 class="text-center text-4xl font-black tracking-tight mb-3">Simple. Local. Yours.</h2>
+    <p class="text-center text-xl text-slate-600 mb-12 max-w-md mx-auto">Get started in under 2 minutes. No account creation required.</p>
+
+    <div class="grid md:grid-cols-4 gap-6">
+      <div class="text-center">
+        <div class="mx-auto w-14 h-14 bg-[#1263d8] text-white rounded-2xl flex items-center justify-center text-2xl font-black mb-4">1</div>
+        <div class="font-bold mb-1">Download</div>
+        <div class="text-sm text-slate-600">Get the latest Clean Blocks + Dazza files</div>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto w-14 h-14 bg-[#1263d8] text-white rounded-2xl flex items-center justify-center text-2xl font-black mb-4">2</div>
+        <div class="font-bold mb-1">Open in browser</div>
+        <div class="text-sm text-slate-600">Works on any modern browser. No install needed.</div>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto w-14 h-14 bg-[#1263d8] text-white rounded-2xl flex items-center justify-center text-2xl font-black mb-4">3</div>
+        <div class="font-bold mb-1">Use on real jobs</div>
+        <div class="text-sm text-slate-600">Track jobs, fleet, estimates and forms. Works offline.</div>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto w-14 h-14 bg-[#1263d8] text-white rounded-2xl flex items-center justify-center text-2xl font-black mb-4">4</div>
+        <div class="font-bold mb-1">Teach Dazza</div>
+        <div class="text-sm text-slate-600">Load your rates and reference PDFs safely when you’re ready.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- White Paper -->
+  <div id="whitepaper" class="bg-white border-y border-slate-200 py-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <div class="inline-block bg-amber-100 text-amber-700 text-xs font-black tracking-wider px-4 py-1 rounded-full mb-4">DEEP DIVE</div>
+      <h2 class="text-4xl font-black tracking-tight mb-4">Read the IWILLBUILD White Paper</h2>
+      <p class="text-lg text-slate-600 max-w-lg mx-auto mb-8">Understand the full philosophy, architecture, and controlled AI approach behind the system.</p>
+      
+      <a href="#" onclick="alert('In the live version this will download the white paper PDF/DOCX'); return false;" 
+         class="inline-flex items-center gap-3 px-8 py-4 bg-slate-900 hover:bg-black text-white font-bold rounded-3xl text-lg transition-all">
+        <i class="fa-solid fa-download"></i>
+        <span>Download White Paper (PDF)</span>
+      </a>
+      <p class="text-xs text-slate-500 mt-3">Also available inside the app under Help</p>
+    </div>
+  </div>
+
+  <!-- Download / Trial CTA -->
+  <div id="download" class="max-w-4xl mx-auto px-6 py-20 text-center">
+    <h2 class="text-5xl font-black tracking-tighter mb-4">Ready to try it on your next job?</h2>
+    <p class="text-xl text-slate-600 mb-10">Download the latest version and start using it today. No credit card. No account. Just results.</p>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="#" onclick="alert('In production this will link to the latest Clean Blocks + Dazza download files'); return false;"
+         class="inline-flex items-center justify-center gap-3 px-10 py-5 bg-[#1263d8] hover:bg-[#0f4aa8] text-white font-black text-xl rounded-3xl transition-all active:scale-[0.985] shadow-2xl shadow-blue-500/40">
+        <i class="fa-solid fa-download mr-1"></i>
+        Download Clean Blocks v95 + Dazza
+      </a>
+    </div>
+
+    <p class="mt-6 text-sm text-slate-500">Works on Windows, Mac, and modern browsers • Saves to your existing OneDrive/SharePoint</p>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 text-slate-400 py-12 text-sm">
+    <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-y-10">
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-xl flex items-center justify-center">
+            <span class="text-white font-black text-xl tracking-tighter">IW</span>
+          </div>
+          <span class="text-white font-black text-2xl tracking-tight">IWILLBUILD</span>
+        </div>
+        <p class="max-w-xs">Practical construction management for builders who want control, simplicity, and tools that actually work on site.</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-y-8 text-sm">
+        <div>
+          <div class="font-bold text-white mb-3">Product</div>
+          <div class="space-y-1.5">
+            <div>Features</div>
+            <div>Dazza AI</div>
+            <div>White Paper</div>
+            <div>Roadmap</div>
+          </div>
+        </div>
+        <div>
+          <div class="font-bold text-white mb-3">Resources</div>
+          <div class="space-y-1.5">
+            <div>Getting Started</div>
+            <div>Help Centre</div>
+            <div>Community</div>
+          </div>
+        </div>
+        <div>
+          <div class="font-bold text-white mb-3">Company</div>
+          <div class="space-y-1.5">
+            <div>Built by builders</div>
+            <div>Contact</div>
+            <div>Feedback</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 mt-12 pt-8 border-t border-white/10 text-xs flex flex-col md:flex-row justify-between gap-y-2">
+      <div>© 2026 IWILLBUILD. Built with care in Queensland, Australia.</div>
+      <div class="flex gap-x-5">
+        <div>Privacy</div>
+        <div>Terms</div>
+        <div>Local-first by design</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Simple smooth scroll for nav links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // Tailwind script for any future interactivity
+    console.log('%c[IWILLBUILD] Landing page ready for deployment.', 'color:#64748b');
+  </script>
+</body>
+</html>

@@ -15,6 +15,6 @@ export interface SiteMeta {
 }
 
 export const siteMeta: SiteMeta = {
-	name: "",
-	summary: "",
+	name: "IWILLBUILD",
+	summary: "Internal operations portal for IWILLBUILD — manage job sites, crews, fleet, documents, and AI assistance.",
 };

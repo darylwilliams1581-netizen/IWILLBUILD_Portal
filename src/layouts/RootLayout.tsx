@@ -2,18 +2,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement } from 'react';
 import { ScrollRestoration } from 'react-router-dom';
 
-import Footer from '@/layouts/parts/Footer';
-import Header from '@/layouts/parts/Header';
-import Website from '@/layouts/Website';
-
 /**
- * Root layout component that wraps all pages with consistent header and footer.
- *
- * To customize the header or footer, directly edit the Header.tsx and Footer.tsx
- * files in the layouts/parts directory.
- *
- * Site-wide <title> and <meta> live in the <Helmet> below. Individual pages can
- * override them by rendering their own <Helmet> — last-mounted wins.
+ * Root layout for IWILLBUILD Portal — fullscreen dashboard app.
+ * No shared header/footer; each page manages its own layout.
  */
 interface RootLayoutProps {
   children: ReactElement;
@@ -21,15 +12,13 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <Website>
+    <div className="min-h-screen bg-background text-foreground">
       <Helmet>
-        <title>App Template</title>
-        <meta name="description" content="App Template" />
+        <title>IWILLBUILD Portal</title>
+        <meta name="description" content="Internal operations portal for IWILLBUILD — manage jobs, crews, fleet, and more." />
       </Helmet>
       <ScrollRestoration />
-      <Header />
       {children}
-      <Footer />
-    </Website>
+    </div>
   );
 }

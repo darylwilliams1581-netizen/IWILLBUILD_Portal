@@ -1,0 +1,18 @@
+{
+  "jobId": "7abdb1f0-81f4-4838-a043-2ca943fe48fd",
+  "status": "completed",
+  "prompt": "Bold all-caps wordmark for IWILLBUILD — a construction and building company. Strong industrial sans-serif lettering, slightly condensed, with a small geometric construction icon or hard hat mark integrated into the design. Clean, authoritative, professional. Suitable for a dark sidebar in a SaaS portal. Brand colors: primary #F97316, secondary #374151, accent #F97316, background #FFFFFF, foreground #0A0A0A.",
+  "layouts": [
+    "horizontal"
+  ],
+  "slots": [
+    "logo/horizontal"
+  ],
+  "isRegeneration": false,
+  "previousSlots": {},
+  "attempt": 0,
+  "createdAt": "2026-06-25T21:51:06.949Z",
+  "updatedAt": "2026-06-25T21:52:02.973Z",
+  "sessionId": "8c90e5c5-e3e0-4c16-86f3-b2b52ef042af",
+  "logoId": "c38cc584-b098-43f4-99c8-38c15f44ecdf"
+}
