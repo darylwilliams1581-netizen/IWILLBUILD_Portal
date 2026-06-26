@@ -110,6 +110,9 @@ export const profiles = mysqlTable('profiles', {
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
   // Notification preferences stored as JSON blob (user-scoped)
   notificationPrefs: text('notification_prefs'),
+  // Activity tracking
+  lastLoginAt: timestamp('last_login_at'),
+  lastActiveAt: timestamp('last_active_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
@@ -424,4 +427,14 @@ export const dazzaAuditLog = mysqlTable('dazza_audit_log', {
   supportMode:     boolean('support_mode').notNull().default(false),
   supportCompanyId: int('support_company_id'),
   createdAt:       timestamp('created_at').defaultNow(),
+});
+
+// ── User activity events ──────────────────────────────────────────────────────
+export const userActivityEvents = mysqlTable('user_activity_events', {
+  id:           int('id').primaryKey().autoincrement(),
+  companyId:    int('company_id').notNull(),
+  userId:       varchar('user_id', { length: 36 }).notNull(),
+  eventType:    varchar('event_type', { length: 50 }).notNull(), // login | logout | active
+  metadataJson: text('metadata_json'),
+  createdAt:    timestamp('created_at').defaultNow(),
 });

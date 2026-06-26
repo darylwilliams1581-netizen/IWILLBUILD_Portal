@@ -11,6 +11,7 @@ import type { Request, Response } from 'express';
 import { getAuth } from '@/lib/auth/auth';
 import { toWebRequest, sendWebResponse } from '@/lib/auth/express-adapter';
 import { tryClearStaleSession } from '@/lib/auth/session-cookies';
+import { recordLoginEvent } from '@/server/activity-tracker';
 
 export async function authHandler(req: Request, res: Response) {
   // Stale-session recovery escape hatch (`?clearCookies=1`). A stale
@@ -22,9 +23,30 @@ export async function authHandler(req: Request, res: Response) {
     return;
   }
 
+  // Detect sign-in so we can record a login event after success
+  const isSignIn =
+    req.method === 'POST' &&
+    (req.path.includes('sign-in') || req.path.includes('signin'));
+
   try {
     const auth = getAuth();
     const webResponse = await auth.handler(toWebRequest(req));
+
+    // If sign-in succeeded (2xx), record the login event
+    if (isSignIn && webResponse.status >= 200 && webResponse.status < 300) {
+      try {
+        // Clone to read body without consuming the original
+        const clone = webResponse.clone();
+        const body = await clone.json().catch(() => null);
+        const userId: string | undefined = body?.user?.id;
+        if (userId) {
+          void recordLoginEvent(userId);
+        }
+      } catch {
+        // Non-critical — don't block the response
+      }
+    }
+
     await sendWebResponse(webResponse, res);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

@@ -17,6 +17,7 @@ import {
   Calculator,
   Menu,
   X,
+  ShieldCheck,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
@@ -50,7 +51,7 @@ function SidebarContent({
   const navigate = useNavigate();
   const { user: sessionUser } = useSession();
   const { me } = useMe();
-  const { isAdmin, loading: permsLoading, can } = usePermissions();
+  const { isAdmin, loading: permsLoading, can, isOwner } = usePermissions();
 
   const isActive = (href: string) => location.pathname === href;
 
@@ -148,6 +149,29 @@ function SidebarContent({
             </Link>
           );
         })}
+
+        {/* Owner Console — owner only */}
+        {!permsLoading && isOwner && (() => {
+          const active = isActive('/owner-console');
+          return (
+            <Link
+              to="/owner-console"
+              onClick={onClose}
+              title={collapsed ? 'Owner Console' : undefined}
+              className={`${linkClass(active)} border border-orange-500/20`}
+            >
+              <ShieldCheck size={17} className="shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-semibold truncate flex-1">Owner Console</span>
+              )}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  Owner Console
+                </div>
+              )}
+            </Link>
+          );
+        })()}
 
         {/* Logout */}
         <button

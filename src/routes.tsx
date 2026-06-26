@@ -17,6 +17,7 @@ import FormsPage from './pages/forms';
 import FilesPage from './pages/files';
 import EstimatingPage from './pages/estimating';
 import EstimateEditorPage from './pages/estimate-editor';
+import OwnerConsolePage from './pages/owner-console';
 import ProdNotFoundPage from './pages/_404';
 
 const NotFoundPage = import.meta.env.DEV
@@ -44,6 +45,7 @@ export const routes: RouteObject[] = [
   { path: '/dazza-ai',    element: protect(<DazzaAIPage />) },
   { path: '/team',        element: protect(<TeamPage />) },
   { path: '/settings',    element: protect(<SettingsPage />) },
+  { path: '/owner-console', element: protect(<OwnerConsolePage />) },
   { path: '*',            element: <NotFoundPage /> },
 ];
 

@@ -107,6 +107,12 @@ import team_get_91 from "./api/team/GET";
 import team_invite_post_92 from "./api/team/invite/POST";
 import team_id_delete_93 from "./api/team/[id]/DELETE";
 import team_id_put_94 from "./api/team/[id]/PUT";
+import owner_console_stats_get from "./api/owner-console/stats/GET";
+import owner_console_companies_get from "./api/owner-console/companies/GET";
+import owner_console_users_get from "./api/owner-console/users/GET";
+import owner_console_activity_get from "./api/owner-console/activity/GET";
+import migrate_owner_console_post from "./api/migrate-owner-console/POST";
+import active_ping_post from "./api/active-ping/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -289,6 +295,12 @@ app.get("/api/team", team_get_91);
 app.post("/api/team/invite", team_invite_post_92);
 app.delete("/api/team/:id", team_id_delete_93);
 app.put("/api/team/:id", team_id_put_94);
+app.get("/api/owner-console/stats", owner_console_stats_get);
+app.get("/api/owner-console/companies", owner_console_companies_get);
+app.get("/api/owner-console/users", owner_console_users_get);
+app.get("/api/owner-console/activity", owner_console_activity_get);
+app.post("/api/migrate-owner-console", migrate_owner_console_post);
+app.post("/api/active-ping", active_ping_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
