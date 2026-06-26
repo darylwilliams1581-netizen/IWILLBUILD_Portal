@@ -273,7 +273,12 @@ app.get('/api/_diag/settings-table', async (_req, res) => {
       sql`SELECT COUNT(*) as cnt FROM company_settings`
     ) as unknown as [Array<{ cnt: number }>, unknown];
 
-    res.json({ exists: true, columns: cols, rowCount: rowCount?.[0]?.cnt ?? 0 });
+    // Also read raw dazza_json for debugging
+    const [rows] = await db.execute(
+      sql`SELECT company_id, LEFT(dazza_json, 200) as dazza_preview FROM company_settings LIMIT 5`
+    ) as unknown as [Array<{ company_id: number; dazza_preview: string | null }>, unknown];
+
+    res.json({ exists: true, columns: cols, rowCount: rowCount?.[0]?.cnt ?? 0, rows: rows ?? [] });
   } catch (e) {
     res.status(500).json({ error: String((e as Error)?.message ?? e) });
   }

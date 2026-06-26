@@ -27,18 +27,27 @@ export default async function handler(req: Request, res: Response) {
         sql`SELECT structure_json, dazza_json, banner_json, pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
       ) as unknown as [SettingsRow[], unknown];
       row = rows?.[0] ?? null;
-    } catch {
-      // pdf_json column not yet migrated — fall back without it
-      const [rows] = await db.execute(
-        sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-      ) as unknown as [SettingsRow[], unknown];
-      row = rows?.[0] ?? null;
+      console.log(`[GET company-settings] company=${profile.companyId} row_found=${row !== null} dazza_json_len=${row?.dazza_json?.length ?? 0}`);
+    } catch (e1) {
+      console.warn('[GET company-settings] primary query failed, trying fallback:', String((e1 as Error)?.message ?? e1));
+      try {
+        // pdf_json column not yet migrated — fall back without it
+        const [rows] = await db.execute(
+          sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+        ) as unknown as [SettingsRow[], unknown];
+        row = rows?.[0] ?? null;
+        console.log(`[GET company-settings] fallback query row_found=${row !== null}`);
+      } catch (e2) {
+        console.error('[GET company-settings] fallback query also failed:', String((e2 as Error)?.message ?? e2));
+      }
     }
 
     const structure = row?.structure_json ? JSON.parse(row.structure_json) : {};
     const dazza     = row?.dazza_json     ? JSON.parse(row.dazza_json)     : {};
     const banner    = row?.banner_json    ? JSON.parse(row.banner_json)    : {};
     const pdf       = row?.pdf_json       ? JSON.parse(row.pdf_json)       : {};
+
+    console.log(`[GET company-settings] company=${profile.companyId} dazza_json_raw=${row?.dazza_json?.slice(0,100) ?? 'NULL'} dazza.enabled=${(dazza as Record<string,unknown>).enabled}`);
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
 
