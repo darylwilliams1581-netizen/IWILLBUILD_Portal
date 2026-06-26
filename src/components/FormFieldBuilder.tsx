@@ -289,6 +289,92 @@ function UrlSettings({
   );
 }
 
+// ── Instruction + Image thumbnail uploader ────────────────────────────────────
+
+interface InstructionImageUploaderProps {
+  templateId: number;
+  fieldId: number;
+  currentUrl: string | null;
+  onUploaded: (url: string) => void;
+}
+
+function InstructionImageUploader({ templateId, fieldId, currentUrl, onUploaded }: InstructionImageUploaderProps) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleFile(file: File) {
+    if (!file) return;
+    setError('');
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`/api/forms/${templateId}/fields/${fieldId}/thumbnail`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await res.json() as { ok?: boolean; url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed');
+      onUploaded(data.url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void handleFile(file);
+    e.target.value = '';
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="block text-xs font-semibold text-slate-600">Thumbnail image</label>
+
+      {currentUrl ? (
+        <div className="flex items-start gap-3">
+          <img
+            src={currentUrl}
+            alt="Instruction thumbnail"
+            className="w-24 h-24 rounded-xl object-cover border border-slate-200 shrink-0"
+          />
+          <div className="flex flex-col gap-2 pt-1">
+            <p className="text-xs text-slate-500">Image saved. Shown in form runner and completed forms.</p>
+            <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              {uploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+              Replace image
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onInputChange} />
+            </label>
+          </div>
+        </div>
+      ) : (
+        <label className={`flex flex-col items-center justify-center gap-2 h-28 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploading ? 'border-primary/40 bg-orange-50/50 pointer-events-none' : 'border-slate-200 bg-slate-50 hover:border-primary hover:bg-orange-50'}`}>
+          {uploading ? (
+            <>
+              <Loader2 size={20} className="animate-spin text-primary" />
+              <span className="text-xs text-slate-500">Uploading…</span>
+            </>
+          ) : (
+            <>
+              <ImagePlus size={20} className="text-slate-400" />
+              <span className="text-xs font-semibold text-slate-500">Click to upload thumbnail</span>
+              <span className="text-[11px] text-slate-400">JPEG, PNG or WebP · max 10 MB</span>
+            </>
+          )}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onInputChange} disabled={uploading} />
+        </label>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">{error}</p>
+      )}
+    </div>
+  );
+}
+
 // ── Field card ────────────────────────────────────────────────────────────────
 
 interface FieldCardProps {
@@ -591,14 +677,14 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
                     </div>
                   )}
 
-                  {/* Instruction + Image note */}
+                  {/* Instruction + Image — thumbnail uploader */}
                   {fieldType === 'instruction_image' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
-                      <p className="text-xs text-blue-700 font-semibold mb-1">Thumbnail image</p>
-                      <p className="text-xs text-blue-600">
-                        Image upload for instruction thumbnails will be available in the form runner. The label above is the instruction text shown to users.
-                      </p>
-                    </div>
+                    <InstructionImageUploader
+                      templateId={field.templateId}
+                      fieldId={field.id}
+                      currentUrl={typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null}
+                      onUploaded={(url) => saveSettings({ ...settings, thumbnailUrl: url })}
+                    />
                   )}
 
                   {/* Photo / Signature info */}
@@ -684,10 +770,15 @@ function FieldPreview({ field }: { field: FormField }) {
   }
 
   if (field.fieldType === 'instruction_image') {
+    const thumbnailUrl = typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null;
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex gap-3 items-start">
-        <div className="w-14 h-14 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
-          <ImagePlus size={18} className="text-blue-400" />
+        <div className="w-14 h-14 rounded-lg border border-blue-200 flex items-center justify-center shrink-0 overflow-hidden bg-blue-100">
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt="Instruction thumbnail" className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlus size={18} className="text-blue-400" />
+          )}
         </div>
         <p className="text-sm text-blue-800">{field.label || 'Instruction text'}</p>
       </div>
