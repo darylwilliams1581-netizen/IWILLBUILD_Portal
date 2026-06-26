@@ -185,6 +185,9 @@ function normalizeCommerceApiBaseUrlEnv() {
 	process.env.GODADDY_API_BASE_URL = `https://${normalizedHost}`;
 }
 
+import { db } from "./db/client.js";
+import { sql } from "drizzle-orm";
+
 normalizeCommerceApiBaseUrlEnv();
 
 const app = express();
@@ -197,6 +200,32 @@ app.set("trust proxy", true);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ── Startup self-healing migrations ──────────────────────────────────────────
+// Runs once on boot. Adds missing columns without blocking the server start.
+async function runStartupMigrations() {
+  const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
+    { table: 'profiles', column: 'notification_prefs', definition: 'TEXT NULL' },
+    { table: 'profiles', column: 'last_login_at',      definition: 'DATETIME NULL' },
+    { table: 'profiles', column: 'last_active_at',     definition: 'DATETIME NULL' },
+  ];
+  for (const { table, column, definition } of colsToEnsure) {
+    try {
+      const rows = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
+      ) as unknown as Array<{ cnt: number }>;
+      if ((rows[0]?.cnt ?? 0) === 0) {
+        await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+        console.log(`[startup-migration] Added ${table}.${column}`);
+      }
+    } catch (e) {
+      console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, e);
+    }
+  }
+}
+runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
+// ─────────────────────────────────────────────────────────────────────────────
 
 // <api-registrations>
 app.get("/api/auth/:action", auth_action_get_0);

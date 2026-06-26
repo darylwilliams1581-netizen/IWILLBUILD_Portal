@@ -274,6 +274,45 @@
       "summary": "Screenshot of a Dazza AI Guardrails settings interface showing security features and a failed save error state. User appears to be referencing this as a troubleshooting or documentation example.",
       "fileName": "screenshot-2026-06-26T11-28-44.jpg",
       "storedUploadFilename": "f38wenbvln_1782473325032_file_sjVV_htvSd.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Dazza AI Settings configuration panel showing an enable/disable toggle for the AI assistant feature.",
+      "fileName": "screenshot-2026-06-26T11-39-56.jpg",
+      "storedUploadFilename": "f38wenbvln_1782473997340_file_fWxUGBxU1J.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a construction management chat interface showing a conversational AI assistant (Dazza) with navigation tabs and message history. The user's prompt provides no directive for how to use this file in a website build.",
+      "fileName": "screenshot-2026-06-26T11-41-11.jpg",
+      "storedUploadFilename": "f38wenbvln_1782474072548_file_fMNw13RCoA.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a settings interface showing privacy/compliance features and a failed save state. User's prompt suggests this is a troubleshooting reference rather than a design asset for the website build.",
+      "fileName": "screenshot-2026-06-26T11-40-22.jpg",
+      "storedUploadFilename": "f38wenbvln_1782474022563_file_K-qqY35esT.jpg"
     }
   ]
 }
