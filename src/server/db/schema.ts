@@ -242,6 +242,47 @@ export const estimateLines = mysqlTable('estimate_lines', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+// ── Estimating Library ───────────────────────────────────────────────────────
+
+export const costGuideItems = mysqlTable('cost_guide_items', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  description: varchar('description', { length: 255 }).notNull(),
+  unit: varchar('unit', { length: 50 }),
+  rate: varchar('rate', { length: 30 }).notNull().default('0'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const recipes = mysqlTable('recipes', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  notes: text('notes'),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const recipeLines = mysqlTable('recipe_lines', {
+  id: int('id').primaryKey().autoincrement(),
+  recipeId: int('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  quantity: varchar('quantity', { length: 30 }).notNull().default('1'),
+  unit: varchar('unit', { length: 50 }),
+  rate: varchar('rate', { length: 30 }).notNull().default('0'),
+  lineOrder: int('line_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

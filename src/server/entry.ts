@@ -50,6 +50,15 @@ import team_get from "./api/team/GET";
 import team_id_put from "./api/team/[id]/PUT";
 import team_id_delete from "./api/team/[id]/DELETE";
 import team_invite_post from "./api/team/invite/POST";
+import migrate_estimating_library_post from "./api/migrate-estimating-library/POST";
+import cost_guide_get from "./api/cost-guide/GET";
+import cost_guide_post from "./api/cost-guide/POST";
+import cost_guide_id_put from "./api/cost-guide/[id]/PUT";
+import cost_guide_id_delete from "./api/cost-guide/[id]/DELETE";
+import recipes_get from "./api/recipes/GET";
+import recipes_post from "./api/recipes/POST";
+import recipes_id_put from "./api/recipes/[id]/PUT";
+import recipes_id_delete from "./api/recipes/[id]/DELETE";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -176,6 +185,15 @@ app.get("/api/company", company_get);
 app.put("/api/company", company_put);
 // team/invite must be before team/:id to avoid route collision
 app.post("/api/team/invite", team_invite_post);
+app.post("/api/migrate-estimating-library", migrate_estimating_library_post);
+app.get("/api/cost-guide", cost_guide_get);
+app.post("/api/cost-guide", cost_guide_post);
+app.put("/api/cost-guide/:id", cost_guide_id_put);
+app.delete("/api/cost-guide/:id", cost_guide_id_delete);
+app.get("/api/recipes", recipes_get);
+app.post("/api/recipes", recipes_post);
+app.put("/api/recipes/:id", recipes_id_put);
+app.delete("/api/recipes/:id", recipes_id_delete);
 app.get("/api/team", team_get);
 app.put("/api/team/:id", team_id_put);
 app.delete("/api/team/:id", team_id_delete);

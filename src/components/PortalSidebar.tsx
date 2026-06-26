@@ -27,7 +27,7 @@ const navItems = [
   { label: 'Fleet',      icon: Truck,           href: '/fleet' },
   { label: 'Forms',      icon: FileText,        href: '/forms' },
   { label: 'Files',      icon: FolderOpen,      href: '/files',      soon: true },
-  { label: 'Estimating', icon: Calculator,      href: '/estimating', soon: true },
+  { label: 'Estimating', icon: Calculator,      href: '/estimating' },
   { label: 'Downloads',  icon: Download,        href: '/downloads' },
   { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai' },
 ];
