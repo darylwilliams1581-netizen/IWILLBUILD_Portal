@@ -22,6 +22,12 @@ import {
   Loader2,
   AlertCircle,
   X,
+  Link,
+  MapPin,
+  SplitSquareHorizontal,
+  SlidersHorizontal,
+  Star,
+  ImagePlus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -49,6 +55,18 @@ export interface FormField {
   updatedAt: string;
 }
 
+// ── Settings helpers ──────────────────────────────────────────────────────────
+
+function parseSettings(json: string | null): Record<string, unknown> {
+  if (!json) return {};
+  try { return JSON.parse(json) as Record<string, unknown>; } catch { return {}; }
+}
+
+function parseOptions(json: string | null): string[] {
+  if (!json) return [];
+  try { return JSON.parse(json) as string[]; } catch { return []; }
+}
+
 // ── Field type definitions ────────────────────────────────────────────────────
 
 interface FieldTypeDef {
@@ -58,35 +76,217 @@ interface FieldTypeDef {
   group: string;
   hasOptions?: boolean;
   isLayout?: boolean;
+  noAnswer?: boolean; // page_break etc — no answer stored
 }
 
 const FIELD_TYPES: FieldTypeDef[] = [
-  { type: 'short_text',    label: 'Short Text',     icon: Type,        group: 'Text' },
-  { type: 'long_text',     label: 'Long Text',      icon: AlignLeft,   group: 'Text' },
-  { type: 'number',        label: 'Number',         icon: Hash,        group: 'Text' },
-  { type: 'date',          label: 'Date',           icon: Calendar,    group: 'Date & Time' },
-  { type: 'datetime',      label: 'Date & Time',    icon: Clock,       group: 'Date & Time' },
-  { type: 'yes_no',        label: 'Yes / No',       icon: ToggleLeft,  group: 'Choice' },
-  { type: 'checkbox',      label: 'Checkbox',       icon: CheckSquare, group: 'Choice' },
-  { type: 'single_choice', label: 'Single Choice',  icon: Circle,      group: 'Choice', hasOptions: true },
-  { type: 'multi_select',  label: 'Multi Select',   icon: List,        group: 'Choice', hasOptions: true },
-  { type: 'photo',         label: 'Photo / Media',  icon: Camera,      group: 'Media' },
-  { type: 'signature',     label: 'Signature',      icon: PenLine,     group: 'Media' },
-  { type: 'section',       label: 'Section Heading',icon: Heading,     group: 'Layout', isLayout: true },
-  { type: 'instruction',   label: 'Instruction',    icon: Info,        group: 'Layout', isLayout: true },
+  // Text
+  { type: 'short_text',        label: 'Short Text',           icon: Type,                 group: 'Text' },
+  { type: 'long_text',         label: 'Long Text',            icon: AlignLeft,            group: 'Text' },
+  { type: 'number',            label: 'Number',               icon: Hash,                 group: 'Text' },
+  { type: 'url',               label: 'Link / URL',           icon: Link,                 group: 'Text' },
+  // Date & Time
+  { type: 'date',              label: 'Date',                 icon: Calendar,             group: 'Date & Time' },
+  { type: 'datetime',          label: 'Date & Time',          icon: Clock,                group: 'Date & Time' },
+  // Choice
+  { type: 'yes_no',            label: 'Yes / No',             icon: ToggleLeft,           group: 'Choice' },
+  { type: 'checkbox',          label: 'Checkbox',             icon: CheckSquare,          group: 'Choice' },
+  { type: 'single_choice',     label: 'Single Choice',        icon: Circle,               group: 'Choice', hasOptions: true },
+  { type: 'multi_select',      label: 'Multi Select',         icon: List,                 group: 'Choice', hasOptions: true },
+  { type: 'linear_scale',      label: 'Linear Scale',         icon: SlidersHorizontal,    group: 'Choice' },
+  { type: 'rating',            label: 'Rating',               icon: Star,                 group: 'Choice' },
+  // Media
+  { type: 'photo',             label: 'Photo / Media',        icon: Camera,               group: 'Media' },
+  { type: 'signature',         label: 'Signature',            icon: PenLine,              group: 'Media' },
+  // Field Ops
+  { type: 'location',          label: 'Location / GPS',       icon: MapPin,               group: 'Field Ops' },
+  // Layout
+  { type: 'section',           label: 'Section Heading',      icon: Heading,              group: 'Layout', isLayout: true },
+  { type: 'instruction',       label: 'Instruction',          icon: Info,                 group: 'Layout', isLayout: true },
+  { type: 'instruction_image', label: 'Instruction + Image',  icon: ImagePlus,            group: 'Layout', isLayout: true },
+  { type: 'page_break',        label: 'Page Break',           icon: SplitSquareHorizontal,group: 'Layout', isLayout: true, noAnswer: true },
 ];
 
 const FIELD_TYPE_MAP = Object.fromEntries(FIELD_TYPES.map((f) => [f.type, f]));
 
-const GROUPS = ['Text', 'Date & Time', 'Choice', 'Media', 'Layout'];
+const GROUPS = ['Text', 'Date & Time', 'Choice', 'Media', 'Field Ops', 'Layout'];
 
 function getTypeDef(type: string): FieldTypeDef {
   return FIELD_TYPE_MAP[type] ?? { type, label: type, icon: Type, group: 'Text' };
 }
 
-function parseOptions(json: string | null): string[] {
-  if (!json) return [];
-  try { return JSON.parse(json) as string[]; } catch { return []; }
+// ── Settings editors for new field types ─────────────────────────────────────
+
+function LinearScaleSettings({
+  settings,
+  onChange,
+}: {
+  settings: Record<string, unknown>;
+  onChange: (s: Record<string, unknown>) => void;
+}) {
+  const min = typeof settings.min === 'number' ? settings.min : 1;
+  const max = typeof settings.max === 'number' ? settings.max : 10;
+  const step = typeof settings.step === 'number' ? settings.step : 1;
+  const leftLabel = typeof settings.leftLabel === 'string' ? settings.leftLabel : '';
+  const rightLabel = typeof settings.rightLabel === 'string' ? settings.rightLabel : '';
+
+  function set(key: string, value: unknown) {
+    onChange({ ...settings, [key]: value });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Min</label>
+          <input type="number" value={min} onChange={(e) => set('min', Number(e.target.value))}
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Max</label>
+          <input type="number" value={max} onChange={(e) => set('max', Number(e.target.value))}
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Step</label>
+          <input type="number" value={step} min={1} onChange={(e) => set('step', Number(e.target.value))}
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Left label</label>
+          <input type="text" value={leftLabel} onChange={(e) => set('leftLabel', e.target.value)}
+            placeholder="e.g. Not at all"
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Right label</label>
+          <input type="text" value={rightLabel} onChange={(e) => set('rightLabel', e.target.value)}
+            placeholder="e.g. Extremely"
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+      </div>
+      {/* Live preview of scale */}
+      <div className="bg-slate-50 rounded-xl px-3 py-2">
+        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+          <span>{leftLabel || min}</span><span>{rightLabel || max}</span>
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {Array.from({ length: Math.min(max - min + 1, 20) }, (_, i) => min + i * step).map((v) => (
+            <span key={v} className="text-[11px] px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-slate-500">{v}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RatingSettings({
+  settings,
+  onChange,
+}: {
+  settings: Record<string, unknown>;
+  onChange: (s: Record<string, unknown>) => void;
+}) {
+  const style = typeof settings.style === 'string' ? settings.style : 'stars';
+  const max = typeof settings.max === 'number' ? settings.max : 5;
+
+  function set(key: string, value: unknown) {
+    onChange({ ...settings, [key]: value });
+  }
+
+  const styleOptions = [
+    { value: 'stars', label: '★ Stars' },
+    { value: 'numeric', label: '1–N Numeric' },
+    { value: 'emoji', label: '😊 Emoji' },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Style</label>
+          <select value={style} onChange={(e) => set('style', e.target.value)}
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+            {styleOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Max rating</label>
+          <input type="number" value={max} min={2} max={10} onChange={(e) => set('max', Number(e.target.value))}
+            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+        </div>
+      </div>
+      {/* Preview */}
+      <div className="bg-slate-50 rounded-xl px-3 py-2 flex gap-1">
+        {Array.from({ length: Math.min(max, 10) }, (_, i) => i + 1).map((v) => (
+          <span key={v} className="text-lg">
+            {style === 'stars' ? '☆' : style === 'emoji' ? ['😞','😐','🙂','😊','😄'][Math.min(v - 1, 4)] : (
+              <span className="text-sm px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-500">{v}</span>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LocationSettings({
+  settings,
+  onChange,
+}: {
+  settings: Record<string, unknown>;
+  onChange: (s: Record<string, unknown>) => void;
+}) {
+  const manualAddress = settings.manualAddress !== false;
+  const showMapPreview = settings.showMapPreview !== false;
+
+  function set(key: string, value: unknown) {
+    onChange({ ...settings, [key]: value });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-600">Allow manual address fallback</span>
+        <button onClick={() => set('manualAddress', !manualAddress)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${manualAddress ? 'bg-primary' : 'bg-slate-200'}`}>
+          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${manualAddress ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-600">Show map preview</span>
+        <button onClick={() => set('showMapPreview', !showMapPreview)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showMapPreview ? 'bg-primary' : 'bg-slate-200'}`}>
+          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${showMapPreview ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
+      <p className="text-[11px] text-slate-400 bg-slate-50 rounded-xl px-3 py-2">
+        Captures latitude, longitude, accuracy, and timestamp. If GPS is blocked, user can enter address manually.
+      </p>
+    </div>
+  );
+}
+
+function UrlSettings({
+  settings,
+  onChange,
+}: {
+  settings: Record<string, unknown>;
+  onChange: (s: Record<string, unknown>) => void;
+}) {
+  const placeholder = typeof settings.placeholder === 'string' ? settings.placeholder : '';
+
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-500 mb-1">Placeholder text</label>
+      <input type="text" value={placeholder}
+        onChange={(e) => onChange({ ...settings, placeholder: e.target.value })}
+        placeholder="e.g. https://example.com"
+        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+    </div>
+  );
 }
 
 // ── Field card ────────────────────────────────────────────────────────────────
@@ -109,15 +309,16 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
   const [fieldType, setFieldType] = useState(field.fieldType);
   const [required, setRequired] = useState(field.required);
   const [options, setOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
+  const [settings, setSettings] = useState<Record<string, unknown>>(() => parseSettings(field.settingsJson));
   const [newOption, setNewOption] = useState('');
   const [optionSaving, setOptionSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // Sync if parent updates (e.g. after reorder)
   useEffect(() => { setLabel(field.label); }, [field.label]);
   useEffect(() => { setFieldType(field.fieldType); }, [field.fieldType]);
   useEffect(() => { setRequired(field.required); }, [field.required]);
   useEffect(() => { setOptions(parseOptions(field.optionsJson)); }, [field.optionsJson]);
+  useEffect(() => { setSettings(parseSettings(field.settingsJson)); }, [field.settingsJson]);
 
   async function saveLabel() {
     if (label === field.label) return;
@@ -168,9 +369,15 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
     void i;
   }
 
+  async function saveSettings(newSettings: Record<string, unknown>) {
+    setSettings(newSettings);
+    await onUpdate({ settingsJson: JSON.stringify(newSettings) });
+  }
+
   const currentDef = getTypeDef(fieldType);
   const showOptions = currentDef.hasOptions;
   const isLayout = currentDef.isLayout;
+  const isPageBreak = fieldType === 'page_break';
 
   return (
     <motion.div
@@ -179,173 +386,235 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.15 }}
-      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+      className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isPageBreak ? 'border-dashed border-slate-300' : 'border-slate-200'}`}
     >
-      {/* Card header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <div className="p-2 rounded-xl bg-slate-100 shrink-0">
-          <Icon size={15} className="text-slate-600" />
+      {/* Page break special render */}
+      {isPageBreak ? (
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+          <div className="flex items-center gap-2 shrink-0">
+            <SplitSquareHorizontal size={13} className="text-slate-400" />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Page Break</span>
+          </div>
+          <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={onMoveUp} disabled={index === 0}
+              className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors">
+              <ChevronUp size={16} />
+            </button>
+            <button onClick={onMoveDown} disabled={index === total - 1}
+              className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors">
+              <ChevronDown size={16} />
+            </button>
+            <button onClick={onDelete}
+              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors">
+              <Trash2 size={15} />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 break-words" style={{ overflowWrap: 'anywhere' }}>
-            {label || <span className="text-slate-400 italic">Untitled field</span>}
-          </p>
-          <p className="text-[11px] text-slate-400">{currentDef.label}{!isLayout && required ? ' · Required' : ''}</p>
-        </div>
-        {/* Up / Down / Delete */}
-        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors"
-            title="Move up"
+      ) : (
+        <>
+          {/* Card header */}
+          <div
+            className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+            onClick={() => setExpanded((e) => !e)}
           >
-            <ChevronUp size={16} />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors"
-            title="Move down"
-          >
-            <ChevronDown size={16} />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-            title="Delete field"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      </div>
+            <div className="p-2 rounded-xl bg-slate-100 shrink-0">
+              <Icon size={15} className="text-slate-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 break-words" style={{ overflowWrap: 'anywhere' }}>
+                {label || <span className="text-slate-400 italic">Untitled field</span>}
+              </p>
+              <p className="text-[11px] text-slate-400">{currentDef.label}{!isLayout && required ? ' · Required' : ''}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button onClick={onMoveUp} disabled={index === 0}
+                className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors" title="Move up">
+                <ChevronUp size={16} />
+              </button>
+              <button onClick={onMoveDown} disabled={index === total - 1}
+                className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 transition-colors" title="Move down">
+                <ChevronDown size={16} />
+              </button>
+              <button onClick={onDelete}
+                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors" title="Delete field">
+                <Trash2 size={15} />
+              </button>
+            </div>
+          </div>
 
-      {/* Expanded editor */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 flex flex-col gap-4 border-t border-slate-100 pt-3">
+          {/* Expanded editor */}
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 flex flex-col gap-4 border-t border-slate-100 pt-3">
 
-              {/* Label */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  {isLayout ? (fieldType === 'section' ? 'Heading text' : 'Instruction text') : 'Field label'}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    onBlur={saveLabel}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-                    placeholder={isLayout ? (fieldType === 'section' ? 'e.g. Site Details' : 'e.g. Please complete all fields') : 'e.g. Client name'}
-                    className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors break-words overflow-wrap-anywhere"
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                  />
-                  {labelSaving && <Loader2 size={14} className="animate-spin text-slate-400 self-center" />}
-                </div>
-              </div>
+                  {/* Label */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      {isLayout
+                        ? (fieldType === 'section' ? 'Heading text' : fieldType === 'instruction' || fieldType === 'instruction_image' ? 'Instruction text' : 'Field label')
+                        : 'Field label'}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={label}
+                        onChange={(e) => setLabel(e.target.value)}
+                        onBlur={saveLabel}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+                        placeholder={
+                          isLayout
+                            ? (fieldType === 'section' ? 'e.g. Site Details' : 'e.g. Please complete all fields')
+                            : fieldType === 'url' ? 'e.g. Project website'
+                            : fieldType === 'location' ? 'e.g. Site location'
+                            : 'e.g. Client name'
+                        }
+                        className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                      />
+                      {labelSaving && <Loader2 size={14} className="animate-spin text-slate-400 self-center" />}
+                    </div>
+                  </div>
 
-              {/* Field type selector */}
-              {!isLayout && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Field type</label>
-                  <select
-                    value={fieldType}
-                    onChange={(e) => changeType(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  >
-                    {GROUPS.map((group) => (
-                      <optgroup key={group} label={group}>
-                        {FIELD_TYPES.filter((f) => f.group === group && !f.isLayout).map((f) => (
-                          <option key={f.type} value={f.type}>{f.label}</option>
+                  {/* Field type selector */}
+                  {!isLayout && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Field type</label>
+                      <select
+                        value={fieldType}
+                        onChange={(e) => changeType(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                      >
+                        {GROUPS.map((group) => (
+                          <optgroup key={group} label={group}>
+                            {FIELD_TYPES.filter((f) => f.group === group && !f.isLayout).map((f) => (
+                              <option key={f.type} value={f.type}>{f.label}</option>
+                            ))}
+                          </optgroup>
                         ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-              )}
+                      </select>
+                    </div>
+                  )}
 
-              {/* Required toggle */}
-              {!isLayout && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600">Required</span>
-                  <button
-                    onClick={toggleRequired}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${required ? 'bg-primary' : 'bg-slate-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${required ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              )}
+                  {/* Required toggle */}
+                  {!isLayout && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Required</span>
+                      <button
+                        onClick={toggleRequired}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${required ? 'bg-primary' : 'bg-slate-200'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${required ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  )}
 
-              {/* Options editor */}
-              {showOptions && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-2">
-                    Options {optionSaving && <Loader2 size={11} className="inline animate-spin ml-1 text-slate-400" />}
-                  </label>
-                  <div className="flex flex-col gap-1.5 mb-2">
-                    {options.map((opt, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <GripVertical size={13} className="text-slate-300 shrink-0" />
+                  {/* Options editor */}
+                  {showOptions && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-2">
+                        Options {optionSaving && <Loader2 size={11} className="inline animate-spin ml-1 text-slate-400" />}
+                      </label>
+                      <div className="flex flex-col gap-1.5 mb-2">
+                        {options.map((opt, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <GripVertical size={13} className="text-slate-300 shrink-0" />
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => editOption(i, e.target.value)}
+                              onBlur={() => blurOption(i)}
+                              className="flex-1 min-w-0 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                            />
+                            <button onClick={() => removeOption(i)}
+                              className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
                         <input
                           type="text"
-                          value={opt}
-                          onChange={(e) => editOption(i, e.target.value)}
-                          onBlur={() => blurOption(i)}
+                          value={newOption}
+                          onChange={(e) => setNewOption(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void addOption(); }}
+                          placeholder="Add option…"
                           className="flex-1 min-w-0 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                          style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                         />
-                        <button
-                          onClick={() => removeOption(i)}
-                          className="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                        >
-                          <X size={13} />
+                        <button onClick={addOption}
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                          Add
                         </button>
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newOption}
-                      onChange={(e) => setNewOption(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') void addOption(); }}
-                      placeholder="Add option…"
-                      className="flex-1 min-w-0 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                    />
-                    <button
-                      onClick={addOption}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              )}
+                    </div>
+                  )}
 
-              {/* Photo / Signature info */}
-              {(fieldType === 'photo' || fieldType === 'signature') && (
-                <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2">
-                  {fieldType === 'photo'
-                    ? 'Photo capture and upload will be available when filling out this form.'
-                    : 'Signature capture will be available when filling out this form.'}
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  {/* Linear scale settings */}
+                  {fieldType === 'linear_scale' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-2">Scale settings</label>
+                      <LinearScaleSettings settings={settings} onChange={saveSettings} />
+                    </div>
+                  )}
+
+                  {/* Rating settings */}
+                  {fieldType === 'rating' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-2">Rating settings</label>
+                      <RatingSettings settings={settings} onChange={saveSettings} />
+                    </div>
+                  )}
+
+                  {/* URL settings */}
+                  {fieldType === 'url' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-2">URL settings</label>
+                      <UrlSettings settings={settings} onChange={saveSettings} />
+                    </div>
+                  )}
+
+                  {/* Location settings */}
+                  {fieldType === 'location' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-2">Location settings</label>
+                      <LocationSettings settings={settings} onChange={saveSettings} />
+                    </div>
+                  )}
+
+                  {/* Instruction + Image note */}
+                  {fieldType === 'instruction_image' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+                      <p className="text-xs text-blue-700 font-semibold mb-1">Thumbnail image</p>
+                      <p className="text-xs text-blue-600">
+                        Image upload for instruction thumbnails will be available in the form runner. The label above is the instruction text shown to users.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Photo / Signature info */}
+                  {(fieldType === 'photo' || fieldType === 'signature') && (
+                    <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-2">
+                      {fieldType === 'photo'
+                        ? 'Photo capture and upload will be available when filling out this form.'
+                        : 'Signature capture will be available when filling out this form.'}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
     </motion.div>
   );
 }
@@ -395,7 +664,9 @@ function AddFieldPanel({ onAdd, adding }: AddFieldPanelProps) {
 
 function FieldPreview({ field }: { field: FormField }) {
   const options = parseOptions(field.optionsJson);
+  const settings = parseSettings(field.settingsJson);
 
+  // Layout types
   if (field.fieldType === 'section') {
     return (
       <div className="border-b-2 border-slate-300 pb-1 mb-1">
@@ -412,17 +683,48 @@ function FieldPreview({ field }: { field: FormField }) {
     );
   }
 
+  if (field.fieldType === 'instruction_image') {
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex gap-3 items-start">
+        <div className="w-14 h-14 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+          <ImagePlus size={18} className="text-blue-400" />
+        </div>
+        <p className="text-sm text-blue-800">{field.label || 'Instruction text'}</p>
+      </div>
+    );
+  }
+
+  if (field.fieldType === 'page_break') {
+    return (
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Page Break</span>
+        <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+      </div>
+    );
+  }
+
+  // Input fields
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-semibold text-slate-700">
         {field.label || <span className="italic text-slate-400">Untitled</span>}
         {field.required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
+
       {(field.fieldType === 'short_text' || field.fieldType === 'number') && (
         <div className="h-9 rounded-xl border border-slate-200 bg-slate-50" />
       )}
       {field.fieldType === 'long_text' && (
         <div className="h-20 rounded-xl border border-slate-200 bg-slate-50" />
+      )}
+      {field.fieldType === 'url' && (
+        <div className="h-9 rounded-xl border border-slate-200 bg-slate-50 flex items-center px-3 gap-2">
+          <Link size={13} className="text-slate-300" />
+          <span className="text-xs text-slate-300">
+            {typeof settings.placeholder === 'string' && settings.placeholder ? settings.placeholder : 'https://'}
+          </span>
+        </div>
       )}
       {field.fieldType === 'date' && (
         <div className="h-9 rounded-xl border border-slate-200 bg-slate-50 flex items-center px-3">
@@ -454,6 +756,55 @@ function FieldPreview({ field }: { field: FormField }) {
               <span className="text-xs text-slate-500">{o}</span>
             </div>
           )) : <p className="text-xs text-slate-400 italic">No options yet</p>}
+        </div>
+      )}
+      {field.fieldType === 'linear_scale' && (() => {
+        const min = typeof settings.min === 'number' ? settings.min : 1;
+        const max = typeof settings.max === 'number' ? settings.max : 10;
+        const step = typeof settings.step === 'number' ? settings.step : 1;
+        const leftLabel = typeof settings.leftLabel === 'string' ? settings.leftLabel : '';
+        const rightLabel = typeof settings.rightLabel === 'string' ? settings.rightLabel : '';
+        const vals = Array.from({ length: Math.min(max - min + 1, 20) }, (_, i) => min + i * step);
+        return (
+          <div>
+            <div className="flex gap-1 flex-wrap mb-1">
+              {vals.map((v) => (
+                <span key={v} className="text-[11px] px-2 py-0.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500">{v}</span>
+              ))}
+            </div>
+            {(leftLabel || rightLabel) && (
+              <div className="flex justify-between text-[10px] text-slate-400">
+                <span>{leftLabel}</span><span>{rightLabel}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+      {field.fieldType === 'rating' && (() => {
+        const style = typeof settings.style === 'string' ? settings.style : 'stars';
+        const max = typeof settings.max === 'number' ? settings.max : 5;
+        return (
+          <div className="flex gap-1">
+            {Array.from({ length: Math.min(max, 10) }, (_, i) => i + 1).map((v) => (
+              <span key={v} className="text-lg">
+                {style === 'stars' ? '☆' : style === 'emoji' ? ['😞','😐','🙂','😊','😄'][Math.min(v - 1, 4)] : (
+                  <span className="text-sm px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-500">{v}</span>
+                )}
+              </span>
+            ))}
+          </div>
+        );
+      })()}
+      {field.fieldType === 'location' && (
+        <div className="flex flex-col gap-2">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 w-fit">
+            <MapPin size={13} className="text-slate-400" /> Capture current location
+          </button>
+          {settings.manualAddress !== false && (
+            <div className="h-9 rounded-xl border border-slate-200 bg-slate-50 flex items-center px-3">
+              <span className="text-xs text-slate-300">Manual address…</span>
+            </div>
+          )}
         </div>
       )}
       {field.fieldType === 'photo' && (
@@ -549,7 +900,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
         credentials: 'include',
       });
     } catch {
-      void load(); // re-sync on error
+      void load();
     }
   }
 
@@ -558,7 +909,6 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
     const swapIdx = direction === 'up' ? index - 1 : index + 1;
     if (swapIdx < 0 || swapIdx >= newFields.length) return;
     [newFields[index], newFields[swapIdx]] = [newFields[swapIdx], newFields[index]];
-    // Reassign fieldOrder
     const reordered = newFields.map((f, i) => ({ ...f, fieldOrder: i }));
     setFields(reordered);
     try {
@@ -585,10 +935,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
     <div className="flex flex-col gap-0 min-h-screen bg-slate-50">
       {/* Builder header */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={onBack}
-          className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
-        >
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
           <ChevronLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">
@@ -621,14 +968,11 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
       {/* Build view */}
       {view === 'build' && (
         <div className="flex flex-col lg:flex-row gap-4 p-4 flex-1">
-          {/* Left: add panel */}
           <div className="lg:w-64 shrink-0">
             <div className="lg:sticky lg:top-20">
               <AddFieldPanel onAdd={addField} adding={adding} />
             </div>
           </div>
-
-          {/* Right: field list */}
           <div className="flex-1 flex flex-col gap-3">
             {fields.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
