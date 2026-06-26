@@ -240,9 +240,10 @@ export default function PortalSidebar() {
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute top-[52px] -right-3 w-6 h-6 bg-[#1A1D23] border border-white/20 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition-colors z-10"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute top-[52px] -right-4 w-8 h-8 bg-primary border-2 border-white/20 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-orange-600 transition-colors z-10"
         >
-          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </motion.aside>
 

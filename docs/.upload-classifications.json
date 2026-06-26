@@ -243,6 +243,24 @@
       "summary": "Screenshot of a form builder interface showing a dark-themed UI with a black backdrop and orange accent. User is referencing this to request a theme change for better visibility and consistency.",
       "fileName": "screenshot-2026-06-26T11-03-36.jpg",
       "storedUploadFilename": "f38wenbvln_1782471819007_file_XBT6PKjgl7.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF6B35",
+        "#1A1F2E",
+        "#FFFFFF",
+        "#4A5568"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of an existing dashboard UI (iwillbuild platform) showing a sidebar navigation with a collapse button highlighted. Provided as a reference to demonstrate UI interaction patterns and visual styling.",
+      "fileName": "screenshot-2026-06-26T11-06-22.jpg",
+      "storedUploadFilename": "f38wenbvln_1782471982454_file_Inu-p-XX40.jpg"
     }
   ]
 }
