@@ -101,8 +101,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    noExternal: isSsrBuild ? true : undefined,
-    external: isSsrBuild ? ['jimp', '@jimp/core', '@jimp/plugin-resize'] : undefined
+    noExternal: isSsrBuild ? true : undefined
   },
 
   server: {

@@ -6,16 +6,31 @@ import { getAuth } from '../../../../../lib/auth/auth.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { createJimp } from '@jimp/core';
-import { defaultPlugins, defaultFormats, JimpMime } from 'jimp';
-import { methods as resizeMethods } from '@jimp/plugin-resize';
 import multer from 'multer';
 
-// ── Jimp with resize plugin ───────────────────────────────────────────────────
-const CustomJimp = createJimp({
-  plugins: [...defaultPlugins, resizeMethods],
-  formats: defaultFormats,
-});
+// ── Jimp lazy-loaded to avoid ESM/CJS conflicts in both dev and prod ──────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _CustomJimp: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _JimpMime: any = null;
+
+async function getJimp() {
+  if (_CustomJimp) return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
+  const [core, jimpPkg, resizePkg] = await Promise.all([
+    import('@jimp/core'),
+    import('jimp'),
+    import('@jimp/plugin-resize'),
+  ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createJimp = (core as any).createJimp;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { defaultPlugins, defaultFormats, JimpMime } = jimpPkg as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resizeMethods = (resizePkg as any).methods;
+  _JimpMime = JimpMime;
+  _CustomJimp = createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats });
+  return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
+}
 
 // ── multer: memory storage, 20 MB per file, max 10 files ─────────────────────
 const upload = multer({
@@ -37,6 +52,7 @@ const JPEG_QUALITY = 82;
 
 async function compressImage(buffer: Buffer, mime: string): Promise<Buffer> {
   try {
+    const { CustomJimp, JimpMime } = await getJimp();
     const img = await CustomJimp.read(buffer);
     const { width, height } = img;
 
