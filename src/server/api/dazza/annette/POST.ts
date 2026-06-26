@@ -1,0 +1,144 @@
+/**
+ * POST /api/dazza/annette
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Annette Protocol v1 — structured health-check report.
+ *
+ * 1. Authenticates + verifies permDazzaAi
+ * 2. Builds deep analysis context (annette-context.ts)
+ * 3. Sends to OpenAI with the Annette system prompt
+ * 4. Streams the report back as SSE (text/event-stream)
+ *
+ * Security: same guarantees as /api/dazza/chat — company-scoped, session-only.
+ */
+import type { Request, Response } from 'express';
+import { db } from '../../../db/client.js';
+import { profiles } from '../../../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { getAuth } from '../../../../lib/auth/auth.js';
+import { getSecret } from '#airo/secrets';
+import {
+  derivePermissions,
+  resolveEffectiveCompany,
+} from '../../../lib/dazza-context.js';
+import {
+  buildAnnetteContext,
+  buildAnnetteSystemPrompt,
+} from '../../../lib/annette-context.js';
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    // ── Auth ────────────────────────────────────────────────────────────────
+    const auth = getAuth();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    const permissions = derivePermissions(profile);
+    if (!permissions.canDazzaAi) return res.status(403).json({ error: 'Dazza AI not enabled for your account' });
+
+    // ── Support Mode ────────────────────────────────────────────────────────
+    const { supportCompanyId } = req.body as { supportCompanyId?: number };
+    const { effectiveCompanyId, effectiveCompanyName } = await resolveEffectiveCompany(
+      profile,
+      permissions,
+      supportCompanyId,
+    );
+
+    // ── Build analysis data ─────────────────────────────────────────────────
+    const annetteData = await buildAnnetteContext(effectiveCompanyId, permissions, effectiveCompanyName);
+    const systemPrompt = buildAnnetteSystemPrompt(annetteData);
+
+    // ── OpenAI streaming ────────────────────────────────────────────────────
+    const apiKey = getSecret('OPENAI_API_KEY');
+    if (!apiKey) {
+      return res.status(503).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const sendEvent = (data: string) => {
+      res.write(`data: ${JSON.stringify({ text: data })}\n\n`);
+    };
+
+    const sendDone = (meta?: Record<string, unknown>) => {
+      res.write(`data: ${JSON.stringify({ done: true, ...meta })}\n\n`);
+      res.end();
+    };
+
+    // Fire OpenAI
+    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        stream: true,
+        max_tokens: 2500,
+        temperature: 0.3,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'Run the Annette Protocol health check now and produce the full report.' },
+        ],
+      }),
+    });
+
+    if (!openaiRes.ok || !openaiRes.body) {
+      const errText = await openaiRes.text();
+      sendEvent(`\n\n⚠️ OpenAI error: ${errText.slice(0, 200)}`);
+      sendDone({ error: true });
+      return;
+    }
+
+    // Stream SSE chunks
+    const reader = openaiRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(raw) as { choices?: Array<{ delta?: { content?: string } }> };
+          const chunk = parsed.choices?.[0]?.delta?.content;
+          if (chunk) sendEvent(chunk);
+        } catch { /* skip malformed */ }
+      }
+    }
+
+    sendDone({
+      warnings: annetteData.warnings,
+      moduleCounts: annetteData.moduleCounts,
+    });
+
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    console.error('[annette] error:', msg);
+    if (!res.headersSent) {
+      res.status(500).json({ error: msg });
+    } else {
+      res.write(`data: ${JSON.stringify({ text: `\n\n⚠️ Error: ${msg}` })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, error: true })}\n\n`);
+      res.end();
+    }
+  }
+}
