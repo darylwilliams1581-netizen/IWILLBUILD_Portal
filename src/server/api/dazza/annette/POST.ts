@@ -50,22 +50,36 @@ export default async function handler(req: Request, res: Response) {
       supportCompanyId,
     );
 
-    // ── Build analysis data ─────────────────────────────────────────────────
-    const annetteData = await buildAnnetteContext(effectiveCompanyId, permissions, effectiveCompanyName);
-    const systemPrompt = buildAnnetteSystemPrompt(annetteData);
-
-    // ── OpenAI streaming ────────────────────────────────────────────────────
-    const apiKey = getSecret('OPENAI_API_KEY');
-    if (!apiKey) {
-      return res.status(503).json({ error: 'OpenAI API key not configured' });
-    }
-
-    // Set up SSE
+    // ── Open SSE stream immediately — errors after this point go inline ─────
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
+
+    // ── Build analysis data ─────────────────────────────────────────────────
+    let annetteData;
+    try {
+      annetteData = await buildAnnetteContext(effectiveCompanyId, permissions, effectiveCompanyName);
+    } catch (ctxErr) {
+      const msg = String((ctxErr as Error)?.message ?? ctxErr);
+      console.error('[annette] context build failed:', msg);
+      res.write(`data: ${JSON.stringify({ text: `⚠️ Failed to load portal data: ${msg.slice(0, 200)}` })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, error: true, warnings: [], moduleCounts: {} })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const systemPrompt = buildAnnetteSystemPrompt(annetteData);
+
+    // ── OpenAI key check ────────────────────────────────────────────────────
+    const apiKey = getSecret('OPENAI_API_KEY');
+    if (!apiKey) {
+      res.write(`data: ${JSON.stringify({ text: '⚠️ OpenAI API key not configured. Portal data was loaded — ask your owner to add the key in Settings.' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, error: true, warnings: annetteData.warnings, moduleCounts: annetteData.moduleCounts })}\n\n`);
+      res.end();
+      return;
+    }
 
     const sendEvent = (data: string) => {
       res.write(`data: ${JSON.stringify({ text: data })}\n\n`);
