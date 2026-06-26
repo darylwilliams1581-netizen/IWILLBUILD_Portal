@@ -339,6 +339,19 @@
       "summary": "Screenshot of a UI showing a sidebar menu with a partially hidden button; user is requesting layout adjustment guidance rather than asking to display this image on their site.",
       "fileName": "screenshot-2026-06-26T13-33-54.jpg",
       "storedUploadFilename": "f38wenbvln_1782480836358_file_BcobGuqb0n.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a product pricing table in a sandbox environment showing three SaaS plans (Pro, Team, Solo) with pricing and categories. User is providing pricing update notes (GST exclusion, Team and Pro tier adjustments) for reference.",
+      "fileName": "screenshot-2026-06-26T14-39-39.jpg",
+      "storedUploadFilename": "f38wenbvln_1782484779853_file_QcZhcKbACu.jpg"
     }
   ]
 }

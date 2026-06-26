@@ -12,8 +12,8 @@ import { eq, sql } from 'drizzle-orm';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
-  team:       10,
-  pro:        20,
+  team:       5,
+  pro:        10,
   enterprise: 999,
 };
 
@@ -26,12 +26,12 @@ export default async function handler(req: Request, res: Response) {
   let event: Stripe.Event;
 
   try {
-    const stripe = new Stripe(apiKey, { apiVersion: '2025-05-28.basil' });
+    const stripe = new Stripe(apiKey as string, { apiVersion: '2026-02-25.clover' });
 
     if (webhookSecret) {
       const sig = req.headers['stripe-signature'] as string;
       // req.body is raw Buffer when using express.raw() middleware
-      event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
+      event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret as string);
     } else {
       // Dev mode — no signature verification
       event = req.body as Stripe.Event;
@@ -65,9 +65,9 @@ export default async function handler(req: Request, res: Response) {
       }
 
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
         const sub = invoice.subscription;
-        const subId = typeof sub === 'string' ? sub : sub?.id ?? null;
+        const subId = typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null;
         if (subId) {
           // Keep subscription active on renewal
           await db.execute(sql`
@@ -79,9 +79,9 @@ export default async function handler(req: Request, res: Response) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
         const sub = invoice.subscription;
-        const subId = typeof sub === 'string' ? sub : sub?.id ?? null;
+        const subId = typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null;
         if (subId) {
           await db.execute(sql`
             UPDATE companies SET subscription_status = 'past_due'

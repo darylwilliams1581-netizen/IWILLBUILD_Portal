@@ -31,7 +31,7 @@ const PLANS = [
     id: 'solo',
     name: 'Solo',
     price: 19,
-    period: '/mo',
+    period: '/mo +GST',
     maxUsers: 1,
     features: ['1 user', 'All core modules', 'Jobs, Fleet, Forms', 'Dazza AI', 'Email support'],
     icon: User,
@@ -41,9 +41,9 @@ const PLANS = [
     id: 'team',
     name: 'Team',
     price: 79,
-    period: '/mo',
-    maxUsers: 10,
-    features: ['Up to 10 users', 'All core modules', 'Jobs, Fleet, Forms', 'Dazza AI + Annette', 'Priority support'],
+    period: '/mo +GST',
+    maxUsers: 5,
+    features: ['Up to 5 users', 'All core modules', 'Jobs, Fleet, Forms', 'Dazza AI + Annette', 'Priority support'],
     icon: Users,
     highlight: true,
   },
@@ -51,9 +51,9 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     price: 149,
-    period: '/mo',
-    maxUsers: 20,
-    features: ['Up to 20 users', 'All core modules', 'Jobs, Fleet, Forms', 'Dazza AI + Annette', 'Dedicated support'],
+    period: '/mo +GST',
+    maxUsers: 10,
+    features: ['Up to 10 users', 'All core modules', 'Jobs, Fleet, Forms', 'Dazza AI + Annette', 'Dedicated support'],
     icon: Zap,
     highlight: false,
   },
@@ -393,7 +393,7 @@ export default function BillingPage() {
 
           {/* Fine print */}
           <p className="text-xs text-slate-400 text-center mt-8">
-            All plans billed monthly. Cancel anytime. Prices in AUD and include GST.
+            All prices exclude GST. Billed monthly in AUD. Cancel anytime.
             Payments processed securely by Stripe.
           </p>
         </div>

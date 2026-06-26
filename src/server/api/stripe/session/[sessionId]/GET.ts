@@ -33,7 +33,8 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Validate session ID format
-    if (!sessionId.startsWith('cs_')) {
+    const sid = Array.isArray(sessionId) ? sessionId[0] : sessionId;
+    if (!sid.startsWith('cs_')) {
       res.status(400).json({
         success: false,
         error: 'Invalid session ID format',
@@ -43,9 +44,9 @@ export default async function handler(req: Request, res: Response) {
 
     const stripe = getStripe();
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const session = await stripe.checkout.sessions.retrieve(sid, {
       expand: ['line_items', 'subscription'],
-    });
+    } as Parameters<typeof stripe.checkout.sessions.retrieve>[1]);
 
     res.json({
       success: true,

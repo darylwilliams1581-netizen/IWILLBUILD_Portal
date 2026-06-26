@@ -10,8 +10,8 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
-  team:       10,
-  pro:        20,
+  team:       5,
+  pro:        10,
   enterprise: 999,
 };
 

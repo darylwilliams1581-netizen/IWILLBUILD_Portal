@@ -51,7 +51,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(503).json({ error: 'Stripe prices not yet configured. Please contact support.' });
     }
 
-    const stripe = new Stripe(apiKey, { apiVersion: '2025-05-28.basil' });
+    const stripe = new Stripe(apiKey as string, { apiVersion: '2026-02-25.clover' });
 
     // Get or create Stripe customer for this company
     let customerId = company.stripeCustomerId ?? undefined;
