@@ -6,8 +6,8 @@ import { getAuth } from '@/lib/auth/auth';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
-  team:       10,
-  pro:        20,
+  team:       5,
+  pro:        10,
   enterprise: 999,
 };
 
@@ -44,13 +44,24 @@ export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
 
+    // Block signup if email already exists
+    const [existingUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email.trim().toLowerCase()))
+      .limit(1);
+
+    if (existingUser) {
+      return res.status(409).json({ error: 'An account with that email already exists.' });
+    }
+
     // Register via BetterAuth
     const result = await auth.api.signUpEmail({
       body: { name: name.trim(), email: email.trim().toLowerCase(), password },
     });
 
     if (!result || !result.user?.id) {
-      return res.status(400).json({ error: 'Signup failed. That email may already be in use.' });
+      return res.status(400).json({ error: 'Signup failed. Please try again.' });
     }
 
     const userId = result.user.id;
@@ -79,25 +90,23 @@ export default async function handler(req: Request, res: Response) {
 
     // Create profile — first user in system = owner, otherwise admin of their company
     const role = isFirstUser ? 'owner' : 'admin';
-    const existing = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
-    if (existing.length === 0) {
-      await db.insert(profiles).values({
-        userId,
-        companyId,
-        role,
-        // Admins get all permissions by default
-        permJobs:          true,
-        permFleet:         true,
-        permForms:         true,
-        permFiles:         true,
-        permEstimating:    true,
-        permDazzaAi:       true,
-        permAdmin:         true,
-        permSeeDollars:    true,
-        permInviteUsers:   true,
-        permDeleteRecords: true,
-      });
-    }
+
+    // Always insert a fresh profile for the new userId (email was unique-checked above)
+    await db.insert(profiles).values({
+      userId,
+      companyId,
+      role,
+      permJobs:          true,
+      permFleet:         true,
+      permForms:         true,
+      permFiles:         true,
+      permEstimating:    true,
+      permDazzaAi:       true,
+      permAdmin:         true,
+      permSeeDollars:    true,
+      permInviteUsers:   true,
+      permDeleteRecords: true,
+    });
 
     return res.status(201).json({ ok: true, role, companyId, plan: resolvedPlan });
   } catch (err: unknown) {

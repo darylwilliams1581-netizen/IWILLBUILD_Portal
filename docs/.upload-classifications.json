@@ -352,6 +352,71 @@
       "summary": "Screenshot of a product pricing table in a sandbox environment showing three SaaS plans (Pro, Team, Solo) with pricing and categories. User is providing pricing update notes (GST exclusion, Team and Pro tier adjustments) for reference.",
       "fileName": "screenshot-2026-06-26T14-39-39.jpg",
       "storedUploadFilename": "f38wenbvln_1782484779853_file_QcZhcKbACu.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a user profile page showing account details for Daryl Williams with Admin status. User is reporting this as a testing/bug report issue, not requesting it be added to their website.",
+      "fileName": "screenshot-2026-06-26T15-31-38.jpg",
+      "storedUploadFilename": "f38wenbvln_1782487899066_file_X18Q5kAucK.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a dashboard interface showing a testing account issue where the owner profile remains visible after account creation, provided as a bug report reference.",
+      "fileName": "screenshot-2026-06-26T15-29-30.jpg",
+      "storedUploadFilename": "f38wenbvln_1782487771047_file_4umZp60Z39.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a user profile page showing account details for Daryl Williams with an orange accent color and Save Profile button. User is reporting a testing issue where the old profile remains visible after creating a new trial account.",
+      "fileName": "screenshot-2026-06-26T15-29-53.jpg",
+      "storedUploadFilename": "f38wenbvln_1782487793758_file_gWbA2U67ae.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a dashboard interface showing a user account issue during testing. The user is reporting that their old profile (Daryl Williams) remains visible after creating a new trial account (Williams Constructions), indicating a potential bug or account switching problem.",
+      "fileName": "screenshot-2026-06-26T15-28-22.jpg",
+      "storedUploadFilename": "f38wenbvln_1782487703719_file_xWfAOUXtfw.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Team & Permissions admin panel showing a test account (Williams Constructions) with user Daryl Williams listed as Admin. User is reporting a potential issue where their old profile remains visible after creating a new trial account.",
+      "fileName": "screenshot-2026-06-26T15-30-38.jpg",
+      "storedUploadFilename": "f38wenbvln_1782487838657_file_j5VP1DjQcx.jpg"
     }
   ]
 }
