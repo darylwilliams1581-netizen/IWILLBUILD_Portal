@@ -47,6 +47,7 @@ interface OcUser {
   lastActiveAt: string | null;
   onlineNow: boolean;
   createdAt: string;
+  emailVerified?: boolean;
 }
 
 interface ActivityEvent {
@@ -843,7 +844,14 @@ export default function OwnerConsolePage() {
                                       {(u.name || u.email || '?')[0].toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                      <p className="font-semibold text-slate-800 truncate">{u.name}</p>
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="font-semibold text-slate-800 truncate">{u.name}</p>
+                                        {u.emailVerified === false && (
+                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
+                                            Unverified
+                                          </span>
+                                        )}
+                                      </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
                                     </div>
                                   </div>

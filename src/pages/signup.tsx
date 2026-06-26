@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
@@ -147,6 +147,9 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Anti-spam: record when the page was first rendered
+  const formLoadTime = useRef<number>(Date.now());
+
   const strength = getPasswordStrength(password);
   const passwordValid = strength.length && strength.letter && strength.number && strength.symbol;
 
@@ -182,6 +185,9 @@ export default function SignupPage() {
           password,
           companyName: companyName.trim(),
           plan: selectedPlan,
+          // Anti-spam fields
+          _hp: '',                          // honeypot — always empty for real users
+          _t: formLoadTime.current,         // form load timestamp
         }),
         credentials: 'include',
       });
@@ -194,14 +200,16 @@ export default function SignupPage() {
         return;
       }
 
-      // Auto sign-in
+      // Auto sign-in so the session cookie is set
       const loginResult = await signIn.email({ email: email.trim().toLowerCase(), password });
       if (loginResult.error) {
-        navigate('/login', { replace: true });
+        // Sign-in failed — send them to check-email anyway (account was created)
+        navigate('/check-email', { state: { email: email.trim().toLowerCase() }, replace: true });
         return;
       }
 
-      navigate('/dashboard', { replace: true });
+      // Redirect to check-email (not dashboard — must verify first)
+      navigate('/check-email', { state: { email: email.trim().toLowerCase() }, replace: true });
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -367,6 +375,16 @@ export default function SignupPage() {
               {step === 3 && (
                 <motion.div key="s3" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
                   <form onSubmit={handleSubmit}>
+                    {/* Anti-spam: honeypot field — hidden from real users, bots fill it */}
+                    <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, pointerEvents: 'none', tabIndex: -1 } as React.CSSProperties} aria-hidden="true">
+                      <input
+                        type="text"
+                        name="_hp"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        defaultValue=""
+                      />
+                    </div>
                     <div className="flex flex-col gap-4">
                       {/* Full name */}
                       <div>

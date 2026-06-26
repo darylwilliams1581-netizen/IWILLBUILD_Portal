@@ -33,6 +33,7 @@ export default async function handler(req: Request, res: Response) {
         createdAt: profiles.createdAt,
         userName: user.name,
         userEmail: user.email,
+        emailVerified: user.emailVerified,
         companyName: companies.name,
       })
       .from(profiles)
@@ -46,6 +47,7 @@ export default async function handler(req: Request, res: Response) {
       userId: r.userId,
       name: r.userName ?? 'Unknown',
       email: r.userEmail,
+      emailVerified: r.emailVerified ?? false,
       company: r.companyName ?? '—',
       companyId: r.companyId,
       role: r.role,

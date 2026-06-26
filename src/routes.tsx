@@ -4,6 +4,9 @@ import { ProtectedRoute } from '@/lib/auth/auth-client';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
+import CheckEmailPage from './pages/check-email';
+import VerifyEmailPage from './pages/verify-email';
+import VerifyRequiredPage from './pages/verify-required';
 import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
 import SchedulerPage from './pages/scheduler';
@@ -35,6 +38,9 @@ export const routes: RouteObject[] = [
   { path: '/',            element: <HomePage /> },
   { path: '/login',       element: <LoginPage /> },
   { path: '/signup',      element: <SignupPage /> },
+  { path: '/check-email', element: <CheckEmailPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/verify-required', element: protect(<VerifyRequiredPage />) },
   { path: '/dashboard',   element: protect(<DashboardPage />) },
   { path: '/jobs',        element: protect(<JobsPage />) },
   { path: '/jobs/:id',    element: protect(<JobDetailPage />) },
@@ -59,6 +65,9 @@ export type Path =
   | '/'
   | '/login'
   | '/signup'
+  | '/check-email'
+  | '/verify-email'
+  | '/verify-required'
   | '/dashboard'
   | '/jobs'
   | '/fleet'

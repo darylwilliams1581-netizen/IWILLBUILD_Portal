@@ -3,6 +3,8 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '@/server/db/client';
 import { user, profiles, companies } from '@/server/db/schema';
 import { getAuth } from '@/lib/auth/auth';
+import { sendVerificationEmail } from '../../lib/email-verification.js';
+import { checkSignupRate } from '../../lib/signup-rate-limiter.js';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
@@ -10,6 +12,9 @@ const PLAN_MAX_USERS: Record<string, number> = {
   pro:        10,
   enterprise: 999,
 };
+
+/** Minimum time (ms) a human takes to fill out the signup form */
+const MIN_FORM_TIME_MS = 3000;
 
 function validatePassword(password: string): string | null {
   if (password.length < 8) return 'Password must be at least 8 characters.';
@@ -20,13 +25,43 @@ function validatePassword(password: string): string | null {
 }
 
 export default async function handler(req: Request, res: Response) {
-  const { name, email, password, companyName, plan } = req.body as {
+  // ── Anti-spam: IP rate limiting ───────────────────────────────────────────
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!checkSignupRate(ip)) {
+    return res.status(429).json({ error: 'Too many signup attempts. Please wait a few minutes before trying again.' });
+  }
+
+  const {
+    name, email, password, companyName, plan,
+    // Anti-spam fields
+    _hp,          // honeypot — must be empty
+    _t,           // form load timestamp (ms since epoch)
+  } = req.body as {
     name?: string;
     email?: string;
     password?: string;
     companyName?: string;
     plan?: string;
+    _hp?: string;
+    _t?: number | string;
   };
+
+  // ── Anti-spam: honeypot check ─────────────────────────────────────────────
+  // Bots fill all fields; real users leave hidden fields blank
+  if (_hp && _hp.trim().length > 0) {
+    // Silently accept — don't tell bots they were caught
+    console.warn('signup.honeypot_triggered', { ip });
+    return res.status(201).json({ ok: true, role: 'admin', companyId: null, plan: 'team' });
+  }
+
+  // ── Anti-spam: minimum form completion time ───────────────────────────────
+  if (_t) {
+    const loadTime = Number(_t);
+    if (!isNaN(loadTime) && Date.now() - loadTime < MIN_FORM_TIME_MS) {
+      console.warn('signup.too_fast', { ip, elapsed: Date.now() - loadTime });
+      return res.status(400).json({ error: 'Please take a moment to complete the form.' });
+    }
+  }
 
   if (!name?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
@@ -55,7 +90,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(409).json({ error: 'An account with that email already exists.' });
     }
 
-    // Register via BetterAuth
+    // Register via BetterAuth — creates user with emailVerified: false
     const result = await auth.api.signUpEmail({
       body: { name: name.trim(), email: email.trim().toLowerCase(), password },
     });
@@ -66,14 +101,17 @@ export default async function handler(req: Request, res: Response) {
 
     const userId = result.user.id;
 
+    // Ensure emailVerified is false (BetterAuth may set it true by default)
+    await db.update(user).set({ emailVerified: false }).where(eq(user.id, userId));
+
     // Check if this is the very first user in the system (platform owner)
     const [{ count }] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(user);
     const isFirstUser = Number(count) <= 1;
 
-    // Create a new company for this signup
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    // Create a new company for this signup (30-day trial)
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const [newCompany] = await db
       .insert(companies)
@@ -91,7 +129,6 @@ export default async function handler(req: Request, res: Response) {
     // Create profile — first user in system = owner, otherwise admin of their company
     const role = isFirstUser ? 'owner' : 'admin';
 
-    // Always insert a fresh profile for the new userId (email was unique-checked above)
     await db.insert(profiles).values({
       userId,
       companyId,
@@ -108,7 +145,18 @@ export default async function handler(req: Request, res: Response) {
       permDeleteRecords: true,
     });
 
-    return res.status(201).json({ ok: true, role, companyId, plan: resolvedPlan });
+    // ── Send verification email (fire-and-forget — don't fail signup if email fails) ──
+    sendVerificationEmail(userId, email.trim().toLowerCase(), name.trim()).catch((e) => {
+      console.error('signup.verification_email.error', e);
+    });
+
+    return res.status(201).json({
+      ok: true,
+      role,
+      companyId,
+      plan: resolvedPlan,
+      emailVerificationSent: true,
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already')) {

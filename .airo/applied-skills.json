@@ -12,6 +12,10 @@
     },
     "payment/stripe": {
       "installedAt": "2026-06-26T14:00:09.357Z"
+    },
+    "email": {
+      "installedAt": "2026-06-26T23:16:46.267Z",
+      "completedAt": "2026-06-26T23:25:12.178Z"
     }
   }
 }

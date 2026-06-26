@@ -125,6 +125,9 @@ import settings_backup_post_113 from "./api/settings/backup/POST";
 import settings_backup_export_get_114 from "./api/settings/backup/export/GET";
 import settings_backup_run_post_115 from "./api/settings/backup/run/POST";
 import signup_post_116 from "./api/signup/POST";
+import auth_verify_email_post from "./api/auth/verify-email/POST";
+import auth_resend_verification_post from "./api/auth/resend-verification/POST";
+import me_email_status_get from "./api/me/email-status/GET";
 import stripe_create_checkout_session_post_117 from "./api/stripe/create-checkout-session/POST";
 import stripe_session_sessionId_get_118 from "./api/stripe/session/[sessionId]/GET";
 import subscription_create_checkout_post_119 from "./api/subscription/create-checkout/POST";
@@ -256,6 +259,8 @@ async function runStartupMigrations() {
     { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },
     { table: 'profiles',         column: 'last_login_at',      definition: 'DATETIME NULL' },
     { table: 'profiles',         column: 'last_active_at',     definition: 'DATETIME NULL' },
+    // Email verification on BetterAuth user table
+    { table: 'user',             column: 'email_verified',     definition: 'BOOLEAN NOT NULL DEFAULT FALSE' },
     { table: 'company_settings', column: 'pdf_json',        definition: 'LONGTEXT NULL' },
     { table: 'company_settings', column: 'backup_json',     definition: 'LONGTEXT NULL' },
     { table: 'company_settings', column: 'last_backup_at',  definition: 'DATETIME NULL' },
@@ -333,6 +338,10 @@ app.get('/api/_diag/settings-table', async (_req, res) => {
 
 // <api-registrations>
 app.post("/api/active-ping", active_ping_post_0);
+// ── Email verification (must be before BetterAuth wildcard) ──────────────────
+app.post("/api/auth/verify-email", auth_verify_email_post);
+app.post("/api/auth/resend-verification", auth_resend_verification_post);
+// ── BetterAuth wildcard handlers ─────────────────────────────────────────────
 app.get("/api/auth/:action", auth_action_get_1);
 app.post("/api/auth/:action", auth_action_post_2);
 app.get("/api/auth/:action/:detail", auth_action_detail_get_3);
@@ -412,6 +421,7 @@ app.put("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_put_72);
 app.get("/api/me", me_get_73);
 app.put("/api/me", me_put_74);
 app.post("/api/me/change-password", me_change_password_post_75);
+app.get("/api/me/email-status", me_email_status_get);
 app.post("/api/migrate-company-settings", migrate_company_settings_post_76);
 app.post("/api/migrate-dazza-audit", migrate_dazza_audit_post_77);
 app.post("/api/migrate-dazza-knowledge", migrate_dazza_knowledge_post_78);
