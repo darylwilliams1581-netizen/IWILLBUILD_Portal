@@ -50,6 +50,7 @@ export interface FormField {
   required: boolean;
   optionsJson: string | null;
   settingsJson: string | null;
+  logicJson: string | null;
   fieldOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -57,12 +58,12 @@ export interface FormField {
 
 // ── Settings helpers ──────────────────────────────────────────────────────────
 
-function parseSettings(json: string | null): Record<string, unknown> {
+export function parseSettings(json: string | null): Record<string, unknown> {
   if (!json) return {};
   try { return JSON.parse(json) as Record<string, unknown>; } catch { return {}; }
 }
 
-function parseOptions(json: string | null): string[] {
+export function parseOptions(json: string | null): string[] {
   if (!json) return [];
   try { return JSON.parse(json) as string[]; } catch { return []; }
 }
@@ -289,6 +290,234 @@ function UrlSettings({
   );
 }
 
+// ── Conditional logic types ───────────────────────────────────────────────────
+
+export interface FieldLogic {
+  enabled: boolean;
+  action: 'show' | 'hide';
+  triggerFieldId: number | null;
+  operator: 'equals' | 'not_equals' | 'contains' | 'is_checked' | 'is_not_checked';
+  value: string;
+}
+
+const DEFAULT_LOGIC: FieldLogic = {
+  enabled: false,
+  action: 'show',
+  triggerFieldId: null,
+  operator: 'equals',
+  value: '',
+};
+
+export function parseLogic(json: string | null): FieldLogic {
+  if (!json) return { ...DEFAULT_LOGIC };
+  try {
+    const parsed = JSON.parse(json) as Partial<FieldLogic>;
+    return { ...DEFAULT_LOGIC, ...parsed };
+  } catch {
+    return { ...DEFAULT_LOGIC };
+  }
+}
+
+// Trigger-capable field types
+const TRIGGER_TYPES = new Set(['yes_no', 'single_choice', 'checkbox', 'multi_select']);
+
+// Operators that apply per trigger type
+function getOperators(triggerType: string): Array<{ value: FieldLogic['operator']; label: string }> {
+  if (triggerType === 'checkbox') {
+    return [
+      { value: 'is_checked', label: 'is checked' },
+      { value: 'is_not_checked', label: 'is not checked' },
+    ];
+  }
+  if (triggerType === 'yes_no') {
+    return [
+      { value: 'equals', label: 'equals' },
+      { value: 'not_equals', label: 'does not equal' },
+    ];
+  }
+  return [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'does not equal' },
+    { value: 'contains', label: 'contains' },
+  ];
+}
+
+// ── Logic editor ──────────────────────────────────────────────────────────────
+
+interface LogicEditorProps {
+  fieldId: number;
+  logic: FieldLogic;
+  allFields: FormField[]; // all fields in the template
+  onChange: (logic: FieldLogic) => void;
+}
+
+function LogicEditor({ fieldId, logic, allFields, onChange }: LogicEditorProps) {
+  // Eligible trigger fields: must be a trigger-capable type, not this field itself
+  const triggerFields = allFields.filter(
+    (f) => f.id !== fieldId && TRIGGER_TYPES.has(f.fieldType),
+  );
+
+  const triggerField = triggerFields.find((f) => f.id === logic.triggerFieldId) ?? null;
+  const operators = triggerField ? getOperators(triggerField.fieldType) : [];
+  const triggerOptions = triggerField ? parseOptions(triggerField.optionsJson) : [];
+
+  // When trigger field changes, reset operator + value
+  function setTriggerField(id: number | null) {
+    const tf = allFields.find((f) => f.id === id) ?? null;
+    const defaultOp = tf ? getOperators(tf.fieldType)[0].value : 'equals';
+    onChange({ ...logic, triggerFieldId: id, operator: defaultOp, value: '' });
+  }
+
+  function set<K extends keyof FieldLogic>(key: K, val: FieldLogic[K]) {
+    onChange({ ...logic, [key]: val });
+  }
+
+  const needsValue =
+    logic.operator !== 'is_checked' && logic.operator !== 'is_not_checked';
+
+  const isYesNo = triggerField?.fieldType === 'yes_no';
+  const isChoice = triggerField?.fieldType === 'single_choice' || triggerField?.fieldType === 'multi_select';
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Enable toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-slate-700">Conditional logic</span>
+        <button
+          onClick={() => set('enabled', !logic.enabled)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${logic.enabled ? 'bg-primary' : 'bg-slate-200'}`}
+        >
+          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${logic.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
+
+      {logic.enabled && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.15 }}
+          className="overflow-hidden"
+        >
+          <div className="flex flex-col gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+            {/* Action */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 mb-1">Action</label>
+              <div className="flex gap-2">
+                {(['show', 'hide'] as const).map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => set('action', a)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${logic.action === a ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                  >
+                    {a === 'show' ? 'Show this field' : 'Hide this field'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Trigger field */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 mb-1">When field</label>
+              {triggerFields.length === 0 ? (
+                <p className="text-xs text-slate-400 italic bg-white rounded-lg border border-slate-200 px-3 py-2">
+                  No eligible trigger fields yet. Add a Yes/No, Single Choice, Checkbox, or Multi Select field above this one.
+                </p>
+              ) : (
+                <select
+                  value={logic.triggerFieldId ?? ''}
+                  onChange={(e) => setTriggerField(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                >
+                  <option value="">— select a field —</option>
+                  {triggerFields.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label || `Field #${f.id}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Operator */}
+            {triggerField && (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Condition</label>
+                <select
+                  value={logic.operator}
+                  onChange={(e) => set('operator', e.target.value as FieldLogic['operator'])}
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                >
+                  {operators.map((op) => (
+                    <option key={op.value} value={op.value}>{op.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Value */}
+            {triggerField && needsValue && (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Value</label>
+                {isYesNo ? (
+                  <select
+                    value={logic.value}
+                    onChange={(e) => set('value', e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    <option value="">— select —</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                ) : isChoice && triggerOptions.length > 0 ? (
+                  <select
+                    value={logic.value}
+                    onChange={(e) => set('value', e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    <option value="">— select —</option>
+                    {triggerOptions.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={logic.value}
+                    onChange={(e) => set('value', e.target.value)}
+                    placeholder="Enter value…"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Summary */}
+            {logic.triggerFieldId && (
+              <div className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-700">
+                    {logic.action === 'show' ? 'Show' : 'Hide'}
+                  </span>{' '}
+                  this field when{' '}
+                  <span className="font-semibold text-slate-700">
+                    "{triggerField?.label || `Field #${logic.triggerFieldId}`}"
+                  </span>{' '}
+                  {logic.operator === 'is_checked' ? 'is checked'
+                    : logic.operator === 'is_not_checked' ? 'is not checked'
+                    : logic.operator === 'equals' ? `equals "${logic.value}"`
+                    : logic.operator === 'not_equals' ? `does not equal "${logic.value}"`
+                    : `contains "${logic.value}"`}
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 // ── Instruction + Image thumbnail uploader ────────────────────────────────────
 
 interface InstructionImageUploaderProps {
@@ -381,13 +610,14 @@ interface FieldCardProps {
   field: FormField;
   index: number;
   total: number;
+  allFields: FormField[];
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
   onUpdate: (updates: Partial<FormField>) => Promise<void>;
 }
 
-function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpdate }: FieldCardProps) {
+function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDelete, onUpdate }: FieldCardProps) {
   const def = getTypeDef(field.fieldType);
   const Icon = def.icon;
   const [label, setLabel] = useState(field.label);
@@ -396,6 +626,7 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
   const [required, setRequired] = useState(field.required);
   const [options, setOptions] = useState<string[]>(() => parseOptions(field.optionsJson));
   const [settings, setSettings] = useState<Record<string, unknown>>(() => parseSettings(field.settingsJson));
+  const [logic, setLogic] = useState<FieldLogic>(() => parseLogic(field.logicJson));
   const [newOption, setNewOption] = useState('');
   const [optionSaving, setOptionSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -405,6 +636,7 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
   useEffect(() => { setRequired(field.required); }, [field.required]);
   useEffect(() => { setOptions(parseOptions(field.optionsJson)); }, [field.optionsJson]);
   useEffect(() => { setSettings(parseSettings(field.settingsJson)); }, [field.settingsJson]);
+  useEffect(() => { setLogic(parseLogic(field.logicJson)); }, [field.logicJson]);
 
   async function saveLabel() {
     if (label === field.label) return;
@@ -460,6 +692,11 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
     await onUpdate({ settingsJson: JSON.stringify(newSettings) });
   }
 
+  async function saveLogic(newLogic: FieldLogic) {
+    setLogic(newLogic);
+    await onUpdate({ logicJson: JSON.stringify(newLogic) });
+  }
+
   const currentDef = getTypeDef(fieldType);
   const showOptions = currentDef.hasOptions;
   const isLayout = currentDef.isLayout;
@@ -512,7 +749,11 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
               <p className="text-sm font-semibold text-slate-800 break-words" style={{ overflowWrap: 'anywhere' }}>
                 {label || <span className="text-slate-400 italic">Untitled field</span>}
               </p>
-              <p className="text-[11px] text-slate-400">{currentDef.label}{!isLayout && required ? ' · Required' : ''}</p>
+              <p className="text-[11px] text-slate-400">
+                {currentDef.label}
+                {!isLayout && required ? ' · Required' : ''}
+                {logic.enabled ? ' · Logic on' : ''}
+              </p>
             </div>
             <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
               <button onClick={onMoveUp} disabled={index === 0}
@@ -695,6 +936,17 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
                         : 'Signature capture will be available when filling out this form.'}
                     </p>
                   )}
+
+                  {/* Divider before logic */}
+                  <div className="border-t border-slate-100" />
+
+                  {/* Conditional logic editor */}
+                  <LogicEditor
+                    fieldId={field.id}
+                    logic={logic}
+                    allFields={allFields}
+                    onChange={saveLogic}
+                  />
                 </div>
               </motion.div>
             )}
@@ -1081,6 +1333,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
                     field={field}
                     index={index}
                     total={fields.length}
+                    allFields={fields}
                     onMoveUp={() => moveField(index, 'up')}
                     onMoveDown={() => moveField(index, 'down')}
                     onDelete={() => deleteField(field.id)}

@@ -226,6 +226,7 @@ export const formTemplateFields = mysqlTable('form_template_fields', {
   required: boolean('required').notNull().default(false),
   optionsJson: text('options_json'),
   settingsJson: text('settings_json'),
+  logicJson: text('logic_json'),
   fieldOrder: int('field_order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),

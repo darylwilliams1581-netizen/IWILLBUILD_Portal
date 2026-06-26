@@ -8,8 +8,10 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  PlayCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import FormRunner from './FormRunner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +65,9 @@ export default function JobForms({ jobId }: JobFormsProps) {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [starting, setStarting] = useState<number | null>(null); // templateId being started
+  const [starting, setStarting] = useState<number | null>(null);
+  // Active runner: { submission, templateName }
+  const [activeRunner, setActiveRunner] = useState<{ submission: FormSubmission; templateName: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +104,8 @@ export default function JobForms({ jobId }: JobFormsProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
         setSubmissions((prev) => [data.submission!, ...prev]);
+        const template = templates.find((t) => t.id === templateId);
+        setActiveRunner({ submission: data.submission!, templateName: template?.name ?? 'Form' });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start form');
@@ -108,12 +114,40 @@ export default function JobForms({ jobId }: JobFormsProps) {
     }
   }
 
+  function openSubmission(s: FormSubmission) {
+    const template = templates.find((t) => t.id === s.templateId);
+    setActiveRunner({ submission: s, templateName: template?.name ?? 'Form' });
+  }
+
+  function handleRunnerBack() {
+    setActiveRunner(null);
+    void load(); // refresh to pick up any saved answers
+  }
+
+  function handleRunnerComplete() {
+    setActiveRunner(null);
+    void load();
+  }
+
   // Map templateId -> submissions for that template
   const submissionsByTemplate = submissions.reduce<Record<number, FormSubmission[]>>((acc, s) => {
     if (!acc[s.templateId]) acc[s.templateId] = [];
     acc[s.templateId].push(s);
     return acc;
   }, {});
+
+  // ── Form runner view ────────────────────────────────────────────────────────
+  if (activeRunner) {
+    return (
+      <FormRunner
+        jobId={jobId}
+        submission={activeRunner.submission}
+        templateName={activeRunner.templateName}
+        onBack={handleRunnerBack}
+        onComplete={handleRunnerComplete}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -228,6 +262,7 @@ export default function JobForms({ jobId }: JobFormsProps) {
               const time = new Date(s.createdAt).toLocaleTimeString('en-AU', {
                 hour: '2-digit', minute: '2-digit',
               });
+              const isCompleted = s.status === 'completed';
 
               return (
                 <motion.div
@@ -235,10 +270,15 @@ export default function JobForms({ jobId }: JobFormsProps) {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50"
+                  onClick={() => !isCompleted && openSubmission(s)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border border-slate-200 transition-colors ${
+                    isCompleted
+                      ? 'bg-slate-50/50 cursor-default'
+                      : 'bg-white hover:bg-slate-50 cursor-pointer hover:border-slate-300'
+                  }`}
                 >
-                  <div className={`p-2 rounded-lg shrink-0 ${s.status === 'completed' ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-                    {s.status === 'completed'
+                  <div className={`p-2 rounded-lg shrink-0 ${isCompleted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                    {isCompleted
                       ? <CheckCircle2 size={14} className="text-emerald-600" />
                       : <Clock size={14} className="text-amber-600" />
                     }
@@ -250,7 +290,12 @@ export default function JobForms({ jobId }: JobFormsProps) {
                     </p>
                   </div>
                   <StatusBadge status={s.status} />
-                  <ChevronRight size={14} className="text-slate-300 shrink-0" />
+                  {!isCompleted && (
+                    <PlayCircle size={16} className="text-primary shrink-0 ml-1" />
+                  )}
+                  {isCompleted && (
+                    <ChevronRight size={14} className="text-slate-300 shrink-0" />
+                  )}
                 </motion.div>
               );
             })}

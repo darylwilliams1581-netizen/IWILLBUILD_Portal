@@ -44,6 +44,7 @@ export default async function handler(req: Request, res: Response) {
     if ('required' in body) updates.required = Boolean(body.required);
     if ('optionsJson' in body) updates.optionsJson = body.optionsJson != null ? String(body.optionsJson) : null;
     if ('settingsJson' in body) updates.settingsJson = body.settingsJson != null ? String(body.settingsJson) : null;
+    if ('logicJson' in body) updates.logicJson = body.logicJson != null ? String(body.logicJson) : null;
     if ('fieldOrder' in body) updates.fieldOrder = Number(body.fieldOrder);
 
     await db.update(formTemplateFields).set(updates).where(eq(formTemplateFields.id, fieldId));
