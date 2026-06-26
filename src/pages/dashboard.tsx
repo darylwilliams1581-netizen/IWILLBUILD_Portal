@@ -63,6 +63,10 @@ export default function DashboardPage() {
   const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
 
+  // Setup detection — true once we know whether the company has real data
+  const [setupChecked, setSetupChecked] = useState(false);
+  const [isSetup, setIsSetup] = useState(false); // true = company has real data
+
   useEffect(() => {
     fetchJobs()
       .then((data) => { setJobs(data); setJobsLoaded(true); })
@@ -77,6 +81,11 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => { setDueTodayTodos(d.dueToday ?? []); setOverdueTodos(d.overdue ?? []); })
       .catch(() => {});
+    // Check if company has real setup data
+    fetch('/api/dashboard/setup-check', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() as Promise<{ isSetup: boolean }> : Promise.reject())
+      .then((d) => { setIsSetup(d.isSetup); setSetupChecked(true); })
+      .catch(() => { setIsSetup(false); setSetupChecked(true); });
   }, []);
 
   const activeJobCount = jobs.filter((j) =>
@@ -167,30 +176,55 @@ export default function DashboardPage() {
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
 
-          {/* ── Welcome banner (empty state) ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' as const }}
-            className="mb-6 rounded-xl bg-[#1A1D23] text-white px-5 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-          >
-            <div>
-              <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Getting started</p>
-              <h2 className="font-heading font-bold text-lg leading-snug">
-                Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Your portal is ready.
-              </h2>
-              <p className="text-sm text-white/50 mt-1">
-                Add your first job, fleet asset, or team member to get started.
-              </p>
-            </div>
-            <Link
-              to="/jobs"
-              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+          {/* ── Welcome banner — dynamic based on setup state ── */}
+          {setupChecked && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' as const }}
+              className="mb-6 rounded-xl bg-[#1A1D23] text-white px-5 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
-              <Plus size={15} />
-              Add First Job
-            </Link>
-          </motion.div>
+              {isSetup ? (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Today</p>
+                    <h2 className="font-heading font-bold text-lg leading-snug">
+                      Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.
+                    </h2>
+                    <p className="text-sm text-white/50 mt-1">
+                      Keep your jobs, fleet, forms and files moving from one place.
+                    </p>
+                  </div>
+                  <Link
+                    to="/jobs"
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+                  >
+                    <Plus size={15} />
+                    + New Job
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Getting started</p>
+                    <h2 className="font-heading font-bold text-lg leading-snug">
+                      Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Your portal is ready.
+                    </h2>
+                    <p className="text-sm text-white/50 mt-1">
+                      Add your first job, fleet asset, or team member to get started.
+                    </p>
+                  </div>
+                  <Link
+                    to="/jobs"
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+                  >
+                    <Plus size={15} />
+                    Add First Job
+                  </Link>
+                </>
+              )}
+            </motion.div>
+          )}
 
           {/* ── Metric cards ── */}
           <motion.div
