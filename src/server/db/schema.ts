@@ -198,6 +198,37 @@ export const formTemplates = mysqlTable('form_templates', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const estimates = mysqlTable('estimates', {
+  id: int('id').primaryKey().autoincrement(),
+  jobId: int('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  status: varchar('status', { length: 60 }).notNull().default('Draft'),
+  markupPercent: varchar('markup_percent', { length: 20 }).notNull().default('0'),
+  gstMode: varchar('gst_mode', { length: 30 }).notNull().default('No GST'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const estimateLines = mysqlTable('estimate_lines', {
+  id: int('id').primaryKey().autoincrement(),
+  estimateId: int('estimate_id')
+    .notNull()
+    .references(() => estimates.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  quantity: varchar('quantity', { length: 30 }).notNull().default('1'),
+  unit: varchar('unit', { length: 50 }),
+  rate: varchar('rate', { length: 30 }).notNull().default('0'),
+  lineOrder: int('line_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

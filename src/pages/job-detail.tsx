@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -17,16 +17,19 @@ import {
   Menu,
   ChevronDown,
   Camera,
+  Calculator,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
+import JobEstimates from '@/components/JobEstimates';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'photos';
+type Tab = 'details' | 'photos' | 'estimates';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,11 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'photos' || t === 'estimates') return t;
+    return 'details';
+  });
 
   // Edit form state
   const [form, setForm] = useState({
@@ -267,8 +274,9 @@ export default function JobDetailPage() {
               {/* Tabs */}
               <div className="flex gap-1 bg-white rounded-xl border border-border p-1">
                 {([
-                  { key: 'details', label: 'Details', icon: FileText },
-                  { key: 'photos',  label: 'Photos',  icon: Camera },
+                  { key: 'details',   label: 'Details',   icon: FileText },
+                  { key: 'photos',    label: 'Photos',    icon: Camera },
+                  { key: 'estimates', label: 'Estimates', icon: Calculator },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
@@ -392,12 +400,17 @@ export default function JobDetailPage() {
                 <JobPhotos jobId={job.id} />
               )}
 
+              {/* ── Estimates tab ── */}
+              {activeTab === 'estimates' && (
+                <JobEstimates jobId={job.id} />
+              )}
+
               {/* Coming soon modules — only show on details tab */}
               {activeTab === 'details' && (
                 <div className="bg-white rounded-xl border border-border p-5">
                   <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {['Forms', 'Files', 'Estimating'].map((m) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {['Forms', 'Files'].map((m) => (
                       <div key={m} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
                         <FileText size={14} className="text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">{m}</span>

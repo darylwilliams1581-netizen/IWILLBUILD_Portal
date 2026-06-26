@@ -33,6 +33,12 @@ import fleet_id_get from "./api/fleet/[id]/GET";
 import fleet_id_put from "./api/fleet/[id]/PUT";
 import fleet_id_prestarts_get from "./api/fleet/[id]/prestarts/GET";
 import fleet_id_prestarts_post from "./api/fleet/[id]/prestarts/POST";
+import migrate_estimates_post from "./api/migrate-estimates/POST";
+import estimates_get from "./api/estimates/GET";
+import estimates_post from "./api/estimates/POST";
+import estimates_id_get from "./api/estimates/[id]/GET";
+import estimates_id_put from "./api/estimates/[id]/PUT";
+import estimates_id_delete from "./api/estimates/[id]/DELETE";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -142,6 +148,13 @@ app.get("/api/fleet/:id", fleet_id_get);
 app.put("/api/fleet/:id", fleet_id_put);
 app.get("/api/fleet/:id/prestarts", fleet_id_prestarts_get);
 app.post("/api/fleet/:id/prestarts", fleet_id_prestarts_post);
+// Estimates
+app.post("/api/migrate-estimates", migrate_estimates_post);
+app.get("/api/estimates", estimates_get);
+app.post("/api/estimates", estimates_post);
+app.get("/api/estimates/:id", estimates_id_get);
+app.put("/api/estimates/:id", estimates_id_put);
+app.delete("/api/estimates/:id", estimates_id_delete);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
