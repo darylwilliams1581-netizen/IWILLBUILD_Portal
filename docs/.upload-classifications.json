@@ -459,6 +459,19 @@
       "summary": "Screenshot of an estimate tab UI showing a scope description field with layout issues; user is requesting a bug fix to auto-fit multi-line scope text by adjusting column widths and field height.",
       "fileName": "screenshot-2026-06-26T16-28-11.jpg",
       "storedUploadFilename": "f38wenbvln_1782491292101_file_jHTnEhS3kY.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of an estimates management interface showing quote status workflow issues. User is referencing this to describe a bug or feature request about quote status tracking and permissions.",
+      "fileName": "screenshot-2026-06-26T16-34-17.jpg",
+      "storedUploadFilename": "f38wenbvln_1782491657500_file_05fzlPm91F.jpg"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
@@ -493,6 +493,8 @@ function RecipePicker({ onInsert, onClose }: { onInsert: (recipe: Recipe) => voi
 export default function EstimateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin, isOwner } = usePermissions();
+  const canApprove = isAdmin || isOwner;
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [lines, setLines] = useState<LocalLine[]>([]);
@@ -794,18 +796,28 @@ export default function EstimateEditorPage() {
                     <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
                       {ESTIMATE_STATUSES.map((s) => {
                         const st = getEstimateStatusStyle(s);
+                        const locked = s === 'Approved' && !canApprove;
                         return (
                           <button
                             key={s}
-                            onClick={() => handleStatusChange(s)}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${estimate.status === s ? 'font-bold' : ''}`}
+                            onClick={() => { if (!locked) handleStatusChange(s); }}
+                            disabled={locked}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors
+                              ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted'}
+                              ${estimate.status === s ? 'font-bold' : ''}`}
                           >
                             <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                            {s}
-                            {estimate.status === s && <Check size={12} className="ml-auto text-primary" />}
+                            <span className="flex-1">{s}</span>
+                            {locked && <Lock size={10} className="text-muted-foreground" />}
+                            {estimate.status === s && !locked && <Check size={12} className="ml-auto text-primary" />}
                           </button>
                         );
                       })}
+                      {!canApprove && (
+                        <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border mt-1">
+                          Admin approval required
+                        </p>
+                      )}
                     </div>
                   </>
                 )}

@@ -1,19 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, Loader2, AlertCircle, Copy, Trash2, ChevronRight,
+  ChevronDown, Check, Lock,
 } from 'lucide-react';
 import {
-  fetchEstimates, createEstimate, deleteEstimate, getEstimateStatusStyle,
-  estimateTotals, type Estimate,
+  fetchEstimates, createEstimate, deleteEstimate, patchEstimateStatus,
+  getEstimateStatusStyle, ESTIMATE_STATUSES, type Estimate,
 } from '@/lib/estimates-api';
+import { usePermissions } from '@/lib/usePermissions';
 
 interface Props {
   jobId: number;
 }
 
+// Statuses a non-admin can set (cannot set Approved)
+const NON_ADMIN_STATUSES = ESTIMATE_STATUSES.filter((s) => s !== 'Approved');
+
 export default function JobEstimates({ jobId }: Props) {
   const navigate = useNavigate();
+  const { isAdmin, isOwner } = usePermissions();
+  const canApprove = isAdmin || isOwner;
+
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,8 +30,22 @@ export default function JobEstimates({ jobId }: Props) {
   const [showNew, setShowNew] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [statusOpenId, setStatusOpenId] = useState<number | null>(null);
+  const [statusSaving, setStatusSaving] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [jobId]);
+
+  // Close status dropdown on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setStatusOpenId(null);
+      }
+    }
+    if (statusOpenId !== null) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [statusOpenId]);
 
   async function load() {
     setLoading(true);
@@ -55,9 +77,11 @@ export default function JobEstimates({ jobId }: Props) {
 
   async function handleDuplicate(est: Estimate) {
     try {
-      // Fetch full estimate with lines
       const res = await fetch(`/api/estimates/${est.id}`, { credentials: 'include' });
-      const data = await res.json() as { estimate: Estimate; lines: Array<{ description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> };
+      const data = await res.json() as {
+        estimate: Estimate;
+        lines: Array<{ description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }>;
+      };
       const newEst = await createEstimate({
         jobId,
         title: `${est.title} (Copy)`,
@@ -92,6 +116,20 @@ export default function JobEstimates({ jobId }: Props) {
     }
   }
 
+  async function handleStatusChange(est: Estimate, newStatus: string) {
+    setStatusOpenId(null);
+    if (est.status === newStatus) return;
+    setStatusSaving(est.id);
+    try {
+      const updated = await patchEstimateStatus(est.id, newStatus);
+      setEstimates((prev) => prev.map((e) => e.id === est.id ? { ...e, status: updated.status } : e));
+    } catch {
+      setError('Failed to update status.');
+    } finally {
+      setStatusSaving(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -99,6 +137,8 @@ export default function JobEstimates({ jobId }: Props) {
       </div>
     );
   }
+
+  const availableStatuses = canApprove ? ESTIMATE_STATUSES : NON_ADMIN_STATUSES;
 
   return (
     <div className="flex flex-col gap-4">
@@ -133,7 +173,10 @@ export default function JobEstimates({ jobId }: Props) {
             placeholder="Estimate title (e.g. Electrical Rough-in)"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowNew(false); setNewTitle(''); } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreate();
+              if (e.key === 'Escape') { setShowNew(false); setNewTitle(''); }
+            }}
             className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
           <div className="flex gap-2 justify-end">
@@ -173,18 +216,20 @@ export default function JobEstimates({ jobId }: Props) {
 
       {/* Estimate list */}
       {estimates.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" ref={dropdownRef}>
           {estimates.map((est) => {
             const style = getEstimateStatusStyle(est.status);
-            const totals = estimateTotals([], est.markupPercent, est.gstMode as 'No GST' | 'Add 10% GST');
-            void totals; // totals shown in editor; list shows status only
+            const isApproved = est.status === 'Approved';
+            const isSavingThis = statusSaving === est.id;
+
             return (
               <div
                 key={est.id}
                 className="bg-white rounded-xl border border-border hover:border-primary/30 hover:shadow-sm transition-all group"
               >
-                <div className="flex items-center gap-3 p-4">
-                  {/* Click to open */}
+                <div className="flex items-center gap-3 px-4 py-3">
+
+                  {/* Click area → open editor */}
                   <button
                     onClick={() => navigate(`/estimates/${est.id}`)}
                     className="flex-1 flex items-center gap-3 min-w-0 text-left"
@@ -198,12 +243,74 @@ export default function JobEstimates({ jobId }: Props) {
                         {new Date(est.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${style.bg} ${style.color}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                      {est.status}
-                    </span>
+
+                    {/* Total */}
+                    {est.total !== undefined && est.total > 0 && (
+                      <span className="text-sm font-bold text-foreground shrink-0 tabular-nums">
+                        ${est.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    )}
+
                     <ChevronRight size={14} className="text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
+
+                  {/* Status dropdown */}
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatusOpenId(statusOpenId === est.id ? null : est.id);
+                      }}
+                      disabled={isSavingThis}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${style.bg} ${style.color} hover:opacity-80`}
+                      title={isApproved && !canApprove ? 'Only admins can change Approved status' : 'Change status'}
+                    >
+                      {isSavingThis
+                        ? <Loader2 size={10} className="animate-spin" />
+                        : <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                      }
+                      {est.status}
+                      {isApproved && !canApprove
+                        ? <Lock size={9} className="ml-0.5 opacity-60" />
+                        : <ChevronDown size={10} />
+                      }
+                    </button>
+
+                    {statusOpenId === est.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setStatusOpenId(null)} />
+                        <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+                          {availableStatuses.map((s) => {
+                            const st = getEstimateStatusStyle(s);
+                            const isLocked = s === 'Approved' && !canApprove;
+                            return (
+                              <button
+                                key={s}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isLocked) void handleStatusChange(est, s);
+                                }}
+                                disabled={isLocked}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors
+                                  ${isLocked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted'}
+                                  ${est.status === s ? 'font-bold' : ''}`}
+                              >
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                <span className="flex-1">{s}</span>
+                                {isLocked && <Lock size={10} className="text-muted-foreground" />}
+                                {est.status === s && !isLocked && <Check size={12} className="text-primary" />}
+                              </button>
+                            );
+                          })}
+                          {!canApprove && (
+                            <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border mt-1">
+                              Admin approval required for Approved status
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
@@ -234,7 +341,9 @@ export default function JobEstimates({ jobId }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
             <h3 className="font-heading font-bold text-base">Delete Estimate?</h3>
-            <p className="text-sm text-muted-foreground">This will permanently delete the estimate and all its lines. This cannot be undone.</p>
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete the estimate and all its lines. This cannot be undone.
+            </p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setDeleteId(null)}

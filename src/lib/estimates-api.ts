@@ -17,6 +17,8 @@ export interface Estimate {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Computed total returned by the list endpoint (not present on single-estimate fetch) */
+  total?: number;
 }
 
 export interface EstimateLine {
@@ -119,4 +121,14 @@ export async function updateEstimate(id: number, payload: UpdateEstimatePayload)
 
 export async function deleteEstimate(id: number): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/api/estimates/${id}`, { method: 'DELETE' });
+}
+
+/** Quick status-only patch — used from the job estimates list */
+export async function patchEstimateStatus(id: number, status: string): Promise<Estimate> {
+  const data = await apiFetch<{ estimate: Estimate }>(`/api/estimates/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  return data.estimate;
 }
