@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
@@ -502,20 +502,22 @@ export default function EstimateEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Keep a ref to the latest lines so debounced saves always use current state
+  // Refs for save-on-back — always hold latest values without stale closures
+  const estimateRef = useRef<Estimate | null>(null);
   const linesRef = useRef<LocalLine[]>([]);
 
   useEffect(() => {
     if (id) load(parseInt(id, 10));
   }, [id]);
 
-  // Keep linesRef in sync so debounced saves always read current lines
+  // Keep refs in sync so save-on-back always reads current values
   useEffect(() => { linesRef.current = lines; }, [lines]);
+  useEffect(() => { estimateRef.current = estimate; }, [estimate]);
 
   async function load(estimateId: number) {
     setLoading(true);
@@ -558,7 +560,13 @@ export default function EstimateEditorPage() {
         })),
       });
       setEstimate(updated);
-      setLines(updatedLines.map(fromApiLine));
+      estimateRef.current = updated;
+      // Merge server IDs back without replacing the whole array (preserves focus)
+      setLines((prev) => prev.map((l, i) => {
+        const serverLine = updatedLines[i];
+        return serverLine ? { ...l, id: serverLine.id } : l;
+      }));
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -568,32 +576,48 @@ export default function EstimateEditorPage() {
     }
   }, []);
 
-  function triggerSave() {
+  // Manual save — called by Save button and back-navigation
+  function handleSave() {
     if (!estimate || isLocked) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      // Use linesRef so we always save the latest lines, not a stale closure
-      save(estimate, linesRef.current);
-    }, 800);
+    void save(estimate, lines);
+  }
+
+  // Save-on-back: save if dirty, then navigate
+  async function handleBack() {
+    const est = estimateRef.current;
+    const currentLines = linesRef.current;
+    if (est && !isLocked && dirty) {
+      await save(est, currentLines);
+    }
+    if (est) {
+      navigate(`/jobs/${est.jobId}?tab=estimates`);
+    } else {
+      navigate(-1);
+    }
   }
 
   function updateEstimateField<K extends keyof Estimate>(key: K, value: Estimate[K]) {
     if (!estimate || isLocked) return;
     const updated = { ...estimate, [key]: value };
     setEstimate(updated);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => save(updated, lines), 800);
+    estimateRef.current = updated;
+    setDirty(true);
   }
 
   function updateLine(key: string, field: keyof LocalLine, value: string) {
     if (isLocked) return;
     setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
-    triggerSave();
+    setDirty(true);
+  }
+
+  function triggerSave() {
+    // No-op: kept so insertCostItem / insertRecipe can still call it for immediate saves
   }
 
   function addLine() {
     if (isLocked) return;
     setLines((prev) => [...prev, blankLine(prev.length)]);
+    setDirty(true);
   }
 
   function deleteLine(key: string) {
@@ -602,7 +626,7 @@ export default function EstimateEditorPage() {
       const next = prev.filter((l) => l._key !== key);
       return next.length === 0 ? [blankLine(0)] : next;
     });
-    triggerSave();
+    setDirty(true);
   }
 
   function moveLine(key: string, dir: 'up' | 'down') {
@@ -616,7 +640,7 @@ export default function EstimateEditorPage() {
       [next[idx], next[swap]] = [next[swap], next[idx]];
       return next;
     });
-    triggerSave();
+    setDirty(true);
   }
 
   function copyLine(key: string) {
@@ -630,7 +654,7 @@ export default function EstimateEditorPage() {
       next.splice(idx + 1, 0, copy);
       return next;
     });
-    triggerSave();
+    setDirty(true);
   }
 
   function insertCostItem(item: CostItem) {
@@ -647,9 +671,8 @@ export default function EstimateEditorPage() {
       const filtered = prev.length === 1 && !prev[0].description && prev[0].rate === '0'
         ? [] : prev;
       const next = [...filtered, newLine];
-      // Save immediately with the computed next array — don't rely on debounce + stale closure
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => save(estimate, next), 100);
+      // Save immediately after inserting from picker
+      void save(estimate, next);
       return next;
     });
   }
@@ -668,9 +691,8 @@ export default function EstimateEditorPage() {
       const filtered = prev.length === 1 && !prev[0].description && prev[0].rate === '0'
         ? [] : prev;
       const next = [...filtered, ...newLines];
-      // Save immediately with the computed next array
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => save(estimate, next), 100);
+      // Save immediately after inserting from picker
+      void save(estimate, next);
       return next;
     });
   }
@@ -702,7 +724,10 @@ export default function EstimateEditorPage() {
   async function handleStatusChange(newStatus: string) {
     if (!estimate) return;
     setStatusOpen(false);
-    updateEstimateField('status', newStatus as Estimate['status']);
+    const updated = { ...estimate, status: newStatus as Estimate['status'] };
+    setEstimate(updated);
+    estimateRef.current = updated;
+    await save(updated, lines);
   }
 
   function openMobileMenu() {
@@ -730,26 +755,25 @@ export default function EstimateEditorPage() {
             <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
               <Menu size={20} />
             </button>
-            {job && (
-              <Link
-                to={`/jobs/${job.id}?tab=estimates`}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
-              >
-                <ChevronLeft size={16} />
-                <span className="hidden sm:inline truncate max-w-[120px]">{job.jobNumber ?? job.name}</span>
-              </Link>
-            )}
-            {!job && (
-              <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0">
-                <ChevronLeft size={16} />
-                Back
-              </button>
-            )}
+            {/* Back button — saves if dirty before navigating */}
+            <button
+              onClick={() => void handleBack()}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
+            >
+              <ChevronLeft size={16} />
+              <span className="hidden sm:inline truncate max-w-[120px]">
+                {job ? (job.jobNumber ?? job.name) : 'Back'}
+              </span>
+            </button>
             <span className="text-border">|</span>
             <FileText size={15} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-sm md:text-base truncate">
               {estimate?.title ?? 'Loading…'}
             </h1>
+            {/* Unsaved dot */}
+            {dirty && !saving && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -790,7 +814,7 @@ export default function EstimateEditorPage() {
 
             {/* Save indicator */}
             {saving && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-            {saved && !saving && <span className="text-xs text-emerald-600 font-semibold">Saved</span>}
+            {saved && !saving && !dirty && <span className="text-xs text-emerald-600 font-semibold">Saved</span>}
 
             {/* Print */}
             <button
@@ -813,12 +837,16 @@ export default function EstimateEditorPage() {
             {/* Manual save */}
             {!isLocked && (
               <button
-                onClick={() => estimate && save(estimate, lines)}
+                onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 ${
+                  dirty
+                    ? 'bg-primary hover:bg-orange-600 text-white'
+                    : 'bg-primary/70 hover:bg-primary text-white'
+                }`}
               >
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                <span className="hidden sm:inline">Save</span>
+                <span className="hidden sm:inline">{dirty ? 'Save' : 'Saved'}</span>
               </button>
             )}
           </div>
