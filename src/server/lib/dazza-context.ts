@@ -241,7 +241,7 @@ export async function buildDazzaContext(
   if (canFleet) {
     ctx.fleet = await safeQuery('fleet', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+        sql`SELECT id, name, type, rego, rego_not_applicable, status, service_date, rego_expiry, notes
             FROM fleet_assets WHERE company_id = ${effectiveCompanyId} AND archived = 0
             ORDER BY name ASC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
@@ -253,7 +253,7 @@ export async function buildDazzaContext(
         sql`SELECT fp.asset_id, fa.name as asset_name, fp.issue_comment, fp.created_at
             FROM fleet_prestarts fp
             JOIN fleet_assets fa ON fa.id = fp.asset_id
-            WHERE fa.company_id = ${effectiveCompanyId}
+            WHERE fp.company_id = ${effectiveCompanyId}
               AND fp.issue_needs_attention = 1
             ORDER BY fp.created_at DESC LIMIT 20`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
@@ -262,11 +262,11 @@ export async function buildDazzaContext(
 
     ctx.prestarts = await safeQuery('prestarts', async () => {
       const [rows] = await db.execute(
-        sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+        sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.operator_name as submitted_by_name,
                    fp.issue_needs_attention, fp.issue_comment, fp.created_at
             FROM fleet_prestarts fp
             JOIN fleet_assets fa ON fa.id = fp.asset_id
-            WHERE fa.company_id = ${effectiveCompanyId}
+            WHERE fp.company_id = ${effectiveCompanyId}
             ORDER BY fp.created_at DESC LIMIT 20`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
       return rows ?? [];
