@@ -154,140 +154,159 @@ export async function buildDazzaContext(
 
   // ── Jobs ──────────────────────────────────────────────────────────────────
   if (canJobs) {
-    const [jobRows] = await db.execute(
-      sql`SELECT id, job_number, name, client, address, status, notes, created_at
-          FROM jobs WHERE company_id = ${effectiveCompanyId}
-          ORDER BY created_at DESC LIMIT 50`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.jobs = jobRows ?? [];
+    try {
+      const [jobRows] = await db.execute(
+        sql`SELECT id, job_number, name, client, address, status, notes, created_at
+            FROM jobs WHERE company_id = ${effectiveCompanyId}
+            ORDER BY created_at DESC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.jobs = jobRows ?? [];
+    } catch (e) { console.warn('[dazza-context] jobs query failed:', String((e as Error)?.message ?? e)); ctx.jobs = []; }
 
-    const [todoRows] = await db.execute(
-      sql`SELECT t.id, t.job_id, t.title, t.status, t.due_date, t.notes, j.name as job_name
-          FROM job_todos t
-          JOIN jobs j ON j.id = t.job_id
-          WHERE j.company_id = ${effectiveCompanyId} AND t.status = 'Open'
-          ORDER BY t.due_date ASC LIMIT 100`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.openTodos = todoRows ?? [];
+    try {
+      const [todoRows] = await db.execute(
+        sql`SELECT t.id, t.job_id, t.title, t.status, t.due_date, t.notes, j.name as job_name
+            FROM job_todos t
+            JOIN jobs j ON j.id = t.job_id
+            WHERE j.company_id = ${effectiveCompanyId} AND t.status = 'Open'
+            ORDER BY t.due_date ASC LIMIT 100`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.openTodos = todoRows ?? [];
+    } catch (e) { console.warn('[dazza-context] todos query failed:', String((e as Error)?.message ?? e)); ctx.openTodos = []; }
 
-    const [progressRows] = await db.execute(
-      sql`SELECT p.job_id, j.name as job_name,
-                 ROUND(AVG(p.percent_complete)) as avg_percent,
-                 COUNT(*) as line_count
-          FROM job_progress_lines p
-          JOIN jobs j ON j.id = p.job_id
-          WHERE j.company_id = ${effectiveCompanyId}
-          GROUP BY p.job_id, j.name
-          ORDER BY p.job_id DESC LIMIT 50`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.jobProgress = progressRows ?? [];
+    try {
+      const [progressRows] = await db.execute(
+        sql`SELECT p.job_id, j.name as job_name,
+                   ROUND(AVG(p.percent_complete)) as avg_percent,
+                   COUNT(*) as line_count
+            FROM job_progress_lines p
+            JOIN jobs j ON j.id = p.job_id
+            WHERE j.company_id = ${effectiveCompanyId}
+            GROUP BY p.job_id, j.name
+            ORDER BY p.job_id DESC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.jobProgress = progressRows ?? [];
+    } catch (e) { console.warn('[dazza-context] progress query failed:', String((e as Error)?.message ?? e)); ctx.jobProgress = []; }
   }
 
   // ── Fleet ─────────────────────────────────────────────────────────────────
   if (canFleet) {
-    const [fleetRows] = await db.execute(
-      sql`SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
-          FROM fleet_assets WHERE company_id = ${effectiveCompanyId} AND archived = 0
-          ORDER BY name ASC LIMIT 50`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.fleet = fleetRows ?? [];
+    try {
+      const [fleetRows] = await db.execute(
+        sql`SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+            FROM fleet_assets WHERE company_id = ${effectiveCompanyId} AND archived = 0
+            ORDER BY name ASC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.fleet = fleetRows ?? [];
+    } catch (e) { console.warn('[dazza-context] fleet query failed:', String((e as Error)?.message ?? e)); ctx.fleet = []; }
 
-    const [flagRows] = await db.execute(
-      sql`SELECT fp.asset_id, fa.name as asset_name, fp.issue_comment, fp.created_at
-          FROM fleet_prestarts fp
-          JOIN fleet_assets fa ON fa.id = fp.asset_id
-          WHERE fa.company_id = ${effectiveCompanyId}
-            AND fp.issue_needs_attention = 1
-          ORDER BY fp.created_at DESC LIMIT 20`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.fleetFlags = flagRows ?? [];
+    try {
+      const [flagRows] = await db.execute(
+        sql`SELECT fp.asset_id, fa.name as asset_name, fp.issue_comment, fp.created_at
+            FROM fleet_prestarts fp
+            JOIN fleet_assets fa ON fa.id = fp.asset_id
+            WHERE fa.company_id = ${effectiveCompanyId}
+              AND fp.issue_needs_attention = 1
+            ORDER BY fp.created_at DESC LIMIT 20`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.fleetFlags = flagRows ?? [];
+    } catch (e) { console.warn('[dazza-context] fleet flags query failed:', String((e as Error)?.message ?? e)); ctx.fleetFlags = []; }
 
-    // Recent prestarts — needed for "last prestart" questions
-    const [prestartRows] = await db.execute(
-      sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
-                 fp.issue_needs_attention, fp.issue_comment, fp.created_at
-          FROM fleet_prestarts fp
-          JOIN fleet_assets fa ON fa.id = fp.asset_id
-          WHERE fa.company_id = ${effectiveCompanyId}
-          ORDER BY fp.created_at DESC LIMIT 20`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.prestarts = prestartRows ?? [];
-    ctx.prestartCount = (prestartRows ?? []).length;
+    try {
+      const [prestartRows] = await db.execute(
+        sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_attention, fp.issue_comment, fp.created_at
+            FROM fleet_prestarts fp
+            JOIN fleet_assets fa ON fa.id = fp.asset_id
+            WHERE fa.company_id = ${effectiveCompanyId}
+            ORDER BY fp.created_at DESC LIMIT 20`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.prestarts = prestartRows ?? [];
+      ctx.prestartCount = (prestartRows ?? []).length;
+    } catch (e) { console.warn('[dazza-context] prestarts query failed:', String((e as Error)?.message ?? e)); ctx.prestarts = []; ctx.prestartCount = 0; }
 
-    const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const [dueDateRows] = await db.execute(
-      sql`SELECT id, name, service_date, rego_expiry, rego_not_applicable
-          FROM fleet_assets
-          WHERE company_id = ${effectiveCompanyId}
-            AND archived = 0
-            AND (
-              (service_date IS NOT NULL AND service_date <= ${in14})
-              OR (rego_not_applicable = 0 AND rego_expiry IS NOT NULL AND rego_expiry <= ${in14})
-            )`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.fleetDueDates = dueDateRows ?? [];
+    try {
+      const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const [dueDateRows] = await db.execute(
+        sql`SELECT id, name, service_date, rego_expiry, rego_not_applicable
+            FROM fleet_assets
+            WHERE company_id = ${effectiveCompanyId}
+              AND archived = 0
+              AND (
+                (service_date IS NOT NULL AND service_date <= ${in14})
+                OR (rego_not_applicable = 0 AND rego_expiry IS NOT NULL AND rego_expiry <= ${in14})
+              )`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.fleetDueDates = dueDateRows ?? [];
+    } catch (e) { console.warn('[dazza-context] fleet due dates query failed:', String((e as Error)?.message ?? e)); ctx.fleetDueDates = []; }
   }
 
   // ── Estimates ─────────────────────────────────────────────────────────────
-  // seeDollars is enforced here — subtotals are never included when false.
   if (canEstimating) {
-    let estRows: Array<Record<string, unknown>>;
-    if (seeDollars) {
-      const [rows] = await db.execute(
-        sql`SELECT e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at,
-                   j.name as job_name,
-                   COALESCE(SUM(CAST(el.quantity AS DECIMAL(15,4)) * CAST(el.rate AS DECIMAL(15,4))), 0) as subtotal
-            FROM estimates e
-            LEFT JOIN jobs j ON j.id = e.job_id
-            LEFT JOIN estimate_lines el ON el.estimate_id = e.id
-            WHERE e.company_id = ${effectiveCompanyId}
-            GROUP BY e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at, j.name
-            ORDER BY e.created_at DESC LIMIT 50`
-      ) as unknown as [Array<Record<string, unknown>>, unknown];
-      estRows = rows ?? [];
-    } else {
-      // No dollar fields at all — not even markup or gst_mode
-      const [rows] = await db.execute(
-        sql`SELECT e.id, e.job_id, e.title, e.status, e.created_at, j.name as job_name
-            FROM estimates e
-            LEFT JOIN jobs j ON j.id = e.job_id
-            WHERE e.company_id = ${effectiveCompanyId}
-            ORDER BY e.created_at DESC LIMIT 50`
-      ) as unknown as [Array<Record<string, unknown>>, unknown];
-      estRows = rows ?? [];
-    }
-    ctx.estimates = estRows;
+    try {
+      let estRows: Array<Record<string, unknown>>;
+      if (seeDollars) {
+        const [rows] = await db.execute(
+          sql`SELECT e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at,
+                     j.name as job_name,
+                     COALESCE(SUM(CAST(el.quantity AS DECIMAL(15,4)) * CAST(el.rate AS DECIMAL(15,4))), 0) as subtotal
+              FROM estimates e
+              LEFT JOIN jobs j ON j.id = e.job_id
+              LEFT JOIN estimate_lines el ON el.estimate_id = e.id
+              WHERE e.company_id = ${effectiveCompanyId}
+              GROUP BY e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at, j.name
+              ORDER BY e.created_at DESC LIMIT 50`
+        ) as unknown as [Array<Record<string, unknown>>, unknown];
+        estRows = rows ?? [];
+      } else {
+        const [rows] = await db.execute(
+          sql`SELECT e.id, e.job_id, e.title, e.status, e.created_at, j.name as job_name
+              FROM estimates e
+              LEFT JOIN jobs j ON j.id = e.job_id
+              WHERE e.company_id = ${effectiveCompanyId}
+              ORDER BY e.created_at DESC LIMIT 50`
+        ) as unknown as [Array<Record<string, unknown>>, unknown];
+        estRows = rows ?? [];
+      }
+      ctx.estimates = estRows;
+    } catch (e) { console.warn('[dazza-context] estimates query failed:', String((e as Error)?.message ?? e)); ctx.estimates = []; }
   }
 
   // ── Forms ─────────────────────────────────────────────────────────────────
   if (canForms) {
-    const [templateRows] = await db.execute(
-      sql`SELECT id, name, category, created_at
-          FROM form_templates WHERE company_id = ${effectiveCompanyId}
-          ORDER BY name ASC LIMIT 50`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.formTemplates = templateRows ?? [];
+    try {
+      const [templateRows] = await db.execute(
+        sql`SELECT id, name, category, created_at
+            FROM form_templates WHERE company_id = ${effectiveCompanyId}
+            ORDER BY name ASC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.formTemplates = templateRows ?? [];
+    } catch (e) { console.warn('[dazza-context] form templates query failed:', String((e as Error)?.message ?? e)); ctx.formTemplates = []; }
 
-    const [submissionRows] = await db.execute(
-      sql`SELECT s.id, s.job_id, s.template_id, s.status, s.created_at, s.updated_at,
-                 j.name as job_name, ft.name as template_name
-          FROM job_form_submissions s
-          LEFT JOIN jobs j ON j.id = s.job_id
-          LEFT JOIN form_templates ft ON ft.id = s.template_id
-          WHERE s.company_id = ${effectiveCompanyId}
-          ORDER BY s.updated_at DESC LIMIT 100`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.formSubmissions = submissionRows ?? [];
+    try {
+      const [submissionRows] = await db.execute(
+        sql`SELECT s.id, s.job_id, s.template_id, s.status, s.created_at, s.updated_at,
+                   j.name as job_name, ft.name as template_name
+            FROM job_form_submissions s
+            LEFT JOIN jobs j ON j.id = s.job_id
+            LEFT JOIN form_templates ft ON ft.id = s.template_id
+            WHERE s.company_id = ${effectiveCompanyId}
+            ORDER BY s.updated_at DESC LIMIT 100`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.formSubmissions = submissionRows ?? [];
+    } catch (e) { console.warn('[dazza-context] form submissions query failed:', String((e as Error)?.message ?? e)); ctx.formSubmissions = []; }
   }
 
   // ── Files ─────────────────────────────────────────────────────────────────
   if (canFiles) {
-    const [fileRows] = await db.execute(
-      sql`SELECT id, original_name, label, job_id, created_at
-          FROM company_files WHERE company_id = ${effectiveCompanyId}
-          ORDER BY created_at DESC LIMIT 50`
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
-    ctx.files = fileRows ?? [];
+    try {
+      const [fileRows] = await db.execute(
+        sql`SELECT id, original_name, label, job_id, created_at
+            FROM company_files WHERE company_id = ${effectiveCompanyId}
+            ORDER BY created_at DESC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      ctx.files = fileRows ?? [];
+    } catch (e) { console.warn('[dazza-context] files query failed:', String((e as Error)?.message ?? e)); ctx.files = []; }
   }
 
   return ctx;

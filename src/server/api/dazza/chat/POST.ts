@@ -494,7 +494,8 @@ export default async function handler(req: Request, res: Response) {
       supportCompanyName: ctx.supportMode ? ctx.companyName : undefined,
     });
   } catch (error) {
-    console.error('POST /api/dazza/chat error:', error);
-    res.status(500).json({ error: 'Failed to process chat' });
+    const msg = String((error as Error)?.message ?? error);
+    console.error('POST /api/dazza/chat CRASH:', msg, error);
+    res.status(500).json({ error: 'Failed to process chat', detail: msg });
   }
 }
