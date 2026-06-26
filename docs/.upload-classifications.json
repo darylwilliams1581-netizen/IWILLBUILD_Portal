@@ -192,6 +192,23 @@
       "summary": "A technical specification document for fixing Job Form Runner scrolling behavior. Provides CSS guidance, layout rules, and validation steps for ensuring forms are scrollable across all devices and input methods.",
       "fileName": "screenshot-2026-06-26T08-49-51.jpg",
       "storedUploadFilename": "f38wenbvln_1782463791836_file__j1meo2pGk.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#1a1f3a",
+        "#ff5a7e",
+        "#00d084"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of a forms management interface showing two template cards (Pre-Start and Incident) with a dark theme. User is referencing this design to request a background color change to white.",
+      "fileName": "screenshot-2026-06-26T08-57-45.jpg",
+      "storedUploadFilename": "f38wenbvln_1782464266603_file__bWm5od7lm.jpg"
     }
   ]
 }
