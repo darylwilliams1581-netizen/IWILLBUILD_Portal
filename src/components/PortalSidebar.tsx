@@ -19,10 +19,30 @@ import {
   X,
   ShieldCheck,
   Activity,
+  CreditCard,
+  AlertTriangle,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
 import NotificationBell from '@/components/NotificationBell';
+
+// ── Trial/subscription status hook ───────────────────────────────────────────
+interface SubInfo {
+  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'no_company';
+  plan: string;
+  daysLeft: number | null;
+}
+
+function useSubscriptionStatus() {
+  const [info, setInfo] = useState<SubInfo | null>(null);
+  useEffect(() => {
+    fetch('/api/subscription/status', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: SubInfo | null) => { if (d) setInfo(d); })
+      .catch(() => {});
+  }, []);
+  return info;
+}
 
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
@@ -37,8 +57,9 @@ const navItems = [
 ] as const;
 
 const bottomItems = [
-  { label: 'Team',     icon: Users,    href: '/team' },
-  { label: 'Settings', icon: Settings, href: '/settings' },
+  { label: 'Team',     icon: Users,       href: '/team' },
+  { label: 'Billing',  icon: CreditCard,  href: '/billing' },
+  { label: 'Settings', icon: Settings,    href: '/settings' },
 ];
 
 // ─── Shared nav content ───────────────────────────────────────────────────────
@@ -56,6 +77,7 @@ function SidebarContent({
   const { user: sessionUser } = useSession();
   const { me } = useMe();
   const { isAdmin, loading: permsLoading, can, isOwner } = usePermissions();
+  const subInfo = useSubscriptionStatus();
 
   const isActive = (href: string) => location.pathname === href;
 
@@ -201,6 +223,44 @@ function SidebarContent({
             </div>
           )}
         </button>
+
+        {/* Trial / subscription banner */}
+        {subInfo && !isOwner && subInfo.status !== 'active' && (
+          <Link
+            to="/billing"
+            className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
+              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled'
+                ? 'bg-red-500/20 hover:bg-red-500/30'
+                : subInfo.status === 'past_due'
+                ? 'bg-red-500/20 hover:bg-red-500/30'
+                : (subInfo.daysLeft ?? 14) <= 5
+                ? 'bg-amber-500/20 hover:bg-amber-500/30'
+                : 'bg-white/5 hover:bg-white/10'
+            }`}
+          >
+            {subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due' ? (
+              <AlertTriangle size={13} className="text-red-400 shrink-0" />
+            ) : (
+              <CreditCard size={13} className="text-amber-400 shrink-0" />
+            )}
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                {subInfo.status === 'trial_expired' ? (
+                  <p className="text-xs font-bold text-red-300">Trial expired</p>
+                ) : subInfo.status === 'cancelled' ? (
+                  <p className="text-xs font-bold text-red-300">Subscription cancelled</p>
+                ) : subInfo.status === 'past_due' ? (
+                  <p className="text-xs font-bold text-red-300">Payment past due</p>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-amber-300">Free trial</p>
+                    <p className="text-[10px] text-white/40">{subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining</p>
+                  </>
+                )}
+              </div>
+            )}
+          </Link>
+        )}
 
         {/* User strip */}
         {!collapsed && (sessionUser || me) && (() => {

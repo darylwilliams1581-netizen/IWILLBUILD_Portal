@@ -70,6 +70,16 @@ export const companies = mysqlTable('companies', {
   email: varchar('email', { length: 255 }),
   website: varchar('website', { length: 255 }),
   address: text('address'),
+  // ── SaaS subscription fields ─────────────────────────────────────────────
+  // plan: solo | team | pro | enterprise
+  plan: varchar('plan', { length: 30 }).notNull().default('trial'),
+  // subscriptionStatus: trial | active | past_due | cancelled | expired
+  subscriptionStatus: varchar('subscription_status', { length: 30 }).notNull().default('trial'),
+  trialEndsAt: timestamp('trial_ends_at'),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 100 }),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 100 }),
+  stripePriceId: varchar('stripe_price_id', { length: 100 }),
+  maxUsers: int('max_users').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });

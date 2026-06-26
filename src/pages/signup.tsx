@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  Eye, EyeOff, ArrowRight, Lock, Mail, User, AlertCircle,
+  CheckCircle2, Building2, ChevronRight, Users, Zap, Crown,
+} from 'lucide-react';
 import { signIn } from '@/lib/auth/auth-client';
 
-// Password policy checks
+// ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
   return {
     length: pw.length >= 8,
@@ -24,69 +27,64 @@ function StrengthRow({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-export default function SignupPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+// ── Plan definitions ──────────────────────────────────────────────────────────
+const PLANS = [
+  {
+    id: 'solo',
+    name: 'Solo',
+    price: '$19',
+    period: '/mo',
+    maxUsers: 1,
+    description: 'Perfect for sole traders',
+    icon: User,
+    color: 'border-slate-600 hover:border-slate-400',
+    activeColor: 'border-primary bg-primary/10',
+    badge: null,
+  },
+  {
+    id: 'team',
+    name: 'Team',
+    price: '$79',
+    period: '/mo',
+    maxUsers: 10,
+    description: 'Up to 10 team members',
+    icon: Users,
+    color: 'border-slate-600 hover:border-slate-400',
+    activeColor: 'border-primary bg-primary/10',
+    badge: 'Most Popular',
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$149',
+    period: '/mo',
+    maxUsers: 20,
+    description: 'Up to 20 team members',
+    icon: Zap,
+    color: 'border-slate-600 hover:border-slate-400',
+    activeColor: 'border-primary bg-primary/10',
+    badge: null,
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 'Custom',
+    period: '',
+    maxUsers: 999,
+    description: 'Unlimited users + support',
+    icon: Crown,
+    color: 'border-slate-600 hover:border-slate-400',
+    activeColor: 'border-amber-400 bg-amber-400/10',
+    badge: null,
+  },
+] as const;
 
-  const navigate = useNavigate();
-  const strength = getPasswordStrength(password);
-  const passwordValid = strength.length && strength.letter && strength.number && strength.symbol;
+type PlanId = typeof PLANS[number]['id'];
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) { setError('Please enter your full name.'); return; }
-    if (!email.trim()) { setError('Please enter your email address.'); return; }
-    if (!passwordValid) { setError('Password does not meet the requirements below.'); return; }
-
-    setError('');
-    setLoading(true);
-
-    try {
-      // Call our custom signup endpoint (handles profile + role assignment)
-      const res = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), password }),
-        credentials: 'include',
-      });
-
-      const data = await res.json() as { ok?: boolean; error?: string };
-
-      if (!res.ok) {
-        setError(data.error || 'Signup failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Auto sign-in after successful signup
-      const loginResult = await signIn.email({ email: email.trim().toLowerCase(), password });
-      if (loginResult.error) {
-        // Signup worked but auto-login failed — send to login page
-        navigate('/login', { replace: true });
-        return;
-      }
-
-      navigate('/dashboard', { replace: true });
-    } catch {
-      setError('Something went wrong. Please try again.');
-      setLoading(false);
-    }
-  }
-
+// ── Background decoration ─────────────────────────────────────────────────────
+function BlueprintBg() {
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
-      <Helmet>
-        <title>Create Account — IWILLBUILD Portal</title>
-        <meta name="description" content="Create your IWILLBUILD portal account to manage jobs, crews, fleet, and more." />
-        <link rel="canonical" href="https://iwillbuild.com.au/signup" />
-        <meta name="robots" content="noindex" />
-      </Helmet>
-
-      {/* Blueprint grid */}
+    <>
       <div
         className="absolute inset-0 opacity-[0.06]"
         style={{
@@ -105,159 +103,384 @@ export default function SignupPage() {
       />
       <div className="absolute top-0 left-0 w-64 h-64 border-r border-b border-white/5 rounded-br-[80px]" />
       <div className="absolute bottom-0 right-0 w-64 h-64 border-l border-t border-white/5 rounded-tl-[80px]" />
+    </>
+  );
+}
 
-      {/* Card */}
+// ── Step indicator ────────────────────────────────────────────────────────────
+function StepDots({ step }: { step: number }) {
+  return (
+    <div className="flex items-center justify-center gap-2 mb-6">
+      {[1, 2, 3].map((s) => (
+        <div
+          key={s}
+          className={`rounded-full transition-all duration-300 ${
+            s === step
+              ? 'w-6 h-2 bg-primary'
+              : s < step
+              ? 'w-2 h-2 bg-primary/50'
+              : 'w-2 h-2 bg-white/15'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function SignupPage() {
+  const navigate = useNavigate();
+
+  // Step 1 — company
+  const [companyName, setCompanyName] = useState('');
+
+  // Step 2 — plan
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('team');
+
+  // Step 3 — account
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const strength = getPasswordStrength(password);
+  const passwordValid = strength.length && strength.letter && strength.number && strength.symbol;
+
+  // ── Step navigation ─────────────────────────────────────────────────────────
+  function goStep2() {
+    if (!companyName.trim()) { setError('Please enter your company name.'); return; }
+    setError('');
+    setStep(2);
+  }
+
+  function goStep3() {
+    setError('');
+    setStep(3);
+  }
+
+  // ── Final submit ────────────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setError('Please enter your full name.'); return; }
+    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (!passwordValid) { setError('Password does not meet the requirements below.'); return; }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          companyName: companyName.trim(),
+          plan: selectedPlan,
+        }),
+        credentials: 'include',
+      });
+
+      const data = await res.json() as { ok?: boolean; error?: string };
+
+      if (!res.ok) {
+        setError(data.error || 'Signup failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Auto sign-in
+      const loginResult = await signIn.email({ email: email.trim().toLowerCase(), password });
+      if (loginResult.error) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      navigate('/dashboard', { replace: true });
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150';
+
+  return (
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
+      <Helmet>
+        <title>Get Started — IWILLBUILD Portal</title>
+        <meta name="description" content="Create your IWILLBUILD portal account. 14-day free trial, no credit card required." />
+        <link rel="canonical" href="https://iwillbuild.com/signup" />
+        <meta name="robots" content="noindex" />
+      </Helmet>
+
+      <BlueprintBg />
+
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' as const }}
-        className="relative z-10 w-full max-w-md mx-4"
+        className="relative z-10 w-full max-w-lg mx-4"
       >
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img
+            src="/airo-assets/images/logo/horizontal"
+            alt="IWILLBUILD"
+            className="h-10 w-auto object-contain"
+          />
+        </div>
+
         <div className="bg-[#1A1D23] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-white/10">
-            <div className="flex items-center justify-center mb-6">
-              <img
-                src="/airo-assets/images/logo/horizontal"
-                alt="IWILLBUILD"
-                className="h-10 w-auto object-contain"
-              />
-            </div>
-            <h1 className="font-heading font-bold text-xl text-white text-center">
-              Create Account
-            </h1>
-            <p className="text-sm text-white/40 text-center mt-1">
-              Internal access only
-            </p>
+          <div className="px-8 pt-7 pb-5 border-b border-white/10">
+            <StepDots step={step} />
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div key="h1" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2 }}>
+                  <h1 className="font-heading font-bold text-xl text-white text-center">Your company name</h1>
+                  <p className="text-sm text-white/40 text-center mt-1">This is how your portal will be labelled</p>
+                </motion.div>
+              )}
+              {step === 2 && (
+                <motion.div key="h2" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2 }}>
+                  <h1 className="font-heading font-bold text-xl text-white text-center">Choose your plan</h1>
+                  <p className="text-sm text-white/40 text-center mt-1">14-day free trial · No credit card required</p>
+                </motion.div>
+              )}
+              {step === 3 && (
+                <motion.div key="h3" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2 }}>
+                  <h1 className="font-heading font-bold text-xl text-white text-center">Create your account</h1>
+                  <p className="text-sm text-white/40 text-center mt-1">You'll be the Admin for <span className="text-white/70 font-medium">{companyName}</span></p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="px-8 py-6">
-            <div className="flex flex-col gap-4">
-              {/* Error */}
-              {error && (
-                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400">
-                  <AlertCircle size={14} className="shrink-0" />
-                  {error}
-                </div>
+          {/* Body */}
+          <div className="px-8 py-6">
+            {error && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400 mb-4">
+                <AlertCircle size={14} className="shrink-0" />
+                {error}
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+
+              {/* ── Step 1: Company name ─────────────────────────────────── */}
+              {step === 1 && (
+                <motion.div key="s1" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
+                        Company / Business Name
+                      </label>
+                      <div className="relative">
+                        <Building2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                        <input
+                          type="text"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && goStep2()}
+                          placeholder="Walsh Constructions Pty Ltd"
+                          autoFocus
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={goStep2}
+                      className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
+                    >
+                      Continue <ChevronRight size={15} />
+                    </button>
+                    <p className="text-center text-xs text-white/35">
+                      Already have an account?{' '}
+                      <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">Sign in</Link>
+                    </p>
+                  </div>
+                </motion.div>
               )}
 
-              {/* Full name */}
-              <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Darren Walsh"
-                    autoComplete="name"
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
-                  />
-                </div>
-              </div>
+              {/* ── Step 2: Plan selection ───────────────────────────────── */}
+              {step === 2 && (
+                <motion.div key="s2" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {PLANS.map((plan) => {
+                        const Icon = plan.icon;
+                        const isActive = selectedPlan === plan.id;
+                        return (
+                          <button
+                            key={plan.id}
+                            onClick={() => setSelectedPlan(plan.id)}
+                            className={`relative flex flex-col items-start gap-1.5 p-3.5 rounded-xl border-2 text-left transition-all duration-150 ${isActive ? plan.activeColor : plan.color}`}
+                          >
+                            {plan.badge && (
+                              <span className="absolute -top-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {plan.badge}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Icon size={14} className={isActive ? 'text-primary' : 'text-white/50'} />
+                              <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-white/70'}`}>{plan.name}</span>
+                            </div>
+                            <div className="flex items-baseline gap-0.5">
+                              <span className={`text-lg font-black ${isActive ? 'text-white' : 'text-white/60'}`}>{plan.price}</span>
+                              {plan.period && <span className="text-xs text-white/35">{plan.period}</span>}
+                            </div>
+                            <p className="text-[11px] text-white/40 leading-tight">{plan.description}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@iwillbuild.com.au"
-                    autoComplete="email"
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
-                  />
-                </div>
-              </div>
+                    <p className="text-center text-xs text-white/30 mt-1">
+                      All plans include a 14-day free trial. Billing starts after trial ends.
+                    </p>
 
-              {/* Password */}
-              <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors duration-150"
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-
-                {/* Strength indicators — only show once user starts typing */}
-                {password.length > 0 && (
-                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 px-0.5">
-                    <StrengthRow ok={strength.length} label="8+ characters" />
-                    <StrengthRow ok={strength.letter} label="1 letter" />
-                    <StrengthRow ok={strength.number} label="1 number" />
-                    <StrengthRow ok={strength.symbol} label="1 symbol" />
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        onClick={() => { setError(''); setStep(1); }}
+                        className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={goStep3}
+                        className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
+                      >
+                        Continue <ChevronRight size={15} />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+                </motion.div>
+              )}
 
-              {/* CTA */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creating account…
-                  </span>
-                ) : (
-                  <>
-                    Create Account
-                    <ArrowRight size={15} />
-                  </>
-                )}
-              </button>
+              {/* ── Step 3: Account details ──────────────────────────────── */}
+              {step === 3 && (
+                <motion.div key="s3" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
+                  <form onSubmit={handleSubmit}>
+                    <div className="flex flex-col gap-4">
+                      {/* Full name */}
+                      <div>
+                        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Full Name</label>
+                        <div className="relative">
+                          <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Darren Walsh"
+                            autoComplete="name"
+                            autoFocus
+                            required
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
 
-              {/* Login link */}
-              <p className="text-center text-xs text-white/35 mt-1">
-                Already have an account?{' '}
-                <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">
-                  Sign in
-                </Link>
-              </p>
-            </div>
-          </form>
+                      {/* Email */}
+                      <div>
+                        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Email Address</label>
+                        <div className="relative">
+                          <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="you@company.com.au"
+                            autoComplete="email"
+                            required
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password */}
+                      <div>
+                        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Password</label>
+                        <div className="relative">
+                          <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            autoComplete="new-password"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors duration-150"
+                          >
+                            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                        {password.length > 0 && (
+                          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 px-0.5">
+                            <StrengthRow ok={strength.length} label="8+ characters" />
+                            <StrengthRow ok={strength.letter} label="1 letter" />
+                            <StrengthRow ok={strength.number} label="1 number" />
+                            <StrengthRow ok={strength.symbol} label="1 symbol" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => { setError(''); setStep(2); }}
+                          className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150"
+                        >
+                          {loading ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Creating…
+                            </span>
+                          ) : (
+                            <>Start Free Trial <ArrowRight size={15} /></>
+                          )}
+                        </button>
+                      </div>
+
+                      <p className="text-center text-xs text-white/35">
+                        Already have an account?{' '}
+                        <Link to="/login" className="text-primary hover:text-orange-400 font-medium transition-colors duration-150">Sign in</Link>
+                      </p>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+
+            </AnimatePresence>
+          </div>
 
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              IWILLBUILD Pty Ltd &mdash; Authorised personnel only
+              IWILLBUILD Pty Ltd &mdash; By signing up you agree to our Terms of Service
             </p>
           </div>
         </div>
 
         <div className="mt-4 text-center">
-          <Link
-            to="/"
-            className="text-xs text-white/30 hover:text-primary transition-colors duration-150"
-          >
+          <Link to="/" className="text-xs text-white/30 hover:text-primary transition-colors duration-150">
             &larr; Back to home
           </Link>
         </div>

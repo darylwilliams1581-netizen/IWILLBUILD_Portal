@@ -9,6 +9,9 @@
     },
     "custom-domain": {
       "installedAt": "2026-06-25T23:00:38.974Z"
+    },
+    "payment/stripe": {
+      "installedAt": "2026-06-26T14:00:09.357Z"
     }
   }
 }

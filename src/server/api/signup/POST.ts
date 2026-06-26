@@ -4,7 +4,13 @@ import { db } from '@/server/db/client';
 import { user, profiles, companies } from '@/server/db/schema';
 import { getAuth } from '@/lib/auth/auth';
 
-// Password policy: min 8 chars, at least 1 letter, 1 number, 1 symbol
+const PLAN_MAX_USERS: Record<string, number> = {
+  solo:       1,
+  team:       10,
+  pro:        20,
+  enterprise: 999,
+};
+
 function validatePassword(password: string): string | null {
   if (password.length < 8) return 'Password must be at least 8 characters.';
   if (!/[a-zA-Z]/.test(password)) return 'Password must contain at least one letter.';
@@ -14,23 +20,31 @@ function validatePassword(password: string): string | null {
 }
 
 export default async function handler(req: Request, res: Response) {
-  const { name, email, password } = req.body as {
+  const { name, email, password, companyName, plan } = req.body as {
     name?: string;
     email?: string;
     password?: string;
+    companyName?: string;
+    plan?: string;
   };
 
   if (!name?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
   }
+  if (!companyName?.trim()) {
+    return res.status(400).json({ error: 'Company name is required.' });
+  }
 
   const pwError = validatePassword(password);
   if (pwError) return res.status(400).json({ error: pwError });
 
+  const resolvedPlan = PLAN_MAX_USERS[plan ?? ''] ? (plan as string) : 'team';
+  const maxUsers = PLAN_MAX_USERS[resolvedPlan];
+
   try {
     const auth = getAuth();
 
-    // Register via BetterAuth (handles hashing, user row, account row)
+    // Register via BetterAuth
     const result = await auth.api.signUpEmail({
       body: { name: name.trim(), email: email.trim().toLowerCase(), password },
     });
@@ -41,33 +55,53 @@ export default async function handler(req: Request, res: Response) {
 
     const userId = result.user.id;
 
-    // Determine role: first user in the system becomes admin
+    // Check if this is the very first user in the system (platform owner)
     const [{ count }] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(user);
-    const isFirstUser = Number(count) <= 1; // <=1 because this user was just created
-    const role = isFirstUser ? 'admin' : 'member';
+    const isFirstUser = Number(count) <= 1;
 
-    // Ensure a company exists (or create one for the first user)
-    let companyId: number | null = null;
-    const existingCompanies = await db.select({ id: companies.id }).from(companies).limit(1);
-    if (existingCompanies.length > 0) {
-      companyId = existingCompanies[0].id;
-    } else {
-      const [newCompany] = await db.insert(companies).values({ name: 'IWILLBUILD' }).$returningId();
-      companyId = newCompany?.id ?? null;
-    }
+    // Create a new company for this signup
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
-    // Create profile row
+    const [newCompany] = await db
+      .insert(companies)
+      .values({
+        name: companyName.trim(),
+        plan: resolvedPlan,
+        subscriptionStatus: 'trial',
+        trialEndsAt,
+        maxUsers,
+      })
+      .$returningId();
+
+    const companyId = newCompany?.id ?? null;
+
+    // Create profile — first user in system = owner, otherwise admin of their company
+    const role = isFirstUser ? 'owner' : 'admin';
     const existing = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
     if (existing.length === 0) {
-      await db.insert(profiles).values({ userId, companyId, role });
+      await db.insert(profiles).values({
+        userId,
+        companyId,
+        role,
+        // Admins get all permissions by default
+        permJobs:          true,
+        permFleet:         true,
+        permForms:         true,
+        permFiles:         true,
+        permEstimating:    true,
+        permDazzaAi:       true,
+        permAdmin:         true,
+        permSeeDollars:    true,
+        permInviteUsers:   true,
+        permDeleteRecords: true,
+      });
     }
 
-    return res.status(201).json({ ok: true, role });
+    return res.status(201).json({ ok: true, role, companyId, plan: resolvedPlan });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    // BetterAuth throws on duplicate email
     if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already')) {
       return res.status(409).json({ error: 'An account with that email already exists.' });
     }

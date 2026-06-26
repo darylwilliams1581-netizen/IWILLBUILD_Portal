@@ -19,6 +19,7 @@ import FilesPage from './pages/files';
 import EstimatingPage from './pages/estimating';
 import EstimateEditorPage from './pages/estimate-editor';
 import OwnerConsolePage from './pages/owner-console';
+import BillingPage from './pages/billing';
 import ProdNotFoundPage from './pages/_404';
 
 const NotFoundPage = import.meta.env.DEV
@@ -48,6 +49,7 @@ export const routes: RouteObject[] = [
   { path: '/team',        element: protect(<TeamPage />) },
   { path: '/settings',    element: protect(<SettingsPage />) },
   { path: '/owner-console', element: protect(<OwnerConsolePage />) },
+  { path: '/billing',       element: protect(<BillingPage />) },
   { path: '*',            element: <NotFoundPage /> },
 ];
 

@@ -6,7 +6,7 @@ import {
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert,
+  ShieldAlert, Plus, X,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -426,6 +426,12 @@ export default function OwnerConsolePage() {
   const [enteringSupport, setEnteringSupport] = useState<number | null>(null);
   const [filterCompanyId, setFilterCompanyId] = useState<number | null>(null);
 
+  // Create company modal state
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', plan: 'team', abn: '', phone: '', email: '' });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
   // Run migrations once on mount
   useEffect(() => {
     Promise.all([
@@ -502,6 +508,28 @@ export default function OwnerConsolePage() {
   const handleViewActivity = (company: Company) => {
     setFilterCompanyId(company.id);
     setTab('activity');
+  };
+
+  const handleCreateCompany = async () => {
+    if (!createForm.name.trim()) { setCreateError('Company name is required.'); return; }
+    setCreating(true);
+    setCreateError('');
+    try {
+      const res = await fetch('/api/owner-console/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(createForm),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) { setCreateError(data.error ?? 'Failed to create company.'); setCreating(false); return; }
+      setShowCreateCompany(false);
+      setCreateForm({ name: '', plan: 'team', abn: '', phone: '', email: '' });
+      void loadData(true);
+    } catch {
+      setCreateError('Something went wrong.');
+    }
+    setCreating(false);
   };
 
   // Access guard
@@ -703,9 +731,17 @@ export default function OwnerConsolePage() {
               {tab === 'companies' && (
                 <div className="max-w-5xl">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100">
-                      <h2 className="font-bold text-slate-800">All Companies</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">{companies.length} {companies.length === 1 ? 'company' : 'companies'}</p>
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+                      <div>
+                        <h2 className="font-bold text-slate-800">All Companies</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">{companies.length} {companies.length === 1 ? 'company' : 'companies'}</p>
+                      </div>
+                      <button
+                        onClick={() => setShowCreateCompany(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors"
+                      >
+                        <Plus size={13} /> Create Company
+                      </button>
                     </div>
                     {companies.length === 0 ? (
                       <p className="text-sm text-slate-400 text-center py-12">No companies found</p>
@@ -905,6 +941,100 @@ export default function OwnerConsolePage() {
           )}
         </div>
       </div>
+
+      {/* ── Create Company Modal ─────────────────────────────────────────────── */}
+      {showCreateCompany && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="font-heading font-black text-base text-slate-900">Create New Company</h2>
+              <button onClick={() => { setShowCreateCompany(false); setCreateError(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="px-6 py-5 flex flex-col gap-4">
+              {createError && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm text-red-700">
+                  <XCircle size={13} className="shrink-0" /> {createError}
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Company Name *</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Walsh Constructions Pty Ltd"
+                  autoFocus
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Plan</label>
+                <select
+                  value={createForm.plan}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, plan: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+                >
+                  <option value="trial">Trial (14 days)</option>
+                  <option value="solo">Solo — 1 user ($19/mo)</option>
+                  <option value="team">Team — 10 users ($79/mo)</option>
+                  <option value="pro">Pro — 20 users ($149/mo)</option>
+                  <option value="enterprise">Enterprise — Unlimited</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">ABN</label>
+                  <input
+                    type="text"
+                    value={createForm.abn}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, abn: e.target.value }))}
+                    placeholder="12 345 678 901"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone</label>
+                  <input
+                    type="text"
+                    value={createForm.phone}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="0400 000 000"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Admin Email (optional)</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="admin@company.com.au"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 pb-5">
+              <button
+                onClick={() => { setShowCreateCompany(false); setCreateError(''); }}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleCreateCompany()}
+                disabled={creating}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+              >
+                {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                Create Company
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

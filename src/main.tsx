@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import App from './App';
 import './styles/globals.css';
+import './lib/i18n';
 
 if (import.meta.env.MODE === 'development') {
   const meta = document.createElement('meta');
