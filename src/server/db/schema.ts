@@ -95,6 +95,19 @@ export const profiles = mysqlTable('profiles', {
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),
   phone: varchar('phone', { length: 30 }),
   role: varchar('role', { length: 50 }).notNull().default('viewer'),
+  // Status: active | invited | inactive
+  status: varchar('status', { length: 30 }).notNull().default('active'),
+  // Granular permission toggles (1 = allowed, 0 = denied)
+  permJobs:        boolean('perm_jobs').notNull().default(true),
+  permFleet:       boolean('perm_fleet').notNull().default(true),
+  permForms:       boolean('perm_forms').notNull().default(true),
+  permFiles:       boolean('perm_files').notNull().default(true),
+  permEstimating:  boolean('perm_estimating').notNull().default(true),
+  permDazzaAi:     boolean('perm_dazza_ai').notNull().default(true),
+  permAdmin:       boolean('perm_admin').notNull().default(false),
+  permSeeDollars:  boolean('perm_see_dollars').notNull().default(true),
+  permInviteUsers: boolean('perm_invite_users').notNull().default(false),
+  permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
