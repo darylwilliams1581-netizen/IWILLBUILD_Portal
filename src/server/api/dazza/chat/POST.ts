@@ -83,7 +83,149 @@ function tryLocalTool(question: string): string | null {
   return null;
 }
 
-// ── Context summary line (for admin/owner debug) ──────────────────────────────
+// ── Context-aware local handler ───────────────────────────────────────────────
+// Handles portal data questions that don't need OpenAI.
+// Returns a string answer or null (fall through to OpenAI).
+
+function tryContextHandler(q: string, ctx: DazzaContext): string | null {
+  const lq = q.toLowerCase().trim();
+  const p  = ctx.permissions;
+
+  // ── Cross-company guard ───────────────────────────────────────────────────
+  if (
+    /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lq)
+  ) {
+    return `I can't access another company's private IWILLBUILD data. I only have access to ${ctx.companyName}'s data.`;
+  }
+
+  // ── Job count ─────────────────────────────────────────────────────────────
+  if (/how many jobs|job count|number of jobs|total jobs/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const count = ctx.jobs?.length ?? 0;
+    if (count === 0) return `From IWILLBUILD data: No jobs found for ${ctx.companyName} yet. Source: Jobs.`;
+    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWILLBUILD for ${ctx.companyName}. Source: Jobs.`;
+  }
+
+  // ── Active / open jobs ────────────────────────────────────────────────────
+  if (/active jobs|open jobs|current jobs|list.*jobs|jobs.*list/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
+    const active = jobs.filter((j) => String(j.status ?? '').toLowerCase() !== 'completed' && String(j.status ?? '').toLowerCase() !== 'cancelled');
+    if (active.length === 0) return `From IWILLBUILD data: No active jobs found for ${ctx.companyName}. Source: Jobs.`;
+    const list = active.slice(0, 10).map((j) => `• **${String(j.name ?? 'Unnamed')}** (${String(j.status ?? 'Unknown')})${j.client ? ` — ${String(j.client)}` : ''}`).join('\n');
+    return `From IWILLBUILD data: **${active.length}** active job${active.length === 1 ? '' : 's'} for ${ctx.companyName}:\n${list}${active.length > 10 ? `\n…and ${active.length - 10} more.` : ''}\nSource: Jobs.`;
+  }
+
+  // ── Latest / newest job ───────────────────────────────────────────────────
+  if (/latest job|newest job|most recent job|last job added|last job created/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
+    if (jobs.length === 0) return `From IWILLBUILD data: No jobs found for ${ctx.companyName} yet. Source: Jobs.`;
+    const latest = jobs[0];
+    return `From IWILLBUILD data: The latest job is **${String(latest.name ?? 'Unnamed')}**` +
+      `${latest.client ? ` for ${String(latest.client)}` : ''}` +
+      `${latest.status ? ` — Status: ${String(latest.status)}` : ''}` +
+      `${latest.created_at ? ` (created ${String(latest.created_at).slice(0, 10)})` : ''}.` +
+      ` Source: Jobs.`;
+  }
+
+  // ── Jobs needing attention ────────────────────────────────────────────────
+  if (/jobs.*attention|attention.*jobs|jobs.*issue|problem.*jobs/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const overdue = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
+    const today = new Date().toISOString().slice(0, 10);
+    const overdueItems = overdue.filter((t) => t.due_date && String(t.due_date).slice(0, 10) < today);
+    if (overdueItems.length === 0) return `From IWILLBUILD data: No jobs with overdue to-dos found. Source: Jobs.`;
+    const list = overdueItems.slice(0, 8).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}" overdue since ${String(t.due_date ?? '').slice(0, 10)}`).join('\n');
+    return `From IWILLBUILD data: **${overdueItems.length}** overdue to-do${overdueItems.length === 1 ? '' : 's'} across jobs:\n${list}\nSource: Jobs.`;
+  }
+
+  // ── Fleet count ───────────────────────────────────────────────────────────
+  if (/how many fleet|fleet count|number of fleet|total fleet|how many.*asset|fleet.*asset.*count/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const count = ctx.fleet?.length ?? 0;
+    if (count === 0) return `From IWILLBUILD data: No fleet assets found for ${ctx.companyName} yet. Source: Fleet.`;
+    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWILLBUILD for ${ctx.companyName}. Source: Fleet.`;
+  }
+
+  // ── Last / latest prestart ────────────────────────────────────────────────
+  if (/last prestart|latest prestart|most recent prestart|last.*daily check|recent.*prestart/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const prestarts = (ctx.prestarts ?? []) as Array<Record<string, unknown>>;
+    if (prestarts.length === 0) return `From IWILLBUILD data: No prestarts found for ${ctx.companyName} yet. Source: Fleet.`;
+    const last = prestarts[0];
+    const flagged = last.issue_needs_attention ? ` ⚠️ Issue flagged: "${String(last.issue_comment ?? '')}"` : ' No issues flagged.';
+    return `From IWILLBUILD data: The last prestart was for **${String(last.asset_name ?? 'Unknown asset')}**` +
+      `${last.submitted_by_name ? ` submitted by ${String(last.submitted_by_name)}` : ''}` +
+      `${last.created_at ? ` on ${String(last.created_at).slice(0, 10)}` : ''}.${flagged} Source: Fleet.`;
+  }
+
+  // ── Next service due ──────────────────────────────────────────────────────
+  if (/next service|service due|when.*service|service.*when|upcoming service/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
+    const withDates = fleet
+      .filter((f) => f.service_date)
+      .sort((a, b) => String(a.service_date).localeCompare(String(b.service_date)));
+    if (withDates.length === 0) return `From IWILLBUILD data: No service dates recorded for any fleet assets. Source: Fleet.`;
+    const next = withDates[0];
+    const today = new Date().toISOString().slice(0, 10);
+    const isOverdue = String(next.service_date).slice(0, 10) < today;
+    return `From IWILLBUILD data: The next service due is **${String(next.name ?? 'Unknown')}** — service date **${String(next.service_date).slice(0, 10)}**${isOverdue ? ' ⚠️ (overdue)' : ''}. Source: Fleet.`;
+  }
+
+  // ── Fleet issues / flags ──────────────────────────────────────────────────
+  if (/fleet issue|fleet flag|fleet problem|fleet.*attention|attention.*fleet/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const flags = (ctx.fleetFlags ?? []) as Array<Record<string, unknown>>;
+    if (flags.length === 0) return `From IWILLBUILD data: No fleet issues flagged for ${ctx.companyName}. Source: Fleet.`;
+    const list = flags.slice(0, 8).map((f) => `• **${String(f.asset_name ?? 'Unknown')}** — "${String(f.issue_comment ?? '')}" (${String(f.created_at ?? '').slice(0, 10)})`).join('\n');
+    return `From IWILLBUILD data: **${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\nSource: Fleet.`;
+  }
+
+  // ── Open to-dos ───────────────────────────────────────────────────────────
+  if (/open to.?do|outstanding to.?do|my to.?do|to.?do list|pending task/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const todos = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
+    if (todos.length === 0) return `From IWILLBUILD data: No open to-dos found for ${ctx.companyName}. Source: Jobs.`;
+    const list = todos.slice(0, 10).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}"${t.due_date ? ` (due ${String(t.due_date).slice(0, 10)})` : ''}`).join('\n');
+    return `From IWILLBUILD data: **${todos.length}** open to-do${todos.length === 1 ? '' : 's'}:\n${list}${todos.length > 10 ? `\n…and ${todos.length - 10} more.` : ''}\nSource: Jobs.`;
+  }
+
+  // ── Jobs with progress ────────────────────────────────────────────────────
+  if (/jobs.*progress|progress.*jobs|which jobs.*progress|progress recorded/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const progress = (ctx.jobProgress ?? []) as Array<Record<string, unknown>>;
+    if (progress.length === 0) return `From IWILLBUILD data: No job progress recorded for ${ctx.companyName} yet. Source: Jobs.`;
+    const list = progress.slice(0, 10).map((p) => `• **${String(p.job_name ?? 'Unknown')}** — ${String(p.avg_percent ?? 0)}% complete`).join('\n');
+    return `From IWILLBUILD data: **${progress.length}** job${progress.length === 1 ? '' : 's'} with progress recorded:\n${list}\nSource: Jobs.`;
+  }
+
+  // ── Estimate totals ───────────────────────────────────────────────────────
+  if (/estimate total|quote total|how much.*quoted|total.*estimate|approved.*work|estimate.*dollar|dollar.*estimate/i.test(lq)) {
+    if (!p.canEstimating) return "You don't have Estimating access.";
+    if (!p.seeDollars) return "I can't show cost values with your current permissions.";
+    const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
+    if (estimates.length === 0) return `From IWILLBUILD data: No estimates found for ${ctx.companyName} yet. Source: Estimates.`;
+    const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved');
+    const totalApproved = approved.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
+    const totalAll = estimates.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
+    return `From IWILLBUILD data: **${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} total.\n` +
+      `• All estimates subtotal: **$${totalAll.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n` +
+      `• Approved estimates: **${approved.length}** totalling **$${totalApproved.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n` +
+      `Source: Estimates.`;
+  }
+
+  // ── Form / template count ─────────────────────────────────────────────────
+  if (/how many forms|form count|number of forms|form template|available forms/i.test(lq)) {
+    if (!p.canForms) return "You don't have Forms access.";
+    const count = ctx.formTemplates?.length ?? 0;
+    if (count === 0) return `From IWILLBUILD data: No form templates found for ${ctx.companyName} yet. Source: Forms.`;
+    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** form template${count === 1 ? '' : 's'} available for ${ctx.companyName}. Source: Forms.`;
+  }
+
+  return null; // no local handler matched — fall through to OpenAI
+}
 
 function buildContextDebugLine(ctx: DazzaContext): string {
   const p = ctx.permissions;
@@ -456,9 +598,25 @@ export default async function handler(req: Request, res: Response) {
 
     // ── API key check ─────────────────────────────────────────────────────────
     const apiKey = getSecret('OPENAI_API_KEY');
+
+    // ── Context-aware local handler — no OpenAI needed ────────────────────────
+    const contextAnswer = tryContextHandler(lastUserMsg, ctx);
+    if (contextAnswer) {
+      const contextDebugLocal = permissions.isAdmin ? buildContextDebugLine(ctx) : undefined;
+      await auditLog(session.user.id, profile.companyId, lastUserMsg, detectModulesUsed(ctx), false, ctx.supportMode, ctx.supportCompanyId);
+      return res.json({
+        reply: contextAnswer,
+        localTool: true,
+        tokens: 0,
+        contextDebug: contextDebugLocal,
+        supportMode: ctx.supportMode,
+        supportCompanyName: ctx.supportMode ? ctx.companyName : undefined,
+      });
+    }
+
     if (!apiKey) {
       return res.json({
-        reply: "I'm Dazza, your IWILLBUILD assistant. To enable AI responses, an Owner or Admin needs to add an OpenAI API key in Settings → Dazza AI. Once that's done, I'll be able to answer questions about your jobs, fleet, estimates, and more using your real portal data.",
+        reply: "I can answer simple portal lookups and calculators, but an OpenAI API key is needed for general AI responses. An Owner or Admin can add one in Settings → Dazza AI.",
         noApiKey: true,
       });
     }
