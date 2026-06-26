@@ -215,13 +215,15 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
       console.log(`[startup-migration] Added ${table}.${column}`);
     } catch (e: unknown) {
-      const err = e as { cause?: { errno?: number }; errno?: number };
-      const errno = err?.cause?.errno ?? err?.errno;
-      if (errno !== 1060) {
-        // Not ER_DUP_FIELDNAME — log as a real warning
-        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, (err as Error)?.message ?? e);
+      // Check for ER_DUP_FIELDNAME by message — errno may not be enumerable on DrizzleQueryError
+      const msg = String((e as Error)?.message ?? e);
+      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name') ||
+                    (e as { errno?: number })?.errno === 1060 ||
+                    (e as { cause?: { errno?: number } })?.cause?.errno === 1060;
+      if (!isDup) {
+        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
       }
-      // errno 1060 = column already exists — silently ignore
+      // Duplicate column = already exists, silently ignore
     }
   }
 }

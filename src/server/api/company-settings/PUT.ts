@@ -7,6 +7,16 @@ import { eq, sql } from 'drizzle-orm';
 const VALID_SECTIONS = ['structure', 'dazza', 'banner', 'pdf'] as const;
 type Section = typeof VALID_SECTIONS[number];
 
+function isDupFieldError(e: unknown): boolean {
+  const msg = String((e as Error)?.message ?? e);
+  return (
+    msg.includes('ER_DUP_FIELDNAME') ||
+    msg.includes('Duplicate column name') ||
+    (e as { errno?: number })?.errno === 1060 ||
+    (e as { cause?: { errno?: number } })?.cause?.errno === 1060
+  );
+}
+
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -26,39 +36,48 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid section' });
     }
 
-    // col is validated against the whitelist — safe to embed in sql.raw for identifiers
     const col = `${section}_json`;
     const jsonStr = JSON.stringify(data ?? {});
     const companyId = profile.companyId;
 
-    // Ensure column exists — attempt ALTER, ignore ER_DUP_FIELDNAME (1060)
+    console.log(`[PUT company-settings] user=${session.user.id} company=${companyId} section=${section}`);
+
+    // ── Step 1: ensure column exists ─────────────────────────────────────────
     try {
       await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
+      console.log(`[PUT company-settings] Added column ${col}`);
     } catch (e: unknown) {
-      const err = e as { cause?: { errno?: number }; errno?: number };
-      const errno = err?.cause?.errno ?? err?.errno;
-      if (errno !== 1060) console.warn(`[company-settings PUT] ensureCol warning:`, e);
+      if (!isDupFieldError(e)) {
+        console.warn(`[PUT company-settings] ensureCol(${col}) unexpected:`, String((e as Error)?.message ?? e));
+      }
+      // Duplicate = already exists, fine
     }
 
-    // db.execute returns [rowsArray, fields] — destructure to get rows
+    // ── Step 2: ensure row exists ─────────────────────────────────────────────
+    // db.execute returns [rowsArray, fields] — destructure
     const [existRows] = await db.execute(
       sql`SELECT company_id FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
     ) as unknown as [Array<{ company_id: number }>, unknown];
 
+    console.log(`[PUT company-settings] existRows.length=${existRows?.length ?? 'null'}`);
+
     if (!existRows || existRows.length === 0) {
-      // No row yet — INSERT with just company_id (all JSON cols default to '{}')
+      console.log(`[PUT company-settings] No row yet — inserting for company=${companyId}`);
       await db.execute(sql`INSERT INTO company_settings (company_id) VALUES (${companyId})`);
     }
 
-    // UPDATE the target column.
-    // sql.raw inlines the column identifier verbatim; jsonStr and companyId become ? params.
+    // ── Step 3: update the target column ─────────────────────────────────────
+    // sql.raw for the column identifier (whitelisted); values are ? params
+    console.log(`[PUT company-settings] Updating ${col} → ${jsonStr.slice(0, 100)}`);
     await db.execute(
       sql`UPDATE company_settings SET ${sql.raw(`\`${col}\``)} = ${jsonStr}, updated_at = NOW() WHERE company_id = ${companyId}`
     );
 
+    console.log(`[PUT company-settings] SUCCESS section=${section} company=${companyId}`);
     res.json({ ok: true });
   } catch (error) {
-    console.error('PUT /api/company-settings error:', error);
-    res.status(500).json({ error: 'Failed to save settings' });
+    const msg = String((error as Error)?.message ?? error);
+    console.error(`[PUT company-settings] FAILED: ${msg}`, error);
+    res.status(500).json({ error: 'Failed to save settings', detail: msg });
   }
 }
