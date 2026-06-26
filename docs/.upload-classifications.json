@@ -417,6 +417,19 @@
       "summary": "Screenshot of a Team & Permissions admin panel showing a test account (Williams Constructions) with user Daryl Williams listed as Admin. User is reporting a potential issue where their old profile remains visible after creating a new trial account.",
       "fileName": "screenshot-2026-06-26T15-30-38.jpg",
       "storedUploadFilename": "f38wenbvln_1782487838657_file_j5VP1DjQcx.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Data & Backup settings interface showing menu structure and feature availability. Provided as a reference for understanding the backup configuration workflow.",
+      "fileName": "screenshot-2026-06-26T15-35-42.jpg",
+      "storedUploadFilename": "f38wenbvln_1782488143555_file_omD2iXAulk.jpg"
     }
   ]
 }

@@ -34,6 +34,7 @@ import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
 import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
 import PdfStyleTab from '@/components/settings/PdfStyleTab';
+import DataBackupTab from '@/components/settings/DataBackupTab';
 
 const tabs = [
   { id: 'account',    label: 'My Account',        icon: User },
@@ -690,10 +691,7 @@ export default function SettingsPage() {
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}
               {activeTab === 'data' && (
-                <ComingSoonTab
-                  title="Data & Backup"
-                  description="Export your portal data, schedule automated backups to Supabase Storage or SharePoint, and manage data retention policies."
-                />
+                <DataBackupTab isAdmin={isAdmin} />
               )}
             </div>
 

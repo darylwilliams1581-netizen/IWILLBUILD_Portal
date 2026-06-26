@@ -133,6 +133,9 @@ import team_get_125 from "./api/team/GET";
 import team_invite_post_126 from "./api/team/invite/POST";
 import team_id_delete_127 from "./api/team/[id]/DELETE";
 import team_id_put_128 from "./api/team/[id]/PUT";
+import settings_backup_get from "./api/settings/backup/GET";
+import settings_backup_post from "./api/settings/backup/POST";
+import settings_backup_run_post from "./api/settings/backup/run/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -247,7 +250,9 @@ async function runStartupMigrations() {
     { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },
     { table: 'profiles',         column: 'last_login_at',      definition: 'DATETIME NULL' },
     { table: 'profiles',         column: 'last_active_at',     definition: 'DATETIME NULL' },
-    { table: 'company_settings', column: 'pdf_json',           definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'pdf_json',        definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'backup_json',     definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'last_backup_at',  definition: 'DATETIME NULL' },
     // Subscription columns
     { table: 'companies', column: 'plan',                   definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'subscription_status',    definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
@@ -323,6 +328,9 @@ app.post("/api/auth/:action/:detail", auth_action_detail_post_4);
 app.get("/api/company", company_get_5);
 app.put("/api/company", company_put_6);
 app.get("/api/company-settings", company_settings_get_7);
+app.get("/api/settings/backup", settings_backup_get);
+app.post("/api/settings/backup", settings_backup_post);
+app.post("/api/settings/backup/run", settings_backup_run_post);
 app.put("/api/company-settings", company_settings_put_8);
 app.get("/api/cost-guide", cost_guide_get_9);
 app.post("/api/cost-guide", cost_guide_post_10);
