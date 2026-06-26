@@ -91,10 +91,17 @@ export default async function handler(req: Request, res: Response) {
     if (msg.startsWith('UNSUPPORTED_TYPE:')) {
       const name = msg.replace('UNSUPPORTED_TYPE:', '');
       return res.status(400).json({
+        code: 'invalid_file_type',
         error: `"${name}" is not a supported image type. Please upload JPEG, PNG, WebP, or GIF. HEIC/HEIF files must be converted first.`,
       });
     }
-    return res.status(400).json({ error: msg });
+    if (msg.includes('Too many files') || msg.includes('too many files')) {
+      return res.status(400).json({
+        code: 'too_many_files',
+        error: `Maximum ${10} photos per upload batch. Please select fewer files.`,
+      });
+    }
+    return res.status(400).json({ code: 'upload_error', error: msg });
   }
 
   try {
@@ -132,12 +139,14 @@ export default async function handler(req: Request, res: Response) {
     }
     if (currentCount >= MAX_PHOTOS_PER_JOB) {
       return res.status(400).json({
+        code: 'limit_reached',
         error: `This job has reached the 200-photo limit. Delete some photos before uploading more.`,
       });
     }
     if (currentCount + files.length > MAX_PHOTOS_PER_JOB) {
       const remaining = MAX_PHOTOS_PER_JOB - currentCount;
       return res.status(400).json({
+        code: 'limit_reached',
         error: `Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added before reaching the 200-photo limit. Please select fewer files.`,
       });
     }
@@ -149,6 +158,7 @@ export default async function handler(req: Request, res: Response) {
     });
     if (heicFiles.length > 0) {
       return res.status(400).json({
+        code: 'invalid_file_type',
         error: `HEIC/HEIF files are not supported. Please convert "${heicFiles[0].originalname}" to JPEG or PNG before uploading.`,
       });
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { LIMITS } from '@/lib/limits';
 import {
   ChevronLeft,
   Plus,
@@ -969,6 +970,10 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
   useEffect(() => { void load(); }, [load]);
 
   async function addField(fieldType: string) {
+    if (fields.length >= LIMITS.FORM_FIELDS) {
+      setError(`Form field limit reached (${LIMITS.FORM_FIELDS} fields). Delete unused fields before adding more.`);
+      return;
+    }
     setAdding(true);
     try {
       const res = await fetch(`/api/forms/${templateId}/fields`, {
@@ -1075,12 +1080,30 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
           {/* Add field panel — sticky sidebar */}
           <div className="lg:w-60 shrink-0">
             <div className="lg:sticky lg:top-20">
-              <AddFieldPanel onAdd={addField} adding={adding} />
+              <AddFieldPanel onAdd={addField} adding={adding || fields.length >= LIMITS.FORM_FIELDS} />
             </div>
           </div>
 
           {/* Field list */}
           <div className="flex-1 flex flex-col gap-2.5">
+            {/* Field count badge */}
+            {fields.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  fields.length >= LIMITS.FORM_FIELDS
+                    ? 'bg-red-50 text-red-600 border-red-200'
+                    : fields.length >= LIMITS.FORM_FIELDS * 0.9
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                }`}>{fields.length} / {LIMITS.FORM_FIELDS} fields</span>
+              </div>
+            )}
+            {fields.length >= LIMITS.FORM_FIELDS && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
+                <span className="shrink-0">⚠️</span>
+                Form field limit reached ({LIMITS.FORM_FIELDS} fields). Delete unused fields to add more.
+              </div>
+            )}
             {fields.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-orange-50 border border-orange-200">

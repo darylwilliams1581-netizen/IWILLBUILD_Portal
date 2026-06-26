@@ -3,6 +3,7 @@ import { db } from '../../db/client.js';
 import { costGuideItems, profiles } from '../../db/schema.js';
 import { eq, count } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { LIMITS } from '../../lib/limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
 export default async function handler(req: Request, res: Response) {
@@ -24,9 +25,12 @@ export default async function handler(req: Request, res: Response) {
     const [countRow] = await db.select({ c: count() }).from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
     const currentCount = countRow?.c ?? 0;
 
-    // ── Enforce 200-item limit ────────────────────────────────────────────────
-    if (currentCount >= 200) {
-      return res.status(400).json({ error: 'Cost Guide limit reached (200 items). Delete unused items before adding more.' });
+    // ── Enforce limit ─────────────────────────────────────────────────────────
+    if (currentCount >= LIMITS.COST_GUIDE_ITEMS) {
+      return res.status(400).json({
+        code: 'limit_reached',
+        error: `Cost Guide limit reached (${LIMITS.COST_GUIDE_ITEMS} items). Delete unused items before adding more.`,
+      });
     }
 
     const sortOrder = currentCount;

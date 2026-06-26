@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { formTemplateFields, formTemplates, profiles } from '../../../../db/schema.js';
-import { eq, and, max } from 'drizzle-orm';
+import { eq, and, max, count } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
+import { LIMITS } from '../../../../lib/limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -24,6 +25,22 @@ export default async function handler(req: Request, res: Response) {
       where: and(eq(formTemplates.id, templateId), eq(formTemplates.companyId, profile.companyId)),
     });
     if (!template) return res.status(404).json({ error: 'Template not found' });
+
+    // ── Enforce 100-field limit ───────────────────────────────────────────────
+    const [countRow] = await db
+      .select({ c: count() })
+      .from(formTemplateFields)
+      .where(and(
+        eq(formTemplateFields.templateId, templateId),
+        eq(formTemplateFields.companyId, profile.companyId),
+      ));
+    const currentCount = countRow?.c ?? 0;
+    if (currentCount >= LIMITS.FORM_FIELDS) {
+      return res.status(400).json({
+        code: 'limit_reached',
+        error: `Form templates are limited to ${LIMITS.FORM_FIELDS} fields. Delete unused fields before adding more.`,
+      });
+    }
 
     const { label, fieldType, required, optionsJson, settingsJson } = req.body as {
       label?: string;

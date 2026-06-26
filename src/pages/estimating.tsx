@@ -9,6 +9,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 import CsvImportModal from '@/components/CsvImportModal';
+import { LIMITS } from '@/lib/limits';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -219,7 +220,10 @@ function RecipeModal({
   function updateLine(key: string, field: keyof LocalRecipeLine, value: string) {
     setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
   }
-  function addLine() { setLines((prev) => [...prev, blankRLine()]); }
+  function addLine() {
+    if (lines.length >= LIMITS.RECIPE_LINES) return;
+    setLines((prev) => [...prev, blankRLine()]);
+  }
   function deleteLine(key: string) {
     setLines((prev) => { const n = prev.filter((l) => l._key !== key); return n.length ? n : [blankRLine()]; });
   }
@@ -297,7 +301,16 @@ function RecipeModal({
             {/* Lines */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lines</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lines</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                    lines.length >= LIMITS.RECIPE_LINES
+                      ? 'bg-red-50 text-red-600 border-red-200'
+                      : lines.length >= LIMITS.RECIPE_LINES * 0.9
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}>{lines.length} / {LIMITS.RECIPE_LINES}</span>
+                </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -306,11 +319,23 @@ function RecipeModal({
                   >
                     <Calculator size={11} />Cost Guide
                   </button>
-                  <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors">
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    disabled={lines.length >= LIMITS.RECIPE_LINES}
+                    title={lines.length >= LIMITS.RECIPE_LINES ? `Recipe limit reached (${LIMITS.RECIPE_LINES} lines)` : undefined}
+                    className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 rounded-lg transition-colors"
+                  >
                     <Plus size={12} />Add Line
                   </button>
                 </div>
               </div>
+              {lines.length >= LIMITS.RECIPE_LINES && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-2">
+                  <AlertCircle size={12} className="shrink-0" />
+                  Recipe line limit reached ({LIMITS.RECIPE_LINES} lines). Delete lines to add more.
+                </div>
+              )}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>

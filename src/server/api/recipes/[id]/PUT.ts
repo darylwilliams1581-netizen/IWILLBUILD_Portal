@@ -3,6 +3,7 @@ import { db } from '../../../db/client.js';
 import { recipes, recipeLines, profiles } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { LIMITS } from '../../../lib/limits.js';
 
 interface RecipeLineInput {
   description: string;
@@ -31,6 +32,14 @@ export default async function handler(req: Request, res: Response) {
 
     const { title, notes, lines } = req.body as { title?: string; notes?: string; lines?: RecipeLineInput[] };
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
+
+    // ── Enforce 100-line limit ────────────────────────────────────────────────
+    if (lines && lines.length > LIMITS.RECIPE_LINES) {
+      return res.status(400).json({
+        code: 'limit_reached',
+        error: `Recipes are limited to ${LIMITS.RECIPE_LINES} lines. This recipe has ${lines.length} lines — remove ${lines.length - LIMITS.RECIPE_LINES} before saving.`,
+      });
+    }
 
     await db.update(recipes).set({
       title: title.trim(),

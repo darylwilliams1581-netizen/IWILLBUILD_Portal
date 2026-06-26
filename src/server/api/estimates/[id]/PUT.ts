@@ -3,6 +3,7 @@ import { db } from '../../../db/client.js';
 import { estimates, estimateLines, profiles } from '../../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { LIMITS } from '../../../lib/limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -61,6 +62,13 @@ export default async function handler(req: Request, res: Response) {
 
     // Replace all lines if provided
     if (lines !== undefined) {
+      // ── Enforce 300-line limit ──────────────────────────────────────────────
+      if (lines.length > LIMITS.ESTIMATE_LINES) {
+        return res.status(400).json({
+          code: 'limit_reached',
+          error: `Estimates are limited to ${LIMITS.ESTIMATE_LINES} lines. This estimate has ${lines.length} lines — remove ${lines.length - LIMITS.ESTIMATE_LINES} before saving.`,
+        });
+      }
       await db.delete(estimateLines).where(eq(estimateLines.estimateId, estimateId));
       if (lines.length > 0) {
         await db.insert(estimateLines).values(

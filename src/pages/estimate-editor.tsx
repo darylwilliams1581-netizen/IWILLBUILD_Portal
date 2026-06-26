@@ -14,6 +14,7 @@ import {
 } from '@/lib/estimates-api';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
+import { LIMITS } from '@/lib/limits';
 
 // ── Local line type (includes temp id for UI keying) ─────────────────────────
 interface LocalLine {
@@ -620,7 +621,7 @@ export default function EstimateEditorPage() {
   }
 
   function addLine() {
-    if (isLocked) return;
+    if (isLocked || lines.length >= LIMITS.ESTIMATE_LINES) return;
     setLines((prev) => [...prev, blankLine(prev.length)]);
     setDirty(true);
   }
@@ -996,7 +997,18 @@ export default function EstimateEditorPage() {
               {/* Lines table */}
               <div className="bg-white rounded-xl border border-border overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Line Items</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Line Items</h2>
+                    {!isLocked && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                        lines.length >= LIMITS.ESTIMATE_LINES
+                          ? 'bg-red-50 text-red-600 border-red-200'
+                          : lines.length >= LIMITS.ESTIMATE_LINES * 0.9
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-muted text-muted-foreground border-border'
+                      }`}>{lines.length} / {LIMITS.ESTIMATE_LINES}</span>
+                    )}
+                  </div>
                   {!isLocked && (
                     <div className="flex items-center gap-1.5">
                       <button
@@ -1015,7 +1027,9 @@ export default function EstimateEditorPage() {
                       </button>
                       <button
                         onClick={addLine}
-                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                        disabled={isLocked || lines.length >= LIMITS.ESTIMATE_LINES}
+                        title={lines.length >= LIMITS.ESTIMATE_LINES ? `Estimate line limit reached (${LIMITS.ESTIMATE_LINES} lines)` : undefined}
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg transition-colors"
                       >
                         <Plus size={13} />
                         Add Line
@@ -1047,6 +1061,12 @@ export default function EstimateEditorPage() {
                 </div>
 
                 {/* Desktop table */}
+                {!isLocked && lines.length >= LIMITS.ESTIMATE_LINES && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800 mb-2">
+                    <AlertCircle size={14} className="shrink-0" />
+                    Estimate line limit reached ({LIMITS.ESTIMATE_LINES} lines). Delete lines to add more.
+                  </div>
+                )}
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm table-fixed">
                     <thead>

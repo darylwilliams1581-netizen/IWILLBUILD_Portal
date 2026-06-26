@@ -12,6 +12,7 @@ import { costGuideItems, profiles } from '../../../db/schema.js';
 import { eq, count, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { parseCostGuideCsv } from '../../../lib/csv-utils.js';
+import { LIMITS } from '../../../lib/limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
 const upload = multer({
@@ -70,9 +71,9 @@ export default async function handler(req: Request, res: Response) {
     // Check 200-item limit
     const [countRow] = await db.select({ c: count() }).from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
     const currentCount = countRow?.c ?? 0;
-    const available = 200 - currentCount;
+    const available = LIMITS.COST_GUIDE_ITEMS - currentCount;
     if (available <= 0) {
-      return res.status(400).json({ error: 'Cost Guide limit reached (200 items). Delete unused items before importing.' });
+      return res.status(400).json({ code: 'limit_reached', error: `Cost Guide limit reached (${LIMITS.COST_GUIDE_ITEMS} items). Delete unused items before importing.` });
     }
 
     // Fetch existing items for duplicate detection
