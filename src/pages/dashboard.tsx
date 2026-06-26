@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   Calendar,
   Wrench,
+  CheckSquare,
+  Clock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -40,6 +42,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
 } as const;
 
+interface DashTodo {
+  id: number;
+  jobId: number;
+  title: string;
+  dueDate: string | null;
+  status: string;
+  jobName: string;
+  jobNumber: string | null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
@@ -47,6 +59,8 @@ export default function DashboardPage() {
   const [jobsLoaded, setJobsLoaded] = useState(false);
   const [fleetCount, setFleetCount] = useState(0);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
+  const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
+  const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
 
   useEffect(() => {
     fetchJobs()
@@ -57,6 +71,10 @@ export default function DashboardPage() {
       .catch(() => {});
     fetchFleetFlags()
       .then((flags) => setFleetFlags(flags))
+      .catch(() => {});
+    fetch('/api/dashboard/todos')
+      .then((r) => r.json())
+      .then((d) => { setDueTodayTodos(d.dueToday ?? []); setOverdueTodos(d.overdue ?? []); })
       .catch(() => {});
   }, []);
 
@@ -286,6 +304,65 @@ export default function DashboardPage() {
                   </Link>
                 ))}
               </div>
+            </motion.div>
+          )}
+
+          {/* ── To-do Alerts ── */}
+          {(overdueTodos.length > 0 || dueTodayTodos.length > 0) && (
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              className="mb-4 flex flex-col gap-2"
+            >
+              {overdueTodos.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-red-600 shrink-0" />
+                    <h2 className="font-heading font-bold text-sm text-red-800">
+                      {overdueTodos.length} Overdue To-do{overdueTodos.length !== 1 ? 's' : ''}
+                    </h2>
+                  </div>
+                  {overdueTodos.map((t) => (
+                    <Link
+                      key={t.id}
+                      to={`/jobs/${t.jobId}?tab=todos`}
+                      className="flex items-start gap-2 bg-white border border-red-200 rounded-lg px-3 py-2.5 hover:border-red-400 transition-colors group"
+                    >
+                      <CheckSquare size={13} className="text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-red-800 truncate">{t.title}</p>
+                        <p className="text-xs text-red-600 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
+                      </div>
+                      <ChevronRight size={12} className="text-red-400 group-hover:text-red-600 shrink-0 mt-0.5" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+              {dueTodayTodos.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock size={15} className="text-amber-600 shrink-0" />
+                    <h2 className="font-heading font-bold text-sm text-amber-800">
+                      {dueTodayTodos.length} To-do{dueTodayTodos.length !== 1 ? 's' : ''} Due Today
+                    </h2>
+                  </div>
+                  {dueTodayTodos.map((t) => (
+                    <Link
+                      key={t.id}
+                      to={`/jobs/${t.jobId}?tab=todos`}
+                      className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                    >
+                      <CheckSquare size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-amber-800 truncate">{t.title}</p>
+                        <p className="text-xs text-amber-700 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
+                      </div>
+                      <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                    </Link>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 

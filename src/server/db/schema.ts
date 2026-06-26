@@ -306,6 +306,45 @@ export const companyFiles = mysqlTable('company_files', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+// ── Job To-dos ────────────────────────────────────────────────────────────────
+
+export const jobTodos = mysqlTable('job_todos', {
+  id: int('id').primaryKey().autoincrement(),
+  jobId: int('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  dueDate: varchar('due_date', { length: 20 }), // ISO date string YYYY-MM-DD
+  status: varchar('status', { length: 30 }).notNull().default('Open'), // Open | Completed
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// ── Job Progress Lines ────────────────────────────────────────────────────────
+
+export const jobProgressLines = mysqlTable('job_progress_lines', {
+  id: int('id').primaryKey().autoincrement(),
+  jobId: int('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  estimateLineId: int('estimate_line_id'), // source line reference (nullable)
+  description: text('description').notNull(),
+  quantity: varchar('quantity', { length: 30 }).notNull().default('1'),
+  unit: varchar('unit', { length: 50 }),
+  rate: varchar('rate', { length: 30 }).notNull().default('0'),
+  percentComplete: int('percent_complete').notNull().default(0), // 0-100
+  progressNote: text('progress_note'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

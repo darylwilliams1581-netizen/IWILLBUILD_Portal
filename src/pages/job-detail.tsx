@@ -19,14 +19,20 @@ import {
   Camera,
   Calculator,
   FolderOpen,
+  StickyNote,
+  CheckSquare,
+  TrendingUp,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
+import JobNotes from '@/components/job/JobNotes';
+import JobTodos from '@/components/job/JobTodos';
+import JobProgress from '@/components/job/JobProgress';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'photos' | 'estimates' | 'files';
+type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'notes';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +48,7 @@ export default function JobDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates') return t;
+    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress') return t;
     return 'details';
   });
 
@@ -274,24 +280,27 @@ export default function JobDetailPage() {
               </div>
 
               {/* Tabs */}
-              <div className="flex gap-1 bg-white rounded-xl border border-border p-1">
+              <div className="flex flex-wrap gap-1 bg-white rounded-xl border border-border p-1">
                 {([
                   { key: 'details',   label: 'Details',   icon: FileText },
-                  { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },
+                  { key: 'progress',  label: 'Progress',  icon: TrendingUp },
+                  { key: 'todos',     label: 'To-do',     icon: CheckSquare },
+                  { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
+                  { key: 'notes',     label: 'Notes',     icon: StickyNote },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
                     onClick={() => setActiveTab(key)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-colors min-w-[60px] ${
                       activeTab === key
                         ? 'bg-slate-900 text-white'
                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <Icon size={14} />
-                    {label}
+                    <Icon size={13} />
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </div>
@@ -415,6 +424,21 @@ export default function JobDetailPage() {
                 </div>
               )}
 
+              {/* ── Notes tab ── */}
+              {activeTab === 'notes' && (
+                <JobNotes jobId={job.id} initialNotes={job.notes ?? null} />
+              )}
+
+              {/* ── To-do tab ── */}
+              {activeTab === 'todos' && (
+                <JobTodos jobId={job.id} />
+              )}
+
+              {/* ── Progress tab ── */}
+              {activeTab === 'progress' && (
+                <JobProgress jobId={job.id} />
+              )}
+
               {/* Coming soon modules — only show on details tab */}
               {activeTab === 'details' && (
                 <div className="bg-white rounded-xl border border-border p-5">
@@ -429,8 +453,7 @@ export default function JobDetailPage() {
                     ))}
                   </div>
                 </div>
-              )}
-            </motion.div>
+              )}            </motion.div>
           )}
         </div>
       </div>
