@@ -12,6 +12,11 @@
  *  5. Support Mode is explicit — caller passes supportCompanyId only when the
  *     owner has explicitly selected a support company. Normal mode always uses
  *     the owner's own companyId.
+ *
+ * Resilience guarantees:
+ *  6. Every module query is wrapped in its own try/catch.
+ *  7. A failing module logs the error, adds a warning, and returns [] — it
+ *     NEVER crashes the whole context build or the chat endpoint.
  */
 import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
@@ -58,6 +63,9 @@ export interface DazzaContext {
   formTemplates?:   unknown[];
   formSubmissions?: unknown[];
   files?:           unknown[];
+  // Resilience tracking
+  warnings:         string[];
+  moduleCounts:     Record<string, number>;
 }
 
 /**
@@ -121,6 +129,9 @@ export async function buildDazzaContext(
   const effectiveCompanyId = supportCompanyId ?? companyId;
   const supportMode = supportCompanyId !== null;
 
+  const warnings: string[] = [];
+  const moduleCounts: Record<string, number> = {};
+
   const ctx: DazzaContext = {
     userId,
     companyId,
@@ -130,52 +141,89 @@ export async function buildDazzaContext(
     companyKnowledge: { enabled: false, companyNotes: '', safetyNotes: '', tone: 'professional', disclaimer: '' },
     supportMode,
     supportCompanyId,
+    warnings,
+    moduleCounts,
   };
+
+  // ── Helper: safe query wrapper ────────────────────────────────────────────
+  async function safeQuery<T>(
+    module: string,
+    fn: () => Promise<T[]>,
+    fallback: T[] = [],
+  ): Promise<T[]> {
+    try {
+      const rows = await fn();
+      moduleCounts[module] = rows.length;
+      return rows;
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e);
+      console.warn(`[dazza-context] ${module} FAILED: ${msg}`);
+      warnings.push(`${module}: ${msg.slice(0, 120)}`);
+      moduleCounts[module] = -1; // -1 = failed
+      return fallback;
+    }
+  }
 
   // ── Company name ──────────────────────────────────────────────────────────
-  const [companyRows] = await db.execute(
-    sql`SELECT name FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
-  ) as unknown as [Array<{ name: string }>, unknown];
-  ctx.companyName = companyRows?.[0]?.name ?? 'Unknown';
+  try {
+    const [companyRows] = await db.execute(
+      sql`SELECT name FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ name: string }>, unknown];
+    ctx.companyName = companyRows?.[0]?.name ?? 'Unknown';
+    moduleCounts['company'] = 1;
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    console.warn(`[dazza-context] company FAILED: ${msg}`);
+    warnings.push(`company: ${msg.slice(0, 120)}`);
+    ctx.companyName = 'Unknown';
+    moduleCounts['company'] = -1;
+  }
 
   // ── Dazza settings (from effective company) ───────────────────────────────
-  const [settingsRows] = await db.execute(
-    sql`SELECT dazza_json FROM company_settings WHERE company_id = ${effectiveCompanyId} LIMIT 1`
-  ) as unknown as [Array<{ dazza_json: string }>, unknown];
-  const dazzaSettings = settingsRows?.[0]?.dazza_json ? JSON.parse(settingsRows[0].dazza_json) : {};
-  ctx.companyKnowledge = {
-    enabled:      dazzaSettings.enabled       ?? false,
-    // Support both field name variants (tab saves knowledgeNotes/preferredTone)
-    companyNotes: dazzaSettings.knowledgeNotes ?? dazzaSettings.companyNotes ?? '',
-    safetyNotes:  dazzaSettings.safetyNotes   ?? '',
-    tone:         dazzaSettings.preferredTone ?? dazzaSettings.tone ?? 'professional',
-    disclaimer:   dazzaSettings.disclaimer    ?? '',
-  };
+  try {
+    const [settingsRows] = await db.execute(
+      sql`SELECT dazza_json FROM company_settings WHERE company_id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ dazza_json: string }>, unknown];
+    const dazzaSettings = settingsRows?.[0]?.dazza_json ? JSON.parse(settingsRows[0].dazza_json) : {};
+    ctx.companyKnowledge = {
+      enabled:      dazzaSettings.enabled       ?? false,
+      companyNotes: dazzaSettings.knowledgeNotes ?? dazzaSettings.companyNotes ?? '',
+      safetyNotes:  dazzaSettings.safetyNotes   ?? '',
+      tone:         dazzaSettings.preferredTone ?? dazzaSettings.tone ?? 'professional',
+      disclaimer:   dazzaSettings.disclaimer    ?? '',
+    };
+    moduleCounts['settings'] = 1;
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    console.warn(`[dazza-context] settings FAILED: ${msg}`);
+    warnings.push(`settings: ${msg.slice(0, 120)}`);
+    moduleCounts['settings'] = -1;
+  }
 
   // ── Jobs ──────────────────────────────────────────────────────────────────
   if (canJobs) {
-    try {
-      const [jobRows] = await db.execute(
+    ctx.jobs = await safeQuery('jobs', async () => {
+      const [rows] = await db.execute(
         sql`SELECT id, job_number, name, client, address, status, notes, created_at
             FROM jobs WHERE company_id = ${effectiveCompanyId}
             ORDER BY created_at DESC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.jobs = jobRows ?? [];
-    } catch (e) { console.warn('[dazza-context] jobs query failed:', String((e as Error)?.message ?? e)); ctx.jobs = []; }
+      return rows ?? [];
+    });
 
-    try {
-      const [todoRows] = await db.execute(
+    ctx.openTodos = await safeQuery('todos', async () => {
+      const [rows] = await db.execute(
         sql`SELECT t.id, t.job_id, t.title, t.status, t.due_date, t.notes, j.name as job_name
             FROM job_todos t
             JOIN jobs j ON j.id = t.job_id
             WHERE j.company_id = ${effectiveCompanyId} AND t.status = 'Open'
             ORDER BY t.due_date ASC LIMIT 100`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.openTodos = todoRows ?? [];
-    } catch (e) { console.warn('[dazza-context] todos query failed:', String((e as Error)?.message ?? e)); ctx.openTodos = []; }
+      return rows ?? [];
+    });
 
-    try {
-      const [progressRows] = await db.execute(
+    ctx.jobProgress = await safeQuery('progress', async () => {
+      const [rows] = await db.execute(
         sql`SELECT p.job_id, j.name as job_name,
                    ROUND(AVG(p.percent_complete)) as avg_percent,
                    COUNT(*) as line_count
@@ -185,23 +233,23 @@ export async function buildDazzaContext(
             GROUP BY p.job_id, j.name
             ORDER BY p.job_id DESC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.jobProgress = progressRows ?? [];
-    } catch (e) { console.warn('[dazza-context] progress query failed:', String((e as Error)?.message ?? e)); ctx.jobProgress = []; }
+      return rows ?? [];
+    });
   }
 
   // ── Fleet ─────────────────────────────────────────────────────────────────
   if (canFleet) {
-    try {
-      const [fleetRows] = await db.execute(
+    ctx.fleet = await safeQuery('fleet', async () => {
+      const [rows] = await db.execute(
         sql`SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
             FROM fleet_assets WHERE company_id = ${effectiveCompanyId} AND archived = 0
             ORDER BY name ASC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.fleet = fleetRows ?? [];
-    } catch (e) { console.warn('[dazza-context] fleet query failed:', String((e as Error)?.message ?? e)); ctx.fleet = []; }
+      return rows ?? [];
+    });
 
-    try {
-      const [flagRows] = await db.execute(
+    ctx.fleetFlags = await safeQuery('fleet_flags', async () => {
+      const [rows] = await db.execute(
         sql`SELECT fp.asset_id, fa.name as asset_name, fp.issue_comment, fp.created_at
             FROM fleet_prestarts fp
             JOIN fleet_assets fa ON fa.id = fp.asset_id
@@ -209,11 +257,11 @@ export async function buildDazzaContext(
               AND fp.issue_needs_attention = 1
             ORDER BY fp.created_at DESC LIMIT 20`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.fleetFlags = flagRows ?? [];
-    } catch (e) { console.warn('[dazza-context] fleet flags query failed:', String((e as Error)?.message ?? e)); ctx.fleetFlags = []; }
+      return rows ?? [];
+    });
 
-    try {
-      const [prestartRows] = await db.execute(
+    ctx.prestarts = await safeQuery('prestarts', async () => {
+      const [rows] = await db.execute(
         sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
                    fp.issue_needs_attention, fp.issue_comment, fp.created_at
             FROM fleet_prestarts fp
@@ -221,13 +269,13 @@ export async function buildDazzaContext(
             WHERE fa.company_id = ${effectiveCompanyId}
             ORDER BY fp.created_at DESC LIMIT 20`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.prestarts = prestartRows ?? [];
-      ctx.prestartCount = (prestartRows ?? []).length;
-    } catch (e) { console.warn('[dazza-context] prestarts query failed:', String((e as Error)?.message ?? e)); ctx.prestarts = []; ctx.prestartCount = 0; }
+      return rows ?? [];
+    });
+    ctx.prestartCount = ctx.prestarts.length;
 
-    try {
+    ctx.fleetDueDates = await safeQuery('fleet_due_dates', async () => {
       const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const [dueDateRows] = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT id, name, service_date, rego_expiry, rego_not_applicable
             FROM fleet_assets
             WHERE company_id = ${effectiveCompanyId}
@@ -237,14 +285,13 @@ export async function buildDazzaContext(
                 OR (rego_not_applicable = 0 AND rego_expiry IS NOT NULL AND rego_expiry <= ${in14})
               )`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.fleetDueDates = dueDateRows ?? [];
-    } catch (e) { console.warn('[dazza-context] fleet due dates query failed:', String((e as Error)?.message ?? e)); ctx.fleetDueDates = []; }
+      return rows ?? [];
+    });
   }
 
   // ── Estimates ─────────────────────────────────────────────────────────────
   if (canEstimating) {
-    try {
-      let estRows: Array<Record<string, unknown>>;
+    ctx.estimates = await safeQuery('estimates', async () => {
       if (seeDollars) {
         const [rows] = await db.execute(
           sql`SELECT e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at,
@@ -257,7 +304,7 @@ export async function buildDazzaContext(
               GROUP BY e.id, e.job_id, e.title, e.status, e.markup_percent, e.gst_mode, e.created_at, j.name
               ORDER BY e.created_at DESC LIMIT 50`
         ) as unknown as [Array<Record<string, unknown>>, unknown];
-        estRows = rows ?? [];
+        return rows ?? [];
       } else {
         const [rows] = await db.execute(
           sql`SELECT e.id, e.job_id, e.title, e.status, e.created_at, j.name as job_name
@@ -266,25 +313,24 @@ export async function buildDazzaContext(
               WHERE e.company_id = ${effectiveCompanyId}
               ORDER BY e.created_at DESC LIMIT 50`
         ) as unknown as [Array<Record<string, unknown>>, unknown];
-        estRows = rows ?? [];
+        return rows ?? [];
       }
-      ctx.estimates = estRows;
-    } catch (e) { console.warn('[dazza-context] estimates query failed:', String((e as Error)?.message ?? e)); ctx.estimates = []; }
+    });
   }
 
   // ── Forms ─────────────────────────────────────────────────────────────────
   if (canForms) {
-    try {
-      const [templateRows] = await db.execute(
+    ctx.formTemplates = await safeQuery('form_templates', async () => {
+      const [rows] = await db.execute(
         sql`SELECT id, name, category, created_at
             FROM form_templates WHERE company_id = ${effectiveCompanyId}
             ORDER BY name ASC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.formTemplates = templateRows ?? [];
-    } catch (e) { console.warn('[dazza-context] form templates query failed:', String((e as Error)?.message ?? e)); ctx.formTemplates = []; }
+      return rows ?? [];
+    });
 
-    try {
-      const [submissionRows] = await db.execute(
+    ctx.formSubmissions = await safeQuery('form_submissions', async () => {
+      const [rows] = await db.execute(
         sql`SELECT s.id, s.job_id, s.template_id, s.status, s.created_at, s.updated_at,
                    j.name as job_name, ft.name as template_name
             FROM job_form_submissions s
@@ -293,20 +339,24 @@ export async function buildDazzaContext(
             WHERE s.company_id = ${effectiveCompanyId}
             ORDER BY s.updated_at DESC LIMIT 100`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.formSubmissions = submissionRows ?? [];
-    } catch (e) { console.warn('[dazza-context] form submissions query failed:', String((e as Error)?.message ?? e)); ctx.formSubmissions = []; }
+      return rows ?? [];
+    });
   }
 
   // ── Files ─────────────────────────────────────────────────────────────────
   if (canFiles) {
-    try {
-      const [fileRows] = await db.execute(
+    ctx.files = await safeQuery('files', async () => {
+      const [rows] = await db.execute(
         sql`SELECT id, original_name, label, job_id, created_at
             FROM company_files WHERE company_id = ${effectiveCompanyId}
             ORDER BY created_at DESC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
-      ctx.files = fileRows ?? [];
-    } catch (e) { console.warn('[dazza-context] files query failed:', String((e as Error)?.message ?? e)); ctx.files = []; }
+      return rows ?? [];
+    });
+  }
+
+  if (warnings.length > 0) {
+    console.warn(`[dazza-context] Context built with ${warnings.length} warning(s) for company ${effectiveCompanyId}`);
   }
 
   return ctx;

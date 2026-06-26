@@ -87,15 +87,44 @@ function tryLocalTool(question: string): string | null {
 
 function buildContextDebugLine(ctx: DazzaContext): string {
   const p = ctx.permissions;
+  const mc = ctx.moduleCounts ?? {};
+
   const parts: string[] = [];
-  if (p.canJobs)       parts.push(`Jobs ${ctx.jobs?.length ?? 0}`);
-  if (p.canFleet)      parts.push(`Fleet ${ctx.fleet?.length ?? 0}`);
-  if (p.canForms)      parts.push(`Forms ${ctx.formTemplates?.length ?? 0} templates, ${ctx.formSubmissions?.length ?? 0} submissions`);
-  if (p.canEstimating) parts.push(`Estimates ${ctx.estimates?.length ?? 0}`);
-  if (p.canFiles)      parts.push(`Files ${ctx.files?.length ?? 0}`);
-  const prestartCount = (ctx as unknown as { prestartCount?: number }).prestartCount ?? 0;
-  if (p.canFleet)      parts.push(`Prestarts ${prestartCount}`);
-  return `Context loaded: ${parts.join(', ')}`;
+  if (p.canJobs) {
+    const jobCount = mc['jobs'] === -1 ? 'ERR' : String(ctx.jobs?.length ?? 0);
+    const todoCount = mc['todos'] === -1 ? 'ERR' : String(ctx.openTodos?.length ?? 0);
+    const progCount = mc['progress'] === -1 ? 'ERR' : String(ctx.jobProgress?.length ?? 0);
+    parts.push(`Jobs ${jobCount} | Todos ${todoCount} | Progress ${progCount}`);
+  }
+  if (p.canFleet) {
+    const fleetCount = mc['fleet'] === -1 ? 'ERR' : String(ctx.fleet?.length ?? 0);
+    const prestartCount = mc['prestarts'] === -1 ? 'ERR' : String(ctx.prestartCount ?? 0);
+    const flagCount = mc['fleet_flags'] === -1 ? 'ERR' : String(ctx.fleetFlags?.length ?? 0);
+    parts.push(`Fleet ${fleetCount} | Prestarts ${prestartCount} | Flags ${flagCount}`);
+  }
+  if (p.canForms) {
+    const tmplCount = mc['form_templates'] === -1 ? 'ERR' : String(ctx.formTemplates?.length ?? 0);
+    const subCount = mc['form_submissions'] === -1 ? 'ERR' : String(ctx.formSubmissions?.length ?? 0);
+    parts.push(`Forms ${tmplCount} templates, ${subCount} submissions`);
+  }
+  if (p.canEstimating) {
+    const estCount = mc['estimates'] === -1 ? 'ERR' : String(ctx.estimates?.length ?? 0);
+    parts.push(`Estimates ${estCount}`);
+  }
+  if (p.canFiles) {
+    const fileCount = mc['files'] === -1 ? 'ERR' : String(ctx.files?.length ?? 0);
+    parts.push(`Files ${fileCount}`);
+  }
+
+  const settingsOk = mc['settings'] !== -1;
+  const companyOk  = mc['company']  !== -1;
+  parts.push(`Settings ${settingsOk ? 'OK' : 'ERR'} | Company ${companyOk ? 'OK' : 'ERR'}`);
+
+  let line = `Context loaded: ${parts.join(' | ')}`;
+  if (ctx.warnings && ctx.warnings.length > 0) {
+    line += `\n⚠️ Warnings (${ctx.warnings.length}): ${ctx.warnings.join('; ')}`;
+  }
+  return line;
 }
 
 // ── System prompt builder ─────────────────────────────────────────────────────

@@ -332,7 +332,13 @@ export default function DazzaAIPage() {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        // Try to get a meaningful error from the server response
+        let serverDetail = '';
+        try {
+          const errData = await res.json() as { error?: string; detail?: string };
+          serverDetail = errData.detail ?? errData.error ?? '';
+        } catch { /* ignore parse error */ }
+        throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
 
       const data = await res.json() as {
@@ -365,11 +371,17 @@ export default function DazzaAIPage() {
           timestamp: new Date(),
         }]);
       }
-    } catch {
+    } catch (err) {
+      const errMsg = String((err as Error)?.message ?? err);
+      // Only show "trouble connecting" for genuine network failures (TypeError = fetch failed)
+      const isNetworkError = err instanceof TypeError;
+      const displayMsg = isNetworkError
+        ? "I had trouble connecting. Please check your internet connection and try again."
+        : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
       setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I had trouble connecting. Please check your internet connection and try again.",
+        content: displayMsg,
         timestamp: new Date(),
       }]);
     } finally {
