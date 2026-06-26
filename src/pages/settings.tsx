@@ -40,7 +40,6 @@ interface Company {
 
 // ── Company Tab ───────────────────────────────────────────────────────────────
 function CompanyTab() {
-  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
@@ -60,7 +59,6 @@ function CompanyTab() {
       .then((data: { company?: Company; error?: string }) => {
         if (data.company) {
           const c = data.company;
-          setCompany(c);
           setName(c.name ?? '');
           setAbn(c.abn ?? '');
           setPhone(c.phone ?? '');
@@ -90,7 +88,6 @@ function CompanyTab() {
         setErrorMsg(data.error ?? 'Save failed');
         setSaveState('error');
       } else {
-        if (data.company) setCompany(data.company);
         setSaveState('saved');
         setTimeout(() => setSaveState('idle'), 2500);
       }
