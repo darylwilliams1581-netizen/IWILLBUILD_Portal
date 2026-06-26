@@ -283,6 +283,29 @@ export const recipeLines = mysqlTable('recipe_lines', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+// ── Files ─────────────────────────────────────────────────────────────────────
+
+export const companyFiles = mysqlTable('company_files', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  jobId: int('job_id').references(() => jobs.id, { onDelete: 'set null' }),
+  fleetAssetId: int('fleet_asset_id').references(() => fleetAssets.id, { onDelete: 'set null' }),
+  uploadedByUserId: varchar('uploaded_by_user_id', { length: 36 })
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  originalName: varchar('original_name', { length: 255 }).notNull(),
+  storedName: varchar('stored_name', { length: 255 }).notNull(),
+  mimeType: varchar('mime_type', { length: 100 }).notNull(),
+  sizeBytes: int('size_bytes').notNull(),
+  fileCategory: varchar('file_category', { length: 50 }).notNull().default('Other'),
+  label: varchar('label', { length: 255 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

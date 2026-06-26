@@ -59,6 +59,13 @@ import recipes_get from "./api/recipes/GET";
 import recipes_post from "./api/recipes/POST";
 import recipes_id_put from "./api/recipes/[id]/PUT";
 import recipes_id_delete from "./api/recipes/[id]/DELETE";
+import migrate_files_post from "./api/migrate-files/POST";
+import files_get from "./api/files/GET";
+import files_post from "./api/files/POST";
+import files_id_download_get from "./api/files/[id]/download/GET";
+import files_id_delete from "./api/files/[id]/DELETE";
+import jobs_id_files_get from "./api/jobs/[id]/files/GET";
+import fleet_id_files_get from "./api/fleet/[id]/files/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -194,6 +201,14 @@ app.get("/api/recipes", recipes_get);
 app.post("/api/recipes", recipes_post);
 app.put("/api/recipes/:id", recipes_id_put);
 app.delete("/api/recipes/:id", recipes_id_delete);
+// Files
+app.post("/api/migrate-files", migrate_files_post);
+app.get("/api/files", files_get);
+app.post("/api/files", files_post);
+app.get("/api/files/:id/download", files_id_download_get);
+app.delete("/api/files/:id", files_id_delete);
+app.get("/api/jobs/:id/files", jobs_id_files_get);
+app.get("/api/fleet/:id/files", fleet_id_files_get);
 app.get("/api/team", team_get);
 app.put("/api/team/:id", team_id_put);
 app.delete("/api/team/:id", team_id_delete);
