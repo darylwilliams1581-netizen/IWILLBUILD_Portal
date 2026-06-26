@@ -631,27 +631,9 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
                       loading="lazy"
                     />
 
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    {/* Hover overlay — zoom hint only */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
                       <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-
-                    {/* Action buttons — top right */}
-                    <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }}
-                        className="p-1.5 rounded-md bg-black/60 hover:bg-slate-700 text-white transition-colors"
-                        title="Edit photo"
-                      >
-                        <Pencil size={11} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }}
-                        className="p-1.5 rounded-md bg-black/60 hover:bg-red-600 text-white transition-colors"
-                        title="Delete photo"
-                      >
-                        <Trash2 size={11} />
-                      </button>
                     </div>
                   </div>
 
@@ -665,19 +647,36 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
                           <p className="text-xs text-slate-400 italic truncate">{photo.originalName ?? photo.filename}</p>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const a = document.createElement('a');
-                          a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
-                          a.download = photo.originalName ?? photo.filename;
-                          a.click();
-                        }}
-                        className="shrink-0 p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-                        title="Download photo"
-                      >
-                        <Download size={13} />
-                      </button>
+                      {/* Always-visible action buttons */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }}
+                          className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                          title="Edit photo"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const a = document.createElement('a');
+                            a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+                            a.download = photo.originalName ?? photo.filename;
+                            a.click();
+                          }}
+                          className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                          title="Download photo"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }}
+                          className="p-1 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Delete photo"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                     {photo.uploadedByName && (
                       <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
