@@ -6,7 +6,6 @@ import {
   X,
   Download,
   Trash2,
-  ZoomIn,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -247,22 +246,35 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50">
-          <button
-            onClick={onClose}
-            disabled={busy}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-40 transition-colors"
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border bg-slate-50">
+          {/* Download button on the left */}
+          <a
+            href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`}
+            download={photo.originalName ?? photo.filename}
+            className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors"
           >
-            Cancel
-          </button>
-          <button
-            onClick={doSave}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-5 py-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
-          >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            Save
-          </button>
+            <Download size={13} />
+            Download
+          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-40 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={doSave}
+              disabled={busy}
+              className="flex items-center gap-1.5 px-5 py-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              Save
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
@@ -631,10 +643,8 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
                       loading="lazy"
                     />
 
-                    {/* Hover overlay — zoom hint only */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
-                      <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                    {/* Hover overlay — subtle darken only */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
                   </div>
 
                   {/* Metadata strip */}
