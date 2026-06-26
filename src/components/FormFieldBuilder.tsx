@@ -738,7 +738,7 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                         </button>
                       </div>
                       {/* Button label (only when multiple=true) */}
-                      {settings.multiple && (
+                      {Boolean(settings.multiple) && (
                         <>
                           <div>
                             <label className="block text-[10px] font-bold text-white/35 mb-1.5 uppercase tracking-wider">Add signer button label</label>
@@ -932,7 +932,7 @@ function FieldPreview({ field }: { field: FormField }) {
       {field.fieldType === 'signature' && (
         <div className="h-14 rounded-xl border-2 border-dashed border-white/10 bg-white/2 flex items-center justify-center gap-2">
           <PenLine size={16} className="text-white/15" />
-          {parseSettings(field.settingsJson).multiple && (
+          {Boolean(parseSettings(field.settingsJson).multiple) && (
             <span className="text-[10px] text-white/20 font-semibold">Multiple signers</span>
           )}
         </div>
