@@ -39,6 +39,15 @@ function fromApiLine(l: EstimateLine): LocalLine {
 // ── Print modal ───────────────────────────────────────────────────────────────
 type PrintMode = 'unpriced' | 'scope-total' | 'itemised';
 
+interface CompanyProfile {
+  name?: string;
+  abn?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+}
+
 function PrintModal({
   estimate,
   lines,
@@ -51,66 +60,308 @@ function PrintModal({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<PrintMode>('itemised');
+  const [printing, setPrinting] = useState(false);
 
-  function doPrint() {
+  async function doPrint() {
+    setPrinting(true);
+
+    // Fetch company profile for header
+    let company: CompanyProfile = {};
+    try {
+      const r = await fetch('/api/company', { credentials: 'include' });
+      if (r.ok) company = await r.json() as CompanyProfile;
+    } catch { /* use empty */ }
+
     const totals = estimateTotals(lines, estimate.markupPercent, estimate.gstMode);
-    const fmt = (n: number) => `$${n.toFixed(2)}`;
-    const jobLabel = job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : `Job #${estimate.jobId}`;
+    const fmt = (n: number) => `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const date = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    let body = '';
-    if (mode === 'unpriced') {
-      body = `<ul>${lines.map((l) => `<li>${l.description || '—'}</li>`).join('')}</ul>`;
-    } else if (mode === 'scope-total') {
-      body = `<ul>${lines.map((l) => `<li>${l.description || '—'}</li>`).join('')}</ul>
-        <hr/>
-        <p><strong>Total: ${fmt(totals.total)}</strong></p>`;
-    } else {
-      const rows = lines.map((l) => {
-        const calc = lineCalc(l);
-        return `<tr>
-          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${l.description || '—'}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${l.quantity}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${l.unit}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">$${parseFloat(l.rate).toFixed(2)}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${fmt(calc)}</td>
+    // Filter out blank / zero-value placeholder lines
+    const printLines = lines.filter((l) => {
+      const hasDesc = l.description.trim().length > 0;
+      const hasValue = parseFloat(l.rate) !== 0 || parseFloat(l.quantity) !== 0;
+      return hasDesc || hasValue;
+    });
+
+    // ── Company header block ──────────────────────────────────────────────────
+    const companyLines: string[] = [];
+    if (company.abn) companyLines.push(`ABN: ${company.abn}`);
+    if (company.phone) companyLines.push(company.phone);
+    if (company.email) companyLines.push(company.email);
+    if (company.website) companyLines.push(company.website);
+    if (company.address) companyLines.push(company.address);
+
+    const companyHtml = `
+      <div class="company-block">
+        <div class="company-name">${company.name ?? 'IWILLBUILD'}</div>
+        ${companyLines.map((l) => `<div class="company-detail">${l}</div>`).join('')}
+      </div>`;
+
+    // ── Job / quote meta block ────────────────────────────────────────────────
+    const metaRows: Array<[string, string]> = [];
+    if (estimate.title) metaRows.push(['Quote Title', estimate.title]);
+    if (job?.jobNumber) metaRows.push(['Job Number', job.jobNumber]);
+    if (job?.name) metaRows.push(['Job Name', job.name]);
+    if (job?.client) metaRows.push(['Client', job.client]);
+    if (job?.address) metaRows.push(['Site Address', job.address]);
+    metaRows.push(['Date', date]);
+    if (estimate.status && estimate.status !== 'Draft') metaRows.push(['Status', estimate.status]);
+
+    const metaHtml = `
+      <table class="meta-table">
+        ${metaRows.map(([k, v]) => `<tr><td class="meta-key">${k}</td><td class="meta-val">${v}</td></tr>`).join('')}
+      </table>`;
+
+    // ── Line table ────────────────────────────────────────────────────────────
+    let tableHtml = '';
+
+    if (mode === 'itemised') {
+      const rows = printLines.map((l) => {
+        const amt = lineCalc(l);
+        return `<tr class="line-row">
+          <td class="td-desc">${l.description || '—'}</td>
+          <td class="td-num">${l.quantity}</td>
+          <td class="td-unit">${l.unit}</td>
+          <td class="td-num">$${parseFloat(l.rate).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="td-num td-amount">${fmt(amt)}</td>
         </tr>`;
       }).join('');
-      body = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f9fafb">
-          <th style="padding:8px;text-align:left;border-bottom:2px solid #e5e7eb">Description</th>
-          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Qty</th>
-          <th style="padding:8px;text-align:left;border-bottom:2px solid #e5e7eb">Unit</th>
-          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Rate</th>
-          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Amount</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <hr style="margin:16px 0"/>
-      <table style="width:100%;font-size:13px;max-width:320px;margin-left:auto">
-        <tr><td>Subtotal</td><td style="text-align:right">${fmt(totals.subtotal)}</td></tr>
-        ${parseFloat(estimate.markupPercent) > 0 ? `<tr><td>Markup (${estimate.markupPercent}%)</td><td style="text-align:right">${fmt(totals.markupAmount)}</td></tr>` : ''}
-        ${totals.gst > 0 ? `<tr><td>GST (10%)</td><td style="text-align:right">${fmt(totals.gst)}</td></tr>` : ''}
-        <tr style="font-weight:bold;font-size:15px"><td>Total</td><td style="text-align:right">${fmt(totals.total)}</td></tr>
-      </table>`;
+      tableHtml = `
+        <table class="lines-table">
+          <thead>
+            <tr class="thead-row">
+              <th class="th-desc">Description</th>
+              <th class="th-num">Qty</th>
+              <th class="th-unit">Unit</th>
+              <th class="th-num">Rate</th>
+              <th class="th-num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } else {
+      // scope-total or unpriced — description + qty + unit table
+      const rows = printLines.map((l) => `
+        <tr class="line-row">
+          <td class="td-desc">${l.description || '—'}</td>
+          <td class="td-num">${l.quantity}</td>
+          <td class="td-unit">${l.unit}</td>
+        </tr>`).join('');
+      tableHtml = `
+        <table class="lines-table">
+          <thead>
+            <tr class="thead-row">
+              <th class="th-desc">Description</th>
+              <th class="th-num">Qty</th>
+              <th class="th-unit">Unit</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
     }
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${estimate.title}</title>
-      <style>body{font-family:sans-serif;padding:32px;color:#111}h1{font-size:20px;margin:0 0 4px}p{margin:4px 0;font-size:13px;color:#555}hr{border:none;border-top:1px solid #e5e7eb;margin:16px 0}ul{padding-left:20px}li{margin:4px 0;font-size:13px}</style>
-      </head><body>
-      <h1>${estimate.title}</h1>
-      <p>${jobLabel}</p>
-      <p>${date}</p>
-      <hr/>
-      ${body}
-      </body></html>`;
+    // ── Totals block ──────────────────────────────────────────────────────────
+    let totalsHtml = '';
+    if (mode === 'itemised' || mode === 'scope-total') {
+      const totalRows: string[] = [];
+      if (mode === 'itemised') {
+        totalRows.push(`<tr><td class="tot-label">Subtotal</td><td class="tot-val">${fmt(totals.subtotal)}</td></tr>`);
+        if (parseFloat(estimate.markupPercent) > 0) {
+          totalRows.push(`<tr><td class="tot-label">Markup (${estimate.markupPercent}%)</td><td class="tot-val">${fmt(totals.markupAmount)}</td></tr>`);
+        }
+        if (totals.gst > 0) {
+          totalRows.push(`<tr><td class="tot-label">GST (10%)</td><td class="tot-val">${fmt(totals.gst)}</td></tr>`);
+        }
+      }
+      totalRows.push(`<tr class="tot-total-row"><td class="tot-label">Total</td><td class="tot-val">${fmt(totals.total)}</td></tr>`);
+      totalsHtml = `<div class="totals-wrap"><table class="totals-table">${totalRows.join('')}</table></div>`;
+    }
 
-    const w = window.open('', '_blank');
-    if (!w) return;
+    // ── Full document ─────────────────────────────────────────────────────────
+    const docTitle = `${job?.jobNumber ? job.jobNumber + ' — ' : ''}${estimate.title}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>${docTitle}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4; margin: 14mm 14mm 16mm 14mm; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #1e293b;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  @media screen { body { padding: 20mm 20mm; max-width: 210mm; margin: 0 auto; } }
+
+  /* ── Header ── */
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #f97316;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .company-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f97316;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .company-detail {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+    line-height: 1.5;
+  }
+  .doc-label {
+    text-align: right;
+  }
+  .doc-label-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+  }
+  .doc-label-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 3px;
+  }
+
+  /* ── Meta table ── */
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  .meta-key {
+    width: 130px;
+    font-weight: 600;
+    color: #64748b;
+    padding: 3px 12px 3px 0;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  .meta-val {
+    color: #1e293b;
+    font-weight: 500;
+    padding: 3px 0;
+  }
+
+  /* ── Lines table ── */
+  .lines-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-bottom: 0;
+  }
+  .thead-row {
+    background: #f8fafc;
+  }
+  .thead-row th {
+    padding: 9px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .th-desc { text-align: left; }
+  .th-num  { text-align: right; width: 70px; }
+  .th-unit { text-align: left;  width: 60px; }
+  .line-row td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+  }
+  .line-row:last-child td { border-bottom: 2px solid #e2e8f0; }
+  .td-desc  { text-align: left; line-height: 1.5; }
+  .td-num   { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .td-unit  { text-align: left; color: #64748b; }
+  .td-amount { font-weight: 600; }
+  .line-row { page-break-inside: avoid; }
+
+  /* ── Totals ── */
+  .totals-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+    margin-bottom: 24px;
+  }
+  .totals-table {
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 240px;
+  }
+  .totals-table td {
+    padding: 5px 10px;
+  }
+  .tot-label { color: #475569; text-align: left; }
+  .tot-val   { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .tot-total-row td {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    border-top: 2px solid #e2e8f0;
+    padding-top: 8px;
+  }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin-top: 32px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 10px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Print-only: hide browser chrome ── */
+  @media print {
+    html, body { margin: 0; padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="doc-header">
+    ${companyHtml}
+    <div class="doc-label">
+      <div class="doc-label-title">QUOTE</div>
+      <div class="doc-label-sub">${date}</div>
+    </div>
+  </div>
+
+  ${metaHtml}
+
+  ${tableHtml}
+
+  ${totalsHtml}
+
+  <div class="doc-footer">
+    <span>${company.name ?? 'IWILLBUILD'} — ${estimate.title}</span>
+    <span>Printed ${date}</span>
+  </div>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=750');
+    if (!w) { setPrinting(false); return; }
     w.document.write(html);
     w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 300);
+    w.document.title = docTitle;
+    w.onload = () => { w.focus(); w.print(); };
+    setPrinting(false);
     onClose();
   }
 
@@ -119,13 +370,14 @@ function PrintModal({
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
         <h3 className="font-heading font-bold text-base flex items-center gap-2">
           <Printer size={16} className="text-primary" />
-          Print Estimate
+          Print / Export Quote
         </h3>
+        <p className="text-xs text-slate-400 -mt-2">Tip: in the print dialog, turn off <strong>Headers and footers</strong> for the cleanest output.</p>
         <div className="flex flex-col gap-2">
           {([
-            { value: 'unpriced', label: 'Unpriced Scope', desc: 'Line descriptions only — no rates or totals' },
-            { value: 'scope-total', label: 'Scope with Total', desc: 'Line descriptions plus the final total' },
-            { value: 'itemised', label: 'Itemised Quote', desc: 'Full breakdown with qty, unit, rate, and line totals' },
+            { value: 'itemised', label: 'Full Itemised Quote', desc: 'Qty, unit, rate and line totals — full breakdown' },
+            { value: 'scope-total', label: 'Scope with Total', desc: 'Line descriptions + qty/unit, total at bottom' },
+            { value: 'unpriced', label: 'Unpriced Scope', desc: 'Descriptions and quantities only — no prices' },
           ] as const).map((opt) => (
             <label
               key={opt.value}
@@ -141,9 +393,9 @@ function PrintModal({
         </div>
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition-colors">Cancel</button>
-          <button onClick={doPrint} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors">
-            <Printer size={13} />
-            Print
+          <button onClick={() => void doPrint()} disabled={printing} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-60">
+            {printing ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+            {printing ? 'Preparing…' : 'Print / PDF'}
           </button>
         </div>
       </div>
