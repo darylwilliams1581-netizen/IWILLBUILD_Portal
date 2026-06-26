@@ -120,14 +120,38 @@ export const fleetAssets = mysqlTable('fleet_assets', {
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
-  type: varchar('type', { length: 100 }),
-  rego: varchar('rego', { length: 20 }),
+  assetNumber: varchar('asset_number', { length: 50 }),
+  type: varchar('type', { length: 100 }).notNull().default('Vehicle'),
+  makeModel: varchar('make_model', { length: 255 }),
+  rego: varchar('rego', { length: 50 }),
+  regoNotApplicable: boolean('rego_not_applicable').notNull().default(false),
   serviceDate: timestamp('service_date'),
   regoExpiry: timestamp('rego_expiry'),
-  status: varchar('status', { length: 50 }).notNull().default('ok'),
+  status: varchar('status', { length: 60 }).notNull().default('Active'),
   notes: text('notes'),
+  archived: boolean('archived').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const fleetPrestarts = mysqlTable('fleet_prestarts', {
+  id: int('id').primaryKey().autoincrement(),
+  assetId: int('asset_id')
+    .notNull()
+    .references(() => fleetAssets.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  operatorName: varchar('operator_name', { length: 255 }),
+  kmHours: varchar('km_hours', { length: 50 }),
+  safeToOperate: boolean('safe_to_operate').notNull().default(true),
+  issueNeedsAttention: boolean('issue_needs_attention').notNull().default(false),
+  issueComment: text('issue_comment'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const dazzaThreads = mysqlTable('dazza_threads', {

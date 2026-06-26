@@ -8,6 +8,7 @@ import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
 import JobDetailPage from './pages/job-detail';
 import FleetPage from './pages/fleet';
+import FleetDetailPage from './pages/fleet-detail';
 import DazzaAIPage from './pages/dazza-ai';
 import DownloadsPage from './pages/downloads';
 import TeamPage from './pages/team';
@@ -26,21 +27,22 @@ function protect(element: React.ReactElement) {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/',           element: <HomePage /> },
-  { path: '/login',      element: <LoginPage /> },
-  { path: '/signup',     element: <SignupPage /> },
-  { path: '/dashboard',  element: protect(<DashboardPage />) },
-  { path: '/jobs',       element: protect(<JobsPage />) },
-  { path: '/jobs/:id',   element: protect(<JobDetailPage />) },
-  { path: '/fleet',      element: protect(<FleetPage />) },
-  { path: '/forms',      element: protect(<FormsPage />) },
-  { path: '/files',      element: protect(<FilesPage />) },
-  { path: '/estimating', element: protect(<EstimatingPage />) },
-  { path: '/downloads',  element: protect(<DownloadsPage />) },
-  { path: '/dazza-ai',   element: protect(<DazzaAIPage />) },
-  { path: '/team',       element: protect(<TeamPage />) },
-  { path: '/settings',   element: protect(<SettingsPage />) },
-  { path: '*',           element: <NotFoundPage /> },
+  { path: '/',            element: <HomePage /> },
+  { path: '/login',       element: <LoginPage /> },
+  { path: '/signup',      element: <SignupPage /> },
+  { path: '/dashboard',   element: protect(<DashboardPage />) },
+  { path: '/jobs',        element: protect(<JobsPage />) },
+  { path: '/jobs/:id',    element: protect(<JobDetailPage />) },
+  { path: '/fleet',       element: protect(<FleetPage />) },
+  { path: '/fleet/:id',   element: protect(<FleetDetailPage />) },
+  { path: '/forms',       element: protect(<FormsPage />) },
+  { path: '/files',       element: protect(<FilesPage />) },
+  { path: '/estimating',  element: protect(<EstimatingPage />) },
+  { path: '/downloads',   element: protect(<DownloadsPage />) },
+  { path: '/dazza-ai',    element: protect(<DazzaAIPage />) },
+  { path: '/team',        element: protect(<TeamPage />) },
+  { path: '/settings',    element: protect(<SettingsPage />) },
+  { path: '*',            element: <NotFoundPage /> },
 ];
 
 export type Path =

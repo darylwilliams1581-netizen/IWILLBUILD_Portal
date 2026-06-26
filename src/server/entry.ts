@@ -21,10 +21,18 @@ import form_templates_id_put from "./api/form-templates/[id]/PUT";
 import form_templates_id_delete from "./api/form-templates/[id]/DELETE";
 import migrate_form_templates_post from "./api/migrate-form-templates/POST";
 import migrate_job_photos_post from "./api/migrate-job-photos/POST";
+import migrate_fleet_post from "./api/migrate-fleet/POST";
 import jobs_id_photos_get from "./api/jobs/[id]/photos/GET";
 import jobs_id_photos_post from "./api/jobs/[id]/photos/POST";
 import jobs_id_photos_photoid_delete from "./api/jobs/[id]/photos/[photoId]/DELETE";
 import jobs_id_photos_photoid_download_get from "./api/jobs/[id]/photos/[photoId]/download/GET";
+import fleet_get from "./api/fleet/GET";
+import fleet_post from "./api/fleet/POST";
+import fleet_flags_get from "./api/fleet/flags/GET";
+import fleet_id_get from "./api/fleet/[id]/GET";
+import fleet_id_put from "./api/fleet/[id]/PUT";
+import fleet_id_prestarts_get from "./api/fleet/[id]/prestarts/GET";
+import fleet_id_prestarts_post from "./api/fleet/[id]/prestarts/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -121,10 +129,19 @@ app.put("/api/form-templates/:id", form_templates_id_put);
 app.delete("/api/form-templates/:id", form_templates_id_delete);
 app.post("/api/migrate-form-templates", migrate_form_templates_post);
 app.post("/api/migrate-job-photos", migrate_job_photos_post);
+app.post("/api/migrate-fleet", migrate_fleet_post);
 app.get("/api/jobs/:id/photos", jobs_id_photos_get);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoid_delete);
 app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoid_download_get);
+// Fleet — flags must be registered BEFORE :id to avoid route collision
+app.get("/api/fleet/flags", fleet_flags_get);
+app.get("/api/fleet", fleet_get);
+app.post("/api/fleet", fleet_post);
+app.get("/api/fleet/:id", fleet_id_get);
+app.put("/api/fleet/:id", fleet_id_put);
+app.get("/api/fleet/:id/prestarts", fleet_id_prestarts_get);
+app.post("/api/fleet/:id/prestarts", fleet_id_prestarts_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

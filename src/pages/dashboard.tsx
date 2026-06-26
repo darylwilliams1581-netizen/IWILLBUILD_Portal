@@ -11,11 +11,15 @@ import {
   ChevronRight,
   Plus,
   Menu,
+  AlertTriangle,
+  Calendar,
+  Wrench,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
+import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -41,11 +45,19 @@ export default function DashboardPage() {
   const { user } = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [fleetCount, setFleetCount] = useState(0);
+  const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
 
   useEffect(() => {
     fetchJobs()
       .then((data) => { setJobs(data); setJobsLoaded(true); })
       .catch(() => setJobsLoaded(true));
+    fetchFleet()
+      .then((assets) => setFleetCount(assets.filter((a) => a.status === 'Active').length))
+      .catch(() => {});
+    fetchFleetFlags()
+      .then((flags) => setFleetFlags(flags))
+      .catch(() => {});
   }, []);
 
   const activeJobCount = jobs.filter((j) =>
@@ -178,13 +190,13 @@ export default function DashboardPage() {
               },
               {
                 label: 'Fleet Active',
-                value: '0',
-                sub: 'No vehicles added',
+                value: String(fleetCount),
+                sub: fleetCount === 0 ? 'No vehicles added' : `${fleetCount} active asset${fleetCount !== 1 ? 's' : ''}`,
                 icon: Truck,
                 color: 'text-emerald-600',
                 bg: 'bg-emerald-50',
                 href: '/fleet',
-                cta: 'Add fleet asset',
+                cta: fleetCount === 0 ? 'Add fleet asset' : 'View fleet',
               },
               {
                 label: 'Downloads',
@@ -220,6 +232,62 @@ export default function DashboardPage() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* ── Fleet Flags ── */}
+          {fleetFlags && fleetFlags.totalFlags > 0 && (
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col gap-3"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                <h2 className="font-heading font-bold text-sm text-amber-800">
+                  Fleet Attention Required — {fleetFlags.totalFlags} flag{fleetFlags.totalFlags !== 1 ? 's' : ''}
+                </h2>
+                <Link to="/fleet" className="ml-auto text-xs font-semibold text-amber-700 hover:underline flex items-center gap-1">
+                  View Fleet <ChevronRight size={11} />
+                </Link>
+              </div>
+              <div className="flex flex-col gap-2">
+                {fleetFlags.attentionFlags.map((f) => (
+                  <Link
+                    key={`att-${f.assetId}`}
+                    to={`/fleet/${f.assetId}`}
+                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                  >
+                    <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-amber-800">{f.assetName} — Issue flagged in prestart</p>
+                      {f.comment && <p className="text-xs text-amber-700 truncate">{f.comment}</p>}
+                    </div>
+                    <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                  </Link>
+                ))}
+                {fleetFlags.dueDateFlags.map((f) => (
+                  <Link
+                    key={`due-${f.assetId}-${f.type}`}
+                    to={`/fleet/${f.assetId}`}
+                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                  >
+                    {f.type === 'service' ? (
+                      <Wrench size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <Calendar size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-amber-800">
+                        {f.assetName} — {f.type === 'service' ? 'Service' : 'Rego'} due{' '}
+                        {new Date(f.dueDate) < new Date() ? 'overdue' : `${new Date(f.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`}
+                      </p>
+                    </div>
+                    <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* ── Bottom panels ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
