@@ -231,6 +231,25 @@ export const formTemplateFields = mysqlTable('form_template_fields', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const jobFormSubmissions = mysqlTable('job_form_submissions', {
+  id: int('id').primaryKey().autoincrement(),
+  jobId: int('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  templateId: int('template_id')
+    .notNull()
+    .references(() => formTemplates.id, { onDelete: 'cascade' }),
+  completedByUserId: varchar('completed_by_user_id', { length: 255 }).notNull(),
+  completedByName: varchar('completed_by_name', { length: 255 }),
+  status: varchar('status', { length: 30 }).notNull().default('in_progress'), // in_progress | completed
+  answersJson: text('answers_json'), // JSON object of fieldId -> answer
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const estimates = mysqlTable('estimates', {
   id: int('id').primaryKey().autoincrement(),
   jobId: int('job_id')

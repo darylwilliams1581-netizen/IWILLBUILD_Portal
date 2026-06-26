@@ -23,6 +23,7 @@ import {
   CheckSquare,
   TrendingUp,
   Upload,
+  ClipboardList,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -31,9 +32,10 @@ import FilePanel from '@/components/FilePanel';
 import JobNotes from '@/components/job/JobNotes';
 import JobTodos from '@/components/job/JobTodos';
 import JobProgress from '@/components/job/JobProgress';
+import JobForms from '@/components/job/JobForms';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'notes';
+type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +51,7 @@ export default function JobDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress') return t;
+    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms') return t;
     return 'details';
   });
 
@@ -289,6 +291,7 @@ export default function JobDetailPage() {
                   { key: 'todos',     label: 'To-do',     icon: CheckSquare },
                   { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
+                  { key: 'forms',     label: 'Forms',     icon: ClipboardList },
                   { key: 'notes',     label: 'Notes',     icon: StickyNote },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
@@ -446,20 +449,12 @@ export default function JobDetailPage() {
                 <JobProgress jobId={job.id} />
               )}
 
-              {/* Coming soon modules — only show on details tab */}
-              {activeTab === 'details' && (                <div className="bg-white rounded-xl border border-border p-5">
-                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {['Forms'].map((m) => (
-                      <div key={m} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-                        <FileText size={14} className="text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{m}</span>
-                        <span className="ml-auto text-[10px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">Soon</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}            </motion.div>
+              {/* ── Forms tab ── */}
+              {activeTab === 'forms' && (
+                <JobForms jobId={job.id} />
+              )}
+
+            </motion.div>
           )}
         </div>
       </div>
