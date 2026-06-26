@@ -49,6 +49,7 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms') return t;
@@ -67,6 +68,11 @@ export default function JobDetailPage() {
 
   useEffect(() => {
     if (id) loadJob(parseInt(id, 10));
+    // Fetch user role for permission checks
+    fetch('/api/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { profile?: { role?: string } }) => { if (d.profile?.role) setUserRole(d.profile.role); })
+      .catch(() => {});
   }, [id]);
 
   async function loadJob(jobId: number) {
@@ -451,7 +457,7 @@ export default function JobDetailPage() {
 
               {/* ── Forms tab ── */}
               {activeTab === 'forms' && (
-                <JobForms jobId={job.id} />
+                <JobForms jobId={job.id} userRole={userRole} />
               )}
 
             </motion.div>
