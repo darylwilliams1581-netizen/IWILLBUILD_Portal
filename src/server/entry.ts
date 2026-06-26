@@ -77,6 +77,12 @@ import team_get_58 from "./api/team/GET";
 import team_invite_post_59 from "./api/team/invite/POST";
 import team_id_delete_60 from "./api/team/[id]/DELETE";
 import team_id_put_61 from "./api/team/[id]/PUT";
+import migrate_form_fields_post from "./api/migrate-form-fields/POST";
+import forms_id_fields_get from "./api/forms/[id]/fields/GET";
+import forms_id_fields_post from "./api/forms/[id]/fields/POST";
+import forms_id_fields_reorder_post from "./api/forms/[id]/fields/reorder/POST";
+import forms_id_fields_fieldId_patch from "./api/forms/[id]/fields/[fieldId]/PATCH";
+import forms_id_fields_fieldId_delete from "./api/forms/[id]/fields/[fieldId]/DELETE";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -187,6 +193,12 @@ app.get("/api/form-templates", form_templates_get_27);
 app.post("/api/form-templates", form_templates_post_28);
 app.delete("/api/form-templates/:id", form_templates_id_delete_29);
 app.put("/api/form-templates/:id", form_templates_id_put_30);
+app.get("/api/forms/:id/fields", forms_id_fields_get);
+app.post("/api/forms/:id/fields", forms_id_fields_post);
+app.post("/api/forms/:id/fields/reorder", forms_id_fields_reorder_post);
+app.patch("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_patch);
+app.delete("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_delete);
+app.post("/api/migrate-form-fields", migrate_form_fields_post);
 app.get("/api/health", health_get_31);
 app.get("/api/jobs", jobs_get_32);
 app.post("/api/jobs", jobs_post_33);

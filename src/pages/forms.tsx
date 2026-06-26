@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, LayoutDashboard, Briefcase, Truck } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, LayoutDashboard, Briefcase, Truck, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FormFieldBuilder from '@/components/FormFieldBuilder';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,6 +244,7 @@ export default function FormsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [builderTemplateId, setBuilderTemplateId] = useState<number | null>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -337,6 +339,26 @@ export default function FormsPage() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // ── Builder view ───────────────────────────────────────────────────────────
+
+  if (builderTemplateId !== null) {
+    return (
+      <div className="flex h-screen bg-slate-100 overflow-hidden">
+        <Helmet>
+          <title>Form Builder — IWILLBUILD Portal</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+        <PortalSidebar />
+        <div className="flex-1 overflow-y-auto">
+          <FormFieldBuilder
+            templateId={builderTemplateId}
+            onBack={() => setBuilderTemplateId(null)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -463,6 +485,12 @@ export default function FormsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      onClick={() => setBuilderTemplateId(t.id)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary hover:bg-orange-600 transition-colors px-3 py-1.5 rounded-lg"
+                    >
+                      Build fields <ChevronRight size={12} />
+                    </button>
                     <button
                       onClick={() => setEditTarget(t)}
                       className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary transition-colors px-2 py-1.5 rounded-md hover:bg-orange-50"

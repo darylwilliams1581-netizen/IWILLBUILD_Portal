@@ -213,6 +213,24 @@ export const formTemplates = mysqlTable('form_templates', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const formTemplateFields = mysqlTable('form_template_fields', {
+  id: int('id').primaryKey().autoincrement(),
+  templateId: int('template_id')
+    .notNull()
+    .references(() => formTemplates.id, { onDelete: 'cascade' }),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  label: varchar('label', { length: 255 }).notNull().default(''),
+  fieldType: varchar('field_type', { length: 50 }).notNull().default('short_text'),
+  required: boolean('required').notNull().default(false),
+  optionsJson: text('options_json'),
+  settingsJson: text('settings_json'),
+  fieldOrder: int('field_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const estimates = mysqlTable('estimates', {
   id: int('id').primaryKey().autoincrement(),
   jobId: int('job_id')
