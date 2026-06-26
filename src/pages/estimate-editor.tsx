@@ -976,15 +976,15 @@ export default function EstimateEditorPage() {
 
                 {/* Desktop table */}
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-fixed">
                     <thead>
                       <tr className="bg-muted/40 text-xs font-semibold text-muted-foreground">
-                        <th className="text-left px-4 py-2.5 w-[40%]">Description</th>
-                        <th className="text-right px-3 py-2.5 w-[10%]">Qty</th>
-                        <th className="text-left px-3 py-2.5 w-[10%]">Unit</th>
-                        <th className="text-right px-3 py-2.5 w-[12%]">Rate</th>
-                        <th className="text-right px-3 py-2.5 w-[12%]">Calc</th>
-                        <th className="px-3 py-2.5 w-[16%]"></th>
+                        <th className="text-left px-4 py-2.5 w-[55%]">Description</th>
+                        <th className="text-right px-2 py-2.5 w-[7%]">Qty</th>
+                        <th className="text-left px-2 py-2.5 w-[7%]">Unit</th>
+                        <th className="text-right px-2 py-2.5 w-[9%]">Rate</th>
+                        <th className="text-right px-2 py-2.5 w-[9%]">Calc</th>
+                        <th className="px-2 py-2.5 w-[13%]"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -994,19 +994,27 @@ export default function EstimateEditorPage() {
                             <textarea
                               value={line.description}
                               disabled={isLocked}
-                              onChange={(e) => updateLine(line._key, 'description', e.target.value)}
-                              rows={1}
-                              placeholder="Description"
-                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm resize-none transition-colors disabled:bg-transparent disabled:cursor-default"
-                              style={{ minHeight: '34px', height: 'auto' }}
-                              onInput={(e) => {
+                              onChange={(e) => {
+                                updateLine(line._key, 'description', e.target.value);
+                                // resize on change
                                 const t = e.currentTarget;
                                 t.style.height = 'auto';
                                 t.style.height = `${t.scrollHeight}px`;
                               }}
+                              rows={1}
+                              placeholder="Description"
+                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm resize-none transition-colors disabled:bg-transparent disabled:cursor-default"
+                              style={{ minHeight: '34px', height: 'auto', overflow: 'hidden' }}
+                              ref={(el) => {
+                                // Auto-size on mount / value change
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = `${el.scrollHeight}px`;
+                                }
+                              }}
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="number"
                               min="0"
@@ -1014,20 +1022,20 @@ export default function EstimateEditorPage() {
                               value={line.quantity}
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'quantity', e.target.value)}
-                              className="w-full px-2 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="text"
                               value={line.unit}
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'unit', e.target.value)}
                               placeholder="ea"
-                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="number"
                               min="0"
@@ -1035,13 +1043,13 @@ export default function EstimateEditorPage() {
                               value={line.rate}
                               disabled={isLocked}
                               onChange={(e) => updateLine(line._key, 'rate', e.target.value)}
-                              className="w-full px-2 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                              className="w-full px-1.5 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
                             />
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-sm text-foreground">
+                          <td className="px-2 py-2 text-right font-mono text-sm text-foreground">
                             ${lineCalc(line).toFixed(2)}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             {!isLocked && (
                               <div className="flex items-center gap-0.5 justify-end">
                                 <button onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30">

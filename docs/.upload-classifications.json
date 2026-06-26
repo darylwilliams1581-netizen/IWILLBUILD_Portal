@@ -446,6 +446,19 @@
       "summary": "Screenshot of a dashboard sidebar menu showing current navigation structure (Dazza AI, Annette, Jobs, Fleet, Forms, Team, Billing, Settings, Log out). User is referencing this to request structural changes to the menu hierarchy.",
       "fileName": "screenshot-2026-06-26T16-01-49.jpg",
       "storedUploadFilename": "f38wenbvln_1782489710841_file_7JeJqWvMOf.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of an estimate tab UI showing a scope description field with layout issues; user is requesting a bug fix to auto-fit multi-line scope text by adjusting column widths and field height.",
+      "fileName": "screenshot-2026-06-26T16-28-11.jpg",
+      "storedUploadFilename": "f38wenbvln_1782491292101_file_jHTnEhS3kY.jpg"
     }
   ]
 }
