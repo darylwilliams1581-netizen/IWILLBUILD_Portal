@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle,
   BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
+  Upload, Download, FileText,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
+import CsvImportModal from '@/components/CsvImportModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -389,6 +391,8 @@ function CostGuideTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<CostItem | undefined>();
   const [search, setSearch] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -428,6 +432,34 @@ function CostGuideTab() {
     await load();
   }
 
+  async function handleExportCsv() {
+    setExportingCsv(true);
+    try {
+      const res = await fetch('/api/cost-guide/export-csv', { credentials: 'include' });
+      if (!res.ok) { alert('Export failed'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cost-guide-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingCsv(false);
+    }
+  }
+
+  function downloadTemplate() {
+    const csv = 'description,unit,rate\nFix out labour,hr,92\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cost-guide-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const filtered = items
     .filter((i) => !search || i.description.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
@@ -453,14 +485,37 @@ function CostGuideTab() {
             {items.length} / 200 items
           </span>
         </div>
-        <button
-          onClick={() => { setEditing(undefined); setShowModal(true); }}
-          disabled={items.length >= 200}
-          title={items.length >= 200 ? 'Cost Guide limit reached (200 items). Delete unused items to add more.' : undefined}
-          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus size={14} />Cost Item
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* CSV actions */}
+          <button
+            onClick={downloadTemplate}
+            className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
+            title="Download CSV template"
+          >
+            <FileText size={13} />Template
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
+          >
+            <Upload size={13} />Import CSV
+          </button>
+          <button
+            onClick={handleExportCsv}
+            disabled={exportingCsv || items.length === 0}
+            className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 rounded-lg transition-colors"
+          >
+            {exportingCsv ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}Export CSV
+          </button>
+          <button
+            onClick={() => { setEditing(undefined); setShowModal(true); }}
+            disabled={items.length >= 200}
+            title={items.length >= 200 ? 'Cost Guide limit reached (200 items). Delete unused items to add more.' : undefined}
+            className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus size={14} />Cost Item
+          </button>
+        </div>
       </div>
 
       {items.length >= 200 && (
@@ -516,6 +571,16 @@ function CostGuideTab() {
           initial={editing}
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditing(undefined); }}
+        />
+      )}
+
+      {showImportModal && (
+        <CsvImportModal
+          title="Import Cost Guide CSV"
+          uploadUrl="/api/cost-guide/import-csv"
+          showDuplicateOption
+          onSuccess={() => { load(); }}
+          onClose={() => setShowImportModal(false)}
         />
       )}
     </div>

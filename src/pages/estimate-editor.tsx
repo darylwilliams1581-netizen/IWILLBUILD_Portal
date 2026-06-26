@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
-  BookOpen, Calculator,
+  BookOpen, Calculator, Upload, Download,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import {
@@ -13,6 +13,7 @@ import {
   type Estimate, type EstimateLine,
 } from '@/lib/estimates-api';
 import { fetchJob, type Job } from '@/lib/jobs-api';
+import CsvImportModal from '@/components/CsvImportModal';
 
 // ── Local line type (includes temp id for UI keying) ─────────────────────────
 interface LocalLine {
@@ -509,6 +510,8 @@ export default function EstimateEditorPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   // Refs for save-on-back — always hold latest values without stale closures
   const estimateRef = useRef<Estimate | null>(null);
   const linesRef = useRef<LocalLine[]>([]);
@@ -697,6 +700,41 @@ export default function EstimateEditorPage() {
       void save(estimate, next);
       return next;
     });
+  }
+
+  async function handleExportCsv() {
+    if (!estimate) return;
+    setExportingCsv(true);
+    try {
+      const res = await fetch(`/api/estimates/${estimate.id}/export-csv`, { credentials: 'include' });
+      if (!res.ok) { alert('Export failed'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (estimate.title ?? 'estimate').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.download = `estimate-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingCsv(false);
+    }
+  }
+
+  function downloadEstimateTemplate() {
+    const csv = 'description,quantity,unit,rate\nSupply and install internal door,1,each,183\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'estimate-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleCsvImportSuccess(result: { imported: number; lines?: Array<{ id?: number; description: string; quantity: string; unit: string | null; rate: string; lineOrder: number }> }) {
+    // Reload estimate lines from server after import
+    if (estimate) void load(estimate.id);
   }
 
   async function handleDuplicate() {
@@ -982,6 +1020,28 @@ export default function EstimateEditorPage() {
                         <Plus size={13} />
                         Add Line
                       </button>
+                      {/* CSV actions */}
+                      <div className="w-px h-4 bg-slate-200 mx-0.5" />
+                      <button
+                        onClick={downloadEstimateTemplate}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
+                        title="Download CSV template"
+                      >
+                        <FileText size={12} />Template
+                      </button>
+                      <button
+                        onClick={() => setShowCsvImport(true)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                      >
+                        <Upload size={12} />Import CSV
+                      </button>
+                      <button
+                        onClick={handleExportCsv}
+                        disabled={exportingCsv || lines.length === 0}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                      >
+                        {exportingCsv ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}Export CSV
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1178,6 +1238,16 @@ export default function EstimateEditorPage() {
       )}
       {showRecipePicker && !isLocked && (
         <RecipePicker onInsert={insertRecipe} onClose={() => setShowRecipePicker(false)} />
+      )}
+      {showCsvImport && estimate && (
+        <CsvImportModal
+          title="Import Estimate Lines from CSV"
+          uploadUrl={`/api/estimates/${estimate.id}/import-csv`}
+          locked={isLocked}
+          lockedMessage="This estimate is Approved and locked. Change the status before importing."
+          onSuccess={handleCsvImportSuccess}
+          onClose={() => setShowCsvImport(false)}
+        />
       )}
     </div>
   );

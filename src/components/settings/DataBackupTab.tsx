@@ -661,6 +661,50 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </SectionCard>
 
+      {/* ── CSV Import Templates ── */}
+      <SectionCard icon={FileText} title="CSV Import Templates">
+        <p className="text-sm text-slate-500 mb-4">
+          Download template files to use with the CSV import feature in Cost Guide and Estimate Editor.
+          Each template includes the correct column headers and one example row.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => {
+              const csv = 'description,unit,rate\nFix out labour,hr,92\n';
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'cost-guide-template.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <Download size={14} />
+            Cost Guide Template (.csv)
+          </button>
+          <button
+            onClick={() => {
+              const csv = 'description,quantity,unit,rate\nSupply and install internal door,1,each,183\n';
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'estimate-template.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <Download size={14} />
+            Estimate Lines Template (.csv)
+          </button>
+        </div>
+        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 font-mono space-y-1">
+          <p className="font-semibold text-slate-600 font-sans not-italic">Cost Guide columns:</p>
+          <p>description, unit, rate</p>
+          <p className="font-semibold text-slate-600 font-sans not-italic mt-2">Estimate columns:</p>
+          <p>description, quantity, unit, rate</p>
+        </div>
+      </SectionCard>
+
     </div>
   );
 }
