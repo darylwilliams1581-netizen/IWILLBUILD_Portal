@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormRunner from './FormRunner';
+import type { Job } from '@/lib/jobs-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -132,11 +133,12 @@ interface SubmissionRowProps {
   submission: FormSubmission;
   templateName: string;
   onOpen: () => void;
+  onPrint: () => void;
   onDelete: () => void;
   canDelete: boolean;
 }
 
-function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete }: SubmissionRowProps) {
+function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, canDelete }: SubmissionRowProps) {
   const isCompleted = submission.status === 'completed';
 
   return (
@@ -180,9 +182,9 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete }
             >
               <Eye size={12} /> View
             </button>
-            {/* Print/PDF — placeholder, wired to window.print for now */}
+            {/* Print/PDF */}
             <button
-              onClick={() => window.print()}
+              onClick={(e) => { e.stopPropagation(); onPrint(); }}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
             >
               <Printer size={12} /> Print / PDF
@@ -226,11 +228,12 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete }
 
 interface JobFormsProps {
   jobId: number;
+  job?: Job | null;
   userRole?: string;
   onRunnerActive?: (active: boolean) => void;
 }
 
-export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsProps) {
+export default function JobForms({ jobId, job, userRole, onRunnerActive }: JobFormsProps) {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,6 +275,17 @@ export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsPr
   }, [jobId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Fetch company name once for print header
+  useEffect(() => {
+    if ((window as unknown as Record<string, string>).__iwb_company_name) return;
+    fetch('/api/company-settings', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { name?: string }) => {
+        if (d.name) (window as unknown as Record<string, string>).__iwb_company_name = d.name;
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
 
   async function startForm(templateId: number) {
     setStarting(templateId);
@@ -354,9 +368,10 @@ export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsPr
   // ── Form runner view ────────────────────────────────────────────────────────
   if (runnerState) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden h-full">
+      <div>
         <FormRunner
           jobId={jobId}
+          job={job}
           submission={runnerState.submission}
           templateName={runnerState.templateName}
           readOnly={runnerState.readOnly}
@@ -483,6 +498,7 @@ export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsPr
                       submission={s}
                       templateName={templateName}
                       onOpen={() => openSubmission(s, isCompleted)}
+                      onPrint={() => openSubmission(s, true)}
                       onDelete={() => setDeleteTarget(s)}
                       canDelete={canDelete}
                     />

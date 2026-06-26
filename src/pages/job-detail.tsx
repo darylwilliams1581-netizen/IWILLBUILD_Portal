@@ -218,7 +218,7 @@ export default function JobDetailPage() {
         </header>
 
         {/* Content */}
-        <div className={`flex-1 min-h-0 ${formRunnerActive ? 'overflow-hidden flex flex-col' : 'overflow-y-auto p-4 md:p-6'}`}>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
 
           {/* Loading */}
           {loading && (
@@ -241,7 +241,7 @@ export default function JobDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' as const }}
-              className={formRunnerActive ? 'flex-1 min-h-0 flex flex-col' : 'max-w-2xl flex flex-col gap-4'}
+              className={formRunnerActive ? 'max-w-2xl flex flex-col gap-4' : 'max-w-2xl flex flex-col gap-4'}
             >
               {/* Status bar */}
               <div className="bg-white rounded-xl border border-border p-4 flex items-center justify-between gap-4">
@@ -458,8 +458,8 @@ export default function JobDetailPage() {
 
               {/* ── Forms tab ── */}
               {activeTab === 'forms' && (
-                <div className={formRunnerActive ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : undefined}>
-                  <JobForms jobId={job.id} userRole={userRole} onRunnerActive={setFormRunnerActive} />
+                <div>
+                  <JobForms jobId={job.id} userRole={userRole} job={job} onRunnerActive={setFormRunnerActive} />
                 </div>
               )}
 

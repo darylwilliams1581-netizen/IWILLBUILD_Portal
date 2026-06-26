@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { getAuth } from '../../../lib/auth/auth.js';
-import { profiles } from '../../db/schema.js';
+import { profiles, companies } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
@@ -28,7 +28,10 @@ export default async function handler(req: Request, res: Response) {
     const dazza = row?.dazza_json ? JSON.parse(row.dazza_json) : {};
     const banner = row?.banner_json ? JSON.parse(row.banner_json) : {};
 
-    res.json({ structure, dazza, banner });
+    // Also return company name for use in print headers etc.
+    const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
+
+    res.json({ structure, dazza, banner, name: company?.name ?? '' });
   } catch (error) {
     console.error('GET /api/company-settings error:', error);
     res.status(500).json({ error: 'Failed to load settings' });

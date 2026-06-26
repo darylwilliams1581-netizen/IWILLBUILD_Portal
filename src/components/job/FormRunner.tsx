@@ -10,9 +10,10 @@ import {
   Camera,
   Link,
   SplitSquareHorizontal,
-  Eye,
   Pencil,
+  Printer,
 } from 'lucide-react';
+import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
 import { type FormField, type FieldLogic, parseLogic, parseOptions, parseSettings } from '../FormFieldBuilder';
 import SignaturePad, {
@@ -31,6 +32,9 @@ export interface FormSubmission {
   templateId: number;
   status: string;
   answersJson: string | null;
+  completedByName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | null;
@@ -472,6 +476,7 @@ function FieldInput({ field, value, onChange, error }: FieldInputProps) {
 
 interface FormRunnerProps {
   jobId: number;
+  job?: Job | null;
   submission: FormSubmission;
   templateName: string;
   readOnly: boolean;
@@ -479,7 +484,7 @@ interface FormRunnerProps {
   onComplete: () => void;
 }
 
-export default function FormRunner({ jobId, submission, templateName, readOnly: initialReadOnly, onBack, onComplete }: FormRunnerProps) {
+export default function FormRunner({ jobId, job, submission, templateName, readOnly: initialReadOnly, onBack, onComplete }: FormRunnerProps) {
   const [fields, setFields] = useState<FormField[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
   const [loading, setLoading] = useState(true);
@@ -619,6 +624,186 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
     }
   }
 
+  // ── Print / PDF ─────────────────────────────────────────────────────────────
+
+  function triggerPrint(
+    printFields: FormField[],
+    printAnswers: Answers,
+    printVisible: Set<number>,
+    formTitle: string,
+    sub: FormSubmission,
+    jobData: Job | null | undefined,
+    isDraft: boolean,
+  ) {
+    const companyName = (window as unknown as Record<string, string>).__iwb_company_name ?? '';
+    const jobNum = jobData?.jobNumber ?? '';
+    const jobName = jobData?.name ?? '';
+    const jobAddress = jobData?.address ?? '';
+    const completedBy = sub.completedByName ?? 'Unknown';
+    const completedAt = new Date(sub.updatedAt ?? sub.createdAt ?? Date.now()).toLocaleString('en-AU', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const statusLabel = isDraft ? 'DRAFT' : 'COMPLETED';
+    const statusColor = isDraft ? '#d97706' : '#059669';
+
+    // Build field HTML
+    const fieldRows = printFields.map((field) => {
+      if (!printVisible.has(field.id)) return '';
+
+      if (field.fieldType === 'section') {
+        return `<div class="section-heading">${field.label}</div>`;
+      }
+      if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
+        const s = parseSettings(field.settingsJson);
+        const thumb = typeof s.thumbnailUrl === 'string' ? s.thumbnailUrl : null;
+        return `<div class="instruction">${thumb ? `<img src="${thumb}" class="thumb" alt="" />` : ''}<span>${field.label}</span></div>`;
+      }
+      if (field.fieldType === 'page_break') {
+        return `<div class="page-break-line"></div>`;
+      }
+
+      const val = printAnswers[field.id];
+      const empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+      let answerHtml = `<span class="no-answer">No answer</span>`;
+
+      if (!empty) {
+        if (field.fieldType === 'yes_no') {
+          const v = String(val);
+          answerHtml = `<span class="badge ${v === 'yes' ? 'badge-yes' : 'badge-no'}">${v === 'yes' ? '✓ Yes' : '✗ No'}</span>`;
+        } else if (field.fieldType === 'checkbox') {
+          answerHtml = `<span class="badge ${val === true ? 'badge-yes' : 'badge-no'}">${val === true ? '✓ Checked' : '✗ Unchecked'}</span>`;
+        } else if (field.fieldType === 'multi_select' && Array.isArray(val)) {
+          answerHtml = val.map((v) => `<span class="chip">${v}</span>`).join('');
+        } else if (field.fieldType === 'rating') {
+          const s = parseSettings(field.settingsJson);
+          const max = typeof s.max === 'number' ? s.max : 5;
+          const num = Number(val);
+          answerHtml = Array.from({ length: Math.min(max, 10) }, (_, i) =>
+            `<span style="color:${i < num ? '#f59e0b' : '#d1d5db'};font-size:18px">★</span>`
+          ).join('');
+        } else if (field.fieldType === 'url') {
+          answerHtml = `<a href="${String(val)}">${String(val)}</a>`;
+        } else if (field.fieldType === 'long_text') {
+          answerHtml = `<p class="long-text">${String(val).replace(/\n/g, '<br/>')}</p>`;
+        } else if (field.fieldType === 'location') {
+          answerHtml = `<span class="mono">${String(val)}</span>`;
+        } else if (field.fieldType === 'signature') {
+          const s = parseSettings(field.settingsJson);
+          if (s.multiple) {
+            const multi = parseMultiSignatureAnswer(val);
+            if (multi?.signers?.length) {
+              answerHtml = multi.signers.map((sig) => {
+                if (!sig.name && !sig.signatureDataUrl) return '';
+                return `<div class="sig-block">
+                  <div class="sig-name">${sig.name ?? 'Unknown'}</div>
+                  ${sig.signatureDataUrl ? `<img src="${sig.signatureDataUrl}" class="sig-img" alt="Signature" />` : ''}
+                  ${sig.signedAt ? `<div class="sig-date">Signed: ${new Date(sig.signedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+                </div>`;
+              }).join('');
+            }
+          } else {
+            const sig = parseSignatureAnswer(val);
+            if (sig?.signatureDataUrl) {
+              answerHtml = `<div class="sig-block">
+                ${sig.name ? `<div class="sig-name">${sig.name}</div>` : ''}
+                <img src="${sig.signatureDataUrl}" class="sig-img" alt="Signature" />
+                ${sig.signedAt ? `<div class="sig-date">Signed: ${new Date(sig.signedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+              </div>`;
+            }
+          }
+        } else {
+          answerHtml = `<span>${String(val)}</span>`;
+        }
+      }
+
+      return `<div class="field-row">
+        <div class="field-label">${field.label}${field.required ? ' <span class="req">*</span>' : ''}</div>
+        <div class="field-answer">${answerHtml}</div>
+      </div>`;
+    }).join('');
+
+    const docTitle = `${jobNum ? jobNum + ' - ' : ''}${formTitle}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>${docTitle}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #1e293b; background: #fff; padding: 14mm; }
+  @page { size: A4; margin: 14mm; }
+  @media print { body { padding: 0; } }
+
+  .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #f97316; padding-bottom: 12px; margin-bottom: 20px; }
+  .company-name { font-size: 18px; font-weight: 800; color: #f97316; letter-spacing: -0.3px; }
+  .form-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 2px; }
+  .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; background: ${isDraft ? '#fef3c7' : '#d1fae5'}; color: ${statusColor}; border: 1.5px solid ${isDraft ? '#fcd34d' : '#6ee7b7'}; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-bottom: 20px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+  .meta-row { display: flex; flex-direction: column; gap: 1px; }
+  .meta-label { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; }
+  .meta-value { font-size: 12px; font-weight: 600; color: #334155; }
+
+  .section-heading { font-size: 13px; font-weight: 800; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; margin: 20px 0 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .instruction { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 12px; color: #1e40af; display: flex; gap: 10px; align-items: flex-start; }
+  .instruction .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+  .page-break-line { border-top: 2px dashed #cbd5e1; margin: 16px 0; }
+
+  .field-row { margin-bottom: 14px; page-break-inside: avoid; }
+  .field-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .field-label .req { color: #ef4444; }
+  .field-answer { font-size: 13px; color: #1e293b; }
+  .no-answer { color: #94a3b8; font-style: italic; }
+  .long-text { white-space: pre-wrap; line-height: 1.6; }
+  .mono { font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+  .badge-yes { background: #d1fae5; color: #065f46; }
+  .badge-no { background: #fee2e2; color: #991b1b; }
+  .chip { display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: #475569; margin: 2px 3px 2px 0; }
+
+  .sig-block { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin: 4px 0; background: #fafafa; page-break-inside: avoid; }
+  .sig-name { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .sig-img { max-width: 260px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; display: block; }
+  .sig-date { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+
+  .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+  <div class="report-header">
+    <div>
+      ${companyName ? `<div class="company-name">${companyName}</div>` : ''}
+      <div class="form-title">${formTitle}</div>
+    </div>
+    <div><span class="status-badge">${statusLabel}</span></div>
+  </div>
+
+  <div class="meta-grid">
+    ${jobNum ? `<div class="meta-row"><div class="meta-label">Job Number</div><div class="meta-value">${jobNum}</div></div>` : ''}
+    ${jobName ? `<div class="meta-row"><div class="meta-label">Job Name</div><div class="meta-value">${jobName}</div></div>` : ''}
+    ${jobAddress ? `<div class="meta-row"><div class="meta-label">Address</div><div class="meta-value">${jobAddress}</div></div>` : ''}
+    <div class="meta-row"><div class="meta-label">Completed By</div><div class="meta-value">${completedBy}</div></div>
+    <div class="meta-row"><div class="meta-label">Date / Time</div><div class="meta-value">${completedAt}</div></div>
+    <div class="meta-row"><div class="meta-label">Status</div><div class="meta-value">${statusLabel}</div></div>
+  </div>
+
+  ${fieldRows}
+
+  <div class="footer">
+    <span>${companyName} — ${formTitle}</span>
+    <span>Printed ${new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.document.title = docTitle;
+    win.onload = () => { win.focus(); win.print(); };
+  }
+
   // Progress stats
   const inputFields = fields.filter(
     (f) => !['section', 'instruction', 'instruction_image', 'page_break'].includes(f.fieldType),
@@ -647,9 +832,9 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
   // ── Completed / read-only view ──────────────────────────────────────────────
   if (readOnly) {
     return (
-      <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
-        {/* Header — fixed at top */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
+      <div className="flex flex-col gap-0">
+        {/* Header */}
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
           <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
             <ChevronLeft size={18} />
           </button>
@@ -662,73 +847,80 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
             </div>
             <h2 className="font-heading font-bold text-base text-slate-900 truncate">{templateName}</h2>
           </div>
-          <button
-            onClick={reopenForm}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors shrink-0"
-          >
-            <Pencil size={12} /> Edit / Reopen
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
+            >
+              <Printer size={12} /> Print / PDF
+            </button>
+            <button
+              onClick={reopenForm}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
+            >
+              <Pencil size={12} /> Edit / Reopen
+            </button>
+          </div>
         </div>
 
         {apiError && (
-          <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">
             <AlertCircle size={13} /> {apiError}
           </div>
         )}
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="p-4 max-w-2xl mx-auto w-full pb-32">
-            <div className="flex flex-col gap-5">
-              {fields.map((field) => {
-                if (!visibleFields.has(field.id)) return null;
+        {/* Fields */}
+        <div className="max-w-2xl w-full flex flex-col gap-5 pb-10">
+          {fields.map((field) => {
+            if (!visibleFields.has(field.id)) return null;
 
-                if (field.fieldType === 'section') {
-                  return (
-                    <div key={field.id} className="border-b-2 border-slate-300 pb-1">
-                      <h3 className="text-base font-bold text-slate-800">{field.label}</h3>
-                    </div>
-                  );
-                }
-                if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
-                  const settings = parseSettings(field.settingsJson);
-                  const thumbnailUrl = typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null;
-                  return (
-                    <div key={field.id} className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-3 items-start">
-                      {thumbnailUrl && (
-                        <img src={thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0 border border-blue-200" />
-                      )}
-                      <p className="text-sm text-blue-800">{field.label}</p>
-                    </div>
-                  );
-                }
-                if (field.fieldType === 'page_break') {
-                  return (
-                    <div key={field.id} className="flex items-center gap-3 py-2">
-                      <div className="flex-1 border-t-2 border-dashed border-slate-300" />
-                      <SplitSquareHorizontal size={13} className="text-slate-400 shrink-0" />
-                      <div className="flex-1 border-t-2 border-dashed border-slate-300" />
-                    </div>
-                  );
-                }
+            if (field.fieldType === 'section') {
+              return (
+                <div key={field.id} className="border-b-2 border-slate-300 pb-1">
+                  <h3 className="text-base font-bold text-slate-800">{field.label}</h3>
+                </div>
+              );
+            }
+            if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
+              const settings = parseSettings(field.settingsJson);
+              const thumbnailUrl = typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null;
+              return (
+                <div key={field.id} className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-3 items-start">
+                  {thumbnailUrl && (
+                    <img src={thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0 border border-blue-200" />
+                  )}
+                  <p className="text-sm text-blue-800">{field.label}</p>
+                </div>
+              );
+            }
+            if (field.fieldType === 'page_break') {
+              return (
+                <div key={field.id} className="flex items-center gap-3 py-2">
+                  <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+                  <SplitSquareHorizontal size={13} className="text-slate-400 shrink-0" />
+                  <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+                </div>
+              );
+            }
 
-                return (
-                  <div key={field.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                    <ReadOnlyAnswer field={field} value={answers[field.id] ?? null} />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            return (
+              <div key={field.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                <ReadOnlyAnswer field={field} value={answers[field.id] ?? null} />
+              </div>
+            );
+          })}
         </div>
 
-        {/* Sticky footer */}
-        <div className="shrink-0 bg-white border-t border-slate-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center gap-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        {/* Footer */}
+        <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
           <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Back to Forms
           </button>
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors">
-            <Eye size={14} /> Print / PDF
+          <button
+            onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
+          >
+            <Printer size={14} /> Print / PDF
           </button>
         </div>
       </div>
@@ -761,9 +953,9 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
   // ── Editable form ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
-      {/* Header — fixed at top */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
+    <div className="flex flex-col gap-4">
+      {/* Header card */}
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
           <ChevronLeft size={18} />
         </button>
@@ -778,60 +970,60 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
           </p>
           <h2 className="font-heading font-bold text-base text-slate-900 truncate">{templateName}</h2>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-xs font-bold text-slate-700">{answeredCount}/{visibleInputFields.length}</p>
-          <p className="text-[10px] text-slate-400">answered</p>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, true)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
+          >
+            <Printer size={12} /> Print Draft
+          </button>
+          <div className="text-right">
+            <p className="text-xs font-bold text-slate-700">{answeredCount}/{visibleInputFields.length}</p>
+            <p className="text-[10px] text-slate-400">answered</p>
+          </div>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-slate-100 shrink-0">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden -mt-2">
         <motion.div
-          className="h-full bg-primary"
+          className="h-full bg-primary rounded-full"
           animate={{ width: visibleInputFields.length > 0 ? `${(answeredCount / visibleInputFields.length) * 100}%` : '0%' }}
           transition={{ duration: 0.3 }}
         />
       </div>
 
       {apiError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 shrink-0">
+        <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
           <AlertCircle size={13} /> {apiError}
         </div>
       )}
 
-      {/* Scrollable body — owns its own scroll, footer never overlaps */}
-      <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="p-4 max-w-2xl mx-auto w-full pb-32">
-          <div className="flex flex-col gap-5">
-            <AnimatePresence mode="popLayout">
-              {fields.map((field) => {
-                if (!visibleFields.has(field.id)) return null;
-                return (
-                  <motion.div key={field.id} layout
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
-                    transition={{ duration: 0.2 }}>
-                    <FieldInput
-                      field={field}
-                      value={answers[field.id] ?? null}
-                      onChange={(val) => setAnswer(field.id, val)}
-                      error={errors[field.id]}
-                    />
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </div>
+      {/* Fields */}
+      <div className="max-w-2xl w-full flex flex-col gap-5">
+        <AnimatePresence mode="popLayout">
+          {fields.map((field) => {
+            if (!visibleFields.has(field.id)) return null;
+            return (
+              <motion.div key={field.id} layout
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.2 }}>
+                <FieldInput
+                  field={field}
+                  value={answers[field.id] ?? null}
+                  onChange={(val) => setAnswer(field.id, val)}
+                  error={errors[field.id]}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
-      {/* Sticky footer — always visible, never overlaps fields */}
-      <div
-        className="shrink-0 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] px-4 py-3"
-        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-      >
-        {/* Desktop: side by side | Mobile: stacked with Complete on top */}
-        <div className="max-w-2xl mx-auto flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
+      {/* Footer action bar */}
+      <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
           <button
             onClick={saveProgress}
             disabled={saving || completing}

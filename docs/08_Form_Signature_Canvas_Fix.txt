@@ -1,0 +1,47 @@
+Fix Form Runner signature field.
+
+Current issue:
+Signature field/box is not working.
+
+Use a canvas-based signature pad.
+
+Requirements:
+- Signature field renders:
+  - Name input above or beside signature
+  - Canvas signature box
+  - Clear signature button
+- Works with mouse on desktop
+- Works with touch on phone/tablet
+- Canvas should be responsive width but keep a stable drawing height, around 180px
+- Prevent page scrolling while drawing on mobile
+- Save signature as PNG data URL using canvas.toDataURL("image/png")
+- Store answer as:
+{
+  "name": "Daryl Williams",
+  "signatureDataUrl": "data:image/png;base64,...",
+  "signedAt": "ISO timestamp"
+}
+
+Reopen/edit behaviour:
+- When reopening an in-progress form, reload the saved signature image back into the canvas
+
+Completed/read-only behaviour:
+- Show signer name
+- Show signature image
+- Show signed date/time
+
+PDF/print:
+- Include the signature image and signer name
+
+Clear button:
+- Clears canvas and saved signatureDataUrl
+
+Validation:
+- Required signature field only passes validation if signatureDataUrl exists
+- Mouse signing works
+- Touch signing works
+- Saved signature reloads
+- Completed form shows image
+- Print/PDF shows image
+- Do not break other form fields
+- Build and publish after passing
