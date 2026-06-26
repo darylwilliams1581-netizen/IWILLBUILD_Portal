@@ -179,6 +179,19 @@
       "summary": "Screenshot of a UI form showing a failed thumbnail upload with conditional logic controls. User is reporting a bug in the upload/thumbnail reduction workflow.",
       "fileName": "screenshot-2026-06-26T08-14-14.jpg",
       "storedUploadFilename": "f38wenbvln_1782461655755_file_NEXE20OP6j.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "design_spec",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "A technical specification document for fixing Job Form Runner scrolling behavior. Provides CSS guidance, layout rules, and validation steps for ensuring forms are scrollable across all devices and input methods.",
+      "fileName": "screenshot-2026-06-26T08-49-51.jpg",
+      "storedUploadFilename": "f38wenbvln_1782463791836_file__j1meo2pGk.jpg"
     }
   ]
 }

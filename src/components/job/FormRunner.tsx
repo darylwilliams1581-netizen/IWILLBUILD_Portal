@@ -677,8 +677,8 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
         )}
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 max-w-2xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-4 max-w-2xl mx-auto w-full pb-8">
             <div className="flex flex-col gap-5">
               {fields.map((field) => {
                 if (!visibleFields.has(field.id)) return null;
@@ -800,8 +800,8 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
       )}
 
       {/* Scrollable body — owns its own scroll, footer never overlaps */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="p-4 max-w-2xl mx-auto w-full pb-8">
           <div className="flex flex-col gap-5">
             <AnimatePresence mode="popLayout">
               {fields.map((field) => {
