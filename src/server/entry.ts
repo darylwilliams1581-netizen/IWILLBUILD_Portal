@@ -39,6 +39,14 @@ import estimates_post from "./api/estimates/POST";
 import estimates_id_get from "./api/estimates/[id]/GET";
 import estimates_id_put from "./api/estimates/[id]/PUT";
 import estimates_id_delete from "./api/estimates/[id]/DELETE";
+import migrate_team_post from "./api/migrate-team/POST";
+import me_get from "./api/me/GET";
+import company_get from "./api/company/GET";
+import company_put from "./api/company/PUT";
+import team_get from "./api/team/GET";
+import team_id_put from "./api/team/[id]/PUT";
+import team_id_delete from "./api/team/[id]/DELETE";
+import team_invite_post from "./api/team/invite/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -155,6 +163,16 @@ app.post("/api/estimates", estimates_post);
 app.get("/api/estimates/:id", estimates_id_get);
 app.put("/api/estimates/:id", estimates_id_put);
 app.delete("/api/estimates/:id", estimates_id_delete);
+// Team & Company
+app.post("/api/migrate-team", migrate_team_post);
+app.get("/api/me", me_get);
+app.get("/api/company", company_get);
+app.put("/api/company", company_put);
+// team/invite must be before team/:id to avoid route collision
+app.post("/api/team/invite", team_invite_post);
+app.get("/api/team", team_get);
+app.put("/api/team/:id", team_id_put);
+app.delete("/api/team/:id", team_id_delete);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Settings,
@@ -13,73 +13,167 @@ import {
   Phone,
   Mail,
   MapPin,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Hash,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
 const tabs = [
-  { id: 'company',     label: 'Company',     icon: Building2 },
-  { id: 'users',       label: 'Users',       icon: Users },
-  { id: 'permissions', label: 'Permissions', icon: Shield },
+  { id: 'company',       label: 'Company',       icon: Building2 },
+  { id: 'users',         label: 'Users',         icon: Users },
+  { id: 'permissions',   label: 'Permissions',   icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'data',        label: 'Data & Backup', icon: Database },
+  { id: 'data',          label: 'Data & Backup', icon: Database },
 ];
 
-function CompanyTab() {
-  const [saved, setSaved] = useState(false);
+interface Company {
+  id: number;
+  name: string;
+  abn: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+}
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+// ── Company Tab ───────────────────────────────────────────────────────────────
+function CompanyTab() {
+  const [company, setCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Form state
+  const [name, setName] = useState('');
+  const [abn, setAbn] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [website, setWebsite] = useState('');
+  const [address, setAddress] = useState('');
+
+  useEffect(() => {
+    fetch('/api/company', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data: { company?: Company; error?: string }) => {
+        if (data.company) {
+          const c = data.company;
+          setCompany(c);
+          setName(c.name ?? '');
+          setAbn(c.abn ?? '');
+          setPhone(c.phone ?? '');
+          setEmail(c.email ?? '');
+          setWebsite(c.website ?? '');
+          setAddress(c.address ?? '');
+        }
+      })
+      .catch(() => setErrorMsg('Failed to load company profile'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setErrorMsg('Company name is required'); return; }
+    setErrorMsg('');
+    setSaving(true);
+    try {
+      const res = await fetch('/api/company', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, abn, phone, email, website, address }),
+      });
+      const data = await res.json() as { company?: Company; error?: string };
+      if (!res.ok) {
+        setErrorMsg(data.error ?? 'Save failed');
+        setSaveState('error');
+      } else {
+        if (data.company) setCompany(data.company);
+        setSaveState('saved');
+        setTimeout(() => setSaveState('idle'), 2500);
+      }
+    } catch {
+      setErrorMsg('Network error. Please try again.');
+      setSaveState('error');
+    } finally {
+      setSaving(false);
+    }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
+        <Loader2 size={18} className="animate-spin" />
+        <span className="text-sm">Loading company profile…</span>
+      </div>
+    );
+  }
+
+  const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
+  const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
+
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={handleSave} className="flex flex-col gap-6">
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4">Company Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Company Name</label>
-              <input defaultValue="IWILLBUILD Pty Ltd" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <label className={labelClass}>Company Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="IWILLBUILD Pty Ltd" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">ABN</label>
-              <input defaultValue="12 345 678 901" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <label className={labelClass}>
+                <span className="flex items-center gap-1"><Hash size={11} /> ABN</span>
+              </label>
+              <input value={abn} onChange={(e) => setAbn(e.target.value)} className={inputClass} placeholder="12 345 678 901" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className={labelClass}>
                 <span className="flex items-center gap-1"><Phone size={11} /> Phone</span>
               </label>
-              <input defaultValue="07 3000 0000" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} placeholder="07 3000 0000" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className={labelClass}>
                 <span className="flex items-center gap-1"><Mail size={11} /> Email</span>
               </label>
-              <input defaultValue="admin@iwillbuild.com.au" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="admin@company.com.au" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className={labelClass}>
                 <span className="flex items-center gap-1"><Globe size={11} /> Website</span>
               </label>
-              <input defaultValue="https://iwillbuild.com" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <input value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} placeholder="https://iwillbuild.com" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className={labelClass}>
                 <span className="flex items-center gap-1"><MapPin size={11} /> Address</span>
               </label>
-              <input defaultValue="Brisbane, QLD 4000" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+              <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="Brisbane, QLD 4000" />
             </div>
           </div>
+
+          {errorMsg && (
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle size={13} />
+              {errorMsg}
+            </div>
+          )}
+
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-            <span className={`text-xs font-semibold transition-all duration-300 ${saved ? 'text-emerald-600' : 'text-transparent'}`}>
-              ✓ Saved
+            <span className={`flex items-center gap-1.5 text-xs font-semibold transition-all duration-300 ${saveState === 'saved' ? 'text-emerald-600' : 'text-transparent'}`}>
+              <CheckCircle2 size={13} />
+              Saved
             </span>
             <button
-              onClick={handleSave}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
             >
-              <Save size={14} />
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save Changes
             </button>
           </div>
@@ -101,7 +195,7 @@ function CompanyTab() {
           </div>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -176,13 +270,13 @@ export default function SettingsPage() {
               {activeTab === 'users' && (
                 <ComingSoonTab
                   title="User Management"
-                  description="Add, remove and manage portal users. Set roles, reset passwords and control access per module. Use the Team page for now."
+                  description="Manage portal users from the Team page. Full user management controls coming in the next release."
                 />
               )}
               {activeTab === 'permissions' && (
                 <ComingSoonTab
                   title="Role Permissions"
-                  description="Fine-grained permission control per role — Admin, Supervisor, Operator and Viewer. Define what each role can read, create, edit and delete."
+                  description="Fine-grained permission control per role — Admin, Supervisor, Operator and Viewer. Edit individual permissions from the Team page."
                 />
               )}
               {activeTab === 'notifications' && (

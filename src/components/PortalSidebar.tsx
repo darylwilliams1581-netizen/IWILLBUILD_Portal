@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
+import { usePermissions } from '@/lib/usePermissions';
 
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
@@ -47,6 +48,7 @@ function SidebarContent({
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const { isAdmin, loading: permsLoading } = usePermissions();
 
   const isActive = (href: string) => location.pathname === href;
 
@@ -121,6 +123,10 @@ function SidebarContent({
       {/* Bottom nav */}
       <div className="py-3 px-2 flex flex-col gap-0.5">
         {bottomItems.map((item) => {
+          // Hide Team and Settings for non-admin users (show while loading to avoid flicker)
+          if (!permsLoading && !isAdmin && (item.href === '/team' || item.href === '/settings')) {
+            return null;
+          }
           const Icon = item.icon;
           const active = isActive(item.href);
           return (
