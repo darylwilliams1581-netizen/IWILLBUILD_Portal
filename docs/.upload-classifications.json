@@ -98,6 +98,22 @@
       "summary": "Screenshot of an Estimating Library Cost Guide interface showing a table with cost items. Provided as a reference to illustrate the current state of the feature being modified by the specification.",
       "fileName": "screenshot-2026-06-26T04-30-09.jpg",
       "storedUploadFilename": "f38wenbvln_1782448211822_file_BTqX8ZY8ky.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": [
+        "Jobs",
+        "Photos"
+      ],
+      "summary": "Screenshot of the iWillBuild Jobs interface showing the Photos tab. Used as a reference for understanding the current UI layout and where to implement photo editing features.",
+      "fileName": "screenshot-2026-06-26T04-59-03.jpg",
+      "storedUploadFilename": "f38wenbvln_1782449945379_file_loCwaYW_sS.jpg"
     }
   ]
 }
