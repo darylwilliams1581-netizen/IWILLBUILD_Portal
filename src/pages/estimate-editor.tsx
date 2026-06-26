@@ -1,0 +1,725 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
+import {
+  ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
+  AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
+} from 'lucide-react';
+import PortalSidebar from '@/components/PortalSidebar';
+import {
+  fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
+  estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
+  type Estimate, type EstimateLine,
+} from '@/lib/estimates-api';
+import { fetchJob, type Job } from '@/lib/jobs-api';
+
+// ── Local line type (includes temp id for UI keying) ─────────────────────────
+interface LocalLine {
+  _key: string;
+  id?: number;
+  description: string;
+  quantity: string;
+  unit: string;
+  rate: string;
+  lineOrder: number;
+}
+
+let _keyCounter = 0;
+function newKey() { return `line-${++_keyCounter}`; }
+
+function blankLine(order: number): LocalLine {
+  return { _key: newKey(), description: '', quantity: '1', unit: '', rate: '0', lineOrder: order };
+}
+
+function fromApiLine(l: EstimateLine): LocalLine {
+  return { _key: newKey(), id: l.id, description: l.description, quantity: l.quantity, unit: l.unit ?? '', rate: l.rate, lineOrder: l.lineOrder };
+}
+
+// ── Print modal ───────────────────────────────────────────────────────────────
+type PrintMode = 'unpriced' | 'scope-total' | 'itemised';
+
+function PrintModal({
+  estimate,
+  lines,
+  job,
+  onClose,
+}: {
+  estimate: Estimate;
+  lines: LocalLine[];
+  job: Job | null;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<PrintMode>('itemised');
+
+  function doPrint() {
+    const totals = estimateTotals(lines, estimate.markupPercent, estimate.gstMode);
+    const fmt = (n: number) => `$${n.toFixed(2)}`;
+    const jobLabel = job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : `Job #${estimate.jobId}`;
+    const date = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let body = '';
+    if (mode === 'unpriced') {
+      body = `<ul>${lines.map((l) => `<li>${l.description || '—'}</li>`).join('')}</ul>`;
+    } else if (mode === 'scope-total') {
+      body = `<ul>${lines.map((l) => `<li>${l.description || '—'}</li>`).join('')}</ul>
+        <hr/>
+        <p><strong>Total: ${fmt(totals.total)}</strong></p>`;
+    } else {
+      const rows = lines.map((l) => {
+        const calc = lineCalc(l);
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${l.description || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${l.quantity}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${l.unit}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">$${parseFloat(l.rate).toFixed(2)}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${fmt(calc)}</td>
+        </tr>`;
+      }).join('');
+      body = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f9fafb">
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e5e7eb">Description</th>
+          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Qty</th>
+          <th style="padding:8px;text-align:left;border-bottom:2px solid #e5e7eb">Unit</th>
+          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Rate</th>
+          <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb">Amount</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <hr style="margin:16px 0"/>
+      <table style="width:100%;font-size:13px;max-width:320px;margin-left:auto">
+        <tr><td>Subtotal</td><td style="text-align:right">${fmt(totals.subtotal)}</td></tr>
+        ${parseFloat(estimate.markupPercent) > 0 ? `<tr><td>Markup (${estimate.markupPercent}%)</td><td style="text-align:right">${fmt(totals.markupAmount)}</td></tr>` : ''}
+        ${totals.gst > 0 ? `<tr><td>GST (10%)</td><td style="text-align:right">${fmt(totals.gst)}</td></tr>` : ''}
+        <tr style="font-weight:bold;font-size:15px"><td>Total</td><td style="text-align:right">${fmt(totals.total)}</td></tr>
+      </table>`;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${estimate.title}</title>
+      <style>body{font-family:sans-serif;padding:32px;color:#111}h1{font-size:20px;margin:0 0 4px}p{margin:4px 0;font-size:13px;color:#555}hr{border:none;border-top:1px solid #e5e7eb;margin:16px 0}ul{padding-left:20px}li{margin:4px 0;font-size:13px}</style>
+      </head><body>
+      <h1>${estimate.title}</h1>
+      <p>${jobLabel}</p>
+      <p>${date}</p>
+      <hr/>
+      ${body}
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 300);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+        <h3 className="font-heading font-bold text-base flex items-center gap-2">
+          <Printer size={16} className="text-primary" />
+          Print Estimate
+        </h3>
+        <div className="flex flex-col gap-2">
+          {([
+            { value: 'unpriced', label: 'Unpriced Scope', desc: 'Line descriptions only — no rates or totals' },
+            { value: 'scope-total', label: 'Scope with Total', desc: 'Line descriptions plus the final total' },
+            { value: 'itemised', label: 'Itemised Quote', desc: 'Full breakdown with qty, unit, rate, and line totals' },
+          ] as const).map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${mode === opt.value ? 'border-primary bg-orange-50' : 'border-border hover:bg-muted/50'}`}
+            >
+              <input type="radio" name="printMode" value={opt.value} checked={mode === opt.value} onChange={() => setMode(opt.value)} className="mt-0.5 accent-primary" />
+              <div>
+                <p className="text-sm font-semibold">{opt.label}</p>
+                <p className="text-xs text-muted-foreground">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition-colors">Cancel</button>
+          <button onClick={doPrint} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors">
+            <Printer size={13} />
+            Print
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main editor ───────────────────────────────────────────────────────────────
+export default function EstimateEditorPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [lines, setLines] = useState<LocalLine[]>([]);
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [showPrint, setShowPrint] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (id) load(parseInt(id, 10));
+  }, [id]);
+
+  async function load(estimateId: number) {
+    setLoading(true);
+    setError('');
+    try {
+      const { estimate: est, lines: apiLines } = await fetchEstimate(estimateId);
+      setEstimate(est);
+      setLines(apiLines.length > 0 ? apiLines.map(fromApiLine) : [blankLine(0)]);
+      // Load job info
+      try {
+        const j = await fetchJob(est.jobId);
+        setJob(j);
+      } catch { /* non-critical */ }
+    } catch {
+      setError('Estimate not found or failed to load.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const isLocked = estimate?.status === 'Approved';
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  const save = useCallback(async (est: Estimate, localLines: LocalLine[]) => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const { estimate: updated, lines: updatedLines } = await updateEstimate(est.id, {
+        title: est.title,
+        status: est.status,
+        markupPercent: est.markupPercent,
+        gstMode: est.gstMode,
+        notes: est.notes ?? undefined,
+        lines: localLines.map((l, i) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unit: l.unit || undefined,
+          rate: l.rate,
+          lineOrder: i,
+        })),
+      });
+      setEstimate(updated);
+      setLines(updatedLines.map(fromApiLine));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  function triggerSave() {
+    if (!estimate || isLocked) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      save(estimate, lines);
+    }, 800);
+  }
+
+  function updateEstimateField<K extends keyof Estimate>(key: K, value: Estimate[K]) {
+    if (!estimate || isLocked) return;
+    const updated = { ...estimate, [key]: value };
+    setEstimate(updated);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => save(updated, lines), 800);
+  }
+
+  function updateLine(key: string, field: keyof LocalLine, value: string) {
+    if (isLocked) return;
+    setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
+    triggerSave();
+  }
+
+  function addLine() {
+    if (isLocked) return;
+    setLines((prev) => [...prev, blankLine(prev.length)]);
+  }
+
+  function deleteLine(key: string) {
+    if (isLocked) return;
+    setLines((prev) => {
+      const next = prev.filter((l) => l._key !== key);
+      return next.length === 0 ? [blankLine(0)] : next;
+    });
+    triggerSave();
+  }
+
+  function moveLine(key: string, dir: 'up' | 'down') {
+    if (isLocked) return;
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l._key === key);
+      if (idx < 0) return prev;
+      const next = [...prev];
+      const swap = dir === 'up' ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= next.length) return prev;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+    triggerSave();
+  }
+
+  function copyLine(key: string) {
+    if (isLocked) return;
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l._key === key);
+      if (idx < 0) return prev;
+      const src = prev[idx];
+      const copy: LocalLine = { ...src, _key: newKey(), id: undefined };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+    triggerSave();
+  }
+
+  async function handleDuplicate() {
+    if (!estimate) return;
+    try {
+      const newEst = await createEstimate({
+        jobId: estimate.jobId,
+        title: `${estimate.title} (Copy)`,
+        status: 'Draft',
+        markupPercent: estimate.markupPercent,
+        gstMode: estimate.gstMode,
+        notes: estimate.notes ?? undefined,
+        lines: lines.map((l, i) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unit: l.unit || undefined,
+          rate: l.rate,
+          lineOrder: i,
+        })),
+      });
+      navigate(`/estimates/${newEst.id}`);
+    } catch {
+      setSaveError('Failed to duplicate estimate.');
+    }
+  }
+
+  async function handleStatusChange(newStatus: string) {
+    if (!estimate) return;
+    setStatusOpen(false);
+    updateEstimateField('status', newStatus as Estimate['status']);
+  }
+
+  function openMobileMenu() {
+    window.dispatchEvent(new Event('portal:open-menu'));
+  }
+
+  const totals = estimate ? estimateTotals(lines, estimate.markupPercent, estimate.gstMode) : null;
+  const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
+
+  return (
+    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+      <Helmet>
+        <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
+        <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
+        <link rel="canonical" href={`https://iwillbuild.com/estimates/${id}`} />
+        <meta name="robots" content="noindex" />
+      </Helmet>
+
+      <PortalSidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar */}
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+              <Menu size={20} />
+            </button>
+            {job && (
+              <Link
+                to={`/jobs/${job.id}?tab=estimates`}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
+              >
+                <ChevronLeft size={16} />
+                <span className="hidden sm:inline truncate max-w-[120px]">{job.jobNumber ?? job.name}</span>
+              </Link>
+            )}
+            {!job && (
+              <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0">
+                <ChevronLeft size={16} />
+                Back
+              </button>
+            )}
+            <span className="text-border">|</span>
+            <FileText size={15} className="text-primary shrink-0" />
+            <h1 className="font-heading font-bold text-sm md:text-base truncate">
+              {estimate?.title ?? 'Loading…'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Status badge + dropdown */}
+            {estimate && statusStyle && (
+              <div className="relative">
+                <button
+                  onClick={() => setStatusOpen(!statusOpen)}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${statusStyle.bg} ${statusStyle.color}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                  {estimate.status}
+                  <ChevronDown size={10} />
+                </button>
+                {statusOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+                      {ESTIMATE_STATUSES.map((s) => {
+                        const st = getEstimateStatusStyle(s);
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => handleStatusChange(s)}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${estimate.status === s ? 'font-bold' : ''}`}
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                            {s}
+                            {estimate.status === s && <Check size={12} className="ml-auto text-primary" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Save indicator */}
+            {saving && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            {saved && !saving && <span className="text-xs text-emerald-600 font-semibold">Saved</span>}
+
+            {/* Print */}
+            <button
+              onClick={() => setShowPrint(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+            >
+              <Printer size={14} />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+
+            {/* Duplicate */}
+            <button
+              onClick={handleDuplicate}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+            >
+              <Copy size={14} />
+              <span className="hidden sm:inline">Duplicate</span>
+            </button>
+
+            {/* Manual save */}
+            {!isLocked && (
+              <button
+                onClick={() => estimate && save(estimate, lines)}
+                disabled={saving}
+                className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                <span className="hidden sm:inline">Save</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {loading && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 size={24} className="animate-spin text-primary" />
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg">
+              <AlertCircle size={16} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {saveError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700 mb-4 max-w-2xl">
+              <AlertCircle size={14} className="shrink-0" />
+              {saveError}
+            </div>
+          )}
+
+          {estimate && (
+            <div className="max-w-4xl flex flex-col gap-4">
+
+              {/* Approved lock banner */}
+              {isLocked && (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800">
+                  <Lock size={15} className="shrink-0" />
+                  <span><strong>Approved — editing is locked.</strong> Duplicate this estimate to create an editable copy.</span>
+                  <button
+                    onClick={handleDuplicate}
+                    className="ml-auto flex items-center gap-1.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                  >
+                    <Copy size={12} />
+                    Duplicate
+                  </button>
+                </div>
+              )}
+
+              {/* Header card */}
+              <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
+                <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Estimate Details</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">Title <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={estimate.title}
+                      disabled={isLocked}
+                      onChange={(e) => updateEstimateField('title', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">Markup %</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={estimate.markupPercent}
+                      disabled={isLocked}
+                      onChange={(e) => updateEstimateField('markupPercent', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">GST</label>
+                    <select
+                      value={estimate.gstMode}
+                      disabled={isLocked}
+                      onChange={(e) => updateEstimateField('gstMode', e.target.value as Estimate['gstMode'])}
+                      className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                      {GST_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">Notes</label>
+                    <input
+                      type="text"
+                      value={estimate.notes ?? ''}
+                      disabled={isLocked}
+                      onChange={(e) => updateEstimateField('notes', e.target.value || null as unknown as string)}
+                      placeholder="Optional notes"
+                      className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Lines table */}
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Line Items</h2>
+                  {!isLocked && (
+                    <button
+                      onClick={addLine}
+                      className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Plus size={13} />
+                      Add Line
+                    </button>
+                  )}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/40 text-xs font-semibold text-muted-foreground">
+                        <th className="text-left px-4 py-2.5 w-[40%]">Description</th>
+                        <th className="text-right px-3 py-2.5 w-[10%]">Qty</th>
+                        <th className="text-left px-3 py-2.5 w-[10%]">Unit</th>
+                        <th className="text-right px-3 py-2.5 w-[12%]">Rate</th>
+                        <th className="text-right px-3 py-2.5 w-[12%]">Calc</th>
+                        <th className="px-3 py-2.5 w-[16%]"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lines.map((line, idx) => (
+                        <tr key={line._key} className="border-t border-border/50 hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-2">
+                            <textarea
+                              value={line.description}
+                              disabled={isLocked}
+                              onChange={(e) => updateLine(line._key, 'description', e.target.value)}
+                              rows={1}
+                              placeholder="Description"
+                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm resize-none transition-colors disabled:bg-transparent disabled:cursor-default"
+                              style={{ minHeight: '34px', height: 'auto' }}
+                              onInput={(e) => {
+                                const t = e.currentTarget;
+                                t.style.height = 'auto';
+                                t.style.height = `${t.scrollHeight}px`;
+                              }}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={line.quantity}
+                              disabled={isLocked}
+                              onChange={(e) => updateLine(line._key, 'quantity', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={line.unit}
+                              disabled={isLocked}
+                              onChange={(e) => updateLine(line._key, 'unit', e.target.value)}
+                              placeholder="ea"
+                              className="w-full px-2 py-1.5 border border-transparent rounded focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={line.rate}
+                              disabled={isLocked}
+                              onChange={(e) => updateLine(line._key, 'rate', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-transparent rounded text-right focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 text-sm transition-colors disabled:bg-transparent disabled:cursor-default"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-sm text-foreground">
+                            ${lineCalc(line).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2">
+                            {!isLocked && (
+                              <div className="flex items-center gap-0.5 justify-end">
+                                <button onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30">
+                                  <ArrowUp size={12} />
+                                </button>
+                                <button onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30">
+                                  <ArrowDown size={12} />
+                                </button>
+                                <button onClick={() => copyLine(line._key)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                                  <Copy size={12} />
+                                </button>
+                                <button onClick={() => deleteLine(line._key)} className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="md:hidden flex flex-col divide-y divide-border/50">
+                  {lines.map((line, idx) => (
+                    <div key={line._key} className="p-4 flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Line {idx + 1}</span>
+                        {!isLocked && (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"><ArrowUp size={12} /></button>
+                            <button onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"><ArrowDown size={12} /></button>
+                            <button onClick={() => copyLine(line._key)} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"><Copy size={12} /></button>
+                            <button onClick={() => deleteLine(line._key)} className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50"><Trash2 size={12} /></button>
+                          </div>
+                        )}
+                      </div>
+                      <textarea
+                        value={line.description}
+                        disabled={isLocked}
+                        onChange={(e) => updateLine(line._key, 'description', e.target.value)}
+                        rows={2}
+                        placeholder="Description"
+                        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none disabled:bg-muted"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Qty</label>
+                          <input type="number" min="0" step="any" value={line.quantity} disabled={isLocked} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Unit</label>
+                          <input type="text" value={line.unit} disabled={isLocked} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1.5 border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Rate</label>
+                          <input type="number" min="0" step="any" value={line.rate} disabled={isLocked} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1.5 border border-border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted" />
+                        </div>
+                      </div>
+                      <div className="text-right text-sm font-mono font-semibold">${lineCalc(line).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add line button (bottom) */}
+                {!isLocked && (
+                  <div className="border-t border-border/50 px-4 py-3">
+                    <button onClick={addLine} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">
+                      <Plus size={13} />
+                      Add line
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Totals */}
+              {totals && (
+                <div className="bg-white rounded-xl border border-border p-5">
+                  <div className="flex flex-col gap-2 max-w-xs ml-auto">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-mono">${totals.subtotal.toFixed(2)}</span>
+                    </div>
+                    {parseFloat(estimate.markupPercent) > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Markup ({estimate.markupPercent}%)</span>
+                        <span className="font-mono">${totals.markupAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {totals.gst > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">GST (10%)</span>
+                        <span className="font-mono">${totals.gst.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base font-bold border-t border-border pt-2 mt-1">
+                      <span>Total</span>
+                      <span className="font-mono text-primary">${totals.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showPrint && estimate && (
+        <PrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
+      )}
+    </div>
+  );
+}
