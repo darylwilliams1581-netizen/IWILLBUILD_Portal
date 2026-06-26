@@ -31,15 +31,20 @@ export default async function handler(req: Request, res: Response) {
       )
     `);
 
-    // Add banner_json column if it doesn't exist (for existing installs)
-    const cols = await db.execute(sql`
-      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND COLUMN_NAME = 'banner_json'
-    `) as unknown as Array<{ COLUMN_NAME: string }>;
-    const hasBanner = Array.isArray(cols) && cols.length > 0;
-    if (!hasBanner) {
-      await db.execute(sql`ALTER TABLE company_settings ADD COLUMN banner_json LONGTEXT NOT NULL DEFAULT '{}'`);
+    // Helper: add column if missing
+    async function ensureCol(col: string, definition: string) {
+      const [rows] = await db.execute(sql`
+        SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND COLUMN_NAME = ${col}
+      `);
+      const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+      if (cnt === 0) {
+        await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` ${definition}`));
+      }
     }
+
+    await ensureCol('banner_json', "LONGTEXT NOT NULL DEFAULT '{}'");
+    await ensureCol('pdf_json',    "LONGTEXT NOT NULL DEFAULT '{}'");
 
     res.json({ ok: true, message: 'company_settings table ready' });
   } catch (error) {

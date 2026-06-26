@@ -261,6 +261,19 @@
       "summary": "Screenshot of an existing dashboard UI (iwillbuild platform) showing a sidebar navigation with a collapse button highlighted. Provided as a reference to demonstrate UI interaction patterns and visual styling.",
       "fileName": "screenshot-2026-06-26T11-06-22.jpg",
       "storedUploadFilename": "f38wenbvln_1782471982454_file_Inu-p-XX40.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Dazza AI Guardrails settings interface showing security features and a failed save error state. User appears to be referencing this as a troubleshooting or documentation example.",
+      "fileName": "screenshot-2026-06-26T11-28-44.jpg",
+      "storedUploadFilename": "f38wenbvln_1782473325032_file_sjVV_htvSd.jpg"
     }
   ]
 }
