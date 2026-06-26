@@ -6,9 +6,14 @@ import { getAuth } from '../../../../../lib/auth/auth.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { createJimp } from '@jimp/core';
-import { defaultPlugins, defaultFormats, JimpMime } from 'jimp';
-import { methods as resizeMethods } from '@jimp/plugin-resize';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { createJimp } = _require('@jimp/core') as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { defaultPlugins, defaultFormats, JimpMime } = _require('jimp') as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { methods: resizeMethods } = _require('@jimp/plugin-resize') as any;
 import multer from 'multer';
 
 // ── Jimp with resize plugin ───────────────────────────────────────────────────
