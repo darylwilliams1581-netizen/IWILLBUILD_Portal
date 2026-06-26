@@ -1,0 +1,113 @@
+Build Dashboard Smart Banner + Seasonal/Notice System.
+
+Context:
+There is an empty horizontal strip in the Dashboard top header between:
+- Dashboard title/date on the left
+- notification/profile area on the right
+
+Use this area for a smart company notice / seasonal banner.
+
+Important:
+- Do not break existing Dashboard, Jobs, Fleet, Forms, Files, Estimating, Dazza, Settings
+- Default app must remain professional
+- No mock/demo data
+- Company-scoped
+- Owner/Admin controls settings
+- Normal users can view active banner
+- Banner must be responsive
+- No copyrighted game/seasonal artwork
+- Do not affect PDFs or print outputs
+- Run build and publish after passing
+
+Part 1 - Dashboard Banner Location
+
+Add a Dashboard Banner component into the existing empty header strip.
+
+Desktop layout:
+- Banner sits between Dashboard title/date and notification/profile controls
+- Compact horizontal layout
+- Must not overlap notification/profile
+- Must not cause horizontal scroll
+- If there is no active banner, hide banner cleanly
+
+Mobile layout:
+- Banner moves below Dashboard title/date
+- Full width
+- Text wraps cleanly
+- Profile/menu controls remain usable
+
+Banner display:
+- Small icon
+- Title
+- Short message
+- Optional action button/link
+- Optional dismiss button if dismissible is enabled
+
+Part 2 - Admin Settings
+
+Add settings under Settings -> Appearance or Settings -> Company Profile.
+
+Add Dashboard Banner settings:
+- Enable dashboard banner: on/off
+- Banner title
+- Banner message
+- Optional link label
+- Optional link URL
+- Banner style: Standard, Safety, Seasonal, Celebration, Warning
+- Start date
+- End date
+- Dismissible: on/off
+
+Only Owner/Admin can edit these settings.
+
+If today is outside start/end date, do not show the banner.
+If dismissible is on, user can dismiss banner for that user/date only.
+
+Part 3 - Seasonal Skin Fallback
+
+Add optional Seasonal Skins setting:
+- Enable seasonal skins: on/off
+- Show seasonal banner: on/off
+- Subtle mode: on/off
+
+If no company banner is active, and seasonal skins are enabled:
+- Show a subtle seasonal message in the dashboard banner area.
+
+Built-in seasonal events:
+- New Year - Jan 1
+- Australia Day - Jan 26
+- Valentine's Day - Feb 14
+- St Patrick's Day - Mar 17
+- ANZAC Day - Apr 25
+- EOFY - Jun 20 to Jun 30
+- Halloween - Oct 31
+- Christmas - Dec 1 to Dec 26
+
+If multiple seasonal events overlap, use highest priority.
+
+Part 4 - Company Notice Use Cases
+
+The banner should support real business notices like:
+- Friday Site Reminder - Upload job photos before leaving site
+- Toolbox Talk Due - Complete today's safety form
+- Christmas Shutdown - Office closed from 20 Dec
+- Fleet Reminder - Prestarts required before use
+- Happy Birthday Daryl
+
+Data storage:
+Use existing company settings storage if available.
+
+Validation:
+- Admin can create/edit/save banner settings
+- Normal user can see active banner
+- Normal user cannot edit banner settings
+- Banner hides when disabled
+- Banner hides outside date range
+- Dismiss works per user/day
+- Seasonal fallback appears when no company banner is active
+- No banner means dashboard header still looks clean
+- Desktop layout does not overlap profile controls
+- Mobile layout wraps cleanly
+- PDFs/prints unaffected
+- npm run build exits 0
+- Publish after passing

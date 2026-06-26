@@ -5,9 +5,6 @@ import { profiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
-const VALID_SECTIONS = ['structure', 'dazza', 'banner', 'pdf'] as const;
-type Section = typeof VALID_SECTIONS[number];
-
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -22,23 +19,22 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
     if (!['owner', 'admin'].includes(profile.role)) return res.status(403).json({ error: 'Owner/Admin only' });
 
-    const { section, data } = req.body as { section: Section; data: unknown };
-    if (!section || !VALID_SECTIONS.includes(section)) {
-      return res.status(400).json({ error: 'Invalid section' });
+    // Add pdf_json column if it doesn't exist
+    const cols = await db.execute(
+      sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'company_settings'
+          AND COLUMN_NAME = 'pdf_json'`
+    ) as unknown as Array<{ COLUMN_NAME: string }>;
+
+    const exists = Array.isArray(cols) && cols.length > 0;
+    if (!exists) {
+      await db.execute(sql`ALTER TABLE company_settings ADD COLUMN pdf_json LONGTEXT NULL`);
     }
 
-    const jsonStr = JSON.stringify(data ?? {});
-    const col = `${section}_json`;
-
-    await db.execute(
-      sql`INSERT INTO company_settings (company_id, ${sql.raw(col)})
-          VALUES (${profile.companyId}, ${jsonStr})
-          ON DUPLICATE KEY UPDATE ${sql.raw(col)} = ${jsonStr}, updated_at = NOW()`
-    );
-
-    res.json({ ok: true });
+    res.json({ ok: true, created: !exists });
   } catch (error) {
-    console.error('PUT /api/company-settings error:', error);
-    res.status(500).json({ error: 'Failed to save settings' });
+    console.error('migrate-pdf-settings error:', error);
+    res.status(500).json({ error: String(error) });
   }
 }

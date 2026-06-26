@@ -626,7 +626,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   // ── Print / PDF ─────────────────────────────────────────────────────────────
 
-  function triggerPrint(
+  async function triggerPrint(
     printFields: FormField[],
     printAnswers: Answers,
     printVisible: Set<number>,
@@ -635,6 +635,19 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     jobData: Job | null | undefined,
     isDraft: boolean,
   ) {
+    // Fetch PDF style settings
+    interface PdfStyle { headerText?: string; footerText?: string; formDisclaimer?: string; showFooterOnForms?: boolean }
+    let pdfStyle: PdfStyle = {};
+    try {
+      const r = await fetch('/api/company-settings', { credentials: 'include' });
+      if (r.ok) {
+        const d = await r.json() as { pdf?: PdfStyle };
+        pdfStyle = d.pdf ?? {};
+      }
+    } catch { /* use defaults */ }
+
+    const showFooter = pdfStyle.showFooterOnForms !== false;
+
     const companyName = (window as unknown as Record<string, string>).__iwb_company_name ?? '';
     const jobNum = jobData?.jobNumber ?? '';
     const jobName = jobData?.name ?? '';
@@ -767,11 +780,13 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   .sig-date { font-size: 10px; color: #94a3b8; margin-top: 4px; }
 
   .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+  .disclaimer { font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding: 10px 0; line-height: 1.6; margin-top: 8px; }
 </style>
 </head>
 <body>
   <div class="report-header">
     <div>
+      ${pdfStyle.headerText ? `<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:2px">${pdfStyle.headerText}</div>` : ''}
       ${companyName ? `<div class="company-name">${companyName}</div>` : ''}
       <div class="form-title">${formTitle}</div>
     </div>
@@ -789,10 +804,12 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   ${fieldRows}
 
-  <div class="footer">
-    <span>${companyName} — ${formTitle}</span>
+  ${pdfStyle.formDisclaimer ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${pdfStyle.formDisclaimer}</div>` : ''}
+
+  ${showFooter ? `<div class="footer">
+    <span>${pdfStyle.footerText || (companyName ? companyName + ' — ' : '') + formTitle}</span>
     <span>Printed ${new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-  </div>
+  </div>` : ''}
 </body>
 </html>`;
 
@@ -849,7 +866,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
+              onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary hover:text-primary text-slate-600 transition-colors"
             >
               <Printer size={12} /> Print / PDF
@@ -917,7 +934,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
             Back to Forms
           </button>
           <button
-            onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
+            onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, false)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
           >
             <Printer size={14} /> Print / PDF
@@ -972,7 +989,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => triggerPrint(fields, answers, visibleFields, templateName, submission, job, true)}
+            onClick={() => void triggerPrint(fields, answers, visibleFields, templateName, submission, job, true)}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-500 transition-colors"
           >
             <Printer size={12} /> Print Draft

@@ -24,6 +24,7 @@ import {
   Layers,
   Bot,
   Megaphone,
+  FileText,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
@@ -32,12 +33,14 @@ import DazzaAITab from '@/components/settings/DazzaAITab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
 import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
+import PdfStyleTab from '@/components/settings/PdfStyleTab';
 
 const tabs = [
   { id: 'account',    label: 'My Account',        icon: User },
   { id: 'company',    label: 'Company Profile',    icon: Building2 },
   { id: 'team',       label: 'Team & Permissions', icon: Users },
   { id: 'structure',  label: 'Company Structure',  icon: Layers },
+  { id: 'pdf',        label: 'PDF / Print Style',  icon: FileText },
   { id: 'dazza',      label: 'Dazza AI',           icon: Bot },
   { id: 'banner',     label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications', label: 'Notifications',   icon: Bell },
@@ -682,6 +685,7 @@ export default function SettingsPage() {
               {activeTab === 'company'    && <CompanyTab />}
               {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
+              {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}

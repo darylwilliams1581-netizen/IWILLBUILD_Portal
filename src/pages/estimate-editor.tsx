@@ -48,6 +48,24 @@ interface CompanyProfile {
   address?: string;
 }
 
+interface PdfStyle {
+  headerText: string;
+  footerText: string;
+  estimateDisclaimer: string;
+  paymentTerms: string;
+  acceptanceNote: string;
+  showFooterOnEstimates: boolean;
+}
+
+const DEFAULT_PDF_STYLE: PdfStyle = {
+  headerText: '',
+  footerText: '',
+  estimateDisclaimer: '',
+  paymentTerms: '',
+  acceptanceNote: '',
+  showFooterOnEstimates: true,
+};
+
 function PrintModal({
   estimate,
   lines,
@@ -65,12 +83,20 @@ function PrintModal({
   async function doPrint() {
     setPrinting(true);
 
-    // Fetch company profile for header
+    // Fetch company profile and PDF style settings in parallel
     let company: CompanyProfile = {};
+    let pdfStyle: PdfStyle = DEFAULT_PDF_STYLE;
     try {
-      const r = await fetch('/api/company', { credentials: 'include' });
-      if (r.ok) company = await r.json() as CompanyProfile;
-    } catch { /* use empty */ }
+      const [companyRes, settingsRes] = await Promise.all([
+        fetch('/api/company', { credentials: 'include' }),
+        fetch('/api/company-settings', { credentials: 'include' }),
+      ]);
+      if (companyRes.ok) company = await companyRes.json() as CompanyProfile;
+      if (settingsRes.ok) {
+        const s = await settingsRes.json() as { pdf?: Partial<PdfStyle> };
+        if (s.pdf) pdfStyle = { ...DEFAULT_PDF_STYLE, ...s.pdf };
+      }
+    } catch { /* use defaults */ }
 
     const totals = estimateTotals(lines, estimate.markupPercent, estimate.gstMode);
     const fmt = (n: number) => `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -83,19 +109,13 @@ function PrintModal({
       return hasDesc || hasValue;
     });
 
-    // ── Company header block ──────────────────────────────────────────────────
+    // ── Company contact lines (used in header) ────────────────────────────────
     const companyLines: string[] = [];
     if (company.abn) companyLines.push(`ABN: ${company.abn}`);
     if (company.phone) companyLines.push(company.phone);
     if (company.email) companyLines.push(company.email);
     if (company.website) companyLines.push(company.website);
     if (company.address) companyLines.push(company.address);
-
-    const companyHtml = `
-      <div class="company-block">
-        <div class="company-name">${company.name ?? 'IWILLBUILD'}</div>
-        ${companyLines.map((l) => `<div class="company-detail">${l}</div>`).join('')}
-      </div>`;
 
     // ── Job / quote meta block ────────────────────────────────────────────────
     const metaRows: Array<[string, string]> = [];
@@ -177,6 +197,31 @@ function PrintModal({
       totalsHtml = `<div class="totals-wrap"><table class="totals-table">${totalRows.join('')}</table></div>`;
     }
 
+    // ── PDF style extras ──────────────────────────────────────────────────────
+    const showFooter = pdfStyle.showFooterOnEstimates;
+    const headerSubHtml = pdfStyle.headerText
+      ? `<div class="company-header-sub">${pdfStyle.headerText}</div>` : '';
+
+    const disclaimerHtml = pdfStyle.estimateDisclaimer
+      ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${pdfStyle.estimateDisclaimer}</div>` : '';
+
+    const paymentHtml = pdfStyle.paymentTerms
+      ? `<div class="disclaimer"><strong>Payment Terms:</strong> ${pdfStyle.paymentTerms}</div>` : '';
+
+    const acceptanceHtml = pdfStyle.acceptanceNote
+      ? `<div class="acceptance">
+          <p class="acceptance-label">Acceptance</p>
+          <p class="acceptance-text">${pdfStyle.acceptanceNote}</p>
+          <div class="acceptance-line"></div>
+          <p class="acceptance-sig">Signature &amp; Date</p>
+        </div>` : '';
+
+    const footerHtml = showFooter
+      ? `<div class="doc-footer">
+          <span>${pdfStyle.footerText || (company.name ?? 'IWILLBUILD') + ' — ' + estimate.title}</span>
+          <span>Printed ${date}</span>
+        </div>` : '';
+
     // ── Full document ─────────────────────────────────────────────────────────
     const docTitle = `${job?.jobNumber ? job.jobNumber + ' — ' : ''}${estimate.title}`;
 
@@ -207,83 +252,26 @@ function PrintModal({
     padding-bottom: 14px;
     margin-bottom: 18px;
   }
-  .company-name {
-    font-size: 20px;
-    font-weight: 800;
-    color: #f97316;
-    letter-spacing: -0.3px;
-    line-height: 1.2;
-  }
-  .company-detail {
-    font-size: 11px;
-    color: #64748b;
-    margin-top: 2px;
-    line-height: 1.5;
-  }
-  .doc-label {
-    text-align: right;
-  }
-  .doc-label-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: -0.5px;
-  }
-  .doc-label-sub {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 3px;
-  }
+  .company-name { font-size: 20px; font-weight: 800; color: #f97316; letter-spacing: -0.3px; line-height: 1.2; }
+  .company-header-sub { font-size: 12px; font-weight: 600; color: #475569; margin-top: 3px; }
+  .company-detail { font-size: 11px; color: #64748b; margin-top: 2px; line-height: 1.5; }
+  .doc-label { text-align: right; }
+  .doc-label-title { font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+  .doc-label-sub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
 
   /* ── Meta table ── */
-  .meta-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-    font-size: 12px;
-  }
-  .meta-key {
-    width: 130px;
-    font-weight: 600;
-    color: #64748b;
-    padding: 3px 12px 3px 0;
-    vertical-align: top;
-    white-space: nowrap;
-  }
-  .meta-val {
-    color: #1e293b;
-    font-weight: 500;
-    padding: 3px 0;
-  }
+  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+  .meta-key { width: 130px; font-weight: 600; color: #64748b; padding: 3px 12px 3px 0; vertical-align: top; white-space: nowrap; }
+  .meta-val { color: #1e293b; font-weight: 500; padding: 3px 0; }
 
   /* ── Lines table ── */
-  .lines-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    margin-bottom: 0;
-  }
-  .thead-row {
-    background: #f8fafc;
-  }
-  .thead-row th {
-    padding: 9px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    border-top: 1px solid #e2e8f0;
-    border-bottom: 2px solid #e2e8f0;
-  }
+  .lines-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 0; }
+  .thead-row { background: #f8fafc; }
+  .thead-row th { padding: 9px 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; border-top: 1px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; }
   .th-desc { text-align: left; }
   .th-num  { text-align: right; width: 70px; }
   .th-unit { text-align: left;  width: 60px; }
-  .line-row td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: top;
-  }
+  .line-row td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
   .line-row:last-child td { border-bottom: 2px solid #e2e8f0; }
   .td-desc  { text-align: left; line-height: 1.5; }
   .td-num   { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -292,50 +280,37 @@ function PrintModal({
   .line-row { page-break-inside: avoid; }
 
   /* ── Totals ── */
-  .totals-wrap {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 12px;
-    margin-bottom: 24px;
-  }
-  .totals-table {
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 240px;
-  }
-  .totals-table td {
-    padding: 5px 10px;
-  }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-top: 12px; margin-bottom: 16px; }
+  .totals-table { border-collapse: collapse; font-size: 13px; min-width: 240px; }
+  .totals-table td { padding: 5px 10px; }
   .tot-label { color: #475569; text-align: left; }
   .tot-val   { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
-  .tot-total-row td {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-    border-top: 2px solid #e2e8f0;
-    padding-top: 8px;
-  }
+  .tot-total-row td { font-size: 16px; font-weight: 800; color: #0f172a; border-top: 2px solid #e2e8f0; padding-top: 8px; }
+
+  /* ── Disclaimer / Terms ── */
+  .disclaimer { font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding: 10px 0; line-height: 1.6; page-break-inside: avoid; }
+  .disclaimer strong { color: #475569; }
+
+  /* ── Acceptance block ── */
+  .acceptance { margin-top: 24px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; page-break-inside: avoid; }
+  .acceptance-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .acceptance-text { font-size: 12px; color: #475569; margin-bottom: 24px; line-height: 1.5; }
+  .acceptance-line { border-top: 1px solid #334155; margin-bottom: 4px; }
+  .acceptance-sig { font-size: 10px; color: #94a3b8; }
 
   /* ── Footer ── */
-  .doc-footer {
-    margin-top: 32px;
-    padding-top: 10px;
-    border-top: 1px solid #e2e8f0;
-    font-size: 10px;
-    color: #94a3b8;
-    display: flex;
-    justify-content: space-between;
-  }
+  .doc-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
 
-  /* ── Print-only: hide browser chrome ── */
-  @media print {
-    html, body { margin: 0; padding: 0; }
-  }
+  @media print { html, body { margin: 0; padding: 0; } }
 </style>
 </head>
 <body>
   <div class="doc-header">
-    ${companyHtml}
+    <div class="company-block">
+      <div class="company-name">${company.name ?? 'IWILLBUILD'}</div>
+      ${headerSubHtml}
+      ${companyLines.map((l) => `<div class="company-detail">${l}</div>`).join('')}
+    </div>
     <div class="doc-label">
       <div class="doc-label-title">QUOTE</div>
       <div class="doc-label-sub">${date}</div>
@@ -343,15 +318,12 @@ function PrintModal({
   </div>
 
   ${metaHtml}
-
   ${tableHtml}
-
   ${totalsHtml}
-
-  <div class="doc-footer">
-    <span>${company.name ?? 'IWILLBUILD'} — ${estimate.title}</span>
-    <span>Printed ${date}</span>
-  </div>
+  ${disclaimerHtml}
+  ${paymentHtml}
+  ${acceptanceHtml}
+  ${footerHtml}
 </body>
 </html>`;
 

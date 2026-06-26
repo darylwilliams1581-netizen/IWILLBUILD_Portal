@@ -18,20 +18,29 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const rows = await db.execute(
-      sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as Array<{ structure_json: string; dazza_json: string; banner_json: string }>;
+    // Try to read pdf_json — column may not exist yet on older DBs
+    let rows: Array<{ structure_json: string; dazza_json: string; banner_json: string; pdf_json?: string }> = [];
+    try {
+      rows = await db.execute(
+        sql`SELECT structure_json, dazza_json, banner_json, pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+      ) as unknown as typeof rows;
+    } catch {
+      // pdf_json column not yet migrated — fall back without it
+      rows = await db.execute(
+        sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+      ) as unknown as typeof rows;
+    }
 
     const row = Array.isArray(rows) ? rows[0] : null;
 
     const structure = row?.structure_json ? JSON.parse(row.structure_json) : {};
-    const dazza = row?.dazza_json ? JSON.parse(row.dazza_json) : {};
-    const banner = row?.banner_json ? JSON.parse(row.banner_json) : {};
+    const dazza     = row?.dazza_json     ? JSON.parse(row.dazza_json)     : {};
+    const banner    = row?.banner_json    ? JSON.parse(row.banner_json)    : {};
+    const pdf       = row?.pdf_json       ? JSON.parse(row.pdf_json)       : {};
 
-    // Also return company name for use in print headers etc.
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
 
-    res.json({ structure, dazza, banner, name: company?.name ?? '' });
+    res.json({ structure, dazza, banner, pdf, name: company?.name ?? '' });
   } catch (error) {
     console.error('GET /api/company-settings error:', error);
     res.status(500).json({ error: 'Failed to load settings' });
