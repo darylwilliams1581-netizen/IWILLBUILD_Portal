@@ -721,10 +721,51 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                       onUploaded={(url) => saveSettings({ ...settings, thumbnailUrl: url })}
                     />
                   )}
-                  {(fieldType === 'photo' || fieldType === 'signature') && (
+                  {fieldType === 'photo' && (
                     <p className="text-xs text-white/30 bg-white/3 rounded-xl px-3 py-2 border border-white/6">
-                      {fieldType === 'photo' ? 'Photo capture will be available when filling out this form.' : 'Signature capture will be available when filling out this form.'}
+                      Photo capture will be available when filling out this form.
                     </p>
+                  )}
+                  {fieldType === 'signature' && (
+                    <div className="flex flex-col gap-3">
+                      {/* Allow multiple signatures toggle */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white/60">Allow multiple signatures</span>
+                        <button
+                          onClick={() => saveSettings({ ...settings, multiple: !settings.multiple })}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.multiple ? 'bg-[#e94560]' : 'bg-white/15'}`}>
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${settings.multiple ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      {/* Button label (only when multiple=true) */}
+                      {settings.multiple && (
+                        <>
+                          <div>
+                            <label className="block text-[10px] font-bold text-white/35 mb-1.5 uppercase tracking-wider">Add signer button label</label>
+                            <input
+                              type="text"
+                              value={typeof settings.buttonLabel === 'string' ? settings.buttonLabel : ''}
+                              onChange={(e) => setSettings({ ...settings, buttonLabel: e.target.value })}
+                              onBlur={() => saveSettings(settings)}
+                              placeholder="+ Add Signer"
+                              className="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white/80 text-xs placeholder:text-white/20 focus:outline-none focus:border-[#e94560]/50"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-white/35 mb-1.5 uppercase tracking-wider">Max signers</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={50}
+                              value={typeof settings.maxSigners === 'number' ? settings.maxSigners : 20}
+                              onChange={(e) => setSettings({ ...settings, maxSigners: Number(e.target.value) })}
+                              onBlur={() => saveSettings(settings)}
+                              className="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white/80 text-xs focus:outline-none focus:border-[#e94560]/50"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
 
                   {/* Divider + logic */}
@@ -889,8 +930,11 @@ function FieldPreview({ field }: { field: FormField }) {
         </div>
       )}
       {field.fieldType === 'signature' && (
-        <div className="h-14 rounded-xl border-2 border-dashed border-white/10 bg-white/2 flex items-center justify-center">
+        <div className="h-14 rounded-xl border-2 border-dashed border-white/10 bg-white/2 flex items-center justify-center gap-2">
           <PenLine size={16} className="text-white/15" />
+          {parseSettings(field.settingsJson).multiple && (
+            <span className="text-[10px] text-white/20 font-semibold">Multiple signers</span>
+          )}
         </div>
       )}
     </div>

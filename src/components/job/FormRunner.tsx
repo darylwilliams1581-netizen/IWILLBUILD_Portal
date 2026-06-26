@@ -15,7 +15,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { type FormField, type FieldLogic, parseLogic, parseOptions, parseSettings } from '../FormFieldBuilder';
-import SignaturePad, { type SignatureAnswer, parseSignatureAnswer } from './SignaturePad';
+import SignaturePad, {
+  MultiSignaturePad,
+  type SignatureAnswer,
+  type MultiSignatureAnswer,
+  parseSignatureAnswer,
+  parseMultiSignatureAnswer,
+} from './SignaturePad';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,7 +33,7 @@ export interface FormSubmission {
   answersJson: string | null;
 }
 
-type AnswerValue = string | string[] | boolean | SignatureAnswer | null;
+type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | null;
 type Answers = Record<number, AnswerValue>; // fieldId -> value
 
 // ── Logic evaluator ───────────────────────────────────────────────────────────
@@ -94,14 +100,18 @@ function ReadOnlyAnswer({ field, value }: { field: FormField; value: AnswerValue
 
   // Signature field — delegate to SignaturePad read-only view
   if (field.fieldType === 'signature') {
-    const sig = parseSignatureAnswer(value);
+    const settings = parseSettings(field.settingsJson);
+    const isMultiple = !!settings.multiple;
     return (
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           {field.label}
           {field.required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
-        <SignaturePad value={sig} onChange={() => {/* read-only */}} readOnly />
+        {isMultiple
+          ? <MultiSignaturePad value={parseMultiSignatureAnswer(value)} onChange={() => {/* read-only */}} readOnly />
+          : <SignaturePad value={parseSignatureAnswer(value)} onChange={() => {/* read-only */}} readOnly />
+        }
       </div>
     );
   }
@@ -421,13 +431,33 @@ function FieldInput({ field, value, onChange, error }: FieldInputProps) {
         </div>
       )}
 
-      {field.fieldType === 'signature' && (
-        <SignaturePad
-          value={parseSignatureAnswer(value)}
-          onChange={(sig) => onChange(sig)}
-          error={error}
-        />
-      )}
+      {field.fieldType === 'signature' && (() => {
+        const settings = parseSettings(field.settingsJson);
+        const isMultiple = !!settings.multiple;
+        const buttonLabel = typeof settings.buttonLabel === 'string' && settings.buttonLabel.trim()
+          ? settings.buttonLabel
+          : '+ Add Signer';
+        const maxSigners = typeof settings.maxSigners === 'number' ? settings.maxSigners : 20;
+
+        if (isMultiple) {
+          return (
+            <MultiSignaturePad
+              value={parseMultiSignatureAnswer(value)}
+              onChange={(sig) => onChange(sig)}
+              error={error}
+              buttonLabel={buttonLabel}
+              maxSigners={maxSigners}
+            />
+          );
+        }
+        return (
+          <SignaturePad
+            value={parseSignatureAnswer(value)}
+            onChange={(sig) => onChange(sig)}
+            error={error}
+          />
+        );
+      })()}
 
       {error && field.fieldType !== 'signature' && (
         <p className="text-xs text-red-600 flex items-center gap-1">
@@ -525,9 +555,16 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
       let empty: boolean;
       if (field.fieldType === 'signature') {
-        // Signature is valid only when a drawn dataUrl exists
-        const sig = parseSignatureAnswer(val);
-        empty = !sig?.signatureDataUrl;
+        const settings = parseSettings(field.settingsJson);
+        if (settings.multiple) {
+          // Multi: at least one completed signer block (name + dataUrl)
+          const multi = parseMultiSignatureAnswer(val);
+          empty = !multi?.signers.some((s) => s.name && s.signatureDataUrl);
+        } else {
+          // Single: must have a drawn dataUrl
+          const sig = parseSignatureAnswer(val);
+          empty = !sig?.signatureDataUrl;
+        }
       } else {
         empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
       }
@@ -590,6 +627,10 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
   const answeredCount = visibleInputFields.filter((f) => {
     const v = answers[f.id];
     if (f.fieldType === 'signature') {
+      const settings = parseSettings(f.settingsJson);
+      if (settings.multiple) {
+        return !!parseMultiSignatureAnswer(v)?.signers.some((s) => s.signatureDataUrl);
+      }
       return !!parseSignatureAnswer(v)?.signatureDataUrl;
     }
     return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
