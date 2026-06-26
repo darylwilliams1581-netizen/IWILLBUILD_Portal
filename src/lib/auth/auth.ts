@@ -67,8 +67,8 @@ export function getAuth() {
       },
     },
 
-    // CORS: Trusts .airoapp.ai subdomains, localhost, and any custom domain
-    // set via BETTER_AUTH_URL (e.g. https://iwillbuild.com in production).
+    // CORS: Trusts .airoapp.ai subdomains, localhost, the custom domain from
+    // BETTER_AUTH_URL, and any origins in BETTER_AUTH_TRUSTED_ORIGINS.
     trustedOrigins: (request?: Request) => {
       if (!request) return [];
 
@@ -89,13 +89,21 @@ export function getAuth() {
           return [origin];
         }
 
+        // Hardcoded production origins — always trusted regardless of env vars
+        const hardcoded = [
+          'iwillbuild.com',
+          'www.iwillbuild.com',
+          'f38wenbvln.c36.airoapp.ai',
+        ];
+        if (hardcoded.includes(hostname)) {
+          return [origin];
+        }
+
         // Trust the custom domain set via BETTER_AUTH_URL secret
-        // e.g. BETTER_AUTH_URL=https://iwillbuild.com → trust iwillbuild.com
         const customUrl = process.env.BETTER_AUTH_URL;
         if (customUrl) {
           try {
             const customHostname = new URL(customUrl).hostname;
-            // Trust exact match AND www. subdomain of the custom domain
             if (
               hostname === customHostname ||
               hostname === `www.${customHostname}` ||
@@ -108,7 +116,7 @@ export function getAuth() {
           }
         }
 
-        // Also trust any extra origins listed in BETTER_AUTH_TRUSTED_ORIGINS
+        // Trust any extra origins listed in BETTER_AUTH_TRUSTED_ORIGINS
         // (comma-separated, e.g. "https://app.iwillbuild.com,https://admin.iwillbuild.com")
         const extra = process.env.BETTER_AUTH_TRUSTED_ORIGINS;
         if (extra) {
