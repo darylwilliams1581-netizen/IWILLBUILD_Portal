@@ -4,7 +4,6 @@ import {
   Settings,
   Building2,
   Users,
-  Shield,
   Bell,
   Database,
   ChevronRight,
@@ -22,17 +21,22 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  Layers,
+  Bot,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
+import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
+import DazzaAITab from '@/components/settings/DazzaAITab';
 
 const tabs = [
-  { id: 'account',       label: 'My Account',    icon: User },
-  { id: 'company',       label: 'Company',        icon: Building2 },
-  { id: 'users',         label: 'Users',          icon: Users },
-  { id: 'permissions',   label: 'Permissions',    icon: Shield },
-  { id: 'notifications', label: 'Notifications',  icon: Bell },
-  { id: 'data',          label: 'Data & Backup',  icon: Database },
+  { id: 'account',    label: 'My Account',        icon: User },
+  { id: 'company',    label: 'Company Profile',    icon: Building2 },
+  { id: 'team',       label: 'Team & Permissions', icon: Users },
+  { id: 'structure',  label: 'Company Structure',  icon: Layers },
+  { id: 'dazza',      label: 'Dazza AI',           icon: Bot },
+  { id: 'notifications', label: 'Notifications',   icon: Bell },
+  { id: 'data',       label: 'Data & Backup',      icon: Database },
 ];
 
 interface Company {
@@ -609,6 +613,16 @@ function ComingSoonTab({ title, description }: { title: string; description: str
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('account');
+  const { me } = useMe();
+  const role = me?.profile?.role ?? '';
+  const isAdmin = role === 'owner' || role === 'admin';
+
+  // Run migration once on mount to ensure company_settings table exists
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch('/api/migrate-company-settings', { method: 'POST', credentials: 'include' })
+      .catch(() => { /* silent — table may already exist */ });
+  }, [isAdmin]);
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -659,20 +673,16 @@ export default function SettingsPage() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              {activeTab === 'account' && <MyAccountTab />}
-              {activeTab === 'company' && <CompanyTab />}
-              {activeTab === 'users' && (
+              {activeTab === 'account'    && <MyAccountTab />}
+              {activeTab === 'company'    && <CompanyTab />}
+              {activeTab === 'team'       && (
                 <ComingSoonTab
-                  title="User Management"
-                  description="Manage portal users from the Team page. Full user management controls coming in the next release."
+                  title="Team & Permissions"
+                  description="Manage portal users and role permissions from the Team page. Full in-settings management coming in the next release."
                 />
               )}
-              {activeTab === 'permissions' && (
-                <ComingSoonTab
-                  title="Role Permissions"
-                  description="Fine-grained permission control per role — Admin, Supervisor, Operator and Viewer. Edit individual permissions from the Team page."
-                />
-              )}
+              {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
+              {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && (
                 <ComingSoonTab
                   title="Notifications"
