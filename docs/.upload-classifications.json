@@ -226,6 +226,23 @@
       "summary": "Screenshot of a project management dashboard (iWillBuild) showing portal interface with navigation, job tracking, and fleet management sections. Provides visual reference for UI/UX design patterns and color scheme.",
       "fileName": "screenshot-2026-06-26T09-24-14.jpg",
       "storedUploadFilename": "f38wenbvln_1782465855287_file_TczkcdZvEw.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#1a1a2e",
+        "#ff6b35",
+        "#ffffff"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of a form builder interface showing a dark-themed UI with a black backdrop and orange accent. User is referencing this to request a theme change for better visibility and consistency.",
+      "fileName": "screenshot-2026-06-26T11-03-36.jpg",
+      "storedUploadFilename": "f38wenbvln_1782471819007_file_XBT6PKjgl7.jpg"
     }
   ]
 }
