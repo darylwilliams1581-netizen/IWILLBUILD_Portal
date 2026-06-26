@@ -1,0 +1,58 @@
+Fix Fleet Files viewer/actions.
+
+Current issue:
+On Fleet asset -> Files tab, uploaded image/file appears in the list, but there is no viewer/preview and no clear action buttons.
+
+Required:
+Add file actions and image viewer to Fleet Files tab.
+
+For each fleet file row/card show visible actions:
+- View / Preview
+- Download
+- Delete if user has delete permission
+
+For image files:
+- Show thumbnail instead of generic image/file icon
+- Clicking thumbnail or View opens image viewer/lightbox
+- Viewer should show:
+  - full image preview
+  - file name
+  - label/caption
+  - category/source
+  - uploaded by
+  - uploaded date
+  - download button
+  - delete button if allowed
+  - close button
+- Viewer should support Escape to close
+- Viewer should work on desktop and mobile
+
+For non-image files:
+- Show file icon
+- View opens browser preview if possible, otherwise show download option
+- Download must work
+
+File row/card layout:
+- Left: thumbnail/icon
+- Middle: display file name, original file name, file type, size, category/source, uploaded by, label/caption
+- Right: View, Download, Delete
+
+Important:
+- This should work in Main Files page, Job Files tab and Fleet Files tab
+- Reuse one shared FilePanel/FileViewer component if possible
+- Company-scoped
+- Permission-aware
+- No mock/demo files
+
+Validation:
+- Upload image to Fleet asset
+- Confirm thumbnail appears
+- Click thumbnail/View and confirm viewer opens
+- Download image
+- Delete image
+- Upload non-image document if possible
+- Confirm document download works
+- Confirm Job Files still works
+- Confirm Main Files page still works
+- npm run build
+- Publish after passing

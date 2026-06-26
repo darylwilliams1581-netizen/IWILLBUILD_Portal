@@ -4,7 +4,7 @@ export interface CompanyFile {
   storedName: string; mimeType: string; sizeBytes: number; fileCategory: string;
   label: string | null; notes: string | null; createdAt: string;
 }
-export const FILE_CATEGORIES = ['Job','Fleet','Company','User','Template','Report','Other'] as const;
+export const FILE_CATEGORIES = ['Job','Fleet','Company','Forms','Photos','Reports','Templates','Other'] as const;
 export type FileCategory = typeof FILE_CATEGORIES[number];
 export const ALLOWED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip';
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;

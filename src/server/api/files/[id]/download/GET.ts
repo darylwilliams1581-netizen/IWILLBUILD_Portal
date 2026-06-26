@@ -25,7 +25,11 @@ export default async function handler(req: Request, res: Response) {
     if (!record || record.companyId !== profile.companyId) return res.status(404).json({ error: 'File not found' });
     const filePath = join(FDIR, record.storedName);
     res.setHeader('Content-Type', record.mimeType);
-    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(record.originalName) + '"');
+    const inline = req.query['inline'] === '1';
+    const disposition = inline
+      ? 'inline; filename="' + encodeURIComponent(record.originalName) + '"'
+      : 'attachment; filename="' + encodeURIComponent(record.originalName) + '"';
+    res.setHeader('Content-Disposition', disposition);
     res.setHeader('Content-Length', record.sizeBytes);
     const stream = createReadStream(filePath);
     stream.on('error', () => { if (!res.headersSent) res.status(404).json({ error: 'File not found on disk' }); });

@@ -1,0 +1,87 @@
+Upgrade Files page filtering and image thumbnails.
+
+Current issue:
+Files page category filter only allows one category at a time.
+User needs to tick/select more than one category, including All.
+Image/photo files show as a generic file icon instead of thumbnails.
+
+Part 1 - Multi-select category filter
+
+Replace the single-select category dropdown with a multi-select filter.
+
+Required options:
+- All
+- Job
+- Fleet
+- Company
+- Forms
+- Photos
+- Reports
+- Templates
+- Other
+
+Behaviour:
+- User can tick more than one category
+- All selected means show all files
+- All = no category restriction
+- Selecting a specific category unticks All
+- Show selected filter summary:
+  - All files
+  - Job, Fleet
+  - Photos, Forms
+- Counts should display beside each option if available, e.g. Job (1), Fleet (1), Photos (5)
+
+Filtering:
+- Search text and selected categories should work together
+- Refresh can reset to All if keeping filters is not easy
+- No mock/demo data
+
+Part 2 - Image thumbnails
+
+For image files:
+- Show thumbnail preview instead of generic icon
+- Supported image types: jpg, jpeg, png, webp, gif if supported
+- Do not support HEIC/HEIF unless already converted
+- Thumbnail should be square/cropped nicely, around 56px
+- Clicking thumbnail or file row opens preview/lightbox if available
+
+Preview should include:
+- image
+- file name
+- category/source
+- uploaded by
+- uploaded date
+- download button
+- delete button if allowed
+
+File list layout:
+- Keep table/list layout for documents
+- For images, show thumbnail, filename, category/source badge, size and uploaded by
+
+Optional:
+- Add view toggle: List view / Gallery view
+- Gallery view shows image thumbnails in cards
+- Documents can still show file icon cards
+
+Part 3 - Shared viewer
+
+Create/reuse one shared FilePanel/FileViewer for:
+- Main Files page
+- Job Files tab
+- Fleet Files tab
+
+Do not duplicate separate broken file viewers.
+
+Validation:
+- Upload one job image
+- Upload one fleet image
+- Upload one document if available
+- Select Job + Fleet and confirm both show
+- Select Photos/Image category and confirm image files show
+- Select All and confirm all show
+- Confirm image thumbnail renders
+- Confirm clicking thumbnail opens preview
+- Confirm non-image files still show file icon
+- Confirm permissions still apply
+- npm run build
+- Publish after passing
