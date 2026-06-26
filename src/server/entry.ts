@@ -120,6 +120,11 @@ import support_mode_status_get from "./api/support-mode/status/GET";
 import support_mode_audit_get from "./api/support-mode/audit/GET";
 import support_mode_checklist_get from "./api/support-mode/checklist/GET";
 import support_mode_checklist_put from "./api/support-mode/checklist/PUT";
+import migrate_dazza_knowledge_post from "./api/migrate-dazza-knowledge/POST";
+import dazza_knowledge_get from "./api/dazza/knowledge/GET";
+import dazza_knowledge_post from "./api/dazza/knowledge/POST";
+import dazza_knowledge_id_put from "./api/dazza/knowledge/[id]/PUT";
+import dazza_knowledge_id_delete from "./api/dazza/knowledge/[id]/DELETE";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -402,6 +407,11 @@ app.get("/api/support-mode/status", support_mode_status_get);
 app.get("/api/support-mode/audit", support_mode_audit_get);
 app.get("/api/support-mode/checklist", support_mode_checklist_get);
 app.put("/api/support-mode/checklist", support_mode_checklist_put);
+app.post("/api/migrate-dazza-knowledge", migrate_dazza_knowledge_post);
+app.get("/api/dazza/knowledge", dazza_knowledge_get);
+app.post("/api/dazza/knowledge", dazza_knowledge_post);
+app.put("/api/dazza/knowledge/:id", dazza_knowledge_id_put);
+app.delete("/api/dazza/knowledge/:id", dazza_knowledge_id_delete);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

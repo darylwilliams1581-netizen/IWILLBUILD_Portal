@@ -63,6 +63,8 @@ export interface DazzaContext {
   formTemplates?:   unknown[];
   formSubmissions?: unknown[];
   files?:           unknown[];
+  // Structured knowledge base entries
+  knowledgeEntries?: Array<{ title: string; category: string; content: string; source_name: string | null }>;
   // Resilience tracking
   warnings:         string[];
   moduleCounts:     Record<string, number>;
@@ -199,6 +201,17 @@ export async function buildDazzaContext(
     warnings.push(`settings: ${msg.slice(0, 120)}`);
     moduleCounts['settings'] = -1;
   }
+
+  // ── Structured knowledge base ─────────────────────────────────────────────
+  ctx.knowledgeEntries = await safeQuery('knowledge', async () => {
+    const [rows] = await db.execute(
+      sql`SELECT title, category, content, source_name
+          FROM dazza_knowledge
+          WHERE company_id = ${effectiveCompanyId} AND active = 1
+          ORDER BY category ASC, title ASC LIMIT 100`
+    ) as unknown as [Array<{ title: string; category: string; content: string; source_name: string | null }>, unknown];
+    return rows ?? [];
+  });
 
   // ── Jobs ──────────────────────────────────────────────────────────────────
   if (canJobs) {

@@ -12,8 +12,11 @@ import {
   ShieldCheck,
   MessageSquare,
   AlertTriangle,
+  BookOpen,
+  Settings2,
 } from 'lucide-react';
 import { DAZZA_DEFAULT_DISCLAIMER } from '@/lib/dazza-guardrails';
+import DazzaKnowledgePanel from './DazzaKnowledgePanel';
 
 interface DazzaSettings {
   enabled: boolean;
@@ -41,6 +44,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [subTab, setSubTab] = useState<'settings' | 'knowledge'>('settings');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,6 +124,32 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
           </span>
         )}
       </div>
+
+      {/* Sub-tab switcher */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setSubTab('settings')}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all ${subTab === 'settings' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Settings2 size={13} />
+          Settings
+        </button>
+        <button
+          onClick={() => setSubTab('knowledge')}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all ${subTab === 'knowledge' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <BookOpen size={13} />
+          Knowledge / Learn
+        </button>
+      </div>
+
+      {/* Knowledge sub-tab */}
+      {subTab === 'knowledge' && (
+        <DazzaKnowledgePanel isAdmin={isAdmin} />
+      )}
+
+      {/* Settings sub-tab */}
+      {subTab === 'settings' && (<>
 
       {/* Enable toggle */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -292,6 +322,8 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
           </button>
         </div>
       )}
+
+      </>)}
     </div>
   );
 }

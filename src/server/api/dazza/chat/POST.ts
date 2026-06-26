@@ -28,7 +28,6 @@ import {
   resolveEffectiveCompany,
   type DazzaContext,
 } from '../../../lib/dazza-context.js';
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -362,6 +361,30 @@ function buildSystemPrompt(ctx: DazzaContext): string {
       lines.push(`## SAFETY & PROCESS NOTES`);
       lines.push(companyKnowledge.safetyNotes);
       lines.push('');
+    }
+  }
+
+  // ── Structured knowledge base entries ────────────────────────────────────
+  const knowledgeEntries = (ctx.knowledgeEntries ?? []) as Array<{ title: string; category: string; content: string; source_name: string | null }>;
+  if (knowledgeEntries.length > 0) {
+    lines.push(`## COMPANY KNOWLEDGE BASE — ${ctx.companyName} only — ${knowledgeEntries.length} active entries`);
+    lines.push(`IMPORTANT: When using any of these entries in your answer, you MUST prefix with "From company knowledge:".`);
+    lines.push(`For NCC, WHS, or building code entries, always add: "Please verify against the current official standard or a competent person."`);
+    lines.push(`NEVER treat these entries as legal certainty.`);
+    lines.push('');
+    // Group by category for readability
+    const grouped: Record<string, typeof knowledgeEntries> = {};
+    for (const e of knowledgeEntries) {
+      if (!grouped[e.category]) grouped[e.category] = [];
+      grouped[e.category].push(e);
+    }
+    for (const [cat, entries] of Object.entries(grouped)) {
+      lines.push(`### ${cat}`);
+      for (const e of entries) {
+        lines.push(`**${e.title}**${e.source_name ? ` (Source: ${e.source_name})` : ''}`);
+        lines.push(e.content);
+        lines.push('');
+      }
     }
   }
 
