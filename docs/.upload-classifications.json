@@ -127,6 +127,19 @@
       "summary": "Screenshot of a job management interface (JOB-001) showing client details, site address, and a PHOTOS section with Take Photo and Upload buttons. User is requesting a layout adjustment to move the photos section to the top.",
       "fileName": "screenshot-2026-06-26T05-43-49.jpg",
       "storedUploadFilename": "f38wenbvln_1782452631045_file_zlg81FdPu0.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a job management interface showing multiple photos (construction site, padlock, person) associated with JOB-001. The prompt 'now download function' is unclear and does not indicate how this file should be used on the site.",
+      "fileName": "screenshot-2026-06-26T05-48-53.jpg",
+      "storedUploadFilename": "f38wenbvln_1782452934022_file_AP0GPvjvcl.jpg"
     }
   ]
 }
