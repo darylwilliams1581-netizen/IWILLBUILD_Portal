@@ -2,6 +2,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
+import SupportModeBanner from '@/components/SupportModeBanner';
 
 /**
  * Root layout for IWILLBUILD Portal — fullscreen dashboard app.
@@ -45,14 +46,17 @@ function ActivePing() {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta name="description" content="Internal operations portal for IWILLBUILD — manage jobs, crews, fleet, and more." />
       </Helmet>
+      <SupportModeBanner />
       <ScrollRestoration />
       <ActivePing />
-      {children}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 }

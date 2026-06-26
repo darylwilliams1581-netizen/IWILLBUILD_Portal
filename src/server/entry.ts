@@ -113,6 +113,13 @@ import owner_console_users_get from "./api/owner-console/users/GET";
 import owner_console_activity_get from "./api/owner-console/activity/GET";
 import migrate_owner_console_post from "./api/migrate-owner-console/POST";
 import active_ping_post from "./api/active-ping/POST";
+import migrate_support_mode_post from "./api/migrate-support-mode/POST";
+import support_mode_enter_post from "./api/support-mode/enter/POST";
+import support_mode_exit_post from "./api/support-mode/exit/POST";
+import support_mode_status_get from "./api/support-mode/status/GET";
+import support_mode_audit_get from "./api/support-mode/audit/GET";
+import support_mode_checklist_get from "./api/support-mode/checklist/GET";
+import support_mode_checklist_put from "./api/support-mode/checklist/PUT";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -301,6 +308,13 @@ app.get("/api/owner-console/users", owner_console_users_get);
 app.get("/api/owner-console/activity", owner_console_activity_get);
 app.post("/api/migrate-owner-console", migrate_owner_console_post);
 app.post("/api/active-ping", active_ping_post);
+app.post("/api/migrate-support-mode", migrate_support_mode_post);
+app.post("/api/support-mode/enter", support_mode_enter_post);
+app.post("/api/support-mode/exit", support_mode_exit_post);
+app.get("/api/support-mode/status", support_mode_status_get);
+app.get("/api/support-mode/audit", support_mode_audit_get);
+app.get("/api/support-mode/checklist", support_mode_checklist_get);
+app.put("/api/support-mode/checklist", support_mode_checklist_put);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

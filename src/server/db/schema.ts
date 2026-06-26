@@ -438,3 +438,16 @@ export const userActivityEvents = mysqlTable('user_activity_events', {
   metadataJson: text('metadata_json'),
   createdAt:    timestamp('created_at').defaultNow(),
 });
+
+// ── Support audit events ──────────────────────────────────────────────────────
+export const supportAuditEvents = mysqlTable('support_audit_events', {
+  id:              int('id').primaryKey().autoincrement(),
+  ownerUserId:     varchar('owner_user_id', { length: 36 }).notNull(),
+  targetCompanyId: int('target_company_id').notNull(),
+  actionType:      varchar('action_type', { length: 100 }).notNull(),
+  entityType:      varchar('entity_type', { length: 100 }),
+  entityId:        varchar('entity_id', { length: 100 }),
+  summary:         text('summary'),
+  metadataJson:    text('metadata_json'),
+  createdAt:       timestamp('created_at').defaultNow(),
+});

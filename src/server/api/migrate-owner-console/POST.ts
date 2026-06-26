@@ -2,46 +2,32 @@ import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
+async function ensureColumn(table: string, column: string, definition: string, results: string[]) {
+  try {
+    const [rows] = await db.execute(sql`
+      SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ${table}
+        AND COLUMN_NAME = ${column}
+    `);
+    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
+    if (cnt === 0) {
+      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+      results.push(`Added ${column} to ${table}`);
+    } else {
+      results.push(`${column} already exists on ${table}`);
+    }
+  } catch (e) {
+    results.push(`${table}.${column}: ${String(e)}`);
+  }
+}
+
 export default async function handler(_req: Request, res: Response) {
   const results: string[] = [];
 
-  // Add last_login_at to profiles
-  try {
-    const [rows] = await db.execute(sql`
-      SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'profiles'
-        AND COLUMN_NAME = 'last_login_at'
-    `);
-    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
-    if (cnt === 0) {
-      await db.execute(sql`ALTER TABLE profiles ADD COLUMN last_login_at TIMESTAMP NULL`);
-      results.push('Added last_login_at to profiles');
-    } else {
-      results.push('last_login_at already exists');
-    }
-  } catch (e) {
-    results.push(`last_login_at: ${String(e)}`);
-  }
-
-  // Add last_active_at to profiles
-  try {
-    const [rows] = await db.execute(sql`
-      SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'profiles'
-        AND COLUMN_NAME = 'last_active_at'
-    `);
-    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
-    if (cnt === 0) {
-      await db.execute(sql`ALTER TABLE profiles ADD COLUMN last_active_at TIMESTAMP NULL`);
-      results.push('Added last_active_at to profiles');
-    } else {
-      results.push('last_active_at already exists');
-    }
-  } catch (e) {
-    results.push(`last_active_at: ${String(e)}`);
-  }
+  await ensureColumn('profiles', 'notification_prefs', 'TEXT', results);
+  await ensureColumn('profiles', 'last_login_at', 'TIMESTAMP NULL', results);
+  await ensureColumn('profiles', 'last_active_at', 'TIMESTAMP NULL', results);
 
   // Create user_activity_events table
   try {

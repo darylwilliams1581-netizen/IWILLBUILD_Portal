@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn,
-  RefreshCw, Shield, ChevronRight, Activity,
-  Circle, Loader2,
+  RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
+  ShieldCheck, Settings, FileText, ClipboardList, Eye, LogOut,
+  CheckCircle2, XCircle, ChevronDown, AlertTriangle, ExternalLink,
+  ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
+import { useSupportMode } from '@/lib/useSupportMode';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,26 @@ interface ActivityEvent {
   userEmail: string | null;
 }
 
+interface AuditEvent {
+  id: number;
+  ownerUserId: string;
+  targetCompanyId: number;
+  actionType: string;
+  entityType: string | null;
+  entityId: string | null;
+  summary: string | null;
+  createdAt: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+}
+
+interface ChecklistItem {
+  id: string;
+  label: string;
+  description: string;
+  completed: boolean;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string | null): string {
@@ -103,16 +126,19 @@ function eventBadge(type: string) {
   return map[type] ?? 'bg-slate-100 text-slate-600';
 }
 
+function auditActionLabel(type: string): string {
+  const map: Record<string, string> = {
+    enter_support_mode: 'Entered support mode',
+    exit_support_mode: 'Exited support mode',
+    update_setup_checklist: 'Updated checklist',
+  };
+  return map[type] ?? type.replace(/_/g, ' ');
+}
+
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
-function StatCard({
-  label, value, icon: Icon, color, sub,
-}: {
-  label: string;
-  value: number | string;
-  icon: React.ElementType;
-  color: string;
-  sub?: string;
+function StatCard({ label, value, icon: Icon, color, sub }: {
+  label: string; value: number | string; icon: React.ElementType; color: string; sub?: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex items-start gap-4">
@@ -128,8 +154,6 @@ function StatCard({
   );
 }
 
-// ── Tab button ────────────────────────────────────────────────────────────────
-
 function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -143,11 +167,249 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
   );
 }
 
+// ── Company Actions Dropdown ──────────────────────────────────────────────────
+
+function CompanyActionsMenu({ company, onEnterSupport, onViewUsers, onViewActivity }: {
+  company: Company;
+  onEnterSupport: (c: Company) => void;
+  onViewUsers: (c: Company) => void;
+  onViewActivity: (c: Company) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+      >
+        Actions <ChevronDown size={11} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border border-slate-200 shadow-xl z-20 overflow-hidden">
+            <button
+              onClick={() => { setOpen(false); onEnterSupport(company); }}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+            >
+              <ShieldAlert size={14} />
+              Support Setup
+            </button>
+            <button
+              onClick={() => { setOpen(false); onViewUsers(company); }}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <Users size={14} />
+              View Users
+            </button>
+            <button
+              onClick={() => { setOpen(false); onViewActivity(company); }}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <Activity size={14} />
+              View Activity
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Support Setup Panel ───────────────────────────────────────────────────────
+
+function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () => void }) {
+  const navigate = useNavigate();
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [percent, setPercent] = useState(0);
+  const [done, setDone] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [showAudit, setShowAudit] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [cl, au] = await Promise.all([
+      fetch(`/api/support-mode/checklist?companyId=${company.id}`, { credentials: 'include' }).then((r) => r.json()),
+      fetch(`/api/support-mode/audit?companyId=${company.id}&limit=50`, { credentials: 'include' }).then((r) => r.json()),
+    ]);
+    setChecklist(cl.checklist ?? []);
+    setPercent(cl.percent ?? 0);
+    setDone(cl.done ?? 0);
+    setTotal(cl.total ?? 0);
+    setAuditEvents(au.events ?? []);
+    setLoading(false);
+  }, [company.id]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const toggleItem = async (itemId: string, completed: boolean) => {
+    setToggling(itemId);
+    await fetch('/api/support-mode/checklist', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId: company.id, itemId, completed }),
+    });
+    await load();
+    setToggling(null);
+  };
+
+  const quickActions = [
+    { label: 'Edit Company Profile', icon: Settings, href: '/settings?tab=company' },
+    { label: 'Manage Users', icon: Users, href: '/settings?tab=team' },
+    { label: 'Configure Permissions', icon: ShieldCheck, href: '/settings?tab=team' },
+    { label: 'Cost Guide', icon: FileText, href: '/estimating?tab=cost-guide' },
+    { label: 'Form Templates', icon: ClipboardList, href: '/forms' },
+    { label: 'PDF / Print Style', icon: FileText, href: '/settings?tab=pdf' },
+    { label: 'Dazza AI Knowledge', icon: Activity, href: '/settings?tab=dazza' },
+    { label: 'Fleet Assets', icon: Building2, href: '/fleet' },
+    { label: 'Files', icon: FileText, href: '/files' },
+  ];
+
+  return (
+    <div className="flex flex-col gap-6 max-w-4xl">
+      {/* Header */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+          <ShieldAlert size={18} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-amber-900 text-lg leading-tight">{company.name}</p>
+          <p className="text-sm text-amber-700 mt-0.5">Support Setup Mode — all actions are audited</p>
+        </div>
+        <button
+          onClick={onExit}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 font-bold text-sm rounded-xl hover:bg-amber-50 transition-colors shrink-0"
+        >
+          <LogOut size={13} />
+          Exit Support Mode
+        </button>
+      </div>
+
+      {/* Setup Checklist */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-slate-800">Setup Checklist</h2>
+            <span className="text-sm font-black text-slate-700">{done}/{total} · {percent}%</span>
+          </div>
+          {/* Progress bar */}
+          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 size={20} className="animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {checklist.map((item) => (
+              <div key={item.id} className={`px-5 py-3.5 flex items-center gap-4 transition-colors ${item.completed ? 'bg-green-50/40' : ''}`}>
+                <button
+                  onClick={() => void toggleItem(item.id, !item.completed)}
+                  disabled={toggling === item.id}
+                  className="shrink-0 transition-transform hover:scale-110 disabled:opacity-50"
+                >
+                  {toggling === item.id ? (
+                    <Loader2 size={20} className="animate-spin text-slate-400" />
+                  ) : item.completed ? (
+                    <CheckCircle2 size={20} className="text-green-500" />
+                  ) : (
+                    <XCircle size={20} className="text-slate-300 hover:text-slate-400" />
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${item.completed ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="font-bold text-slate-800">Quick Actions</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Navigate to setup areas for this company</p>
+        </div>
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                onClick={() => navigate(action.href)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-colors text-left group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover:border-primary/30 transition-colors">
+                  <Icon size={14} className="text-slate-500 group-hover:text-primary transition-colors" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 truncate">{action.label}</span>
+                <ExternalLink size={11} className="text-slate-300 group-hover:text-primary ml-auto shrink-0 transition-colors" />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Audit Log */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowAudit((v) => !v)}
+          className="w-full px-5 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+        >
+          <h2 className="font-bold text-slate-800">Support Audit Log</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">{auditEvents.length} events</span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${showAudit ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
+        {showAudit && (
+          auditEvents.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">No audit events yet for this company</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {auditEvents.map((e) => (
+                <div key={e.id} className="px-5 py-3 flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-2 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700">
+                      <span className="font-semibold">{e.ownerName ?? e.ownerEmail ?? e.ownerUserId}</span>
+                      {' — '}
+                      <span className="text-slate-500">{auditActionLabel(e.actionType)}</span>
+                    </p>
+                    {e.summary && <p className="text-xs text-slate-400 mt-0.5 truncate">{e.summary}</p>}
+                  </div>
+                  <span className="text-[11px] text-slate-400 shrink-0">{timeAgo(e.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function OwnerConsolePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isOwner, loading: permsLoading } = usePermissions();
+  const supportMode = useSupportMode();
 
   const [migrated, setMigrated] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -156,14 +418,20 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity'>('overview');
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup'>(
+    (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
+  );
   const [userSearch, setUserSearch] = useState('');
+  const [supportCompany, setSupportCompany] = useState<Company | null>(null);
+  const [enteringSupport, setEnteringSupport] = useState<number | null>(null);
+  const [filterCompanyId, setFilterCompanyId] = useState<number | null>(null);
 
-  // Run migration once on mount
+  // Run migrations once on mount
   useEffect(() => {
-    fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' })
-      .then(() => setMigrated(true))
-      .catch(() => setMigrated(true));
+    Promise.all([
+      fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' }),
+      fetch('/api/migrate-support-mode', { method: 'POST', credentials: 'include' }),
+    ]).finally(() => setMigrated(true));
   }, []);
 
   const loadData = useCallback(async (quiet = false) => {
@@ -176,10 +444,10 @@ export default function OwnerConsolePage() {
         fetch('/api/owner-console/users', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/owner-console/activity?limit=100', { credentials: 'include' }).then((r) => r.json()),
       ]);
-      setStats(s);
-      setCompanies(c.companies ?? []);
-      setUsers(u.users ?? []);
-      setActivity(a.events ?? []);
+      setStats(s as Stats);
+      setCompanies((c as { companies: Company[] }).companies ?? []);
+      setUsers((u as { users: OcUser[] }).users ?? []);
+      setActivity((a as { events: ActivityEvent[] }).events ?? []);
     } catch (e) {
       console.error('Owner console load error:', e);
     } finally {
@@ -194,10 +462,52 @@ export default function OwnerConsolePage() {
     }
   }, [migrated, permsLoading, isOwner, loadData]);
 
+  // Sync tab from URL
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t === 'support-setup') setTab('support-setup');
+  }, [searchParams]);
+
+  // If already in support mode, pre-populate supportCompany
+  useEffect(() => {
+    if (supportMode.active && supportMode.companyId && companies.length > 0) {
+      const c = companies.find((co) => co.id === supportMode.companyId);
+      if (c) setSupportCompany(c);
+    }
+  }, [supportMode.active, supportMode.companyId, companies]);
+
+  const handleEnterSupport = async (company: Company) => {
+    setEnteringSupport(company.id);
+    const result = await supportMode.enter(company.id);
+    setEnteringSupport(null);
+    if (result.ok) {
+      setSupportCompany(company);
+      setTab('support-setup');
+      setSearchParams({ tab: 'support-setup' });
+    }
+  };
+
+  const handleExitSupport = async () => {
+    await supportMode.exit();
+    setSupportCompany(null);
+    setTab('companies');
+    setSearchParams({});
+  };
+
+  const handleViewUsers = (company: Company) => {
+    setFilterCompanyId(company.id);
+    setTab('users');
+  };
+
+  const handleViewActivity = (company: Company) => {
+    setFilterCompanyId(company.id);
+    setTab('activity');
+  };
+
   // Access guard
   if (!permsLoading && !isOwner) {
     return (
-      <div className="flex h-screen bg-[#F4F5F7]">
+      <div className="flex h-full bg-[#F4F5F7]">
         <PortalSidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-sm">
@@ -219,6 +529,7 @@ export default function OwnerConsolePage() {
   }
 
   const filteredUsers = users.filter((u) => {
+    if (filterCompanyId && u.companyId !== filterCompanyId) return false;
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
     return (
@@ -229,8 +540,16 @@ export default function OwnerConsolePage() {
     );
   });
 
+  const filteredActivity = filterCompanyId
+    ? activity.filter((a) => a.companyId === filterCompanyId)
+    : activity;
+
+  const filterCompanyName = filterCompanyId
+    ? companies.find((c) => c.id === filterCompanyId)?.name
+    : null;
+
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="flex h-full bg-[#F4F5F7] overflow-hidden">
       <PortalSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -240,6 +559,7 @@ export default function OwnerConsolePage() {
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
         </Helmet>
+
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 shrink-0">
           <div className="flex-1 min-w-0">
@@ -249,6 +569,14 @@ export default function OwnerConsolePage() {
             </div>
             <h1 className="font-heading font-black text-xl text-slate-900">Owner Console</h1>
           </div>
+          {supportMode.active && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
+              <ShieldAlert size={13} className="text-amber-600" />
+              <span className="text-xs font-bold text-amber-700 truncate max-w-[160px]">
+                {supportMode.companyName}
+              </span>
+            </div>
+          )}
           <button
             onClick={() => void loadData(true)}
             disabled={refreshing}
@@ -260,15 +588,24 @@ export default function OwnerConsolePage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white border-b border-slate-200 px-6 py-2 flex gap-1 shrink-0">
-          <Tab active={tab === 'overview'} onClick={() => setTab('overview')}>Overview</Tab>
-          <Tab active={tab === 'companies'} onClick={() => setTab('companies')}>
+        <div className="bg-white border-b border-slate-200 px-6 py-2 flex gap-1 shrink-0 flex-wrap">
+          <Tab active={tab === 'overview'} onClick={() => { setTab('overview'); setSearchParams({}); }}>Overview</Tab>
+          <Tab active={tab === 'companies'} onClick={() => { setTab('companies'); setFilterCompanyId(null); setSearchParams({}); }}>
             Companies {companies.length > 0 && <span className="ml-1 text-xs opacity-70">({companies.length})</span>}
           </Tab>
-          <Tab active={tab === 'users'} onClick={() => setTab('users')}>
+          <Tab active={tab === 'users'} onClick={() => { setTab('users'); setSearchParams({}); }}>
             Users {users.length > 0 && <span className="ml-1 text-xs opacity-70">({users.length})</span>}
           </Tab>
-          <Tab active={tab === 'activity'} onClick={() => setTab('activity')}>Activity Log</Tab>
+          <Tab active={tab === 'activity'} onClick={() => { setTab('activity'); setFilterCompanyId(null); setSearchParams({}); }}>Activity Log</Tab>
+          {(supportMode.active || tab === 'support-setup') && (
+            <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
+              <span className="flex items-center gap-1.5">
+                <ShieldAlert size={12} />
+                Support Setup
+                {supportMode.active && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />}
+              </span>
+            </Tab>
+          )}
         </div>
 
         {/* Content */}
@@ -285,7 +622,6 @@ export default function OwnerConsolePage() {
               {/* ── Overview ── */}
               {tab === 'overview' && (
                 <div className="flex flex-col gap-6 max-w-5xl">
-                  {/* Stat cards */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <StatCard label="Total Companies" value={stats?.totalCompanies ?? 0} icon={Building2} color="bg-blue-50 text-blue-600" />
                     <StatCard label="Total Users" value={stats?.totalUsers ?? 0} icon={Users} color="bg-slate-100 text-slate-600" />
@@ -296,7 +632,6 @@ export default function OwnerConsolePage() {
                     <StatCard label="Logins Today" value={stats?.loginsToday ?? 0} icon={LogIn} color="bg-primary/10 text-primary" />
                   </div>
 
-                  {/* Quick company list */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                       <h2 className="font-bold text-slate-800">Companies</h2>
@@ -317,17 +652,24 @@ export default function OwnerConsolePage() {
                               <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
                               <p className="text-xs text-slate-400">Owner: {c.owner}</p>
                             </div>
-                            <div className="text-right shrink-0">
+                            <div className="text-right shrink-0 mr-3">
                               <p className="text-sm font-bold text-slate-700">{c.totalUsers}</p>
                               <p className="text-[11px] text-slate-400">users</p>
                             </div>
+                            <button
+                              onClick={() => void handleEnterSupport(c)}
+                              disabled={enteringSupport === c.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                            >
+                              {enteringSupport === c.id ? <Loader2 size={11} className="animate-spin" /> : <ShieldAlert size={11} />}
+                              Support
+                            </button>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Recent activity */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                       <h2 className="font-bold text-slate-800">Recent Activity</h2>
@@ -336,7 +678,7 @@ export default function OwnerConsolePage() {
                       </button>
                     </div>
                     {activity.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet. Activity is tracked from the next login.</p>
+                      <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet.</p>
                     ) : (
                       <div className="divide-y divide-slate-100">
                         {activity.slice(0, 8).map((e) => (
@@ -347,9 +689,7 @@ export default function OwnerConsolePage() {
                                 <span className="font-semibold">{e.userName ?? e.userEmail ?? e.userId}</span>
                               </p>
                             </div>
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${eventBadge(e.eventType)}`}>
-                              {e.eventType}
-                            </span>
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${eventBadge(e.eventType)}`}>{e.eventType}</span>
                             <span className="text-[11px] text-slate-400 shrink-0">{timeAgo(e.createdAt)}</span>
                           </div>
                         ))}
@@ -379,37 +719,36 @@ export default function OwnerConsolePage() {
                               <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Users</th>
                               <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active</th>
                               <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Created</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                              <th className="px-5 py-3" />
+                              <th className="text-right px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {companies.map((c) => (
-                              <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                              <tr key={c.id} className={`hover:bg-slate-50 transition-colors ${supportMode.active && supportMode.companyId === c.id ? 'bg-amber-50/50' : ''}`}>
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                                       <Building2 size={13} className="text-blue-500" />
                                     </div>
-                                    <span className="font-semibold text-slate-800">{c.name}</span>
+                                    <div>
+                                      <span className="font-semibold text-slate-800">{c.name}</span>
+                                      {supportMode.active && supportMode.companyId === c.id && (
+                                        <span className="ml-2 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">ACTIVE</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-600">{c.owner}</td>
                                 <td className="px-4 py-3.5 text-center font-bold text-slate-700">{c.totalUsers}</td>
                                 <td className="px-4 py-3.5 text-center font-bold text-green-600">{c.activeUsers}</td>
                                 <td className="px-5 py-3.5 text-slate-500">{fmtDate(c.createdAt)}</td>
-                                <td className="px-5 py-3.5">
-                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-green-100 text-green-700 border-green-200">
-                                    {c.status}
-                                  </span>
-                                </td>
-                                <td className="px-5 py-3.5">
-                                  <a
-                                    href="/settings"
-                                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    Manage <ChevronRight size={11} />
-                                  </a>
+                                <td className="px-5 py-3.5 text-right">
+                                  <CompanyActionsMenu
+                                    company={c}
+                                    onEnterSupport={handleEnterSupport}
+                                    onViewUsers={handleViewUsers}
+                                    onViewActivity={handleViewActivity}
+                                  />
                                 </td>
                               </tr>
                             ))}
@@ -425,10 +764,14 @@ export default function OwnerConsolePage() {
               {tab === 'users' && (
                 <div className="max-w-6xl">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-4">
-                      <div className="flex-1">
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-4 flex-wrap">
+                      <div className="flex-1 min-w-0">
                         <h2 className="font-bold text-slate-800">All Users</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">{users.length} total</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {filterCompanyName ? (
+                            <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
+                          ) : `${users.length} total`}
+                        </p>
                       </div>
                       <input
                         type="text"
@@ -471,22 +814,15 @@ export default function OwnerConsolePage() {
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-600 truncate max-w-[140px]">{u.company}</td>
                                 <td className="px-4 py-3.5">
-                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${roleBadge(u.role)}`}>
-                                    {u.role}
-                                  </span>
+                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${roleBadge(u.role)}`}>{u.role}</span>
                                 </td>
                                 <td className="px-4 py-3.5">
-                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${statusBadge(u.status)}`}>
-                                    {u.status}
-                                  </span>
+                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${statusBadge(u.status)}`}>{u.status}</span>
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastLoginAt)}</td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastActiveAt)}</td>
                                 <td className="px-4 py-3.5 text-center">
-                                  <Circle
-                                    size={10}
-                                    className={u.onlineNow ? 'text-emerald-500 fill-emerald-500' : 'text-slate-300 fill-slate-300'}
-                                  />
+                                  <Circle size={10} className={u.onlineNow ? 'text-emerald-500 fill-emerald-500' : 'text-slate-300 fill-slate-300'} />
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{fmtDate(u.createdAt)}</td>
                               </tr>
@@ -503,37 +839,34 @@ export default function OwnerConsolePage() {
               {tab === 'activity' && (
                 <div className="max-w-4xl">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100">
-                      <h2 className="font-bold text-slate-800">Activity Log</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {activity.length} recent events · login and logout events · tracked from next sign-in
-                      </p>
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                      <div>
+                        <h2 className="font-bold text-slate-800">Activity Log</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {filterCompanyName ? (
+                            <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
+                          ) : `${filteredActivity.length} recent events`}
+                        </p>
+                      </div>
                     </div>
-                    {activity.length === 0 ? (
+                    {filteredActivity.length === 0 ? (
                       <div className="text-center py-16">
                         <Activity size={28} className="text-slate-200 mx-auto mb-3" />
                         <p className="text-sm font-semibold text-slate-400">No activity recorded yet</p>
-                        <p className="text-xs text-slate-300 mt-1">Events will appear here after the next user login</p>
+                        <p className="text-xs text-slate-300 mt-1">Events appear after the next user login</p>
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-100">
-                        {activity.map((e) => (
+                        {filteredActivity.map((e) => (
                           <div key={e.id} className="px-5 py-3.5 flex items-center gap-4">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${
-                              e.eventType === 'login' ? 'bg-emerald-500' :
-                              e.eventType === 'logout' ? 'bg-slate-400' : 'bg-blue-400'
-                            }`} />
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${e.eventType === 'login' ? 'bg-emerald-500' : e.eventType === 'logout' ? 'bg-slate-400' : 'bg-blue-400'}`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-slate-700">
                                 <span className="font-semibold">{e.userName ?? e.userEmail ?? e.userId}</span>
-                                {e.userEmail && e.userName && (
-                                  <span className="text-slate-400 ml-1 text-xs">({e.userEmail})</span>
-                                )}
+                                {e.userEmail && e.userName && <span className="text-slate-400 ml-1 text-xs">({e.userEmail})</span>}
                               </p>
                             </div>
-                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${eventBadge(e.eventType)}`}>
-                              {e.eventType}
-                            </span>
+                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${eventBadge(e.eventType)}`}>{e.eventType}</span>
                             <span className="text-xs text-slate-400 shrink-0 w-24 text-right">{timeAgo(e.createdAt)}</span>
                             <span className="text-[11px] text-slate-300 shrink-0 hidden lg:block">
                               {new Date(e.createdAt).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -544,6 +877,29 @@ export default function OwnerConsolePage() {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* ── Support Setup ── */}
+              {tab === 'support-setup' && (
+                supportCompany ? (
+                  <SupportSetupPanel company={supportCompany} onExit={handleExitSupport} />
+                ) : (
+                  <div className="max-w-lg">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+                        <ShieldAlert size={24} className="text-amber-500" />
+                      </div>
+                      <h2 className="font-black text-slate-900 text-lg mb-2">No Company Selected</h2>
+                      <p className="text-sm text-slate-500 mb-6">Select a company from the Companies tab to enter Support Setup mode.</p>
+                      <button
+                        onClick={() => setTab('companies')}
+                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors"
+                      >
+                        Go to Companies
+                      </button>
+                    </div>
+                  </div>
+                )
               )}
             </>
           )}
