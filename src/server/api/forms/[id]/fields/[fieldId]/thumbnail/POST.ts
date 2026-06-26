@@ -10,26 +10,17 @@ import multer from 'multer';
 
 // ── Jimp lazy-loaded ──────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _CustomJimp: any = null;
+let _Jimp: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _JimpMime: any = null;
 
 async function getJimp() {
-  if (_CustomJimp) return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
-  const [core, jimpPkg, resizePkg] = await Promise.all([
-    import('@jimp/core'),
-    import('jimp'),
-    import('@jimp/plugin-resize'),
-  ]);
+  if (_Jimp) return { Jimp: _Jimp, JimpMime: _JimpMime };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createJimp = (core as any).createJimp;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { defaultPlugins, defaultFormats, JimpMime } = jimpPkg as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resizeMethods = (resizePkg as any).methods;
-  _JimpMime = JimpMime;
-  _CustomJimp = createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats });
-  return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
+  const pkg = await import('jimp') as any;
+  _Jimp = pkg.Jimp;
+  _JimpMime = pkg.JimpMime;
+  return { Jimp: _Jimp, JimpMime: _JimpMime };
 }
 
 // ── multer: memory storage, 10 MB, images only ───────────────────────────────
@@ -91,12 +82,15 @@ export default async function handler(req: Request, res: Response) {
     if (!file) return res.status(400).json({ error: 'No image file provided' });
 
     // Resize to max 800px wide, JPEG 85%
-    const { CustomJimp, JimpMime } = await getJimp();
-    const image = await CustomJimp.read(file.buffer);
+    const { Jimp, JimpMime } = await getJimp();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const image = await Jimp.read(file.buffer);
     if (image.width > 800) {
       image.resize({ w: 800 });
     }
-    const outputBuffer: Buffer = await image.getBuffer(JimpMime.JPEG, { quality: 85 });
+    // JimpMime.jpeg = 'image/jpeg' (lowercase key in Jimp v1)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const outputBuffer: Buffer = await image.getBuffer(JimpMime.jpeg);
 
     // Save to persistent storage
     const uuid = randomUUID();
