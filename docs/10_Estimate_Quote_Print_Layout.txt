@@ -1,0 +1,87 @@
+Upgrade Estimate / Quote Print Layout.
+
+Current issue:
+Quote print output is too plain and not professional enough.
+It also prints blank/zero lines and has browser header/footer showing date/title at the top.
+
+Required:
+Create a clean client-facing quote print template.
+
+Print should include:
+- Company logo if uploaded in Company Profile
+- Company name
+- ABN / licence / contact details if available
+- Quote title
+- Quote number or estimate number
+- Job number
+- Job name
+- Client name
+- Job address / location
+- Quote date
+- Status if useful, but do not show Draft on client print unless needed
+
+Line table:
+- Columns: Description, Qty, Unit, Rate, Amount
+- Description should wrap naturally for long scope lines
+- Do not print blank lines
+- Do not print zero-value empty placeholder lines
+- Only print lines with a description or a non-zero amount
+- Keep rows together where possible
+- Avoid awkward page breaks in the middle of a row
+
+Print modes:
+1. Full itemised quote
+- Show Qty, Unit, Rate, Amount
+- Show subtotal / GST / total where applicable
+
+2. Scope with total only
+- Show Description, Qty, Unit
+- Hide Rate and Amount per line
+- Show total at bottom
+
+3. Unpriced scope
+- Show Description, Qty, Unit
+- Hide all prices and totals
+
+Totals section:
+- Align cleanly on the right
+- Show subtotal, markup if used, GST if used and total
+- Do not show rows that are not used
+
+Footer:
+- Add optional quote footer/disclaimer from Settings -> Company Profile / PDF Style
+- Example fields: Estimate disclaimer, Payment terms, Acceptance note
+- Include company branding lightly
+
+Print/PDF styling:
+- White page
+- Professional spacing
+- Clear table borders
+- Good typography
+- No oversized empty space
+- A4 friendly
+- Mobile print still works
+
+Remove browser header/footer:
+- Add print CSS guidance for users: Browser print dialog should use Headers and footers: off where possible.
+- Set document title cleanly so if browser header appears it is not ugly.
+
+CSS:
+- Use @media print
+- Hide app navigation/sidebar/buttons
+- Set page margin around 14mm
+- Avoid background-heavy colours
+- Use page-break-inside: avoid for rows/cards
+- Use print-color-adjust where needed
+
+Validation:
+- Print Full itemised quote
+- Print Scope with total only
+- Print Unpriced scope
+- Confirm blank zero lines are removed
+- Confirm long descriptions wrap cleanly
+- Confirm totals align properly
+- Confirm company logo/profile appears if set
+- Confirm PDF looks professional
+- npm run build
+- Publish after passing
