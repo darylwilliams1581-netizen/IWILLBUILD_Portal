@@ -319,7 +319,7 @@ function UploadModal({ jobId, fleetAssetId, onClose, onUploaded }: UploadModalPr
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > MAX_FILE_BYTES) { setError('File exceeds the 25 MB limit.'); return; }
+    if (f.size > MAX_FILE_BYTES) { setError('File exceeds the 20 MB limit.'); return; }
     setError('');
     setFile(f);
     if (!label) setLabel(f.name.replace(/\.[^.]+$/, ''));
@@ -364,7 +364,7 @@ function UploadModal({ jobId, fleetAssetId, onClose, onUploaded }: UploadModalPr
               <>
                 <Upload size={24} className="text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-500">Click to select a file</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOC, XLS, CSV, TXT, ZIP · max 25 MB</p>
+                <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOC, XLS, CSV, TXT, ZIP · max 20 MB</p>
               </>
             )}
           </div>

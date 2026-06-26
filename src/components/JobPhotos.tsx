@@ -496,6 +496,18 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
     const { valid, error: valErr } = validateFiles(arr);
     if (valErr) { setUploadError(valErr); return; }
 
+    // Client-side limit pre-check
+    const currentCount = photos.length;
+    if (currentCount >= MAX_PHOTOS) {
+      setUploadError(`This job has reached the 200-photo limit. Delete some photos before uploading more.`);
+      return;
+    }
+    if (currentCount + valid.length > MAX_PHOTOS) {
+      const rem = MAX_PHOTOS - currentCount;
+      setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added before reaching the 200-photo limit. Please select fewer files.`);
+      return;
+    }
+
     setUploading(true);
     setUploadError(null);
 
@@ -566,16 +578,22 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const MAX_PHOTOS = 200;
+  const atLimit = photos.length >= MAX_PHOTOS;
+  const remaining = MAX_PHOTOS - photos.length;
+
   return (
     <div className="flex flex-col gap-4">
 
       {/* Upload zone */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => { e.preventDefault(); if (!atLimit) setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-xl p-5 transition-colors ${
-          dragOver ? 'border-primary bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'
+          atLimit
+            ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+            : dragOver ? 'border-primary bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'
         }`}
       >
         <div className="flex flex-col items-center gap-3 text-center">
@@ -583,31 +601,44 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
             <Upload size={18} className="text-slate-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-700">Drop photos here or choose files</p>
-            <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WebP · Max 10 per upload · HEIC not supported</p>
+            <p className="text-sm font-semibold text-slate-700">
+              {atLimit ? 'Photo limit reached' : 'Drop photos here or choose files'}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {atLimit
+                ? 'Delete photos to free up space before uploading more.'
+                : `JPEG, PNG, WebP · Max 10 per upload · HEIC not supported`}
+            </p>
+            {/* Count indicator */}
+            <p className={`text-xs font-semibold mt-1 ${atLimit ? 'text-red-500' : remaining <= 20 ? 'text-amber-600' : 'text-slate-400'}`}>
+              {photos.length} / {MAX_PHOTOS} photos used
+              {!atLimit && remaining <= 20 && ` · ${remaining} remaining`}
+            </p>
           </div>
 
-          <input
-            type="text"
-            placeholder="Caption / label (optional)"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
+          {!atLimit && (
+            <input
+              type="text"
+              placeholder="Caption / label (optional)"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          )}
 
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              disabled={uploading || atLimit}
+              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {uploading ? 'Uploading…' : 'Choose Files'}
             </button>
             <button
               onClick={() => cameraInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              disabled={uploading || atLimit}
+              className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               <Camera size={14} />
               Camera
@@ -621,7 +652,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           accept="image/jpeg,image/png,image/webp"
           multiple
           className="hidden"
-          onChange={(e) => { if (e.target.files) void doUpload(e.target.files); }}
+          onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
         />
         <input
           ref={cameraInputRef}
@@ -629,7 +660,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           accept="image/jpeg,image/png,image/webp"
           capture="environment"
           className="hidden"
-          onChange={(e) => { if (e.target.files) void doUpload(e.target.files); }}
+          onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
         />
       </div>
 

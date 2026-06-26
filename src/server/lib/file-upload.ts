@@ -5,7 +5,7 @@
  */
 import multer from 'multer';
 
-export const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 // Allowed MIME types → canonical extension
 export const ALLOWED_MIMES: Record<string, string> = {

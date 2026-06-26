@@ -435,19 +435,40 @@ function CostGuideTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search cost items…"
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-64 bg-white"
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search cost items…"
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-64 bg-white"
+          />
+          {/* Count / limit badge */}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+            items.length >= 200
+              ? 'bg-red-50 text-red-600 border-red-200'
+              : items.length >= 180
+              ? 'bg-amber-50 text-amber-700 border-amber-200'
+              : 'bg-slate-100 text-slate-500 border-slate-200'
+          }`}>
+            {items.length} / 200 items
+          </span>
+        </div>
         <button
           onClick={() => { setEditing(undefined); setShowModal(true); }}
-          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+          disabled={items.length >= 200}
+          title={items.length >= 200 ? 'Cost Guide limit reached (200 items). Delete unused items to add more.' : undefined}
+          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
         >
           <Plus size={14} />Cost Item
         </button>
       </div>
+
+      {items.length >= 200 && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
+          <AlertCircle size={14} className="shrink-0" />
+          Cost Guide limit reached (200 items). Delete unused items before adding more.
+        </div>
+      )}
 
       {loading && <div className="flex justify-center py-12"><Loader2 size={22} className="animate-spin text-primary" /></div>}
       {error && <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3"><AlertCircle size={14} />{error}</div>}

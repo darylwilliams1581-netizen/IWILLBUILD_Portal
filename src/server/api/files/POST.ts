@@ -41,7 +41,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'File type not supported. Allowed: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX, CSV, TXT, ZIP.' });
     }
     if (msg.includes('File too large')) {
-      return res.status(400).json({ error: 'File exceeds the 25 MB limit.' });
+      return res.status(400).json({ error: 'File exceeds the 20 MB limit.' });
     }
     return res.status(400).json({ error: msg });
   }

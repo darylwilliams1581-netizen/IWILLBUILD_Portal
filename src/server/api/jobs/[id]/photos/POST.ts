@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -119,9 +119,27 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // ── Enforce 200-photo limit per job ──────────────────────────────────────
+    const MAX_PHOTOS_PER_JOB = 200;
+    const [photoCountRow] = await db
+      .select({ c: count() })
+      .from(jobPhotos)
+      .where(and(eq(jobPhotos.jobId, jobId), eq(jobPhotos.companyId, profile.companyId)));
+    const currentCount = photoCountRow?.c ?? 0;
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
+    }
+    if (currentCount >= MAX_PHOTOS_PER_JOB) {
+      return res.status(400).json({
+        error: `This job has reached the 200-photo limit. Delete some photos before uploading more.`,
+      });
+    }
+    if (currentCount + files.length > MAX_PHOTOS_PER_JOB) {
+      const remaining = MAX_PHOTOS_PER_JOB - currentCount;
+      return res.status(400).json({
+        error: `Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added before reaching the 200-photo limit. Please select fewer files.`,
+      });
     }
 
     // Reject HEIC/HEIF by original filename extension

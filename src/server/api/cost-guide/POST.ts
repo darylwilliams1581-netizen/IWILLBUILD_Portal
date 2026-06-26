@@ -22,7 +22,14 @@ export default async function handler(req: Request, res: Response) {
     if (!description?.trim()) return res.status(400).json({ error: 'Description is required' });
 
     const [countRow] = await db.select({ c: count() }).from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
-    const sortOrder = (countRow?.c ?? 0);
+    const currentCount = countRow?.c ?? 0;
+
+    // ── Enforce 200-item limit ────────────────────────────────────────────────
+    if (currentCount >= 200) {
+      return res.status(400).json({ error: 'Cost Guide limit reached (200 items). Delete unused items before adding more.' });
+    }
+
+    const sortOrder = currentCount;
 
     const result = await db.insert(costGuideItems).values({
       companyId: profile.companyId,
