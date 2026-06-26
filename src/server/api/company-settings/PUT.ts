@@ -7,23 +7,6 @@ import { eq, sql } from 'drizzle-orm';
 const VALID_SECTIONS = ['structure', 'dazza', 'banner', 'pdf'] as const;
 type Section = typeof VALID_SECTIONS[number];
 
-/**
- * Ensure the column exists — self-healing for older installs.
- * db.execute returns [rows, fields] from mysql2 — must unpack correctly.
- */
-async function ensureCol(col: string) {
-  try {
-    await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
-  } catch (e: unknown) {
-    const err = e as { cause?: { errno?: number } };
-    if (err?.cause?.errno !== 1060) {
-      // Not a duplicate-column error — log it
-      console.warn(`[ensureCol] Could not add ${col}:`, e);
-    }
-    // ER_DUP_FIELDNAME (1060) = column already exists, silently ignore
-  }
-}
-
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -43,34 +26,34 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid section' });
     }
 
-    // col is safe — validated against the whitelist above
+    // col is validated against the whitelist — safe to embed in sql.raw for identifiers
     const col = `${section}_json`;
-
-    // Self-heal: add column if missing
-    await ensureCol(col);
-
     const jsonStr = JSON.stringify(data ?? {});
     const companyId = profile.companyId;
 
-    // Check if row exists — db.execute returns [rows, fields]
-    const existResult = await db.execute(
-      sql`SELECT company_id FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
-    );
-    const existRows = existResult as unknown as Array<Array<{ company_id: number }>>;
-    const rowExists = (existRows[0]?.length ?? 0) > 0;
-
-    if (!rowExists) {
-      // Insert a bare row first (all JSON columns default to '{}')
-      await db.execute(
-        sql`INSERT INTO company_settings (company_id) VALUES (${companyId})`
-      );
+    // Ensure column exists — attempt ALTER, ignore ER_DUP_FIELDNAME (1060)
+    try {
+      await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
+    } catch (e: unknown) {
+      const err = e as { cause?: { errno?: number }; errno?: number };
+      const errno = err?.cause?.errno ?? err?.errno;
+      if (errno !== 1060) console.warn(`[company-settings PUT] ensureCol warning:`, e);
     }
 
-    // UPDATE the specific column.
-    // col is validated against VALID_SECTIONS — safe to use in sql.raw for the column identifier.
-    const colRaw = sql.raw(`\`${col}\``);
+    // db.execute returns [rowsArray, fields] — destructure to get rows
+    const [existRows] = await db.execute(
+      sql`SELECT company_id FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
+    ) as unknown as [Array<{ company_id: number }>, unknown];
+
+    if (!existRows || existRows.length === 0) {
+      // No row yet — INSERT with just company_id (all JSON cols default to '{}')
+      await db.execute(sql`INSERT INTO company_settings (company_id) VALUES (${companyId})`);
+    }
+
+    // UPDATE the target column.
+    // sql.raw inlines the column identifier verbatim; jsonStr and companyId become ? params.
     await db.execute(
-      sql`UPDATE company_settings SET ${colRaw} = ${jsonStr}, updated_at = NOW() WHERE company_id = ${companyId}`
+      sql`UPDATE company_settings SET ${sql.raw(`\`${col}\``)} = ${jsonStr}, updated_at = NOW() WHERE company_id = ${companyId}`
     );
 
     res.json({ ok: true });

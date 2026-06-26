@@ -215,12 +215,13 @@ async function runStartupMigrations() {
       await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
       console.log(`[startup-migration] Added ${table}.${column}`);
     } catch (e: unknown) {
-      const err = e as { cause?: { errno?: number } };
-      if (err?.cause?.errno === 1060) {
-        // ER_DUP_FIELDNAME — column already exists, nothing to do
-      } else {
-        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, e);
+      const err = e as { cause?: { errno?: number }; errno?: number };
+      const errno = err?.cause?.errno ?? err?.errno;
+      if (errno !== 1060) {
+        // Not ER_DUP_FIELDNAME — log as a real warning
+        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, (err as Error)?.message ?? e);
       }
+      // errno 1060 = column already exists — silently ignore
     }
   }
 }
