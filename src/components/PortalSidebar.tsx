@@ -21,6 +21,7 @@ import {
   Activity,
   CreditCard,
   AlertTriangle,
+  CalendarDays,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
@@ -49,6 +50,7 @@ const navItems = [
   { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
   { label: 'Annette',    icon: Activity,        href: '/annette',    permKey: 'dazzaAi' },
   { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
+  { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
   { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
   { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
   { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },

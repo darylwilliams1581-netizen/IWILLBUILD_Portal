@@ -6,6 +6,7 @@ import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
 import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
+import SchedulerPage from './pages/scheduler';
 import JobDetailPage from './pages/job-detail';
 import FleetPage from './pages/fleet';
 import FleetDetailPage from './pages/fleet-detail';
@@ -37,6 +38,7 @@ export const routes: RouteObject[] = [
   { path: '/dashboard',   element: protect(<DashboardPage />) },
   { path: '/jobs',        element: protect(<JobsPage />) },
   { path: '/jobs/:id',    element: protect(<JobDetailPage />) },
+  { path: '/scheduler',   element: protect(<SchedulerPage />) },
   { path: '/fleet',       element: protect(<FleetPage />) },
   { path: '/fleet/:id',   element: protect(<FleetDetailPage />) },
   { path: '/forms',       element: protect(<FormsPage />) },

@@ -137,6 +137,7 @@ import settings_backup_get from "./api/settings/backup/GET";
 import settings_backup_post from "./api/settings/backup/POST";
 import settings_backup_run_post from "./api/settings/backup/run/POST";
 import settings_backup_export_get from "./api/settings/backup/export/GET";
+import scheduler_jobs_get from "./api/scheduler/jobs/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -262,6 +263,12 @@ async function runStartupMigrations() {
     { table: 'companies', column: 'stripe_subscription_id', definition: 'VARCHAR(100) NULL' },
     { table: 'companies', column: 'stripe_price_id',        definition: 'VARCHAR(100) NULL' },
     { table: 'companies', column: 'max_users',              definition: 'INT NOT NULL DEFAULT 1' },
+    // Scheduler columns on jobs
+    { table: 'jobs', column: 'start_date',         definition: 'DATE NULL' },
+    { table: 'jobs', column: 'finish_date',        definition: 'DATE NULL' },
+    { table: 'jobs', column: 'supervisor_user_id', definition: 'VARCHAR(36) NULL' },
+    { table: 'jobs', column: 'crew_name',          definition: 'VARCHAR(255) NULL' },
+    { table: 'jobs', column: 'progress',           definition: 'INT NOT NULL DEFAULT 0' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -333,6 +340,7 @@ app.get("/api/settings/backup", settings_backup_get);
 app.post("/api/settings/backup", settings_backup_post);
 app.post("/api/settings/backup/run", settings_backup_run_post);
 app.get("/api/settings/backup/export", settings_backup_export_get);
+app.get("/api/scheduler/jobs", scheduler_jobs_get);
 app.put("/api/company-settings", company_settings_put_8);
 app.get("/api/cost-guide", cost_guide_get_9);
 app.post("/api/cost-guide", cost_guide_post_10);
