@@ -202,32 +202,82 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ── Startup self-healing migrations ──────────────────────────────────────────
-// Runs once on boot. Adds missing columns without blocking the server start.
-// Strategy: just attempt the ALTER and silently ignore ER_DUP_FIELDNAME (1060).
+// NOTE: Drizzle sql.raw rejects DEFAULT '{}' because {} looks like an
+// interpolation slot. We use DEFAULT NULL for JSON columns and handle null
+// in the application layer (GET returns {} when null; PUT writes the real JSON).
 async function runStartupMigrations() {
+  // 1. Ensure company_settings table exists
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS company_settings (" +
+      "  id             INT AUTO_INCREMENT PRIMARY KEY," +
+      "  company_id     INT NOT NULL UNIQUE," +
+      "  structure_json LONGTEXT NULL," +
+      "  dazza_json     LONGTEXT NULL," +
+      "  banner_json    LONGTEXT NULL," +
+      "  pdf_json       LONGTEXT NULL," +
+      "  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+      ")"
+    ));
+    console.log('[startup-migration] company_settings table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    // Table already exists is fine
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] company_settings CREATE failed:', msg);
+    }
+  }
+
+  // 2. Ensure individual columns exist — check INFORMATION_SCHEMA first, then ALTER
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
-    { table: 'profiles', column: 'notification_prefs', definition: 'TEXT NULL' },
-    { table: 'profiles', column: 'last_login_at',      definition: 'DATETIME NULL' },
-    { table: 'profiles', column: 'last_active_at',     definition: 'DATETIME NULL' },
+    { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },
+    { table: 'profiles',         column: 'last_login_at',      definition: 'DATETIME NULL' },
+    { table: 'profiles',         column: 'last_active_at',     definition: 'DATETIME NULL' },
+    { table: 'company_settings', column: 'pdf_json',           definition: 'LONGTEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
-      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
-      console.log(`[startup-migration] Added ${table}.${column}`);
+      const [checkRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      if (!exists) {
+        await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+        console.log(`[startup-migration] Added ${table}.${column}`);
+      }
     } catch (e: unknown) {
-      // Check for ER_DUP_FIELDNAME by message — errno may not be enumerable on DrizzleQueryError
       const msg = String((e as Error)?.message ?? e);
-      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name') ||
-                    (e as { errno?: number })?.errno === 1060 ||
-                    (e as { cause?: { errno?: number } })?.cause?.errno === 1060;
+      const isDup = msg.includes('ER_DUP_FIELDNAME') || msg.includes('Duplicate column name');
       if (!isDup) {
         console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, msg);
       }
-      // Duplicate column = already exists, silently ignore
     }
   }
 }
 runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Temporary: table diagnostic (no auth — structure only, no data) ──────────
+app.get('/api/_diag/settings-table', async (_req, res) => {
+  try {
+    const [cols] = await db.execute(
+      sql`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' ORDER BY ORDINAL_POSITION`
+    ) as unknown as [Array<{ COLUMN_NAME: string; DATA_TYPE: string }>, unknown];
+
+    if (!cols || cols.length === 0) {
+      return res.json({ exists: false, columns: [], rowCount: 0 });
+    }
+
+    const [rowCount] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM company_settings`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+
+    res.json({ exists: true, columns: cols, rowCount: rowCount?.[0]?.cnt ?? 0 });
+  } catch (e) {
+    res.status(500).json({ error: String((e as Error)?.message ?? e) });
+  }
+});
 // ─────────────────────────────────────────────────────────────────────────────
 
 // <api-registrations>
