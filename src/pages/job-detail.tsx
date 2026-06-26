@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -22,6 +22,7 @@ import {
   StickyNote,
   CheckSquare,
   TrendingUp,
+  Upload,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -407,6 +408,11 @@ export default function JobDetailPage() {
                 </div>
               )}
 
+              {/* ── Details quick camera card ── */}
+              {activeTab === 'details' && (
+                <QuickCameraCard jobId={job.id} onPhotoTab={() => setActiveTab('photos')} />
+              )}
+
               {/* ── Photos tab ── */}
               {activeTab === 'photos' && (
                 <JobPhotos jobId={job.id} />
@@ -440,8 +446,7 @@ export default function JobDetailPage() {
               )}
 
               {/* Coming soon modules — only show on details tab */}
-              {activeTab === 'details' && (
-                <div className="bg-white rounded-xl border border-border p-5">
+              {activeTab === 'details' && (                <div className="bg-white rounded-xl border border-border p-5">
                   <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {['Forms'].map((m) => (
@@ -481,6 +486,102 @@ function DetailRow({
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className={`text-sm font-medium text-foreground ${mono ? 'font-mono' : ''}`}>{value}</p>
       </div>
+    </div>
+  );
+}
+
+// ── Quick camera card shown on Details tab ────────────────────────────────────
+
+function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () => void }) {
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+
+  async function doUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    // Reject HEIC
+    for (const f of arr) {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      if (ext === 'heic' || ext === 'heif') {
+        setUploadMsg('HEIC/HEIF not supported — convert to JPEG first.');
+        return;
+      }
+    }
+    setUploading(true);
+    setUploadMsg('');
+    const fd = new FormData();
+    arr.forEach((f) => fd.append('photos', f));
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/photos`, {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+      setUploadMsg(`${arr.length} photo${arr.length !== 1 ? 's' : ''} uploaded`);
+      setTimeout(() => setUploadMsg(''), 3000);
+    } catch (e) {
+      setUploadMsg(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (cameraRef.current) cameraRef.current.value = '';
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-border p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Photos</h2>
+        <button
+          onClick={onPhotoTab}
+          className="text-xs font-semibold text-primary hover:underline"
+        >
+          View all →
+        </button>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => cameraRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+        >
+          {uploading ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+          {uploading ? 'Uploading…' : 'Take Photo'}
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          <Upload size={15} />
+          Upload
+        </button>
+        {uploadMsg && (
+          <span className={`text-xs font-semibold ${uploadMsg.includes('uploaded') ? 'text-emerald-600' : 'text-red-600'}`}>
+            {uploadMsg}
+          </span>
+        )}
+      </div>
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => doUpload(e.target.files)}
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={(e) => doUpload(e.target.files)}
+      />
     </div>
   );
 }

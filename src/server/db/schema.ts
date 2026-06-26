@@ -191,6 +191,8 @@ export const jobPhotos = mysqlTable('job_photos', {
   label: varchar('label', { length: 255 }),
   mimeType: varchar('mime_type', { length: 100 }),
   sizeBytes: int('size_bytes'),
+  uploadedByUserId: varchar('uploaded_by_user_id', { length: 36 }),
+  uploadedByName: varchar('uploaded_by_name', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

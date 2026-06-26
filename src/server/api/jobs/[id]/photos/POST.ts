@@ -137,6 +137,10 @@ export default async function handler(req: Request, res: Response) {
 
     const label = typeof req.body?.label === 'string' ? req.body.label.trim() : null;
 
+    // Uploader info
+    const uploaderName = profile.fullName ?? session.user.name ?? session.user.email ?? null;
+    const uploaderUserId = session.user.id ?? null;
+
     // Ensure storage dir exists
     await mkdir(PHOTO_DIR, { recursive: true });
 
@@ -158,6 +162,8 @@ export default async function handler(req: Request, res: Response) {
         label: label || null,
         mimeType: file.mimetype,
         sizeBytes: compressed.length,
+        uploadedByUserId: uploaderUserId,
+        uploadedByName: uploaderName,
       }).$returningId();
 
       saved.push({

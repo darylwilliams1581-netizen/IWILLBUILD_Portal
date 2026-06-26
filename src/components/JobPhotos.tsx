@@ -12,11 +12,17 @@ import {
   Loader2,
   AlertCircle,
   ImageOff,
+  Pencil,
+  RotateCcw,
+  RotateCw,
+  Check,
+  User,
+  Clock,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface JobPhoto {
+export interface JobPhoto {
   id: number;
   jobId: number;
   companyId: number;
@@ -25,6 +31,8 @@ interface JobPhoto {
   label: string | null;
   mimeType: string | null;
   sizeBytes: number | null;
+  uploadedByUserId: string | null;
+  uploadedByName: string | null;
   createdAt: string;
 }
 
@@ -38,11 +46,27 @@ function photoUrl(filename: string) {
   return `/airo-assets/uploads/job-photos/${filename}`;
 }
 
+// Cache-bust after rotation so the browser re-fetches the updated file
+function photoUrlBusted(filename: string, bust?: number) {
+  const base = photoUrl(filename);
+  return bust ? `${base}?v=${bust}` : base;
+}
+
 function formatBytes(bytes: number | null) {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 const HEIC_EXTS = ['heic', 'heif'];
@@ -70,18 +94,195 @@ function validateFiles(files: File[]): { valid: File[]; error: string | null } {
   return { valid: files, error: null };
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+
+interface EditModalProps {
+  photo: JobPhoto;
+  cacheBust: Record<number, number>;
+  onClose: () => void;
+  onSaved: (updated: JobPhoto) => void;
+}
+
+function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
+  const [label, setLabel] = useState(photo.label ?? '');
+  const [saving, setSaving] = useState(false);
+  const [rotating, setRotating] = useState<'left' | 'right' | null>(null);
+  const [error, setError] = useState('');
+  // Local bust counter so the preview refreshes after each rotation
+  const [localBust, setLocalBust] = useState(cacheBust[photo.id] ?? Date.now());
+
+  async function doRotate(dir: 'left' | 'right') {
+    setRotating(dir);
+    setError('');
+    try {
+      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ rotate: dir }),
+      });
+      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Rotation failed');
+      const newBust = Date.now();
+      setLocalBust(newBust);
+      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Rotation failed');
+    } finally {
+      setRotating(null);
+    }
+  }
+
+  async function doSave() {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ label }),
+      });
+      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Save failed');
+      if (data.photo) onSaved(data.photo);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Close on Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  const busy = saving || rotating !== null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.15 }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="font-heading font-bold text-base text-slate-900">Edit Photo</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Preview */}
+        <div className="bg-slate-100 flex items-center justify-center" style={{ height: 220 }}>
+          <img
+            key={localBust}
+            src={photoUrlBusted(photo.filename, localBust)}
+            alt={photo.label ?? photo.originalName ?? 'Photo'}
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+
+        {/* Rotation controls */}
+        <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
+          <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
+          <button
+            onClick={() => doRotate('left')}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors"
+          >
+            {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+            Left 90°
+          </button>
+          <button
+            onClick={() => doRotate('right')}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors"
+          >
+            {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />}
+            Right 90°
+          </button>
+        </div>
+
+        {/* Label */}
+        <div className="px-5 py-4 flex flex-col gap-3">
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Caption / Label</label>
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. North wall framing"
+              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              onKeyDown={(e) => { if (e.key === 'Enter' && !busy) doSave(); }}
+            />
+          </div>
+
+          {/* Metadata */}
+          <div className="flex flex-col gap-1 pt-1">
+            {photo.uploadedByName && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <User size={11} className="shrink-0" />
+                Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span>
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Clock size={11} className="shrink-0" />
+              {formatDateTime(photo.createdAt)}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border bg-slate-50">
+          <button
+            onClick={onClose}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-40 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={doSave}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-5 py-2 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            Save
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
   photos: JobPhoto[];
   index: number;
+  cacheBust: Record<number, number>;
   onClose: () => void;
   onNavigate: (i: number) => void;
   onDelete: (photo: JobPhoto) => void;
+  onEdit: (photo: JobPhoto) => void;
   deleting: number | null;
 }
 
-function Lightbox({ photos, index, onClose, onNavigate, onDelete, deleting }: LightboxProps) {
+function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onEdit, deleting }: LightboxProps) {
   const photo = photos[index];
 
   useEffect(() => {
@@ -101,19 +302,27 @@ function Lightbox({ photos, index, onClose, onNavigate, onDelete, deleting }: Li
     a.click();
   };
 
+  const bust = cacheBust[photo.id];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
-      {/* Backdrop close */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/92">
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Controls top-right */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
         <button
+          onClick={(e) => { e.stopPropagation(); onEdit(photo); }}
+          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+          title="Edit photo"
+        >
+          <Pencil size={16} />
+        </button>
+        <button
           onClick={handleDownload}
           className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
           title="Download"
         >
-          <Download size={18} />
+          <Download size={16} />
         </button>
         <button
           onClick={() => onDelete(photo)}
@@ -121,14 +330,14 @@ function Lightbox({ photos, index, onClose, onNavigate, onDelete, deleting }: Li
           className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors disabled:opacity-50"
           title="Delete"
         >
-          {deleting === photo.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+          {deleting === photo.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
         </button>
         <button
           onClick={onClose}
           className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
           title="Close"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
@@ -145,18 +354,23 @@ function Lightbox({ photos, index, onClose, onNavigate, onDelete, deleting }: Li
       {/* Image */}
       <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
         <img
-          src={photoUrl(photo.filename)}
+          key={bust ?? photo.filename}
+          src={photoUrlBusted(photo.filename, bust)}
           alt={photo.label ?? photo.originalName ?? 'Job photo'}
-          className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+          className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl"
         />
         <div className="text-center">
-          {photo.label && <p className="text-white font-semibold text-sm">{photo.label}</p>}
+          {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
           <p className="text-white/50 text-xs">
             {photo.originalName ?? photo.filename}
             {photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}
-            {' · '}{new Date(photo.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
-          <p className="text-white/30 text-xs mt-0.5">{index + 1} / {photos.length}</p>
+          {photo.uploadedByName && (
+            <p className="text-white/40 text-xs mt-0.5">
+              {photo.uploadedByName} · {formatDateTime(photo.createdAt)}
+            </p>
+          )}
+          <p className="text-white/25 text-xs mt-0.5">{index + 1} / {photos.length}</p>
         </div>
       </div>
 
@@ -185,7 +399,10 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
+  const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Cache-bust map: photoId → timestamp, so rotated images reload
+  const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -211,7 +428,6 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
   const doUpload = async (files: FileList | File[]) => {
     const arr = Array.from(files);
     if (arr.length === 0) return;
-
     const { valid, error: valErr } = validateFiles(arr);
     if (valErr) { setUploadError(valErr); return; }
 
@@ -252,7 +468,6 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Delete failed');
-      // If lightbox is open on this photo, close it
       if (lightboxIndex !== null && photos[lightboxIndex]?.id === deleteConfirm.id) {
         setLightboxIndex(null);
       }
@@ -262,6 +477,17 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
       setError('Failed to delete photo');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  // ── Edit saved callback ────────────────────────────────────────────────────
+
+  const handleEditSaved = (updated: JobPhoto) => {
+    setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+    setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
+    // If this photo is open in the lightbox, keep it open with updated data
+    if (editPhoto?.id === updated.id) {
+      setEditPhoto(updated);
     }
   };
 
@@ -293,10 +519,9 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700">Drop photos here or choose files</p>
-            <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WebP, GIF · Max 10 per upload · HEIC not supported</p>
+            <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WebP · Max 10 per upload · HEIC not supported</p>
           </div>
 
-          {/* Label input */}
           <input
             type="text"
             placeholder="Caption / label (optional)"
@@ -305,7 +530,6 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
             className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           />
 
-          {/* Buttons */}
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -326,11 +550,10 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           </div>
         </div>
 
-        {/* Hidden inputs */}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp"
           multiple
           className="hidden"
           onChange={(e) => { if (e.target.files) void doUpload(e.target.files); }}
@@ -338,7 +561,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         <input
           ref={cameraInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           capture="environment"
           className="hidden"
           onChange={(e) => { if (e.target.files) void doUpload(e.target.files); }}
@@ -350,7 +573,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
           <AlertCircle size={15} className="shrink-0 mt-0.5" />
           <span className="flex-1">{uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600 shrink-0">&times;</button>
+          <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600 shrink-0 text-base leading-none">&times;</button>
         </div>
       )}
 
@@ -359,7 +582,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
           <AlertCircle size={15} className="shrink-0" />
           {error}
-          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">&times;</button>
+          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600 text-base leading-none">&times;</button>
         </div>
       )}
 
@@ -381,48 +604,78 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
 
       {/* Photo grid */}
       {!loading && photos.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <AnimatePresence>
-            {photos.map((photo, i) => (
-              <motion.div
-                key={photo.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.15 }}
-                className="group relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer"
-                onClick={() => setLightboxIndex(i)}
-              >
-                <img
-                  src={photoUrl(photo.filename)}
-                  alt={photo.label ?? photo.originalName ?? 'Job photo'}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                  <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-
-                {/* Label */}
-                {photo.label && (
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
-                    <p className="text-white text-xs font-medium truncate">{photo.label}</p>
-                  </div>
-                )}
-
-                {/* Delete button */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }}
-                  className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/50 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all"
-                  title="Delete photo"
+            {photos.map((photo, i) => {
+              const bust = cacheBust[photo.id];
+              return (
+                <motion.div
+                  key={photo.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.15 }}
+                  className="group relative flex flex-col rounded-xl overflow-hidden bg-slate-100 border border-slate-200"
                 >
-                  <Trash2 size={12} />
-                </button>
-              </motion.div>
-            ))}
+                  {/* Thumbnail */}
+                  <div
+                    className="relative aspect-square cursor-pointer"
+                    onClick={() => setLightboxIndex(i)}
+                  >
+                    <img
+                      key={bust ?? photo.filename}
+                      src={photoUrlBusted(photo.filename, bust)}
+                      alt={photo.label ?? photo.originalName ?? 'Job photo'}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+
+                    {/* Action buttons — top right */}
+                    <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }}
+                        className="p-1.5 rounded-md bg-black/60 hover:bg-slate-700 text-white transition-colors"
+                        title="Edit photo"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }}
+                        className="p-1.5 rounded-md bg-black/60 hover:bg-red-600 text-white transition-colors"
+                        title="Delete photo"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metadata strip */}
+                  <div className="px-2.5 py-2 bg-white border-t border-slate-100 flex flex-col gap-0.5">
+                    {photo.label ? (
+                      <p className="text-xs font-semibold text-slate-800 truncate">{photo.label}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic truncate">{photo.originalName ?? photo.filename}</p>
+                    )}
+                    {photo.uploadedByName && (
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
+                        <User size={9} className="shrink-0" />
+                        {photo.uploadedByName}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+                      <Clock size={9} className="shrink-0" />
+                      {formatDateTime(photo.createdAt)}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       )}
@@ -433,10 +686,24 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           <Lightbox
             photos={photos}
             index={lightboxIndex}
+            cacheBust={cacheBust}
             onClose={() => setLightboxIndex(null)}
             onNavigate={setLightboxIndex}
-            onDelete={(p) => { setDeleteConfirm(p); }}
+            onDelete={(p) => setDeleteConfirm(p)}
+            onEdit={(p) => setEditPhoto(p)}
             deleting={deleting}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {editPhoto && (
+          <EditModal
+            photo={editPhoto}
+            cacheBust={cacheBust}
+            onClose={() => setEditPhoto(null)}
+            onSaved={handleEditSaved}
           />
         )}
       </AnimatePresence>
