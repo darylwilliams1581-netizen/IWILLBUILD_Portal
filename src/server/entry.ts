@@ -97,6 +97,8 @@ import takeoff_pad_put from "./api/takeoff-pad/PUT";
 import migrate_company_settings_post from "./api/migrate-company-settings/POST";
 import company_settings_get from "./api/company-settings/GET";
 import company_settings_put from "./api/company-settings/PUT";
+import dazza_context_get from "./api/dazza/context/GET";
+import dazza_chat_post from "./api/dazza/chat/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -227,6 +229,8 @@ app.put("/api/takeoff-pad", takeoff_pad_put);
 app.post("/api/migrate-company-settings", migrate_company_settings_post);
 app.get("/api/company-settings", company_settings_get);
 app.put("/api/company-settings", company_settings_put);
+app.get("/api/dazza/context", dazza_context_get);
+app.post("/api/dazza/chat", dazza_chat_post);
 app.get("/api/health", health_get_31);
 app.get("/api/jobs", jobs_get_32);
 app.post("/api/jobs", jobs_post_33);

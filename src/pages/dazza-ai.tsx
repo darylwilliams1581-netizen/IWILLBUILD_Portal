@@ -1,60 +1,175 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Bot,
-  Send,
-  User,
-  Sparkles,
-  HardHat,
-  Truck,
-  FileText,
-  BarChart2,
-  RefreshCw,
-  ChevronRight,
+  Bot, Send, User, HardHat, Truck, BarChart2,
+  RefreshCw, Calculator, Wrench, AlertTriangle,
+  CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
+  Loader2, Download, ClipboardList, TrendingUp, Info,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import { useMe } from '@/lib/usePermissions';
+import {
+  calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
+  calcFall, calcFallFromGrade, calcSimple,
+} from '@/lib/dazza-calcs';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system-info';
   content: string;
   timestamp: Date;
+  isCalc?: boolean;
 }
 
-const suggestions = [
-  { icon: HardHat,   label: 'Summarise active jobs',         prompt: 'Give me a summary of all active jobs and their current progress.' },
-  { icon: Truck,     label: 'Fleet attention items',          prompt: 'Which fleet assets need attention right now? List any issues or overdue services.' },
-  { icon: FileText,  label: 'Check estimate completeness',    prompt: 'Review the estimates on active jobs and flag any that are missing approved values.' },
-  { icon: BarChart2, label: 'Run a data health check',        prompt: 'Run a data health check across jobs, fleet, forms and files. What is missing or incomplete?' },
+interface DazzaContext {
+  user?: { name: string; email: string; role: string };
+  permissions?: {
+    canJobs: boolean; canFleet: boolean; canForms: boolean;
+    canEstimating: boolean; canFiles: boolean; seeDollars: boolean; isAdmin: boolean;
+  };
+  company?: { name: string } | null;
+  companyKnowledge?: {
+    enabled: boolean; companyNotes: string; safetyNotes: string;
+    tone: string; disclaimer: string;
+  };
+  jobs?: unknown[];
+  openTodos?: unknown[];
+  jobProgress?: unknown[];
+  fleet?: unknown[];
+  fleetFlags?: unknown[];
+  fleetDueDates?: unknown[];
+  estimates?: unknown[];
+  formTemplates?: unknown[];
+  formSubmissions?: unknown[];
+  files?: unknown[];
+}
+
+// ── Quick actions ─────────────────────────────────────────────────────────────
+
+const QUICK_ACTIONS = [
+  { icon: AlertTriangle, label: 'What needs attention?',  prompt: 'Run a full data health check. What needs attention across jobs, fleet, forms, and estimates right now?' },
+  { icon: HardHat,       label: 'Summarise active jobs',  prompt: 'Give me a summary of all active jobs and their current progress.' },
+  { icon: Truck,         label: 'Fleet issues',           prompt: 'Which fleet assets need attention right now? List any issues, overdue services, or rego due soon.' },
+  { icon: ClipboardList, label: 'Incomplete forms',       prompt: 'Which jobs have incomplete or draft forms? List them with the job name and form name.' },
+  { icon: BarChart2,     label: 'Estimate review',        prompt: 'Review estimates on active jobs. Flag any that are missing approved values or still in draft.' },
+  { icon: CheckSquare,   label: 'Open to-dos',            prompt: 'List all open to-dos across all jobs. Group by job and highlight any that are overdue.' },
+  { icon: MessageSquare, label: 'Write client SMS',       prompt: 'Help me draft a professional SMS to send to a client about their job progress. Ask me for the job name and what to say.' },
+  { icon: TrendingUp,    label: 'Job progress overview',  prompt: 'Give me a progress overview of all active jobs. Which are on track and which need attention?' },
 ];
 
-const dazzaResponses: Record<string, string> = {
-  'Give me a summary of all active jobs and their current progress.':
-    `Here's a summary of your 3 active jobs:\n\n**JOB-001 — Riverside Residential Build** (68%)\nFrame complete, roofing starts Monday. 6 crew on site. 14 forms completed, 87 photos uploaded. Due 15 Sep 2026.\n\n**JOB-002 — Commercial Fitout Level 3** (42%)\nElectrical rough-in underway, plumbing next week. 4 crew. 8 forms, 43 photos. Due 30 Jul 2026.\n\n**JOB-003 — Deck & Pergola Carindale** (85%)\nDecking boards down, pergola posts set. 2 crew. 5 forms, 31 photos. Due 5 Jul 2026 — this one is close, worth checking in.\n\nOverall the jobs look healthy. JOB-003 is your most urgent — due in 10 days.`,
+// ── Calculator definitions ────────────────────────────────────────────────────
 
-  'Which fleet assets need attention right now? List any issues or overdue services.':
-    `Two assets need your attention:\n\n**FLT-003 — Bobcat S650** ⚠️\n- Service is overdue by 3 days\n- Left track tension was flagged in yesterday's prestart\nRecommendation: Book service immediately and inspect track before next use.\n\n**FLT-004 — Ford Ranger XLT** 🔧\n- Currently with mechanic at Tingalpa\n- Brake pads replacement + AC regas in progress\nExpected back: check with mechanic for ETA.\n\nAll other assets have current prestarts and no flagged issues.`,
+type CalcField = { key: string; label: string; placeholder: string; unit?: string };
 
-  'Review the estimates on active jobs and flag any that are missing approved values.':
-    `I've reviewed the estimates across your active jobs:\n\n✅ **JOB-001** — Estimate approved at $420,000. Scope locked.\n✅ **JOB-002** — Estimate approved at $185,000. Scope locked.\n✅ **JOB-003** — Estimate approved at $38,500. Scope locked.\n\n⚠️ **JOB-004 — Warehouse Extension** — Estimate exists but scope is NOT locked. Job is pending DA approval, but you should lock the estimate now to protect the approved value before work starts.\n\nRecommendation: Lock JOB-004 estimate before the DA comes through.`,
+interface CalcDef {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  fields: CalcField[];
+  run: (vals: Record<string, number>) => { value: number; unit: string; label: string; detail?: string } | null;
+}
 
-  'Run a data health check across jobs, fleet, forms and files. What is missing or incomplete?':
-    `Data health check complete. Here's what I found:\n\n**Jobs** ✅\n- 6 jobs in register. All have client names, locations and dates.\n- JOB-006 (Retaining Wall) is on hold — confirm this is intentional.\n\n**Fleet** ⚠️\n- FLT-003 service overdue. FLT-006 rego expires in 67 days — action needed.\n- FLT-005 is hired plant — confirm return date is logged.\n\n**Forms** ⚠️\n- JOB-004 only has 1 form completed. Consider adding a site setup form before work starts.\n\n**Files** ℹ️\n- No file register data loaded yet. Consider linking SharePoint folders to active jobs.\n\n**Overall score: 74/100** — Good foundation. Address fleet service and file register to improve.`,
-};
+const CALCULATORS: CalcDef[] = [
+  {
+    id: 'pier',
+    label: 'Pier Volume',
+    icon: Calculator,
+    fields: [
+      { key: 'diam', label: 'Diameter', placeholder: '450', unit: 'mm' },
+      { key: 'depth', label: 'Depth', placeholder: '1.2', unit: 'm' },
+      { key: 'qty', label: 'Quantity', placeholder: '1', unit: 'pcs' },
+    ],
+    run: (v) => calcPier(v.diam, v.depth, v.qty || 1),
+  },
+  {
+    id: 'slab',
+    label: 'Slab Volume',
+    icon: Calculator,
+    fields: [
+      { key: 'length', label: 'Length', placeholder: '10', unit: 'm' },
+      { key: 'width', label: 'Width', placeholder: '6', unit: 'm' },
+      { key: 'thick', label: 'Thickness', placeholder: '100', unit: 'mm' },
+    ],
+    run: (v) => calcSlab(v.length, v.width, v.thick),
+  },
+  {
+    id: 'pit',
+    label: 'Pit / Box',
+    icon: Calculator,
+    fields: [
+      { key: 'length', label: 'Length', placeholder: '1.5', unit: 'm' },
+      { key: 'width', label: 'Width', placeholder: '1.5', unit: 'm' },
+      { key: 'depth', label: 'Depth', placeholder: '1.0', unit: 'm' },
+    ],
+    run: (v) => calcPit(v.length, v.width, v.depth),
+  },
+  {
+    id: 'trench',
+    label: 'Trench / Footing',
+    icon: Calculator,
+    fields: [
+      { key: 'length', label: 'Length', placeholder: '20', unit: 'm' },
+      { key: 'width', label: 'Width', placeholder: '0.4', unit: 'm' },
+      { key: 'depth', label: 'Depth', placeholder: '0.6', unit: 'm' },
+    ],
+    run: (v) => calcTrench(v.length, v.width, v.depth),
+  },
+  {
+    id: 'gst-add',
+    label: 'Add GST',
+    icon: DollarSign,
+    fields: [{ key: 'amount', label: 'Ex-GST Amount', placeholder: '1000', unit: '$' }],
+    run: (v) => calcGstAdd(v.amount),
+  },
+  {
+    id: 'gst-remove',
+    label: 'Remove GST',
+    icon: DollarSign,
+    fields: [{ key: 'amount', label: 'Inc-GST Amount', placeholder: '1100', unit: '$' }],
+    run: (v) => calcGstRemove(v.amount),
+  },
+  {
+    id: 'fall',
+    label: 'Fall / Grade',
+    icon: TrendingUp,
+    fields: [
+      { key: 'run', label: 'Run', placeholder: '10', unit: 'm' },
+      { key: 'fall', label: 'Fall', placeholder: '100', unit: 'mm' },
+    ],
+    run: (v) => calcFall(v.run, v.fall),
+  },
+  {
+    id: 'grade-fall',
+    label: 'Grade → Fall',
+    icon: TrendingUp,
+    fields: [
+      { key: 'run', label: 'Run', placeholder: '10', unit: 'm' },
+      { key: 'ratio', label: 'Grade ratio (1:X)', placeholder: '100', unit: '1:X' },
+    ],
+    run: (v) => calcFallFromGrade(v.run, v.ratio),
+  },
+];
+
+// ── Message formatter ─────────────────────────────────────────────────────────
 
 function formatMessage(content: string) {
   const lines = content.split('\n');
   return lines.map((line, i) => {
-    if (line.startsWith('**') && line.endsWith('**')) {
-      return <p key={i} className="font-bold mt-2 mb-0.5">{line.replace(/\*\*/g, '')}</p>;
+    if (line.startsWith('## ')) {
+      return <p key={i} className="font-bold text-slate-900 mt-3 mb-1 text-sm border-b border-slate-100 pb-1">{line.replace('## ', '')}</p>;
+    }
+    if (line.startsWith('# ')) {
+      return <p key={i} className="font-bold text-slate-900 mt-2 mb-1">{line.replace('# ', '')}</p>;
     }
     const parts = line.split(/(\*\*[^*]+\*\*)/g);
     return (
-      <p key={i} className={line === '' ? 'mt-1' : ''}>
+      <p key={i} className={line === '' ? 'mt-1.5' : 'leading-relaxed'}>
         {parts.map((part, j) =>
           part.startsWith('**') && part.endsWith('**')
-            ? <strong key={j}>{part.replace(/\*\*/g, '')}</strong>
+            ? <strong key={j} className="font-semibold text-slate-900">{part.replace(/\*\*/g, '')}</strong>
             : part
         )}
       </p>
@@ -62,25 +177,133 @@ function formatMessage(content: string) {
   });
 }
 
+// ── Calculator widget ─────────────────────────────────────────────────────────
+
+function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg: string) => void }) {
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [result, setResult] = useState<{ value: number; unit: string; label: string; detail?: string } | null>(null);
+
+  function run() {
+    const nums: Record<string, number> = {};
+    for (const f of calc.fields) {
+      const n = parseFloat(vals[f.key] ?? '');
+      if (isNaN(n) || n <= 0) return;
+      nums[f.key] = n;
+    }
+    const r = calc.run(nums);
+    setResult(r);
+  }
+
+  function sendToChat() {
+    if (!result) return;
+    const msg = `Calculator result — ${result.label}: **${result.value} ${result.unit}**${result.detail ? `. ${result.detail}` : ''}`;
+    onSendToChat(msg);
+  }
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <calc.icon size={13} className="text-primary shrink-0" />
+        <span className="text-xs font-bold text-slate-700">{calc.label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {calc.fields.map((f) => (
+          <div key={f.key}>
+            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">{f.label} {f.unit && <span className="text-slate-300">({f.unit})</span>}</label>
+            <input
+              type="number"
+              value={vals[f.key] ?? ''}
+              onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))}
+              placeholder={f.placeholder}
+              className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40 bg-white"
+            />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={run}
+        className="w-full bg-primary hover:bg-orange-600 text-white text-xs font-bold py-1.5 rounded-lg transition-colors"
+      >
+        Calculate
+      </button>
+      {result && (
+        <div className="bg-white border border-primary/20 rounded-lg p-2.5">
+          <div className="text-base font-black text-primary">{result.value} <span className="text-sm font-bold">{result.unit}</span></div>
+          <div className="text-[10px] text-slate-500 mt-0.5">{result.label}</div>
+          {result.detail && <div className="text-[10px] text-slate-400 mt-1 leading-relaxed">{result.detail}</div>}
+          <button
+            onClick={sendToChat}
+            className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-700 transition-colors"
+          >
+            <Send size={9} /> Send to chat
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+const WELCOME_MSG = `Hi, I'm Dazza AI — your IWILLBUILD helper.
+
+I'm young and still learning. The more real data you add to IWILLBUILD, the more useful I become.
+
+I can help summarise jobs, check fleet issues, review forms, look at estimates, find missing information, help with construction calculators, and draft simple wording.
+
+**Always verify important building, safety, legal and compliance decisions with a competent person.**
+
+What do you need today?`;
+
 export default function DazzaAIPage() {
+  const { me } = useMe();
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '0',
-      role: 'assistant',
-      content: "G'day! I'm Dazza — your IWILLBUILD AI assistant. I'm young and still learning, but I can already help you check on jobs, fleet, estimates and data health. The more data you put into the portal, the smarter I get.\n\nWhat do you need today?",
-      timestamp: new Date(),
-    },
+    { id: '0', role: 'assistant', content: WELCOME_MSG, timestamp: new Date() },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [dazzaCtx, setDazzaCtx] = useState<DazzaContext | null>(null);
+  const [ctxLoading, setCtxLoading] = useState(true);
+  const [noApiKey, setNoApiKey] = useState(false);
+  const [showCalcs, setShowCalcs] = useState(false);
+  const [activeCalc, setActiveCalc] = useState<string | null>(null);
+  const [simpleExpr, setSimpleExpr] = useState('');
+  const [simpleResult, setSimpleResult] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load Dazza context on mount
+  const loadContext = useCallback(async () => {
+    setCtxLoading(true);
+    try {
+      const res = await fetch('/api/dazza/context', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json() as DazzaContext;
+        setDazzaCtx(data);
+      }
+    } catch {
+      // silent — will fall back gracefully
+    } finally {
+      setCtxLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadContext(); }, [loadContext]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  function sendMessage(text: string) {
-    if (!text.trim()) return;
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }, [input]);
+
+  async function sendMessage(text: string) {
+    if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -93,29 +316,76 @@ export default function DazzaAIPage() {
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response =
-        dazzaResponses[text.trim()] ||
-        "I don't have enough data loaded to answer that specifically yet. As you add more jobs, fleet records, forms and files to the portal, I'll be able to give you much better answers. Try one of the suggested prompts to see what I can do right now.";
+    try {
+      const chatHistory = [...messages, userMsg]
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-      const assistantMsg: Message = {
+      const res = await fetch('/api/dazza/chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: chatHistory, context: dazzaCtx }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { reply: string; noApiKey?: boolean };
+
+      if (data.noApiKey) setNoApiKey(true);
+
+      setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response,
+        content: data.reply,
         timestamp: new Date(),
-      };
-
+      }]);
+    } catch {
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I had trouble connecting. Please check your internet connection and try again.",
+        timestamp: new Date(),
+      }]);
+    } finally {
       setIsTyping(false);
-      setMessages((prev) => [...prev, assistantMsg]);
-    }, 1200 + Math.random() * 600);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      void sendMessage(input);
     }
   }
+
+  function clearChat() {
+    setMessages([{ id: Date.now().toString(), role: 'assistant', content: WELCOME_MSG, timestamp: new Date() }]);
+    setNoApiKey(false);
+  }
+
+  function runSimple() {
+    const r = calcSimple(simpleExpr);
+    setSimpleResult(r ? `= ${r.value}` : 'Invalid expression');
+  }
+
+  function exportChat() {
+    const lines = messages.map((m) =>
+      `[${m.timestamp.toLocaleTimeString('en-AU')}] ${m.role === 'user' ? (me?.user?.name ?? 'You') : 'Dazza'}:\n${m.content}`
+    );
+    const blob = new Blob([lines.join('\n\n---\n\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dazza-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const perms = dazzaCtx?.permissions;
+  const isAdmin = me?.profile?.role === 'owner' || me?.profile?.role === 'admin';
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -129,69 +399,105 @@ export default function DazzaAIPage() {
       <PortalSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+        {/* ── Top bar ── */}
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
               <Bot size={16} className="text-white" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-base leading-none">Dazza AI</h1>
-              <p className="text-xs text-slate-400 leading-none mt-0.5">Construction assistant</p>
+              <h1 className="font-heading font-bold text-sm leading-none">Dazza AI</h1>
+              <p className="text-[10px] text-slate-400 leading-none mt-0.5">
+                {ctxLoading ? 'Loading context…' : `${dazzaCtx?.company?.name ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
+              </p>
             </div>
-            <span className="flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
               Online
             </span>
           </div>
-          <button
-            onClick={() => setMessages([{
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: "G'day! I'm Dazza — your IWILLBUILD AI assistant. I'm young and still learning, but I can already help you check on jobs, fleet, estimates and data health. The more data you put into the portal, the smarter I get.\n\nWhat do you need today?",
-              timestamp: new Date(),
-            }])}
-            className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-800 font-semibold transition-colors"
-          >
-            <RefreshCw size={13} />
-            New chat
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportChat}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
+              title="Export chat"
+            >
+              <Download size={13} />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={clearChat}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
+            >
+              <RefreshCw size={13} />
+              <span className="hidden sm:inline">New chat</span>
+            </button>
+          </div>
         </header>
 
+        {/* ── No API key banner ── */}
+        {noApiKey && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2 text-xs text-amber-800 shrink-0">
+            <Info size={13} className="shrink-0 text-amber-600" />
+            <span>
+              <strong>OpenAI API key not configured.</strong> Dazza needs an API key to answer questions.
+              {isAdmin && <> Go to <strong>Settings → Dazza AI</strong> to add your key.</>}
+            </span>
+          </div>
+        )}
+
         <div className="flex-1 flex overflow-hidden">
-          {/* Chat area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {/* ── Main chat column ── */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+            {/* Quick actions */}
+            <div className="px-4 pt-3 pb-2 bg-white border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {QUICK_ACTIONS.map((a) => (
+                  <button
+                    key={a.label}
+                    onClick={() => void sendMessage(a.prompt)}
+                    disabled={isTyping || ctxLoading}
+                    className="flex items-center gap-1.5 shrink-0 bg-slate-50 hover:bg-orange-50 hover:border-primary/30 border border-slate-200 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all disabled:opacity-40 whitespace-nowrap"
+                  >
+                    <a.icon size={11} className="text-slate-400 group-hover:text-primary" />
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
               <AnimatePresence initial={false}>
                 {messages.map((msg) => (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, ease: 'easeOut' as const }}
-                    className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                    transition={{ duration: 0.2, ease: 'easeOut' as const }}
+                    className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
                     {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                       msg.role === 'assistant' ? 'bg-slate-900' : 'bg-primary'
                     }`}>
                       {msg.role === 'assistant'
-                        ? <Bot size={15} className="text-white" />
-                        : <User size={15} className="text-white" />
+                        ? <Bot size={13} className="text-white" />
+                        : <User size={13} className="text-white" />
                       }
                     </div>
 
                     {/* Bubble */}
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === 'assistant'
-                        ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'
+                        ? 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
                         : 'bg-primary text-white rounded-tr-sm'
                     }`}>
-                      <div className="flex flex-col gap-0.5">
-                        {formatMessage(msg.content)}
+                      <div className="flex flex-col gap-0.5 text-[13px]">
+                        {msg.role === 'assistant' ? formatMessage(msg.content) : <p>{msg.content}</p>}
                       </div>
-                      <div className={`text-xs mt-2 ${msg.role === 'assistant' ? 'text-slate-400' : 'text-white/60'}`}>
+                      <div className={`text-[10px] mt-1.5 ${msg.role === 'assistant' ? 'text-slate-300' : 'text-white/50'}`}>
                         {msg.timestamp.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
@@ -202,19 +508,19 @@ export default function DazzaAIPage() {
                 {isTyping && (
                   <motion.div
                     key="typing"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="flex gap-3"
+                    className="flex gap-2.5"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-                      <Bot size={15} className="text-white" />
+                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
+                      <Bot size={13} className="text-white" />
                     </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
+                    <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 shadow-sm">
                       {[0, 1, 2].map((i) => (
                         <motion.span
                           key={i}
-                          className="w-2 h-2 bg-slate-400 rounded-full inline-block"
+                          className="w-1.5 h-1.5 bg-slate-400 rounded-full inline-block"
                           animate={{ y: [0, -4, 0] }}
                           transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
                         />
@@ -227,64 +533,181 @@ export default function DazzaAIPage() {
             </div>
 
             {/* Input */}
-            <div className="px-6 pb-5 pt-3 bg-slate-100 border-t border-slate-200">
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-end gap-3 px-4 py-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <div className="px-4 pb-4 pt-2 bg-slate-100 border-t border-slate-200 shrink-0">
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-end gap-2 px-3 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                 <textarea
+                  ref={textareaRef}
                   rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask Dazza anything about your jobs, fleet, or data…"
                   className="flex-1 resize-none text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none bg-transparent leading-relaxed"
-                  style={{ maxHeight: 120 }}
+                  style={{ maxHeight: 120, minHeight: 24 }}
                 />
                 <button
-                  onClick={() => sendMessage(input)}
+                  onClick={() => void sendMessage(input)}
                   disabled={!input.trim() || isTyping}
                   className="w-8 h-8 bg-primary hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg flex items-center justify-center transition-colors shrink-0"
                 >
-                  <Send size={14} />
+                  {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                 </button>
               </div>
-              <p className="text-xs text-slate-400 mt-2 text-center">
-                Dazza uses portal data only. Keys are never exposed to the browser.
+              <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+                Dazza uses your live portal data only. AI calls are server-side — keys are never exposed to the browser.
               </p>
             </div>
           </div>
 
-          {/* Right panel — suggestions */}
-          <div className="w-64 shrink-0 border-l border-slate-200 bg-white overflow-y-auto hidden lg:flex flex-col">
-            <div className="p-4 border-b border-slate-100">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles size={14} className="text-primary" />
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Quick prompts</span>
+          {/* ── Right panel ── */}
+          <div className="w-64 xl:w-72 shrink-0 border-l border-slate-200 bg-white overflow-y-auto hidden lg:flex flex-col">
+
+            {/* Context summary */}
+            <div className="p-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Info size={12} className="text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data loaded</span>
               </div>
-              <p className="text-xs text-slate-400">Click to send a prompt to Dazza</p>
+              {ctxLoading ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Loader2 size={12} className="animate-spin" /> Loading…
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {[
+                    { label: 'Jobs', count: (dazzaCtx?.jobs as unknown[])?.length, ok: perms?.canJobs },
+                    { label: 'Open to-dos', count: (dazzaCtx?.openTodos as unknown[])?.length, ok: perms?.canJobs },
+                    { label: 'Fleet assets', count: (dazzaCtx?.fleet as unknown[])?.length, ok: perms?.canFleet },
+                    { label: 'Fleet flags', count: (dazzaCtx?.fleetFlags as unknown[])?.length, ok: perms?.canFleet },
+                    { label: 'Estimates', count: (dazzaCtx?.estimates as unknown[])?.length, ok: perms?.canEstimating },
+                    { label: 'Form templates', count: (dazzaCtx?.formTemplates as unknown[])?.length, ok: perms?.canForms },
+                    { label: 'Submissions', count: (dazzaCtx?.formSubmissions as unknown[])?.length, ok: perms?.canForms },
+                    { label: 'Files', count: (dazzaCtx?.files as unknown[])?.length, ok: perms?.canFiles },
+                  ].map(({ label, count, ok }) => (
+                    <div key={label} className="flex items-center justify-between text-[10px]">
+                      <span className={ok === false ? 'text-slate-300' : 'text-slate-500'}>{label}</span>
+                      <span className={`font-bold ${ok === false ? 'text-slate-300' : count ? 'text-slate-700' : 'text-slate-300'}`}>
+                        {ok === false ? 'No access' : (count ?? 0)}
+                      </span>
+                    </div>
+                  ))}
+                  {perms?.seeDollars === false && (
+                    <div className="mt-1 text-[10px] text-amber-600 bg-amber-50 rounded px-1.5 py-1 border border-amber-100">
+                      Dollar amounts hidden (permission)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="p-3 flex flex-col gap-2">
-              {suggestions.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => sendMessage(s.prompt)}
-                  disabled={isTyping}
-                  className="flex items-center gap-3 text-left w-full bg-slate-50 hover:bg-orange-50 hover:border-primary/30 border border-slate-200 rounded-lg p-3 transition-all group disabled:opacity-50"
-                >
-                  <div className="w-7 h-7 bg-white border border-slate-200 rounded-md flex items-center justify-center shrink-0 group-hover:border-primary/30">
-                    <s.icon size={13} className="text-slate-500 group-hover:text-primary" />
-                  </div>
-                  <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 leading-tight flex-1">{s.label}</span>
-                  <ChevronRight size={12} className="text-slate-300 group-hover:text-primary shrink-0" />
-                </button>
-              ))}
+
+            {/* Calculators */}
+            <div className="border-b border-slate-100">
+              <button
+                onClick={() => setShowCalcs((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Calculator size={12} className="text-primary" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Calculators</span>
+                </div>
+                {showCalcs ? <ChevronUp size={12} className="text-slate-400" /> : <ChevronDown size={12} className="text-slate-400" />}
+              </button>
+
+              <AnimatePresence>
+                {showCalcs && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-3 pb-3 flex flex-col gap-2">
+                      {/* Simple math */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calculator size={12} className="text-primary" />
+                          <span className="text-xs font-bold text-slate-700">Quick Math</span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={simpleExpr}
+                            onChange={(e) => setSimpleExpr(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && runSimple()}
+                            placeholder="e.g. 12.5 * 3.6"
+                            className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40 bg-white"
+                          />
+                          <button onClick={runSimple} className="bg-primary text-white text-xs font-bold px-2.5 rounded-lg hover:bg-orange-600 transition-colors">=</button>
+                        </div>
+                        {simpleResult && (
+                          <div className="mt-1.5 text-sm font-black text-primary">{simpleResult}</div>
+                        )}
+                      </div>
+
+                      {/* Calc selector */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {CALCULATORS.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => setActiveCalc(activeCalc === c.id ? null : c.id)}
+                            className={`text-[10px] font-semibold px-2 py-1.5 rounded-lg border transition-colors text-left ${
+                              activeCalc === c.id
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30 hover:text-slate-900'
+                            }`}
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Active calc */}
+                      <AnimatePresence>
+                        {activeCalc && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                          >
+                            {CALCULATORS.filter((c) => c.id === activeCalc).map((c) => (
+                              <CalcWidget
+                                key={c.id}
+                                calc={c}
+                                onSendToChat={(msg) => void sendMessage(msg)}
+                              />
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* About Dazza */}
-            <div className="mt-auto p-4 border-t border-slate-100">
-              <div className="bg-slate-900 rounded-xl p-4 text-white text-xs">
-                <div className="font-bold mb-1">About Dazza</div>
-                <p className="text-slate-400 leading-relaxed">
-                  Dazza reads your live portal data. AI calls are made server-side — your API keys are never exposed to the browser.
+            <div className="mt-auto p-3">
+              <div className="bg-slate-900 rounded-xl p-3 text-white">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Bot size={13} className="text-white/60" />
+                  <span className="text-xs font-bold">About Dazza</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Dazza reads your live portal data. AI calls are server-side — your API keys are never exposed to the browser.
                 </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">
+                  Always verify building, safety, legal and compliance decisions with a competent person.
+                </p>
+                {isAdmin && (
+                  <a
+                    href="/settings"
+                    className="mt-2 flex items-center gap-1 text-[10px] text-primary font-semibold hover:text-orange-400 transition-colors"
+                  >
+                    <Wrench size={9} /> Configure in Settings
+                  </a>
+                )}
               </div>
             </div>
           </div>
