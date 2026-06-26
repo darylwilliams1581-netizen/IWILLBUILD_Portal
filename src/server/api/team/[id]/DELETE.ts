@@ -18,7 +18,11 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!callerProfile?.companyId) return res.status(403).json({ error: 'No company' });
-    if (callerProfile.role !== 'admin' && callerProfile.role !== 'owner') {
+
+    const callerIsOwner = callerProfile.role === 'owner';
+    const callerIsAdmin = callerProfile.role === 'admin' || callerProfile.permAdmin === true;
+
+    if (!callerIsOwner && !callerIsAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -32,12 +36,22 @@ export default async function handler(req: Request, res: Response) {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    // Prevent self-deletion
+    // Prevent self-removal
     if (target.userId === session.user.id) {
       return res.status(400).json({ error: 'You cannot remove yourself' });
     }
 
-    // Set status to inactive rather than hard delete (preserves audit trail)
+    // Owners cannot be removed or deactivated by anyone except another owner
+    if (target.role === 'owner' && !callerIsOwner) {
+      return res.status(403).json({ error: 'Only an Owner can remove another Owner' });
+    }
+
+    // Admins cannot remove other admins (only owner can)
+    if (target.role === 'admin' && !callerIsOwner) {
+      return res.status(403).json({ error: 'Only an Owner can remove an Admin' });
+    }
+
+    // Soft-delete: set status to inactive (preserves audit trail)
     await db.update(profiles).set({ status: 'inactive' }).where(eq(profiles.id, targetId));
 
     res.json({ ok: true });

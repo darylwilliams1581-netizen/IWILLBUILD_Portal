@@ -82,18 +82,22 @@ export function useMe() {
 export function usePermissions() {
   const { me, loading } = useMe();
 
-  const isAdmin =
-    me?.profile?.role === 'admin' ||
-    me?.profile?.role === 'owner' ||
-    me?.profile?.permissions?.admin === true;
+  const role = me?.profile?.role ?? null;
+
+  const isOwner = role === 'owner';
+  const isAdmin = isOwner || role === 'admin' || me?.profile?.permissions?.admin === true;
 
   return {
     loading,
+    isOwner,
     isAdmin,
-    role: me?.profile?.role ?? null,
+    role,
     permissions: me?.profile?.permissions ?? null,
     can: (key: keyof NonNullable<UserProfile['permissions']>) => {
       if (!me?.profile) return false;
+      // Owner always has everything
+      if (isOwner) return true;
+      // Admin (role or perm) always has everything
       if (isAdmin) return true;
       return me.profile.permissions?.[key] ?? false;
     },

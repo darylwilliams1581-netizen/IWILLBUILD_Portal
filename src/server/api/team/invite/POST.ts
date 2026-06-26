@@ -9,7 +9,7 @@ export default async function handler(req: Request, res: Response) {
     const auth = getAuth();
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+      if (v) headers.set(k, (Array.isArray(v) ? v[0] : v) as string);
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
@@ -18,11 +18,15 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!callerProfile?.companyId) return res.status(403).json({ error: 'No company' });
-    if (callerProfile.role !== 'admin' && callerProfile.role !== 'owner') {
+
+    const callerIsOwner = callerProfile.role === 'owner';
+    const callerIsAdmin = callerProfile.role === 'admin' || callerProfile.permAdmin === true;
+
+    if (!callerIsOwner && !callerIsAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const { name, email, role = 'operator' } = req.body as {
+    const { name, email, role = 'worker' } = req.body as {
       name?: string;
       email?: string;
       role?: string;
@@ -32,22 +36,30 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
+    // Nobody can invite someone as owner via the invite flow
+    if (role === 'owner') {
+      return res.status(403).json({ error: 'Cannot invite someone as Owner. Promote them after they join.' });
+    }
+
+    // Only owner can invite as admin
+    if (role === 'admin' && !callerIsOwner) {
+      return res.status(403).json({ error: 'Only an Owner can invite someone as Admin' });
+    }
+
     const emailLower = email.trim().toLowerCase();
 
-    // Check if user already exists in the system
+    // Check if user already exists
     const existingUser = await db.query.user.findFirst({
       where: eq(user.email, emailLower),
     });
 
     if (existingUser) {
-      // Check if they already have a profile for this company
       const existingProfile = await db.query.profiles.findFirst({
         where: eq(profiles.userId, existingUser.id),
       });
       if (existingProfile?.companyId === callerProfile.companyId) {
         return res.status(409).json({ error: 'This person is already a team member' });
       }
-      // They exist but aren't in this company — update their profile
       if (existingProfile) {
         await db.update(profiles)
           .set({ companyId: callerProfile.companyId, role, status: 'invited' })
@@ -67,8 +79,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    // User doesn't exist — create a placeholder user + profile with 'invited' status
-    // They'll need to sign up using this email to activate their account
+    // New user — create placeholder account
     const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + '!A1';
 
     let newUserId: string | null = null;
@@ -85,7 +96,6 @@ export default async function handler(req: Request, res: Response) {
       return res.status(500).json({ error: 'Failed to create user account' });
     }
 
-    // Create profile with invited status
     await db.insert(profiles).values({
       userId: newUserId,
       companyId: callerProfile.companyId,

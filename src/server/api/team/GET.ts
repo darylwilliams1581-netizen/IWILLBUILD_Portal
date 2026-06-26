@@ -9,12 +9,11 @@ export default async function handler(req: Request, res: Response) {
     const auth = getAuth();
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+      if (v) headers.set(k, (Array.isArray(v) ? v[0] : v) as string);
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    // Get caller's profile to determine company
     const callerProfile = await db.query.profiles.findFirst({
       where: eq(profiles.userId, session.user.id),
     });
@@ -22,12 +21,16 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'No company associated with your account' });
     }
 
-    // Only admin can view team
-    if (callerProfile.role !== 'admin' && callerProfile.role !== 'owner') {
+    // Allow: owner, admin role, OR perm_admin = true
+    const canManageTeam =
+      callerProfile.role === 'owner' ||
+      callerProfile.role === 'admin' ||
+      callerProfile.permAdmin === true;
+
+    if (!canManageTeam) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    // Join profiles with user table for the same company
     const rows = await db
       .select({
         profileId: profiles.id,

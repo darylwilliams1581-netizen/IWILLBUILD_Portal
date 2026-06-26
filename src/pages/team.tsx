@@ -5,9 +5,12 @@ import {
   Users,
   Plus,
   Search,
+  Crown,
   Shield,
   HardHat,
   Truck,
+  Eye,
+  UserCheck,
   Mail,
   Phone,
   MoreHorizontal,
@@ -22,19 +25,42 @@ import {
   Edit2,
   ToggleLeft,
   ToggleRight,
+  Lock,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import { usePermissions } from '@/lib/usePermissions';
 
-type Role = 'admin' | 'supervisor' | 'operator' | 'viewer';
+// ── Role definitions ──────────────────────────────────────────────────────────
+type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
 type Status = 'active' | 'invited' | 'inactive';
 
-interface Permission {
-  key: string;
+interface RoleConfig {
   label: string;
+  color: string;
+  bg: string;
+  border: string;
+  avatarBg: string;
+  icon: React.ElementType;
   description: string;
 }
 
-const PERMISSIONS: Permission[] = [
+const ROLE_CONFIG: Record<Role, RoleConfig> = {
+  owner:      { label: 'Owner',      color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-300',  avatarBg: 'from-amber-500 to-orange-600',   icon: Crown,    description: 'Full control. Cannot be removed or demoted by Admins.' },
+  admin:      { label: 'Admin',      color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',   avatarBg: 'from-blue-500 to-blue-700',      icon: Shield,   description: 'Manage team, settings and all features.' },
+  manager:    { label: 'Manager',    color: 'text-violet-700',  bg: 'bg-violet-50',  border: 'border-violet-200', avatarBg: 'from-violet-500 to-violet-700',  icon: UserCheck, description: 'Manage jobs, fleet and team operations.' },
+  supervisor: { label: 'Supervisor', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200', avatarBg: 'from-indigo-500 to-indigo-700',  icon: HardHat,  description: 'Oversee jobs and field crews.' },
+  worker:     { label: 'Worker',     color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200',avatarBg: 'from-emerald-500 to-emerald-700',icon: Truck,    description: 'Day-to-day tasks and field work.' },
+  readonly:   { label: 'Read Only',  color: 'text-slate-600',   bg: 'bg-slate-100',  border: 'border-slate-200',  avatarBg: 'from-slate-400 to-slate-600',    icon: Eye,      description: 'View-only access across the portal.' },
+};
+
+const STATUS_CONFIG: Record<Status, { label: string; color: string; icon: React.ElementType }> = {
+  active:   { label: 'Active',   color: 'text-emerald-600', icon: CheckCircle2 },
+  invited:  { label: 'Invited',  color: 'text-amber-600',   icon: Clock },
+  inactive: { label: 'Inactive', color: 'text-slate-400',   icon: XCircle },
+};
+
+interface PermDef { key: string; label: string; description: string }
+const PERMISSIONS: PermDef[] = [
   { key: 'jobs',          label: 'Jobs',           description: 'View and manage jobs' },
   { key: 'fleet',         label: 'Fleet',          description: 'View and manage fleet assets' },
   { key: 'forms',         label: 'Forms',          description: 'Access form templates' },
@@ -53,24 +79,11 @@ interface TeamMember {
   name: string;
   email: string;
   phone: string;
-  role: Role;
-  status: Status;
+  role: string;
+  status: string;
   permissions: Record<string, boolean>;
   joinedAt: string | null;
 }
-
-const roleConfig: Record<Role, { label: string; color: string; bg: string; icon: typeof Shield }> = {
-  admin:      { label: 'Admin',      color: 'text-blue-700',   bg: 'bg-blue-50 border-blue-200',     icon: Shield },
-  supervisor: { label: 'Supervisor', color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200', icon: HardHat },
-  operator:   { label: 'Operator',   color: 'text-amber-700',  bg: 'bg-amber-50 border-amber-200',   icon: Truck },
-  viewer:     { label: 'Viewer',     color: 'text-slate-600',  bg: 'bg-slate-100 border-slate-200',  icon: Users },
-};
-
-const statusConfig: Record<Status, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  active:   { label: 'Active',   color: 'text-emerald-600', icon: CheckCircle2 },
-  invited:  { label: 'Invited',  color: 'text-amber-600',   icon: Clock },
-  inactive: { label: 'Inactive', color: 'text-slate-400',   icon: XCircle },
-};
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -82,11 +95,42 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.04 } },
 } as const;
 
+// ── Avatar ────────────────────────────────────────────────────────────────────
+function Avatar({ name, role }: { name: string; role: string }) {
+  const cfg = ROLE_CONFIG[role as Role] ?? ROLE_CONFIG.worker;
+  const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0 bg-gradient-to-br ${cfg.avatarBg}`}>
+      {initials}
+    </div>
+  );
+}
+
+// ── Role badge ────────────────────────────────────────────────────────────────
+function RoleBadge({ role }: { role: string }) {
+  const cfg = ROLE_CONFIG[role as Role] ?? ROLE_CONFIG.worker;
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+      <Icon size={10} />
+      {cfg.label}
+    </span>
+  );
+}
+
 // ── Invite Modal ──────────────────────────────────────────────────────────────
-function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function InviteModal({
+  callerIsOwner,
+  onClose,
+  onSuccess,
+}: {
+  callerIsOwner: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('operator');
+  const [role, setRole] = useState<Role>('worker');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -113,6 +157,15 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     }
   }
 
+  // Roles available to invite (owner cannot be invited — must be promoted)
+  const inviteRoles: Array<{ value: Role; label: string; desc: string }> = [
+    ...(callerIsOwner ? [{ value: 'admin' as Role, label: 'Admin', desc: 'Manage team, settings and all features' }] : []),
+    { value: 'manager',    label: 'Manager',    desc: 'Manage jobs, fleet and team operations' },
+    { value: 'supervisor', label: 'Supervisor', desc: 'Oversee jobs and field crews' },
+    { value: 'worker',     label: 'Worker',     desc: 'Day-to-day tasks and field work' },
+    { value: 'readonly',   label: 'Read Only',  desc: 'View-only access' },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -125,9 +178,7 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-heading font-bold text-lg text-slate-900">Invite Team Member</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={18} />
-          </button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
         </div>
 
         {success ? (
@@ -139,35 +190,22 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Jake Parrish"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jake Parrish"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="jake@example.com"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jake@example.com"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Role</label>
               <div className="relative">
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as Role)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                >
-                  <option value="admin">Admin — full access</option>
-                  <option value="supervisor">Supervisor — manage jobs + fleet</option>
-                  <option value="operator">Operator — day-to-day tasks</option>
-                  <option value="viewer">Viewer — read only</option>
+                <select value={role} onChange={(e) => setRole(e.target.value as Role)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors">
+                  {inviteRoles.map(r => (
+                    <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
+                  ))}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
@@ -175,24 +213,18 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 
             {error && (
               <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                <AlertCircle size={13} />
-                {error}
+                <AlertCircle size={13} />{error}
               </div>
             )}
 
             <p className="text-xs text-slate-400">
-              They'll receive an invite link to set up their account at <span className="font-semibold">/signup</span>.
+              They'll be able to sign up at <span className="font-semibold">/signup</span> using this email.
             </p>
 
             <div className="flex gap-3 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-600 text-sm font-semibold py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-primary hover:bg-orange-600 text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
+              <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-600 text-sm font-semibold py-2.5 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+              <button type="submit" disabled={loading}
+                className="flex-1 bg-primary hover:bg-orange-600 text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Send Invite
               </button>
@@ -207,22 +239,47 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 // ── Edit Member Modal ─────────────────────────────────────────────────────────
 function EditMemberModal({
   member,
+  callerIsOwner,
+  callerIsAdmin,
   onClose,
   onSuccess,
 }: {
   member: TeamMember;
+  callerIsOwner: boolean;
+  callerIsAdmin: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [role, setRole] = useState<Role>(member.role);
-  const [status, setStatus] = useState<Status>(member.status);
+  const targetIsOwner = member.role === 'owner';
+  const targetIsAdmin = member.role === 'admin';
+
+  // Permissions are locked (read-only) for owner targets, or when editing an owner's own record
+  const permsLocked = targetIsOwner;
+  // Role is locked if: target is owner and caller is not owner
+  const roleLocked = targetIsOwner && !callerIsOwner;
+  // Status is locked for owners
+  const statusLocked = targetIsOwner;
+
+  const [role, setRole] = useState<Role>(member.role as Role);
+  const [status, setStatus] = useState<Status>(member.status as Status);
   const [perms, setPerms] = useState<Record<string, boolean>>({ ...member.permissions });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   function togglePerm(key: string) {
+    if (permsLocked) return;
     setPerms((p) => ({ ...p, [key]: !p[key] }));
   }
+
+  // Available roles based on caller privilege
+  const availableRoles: Array<{ value: Role; label: string }> = [
+    ...(callerIsOwner ? [{ value: 'owner' as Role, label: 'Owner' }] : []),
+    { value: 'admin',      label: 'Admin' },
+    { value: 'manager',    label: 'Manager' },
+    { value: 'supervisor', label: 'Supervisor' },
+    { value: 'worker',     label: 'Worker' },
+    { value: 'readonly',   label: 'Read Only' },
+  ];
 
   async function handleSave() {
     setError('');
@@ -266,7 +323,8 @@ function EditMemberModal({
         method: 'DELETE',
         credentials: 'include',
       });
-      if (!res.ok) { setError('Failed to remove member'); setLoading(false); return; }
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { setError(data.error ?? 'Failed to remove member'); setLoading(false); return; }
       onSuccess();
       onClose();
     } catch {
@@ -274,6 +332,9 @@ function EditMemberModal({
       setLoading(false);
     }
   }
+
+  // Can the caller remove this member?
+  const canRemove = callerIsOwner || (!targetIsOwner && !targetIsAdmin && callerIsAdmin);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -286,75 +347,103 @@ function EditMemberModal({
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="font-heading font-bold text-lg text-slate-900">{member.name}</h2>
-            <p className="text-xs text-slate-400">{member.email}</p>
+          <div className="flex items-center gap-3">
+            <Avatar name={member.name} role={member.role} />
+            <div>
+              <h2 className="font-heading font-bold text-lg text-slate-900 leading-tight">{member.name}</h2>
+              <p className="text-xs text-slate-400">{member.email}</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={18} />
-          </button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
         </div>
+
+        {/* Owner locked notice */}
+        {targetIsOwner && !callerIsOwner && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-700 font-semibold">
+            <Lock size={13} />
+            Owner accounts can only be modified by another Owner.
+          </div>
+        )}
 
         <div className="flex flex-col gap-5">
           {/* Role + Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Role</label>
-              <div className="relative">
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as Role)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="operator">Operator</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-                <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
+              {roleLocked ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+                  <Lock size={12} className="text-slate-400" />
+                  <RoleBadge role={member.role} />
+                </div>
+              ) : (
+                <div className="relative">
+                  <select value={role} onChange={(e) => setRole(e.target.value as Role)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors">
+                    {availableRoles.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-              <div className="relative">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as Status)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                >
-                  <option value="active">Active</option>
-                  <option value="invited">Invited</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
+              {statusLocked ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+                  <Lock size={12} className="text-slate-400" />
+                  Active
+                </div>
+              ) : (
+                <div className="relative">
+                  <select value={status} onChange={(e) => setStatus(e.target.value as Status)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors">
+                    <option value="active">Active</option>
+                    <option value="invited">Invited</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              )}
             </div>
           </div>
 
           {/* Permissions */}
           <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Permissions</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Permissions</h3>
+              {permsLocked && (
+                <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold">
+                  <Lock size={10} /> Locked — Owner has all permissions
+                </span>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               {PERMISSIONS.map((p) => {
-                const on = perms[p.key] ?? false;
+                const on = permsLocked ? true : (perms[p.key] ?? false);
                 return (
                   <button
                     key={p.key}
                     type="button"
                     onClick={() => togglePerm(p.key)}
+                    disabled={permsLocked}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
-                      on
-                        ? 'bg-primary/5 border-primary/20'
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                      permsLocked
+                        ? 'bg-amber-50/50 border-amber-100 cursor-not-allowed'
+                        : on
+                          ? 'bg-primary/5 border-primary/20 hover:border-primary/40'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className={`text-sm font-semibold ${on ? 'text-slate-900' : 'text-slate-500'}`}>{p.label}</div>
                       <div className="text-xs text-slate-400">{p.description}</div>
                     </div>
-                    {on
-                      ? <ToggleRight size={22} className="text-primary shrink-0" />
-                      : <ToggleLeft size={22} className="text-slate-300 shrink-0" />
+                    {permsLocked
+                      ? <Lock size={14} className="text-amber-400 shrink-0" />
+                      : on
+                        ? <ToggleRight size={22} className="text-primary shrink-0" />
+                        : <ToggleLeft size={22} className="text-slate-300 shrink-0" />
                     }
                   </button>
                 );
@@ -364,34 +453,28 @@ function EditMemberModal({
 
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <AlertCircle size={13} />
-              {error}
+              <AlertCircle size={13} />{error}
             </div>
           )}
 
           <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={loading}
-              className="flex items-center gap-1.5 border border-red-200 text-red-500 text-sm font-semibold px-3 py-2.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              <Trash2 size={13} />
-              Remove
-            </button>
+            {canRemove && (
+              <button type="button" onClick={handleRemove} disabled={loading}
+                className="flex items-center gap-1.5 border border-red-200 text-red-500 text-sm font-semibold px-3 py-2.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50">
+                <Trash2 size={13} />Remove
+              </button>
+            )}
             <div className="flex-1" />
             <button type="button" onClick={onClose} className="border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={loading}
-              className="bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60"
-            >
-              {loading ? <Loader2 size={13} className="animate-spin" /> : null}
-              Save Changes
-            </button>
+            {!roleLocked && (
+              <button type="button" onClick={handleSave} disabled={loading}
+                className="bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60">
+                {loading ? <Loader2 size={13} className="animate-spin" /> : null}
+                Save Changes
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -408,6 +491,8 @@ export default function TeamPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const { isOwner, isAdmin } = usePermissions();
 
   const loadTeam = useCallback(async () => {
     try {
@@ -437,10 +522,38 @@ export default function TeamPage() {
   );
 
   const stats = [
-    { label: 'Active',   count: members.filter(m => m.status === 'active').length,   color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Invited',  count: members.filter(m => m.status === 'invited').length,  color: 'text-amber-600',   bg: 'bg-amber-50' },
-    { label: 'Inactive', count: members.filter(m => m.status === 'inactive').length, color: 'text-slate-400',   bg: 'bg-slate-100' },
-    { label: 'Admins',   count: members.filter(m => m.role === 'admin').length,      color: 'text-blue-600',    bg: 'bg-blue-50' },
+    {
+      label: 'Owners',
+      count: members.filter(m => m.role === 'owner').length,
+      color: 'text-amber-700',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      icon: Crown,
+    },
+    {
+      label: 'Admins',
+      count: members.filter(m => m.role === 'admin').length,
+      color: 'text-blue-700',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      icon: Shield,
+    },
+    {
+      label: 'Active',
+      count: members.filter(m => m.status === 'active').length,
+      color: 'text-emerald-700',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      icon: CheckCircle2,
+    },
+    {
+      label: 'Invited',
+      count: members.filter(m => m.status === 'invited').length,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      border: 'border-orange-200',
+      icon: Clock,
+    },
   ];
 
   return (
@@ -462,7 +575,7 @@ export default function TeamPage() {
             <h1 className="font-heading font-bold text-lg">Team</h1>
             {!loading && (
               <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
-                {members.length} member{members.length !== 1 ? 's' : ''}
+                {members.filter(m => m.status !== 'inactive').length} member{members.filter(m => m.status !== 'inactive').length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -480,12 +593,18 @@ export default function TeamPage() {
 
             {/* Summary stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {stats.map((s) => (
-                <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-white`}>
-                  <div className={`text-2xl font-black ${s.color}`}>{loading ? '—' : s.count}</div>
-                  <div className="text-xs font-semibold text-slate-500 mt-0.5">{s.label}</div>
-                </div>
-              ))}
+              {stats.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-4`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className={`text-2xl font-black ${s.color}`}>{loading ? '—' : s.count}</div>
+                      <Icon size={16} className={`${s.color} opacity-60`} />
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500">{s.label}</div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Search */}
@@ -493,7 +612,7 @@ export default function TeamPage() {
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by name, email, role…"
+                placeholder="Search by name, email or role…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
@@ -503,8 +622,7 @@ export default function TeamPage() {
             {/* Error */}
             {error && (
               <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <AlertCircle size={15} />
-                {error}
+                <AlertCircle size={15} />{error}
               </div>
             )}
 
@@ -518,42 +636,31 @@ export default function TeamPage() {
 
             {/* Member list */}
             {!loading && !error && (
-              <motion.div
-                variants={stagger}
-                initial="hidden"
-                animate="visible"
-                className="flex flex-col gap-3"
-              >
+              <motion.div variants={stagger} initial="hidden" animate="visible" className="flex flex-col gap-3">
                 {filtered.map((member) => {
-                  const role = roleConfig[member.role] ?? roleConfig.viewer;
-                  const status = statusConfig[member.status] ?? statusConfig.active;
-                  const RoleIcon = role.icon;
-                  const StatusIcon = status.icon;
+                  const statusCfg = STATUS_CONFIG[member.status as Status] ?? STATUS_CONFIG.active;
+                  const StatusIcon = statusCfg.icon;
+                  const memberIsOwner = member.role === 'owner';
 
                   return (
                     <motion.div
                       key={member.id}
                       variants={fadeUp}
-                      className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:border-primary/30 hover:shadow-sm transition-all duration-150"
+                      className={`bg-white border rounded-xl p-4 flex items-center gap-4 hover:shadow-sm transition-all duration-150 ${
+                        memberIsOwner
+                          ? 'border-amber-200 hover:border-amber-300'
+                          : 'border-slate-200 hover:border-primary/30'
+                      }`}
                     >
-                      {/* Avatar */}
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0 bg-gradient-to-br from-slate-600 to-slate-800"
-                      >
-                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
+                      <Avatar name={member.name} role={member.role} />
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900">{member.name}</span>
-                          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border ${role.bg} ${role.color}`}>
-                            <RoleIcon size={10} />
-                            {role.label}
-                          </span>
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold ${status.color}`}>
+                          <RoleBadge role={member.role} />
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold ${statusCfg.color}`}>
                             <StatusIcon size={11} />
-                            {status.label}
+                            {statusCfg.label}
                           </span>
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-xs text-slate-400 flex-wrap">
@@ -577,14 +684,14 @@ export default function TeamPage() {
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: -4 }}
                               transition={{ duration: 0.12 }}
-                              className="absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[140px] py-1 overflow-hidden"
+                              className="absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[150px] py-1 overflow-hidden"
                             >
                               <button
                                 onClick={() => { setEditMember(member); setOpenMenuId(null); }}
                                 className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                               >
                                 <Edit2 size={13} />
-                                Edit Member
+                                {memberIsOwner && !isOwner ? 'View Member' : 'Edit Member'}
                               </button>
                             </motion.div>
                           )}
@@ -601,6 +708,26 @@ export default function TeamPage() {
                 )}
               </motion.div>
             )}
+
+            {/* Role legend */}
+            {!loading && !error && members.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Role Reference</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {(Object.entries(ROLE_CONFIG) as Array<[Role, RoleConfig]>).map(([key, cfg]) => {
+                    const Icon = cfg.icon;
+                    return (
+                      <div key={key} className="flex items-start gap-2.5">
+                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border shrink-0 mt-0.5 ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                          <Icon size={9} />{cfg.label}
+                        </span>
+                        <span className="text-xs text-slate-400">{cfg.description}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -614,6 +741,7 @@ export default function TeamPage() {
       <AnimatePresence>
         {showInvite && (
           <InviteModal
+            callerIsOwner={isOwner}
             onClose={() => setShowInvite(false)}
             onSuccess={loadTeam}
           />
@@ -621,6 +749,8 @@ export default function TeamPage() {
         {editMember && (
           <EditMemberModal
             member={editMember}
+            callerIsOwner={isOwner}
+            callerIsAdmin={isAdmin}
             onClose={() => setEditMember(null)}
             onSuccess={loadTeam}
           />

@@ -18,14 +18,17 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!callerProfile?.companyId) return res.status(403).json({ error: 'No company' });
-    if (callerProfile.role !== 'admin' && callerProfile.role !== 'owner') {
+
+    const callerIsOwner = callerProfile.role === 'owner';
+    const callerIsAdmin = callerProfile.role === 'admin' || callerProfile.permAdmin === true;
+
+    if (!callerIsOwner && !callerIsAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
     const targetId = parseInt(req.params.id as string, 10);
     if (isNaN(targetId)) return res.status(400).json({ error: 'Invalid ID' });
 
-    // Verify target belongs to same company
     const target = await db.query.profiles.findFirst({
       where: eq(profiles.id, targetId),
     });
@@ -33,25 +36,34 @@ export default async function handler(req: Request, res: Response) {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    const {
-      role, status, phone,
+    const targetIsOwner = target.role === 'owner';
+
+    // ── Owner protection rules ────────────────────────────────────────────────
+    // Non-owners cannot touch an owner's record at all
+    if (targetIsOwner && !callerIsOwner) {
+      return res.status(403).json({ error: 'Only an Owner can modify another Owner\'s account' });
+    }
+
+    // Non-owners cannot promote someone to owner
+    const { role, status, phone,
       permJobs, permFleet, permForms, permFiles, permEstimating,
       permDazzaAi, permAdmin, permSeeDollars, permInviteUsers, permDeleteRecords,
     } = req.body as {
-      role?: string;
-      status?: string;
-      phone?: string;
-      permJobs?: boolean;
-      permFleet?: boolean;
-      permForms?: boolean;
-      permFiles?: boolean;
-      permEstimating?: boolean;
-      permDazzaAi?: boolean;
-      permAdmin?: boolean;
-      permSeeDollars?: boolean;
-      permInviteUsers?: boolean;
+      role?: string; status?: string; phone?: string;
+      permJobs?: boolean; permFleet?: boolean; permForms?: boolean;
+      permFiles?: boolean; permEstimating?: boolean; permDazzaAi?: boolean;
+      permAdmin?: boolean; permSeeDollars?: boolean; permInviteUsers?: boolean;
       permDeleteRecords?: boolean;
     };
+
+    if (role === 'owner' && !callerIsOwner) {
+      return res.status(403).json({ error: 'Only an Owner can assign the Owner role' });
+    }
+
+    // Admins cannot downgrade another admin to a lower role (only owner can)
+    if (!callerIsOwner && target.role === 'admin' && role && role !== 'admin' && role !== 'owner') {
+      return res.status(403).json({ error: 'Only an Owner can demote an Admin' });
+    }
 
     const updates: Partial<typeof profiles.$inferInsert> = {};
     if (role !== undefined) updates.role = role;
@@ -70,6 +82,21 @@ export default async function handler(req: Request, res: Response) {
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // If promoting to owner, lock all permissions on
+    if (updates.role === 'owner') {
+      updates.permAdmin = true;
+      updates.permInviteUsers = true;
+      updates.permDeleteRecords = true;
+      updates.permJobs = true;
+      updates.permFleet = true;
+      updates.permForms = true;
+      updates.permFiles = true;
+      updates.permEstimating = true;
+      updates.permDazzaAi = true;
+      updates.permSeeDollars = true;
+      updates.status = 'active';
     }
 
     await db.update(profiles).set(updates).where(eq(profiles.id, targetId));
