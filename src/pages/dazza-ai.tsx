@@ -338,18 +338,33 @@ export default function DazzaAIPage() {
       const data = await res.json() as {
         reply: string;
         noApiKey?: boolean;
+        localTool?: boolean;
+        contextDebug?: string;
         supportMode?: boolean;
         supportCompanyName?: string;
+        tokens?: number;
       };
 
       if (data.noApiKey) setNoApiKey(true);
 
-      setMessages((prev) => [...prev, {
+      const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.reply,
         timestamp: new Date(),
-      }]);
+        isCalc: data.localTool,
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Admin/owner debug line — append as system-info message
+      if (data.contextDebug) {
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 2).toString(),
+          role: 'system-info',
+          content: data.contextDebug!,
+          timestamp: new Date(),
+        }]);
+      }
     } catch {
       setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
@@ -497,29 +512,39 @@ export default function DazzaAIPage() {
                     transition={{ duration: 0.2, ease: 'easeOut' as const }}
                     className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
-                    {/* Avatar */}
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                      msg.role === 'assistant' ? 'bg-slate-900' : 'bg-primary'
-                    }`}>
-                      {msg.role === 'assistant'
-                        ? <Bot size={13} className="text-white" />
-                        : <User size={13} className="text-white" />
-                      }
-                    </div>
+                    {/* System-info debug line */}
+                    {msg.role === 'system-info' ? (
+                      <div className="w-full flex items-center gap-2 px-2 py-1.5 bg-slate-100 border border-slate-200 rounded-xl">
+                        <Info size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-[11px] text-slate-400 font-mono">{msg.content}</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Avatar */}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                          msg.role === 'assistant' ? 'bg-slate-900' : 'bg-primary'
+                        }`}>
+                          {msg.role === 'assistant'
+                            ? <Bot size={13} className="text-white" />
+                            : <User size={13} className="text-white" />
+                          }
+                        </div>
 
-                    {/* Bubble */}
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      msg.role === 'assistant'
-                        ? 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
-                        : 'bg-primary text-white rounded-tr-sm'
-                    }`}>
-                      <div className="flex flex-col gap-0.5 text-[13px]">
-                        {msg.role === 'assistant' ? formatMessage(msg.content) : <p>{msg.content}</p>}
-                      </div>
-                      <div className={`text-[10px] mt-1.5 ${msg.role === 'assistant' ? 'text-slate-300' : 'text-white/50'}`}>
-                        {msg.timestamp.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
+                        {/* Bubble */}
+                        <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                          msg.role === 'assistant'
+                            ? 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
+                            : 'bg-primary text-white rounded-tr-sm'
+                        }`}>
+                          <div className="flex flex-col gap-0.5 text-[13px]">
+                            {msg.role === 'assistant' ? formatMessage(msg.content) : <p>{msg.content}</p>}
+                          </div>
+                          <div className={`text-[10px] mt-1.5 ${msg.role === 'assistant' ? 'text-slate-300' : 'text-white/50'}`}>
+                            {msg.timestamp.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </motion.div>
                 ))}
 

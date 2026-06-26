@@ -4,8 +4,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn,
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
-  ShieldCheck, Settings, FileText, ClipboardList, Eye, LogOut,
-  CheckCircle2, XCircle, ChevronDown, AlertTriangle, ExternalLink,
+  ShieldCheck, Settings, FileText, ClipboardList, LogOut,
+  CheckCircle2, XCircle, ChevronDown, ExternalLink,
   ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';

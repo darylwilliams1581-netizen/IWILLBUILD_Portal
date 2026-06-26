@@ -52,6 +52,8 @@ export interface DazzaContext {
   fleet?:           unknown[];
   fleetFlags?:      unknown[];
   fleetDueDates?:   unknown[];
+  prestarts?:       unknown[];
+  prestartCount?:   number;
   estimates?:       unknown[];
   formTemplates?:   unknown[];
   formSubmissions?: unknown[];
@@ -198,6 +200,18 @@ export async function buildDazzaContext(
           ORDER BY fp.created_at DESC LIMIT 20`
     ) as unknown as Array<Record<string, unknown>>;
     ctx.fleetFlags = flagRows;
+
+    // Recent prestarts — needed for "last prestart" questions
+    const prestartRows = await db.execute(
+      sql`SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                 fp.issue_needs_attention, fp.issue_comment, fp.created_at
+          FROM fleet_prestarts fp
+          JOIN fleet_assets fa ON fa.id = fp.asset_id
+          WHERE fa.company_id = ${effectiveCompanyId}
+          ORDER BY fp.created_at DESC LIMIT 20`
+    ) as unknown as Array<Record<string, unknown>>;
+    ctx.prestarts = prestartRows;
+    ctx.prestartCount = prestartRows.length;
 
     const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const dueDateRows = await db.execute(
