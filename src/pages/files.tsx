@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FolderOpen, Upload, Download, Trash2, Search, Filter,
-  FileText, FileImage, File, AlertCircle, Loader2, X, ChevronDown,
+  FileText, FileImage, File, AlertCircle, Loader2, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import {
 import PortalSidebar from '@/components/PortalSidebar';
 import {
   type CompanyFile, FILE_CATEGORIES, ALLOWED_EXTENSIONS, MAX_FILE_BYTES,
-  formatBytes, mimeColor, mimeLabel, mimeIcon,
+  formatBytes, mimeColor, mimeLabel,
   fetchFiles, uploadFile, deleteFile, downloadFile,
 } from '@/lib/files-api';
 

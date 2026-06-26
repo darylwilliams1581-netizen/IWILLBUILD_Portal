@@ -25,7 +25,7 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const recipeId = parseInt(req.params.id, 10);
+    const recipeId = parseInt(req.params['id'] as string, 10);
     const existing = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) });
     if (!existing || existing.companyId !== profile.companyId) return res.status(404).json({ error: 'Not found' });
 

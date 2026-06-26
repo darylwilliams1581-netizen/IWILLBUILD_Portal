@@ -15,7 +15,7 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-    const jobId = parseInt(req.params.id, 10);
+    const jobId = parseInt(req.params['id'] as string, 10);
     if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid ID' });
     const job = await db.query.jobs.findFirst({ where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)) });
     if (!job) return res.status(404).json({ error: 'Job not found' });

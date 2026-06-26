@@ -19,7 +19,7 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-    const fileId = parseInt(req.params.id, 10);
+    const fileId = parseInt(req.params['id'] as string, 10);
     if (isNaN(fileId)) return res.status(400).json({ error: 'Invalid ID' });
     const record = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, fileId) });
     if (!record || record.companyId !== profile.companyId) return res.status(404).json({ error: 'File not found' });

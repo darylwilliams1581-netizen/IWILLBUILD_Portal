@@ -438,6 +438,7 @@ export default function EstimateEditorPage() {
   }
 
   async function handleDuplicate() {
+    if (!estimate) return;
     try {
       const newEst = await createEstimate({
         jobId: estimate.jobId,

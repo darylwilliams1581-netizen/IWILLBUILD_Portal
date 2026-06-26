@@ -103,14 +103,9 @@ function SidebarContent({
               {!collapsed && (
                 <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
               )}
-              {!collapsed && item.soon && (
-                <span className="text-[10px] font-bold bg-white/10 text-white/50 px-1.5 py-0.5 rounded-full shrink-0">
-                  Soon
-                </span>
-              )}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}{item.soon ? ' (Coming soon)' : ''}
+                  {item.label}
                 </div>
               )}
             </Link>
