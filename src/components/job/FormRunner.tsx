@@ -8,7 +8,6 @@ import {
   Send,
   MapPin,
   Camera,
-  PenLine,
   Link,
   SplitSquareHorizontal,
   Eye,
@@ -16,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { type FormField, type FieldLogic, parseLogic, parseOptions, parseSettings } from '../FormFieldBuilder';
+import SignaturePad, { type SignatureAnswer, parseSignatureAnswer } from './SignaturePad';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ export interface FormSubmission {
   answersJson: string | null;
 }
 
-type AnswerValue = string | string[] | boolean | null;
+type AnswerValue = string | string[] | boolean | SignatureAnswer | null;
 type Answers = Record<number, AnswerValue>; // fieldId -> value
 
 // ── Logic evaluator ───────────────────────────────────────────────────────────
@@ -91,6 +91,20 @@ function ReadOnlyAnswer({ field, value }: { field: FormField; value: AnswerValue
   }
 
   const empty = value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
+
+  // Signature field — delegate to SignaturePad read-only view
+  if (field.fieldType === 'signature') {
+    const sig = parseSignatureAnswer(value);
+    return (
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          {field.label}
+          {field.required && <span className="text-red-400 ml-0.5">*</span>}
+        </label>
+        <SignaturePad value={sig} onChange={() => {/* read-only */}} readOnly />
+      </div>
+    );
+  }
 
   let display: React.ReactNode = (
     <span className="text-slate-400 italic text-sm">No answer</span>
@@ -408,13 +422,14 @@ function FieldInput({ field, value, onChange, error }: FieldInputProps) {
       )}
 
       {field.fieldType === 'signature' && (
-        <div className="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
-          <PenLine size={20} className="text-slate-300" />
-          <p className="text-xs text-slate-400">Signature capture coming soon</p>
-        </div>
+        <SignaturePad
+          value={parseSignatureAnswer(value)}
+          onChange={(sig) => onChange(sig)}
+          error={error}
+        />
       )}
 
-      {error && (
+      {error && field.fieldType !== 'signature' && (
         <p className="text-xs text-red-600 flex items-center gap-1">
           <AlertCircle size={11} /> {error}
         </p>
@@ -507,7 +522,16 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
       if (['section', 'instruction', 'instruction_image', 'page_break'].includes(field.fieldType)) continue;
       if (!field.required) continue;
       const val = answers[field.id];
-      const empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+
+      let empty: boolean;
+      if (field.fieldType === 'signature') {
+        // Signature is valid only when a drawn dataUrl exists
+        const sig = parseSignatureAnswer(val);
+        empty = !sig?.signatureDataUrl;
+      } else {
+        empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+      }
+
       if (empty) newErrors[field.id] = 'This field is required';
     }
     setErrors(newErrors);
@@ -565,6 +589,9 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
   const visibleInputFields = inputFields.filter((f) => visibleFields.has(f.id));
   const answeredCount = visibleInputFields.filter((f) => {
     const v = answers[f.id];
+    if (f.fieldType === 'signature') {
+      return !!parseSignatureAnswer(v)?.signatureDataUrl;
+    }
     return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
   }).length;
 
