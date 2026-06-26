@@ -18,13 +18,15 @@ import {
   ChevronDown,
   Camera,
   Calculator,
+  FolderOpen,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
 import JobEstimates from '@/components/JobEstimates';
+import FilePanel from '@/components/FilePanel';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'photos' | 'estimates';
+type Tab = 'details' | 'photos' | 'estimates' | 'files';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -277,6 +279,7 @@ export default function JobDetailPage() {
                   { key: 'details',   label: 'Details',   icon: FileText },
                   { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },
+                  { key: 'files',     label: 'Files',     icon: FolderOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
@@ -405,12 +408,19 @@ export default function JobDetailPage() {
                 <JobEstimates jobId={job.id} />
               )}
 
+              {/* ── Files tab ── */}
+              {activeTab === 'files' && (
+                <div className="bg-white rounded-xl border border-border">
+                  <FilePanel jobId={job.id} />
+                </div>
+              )}
+
               {/* Coming soon modules — only show on details tab */}
               {activeTab === 'details' && (
                 <div className="bg-white rounded-xl border border-border p-5">
                   <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {['Forms', 'Files'].map((m) => (
+                    {['Forms'].map((m) => (
                       <div key={m} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
                         <FileText size={14} className="text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">{m}</span>

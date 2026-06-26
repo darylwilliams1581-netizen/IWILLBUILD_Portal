@@ -20,8 +20,10 @@ import {
   AlertTriangle,
   Plus,
   Clock,
+  FolderOpen,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FilePanel from '@/components/FilePanel';
 import {
   fetchAsset,
   updateAsset,
@@ -35,7 +37,7 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 
-type Tab = 'details' | 'prestarts';
+type Tab = 'details' | 'prestarts' | 'files';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -554,6 +556,7 @@ export default function FleetDetailPage() {
                 {([
                   { key: 'details',   label: 'Details',   icon: Truck },
                   { key: 'prestarts', label: 'Prestarts', icon: ClipboardList },
+                  { key: 'files',     label: 'Files',     icon: FolderOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
@@ -689,6 +692,13 @@ export default function FleetDetailPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── Files tab ── */}
+              {activeTab === 'files' && (
+                <div className="bg-white rounded-xl border border-border">
+                  <FilePanel fleetAssetId={asset.id} />
                 </div>
               )}
             </motion.div>
