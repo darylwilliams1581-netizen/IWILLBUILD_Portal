@@ -25,10 +25,21 @@ export default async function handler(req: Request, res: Response) {
         company_id INT NOT NULL UNIQUE,
         structure_json LONGTEXT NOT NULL DEFAULT '{}',
         dazza_json LONGTEXT NOT NULL DEFAULT '{}',
+        banner_json LONGTEXT NOT NULL DEFAULT '{}',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+
+    // Add banner_json column if it doesn't exist (for existing installs)
+    const cols = await db.execute(sql`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND COLUMN_NAME = 'banner_json'
+    `) as unknown as Array<{ COLUMN_NAME: string }>;
+    const hasBanner = Array.isArray(cols) && cols.length > 0;
+    if (!hasBanner) {
+      await db.execute(sql`ALTER TABLE company_settings ADD COLUMN banner_json LONGTEXT NOT NULL DEFAULT '{}'`);
+    }
 
     res.json({ ok: true, message: 'company_settings table ready' });
   } catch (error) {

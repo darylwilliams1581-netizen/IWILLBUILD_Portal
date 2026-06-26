@@ -22,6 +22,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
+import DashboardBanner from '@/components/dashboard/DashboardBanner';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -118,35 +119,48 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Hamburger — mobile only */}
-            <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
-              aria-label="Open menu"
-            >
-              <Menu size={20} />
-            </button>
-            <div>
-              <h1 className="font-heading font-bold text-base md:text-lg text-foreground leading-tight">Dashboard</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
+        <header className="bg-white border-b border-border shrink-0 print:hidden">
+          {/* Main header row */}
+          <div className="h-16 flex items-center justify-between px-4 md:px-6">
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={openMobileMenu}
+                className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+                aria-label="Open menu"
+              >
+                <Menu size={20} />
+              </button>
+              <div>
+                <h1 className="font-heading font-bold text-base md:text-lg text-foreground leading-tight">Dashboard</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
+              </div>
+            </div>
+
+            {/* Banner strip — desktop: sits between title and profile */}
+            <div className="hidden md:flex flex-1 min-w-0 items-center">
+              <DashboardBanner userId={user?.id ?? 'anon'} />
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+              <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
+                <Bell size={18} />
+              </button>
+              <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {initials}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[140px]">{user?.email ?? ''}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
-              <Bell size={18} />
-            </button>
-            <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {initials}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[140px]">{user?.email ?? ''}</p>
-              </div>
-            </div>
+          {/* Banner strip — mobile: full width below title row */}
+          <div className="md:hidden px-4 pb-2">
+            <DashboardBanner userId={user?.id ?? 'anon'} />
           </div>
         </header>
 

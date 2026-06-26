@@ -209,6 +209,23 @@
       "summary": "Screenshot of a forms management interface showing two template cards (Pre-Start and Incident) with a dark theme. User is referencing this design to request a background color change to white.",
       "fileName": "screenshot-2026-06-26T08-57-45.jpg",
       "storedUploadFilename": "f38wenbvln_1782464266603_file__bWm5od7lm.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": [
+        "#FF8C00",
+        "#2C3E50",
+        "#FFFFFF"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of a project management dashboard (iWillBuild) showing portal interface with navigation, job tracking, and fleet management sections. Provides visual reference for UI/UX design patterns and color scheme.",
+      "fileName": "screenshot-2026-06-26T09-24-14.jpg",
+      "storedUploadFilename": "f38wenbvln_1782465855287_file_TczkcdZvEw.jpg"
     }
   ]
 }

@@ -19,8 +19,8 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
     if (!['owner', 'admin'].includes(profile.role)) return res.status(403).json({ error: 'Owner/Admin only' });
 
-    const { section, data } = req.body as { section: 'structure' | 'dazza'; data: unknown };
-    if (!section || !['structure', 'dazza'].includes(section)) {
+    const { section, data } = req.body as { section: 'structure' | 'dazza' | 'banner'; data: unknown };
+    if (!section || !['structure', 'dazza', 'banner'].includes(section)) {
       return res.status(400).json({ error: 'Invalid section' });
     }
 
@@ -31,10 +31,15 @@ export default async function handler(req: Request, res: Response) {
         sql`INSERT INTO company_settings (company_id, structure_json) VALUES (${profile.companyId}, ${jsonStr})
             ON DUPLICATE KEY UPDATE structure_json = ${jsonStr}, updated_at = NOW()`
       );
-    } else {
+    } else if (section === 'dazza') {
       await db.execute(
         sql`INSERT INTO company_settings (company_id, dazza_json) VALUES (${profile.companyId}, ${jsonStr})
             ON DUPLICATE KEY UPDATE dazza_json = ${jsonStr}, updated_at = NOW()`
+      );
+    } else {
+      await db.execute(
+        sql`INSERT INTO company_settings (company_id, banner_json) VALUES (${profile.companyId}, ${jsonStr})
+            ON DUPLICATE KEY UPDATE banner_json = ${jsonStr}, updated_at = NOW()`
       );
     }
 

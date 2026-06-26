@@ -19,15 +19,16 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const rows = await db.execute(
-      sql`SELECT structure_json, dazza_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as Array<{ structure_json: string; dazza_json: string }>;
+      sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+    ) as unknown as Array<{ structure_json: string; dazza_json: string; banner_json: string }>;
 
     const row = Array.isArray(rows) ? rows[0] : null;
 
     const structure = row?.structure_json ? JSON.parse(row.structure_json) : {};
     const dazza = row?.dazza_json ? JSON.parse(row.dazza_json) : {};
+    const banner = row?.banner_json ? JSON.parse(row.banner_json) : {};
 
-    res.json({ structure, dazza });
+    res.json({ structure, dazza, banner });
   } catch (error) {
     console.error('GET /api/company-settings error:', error);
     res.status(500).json({ error: 'Failed to load settings' });

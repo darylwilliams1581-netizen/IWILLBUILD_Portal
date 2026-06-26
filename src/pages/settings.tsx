@@ -23,11 +23,13 @@ import {
   KeyRound,
   Layers,
   Bot,
+  Megaphone,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DazzaAITab from '@/components/settings/DazzaAITab';
+import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 
 const tabs = [
   { id: 'account',    label: 'My Account',        icon: User },
@@ -35,6 +37,7 @@ const tabs = [
   { id: 'team',       label: 'Team & Permissions', icon: Users },
   { id: 'structure',  label: 'Company Structure',  icon: Layers },
   { id: 'dazza',      label: 'Dazza AI',           icon: Bot },
+  { id: 'banner',     label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications', label: 'Notifications',   icon: Bell },
   { id: 'data',       label: 'Data & Backup',      icon: Database },
 ];
@@ -683,6 +686,7 @@ export default function SettingsPage() {
               )}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
+              {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && (
                 <ComingSoonTab
                   title="Notifications"
