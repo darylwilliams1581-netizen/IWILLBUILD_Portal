@@ -458,7 +458,9 @@ export default function JobDetailPage() {
 
               {/* ── Forms tab ── */}
               {activeTab === 'forms' && (
-                <JobForms jobId={job.id} userRole={userRole} onRunnerActive={setFormRunnerActive} />
+                <div className={formRunnerActive ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : undefined}>
+                  <JobForms jobId={job.id} userRole={userRole} onRunnerActive={setFormRunnerActive} />
+                </div>
               )}
 
             </motion.div>

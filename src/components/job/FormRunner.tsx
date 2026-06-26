@@ -647,7 +647,7 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
   // ── Completed / read-only view ──────────────────────────────────────────────
   if (readOnly) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
         {/* Header — fixed at top */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
           <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
@@ -678,7 +678,7 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="p-4 max-w-2xl mx-auto w-full pb-8">
+          <div className="p-4 max-w-2xl mx-auto w-full pb-32">
             <div className="flex flex-col gap-5">
               {fields.map((field) => {
                 if (!visibleFields.has(field.id)) return null;
@@ -761,7 +761,7 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
   // ── Editable form ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
       {/* Header — fixed at top */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
@@ -801,7 +801,7 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
       {/* Scrollable body — owns its own scroll, footer never overlaps */}
       <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="p-4 max-w-2xl mx-auto w-full pb-8">
+        <div className="p-4 max-w-2xl mx-auto w-full pb-32">
           <div className="flex flex-col gap-5">
             <AnimatePresence mode="popLayout">
               {fields.map((field) => {

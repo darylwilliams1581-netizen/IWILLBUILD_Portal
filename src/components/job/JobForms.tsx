@@ -354,14 +354,16 @@ export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsPr
   // ── Form runner view ────────────────────────────────────────────────────────
   if (runnerState) {
     return (
-      <FormRunner
-        jobId={jobId}
-        submission={runnerState.submission}
-        templateName={runnerState.templateName}
-        readOnly={runnerState.readOnly}
-        onBack={() => { onRunnerActive?.(false); handleRunnerBack(); }}
-        onComplete={() => { onRunnerActive?.(false); handleRunnerComplete(); }}
-      />
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden h-full">
+        <FormRunner
+          jobId={jobId}
+          submission={runnerState.submission}
+          templateName={runnerState.templateName}
+          readOnly={runnerState.readOnly}
+          onBack={() => { onRunnerActive?.(false); handleRunnerBack(); }}
+          onComplete={() => { onRunnerActive?.(false); handleRunnerComplete(); }}
+        />
+      </div>
     );
   }
 
