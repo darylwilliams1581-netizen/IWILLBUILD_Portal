@@ -1,0 +1,130 @@
+/**
+ * POST /api/cost-guide/import-csv
+ * Body: multipart/form-data  — field "file" (.csv, max 2 MB)
+ *       + optional field "duplicateMode": "skip" | "update" | "add"  (default "skip")
+ *
+ * Returns: { imported, skipped, errors }
+ */
+import type { Request, Response } from 'express';
+import multer from 'multer';
+import { db } from '../../../db/client.js';
+import { costGuideItems, profiles } from '../../../db/schema.js';
+import { eq, count, and } from 'drizzle-orm';
+import { getAuth } from '../../../../lib/auth/auth.js';
+import { parseCostGuideCsv } from '../../../lib/csv-utils.js';
+import type { ResultSetHeader } from 'mysql2';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ok = file.originalname.toLowerCase().endsWith('.csv') || file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel';
+    cb(ok ? null : new Error('CSV_ONLY'), ok);
+  },
+}).single('file');
+
+export default async function handler(req: Request, res: Response) {
+  // Run multer
+  let multerError: unknown = null;
+  await new Promise<void>((resolve) => {
+    upload(req, res, (err: unknown) => { if (err) multerError = err; resolve(); });
+  });
+
+  if (multerError) {
+    const msg = multerError instanceof Error ? multerError.message : String(multerError);
+    if (msg === 'CSV_ONLY') return res.status(400).json({ error: 'Only .csv files are accepted.' });
+    if (msg.includes('File too large')) return res.status(400).json({ error: 'CSV file must be under 2 MB.' });
+    return res.status(400).json({ error: msg });
+  }
+
+  try {
+    const auth = getAuth();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const duplicateMode = (req.body?.duplicateMode as string) || 'skip'; // skip | update | add
+
+    // Parse CSV
+    const raw = file.buffer.toString('utf-8');
+    const { valid, errors } = parseCostGuideCsv(raw);
+
+    if (valid.length === 0) {
+      return res.status(400).json({
+        error: 'No valid rows found in CSV.',
+        errors,
+        imported: 0,
+        skipped: 0,
+      });
+    }
+
+    // Check 200-item limit
+    const [countRow] = await db.select({ c: count() }).from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
+    const currentCount = countRow?.c ?? 0;
+    const available = 200 - currentCount;
+    if (available <= 0) {
+      return res.status(400).json({ error: 'Cost Guide limit reached (200 items). Delete unused items before importing.' });
+    }
+
+    // Fetch existing items for duplicate detection
+    const existing = await db.select().from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
+    const existingMap = new Map(existing.map((e) => [`${e.description.toLowerCase()}|${(e.unit ?? '').toLowerCase()}`, e]));
+
+    let imported = 0;
+    let skipped = 0;
+    const rowsToInsert: typeof valid = [];
+
+    for (const row of valid) {
+      if (imported + rowsToInsert.length >= available) {
+        skipped++;
+        continue;
+      }
+      const key = `${row.description.toLowerCase()}|${row.unit.toLowerCase()}`;
+      const dup = existingMap.get(key);
+
+      if (dup) {
+        if (duplicateMode === 'skip') {
+          skipped++;
+          continue;
+        } else if (duplicateMode === 'update') {
+          await db.update(costGuideItems)
+            .set({ rate: row.rate, unit: row.unit || null })
+            .where(and(eq(costGuideItems.id, dup.id), eq(costGuideItems.companyId, profile.companyId)));
+          imported++;
+          continue;
+        }
+        // 'add' falls through to insert
+      }
+      rowsToInsert.push(row);
+    }
+
+    // Bulk insert
+    if (rowsToInsert.length > 0) {
+      const sortBase = currentCount + imported;
+      await db.insert(costGuideItems).values(
+        rowsToInsert.map((r, i) => ({
+          companyId: profile.companyId!,
+          description: r.description,
+          unit: r.unit || null,
+          rate: r.rate,
+          sortOrder: sortBase + i,
+        }))
+      );
+      imported += rowsToInsert.length;
+    }
+
+    res.json({ imported, skipped, errors });
+  } catch (err) {
+    console.error('POST /api/cost-guide/import-csv error:', err);
+    res.status(500).json({ error: 'Import failed' });
+  }
+}
