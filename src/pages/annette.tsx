@@ -12,8 +12,6 @@ import {
   Info,
   CheckCircle2,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   Clock,
   ShieldAlert,
   Copy,
@@ -110,37 +108,7 @@ function renderInline(text: string): React.ReactNode {
   );
 }
 
-// ── Section collapse wrapper ──────────────────────────────────────────────────
-function ReportSection({
-  title,
-  emoji,
-  colorClass,
-  children,
-  defaultOpen = true,
-}: {
-  title: string;
-  emoji: string;
-  colorClass: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className={`rounded-xl border ${colorClass} overflow-hidden`}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-base">{emoji}</span>
-          <span className="font-bold text-sm text-slate-800">{title}</span>
-        </div>
-        {open ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
-      </button>
-      {open && <div className="px-4 pb-4 pt-1 border-t border-inherit">{children}</div>}
-    </div>
-  );
-}
+
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AnnettePage() {

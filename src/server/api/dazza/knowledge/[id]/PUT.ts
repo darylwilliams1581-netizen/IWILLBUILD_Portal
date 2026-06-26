@@ -35,7 +35,7 @@ export default async function handler(req: Request, res: Response) {
     const isAdmin = role === 'owner' || role === 'admin' || profile.permAdmin === true;
     if (!isAdmin) return res.status(403).json({ error: 'Admin/owner only' });
 
-    const id = parseInt(req.params.id ?? '0', 10);
+    const id = parseInt(String(req.params.id ?? '0'), 10);
     if (!id) return res.status(400).json({ error: 'Invalid id' });
 
     // Verify ownership

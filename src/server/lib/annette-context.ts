@@ -47,7 +47,7 @@ export interface AnnetteData {
     serviceDue14:    Array<{ id: number; name: string; rego: string | null; service_date: string; days_until: number }>;
     regoDue14:       Array<{ id: number; name: string; rego: string | null; rego_expiry: string; days_until: number }>;
     openFlags:       Array<{ asset_name: string; issue_comment: string; flagged_at: string }>;
-    noPrestartDays:  number; // days since last prestart across fleet
+    noPrestartDays:  number | null; // null = module failed; number = days since last (0+ real, 999 = never recorded)
   };
 
   // Estimates
@@ -115,7 +115,7 @@ export async function buildAnnetteContext(
     todos: { overdueCount: 0, dueTodayCount: 0, overdue: [], dueToday: [] },
     fleet: {
       total: 0, serviceOverdue: [], regoOverdue: [],
-      serviceDue14: [], regoDue14: [], openFlags: [], noPrestartDays: 999,
+      serviceDue14: [], regoDue14: [], openFlags: [], noPrestartDays: null,
     },
     estimates: { draftTooLong: [], pendingApproval: [] },
     forms:     { incompleteSubmissions: [], jobsWithNoForms: 0 },
@@ -345,7 +345,7 @@ export async function buildAnnetteContext(
             WHERE company_id = ${companyId}`
       ) as unknown as [Array<{ last_at: string | null }>, unknown];
       const lastAt = rows?.[0]?.last_at;
-      data.fleet.noPrestartDays = lastAt ? daysBetween(lastAt, now) : 999;
+      data.fleet.noPrestartDays = lastAt ? daysBetween(lastAt, now) : 999; // 999 = table exists but no rows
       return rows;
     }, [], warnings, moduleCounts);
   }
@@ -525,8 +525,8 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
       lines.push(`  - ${f.asset_name}: "${f.issue_comment}" (flagged ${new Date(f.flagged_at).toLocaleDateString('en-AU')})`);
     }
   }
-  if (d.fleet.noPrestartDays >= 7) {
-    lines.push(`Last prestart recorded: ${d.fleet.noPrestartDays >= 999 ? 'never' : `${d.fleet.noPrestartDays} days ago`}`);
+  if (d.fleet.noPrestartDays !== null && d.fleet.noPrestartDays >= 7) {
+    lines.push(`Last prestart recorded: ${d.fleet.noPrestartDays >= 999 ? 'never (no prestart records found)' : `${d.fleet.noPrestartDays} days ago`}`);
   }
   lines.push('');
 

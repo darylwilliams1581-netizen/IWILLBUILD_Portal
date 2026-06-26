@@ -13,7 +13,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { getSecret } from '#airo/secrets';
 import {
@@ -44,11 +44,17 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Support Mode ────────────────────────────────────────────────────────
     const { supportCompanyId } = req.body as { supportCompanyId?: number };
-    const { effectiveCompanyId, effectiveCompanyName } = await resolveEffectiveCompany(
-      profile,
-      permissions,
+    const { effectiveCompanyId } = await resolveEffectiveCompany(
+      permissions.isOwner,
+      profile.companyId,
       supportCompanyId,
     );
+
+    // Fetch company name for the report
+    const [companyRows] = await db.execute(
+      sql`SELECT name FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ name: string }>, unknown];
+    const effectiveCompanyName = companyRows?.[0]?.name ?? 'Your Company';
 
     // ── Open SSE stream immediately — errors after this point go inline ─────
     res.setHeader('Content-Type', 'text/event-stream');
