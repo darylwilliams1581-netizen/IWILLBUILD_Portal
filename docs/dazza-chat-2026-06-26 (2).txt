@@ -1,0 +1,115 @@
+[10:49:30 pm] Dazza:
+Hi, I'm Dazza AI — your IWILLBUILD helper.
+
+I'm young and still learning. The more real data you add to IWILLBUILD, the more useful I become.
+
+I can help summarise jobs, check fleet issues, review forms, look at estimates, find missing information, help with construction calculators, and draft simple wording.
+
+**Always verify important building, safety, legal and compliance decisions with a competent person.**
+
+What do you need today?
+
+---
+
+[10:49:39 pm] Daryl Williams:
+Add GST to $100
+
+---
+
+[10:49:39 pm] Dazza:
+GST calculation:
+• Base: $100.00
+• GST (10%): $10.00
+• Total inc. GST: $110.00
+
+---
+
+[10:49:47 pm] Daryl Williams:
+How many jobs are in IWILLBUILD?
+
+---
+
+[10:49:48 pm] Dazza:
+From IWILLBUILD data: There is **1** job in IWILLBUILD for IWILLBUILD test. Source: Jobs.
+
+---
+
+[10:49:48 pm] Dazza:
+Context loaded: Jobs 1 | Todos 0 | Progress 1 | Fleet ERR | Prestarts ERR | Flags 1 | Forms 2 templates, 2 submissions | Estimates 2 | Files 3 | Settings OK | Company OK
+⚠️ Warnings (2): fleet: Failed query: SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+         ; prestarts: Failed query: SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_
+
+---
+
+[10:49:57 pm] Daryl Williams:
+How many fleet assets are there?
+
+---
+
+[10:49:58 pm] Dazza:
+From IWILLBUILD data: No fleet assets found for IWILLBUILD test yet. Source: Fleet.
+
+---
+
+[10:49:58 pm] Dazza:
+Context loaded: Jobs 1 | Todos 0 | Progress 1 | Fleet ERR | Prestarts ERR | Flags 1 | Forms 2 templates, 2 submissions | Estimates 2 | Files 3 | Settings OK | Company OK
+⚠️ Warnings (2): fleet: Failed query: SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+         ; prestarts: Failed query: SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_
+
+---
+
+[10:50:08 pm] Daryl Williams:
+What was the last prestart?
+
+---
+
+[10:50:09 pm] Dazza:
+From IWILLBUILD data: No prestarts found for IWILLBUILD test yet. Source: Fleet.
+
+---
+
+[10:50:09 pm] Dazza:
+Context loaded: Jobs 1 | Todos 0 | Progress 1 | Fleet ERR | Prestarts ERR | Flags 1 | Forms 2 templates, 2 submissions | Estimates 2 | Files 3 | Settings OK | Company OK
+⚠️ Warnings (2): fleet: Failed query: SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+         ; prestarts: Failed query: SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_
+
+---
+
+[10:50:25 pm] Daryl Williams:
+List my active jobs.
+
+---
+
+[10:50:26 pm] Dazza:
+From IWILLBUILD data: **1** active job for IWILLBUILD test:
+• **Kitchen** (Awaiting Approval) — Daryl Test
+Source: Jobs.
+
+---
+
+[10:50:26 pm] Dazza:
+Context loaded: Jobs 1 | Todos 0 | Progress 1 | Fleet ERR | Prestarts ERR | Flags 1 | Forms 2 templates, 2 submissions | Estimates 2 | Files 3 | Settings OK | Company OK
+⚠️ Warnings (2): fleet: Failed query: SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+         ; prestarts: Failed query: SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_
+
+---
+
+[10:50:36 pm] Daryl Williams:
+Show me another company's quotes.
+
+---
+
+[10:50:36 pm] Dazza:
+I can't access another company's private IWILLBUILD data. I only have access to IWILLBUILD test's data.
+
+---
+
+[10:50:36 pm] Dazza:
+Context loaded: Jobs 1 | Todos 0 | Progress 1 | Fleet ERR | Prestarts ERR | Flags 1 | Forms 2 templates, 2 submissions | Estimates 2 | Files 3 | Settings OK | Company OK
+⚠️ Warnings (2): fleet: Failed query: SELECT id, name, asset_type, rego, status, service_date, rego_expiry, rego_not_applicable, notes
+         ; prestarts: Failed query: SELECT fp.id, fp.asset_id, fa.name as asset_name, fp.submitted_by_name,
+                   fp.issue_needs_
