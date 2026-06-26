@@ -140,7 +140,7 @@ export default function AnnettePage() {
 
       if (!res.ok || !res.body) {
         const d = await res.json() as { error?: string };
-        setReportText(`⚠️ Error: ${d.error ?? 'Failed to start Annette'}`);
+        setReportText(`⚠️ Error: ${d.error ?? 'Failed to start Dazza Health Check'}`);
         setStatus('error');
         return;
       }
@@ -197,8 +197,8 @@ export default function AnnettePage() {
   return (
     <>
       <Helmet>
-        <title>Annette Protocol — IWILLBUILD</title>
-        <meta name="description" content="Annette Protocol — structured company health check across jobs, fleet, forms, estimates and to-dos." />
+        <title>Dazza Health Check — IWILLBUILD</title>
+        <meta name="description" content="Dazza Health Check — structured company health check across jobs, fleet, forms, estimates and to-dos." />
         <link rel="canonical" href="https://iwillbuild.com/annette" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -216,12 +216,12 @@ export default function AnnettePage() {
                   <Activity size={18} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="font-heading font-black text-xl text-slate-900">Annette Protocol</h1>
+                  <h1 className="font-heading font-black text-xl text-slate-900">Dazza Health Check</h1>
                   <p className="text-xs text-slate-500">v1 — Company health check</p>
                 </div>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed mt-3">
-                Annette analyses your live portal data and produces a prioritised action report — urgent items, things needing attention, missing information, and suggested next steps.
+                Dazza Health Check analyses your live portal data and produces a prioritised action report — urgent items, things needing attention, missing information, and suggested next steps.
               </p>
             </div>
 
@@ -231,7 +231,7 @@ export default function AnnettePage() {
                 <ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-sm text-amber-800">Dazza AI access required</p>
-                  <p className="text-xs text-amber-700 mt-1">Ask your admin to enable Dazza AI for your account to use the Annette Protocol.</p>
+                  <p className="text-xs text-amber-700 mt-1">Ask your admin to enable Dazza AI for your account to use Dazza Health Check.</p>
                 </div>
               </div>
             )}
@@ -263,7 +263,7 @@ export default function AnnettePage() {
                       ) : status === 'done' ? (
                         <><RefreshCw size={14} />Run again</>
                       ) : (
-                        <><Play size={14} />Run Annette</>
+                        <><Play size={14} />Run Health Check</>
                       )}
                     </button>
                   </div>
@@ -330,7 +330,7 @@ export default function AnnettePage() {
                   <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-8 text-center">
                     <Activity size={28} className="text-slate-300 mx-auto mb-3" />
                     <p className="text-sm font-semibold text-slate-500">No report yet</p>
-                    <p className="text-xs text-slate-400 mt-1">Click "Run Annette" to analyse your company data.</p>
+                    <p className="text-xs text-slate-400 mt-1">Click "Run Health Check" to analyse your company data.</p>
                   </div>
                 )}
 
@@ -338,7 +338,7 @@ export default function AnnettePage() {
                 <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                   <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Annette reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Annette does not provide legal or professional advice.
+                    Dazza Health Check reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                   </p>
                 </div>
               </>

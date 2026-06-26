@@ -190,7 +190,7 @@ function SidebarContent({
                         className={subLinkClass(isActive('/annette'))}
                       >
                         <Activity size={14} className="shrink-0" />
-                        <span className="text-xs font-semibold truncate">Annette</span>
+                        <span className="text-xs font-semibold truncate">Dazza Health Check</span>
                       </Link>
                     </motion.div>
                   )}
