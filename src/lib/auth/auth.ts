@@ -67,8 +67,8 @@ export function getAuth() {
       },
     },
 
-    // CORS: Trusts .airoapp.ai subdomains and localhost by default.
-    // If your app has a custom domain, add it here or set BETTER_AUTH_TRUSTED_ORIGINS.
+    // CORS: Trusts .airoapp.ai subdomains, localhost, and any custom domain
+    // set via BETTER_AUTH_URL (e.g. https://iwillbuild.com in production).
     trustedOrigins: (request?: Request) => {
       if (!request) return [];
 
@@ -79,7 +79,7 @@ export function getAuth() {
         const originUrl = new URL(origin);
         const hostname = originUrl.hostname;
 
-        // Trust all airoapp.ai subdomains
+        // Trust all airoapp.ai subdomains (preview / builder)
         if (hostname.endsWith('.airoapp.ai') || hostname.endsWith('.test-airoapp.ai')) {
           return [origin];
         }
@@ -87,6 +87,37 @@ export function getAuth() {
         // Trust localhost for development
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
           return [origin];
+        }
+
+        // Trust the custom domain set via BETTER_AUTH_URL secret
+        // e.g. BETTER_AUTH_URL=https://iwillbuild.com → trust iwillbuild.com
+        const customUrl = process.env.BETTER_AUTH_URL;
+        if (customUrl) {
+          try {
+            const customHostname = new URL(customUrl).hostname;
+            // Trust exact match AND www. subdomain of the custom domain
+            if (
+              hostname === customHostname ||
+              hostname === `www.${customHostname}` ||
+              customHostname === `www.${hostname}`
+            ) {
+              return [origin];
+            }
+          } catch {
+            // malformed BETTER_AUTH_URL — ignore
+          }
+        }
+
+        // Also trust any extra origins listed in BETTER_AUTH_TRUSTED_ORIGINS
+        // (comma-separated, e.g. "https://app.iwillbuild.com,https://admin.iwillbuild.com")
+        const extra = process.env.BETTER_AUTH_TRUSTED_ORIGINS;
+        if (extra) {
+          const trusted = extra.split(',').map((s) => s.trim()).filter(Boolean);
+          if (trusted.some((t) => {
+            try { return new URL(t).hostname === hostname; } catch { return false; }
+          })) {
+            return [origin];
+          }
         }
 
         return [];

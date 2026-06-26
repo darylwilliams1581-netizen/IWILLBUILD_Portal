@@ -68,6 +68,23 @@
       "summary": "Screenshot of the IWILLBUILD Portal website showing a published construction job portal with hero section, login interface, and feature overview. No explicit instruction provided on how to use this file.",
       "fileName": "screenshot-2026-06-26T00-25-06.jpg",
       "storedUploadFilename": "f38wenbvln_1782433507024_file_kYWrxdJjma.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": [
+        "#FF8C00",
+        "#1A1F2E",
+        "#E74C3C"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of a portal sign-in page showing the I WILL BUILD branding, login form, and error state. No explicit instruction provided on how to use this file.",
+      "fileName": "screenshot-2026-06-26T00-46-17.jpg",
+      "storedUploadFilename": "f38wenbvln_1782434778315_file_ODLqwbvMnH.jpg"
     }
   ]
 }

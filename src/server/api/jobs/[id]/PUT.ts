@@ -19,7 +19,7 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const jobId = parseInt(req.params.id, 10);
+    const jobId = parseInt(String(req.params.id), 10);
     if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
 
     const existing = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
