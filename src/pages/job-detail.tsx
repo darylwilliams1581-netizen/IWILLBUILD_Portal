@@ -258,7 +258,7 @@ export default function JobDetailPage() {
                 </div>
 
                 {/* Quick status change */}
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
                     onClick={() => setStatusOpen(!statusOpen)}
                     className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
@@ -267,8 +267,8 @@ export default function JobDetailPage() {
                   </button>
                   {statusOpen && (
                     <>
-                      <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
-                      <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                      <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
                         {JOB_STATUSES.map((s) => {
                           const st = getStatusStyle(s);
                           return (
@@ -303,7 +303,7 @@ export default function JobDetailPage() {
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
-                    onClick={() => { setActiveTab(key); if (key !== 'forms') setFormRunnerActive(false); }}
+                    onClick={() => { setActiveTab(key); setStatusOpen(false); if (key !== 'forms') setFormRunnerActive(false); }}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-colors min-w-[60px] ${
                       activeTab === key
                         ? 'bg-slate-900 text-white'

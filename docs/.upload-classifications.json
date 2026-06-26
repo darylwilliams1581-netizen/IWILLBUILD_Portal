@@ -472,6 +472,19 @@
       "summary": "Screenshot of an estimates management interface showing quote status workflow issues. User is referencing this to describe a bug or feature request about quote status tracking and permissions.",
       "fileName": "screenshot-2026-06-26T16-34-17.jpg",
       "storedUploadFilename": "f38wenbvln_1782491657500_file_05fzlPm91F.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a project management interface showing an Estimates tab with draft quotes. User is referencing this to report a UI issue or clarify where a component has appeared.",
+      "fileName": "screenshot-2026-06-26T16-39-00.jpg",
+      "storedUploadFilename": "f38wenbvln_1782491941834_file_a8Z1v_D_4t.jpg"
     }
   ]
 }
