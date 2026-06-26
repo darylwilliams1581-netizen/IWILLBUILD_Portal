@@ -10,6 +10,7 @@ import JobDetailPage from './pages/job-detail';
 import FleetPage from './pages/fleet';
 import FleetDetailPage from './pages/fleet-detail';
 import DazzaAIPage from './pages/dazza-ai';
+import AnnettePage from './pages/annette';
 import DownloadsPage from './pages/downloads';
 import TeamPage from './pages/team';
 import SettingsPage from './pages/settings';
@@ -43,6 +44,7 @@ export const routes: RouteObject[] = [
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />) },
   { path: '/downloads',   element: protect(<DownloadsPage />) },
   { path: '/dazza-ai',    element: protect(<DazzaAIPage />) },
+  { path: '/annette',     element: protect(<AnnettePage />) },
   { path: '/team',        element: protect(<TeamPage />) },
   { path: '/settings',    element: protect(<SettingsPage />) },
   { path: '/owner-console', element: protect(<OwnerConsolePage />) },

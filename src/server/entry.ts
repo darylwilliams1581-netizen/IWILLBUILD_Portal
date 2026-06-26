@@ -125,6 +125,7 @@ import dazza_knowledge_get from "./api/dazza/knowledge/GET";
 import dazza_knowledge_post from "./api/dazza/knowledge/POST";
 import dazza_knowledge_id_put from "./api/dazza/knowledge/[id]/PUT";
 import dazza_knowledge_id_delete from "./api/dazza/knowledge/[id]/DELETE";
+import dazza_annette_post from "./api/dazza/annette/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -412,6 +413,7 @@ app.get("/api/dazza/knowledge", dazza_knowledge_get);
 app.post("/api/dazza/knowledge", dazza_knowledge_post);
 app.put("/api/dazza/knowledge/:id", dazza_knowledge_id_put);
 app.delete("/api/dazza/knowledge/:id", dazza_knowledge_id_delete);
+app.post("/api/dazza/annette", dazza_annette_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

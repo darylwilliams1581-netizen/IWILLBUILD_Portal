@@ -41,6 +41,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/estimating", changefreq: "monthly", priority: 0.8 },
   { path: "/downloads", changefreq: "monthly", priority: 0.8 },
   { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
+  { path: "/annette", changefreq: "monthly", priority: 0.8 },
   { path: "/team", changefreq: "monthly", priority: 0.8 },
   { path: "/settings", changefreq: "monthly", priority: 0.8 },
   { path: "/owner-console", changefreq: "monthly", priority: 0.8 },

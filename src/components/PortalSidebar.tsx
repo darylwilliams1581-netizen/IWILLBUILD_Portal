@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  Activity,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
@@ -26,6 +27,7 @@ import NotificationBell from '@/components/NotificationBell';
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
   { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
+  { label: 'Annette',    icon: Activity,        href: '/annette',    permKey: 'dazzaAi' },
   { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
   { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
   { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
