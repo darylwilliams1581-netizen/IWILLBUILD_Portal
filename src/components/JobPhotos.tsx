@@ -106,9 +106,10 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
   const [label, setLabel] = useState(photo.label ?? '');
   const [saving, setSaving] = useState(false);
   const [rotating, setRotating] = useState<'left' | 'right' | null>(null);
+  const [replacing, setReplacing] = useState(false);
   const [error, setError] = useState('');
-  // Local bust counter so the preview refreshes after each rotation
   const [localBust, setLocalBust] = useState(cacheBust[photo.id] ?? Date.now());
+  const replaceRef = useRef<HTMLInputElement>(null);
 
   async function doRotate(dir: 'left' | 'right') {
     setRotating(dir);
@@ -153,14 +154,42 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
     }
   }
 
-  // Close on Escape
+  async function doReplace(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'heic' || ext === 'heif') {
+      setError('HEIC/HEIF not supported — convert to JPEG first.');
+      return;
+    }
+    setReplacing(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch(`/api/jobs/${photo.jobId}/photos/${photo.id}/replace`, {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      const data = await res.json() as { ok?: boolean; photo?: JobPhoto; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Replace failed');
+      const newBust = Date.now();
+      setLocalBust(newBust);
+      if (data.photo) onSaved({ ...data.photo, label: label || data.photo.label });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Replace failed');
+    } finally {
+      setReplacing(false);
+      if (replaceRef.current) replaceRef.current.value = '';
+    }
+  }
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const busy = saving || rotating !== null;
+  const busy = saving || rotating !== null || replacing;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -230,7 +259,31 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
             />
           </div>
 
-          {/* Metadata */}
+        {/* Upload edited version */}
+        <div className="px-5 pb-4 flex flex-col gap-1.5">
+          <p className="text-xs font-semibold text-slate-700">Upload edited version</p>
+          <p className="text-[11px] text-slate-400 leading-snug">
+            Download → mark up in any editor → save → upload here to replace this photo.
+          </p>
+          <button
+            type="button"
+            onClick={() => replaceRef.current?.click()}
+            disabled={busy}
+            className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-border bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-semibold text-slate-700 rounded-lg transition-colors"
+          >
+            {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            {replacing ? 'Replacing…' : 'Choose file to replace'}
+          </button>
+          <input
+            ref={replaceRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }}
+          />
+        </div>
+
+        {/* Metadata */}
           <div className="flex flex-col gap-1 pt-1">
             {photo.uploadedByName && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">

@@ -140,6 +140,19 @@
       "summary": "Screenshot of a job management interface showing multiple photos (construction site, padlock, person) associated with JOB-001. The prompt 'now download function' is unclear and does not indicate how this file should be used on the site.",
       "fileName": "screenshot-2026-06-26T05-48-53.jpg",
       "storedUploadFilename": "f38wenbvln_1782452934022_file_AP0GPvjvcl.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of an image editing interface showing a padlock photo with markup tools. User is asking a technical question about the save button functionality, not requesting this image be used on their website.",
+      "fileName": "screenshot-2026-06-26T05-59-19.jpg",
+      "storedUploadFilename": "f38wenbvln_1782453560942_file_VNgxeQxwbQ.jpg"
     }
   ]
 }
