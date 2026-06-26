@@ -42,6 +42,7 @@ import estimates_id_delete from "./api/estimates/[id]/DELETE";
 import migrate_team_post from "./api/migrate-team/POST";
 import migrate_owner_role_post from "./api/migrate-owner-role/POST";
 import me_get from "./api/me/GET";
+import me_change_password_post from "./api/me/change-password/POST";
 import company_get from "./api/company/GET";
 import company_put from "./api/company/PUT";
 import team_get from "./api/team/GET";
@@ -168,6 +169,7 @@ app.delete("/api/estimates/:id", estimates_id_delete);
 app.post("/api/migrate-team", migrate_team_post);
 app.post("/api/migrate-owner-role", migrate_owner_role_post);
 app.get("/api/me", me_get);
+app.post("/api/me/change-password", me_change_password_post);
 app.get("/api/company", company_get);
 app.put("/api/company", company_put);
 // team/invite must be before team/:id to avoid route collision

@@ -17,15 +17,22 @@ import {
   CheckCircle2,
   AlertCircle,
   Hash,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import { useMe } from '@/lib/usePermissions';
 
 const tabs = [
-  { id: 'company',       label: 'Company',       icon: Building2 },
-  { id: 'users',         label: 'Users',         icon: Users },
-  { id: 'permissions',   label: 'Permissions',   icon: Shield },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'data',          label: 'Data & Backup', icon: Database },
+  { id: 'account',       label: 'My Account',    icon: User },
+  { id: 'company',       label: 'Company',        icon: Building2 },
+  { id: 'users',         label: 'Users',          icon: Users },
+  { id: 'permissions',   label: 'Permissions',    icon: Shield },
+  { id: 'notifications', label: 'Notifications',  icon: Bell },
+  { id: 'data',          label: 'Data & Backup',  icon: Database },
 ];
 
 interface Company {
@@ -38,6 +45,277 @@ interface Company {
   address: string | null;
 }
 
+const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
+const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
+
+// ── Password strength ─────────────────────────────────────────────────────────
+function getStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: '' };
+  let score = 0;
+  if (pw.length >= 8)  score++;
+  if (pw.length >= 12) score++;
+  if (/\d/.test(pw))   score++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(pw)) score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+
+  if (score <= 1) return { score, label: 'Weak',   color: 'bg-red-400' };
+  if (score <= 2) return { score, label: 'Fair',   color: 'bg-amber-400' };
+  if (score <= 3) return { score, label: 'Good',   color: 'bg-yellow-400' };
+  if (score <= 4) return { score, label: 'Strong', color: 'bg-emerald-400' };
+  return { score, label: 'Very Strong', color: 'bg-emerald-500' };
+}
+
+function StrengthBar({ password }: { password: string }) {
+  const { score, label, color } = getStrength(password);
+  if (!password) return null;
+  const bars = 5;
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1 mb-1">
+        {Array.from({ length: bars }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i < score ? color : 'bg-slate-200'}`}
+          />
+        ))}
+      </div>
+      <p className={`text-xs font-semibold ${score <= 1 ? 'text-red-500' : score <= 2 ? 'text-amber-500' : score <= 3 ? 'text-yellow-600' : 'text-emerald-600'}`}>
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validateNewPassword(pw: string): string | null {
+  if (pw.length < 8)                return 'At least 8 characters required.';
+  if (!/\d/.test(pw))               return 'Must include at least one number.';
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(pw)) return 'Must include at least one symbol.';
+  return null;
+}
+
+// ── My Account Tab ────────────────────────────────────────────────────────────
+function MyAccountTab() {
+  const { me } = useMe();
+
+  // Change password state
+  const [currentPw, setCurrentPw]   = useState('');
+  const [newPw, setNewPw]           = useState('');
+  const [confirmPw, setConfirmPw]   = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew]         = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [saveState, setSaveState]     = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg]       = useState('');
+
+  // Inline validation
+  const newPwError     = newPw     ? validateNewPassword(newPw)                           : null;
+  const confirmPwError = confirmPw && newPw !== confirmPw ? 'Passwords do not match.'     : null;
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg('');
+    setSaveState('idle');
+
+    if (!currentPw.trim()) { setErrorMsg('Current password is required.'); return; }
+    const pwErr = validateNewPassword(newPw);
+    if (pwErr) { setErrorMsg(pwErr); return; }
+    if (newPw !== confirmPw) { setErrorMsg('Passwords do not match.'); return; }
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/me/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+
+      if (!res.ok) {
+        setErrorMsg(data.error ?? 'Failed to change password.');
+        setSaveState('error');
+      } else {
+        setSaveState('success');
+        setCurrentPw('');
+        setNewPw('');
+        setConfirmPw('');
+        setTimeout(() => setSaveState('idle'), 4000);
+      }
+    } catch {
+      setErrorMsg('Network error. Please try again.');
+      setSaveState('error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Profile info (read-only) */}
+      <div>
+        <h2 className="font-bold text-base text-slate-800 mb-4">Profile</h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-6">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-xl shrink-0">
+              {(me?.user?.name ?? '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-bold text-slate-900 text-base">{me?.user?.name ?? '—'}</div>
+              <div className="text-sm text-slate-400">{me?.user?.email ?? '—'}</div>
+              {me?.profile?.role && (
+                <div className="text-xs font-semibold text-primary capitalize mt-0.5">{me.profile.role}</div>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">To update your name or email, contact your portal administrator.</p>
+        </div>
+      </div>
+
+      {/* Change password */}
+      <div>
+        <h2 className="font-bold text-base text-slate-800 mb-4 flex items-center gap-2">
+          <KeyRound size={16} className="text-slate-400" />
+          Change Password
+        </h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-6">
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-4" autoComplete="off">
+
+            {/* Current password */}
+            <div>
+              <label className={labelClass}>Current Password</label>
+              <div className="relative">
+                <input
+                  type={showCurrent ? 'text' : 'password'}
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Enter your current password"
+                  className={`${inputClass} pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {/* New password */}
+            <div>
+              <label className={labelClass}>New Password</label>
+              <div className="relative">
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Min 8 chars, 1 number, 1 symbol"
+                  className={`${inputClass} pr-10 ${newPwError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNew((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {newPwError && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={11} />{newPwError}
+                </p>
+              )}
+              <StrengthBar password={newPw} />
+            </div>
+
+            {/* Confirm password */}
+            <div>
+              <label className={labelClass}>Confirm New Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Re-enter new password"
+                  className={`${inputClass} pr-10 ${confirmPwError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : confirmPw && !confirmPwError ? 'border-emerald-300 focus:ring-emerald-200 focus:border-emerald-400' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {confirmPwError && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle size={11} />{confirmPwError}
+                </p>
+              )}
+              {confirmPw && !confirmPwError && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle2 size={11} />Passwords match
+                </p>
+              )}
+            </div>
+
+            {/* Requirements hint */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-500 flex flex-col gap-1">
+              <p className="font-semibold text-slate-600 mb-1">Password requirements:</p>
+              <RequirementRow met={newPw.length >= 8}          label="At least 8 characters" />
+              <RequirementRow met={/\d/.test(newPw)}           label="At least one number" />
+              <RequirementRow met={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(newPw)} label="At least one symbol" />
+              <RequirementRow met={newPw.length > 0 && newPw === confirmPw} label="Passwords match" />
+            </div>
+
+            {/* Error */}
+            {errorMsg && (
+              <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                <AlertCircle size={13} />{errorMsg}
+              </div>
+            )}
+
+            {/* Success */}
+            {saveState === 'success' && (
+              <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 font-semibold">
+                <CheckCircle2 size={13} />Password changed successfully. You're still logged in.
+              </div>
+            )}
+
+            <div className="pt-1 border-t border-slate-100 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving || !!newPwError || !!confirmPwError || !currentPw || !newPw || !confirmPw}
+                className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+                Update Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RequirementRow({ met, label }: { met: boolean; label: string }) {
+  return (
+    <div className={`flex items-center gap-1.5 transition-colors ${met ? 'text-emerald-600' : 'text-slate-400'}`}>
+      <CheckCircle2 size={11} className={met ? 'opacity-100' : 'opacity-30'} />
+      {label}
+    </div>
+  );
+}
+
 // ── Company Tab ───────────────────────────────────────────────────────────────
 function CompanyTab() {
   const [loading, setLoading] = useState(true);
@@ -45,7 +323,6 @@ function CompanyTab() {
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Form state
   const [name, setName] = useState('');
   const [abn, setAbn] = useState('');
   const [phone, setPhone] = useState('');
@@ -107,9 +384,6 @@ function CompanyTab() {
       </div>
     );
   }
-
-  const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
-  const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
 
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-6">
@@ -212,7 +486,7 @@ function ComingSoonTab({ title, description }: { title: string; description: str
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('company');
+  const [activeTab, setActiveTab] = useState('account');
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -263,6 +537,7 @@ export default function SettingsPage() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
+              {activeTab === 'account' && <MyAccountTab />}
               {activeTab === 'company' && <CompanyTab />}
               {activeTab === 'users' && (
                 <ComingSoonTab
