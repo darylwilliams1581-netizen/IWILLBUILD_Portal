@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
-import { usePermissions } from '@/lib/usePermissions';
+import { usePermissions, useMe } from '@/lib/usePermissions';
 
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
@@ -47,7 +47,8 @@ function SidebarContent({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user: sessionUser } = useSession();
+  const { me } = useMe();
   const { isAdmin, loading: permsLoading } = usePermissions();
 
   const isActive = (href: string) => location.pathname === href;
@@ -166,17 +167,23 @@ function SidebarContent({
         </button>
 
         {/* User strip */}
-        {!collapsed && user && (
-          <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
-              {(user.name || user.email || '?')[0].toUpperCase()}
+        {!collapsed && (sessionUser || me) && (() => {
+          // Prefer live /api/me data so name/email updates are reflected immediately
+          const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
+          const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
+          const initial = (displayName || displayEmail || '?')[0].toUpperCase();
+          return (
+            <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+                {initial}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
+                <div className="text-[10px] text-white/35 truncate">{displayEmail}</div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-white/80 truncate">{user.name || 'User'}</div>
-              <div className="text-[10px] text-white/35 truncate">{user.email}</div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </>
   );

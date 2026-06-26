@@ -96,7 +96,63 @@ function validateNewPassword(pw: string): string | null {
 
 // ── My Account Tab ────────────────────────────────────────────────────────────
 function MyAccountTab() {
-  const { me } = useMe();
+  const { me, reload: reloadMe } = useMe();
+  const isOwner = me?.profile?.role === 'owner';
+
+  // Profile edit state
+  const [displayName, setDisplayName] = useState('');
+  const [emailField, setEmailField]   = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileState, setProfileState]   = useState<'idle' | 'saved' | 'error'>('idle');
+  const [profileError, setProfileError]   = useState('');
+
+  // Seed fields once me loads
+  useEffect(() => {
+    if (me?.user) {
+      setDisplayName(me.user.name ?? '');
+      setEmailField(me.user.email ?? '');
+    }
+  }, [me?.user?.id]); // only re-seed on user identity change, not on every re-render
+
+  async function handleProfileSave(e: React.FormEvent) {
+    e.preventDefault();
+    setProfileError('');
+    setProfileState('idle');
+
+    const trimName  = displayName.trim();
+    const trimEmail = emailField.trim();
+    if (!trimName)  { setProfileError('Display name is required.'); return; }
+    if (!trimEmail) { setProfileError('Email is required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
+      setProfileError('Please enter a valid email address.');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: trimName, email: trimEmail }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setProfileError(data.error ?? 'Failed to save profile.');
+        setProfileState('error');
+      } else {
+        setProfileState('saved');
+        // Bust the useMe cache so sidebar + other components pick up the new name/email
+        await reloadMe();
+        setTimeout(() => setProfileState('idle'), 3000);
+      }
+    } catch {
+      setProfileError('Network error. Please try again.');
+      setProfileState('error');
+    } finally {
+      setProfileSaving(false);
+    }
+  }
 
   // Change password state
   const [currentPw, setCurrentPw]   = useState('');
@@ -110,8 +166,8 @@ function MyAccountTab() {
   const [errorMsg, setErrorMsg]       = useState('');
 
   // Inline validation
-  const newPwError     = newPw     ? validateNewPassword(newPw)                           : null;
-  const confirmPwError = confirmPw && newPw !== confirmPw ? 'Passwords do not match.'     : null;
+  const newPwError     = newPw     ? validateNewPassword(newPw)                       : null;
+  const confirmPwError = confirmPw && newPw !== confirmPw ? 'Passwords do not match.' : null;
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -151,15 +207,19 @@ function MyAccountTab() {
     }
   }
 
+  const initials = (me?.user?.name ?? me?.user?.email ?? '?')
+    .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Profile info (read-only) */}
+      {/* Profile edit */}
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4">Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
+          {/* Avatar + role badge */}
           <div className="flex items-center gap-4 mb-5">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-xl shrink-0">
-              {(me?.user?.name ?? '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              {initials}
             </div>
             <div>
               <div className="font-bold text-slate-900 text-base">{me?.user?.name ?? '—'}</div>
@@ -169,7 +229,69 @@ function MyAccountTab() {
               )}
             </div>
           </div>
-          <p className="text-xs text-slate-400">To update your name or email, contact your portal administrator.</p>
+
+          {isOwner ? (
+            <p className="text-xs text-slate-500 mb-4 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              You can update your own account details here.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-400 mb-4">
+              To update your name or email, contact your portal administrator.
+            </p>
+          )}
+
+          {/* Editable fields — owner only */}
+          {isOwner && (
+            <form onSubmit={handleProfileSave} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Display Name</label>
+                  <input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className={inputClass}
+                    placeholder="Your full name"
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    <span className="flex items-center gap-1"><Mail size={11} /> Email</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={emailField}
+                    onChange={(e) => setEmailField(e.target.value)}
+                    className={inputClass}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              {profileError && (
+                <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  <AlertCircle size={13} />{profileError}
+                </div>
+              )}
+              {profileState === 'saved' && (
+                <div className="flex items-center gap-2 text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 font-semibold">
+                  <CheckCircle2 size={13} />Profile updated successfully.
+                </div>
+              )}
+
+              <div className="pt-1 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={profileSaving}
+                  className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {profileSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save Profile
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 
