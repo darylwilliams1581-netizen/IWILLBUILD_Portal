@@ -91,6 +91,9 @@ import jobs_id_forms_post from "./api/jobs/[id]/forms/POST";
 import job_forms_id_get from "./api/job-forms/[id]/GET";
 import job_forms_id_put from "./api/job-forms/[id]/PUT";
 import job_forms_id_delete from "./api/job-forms/[id]/DELETE";
+import migrate_takeoff_pad_post from "./api/migrate-takeoff-pad/POST";
+import takeoff_pad_get from "./api/takeoff-pad/GET";
+import takeoff_pad_put from "./api/takeoff-pad/PUT";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -215,6 +218,9 @@ app.post("/api/jobs/:id/forms", jobs_id_forms_post);
 app.get("/api/job-forms/:id", job_forms_id_get);
 app.put("/api/job-forms/:id", job_forms_id_put);
 app.delete("/api/job-forms/:id", job_forms_id_delete);
+app.post("/api/migrate-takeoff-pad", migrate_takeoff_pad_post);
+app.get("/api/takeoff-pad", takeoff_pad_get);
+app.put("/api/takeoff-pad", takeoff_pad_put);
 app.get("/api/health", health_get_31);
 app.get("/api/jobs", jobs_get_32);
 app.post("/api/jobs", jobs_post_33);

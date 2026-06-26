@@ -385,6 +385,16 @@ export const jobProgressLines = mysqlTable('job_progress_lines', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const estimatingTakeoffPads = mysqlTable('estimating_takeoff_pads', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull().default(''),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

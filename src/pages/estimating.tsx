@@ -5,6 +5,8 @@ import {
   BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import BuildersCalc from '@/components/estimating/BuildersCalc';
+import TakeoffPad from '@/components/estimating/TakeoffPad';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -669,7 +671,7 @@ function RecipesTab() {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-type Tab = 'cost-guide' | 'recipes';
+type Tab = 'cost-guide' | 'recipes' | 'builders-calc' | 'takeoff-pad';
 
 export default function EstimatingPage() {
   const [tab, setTab] = useState<Tab>('cost-guide');
@@ -698,15 +700,17 @@ export default function EstimatingPage() {
         </header>
 
         {/* Tabs */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-6 flex gap-1 shrink-0">
+        <div className="bg-white border-b border-slate-200 px-4 md:px-6 flex gap-1 shrink-0 overflow-x-auto">
           {([
-            { key: 'cost-guide', label: 'Cost Guide' },
-            { key: 'recipes',    label: 'Recipes' },
+            { key: 'cost-guide',    label: 'Cost Guide' },
+            { key: 'recipes',       label: 'Recipes' },
+            { key: 'builders-calc', label: 'Builders Calc' },
+            { key: 'takeoff-pad',   label: 'Take-off Pad' },
           ] as const).map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 tab === t.key
                   ? 'border-primary text-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -719,9 +723,11 @@ export default function EstimatingPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-4xl">
-            {tab === 'cost-guide' && <CostGuideTab />}
-            {tab === 'recipes'    && <RecipesTab />}
+          <div className={tab === 'takeoff-pad' ? 'max-w-3xl' : 'max-w-4xl'}>
+            {tab === 'cost-guide'    && <CostGuideTab />}
+            {tab === 'recipes'       && <RecipesTab />}
+            {tab === 'builders-calc' && <BuildersCalc />}
+            {tab === 'takeoff-pad'   && <TakeoffPad />}
           </div>
         </div>
       </div>
