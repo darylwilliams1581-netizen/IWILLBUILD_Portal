@@ -133,9 +133,9 @@ function CostGuidePickerModal({
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = items.filter((i) =>
-    !search || i.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = items
+    .filter((i) => !search || i.description.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
@@ -426,9 +426,9 @@ function CostGuideTab() {
     await load();
   }
 
-  const filtered = items.filter((i) =>
-    !search || i.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = items
+    .filter((i) => !search || i.description.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-4">

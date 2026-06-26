@@ -169,7 +169,9 @@ function CostGuidePicker({ onInsert, onClose }: { onInsert: (item: CostItem) => 
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = items.filter((i) => !search || i.description.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items
+    .filter((i) => !search || i.description.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">

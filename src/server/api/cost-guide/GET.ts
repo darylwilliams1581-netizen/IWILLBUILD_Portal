@@ -21,7 +21,7 @@ export default async function handler(req: Request, res: Response) {
       .select()
       .from(costGuideItems)
       .where(eq(costGuideItems.companyId, profile.companyId))
-      .orderBy(asc(costGuideItems.sortOrder), asc(costGuideItems.id));
+      .orderBy(asc(costGuideItems.description));
 
     res.json({ items });
   } catch (err) {

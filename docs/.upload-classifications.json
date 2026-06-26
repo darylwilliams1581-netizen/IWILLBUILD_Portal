@@ -85,6 +85,19 @@
       "summary": "Screenshot of a portal sign-in page showing the I WILL BUILD branding, login form, and error state. No explicit instruction provided on how to use this file.",
       "fileName": "screenshot-2026-06-26T00-46-17.jpg",
       "storedUploadFilename": "f38wenbvln_1782434778315_file_ODLqwbvMnH.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of an Estimating Library Cost Guide interface showing a table with cost items. Provided as a reference to illustrate the current state of the feature being modified by the specification.",
+      "fileName": "screenshot-2026-06-26T04-30-09.jpg",
+      "storedUploadFilename": "f38wenbvln_1782448211822_file_BTqX8ZY8ky.jpg"
     }
   ]
 }
