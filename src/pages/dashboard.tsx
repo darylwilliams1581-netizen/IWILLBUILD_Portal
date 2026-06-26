@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   HardHat,
@@ -14,50 +15,7 @@ import {
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
-
-// ─── Metric card data ─────────────────────────────────────────────────────────
-const metrics = [
-  {
-    label: 'Active Jobs',
-    value: '0',
-    sub: 'No jobs added yet',
-    icon: HardHat,
-    color: 'text-primary',
-    bg: 'bg-orange-50',
-    href: '/jobs',
-    cta: 'Add first job',
-  },
-  {
-    label: 'Crew On-Site',
-    value: '0',
-    sub: 'No crew assigned',
-    icon: Users,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    href: '/team',
-    cta: 'Add team members',
-  },
-  {
-    label: 'Fleet Active',
-    value: '0',
-    sub: 'No vehicles added',
-    icon: Truck,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    href: '/fleet',
-    cta: 'Add fleet asset',
-  },
-  {
-    label: 'Downloads',
-    value: '0',
-    sub: 'No files uploaded',
-    icon: Download,
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    href: '/downloads',
-    cta: 'Upload a file',
-  },
-];
+import { fetchJobs, type Job } from '@/lib/jobs-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -81,6 +39,20 @@ const itemVariants = {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobsLoaded, setJobsLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchJobs()
+      .then((data) => { setJobs(data); setJobsLoaded(true); })
+      .catch(() => setJobsLoaded(true));
+  }, []);
+
+  const activeJobCount = jobs.filter((j) =>
+    ['New', 'Quoting', 'Submitted', 'Awaiting Approval', 'Works Approved', 'Ready to Start', 'Works in Progress'].includes(j.status)
+  ).length;
+
+  const recentJobs = jobs.slice(0, 5);
 
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -183,7 +155,48 @@ export default function DashboardPage() {
             animate="visible"
             className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6"
           >
-            {metrics.map((m) => (
+            {[
+              {
+                label: 'Active Jobs',
+                value: jobsLoaded ? String(activeJobCount) : '—',
+                sub: activeJobCount === 0 ? 'No jobs added yet' : `${activeJobCount} in progress`,
+                icon: HardHat,
+                color: 'text-primary',
+                bg: 'bg-orange-50',
+                href: '/jobs',
+                cta: activeJobCount === 0 ? 'Add first job' : 'View jobs',
+              },
+              {
+                label: 'Crew On-Site',
+                value: '0',
+                sub: 'No crew assigned',
+                icon: Users,
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                href: '/team',
+                cta: 'Add team members',
+              },
+              {
+                label: 'Fleet Active',
+                value: '0',
+                sub: 'No vehicles added',
+                icon: Truck,
+                color: 'text-emerald-600',
+                bg: 'bg-emerald-50',
+                href: '/fleet',
+                cta: 'Add fleet asset',
+              },
+              {
+                label: 'Downloads',
+                value: '0',
+                sub: 'No files uploaded',
+                icon: Download,
+                color: 'text-purple-600',
+                bg: 'bg-purple-50',
+                href: '/downloads',
+                cta: 'Upload a file',
+              },
+            ].map((m) => (
               <motion.div
                 key={m.label}
                 variants={itemVariants}
@@ -211,7 +224,7 @@ export default function DashboardPage() {
           {/* ── Bottom panels ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            {/* Recent Jobs — empty state */}
+            {/* Recent Jobs — real data */}
             <motion.div
               variants={itemVariants}
               initial="hidden"
@@ -228,23 +241,52 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              {/* Empty state */}
-              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
-                  <HardHat size={22} className="text-primary" />
+              {!jobsLoaded ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
-                <p className="text-sm font-semibold text-foreground mb-1">No jobs yet</p>
-                <p className="text-xs text-muted-foreground mb-5 max-w-xs">
-                  Once you add jobs they'll appear here with progress and status.
-                </p>
-                <Link
-                  to="/jobs"
-                  className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors duration-150"
-                >
-                  <Plus size={13} />
-                  Add First Job
-                </Link>
-              </div>
+              ) : recentJobs.length === 0 ? (
+                /* Empty state */
+                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+                    <HardHat size={22} className="text-primary" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground mb-1">No jobs yet</p>
+                  <p className="text-xs text-muted-foreground mb-5 max-w-xs">
+                    Once you add jobs they'll appear here with status.
+                  </p>
+                  <Link
+                    to="/jobs"
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors duration-150"
+                  >
+                    <Plus size={13} />
+                    Add First Job
+                  </Link>
+                </div>
+              ) : (
+                /* Real jobs list */
+                <div className="divide-y divide-border">
+                  {recentJobs.map((job) => (
+                    <Link
+                      key={job.id}
+                      to={`/jobs/${job.id}`}
+                      className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors group"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{job.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {job.jobNumber && <span className="font-mono mr-2">{job.jobNumber}</span>}
+                          {job.client ?? 'No client'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        <span className="text-xs font-semibold text-muted-foreground hidden sm:block">{job.status}</span>
+                        <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             {/* Quick Actions */}

@@ -10,6 +10,11 @@ import auth_action_detail_get_2 from "./api/auth/[action]/[detail]/GET";
 import auth_action_detail_post_3 from "./api/auth/[action]/[detail]/POST";
 import health_get_4 from "./api/health/GET";
 import signup_post_5 from "./api/signup/POST";
+import jobs_get from "./api/jobs/GET";
+import jobs_post from "./api/jobs/POST";
+import jobs_id_get from "./api/jobs/[id]/GET";
+import jobs_id_put from "./api/jobs/[id]/PUT";
+import migrate_jobs_post from "./api/migrate-jobs/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -95,6 +100,11 @@ app.get("/api/auth/:action/:detail", auth_action_detail_get_2);
 app.post("/api/auth/:action/:detail", auth_action_detail_post_3);
 app.get("/api/health", health_get_4);
 app.post("/api/signup", signup_post_5);
+app.get("/api/jobs", jobs_get);
+app.post("/api/jobs", jobs_post);
+app.get("/api/jobs/:id", jobs_id_get);
+app.put("/api/jobs/:id", jobs_id_put);
+app.post("/api/migrate-jobs", migrate_jobs_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

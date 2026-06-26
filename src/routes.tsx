@@ -6,6 +6,7 @@ import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
 import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
+import JobDetailPage from './pages/job-detail';
 import FleetPage from './pages/fleet';
 import DazzaAIPage from './pages/dazza-ai';
 import DownloadsPage from './pages/downloads';
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
   { path: '/signup',     element: <SignupPage /> },
   { path: '/dashboard',  element: protect(<DashboardPage />) },
   { path: '/jobs',       element: protect(<JobsPage />) },
+  { path: '/jobs/:id',   element: protect(<JobDetailPage />) },
   { path: '/fleet',      element: protect(<FleetPage />) },
   { path: '/forms',      element: protect(<FormsPage />) },
   { path: '/files',      element: protect(<FilesPage />) },

@@ -104,11 +104,11 @@ export const jobs = mysqlTable('jobs', {
   companyId: int('company_id')
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
+  jobNumber: varchar('job_number', { length: 50 }),
   name: varchar('name', { length: 255 }).notNull(),
   client: varchar('client', { length: 255 }),
   address: text('address'),
-  status: varchar('status', { length: 50 }).notNull().default('active'),
-  progress: int('progress').default(0),
+  status: varchar('status', { length: 60 }).notNull().default('New'),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
