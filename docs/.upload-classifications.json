@@ -42,6 +42,19 @@
       "summary": "Screenshot of a website interface showing a URL forwarding/connection feature with a light cyan background, icons, and input field. The user's prompt 'next' provides no clear directive for how this file should be used in the build.",
       "fileName": "screenshot-2026-06-26T00-21-09.jpg",
       "storedUploadFilename": "f38wenbvln_1782433270492_file_6-kx1UyKgB.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a GoDaddy website builder dashboard showing a domain/website card for 'iwillbuild.com'. No explicit instruction provided on how to use this file.",
+      "fileName": "screenshot-2026-06-26T00-23-34.jpg",
+      "storedUploadFilename": "f38wenbvln_1782433414620_file_QhJD0cuFgh.jpg"
     }
   ]
 }
