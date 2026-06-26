@@ -7,19 +7,20 @@ import { eq, sql } from 'drizzle-orm';
 const VALID_SECTIONS = ['structure', 'dazza', 'banner', 'pdf'] as const;
 type Section = typeof VALID_SECTIONS[number];
 
-/** Ensure the column exists — self-healing for older installs */
+/**
+ * Ensure the column exists — self-healing for older installs.
+ * db.execute returns [rows, fields] from mysql2 — must unpack correctly.
+ */
 async function ensureCol(col: string) {
   try {
-    const rows = await db.execute(sql`
-      SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND COLUMN_NAME = ${col}
-    `);
-    const cnt = (rows as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0;
-    if (cnt === 0) {
-      await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
+    await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
+  } catch (e: unknown) {
+    const err = e as { cause?: { errno?: number } };
+    if (err?.cause?.errno !== 1060) {
+      // Not a duplicate-column error — log it
+      console.warn(`[ensureCol] Could not add ${col}:`, e);
     }
-  } catch {
-    // ignore — best effort
+    // ER_DUP_FIELDNAME (1060) = column already exists, silently ignore
   }
 }
 
@@ -51,12 +52,14 @@ export default async function handler(req: Request, res: Response) {
     const jsonStr = JSON.stringify(data ?? {});
     const companyId = profile.companyId;
 
-    // Check if row exists
-    const existing = await db.execute(
+    // Check if row exists — db.execute returns [rows, fields]
+    const existResult = await db.execute(
       sql`SELECT company_id FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
-    ) as unknown as Array<{ company_id: number }>;
+    );
+    const existRows = existResult as unknown as Array<Array<{ company_id: number }>>;
+    const rowExists = (existRows[0]?.length ?? 0) > 0;
 
-    if (existing.length === 0) {
+    if (!rowExists) {
       // Insert a bare row first (all JSON columns default to '{}')
       await db.execute(
         sql`INSERT INTO company_settings (company_id) VALUES (${companyId})`
@@ -65,7 +68,6 @@ export default async function handler(req: Request, res: Response) {
 
     // UPDATE the specific column.
     // col is validated against VALID_SECTIONS — safe to use in sql.raw for the column identifier.
-    // jsonStr and companyId are passed as parameterised values via the sql tag.
     const colRaw = sql.raw(`\`${col}\``);
     await db.execute(
       sql`UPDATE company_settings SET ${colRaw} = ${jsonStr}, updated_at = NOW() WHERE company_id = ${companyId}`

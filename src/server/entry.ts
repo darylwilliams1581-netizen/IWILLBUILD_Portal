@@ -203,6 +203,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ── Startup self-healing migrations ──────────────────────────────────────────
 // Runs once on boot. Adds missing columns without blocking the server start.
+// Strategy: just attempt the ALTER and silently ignore ER_DUP_FIELDNAME (1060).
 async function runStartupMigrations() {
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
     { table: 'profiles', column: 'notification_prefs', definition: 'TEXT NULL' },
@@ -211,16 +212,15 @@ async function runStartupMigrations() {
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
-      const rows = await db.execute(
-        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
-      ) as unknown as Array<{ cnt: number }>;
-      if ((rows[0]?.cnt ?? 0) === 0) {
-        await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
-        console.log(`[startup-migration] Added ${table}.${column}`);
+      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+      console.log(`[startup-migration] Added ${table}.${column}`);
+    } catch (e: unknown) {
+      const err = e as { cause?: { errno?: number } };
+      if (err?.cause?.errno === 1060) {
+        // ER_DUP_FIELDNAME — column already exists, nothing to do
+      } else {
+        console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, e);
       }
-    } catch (e) {
-      console.warn(`[startup-migration] Could not ensure ${table}.${column}:`, e);
     }
   }
 }
