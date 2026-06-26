@@ -485,6 +485,19 @@
       "summary": "Screenshot of a project management interface showing an Estimates tab with draft quotes. User is referencing this to report a UI issue or clarify where a component has appeared.",
       "fileName": "screenshot-2026-06-26T16-39-00.jpg",
       "storedUploadFilename": "f38wenbvln_1782491941834_file_a8Z1v_D_4t.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a settings interface showing Job Statuses and Form Categories lists, provided as a reference to discuss UI/UX improvements (drag-and-drop or arrow ordering functionality).",
+      "fileName": "screenshot-2026-06-26T16-43-39.jpg",
+      "storedUploadFilename": "f38wenbvln_1782492220294_file_YMP0Kx3NZ4.jpg"
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users,
   UserCheck,
@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   GripVertical,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,6 +58,8 @@ function StringListEditor({
   placeholder: string;
 }) {
   const [newItem, setNewItem] = useState('');
+  const dragIdx = useRef<number | null>(null);
+  const dragOverIdx = useRef<number | null>(null);
 
   function add() {
     const trimmed = newItem.trim();
@@ -68,8 +72,32 @@ function StringListEditor({
     onChange(items.filter((_, i) => i !== idx));
   }
 
+  function move(idx: number, dir: 'up' | 'down') {
+    const next = [...items];
+    const swap = dir === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    onChange(next);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') { e.preventDefault(); add(); }
+  }
+
+  // Drag handlers
+  function onDragStart(idx: number) { dragIdx.current = idx; }
+  function onDragEnter(idx: number) { dragOverIdx.current = idx; }
+  function onDragEnd() {
+    const from = dragIdx.current;
+    const to = dragOverIdx.current;
+    if (from !== null && to !== null && from !== to) {
+      const next = [...items];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      onChange(next);
+    }
+    dragIdx.current = null;
+    dragOverIdx.current = null;
   }
 
   return (
@@ -86,11 +114,40 @@ function StringListEditor({
           <p className="text-xs text-slate-400 italic py-2">No items yet. Add one below.</p>
         )}
         {items.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-2 group">
+          <div
+            key={idx}
+            draggable
+            onDragStart={() => onDragStart(idx)}
+            onDragEnter={() => onDragEnter(idx)}
+            onDragEnd={onDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className="flex items-center gap-1.5 group cursor-grab active:cursor-grabbing"
+          >
             <GripVertical size={13} className="text-slate-300 shrink-0" />
-            <span className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+            <span className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 select-none">
               {item}
             </span>
+            {/* Up / Down arrows */}
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => move(idx, 'up')}
+                disabled={idx === 0}
+                className="p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-20 transition-colors"
+                title="Move up"
+              >
+                <ChevronUp size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(idx, 'down')}
+                disabled={idx === items.length - 1}
+                className="p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-20 transition-colors"
+                title="Move down"
+              >
+                <ChevronDown size={12} />
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => remove(idx)}
@@ -140,6 +197,8 @@ function NamedListEditor({
   placeholder: string;
 }) {
   const [newName, setNewName] = useState('');
+  const dragIdx = useRef<number | null>(null);
+  const dragOverIdx = useRef<number | null>(null);
 
   function add() {
     const trimmed = newName.trim();
@@ -156,8 +215,31 @@ function NamedListEditor({
     onChange(items.map((i) => i.id === id ? { ...i, name } : i));
   }
 
+  function move(idx: number, dir: 'up' | 'down') {
+    const next = [...items];
+    const swap = dir === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    onChange(next);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') { e.preventDefault(); add(); }
+  }
+
+  function onDragStart(idx: number) { dragIdx.current = idx; }
+  function onDragEnter(idx: number) { dragOverIdx.current = idx; }
+  function onDragEnd() {
+    const from = dragIdx.current;
+    const to = dragOverIdx.current;
+    if (from !== null && to !== null && from !== to) {
+      const next = [...items];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      onChange(next);
+    }
+    dragIdx.current = null;
+    dragOverIdx.current = null;
   }
 
   return (
@@ -172,14 +254,43 @@ function NamedListEditor({
         {items.length === 0 && (
           <p className="text-xs text-slate-400 italic py-2">No {label.toLowerCase()} yet.</p>
         )}
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-2 group">
+        {items.map((item, idx) => (
+          <div
+            key={item.id}
+            draggable
+            onDragStart={() => onDragStart(idx)}
+            onDragEnter={() => onDragEnter(idx)}
+            onDragEnd={onDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+            className="flex items-center gap-1.5 group cursor-grab active:cursor-grabbing"
+          >
             <GripVertical size={13} className="text-slate-300 shrink-0" />
             <input
               className={`${inputClass} flex-1`}
               value={item.name}
               onChange={(e) => rename(item.id, e.target.value)}
             />
+            {/* Up / Down arrows */}
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => move(idx, 'up')}
+                disabled={idx === 0}
+                className="p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-20 transition-colors"
+                title="Move up"
+              >
+                <ChevronUp size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(idx, 'down')}
+                disabled={idx === items.length - 1}
+                className="p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-20 transition-colors"
+                title="Move down"
+              >
+                <ChevronDown size={12} />
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => remove(item.id)}
