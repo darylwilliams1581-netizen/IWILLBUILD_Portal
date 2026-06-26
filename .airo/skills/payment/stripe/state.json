@@ -1,3 +1,4 @@
 {
-  "provisioned": true
+  "provisioned": true,
+  "claimStatus": "provisioned"
 }
