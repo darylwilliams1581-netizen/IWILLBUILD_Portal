@@ -45,9 +45,11 @@ const bottomItems = [
 function SidebarContent({
   collapsed,
   onClose,
+  onToggle,
 }: {
   collapsed: boolean;
   onClose?: () => void;
+  onToggle?: () => void;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -70,14 +72,24 @@ function SidebarContent({
   return (
     <>
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0">
+      <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0 gap-2">
         <div className="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-lg flex items-center justify-center shrink-0">
           <span className="text-white font-black text-sm">IW</span>
         </div>
         {!collapsed && (
-          <span className="ml-2.5 font-heading font-black text-sm tracking-widest text-white uppercase truncate">
+          <span className="font-heading font-black text-sm tracking-widest text-white uppercase truncate flex-1">
             IWILLBUILD
           </span>
+        )}
+        {/* Desktop collapse toggle — lives inside the header so it's never clipped */}
+        {onToggle && (
+          <button
+            onClick={onToggle}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="ml-auto w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white hover:bg-orange-600 transition-colors shrink-0"
+          >
+            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          </button>
         )}
         {/* Mobile close button */}
         {onClose && (
@@ -261,16 +273,7 @@ export default function PortalSidebar() {
         className="relative hidden md:flex flex-col h-screen bg-[#1A1D23] text-white shrink-0 overflow-hidden"
         style={{ minWidth: collapsed ? 72 : 240 }}
       >
-        <SidebarContent collapsed={collapsed} />
-
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="absolute top-[52px] -right-4 w-8 h-8 bg-primary border-2 border-white/20 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-orange-600 transition-colors z-10"
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       </motion.aside>
 
       {/* ── Mobile: hamburger button lives in top bar via MobileMenuButton ── */}

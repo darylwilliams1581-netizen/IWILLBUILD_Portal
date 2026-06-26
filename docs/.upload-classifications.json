@@ -326,6 +326,19 @@
       "summary": "Screenshot of a dashboard/settings interface showing a notification badge (14) on a bell icon, used as a reference to identify and troubleshoot notification settings.",
       "fileName": "screenshot-2026-06-26T12-23-32.jpg",
       "storedUploadFilename": "f38wenbvln_1782476612827_file_3GE-172Q9q.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a UI showing a sidebar menu with a partially hidden button; user is requesting layout adjustment guidance rather than asking to display this image on their site.",
+      "fileName": "screenshot-2026-06-26T13-33-54.jpg",
+      "storedUploadFilename": "f38wenbvln_1782480836358_file_BcobGuqb0n.jpg"
     }
   ]
 }
