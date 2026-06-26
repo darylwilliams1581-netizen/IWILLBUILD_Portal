@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   HardHat,
   Truck,
-  Download,
   Bot,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +21,7 @@ import {
   CreditCard,
   AlertTriangle,
   CalendarDays,
+  ChevronDown,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
@@ -45,24 +45,25 @@ function useSubscriptionStatus() {
   return info;
 }
 
+// ── Main nav items ────────────────────────────────────────────────────────────
+// Annette lives as a sub-item under Dazza AI — not a top-level item.
 const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
   { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
-  { label: 'Annette',    icon: Activity,        href: '/annette',    permKey: 'dazzaAi' },
   { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
   { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
   { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
   { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
   { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
   { label: 'Estimating', icon: Calculator,      href: '/estimating', permKey: 'estimating' },
-  { label: 'Downloads',  icon: Download,        href: '/downloads',  permKey: null },
 ] as const;
 
-const bottomItems = [
-  { label: 'Team',     icon: Users,       href: '/team' },
-  { label: 'Billing',  icon: CreditCard,  href: '/billing' },
-  { label: 'Settings', icon: Settings,    href: '/settings' },
-];
+// ── Admin group (shown below a divider) ───────────────────────────────────────
+const adminItems = [
+  { label: 'Team',     icon: Users,      href: '/team',     adminOnly: true  },
+  { label: 'Billing',  icon: CreditCard, href: '/billing',  adminOnly: false },
+  { label: 'Settings', icon: Settings,   href: '/settings', adminOnly: true  },
+] as const;
 
 // ─── Shared nav content ───────────────────────────────────────────────────────
 function SidebarContent({
@@ -81,6 +82,13 @@ function SidebarContent({
   const { isAdmin, loading: permsLoading, can, isOwner } = usePermissions();
   const subInfo = useSubscriptionStatus();
 
+  // Dazza AI sub-menu: auto-open when on /dazza-ai or /annette
+  const dazzaActive = location.pathname === '/dazza-ai' || location.pathname === '/annette';
+  const [dazzaOpen, setDazzaOpen] = useState(dazzaActive);
+  useEffect(() => {
+    if (dazzaActive) setDazzaOpen(true);
+  }, [dazzaActive]);
+
   const isActive = (href: string) => location.pathname === href;
 
   async function handleLogout() {
@@ -93,9 +101,14 @@ function SidebarContent({
       active ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'
     }`;
 
+  const subLinkClass = (active: boolean) =>
+    `flex items-center gap-2.5 pl-9 pr-3 py-2 rounded-lg transition-colors duration-150 group relative ${
+      active ? 'bg-primary/80 text-white' : 'text-white/40 hover:bg-white/6 hover:text-white/80'
+    }`;
+
   return (
     <>
-      {/* Logo */}
+      {/* ── Logo / header ── */}
       <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0 gap-2">
         <div className="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-lg flex items-center justify-center shrink-0">
           <span className="text-white font-black text-sm">IW</span>
@@ -105,7 +118,6 @@ function SidebarContent({
             IWILLBUILD
           </span>
         )}
-        {/* Desktop collapse toggle — lives inside the header so it's never clipped */}
         {onToggle && (
           <button
             onClick={onToggle}
@@ -115,103 +127,140 @@ function SidebarContent({
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
         )}
-        {/* Mobile close button */}
         {onClose && (
-          <button
-            onClick={onClose}
-            className="ml-auto p-1 text-white/40 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="ml-auto p-1 text-white/40 hover:text-white transition-colors">
             <X size={18} />
           </button>
         )}
       </div>
 
-      {/* Main nav */}
+      {/* ── Main nav ── */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item) => {
-          // Hide module while loading to avoid flicker, then gate by permission
           if (!permsLoading && item.permKey && !can(item.permKey)) return null;
           const Icon = item.icon;
           const active = isActive(item.href);
+          const isDazza = item.href === '/dazza-ai';
+
           return (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={onClose}
-              title={collapsed ? item.label : undefined}
-              className={linkClass(active)}
-            >
-              <Icon size={17} className="shrink-0" />
-              {!collapsed && (
-                <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
+            <div key={item.href}>
+              <Link
+                to={item.href}
+                onClick={() => {
+                  if (isDazza) setDazzaOpen(o => !o);
+                  onClose?.();
+                }}
+                title={collapsed ? item.label : undefined}
+                className={linkClass(active)}
+              >
+                <Icon size={17} className="shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
+                    {isDazza && (
+                      <ChevronDown
+                        size={13}
+                        className={`shrink-0 transition-transform duration-200 ${dazzaOpen ? 'rotate-180' : ''}`}
+                      />
+                    )}
+                  </>
+                )}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+
+              {/* Annette — animated sub-item under Dazza AI */}
+              {isDazza && !collapsed && (
+                <AnimatePresence initial={false}>
+                  {dazzaOpen && (
+                    <motion.div
+                      key="annette"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.18, ease: 'easeInOut' as const }}
+                      className="overflow-hidden"
+                    >
+                      <Link
+                        to="/annette"
+                        onClick={onClose}
+                        className={subLinkClass(isActive('/annette'))}
+                      >
+                        <Activity size={14} className="shrink-0" />
+                        <span className="text-xs font-semibold truncate">Annette</span>
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               )}
-              {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}
-                </div>
-              )}
-            </Link>
+            </div>
           );
         })}
+
+        {/* ── Admin group ── */}
+        <div className="mt-3">
+          {!collapsed && (
+            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-white/25 select-none">
+              Admin
+            </p>
+          )}
+          {collapsed && <div className="mx-3 border-t border-white/10 mb-2" />}
+
+          {adminItems.map((item) => {
+            if (!permsLoading && item.adminOnly && !isAdmin) return null;
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                title={collapsed ? item.label : undefined}
+                className={linkClass(active)}
+              >
+                <Icon size={17} className="shrink-0" />
+                {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+
+          {/* Owner Console — owner only */}
+          {!permsLoading && isOwner && (() => {
+            const active = isActive('/owner-console');
+            return (
+              <Link
+                to="/owner-console"
+                onClick={onClose}
+                title={collapsed ? 'Owner Console' : undefined}
+                className={`${linkClass(active)} border border-orange-500/20`}
+              >
+                <ShieldCheck size={17} className="shrink-0" />
+                {!collapsed && <span className="text-sm font-semibold truncate flex-1">Owner Console</span>}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    Owner Console
+                  </div>
+                )}
+              </Link>
+            );
+          })()}
+        </div>
       </nav>
 
-      {/* Divider */}
+      {/* ── Divider ── */}
       <div className="mx-3 border-t border-white/10" />
 
-      {/* Bottom nav */}
+      {/* ── Bottom strip ── */}
       <div className="py-3 px-2 flex flex-col gap-0.5">
-        {bottomItems.map((item) => {
-          // Hide Team and Settings for non-admin users (show while loading to avoid flicker)
-          if (!permsLoading && !isAdmin && (item.href === '/team' || item.href === '/settings')) {
-            return null;
-          }
-          const Icon = item.icon;
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={onClose}
-              title={collapsed ? item.label : undefined}
-              className={linkClass(active)}
-            >
-              <Icon size={17} className="shrink-0" />
-              {!collapsed && (
-                <span className="text-sm font-semibold truncate">{item.label}</span>
-              )}
-              {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}
-                </div>
-              )}
-            </Link>
-          );
-        })}
-
-        {/* Owner Console — owner only */}
-        {!permsLoading && isOwner && (() => {
-          const active = isActive('/owner-console');
-          return (
-            <Link
-              to="/owner-console"
-              onClick={onClose}
-              title={collapsed ? 'Owner Console' : undefined}
-              className={`${linkClass(active)} border border-orange-500/20`}
-            >
-              <ShieldCheck size={17} className="shrink-0" />
-              {!collapsed && (
-                <span className="text-sm font-semibold truncate flex-1">Owner Console</span>
-              )}
-              {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  Owner Console
-                </div>
-              )}
-            </Link>
-          );
-        })()}
-
-        {/* Logout */}
+        {/* Log out */}
         <button
           onClick={handleLogout}
           title={collapsed ? 'Log out' : undefined}
@@ -231,9 +280,7 @@ function SidebarContent({
           <Link
             to="/billing"
             className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
-              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled'
-                ? 'bg-red-500/20 hover:bg-red-500/30'
-                : subInfo.status === 'past_due'
+              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
                 ? 'bg-red-500/20 hover:bg-red-500/30'
                 : (subInfo.daysLeft ?? 14) <= 5
                 ? 'bg-amber-500/20 hover:bg-amber-500/30'
@@ -256,7 +303,9 @@ function SidebarContent({
                 ) : (
                   <>
                     <p className="text-xs font-bold text-amber-300">Free trial</p>
-                    <p className="text-[10px] text-white/40">{subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining</p>
+                    <p className="text-[10px] text-white/40">
+                      {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
+                    </p>
                   </>
                 )}
               </div>
@@ -282,7 +331,6 @@ function SidebarContent({
             </div>
           );
         })()}
-        {/* Collapsed bell */}
         {collapsed && (
           <div className="flex justify-center mt-1">
             <NotificationBell collapsed={collapsed} />
@@ -293,7 +341,7 @@ function SidebarContent({
   );
 }
 
-// ─── Mobile hamburger button (exported for use in top bar) ───────────────────
+// ─── Mobile hamburger button (exported for use in page top bars) ──────────────
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -328,7 +376,7 @@ export default function PortalSidebar() {
 
   return (
     <>
-      {/* ── Desktop sidebar (md+) ── */}
+      {/* ── Desktop sidebar ── */}
       <motion.aside
         animate={{ width: collapsed ? 72 : 240 }}
         transition={{ duration: 0.2, ease: 'easeInOut' as const }}
@@ -338,12 +386,10 @@ export default function PortalSidebar() {
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       </motion.aside>
 
-      {/* ── Mobile: hamburger button lives in top bar via MobileMenuButton ── */}
-      {/* ── Mobile: overlay drawer ── */}
+      {/* ── Mobile overlay drawer ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
@@ -353,7 +399,6 @@ export default function PortalSidebar() {
               onClick={() => setMobileOpen(false)}
               className="fixed inset-0 bg-black/60 z-40 md:hidden"
             />
-            {/* Drawer */}
             <motion.aside
               key="drawer"
               initial={{ x: -280 }}
@@ -368,14 +413,12 @@ export default function PortalSidebar() {
         )}
       </AnimatePresence>
 
-      {/* Expose open handler via a hidden trigger — consumed by MobileMenuButton in top bar */}
-      {/* We use a global custom event so the top bar can open the drawer without prop drilling */}
       <MobileMenuTrigger onOpen={() => setMobileOpen(true)} />
     </>
   );
 }
 
-// Listens for a custom event dispatched by MobileMenuButton in the top bar
+// Listens for the custom event dispatched by MobileMenuButton in page top bars
 function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
   useEffect(() => {
     const handler = () => onOpen();

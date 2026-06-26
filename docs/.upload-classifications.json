@@ -430,6 +430,22 @@
       "summary": "Screenshot of a Data & Backup settings interface showing menu structure and feature availability. Provided as a reference for understanding the backup configuration workflow.",
       "fileName": "screenshot-2026-06-26T15-35-42.jpg",
       "storedUploadFilename": "f38wenbvln_1782488143555_file_omD2iXAulk.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#1a1f2e",
+        "#ff8c42"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of a dashboard sidebar menu showing current navigation structure (Dazza AI, Annette, Jobs, Fleet, Forms, Team, Billing, Settings, Log out). User is referencing this to request structural changes to the menu hierarchy.",
+      "fileName": "screenshot-2026-06-26T16-01-49.jpg",
+      "storedUploadFilename": "f38wenbvln_1782489710841_file_7JeJqWvMOf.jpg"
     }
   ]
 }
