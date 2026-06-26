@@ -281,10 +281,15 @@ export default function EstimateEditorPage() {
   const [showCostPicker, setShowCostPicker] = useState(false);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep a ref to the latest lines so debounced saves always use current state
+  const linesRef = useRef<LocalLine[]>([]);
 
   useEffect(() => {
     if (id) load(parseInt(id, 10));
   }, [id]);
+
+  // Keep linesRef in sync so debounced saves always read current lines
+  useEffect(() => { linesRef.current = lines; }, [lines]);
 
   async function load(estimateId: number) {
     setLoading(true);
@@ -341,7 +346,8 @@ export default function EstimateEditorPage() {
     if (!estimate || isLocked) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      save(estimate, lines);
+      // Use linesRef so we always save the latest lines, not a stale closure
+      save(estimate, linesRef.current);
     }, 800);
   }
 
@@ -402,7 +408,7 @@ export default function EstimateEditorPage() {
   }
 
   function insertCostItem(item: CostItem) {
-    if (isLocked) return;
+    if (isLocked || !estimate) return;
     const newLine: LocalLine = {
       _key: newKey(),
       description: item.description,
@@ -414,13 +420,16 @@ export default function EstimateEditorPage() {
     setLines((prev) => {
       const filtered = prev.length === 1 && !prev[0].description && prev[0].rate === '0'
         ? [] : prev;
-      return [...filtered, newLine];
+      const next = [...filtered, newLine];
+      // Save immediately with the computed next array — don't rely on debounce + stale closure
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => save(estimate, next), 100);
+      return next;
     });
-    triggerSave();
   }
 
   function insertRecipe(recipe: Recipe) {
-    if (isLocked) return;
+    if (isLocked || !estimate) return;
     const newLines: LocalLine[] = recipe.lines.map((l) => ({
       _key: newKey(),
       description: l.description,
@@ -432,9 +441,12 @@ export default function EstimateEditorPage() {
     setLines((prev) => {
       const filtered = prev.length === 1 && !prev[0].description && prev[0].rate === '0'
         ? [] : prev;
-      return [...filtered, ...newLines];
+      const next = [...filtered, ...newLines];
+      // Save immediately with the computed next array
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => save(estimate, next), 100);
+      return next;
     });
-    triggerSave();
   }
 
   async function handleDuplicate() {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle,
-  BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save,
+  BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -114,6 +114,83 @@ function CostItemModal({
   );
 }
 
+// ── Cost Guide Picker (used inside Recipe editor) ─────────────────────────────
+function CostGuidePickerModal({
+  onInsert,
+  onClose,
+}: {
+  onInsert: (item: CostItem) => void;
+  onClose: () => void;
+}) {
+  const [items, setItems] = useState<CostItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    fetch('/api/cost-guide', { credentials: 'include' })
+      .then((r) => r.json() as Promise<{ items?: CostItem[] }>)
+      .then((d) => setItems(d.items ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = items.filter((i) =>
+    !search || i.description.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[70vh]">
+        <div className="px-5 pt-5 pb-3 border-b border-slate-100 shrink-0 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-heading font-bold text-sm flex items-center gap-2">
+              <Calculator size={14} className="text-primary" />Pick from Cost Guide
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Click an item to add it as a recipe line (qty defaults to 1).</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-4 py-2.5 border-b border-slate-100 shrink-0">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search cost items…"
+              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {loading && <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-primary" /></div>}
+          {!loading && filtered.length === 0 && (
+            <div className="text-center py-10 text-slate-400 text-sm">
+              {search ? 'No items match your search' : 'No cost items in your guide yet'}
+            </div>
+          )}
+          {!loading && filtered.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { onInsert(item); onClose(); }}
+              className="w-full flex items-center justify-between px-5 py-3 hover:bg-orange-50 border-b border-slate-50 transition-colors text-left"
+            >
+              <div>
+                <div className="text-sm font-medium text-slate-800">{item.description}</div>
+                {item.unit && <div className="text-xs text-slate-400">{item.unit}</div>}
+              </div>
+              <div className="text-sm font-mono font-semibold text-slate-700 shrink-0 ml-4">
+                ${parseFloat(item.rate).toFixed(2)}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Recipe Editor Modal ───────────────────────────────────────────────────────
 function RecipeModal({
   initial,
@@ -133,6 +210,7 @@ function RecipeModal({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showCostPicker, setShowCostPicker] = useState(false);
 
   function updateLine(key: string, field: keyof LocalRecipeLine, value: string) {
     setLines((prev) => prev.map((l) => l._key === key ? { ...l, [field]: value } : l));
@@ -160,6 +238,22 @@ function RecipeModal({
       const next = [...prev];
       next.splice(idx + 1, 0, copy);
       return next;
+    });
+  }
+  function insertCostItem(item: CostItem) {
+    const newLine: LocalRecipeLine = {
+      _key: rk(),
+      description: item.description,
+      quantity: '1',
+      unit: item.unit,
+      rate: item.rate,
+      lineOrder: 0,
+    };
+    setLines((prev) => {
+      // Replace a single blank line
+      const filtered = prev.length === 1 && !prev[0].description && prev[0].rate === '0'
+        ? [] : prev;
+      return [...filtered, newLine];
     });
   }
 
@@ -200,9 +294,18 @@ function RecipeModal({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lines</span>
-                <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors">
-                  <Plus size={12} />Add Line
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowCostPicker(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-primary hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                  >
+                    <Calculator size={11} />Cost Guide
+                  </button>
+                  <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors">
+                    <Plus size={12} />Add Line
+                  </button>
+                </div>
               </div>
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
@@ -265,6 +368,13 @@ function RecipeModal({
           </div>
         </form>
       </div>
+
+      {showCostPicker && (
+        <CostGuidePickerModal
+          onInsert={insertCostItem}
+          onClose={() => setShowCostPicker(false)}
+        />
+      )}
     </div>
   );
 }
