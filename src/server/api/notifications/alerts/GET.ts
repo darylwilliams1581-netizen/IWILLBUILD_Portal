@@ -83,7 +83,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Overdue to-dos ────────────────────────────────────────────────────────
     if (canJobs && prefs.todoOverdue) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT t.id, t.title, t.due_date, j.id as job_id, j.name as job_name
             FROM job_todos t
             JOIN jobs j ON j.id = t.job_id
@@ -93,7 +93,7 @@ export default async function handler(req: Request, res: Response) {
               AND t.due_date < ${today}
             ORDER BY t.due_date ASC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; title: string; due_date: string; job_id: number; job_name: string }>;
+      ) as unknown as [Array<{ id: number; title: string; due_date: string; job_id: number; job_name: string }>, unknown];
 
       for (const r of rows) {
         const id = `todo_overdue_${r.id}`;
@@ -111,7 +111,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Due today to-dos ──────────────────────────────────────────────────────
     if (canJobs && prefs.todoDueToday) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT t.id, t.title, j.id as job_id, j.name as job_name
             FROM job_todos t
             JOIN jobs j ON j.id = t.job_id
@@ -120,7 +120,7 @@ export default async function handler(req: Request, res: Response) {
               AND t.due_date = ${today}
             ORDER BY t.id ASC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; title: string; job_id: number; job_name: string }>;
+      ) as unknown as [Array<{ id: number; title: string; job_id: number; job_name: string }>, unknown];
 
       for (const r of rows) {
         const id = `todo_today_${r.id}`;
@@ -138,7 +138,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Fleet service due ─────────────────────────────────────────────────────
     if (canFleet && prefs.fleetServiceDue) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT id, name, service_date
             FROM fleet_assets
             WHERE company_id = ${companyId}
@@ -147,7 +147,7 @@ export default async function handler(req: Request, res: Response) {
               AND service_date <= ${in14}
             ORDER BY service_date ASC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; name: string; service_date: string }>;
+      ) as unknown as [Array<{ id: number; name: string; service_date: string }>, unknown];
 
       for (const r of rows) {
         const overdue = r.service_date < today;
@@ -166,7 +166,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Fleet rego due ────────────────────────────────────────────────────────
     if (canFleet && prefs.fleetRegoDue) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT id, name, rego_expiry
             FROM fleet_assets
             WHERE company_id = ${companyId}
@@ -176,7 +176,7 @@ export default async function handler(req: Request, res: Response) {
               AND rego_expiry <= ${in14}
             ORDER BY rego_expiry ASC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; name: string; rego_expiry: string }>;
+      ) as unknown as [Array<{ id: number; name: string; rego_expiry: string }>, unknown];
 
       for (const r of rows) {
         const overdue = r.rego_expiry < today;
@@ -195,7 +195,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Fleet prestart flags ──────────────────────────────────────────────────
     if (canFleet && prefs.fleetPrestartFlag) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT fp.id, fp.issue_comment, fp.created_at, fa.id as asset_id, fa.name as asset_name
             FROM fleet_prestarts fp
             JOIN fleet_assets fa ON fa.id = fp.asset_id
@@ -203,7 +203,7 @@ export default async function handler(req: Request, res: Response) {
               AND fp.issue_needs_attention = 1
             ORDER BY fp.created_at DESC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; issue_comment: string; created_at: string; asset_id: number; asset_name: string }>;
+      ) as unknown as [Array<{ id: number; issue_comment: string; created_at: string; asset_id: number; asset_name: string }>, unknown];
 
       for (const r of rows) {
         const id = `fleet_flag_${r.id}`;
@@ -221,7 +221,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Forms completed (last 7 days) ─────────────────────────────────────────
     if (canForms && prefs.formCompleted) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT s.id, s.updated_at, ft.name as template_name, j.id as job_id, j.name as job_name
             FROM job_form_submissions s
             LEFT JOIN form_templates ft ON ft.id = s.template_id
@@ -231,7 +231,7 @@ export default async function handler(req: Request, res: Response) {
               AND s.updated_at >= ${ago7}
             ORDER BY s.updated_at DESC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; updated_at: string; template_name: string; job_id: number; job_name: string }>;
+      ) as unknown as [Array<{ id: number; updated_at: string; template_name: string; job_id: number; job_name: string }>, unknown];
 
       for (const r of rows) {
         const id = `form_completed_${r.id}`;
@@ -249,7 +249,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Estimates approved (last 7 days) ──────────────────────────────────────
     if (canEstimating && prefs.estimateApproved) {
-      const rows = await db.execute(
+      const [rows] = await db.execute(
         sql`SELECT e.id, e.title, e.updated_at, j.name as job_name
             FROM estimates e
             LEFT JOIN jobs j ON j.id = e.job_id
@@ -258,7 +258,7 @@ export default async function handler(req: Request, res: Response) {
               AND e.updated_at >= ${ago7}
             ORDER BY e.updated_at DESC
             LIMIT 20`
-      ) as unknown as Array<{ id: number; title: string; updated_at: string; job_name: string }>;
+      ) as unknown as [Array<{ id: number; title: string; updated_at: string; job_name: string }>, unknown];
 
       for (const r of rows) {
         const id = `estimate_approved_${r.id}`;

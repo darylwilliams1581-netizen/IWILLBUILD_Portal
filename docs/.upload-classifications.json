@@ -313,6 +313,19 @@
       "summary": "Screenshot of a settings interface showing privacy/compliance features and a failed save state. User's prompt suggests this is a troubleshooting reference rather than a design asset for the website build.",
       "fileName": "screenshot-2026-06-26T11-40-22.jpg",
       "storedUploadFilename": "f38wenbvln_1782474022563_file_K-qqY35esT.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a dashboard/settings interface showing a notification badge (14) on a bell icon, used as a reference to identify and troubleshoot notification settings.",
+      "fileName": "screenshot-2026-06-26T12-23-32.jpg",
+      "storedUploadFilename": "f38wenbvln_1782476612827_file_3GE-172Q9q.jpg"
     }
   ]
 }
