@@ -15,6 +15,11 @@ import jobs_post from "./api/jobs/POST";
 import jobs_id_get from "./api/jobs/[id]/GET";
 import jobs_id_put from "./api/jobs/[id]/PUT";
 import migrate_jobs_post from "./api/migrate-jobs/POST";
+import form_templates_get from "./api/form-templates/GET";
+import form_templates_post from "./api/form-templates/POST";
+import form_templates_id_put from "./api/form-templates/[id]/PUT";
+import form_templates_id_delete from "./api/form-templates/[id]/DELETE";
+import migrate_form_templates_post from "./api/migrate-form-templates/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -105,6 +110,11 @@ app.post("/api/jobs", jobs_post);
 app.get("/api/jobs/:id", jobs_id_get);
 app.put("/api/jobs/:id", jobs_id_put);
 app.post("/api/migrate-jobs", migrate_jobs_post);
+app.get("/api/form-templates", form_templates_get);
+app.post("/api/form-templates", form_templates_post);
+app.put("/api/form-templates/:id", form_templates_id_put);
+app.delete("/api/form-templates/:id", form_templates_id_delete);
+app.post("/api/migrate-form-templates", migrate_form_templates_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

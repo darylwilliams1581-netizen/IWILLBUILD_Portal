@@ -141,6 +141,23 @@ export const dazzaThreads = mysqlTable('dazza_threads', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const formTemplates = mysqlTable('form_templates', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  formType: varchar('form_type', { length: 50 }).notNull().default('Job'),
+  category: varchar('category', { length: 100 }),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  onDashboard: boolean('on_dashboard').notNull().default(false),
+  onJobs: boolean('on_jobs').notNull().default(false),
+  onFleet: boolean('on_fleet').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const downloads = mysqlTable('downloads', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id').references(() => companies.id, { onDelete: 'set null' }),

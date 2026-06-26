@@ -24,7 +24,7 @@ const navItems = [
   { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Jobs',       icon: HardHat,         href: '/jobs' },
   { label: 'Fleet',      icon: Truck,           href: '/fleet' },
-  { label: 'Forms',      icon: FileText,        href: '/forms',      soon: true },
+  { label: 'Forms',      icon: FileText,        href: '/forms',      soon: false },
   { label: 'Files',      icon: FolderOpen,      href: '/files',      soon: true },
   { label: 'Estimating', icon: Calculator,      href: '/estimating', soon: true },
   { label: 'Downloads',  icon: Download,        href: '/downloads' },
