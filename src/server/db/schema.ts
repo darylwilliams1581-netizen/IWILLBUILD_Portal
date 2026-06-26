@@ -108,6 +108,8 @@ export const profiles = mysqlTable('profiles', {
   permSeeDollars:  boolean('perm_see_dollars').notNull().default(true),
   permInviteUsers: boolean('perm_invite_users').notNull().default(false),
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
+  // Notification preferences stored as JSON blob (user-scoped)
+  notificationPrefs: text('notification_prefs'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });

@@ -20,17 +20,18 @@ import {
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
-  { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai' },
-  { label: 'Jobs',       icon: HardHat,         href: '/jobs' },
-  { label: 'Fleet',      icon: Truck,           href: '/fleet' },
-  { label: 'Forms',      icon: FileText,        href: '/forms' },
-  { label: 'Files',      icon: FolderOpen,      href: '/files' },
-  { label: 'Estimating', icon: Calculator,      href: '/estimating' },
-  { label: 'Downloads',  icon: Download,        href: '/downloads' },
-];
+  { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
+  { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
+  { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
+  { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
+  { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
+  { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
+  { label: 'Estimating', icon: Calculator,      href: '/estimating', permKey: 'estimating' },
+  { label: 'Downloads',  icon: Download,        href: '/downloads',  permKey: null },
+] as const;
 
 const bottomItems = [
   { label: 'Team',     icon: Users,    href: '/team' },
@@ -49,7 +50,7 @@ function SidebarContent({
   const navigate = useNavigate();
   const { user: sessionUser } = useSession();
   const { me } = useMe();
-  const { isAdmin, loading: permsLoading } = usePermissions();
+  const { isAdmin, loading: permsLoading, can } = usePermissions();
 
   const isActive = (href: string) => location.pathname === href;
 
@@ -89,6 +90,8 @@ function SidebarContent({
       {/* Main nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item) => {
+          // Hide module while loading to avoid flicker, then gate by permission
+          if (!permsLoading && item.permKey && !can(item.permKey)) return null;
           const Icon = item.icon;
           const active = isActive(item.href);
           return (
@@ -163,7 +166,6 @@ function SidebarContent({
 
         {/* User strip */}
         {!collapsed && (sessionUser || me) && (() => {
-          // Prefer live /api/me data so name/email updates are reflected immediately
           const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
           const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
           const initial = (displayName || displayEmail || '?')[0].toUpperCase();
@@ -172,13 +174,20 @@ function SidebarContent({
               <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
                 {initial}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
                 <div className="text-[10px] text-white/35 truncate">{displayEmail}</div>
               </div>
+              <NotificationBell collapsed={collapsed} />
             </div>
           );
         })()}
+        {/* Collapsed bell */}
+        {collapsed && (
+          <div className="flex justify-center mt-1">
+            <NotificationBell collapsed={collapsed} />
+          </div>
+        )}
       </div>
     </>
   );

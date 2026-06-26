@@ -30,6 +30,8 @@ import { useMe } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DazzaAITab from '@/components/settings/DazzaAITab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
+import NotificationsTab from '@/components/settings/NotificationsTab';
+import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
 
 const tabs = [
   { id: 'account',    label: 'My Account',        icon: User },
@@ -678,21 +680,11 @@ export default function SettingsPage() {
             <div className="flex-1 min-w-0">
               {activeTab === 'account'    && <MyAccountTab />}
               {activeTab === 'company'    && <CompanyTab />}
-              {activeTab === 'team'       && (
-                <ComingSoonTab
-                  title="Team & Permissions"
-                  description="Manage portal users and role permissions from the Team page. Full in-settings management coming in the next release."
-                />
-              )}
+              {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
-              {activeTab === 'notifications' && (
-                <ComingSoonTab
-                  title="Notifications"
-                  description="Configure email and in-app notifications for job updates, fleet alerts, form completions and Dazza AI summaries."
-                />
-              )}
+              {activeTab === 'notifications' && <NotificationsTab />}
               {activeTab === 'data' && (
                 <ComingSoonTab
                   title="Data & Backup"
