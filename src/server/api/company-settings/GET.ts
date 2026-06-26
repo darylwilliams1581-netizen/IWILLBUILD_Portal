@@ -22,25 +22,11 @@ export default async function handler(req: Request, res: Response) {
 
     // db.execute returns [rowsArray, fields] — destructure to get rows
     let row: SettingsRow | null = null;
-    try {
-      const [rows] = await db.execute(
-        sql`SELECT structure_json, dazza_json, banner_json, pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-      ) as unknown as [SettingsRow[], unknown];
-      row = rows?.[0] ?? null;
-      console.log(`[GET company-settings] company=${profile.companyId} row_found=${row !== null} dazza_json_len=${row?.dazza_json?.length ?? 0}`);
-    } catch (e1) {
-      console.warn('[GET company-settings] primary query failed, trying fallback:', String((e1 as Error)?.message ?? e1));
-      try {
-        // pdf_json column not yet migrated — fall back without it
-        const [rows] = await db.execute(
-          sql`SELECT structure_json, dazza_json, banner_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-        ) as unknown as [SettingsRow[], unknown];
-        row = rows?.[0] ?? null;
-        console.log(`[GET company-settings] fallback query row_found=${row !== null}`);
-      } catch (e2) {
-        console.error('[GET company-settings] fallback query also failed:', String((e2 as Error)?.message ?? e2));
-      }
-    }
+    const [rows] = await db.execute(
+      sql.raw(`SELECT structure_json, dazza_json, banner_json, pdf_json FROM company_settings WHERE company_id = ${Number(profile.companyId)} LIMIT 1`)
+    ) as unknown as [SettingsRow[], unknown];
+    row = rows?.[0] ?? null;
+    console.log(`[GET company-settings] company=${profile.companyId} row_found=${row !== null} dazza_enabled=${row?.dazza_json ? JSON.parse(row.dazza_json).enabled : 'no-row'}`);
 
     const structure = row?.structure_json ? JSON.parse(row.structure_json) : {};
     const dazza     = row?.dazza_json     ? JSON.parse(row.dazza_json)     : {};

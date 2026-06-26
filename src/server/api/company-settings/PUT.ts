@@ -67,11 +67,18 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Step 3: update the target column ─────────────────────────────────────
-    // sql.raw for the column identifier (whitelisted); values are ? params
-    console.log(`[PUT company-settings] Updating ${col} → ${jsonStr.slice(0, 100)}`);
-    await db.execute(
-      sql`UPDATE company_settings SET ${sql.raw(`\`${col}\``)} = ${jsonStr}, updated_at = NOW() WHERE company_id = ${companyId}`
-    );
+    // Build fully-raw SQL — col is whitelisted above, jsonStr and companyId
+    // are embedded as escaped literals to avoid Drizzle sql.raw/sql mixing issues.
+    const escapedJson = jsonStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const updateQuery = `UPDATE company_settings SET \`${col}\` = '${escapedJson}', updated_at = NOW() WHERE company_id = ${Number(companyId)}`;
+    console.log(`[PUT company-settings] Updating ${col} → ${jsonStr.slice(0, 120)}`);
+    await db.execute(sql.raw(updateQuery));
+
+    // Verify the write landed
+    const [verifyRows] = await db.execute(
+      sql`SELECT LEFT(${sql.raw(`\`${col}\``)}, 80) as preview FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
+    ) as unknown as [Array<Record<string, string>>, unknown];
+    console.log(`[PUT company-settings] VERIFY read-back: ${JSON.stringify(verifyRows?.[0])}`);
 
     console.log(`[PUT company-settings] SUCCESS section=${section} company=${companyId}`);
     res.json({ ok: true });
