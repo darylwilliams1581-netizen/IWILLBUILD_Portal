@@ -227,9 +227,10 @@ function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete }
 interface JobFormsProps {
   jobId: number;
   userRole?: string;
+  onRunnerActive?: (active: boolean) => void;
 }
 
-export default function JobForms({ jobId, userRole }: JobFormsProps) {
+export default function JobForms({ jobId, userRole, onRunnerActive }: JobFormsProps) {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,8 +287,8 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
         const template = templates.find((t) => t.id === templateId);
-        // Add to list immediately, then open runner
         setSubmissions((prev) => [data.submission!, ...prev]);
+        onRunnerActive?.(true);
         setRunnerState({
           submission: data.submission!,
           templateName: template?.name ?? 'Form',
@@ -303,6 +304,7 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
 
   function openSubmission(s: FormSubmission, readOnly: boolean) {
     const template = templates.find((t) => t.id === s.templateId);
+    onRunnerActive?.(true);
     setRunnerState({
       submission: s,
       templateName: template?.name ?? 'Form',
@@ -357,8 +359,8 @@ export default function JobForms({ jobId, userRole }: JobFormsProps) {
         submission={runnerState.submission}
         templateName={runnerState.templateName}
         readOnly={runnerState.readOnly}
-        onBack={handleRunnerBack}
-        onComplete={handleRunnerComplete}
+        onBack={() => { onRunnerActive?.(false); handleRunnerBack(); }}
+        onComplete={() => { onRunnerActive?.(false); handleRunnerComplete(); }}
       />
     );
   }

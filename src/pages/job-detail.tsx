@@ -50,6 +50,7 @@ export default function JobDetailPage() {
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+  const [formRunnerActive, setFormRunnerActive] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms') return t;
@@ -217,7 +218,7 @@ export default function JobDetailPage() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className={`flex-1 min-h-0 ${formRunnerActive ? 'overflow-hidden' : 'overflow-y-auto p-4 md:p-6'}`}>
 
           {/* Loading */}
           {loading && (
@@ -302,7 +303,7 @@ export default function JobDetailPage() {
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
-                    onClick={() => setActiveTab(key)}
+                    onClick={() => { setActiveTab(key); if (key !== 'forms') setFormRunnerActive(false); }}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-colors min-w-[60px] ${
                       activeTab === key
                         ? 'bg-slate-900 text-white'
@@ -457,7 +458,7 @@ export default function JobDetailPage() {
 
               {/* ── Forms tab ── */}
               {activeTab === 'forms' && (
-                <JobForms jobId={job.id} userRole={userRole} />
+                <JobForms jobId={job.id} userRole={userRole} onRunnerActive={setFormRunnerActive} />
               )}
 
             </motion.div>

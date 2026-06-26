@@ -647,9 +647,9 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
   // ── Completed / read-only view ──────────────────────────────────────────────
   if (readOnly) {
     return (
-      <div className="flex flex-col min-h-full">
-        {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+      <div className="flex flex-col h-full">
+        {/* Header — fixed at top */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
           <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
             <ChevronLeft size={18} />
           </button>
@@ -671,58 +671,59 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
         </div>
 
         {apiError && (
-          <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 shrink-0">
             <AlertCircle size={13} /> {apiError}
           </div>
         )}
 
-        {/* Read-only fields */}
-        <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
-          <div className="flex flex-col gap-5">
-            {fields.map((field) => {
-              if (!visibleFields.has(field.id)) return null;
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 max-w-2xl mx-auto w-full">
+            <div className="flex flex-col gap-5">
+              {fields.map((field) => {
+                if (!visibleFields.has(field.id)) return null;
 
-              // Layout fields
-              if (field.fieldType === 'section') {
-                return (
-                  <div key={field.id} className="border-b-2 border-slate-300 pb-1">
-                    <h3 className="text-base font-bold text-slate-800">{field.label}</h3>
-                  </div>
-                );
-              }
-              if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
-                const settings = parseSettings(field.settingsJson);
-                const thumbnailUrl = typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null;
-                return (
-                  <div key={field.id} className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-3 items-start">
-                    {thumbnailUrl && (
-                      <img src={thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0 border border-blue-200" />
-                    )}
-                    <p className="text-sm text-blue-800">{field.label}</p>
-                  </div>
-                );
-              }
-              if (field.fieldType === 'page_break') {
-                return (
-                  <div key={field.id} className="flex items-center gap-3 py-2">
-                    <div className="flex-1 border-t-2 border-dashed border-slate-300" />
-                    <SplitSquareHorizontal size={13} className="text-slate-400 shrink-0" />
-                    <div className="flex-1 border-t-2 border-dashed border-slate-300" />
-                  </div>
-                );
-              }
+                if (field.fieldType === 'section') {
+                  return (
+                    <div key={field.id} className="border-b-2 border-slate-300 pb-1">
+                      <h3 className="text-base font-bold text-slate-800">{field.label}</h3>
+                    </div>
+                  );
+                }
+                if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
+                  const settings = parseSettings(field.settingsJson);
+                  const thumbnailUrl = typeof settings.thumbnailUrl === 'string' ? settings.thumbnailUrl : null;
+                  return (
+                    <div key={field.id} className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-3 items-start">
+                      {thumbnailUrl && (
+                        <img src={thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0 border border-blue-200" />
+                      )}
+                      <p className="text-sm text-blue-800">{field.label}</p>
+                    </div>
+                  );
+                }
+                if (field.fieldType === 'page_break') {
+                  return (
+                    <div key={field.id} className="flex items-center gap-3 py-2">
+                      <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+                      <SplitSquareHorizontal size={13} className="text-slate-400 shrink-0" />
+                      <div className="flex-1 border-t-2 border-dashed border-slate-300" />
+                    </div>
+                  );
+                }
 
-              return (
-                <div key={field.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                  <ReadOnlyAnswer field={field} value={answers[field.id] ?? null} />
-                </div>
-              );
-            })}
+                return (
+                  <div key={field.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                    <ReadOnlyAnswer field={field} value={answers[field.id] ?? null} />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3">
+        {/* Sticky footer */}
+        <div className="shrink-0 bg-white border-t border-slate-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center gap-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Back to Forms
           </button>
@@ -760,9 +761,9 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
 
   // ── Editable form ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-full">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <div className="flex flex-col h-full">
+      {/* Header — fixed at top */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
           <ChevronLeft size={18} />
         </button>
@@ -784,7 +785,7 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-slate-100">
+      <div className="h-1 bg-slate-100 shrink-0">
         <motion.div
           className="h-full bg-primary"
           animate={{ width: visibleInputFields.length > 0 ? `${(answeredCount / visibleInputFields.length) * 100}%` : '0%' }}
@@ -793,51 +794,65 @@ export default function FormRunner({ jobId, submission, templateName, readOnly: 
       </div>
 
       {apiError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+        <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 shrink-0">
           <AlertCircle size={13} /> {apiError}
         </div>
       )}
 
-      {/* Fields */}
-      <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
-        <div className="flex flex-col gap-5">
-          <AnimatePresence mode="popLayout">
-            {fields.map((field) => {
-              if (!visibleFields.has(field.id)) return null;
-              return (
-                <motion.div key={field.id} layout
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
-                  transition={{ duration: 0.2 }}>
-                  <FieldInput
-                    field={field}
-                    value={answers[field.id] ?? null}
-                    onChange={(val) => setAnswer(field.id, val)}
-                    error={errors[field.id]}
-                  />
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+      {/* Scrollable body — owns its own scroll, footer never overlaps */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 max-w-2xl mx-auto w-full">
+          <div className="flex flex-col gap-5">
+            <AnimatePresence mode="popLayout">
+              {fields.map((field) => {
+                if (!visibleFields.has(field.id)) return null;
+                return (
+                  <motion.div key={field.id} layout
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.2 }}>
+                    <FieldInput
+                      field={field}
+                      value={answers[field.id] ?? null}
+                      onChange={(val) => setAnswer(field.id, val)}
+                      error={errors[field.id]}
+                    />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="sticky bottom-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3">
-        <button onClick={saveProgress} disabled={saving || completing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors">
-          {saving
-            ? <Loader2 size={14} className="animate-spin" />
-            : savedAt
-            ? <CheckCircle2 size={14} className="text-emerald-500" />
-            : <Save size={14} />}
-          Save draft
-        </button>
-        <button onClick={completeForm} disabled={saving || completing}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 transition-colors">
-          {completing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          Complete form
-        </button>
+      {/* Sticky footer — always visible, never overlaps fields */}
+      <div
+        className="shrink-0 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] px-4 py-3"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        {/* Desktop: side by side | Mobile: stacked with Complete on top */}
+        <div className="max-w-2xl mx-auto flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
+          <button
+            onClick={saveProgress}
+            disabled={saving || completing}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors sm:w-auto"
+          >
+            {saving
+              ? <Loader2 size={14} className="animate-spin" />
+              : savedAt
+              ? <CheckCircle2 size={14} className="text-emerald-500" />
+              : <Save size={14} />}
+            Save Draft
+          </button>
+          <button
+            onClick={completeForm}
+            disabled={saving || completing}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+          >
+            {completing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            Complete Form
+          </button>
+        </div>
       </div>
     </div>
   );
