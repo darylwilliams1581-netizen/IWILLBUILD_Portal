@@ -5,7 +5,7 @@ import {
   Bot, Send, User, HardHat, Truck, BarChart2,
   RefreshCw, Calculator, Wrench, AlertTriangle,
   CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
-  Loader2, Download, ClipboardList, TrendingUp, Info,
+  Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
@@ -24,23 +24,20 @@ interface Message {
   isCalc?: boolean;
 }
 
-interface DazzaContext {
+// Lightweight summary returned by GET /api/dazza/context (for the right panel)
+interface DazzaContextSummary {
   user?: { name: string; email: string; role: string };
   permissions?: {
     canJobs: boolean; canFleet: boolean; canForms: boolean;
     canEstimating: boolean; canFiles: boolean; seeDollars: boolean; isAdmin: boolean;
   };
-  company?: { name: string } | null;
-  companyKnowledge?: {
-    enabled: boolean; companyNotes: string; safetyNotes: string;
-    tone: string; disclaimer: string;
-  };
+  companyName?: string;
+  supportMode?: boolean;
+  supportCompanyId?: number | null;
   jobs?: unknown[];
   openTodos?: unknown[];
-  jobProgress?: unknown[];
   fleet?: unknown[];
   fleetFlags?: unknown[];
-  fleetDueDates?: unknown[];
   estimates?: unknown[];
   formTemplates?: unknown[];
   formSubmissions?: unknown[];
@@ -262,7 +259,7 @@ export default function DazzaAIPage() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [dazzaCtx, setDazzaCtx] = useState<DazzaContext | null>(null);
+  const [dazzaCtx, setDazzaCtx] = useState<DazzaContextSummary | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
   const [noApiKey, setNoApiKey] = useState(false);
   const [showCalcs, setShowCalcs] = useState(false);
@@ -272,17 +269,17 @@ export default function DazzaAIPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load Dazza context on mount
+  // Load Dazza context summary on mount (for right panel display only)
   const loadContext = useCallback(async () => {
     setCtxLoading(true);
     try {
       const res = await fetch('/api/dazza/context', { credentials: 'include' });
       if (res.ok) {
-        const data = await res.json() as DazzaContext;
+        const data = await res.json() as DazzaContextSummary;
         setDazzaCtx(data);
       }
     } catch {
-      // silent — will fall back gracefully
+      // silent — right panel will show zeros
     } finally {
       setCtxLoading(false);
     }
@@ -321,18 +318,29 @@ export default function DazzaAIPage() {
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
+      // NOTE: We send messages only — NO context payload.
+      // The server re-fetches context from the session on every request.
       const res = await fetch('/api/dazza/chat', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: chatHistory, context: dazzaCtx }),
+        body: JSON.stringify({
+          messages: chatHistory,
+          // Support mode: pass supportCompanyId if active (owner only)
+          supportCompanyId: dazzaCtx?.supportCompanyId ?? null,
+        }),
       });
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const data = await res.json() as { reply: string; noApiKey?: boolean };
+      const data = await res.json() as {
+        reply: string;
+        noApiKey?: boolean;
+        supportMode?: boolean;
+        supportCompanyName?: string;
+      };
 
       if (data.noApiKey) setNoApiKey(true);
 
@@ -386,6 +394,7 @@ export default function DazzaAIPage() {
 
   const perms = dazzaCtx?.permissions;
   const isAdmin = me?.profile?.role === 'owner' || me?.profile?.role === 'admin';
+  const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -408,7 +417,7 @@ export default function DazzaAIPage() {
             <div>
               <h1 className="font-heading font-bold text-sm leading-none">Dazza AI</h1>
               <p className="text-[10px] text-slate-400 leading-none mt-0.5">
-                {ctxLoading ? 'Loading context…' : `${dazzaCtx?.company?.name ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
+                {ctxLoading ? 'Loading context…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
               </p>
             </div>
             <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
@@ -442,6 +451,16 @@ export default function DazzaAIPage() {
             <span>
               <strong>OpenAI API key not configured.</strong> Dazza needs an API key to answer questions.
               {isAdmin && <> Go to <strong>Settings → Dazza AI</strong> to add your key.</>}
+            </span>
+          </div>
+        )}
+
+        {/* ── Support Mode banner ── */}
+        {supportMode && (
+          <div className="bg-violet-50 border-b border-violet-200 px-4 py-2.5 flex items-center gap-2 text-xs text-violet-800 shrink-0">
+            <ShieldAlert size={13} className="shrink-0 text-violet-600" />
+            <span>
+              <strong>Support Mode:</strong> Dazza is answering from <strong>{dazzaCtx?.companyName}</strong> — not your own company. Data is isolated to this company only.
             </span>
           </div>
         )}

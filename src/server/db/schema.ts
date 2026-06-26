@@ -408,3 +408,18 @@ export const downloads = mysqlTable('downloads', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
+
+// ── Dazza AI audit log ────────────────────────────────────────────────────────
+// Records every Dazza chat turn that touches sensitive data.
+// Never stores raw secrets, passwords, or full AI responses.
+export const dazzaAuditLog = mysqlTable('dazza_audit_log', {
+  id:              int('id').primaryKey().autoincrement(),
+  userId:          varchar('user_id', { length: 36 }).notNull(),
+  companyId:       int('company_id').notNull(),
+  questionSummary: varchar('question_summary', { length: 500 }).notNull(),
+  modulesUsed:     varchar('modules_used', { length: 255 }).notNull().default(''),
+  dollarsIncluded: boolean('dollars_included').notNull().default(false),
+  supportMode:     boolean('support_mode').notNull().default(false),
+  supportCompanyId: int('support_company_id'),
+  createdAt:       timestamp('created_at').defaultNow(),
+});
