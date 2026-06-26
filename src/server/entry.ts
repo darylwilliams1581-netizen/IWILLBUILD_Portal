@@ -20,6 +20,11 @@ import form_templates_post from "./api/form-templates/POST";
 import form_templates_id_put from "./api/form-templates/[id]/PUT";
 import form_templates_id_delete from "./api/form-templates/[id]/DELETE";
 import migrate_form_templates_post from "./api/migrate-form-templates/POST";
+import migrate_job_photos_post from "./api/migrate-job-photos/POST";
+import jobs_id_photos_get from "./api/jobs/[id]/photos/GET";
+import jobs_id_photos_post from "./api/jobs/[id]/photos/POST";
+import jobs_id_photos_photoid_delete from "./api/jobs/[id]/photos/[photoId]/DELETE";
+import jobs_id_photos_photoid_download_get from "./api/jobs/[id]/photos/[photoId]/download/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -115,6 +120,11 @@ app.post("/api/form-templates", form_templates_post);
 app.put("/api/form-templates/:id", form_templates_id_put);
 app.delete("/api/form-templates/:id", form_templates_id_delete);
 app.post("/api/migrate-form-templates", migrate_form_templates_post);
+app.post("/api/migrate-job-photos", migrate_job_photos_post);
+app.get("/api/jobs/:id/photos", jobs_id_photos_get);
+app.post("/api/jobs/:id/photos", jobs_id_photos_post);
+app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoid_delete);
+app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoid_download_get);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

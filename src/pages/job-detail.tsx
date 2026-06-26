@@ -16,9 +16,13 @@ import {
   AlertCircle,
   Menu,
   ChevronDown,
+  Camera,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import JobPhotos from '@/components/JobPhotos';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
+
+type Tab = 'details' | 'photos';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +35,7 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('details');
 
   // Edit form state
   const [form, setForm] = useState({
@@ -259,6 +264,27 @@ export default function JobDetailPage() {
                 </div>
               </div>
 
+              {/* Tabs */}
+              <div className="flex gap-1 bg-white rounded-xl border border-border p-1">
+                {([
+                  { key: 'details', label: 'Details', icon: FileText },
+                  { key: 'photos',  label: 'Photos',  icon: Camera },
+                ] as const).map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                      activeTab === key
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               {/* Save error */}
               {saveError && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700">
@@ -267,112 +293,120 @@ export default function JobDetailPage() {
                 </div>
               )}
 
-              {/* Main details card */}
-              <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
-                <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Details</h2>
+              {/* ── Details tab ── */}
+              {activeTab === 'details' && (
+                <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Details</h2>
 
-                {editing ? (
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                  {editing ? (
+                    <div className="flex flex-col gap-4">
                       <div>
-                        <label className="block text-xs font-semibold mb-1.5">Job Number</label>
+                        <label className="block text-xs font-semibold mb-1.5">Job Title <span className="text-red-500">*</span></label>
                         <input
                           type="text"
-                          value={form.jobNumber}
-                          onChange={(e) => setForm((f) => ({ ...f, jobNumber: e.target.value }))}
+                          value={form.name}
+                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Job Number</label>
+                          <input
+                            type="text"
+                            value={form.jobNumber}
+                            onChange={(e) => setForm((f) => ({ ...f, jobNumber: e.target.value }))}
+                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Status</label>
+                          <select
+                            value={form.status}
+                            onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                          >
+                            {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5">Client Name</label>
+                        <input
+                          type="text"
+                          value={form.client}
+                          onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
                           className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold mb-1.5">Status</label>
-                        <select
-                          value={form.status}
-                          onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                        >
-                          {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
+                        <input
+                          type="text"
+                          value={form.address}
+                          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5">Description / Notes</label>
+                        <textarea
+                          value={form.notes}
+                          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                          rows={4}
+                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
+                        />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">Client Name</label>
-                      <input
-                        type="text"
-                        value={form.client}
-                        onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <DetailRow icon={HardHat} label="Job Title" value={job.name} />
+                      {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
+                      {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
+                      {job.address && <DetailRow icon={MapPin} label="Site Address" value={job.address} />}
+                      <DetailRow
+                        icon={Calendar}
+                        label="Created"
+                        value={new Date(job.createdAt).toLocaleDateString('en-AU', {
+                          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                        })}
                       />
+                      {job.notes && (
+                        <div className="pt-2 border-t border-border">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{job.notes}</p>
+                        </div>
+                      )}
+                      {!job.client && !job.address && !job.notes && (
+                        <p className="text-sm text-muted-foreground italic">
+                          No additional details. Click Edit to add client, address, and notes.
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
-                      <input
-                        type="text"
-                        value={form.address}
-                        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">Description / Notes</label>
-                      <textarea
-                        value={form.notes}
-                        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                        rows={4}
-                        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {/* Read-only fields */}
-                    <DetailRow icon={HardHat} label="Job Title" value={job.name} />
-                    {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
-                    {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
-                    {job.address && <DetailRow icon={MapPin} label="Site Address" value={job.address} />}
-                    <DetailRow
-                      icon={Calendar}
-                      label="Created"
-                      value={new Date(job.createdAt).toLocaleDateString('en-AU', {
-                        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                      })}
-                    />
-                    {job.notes && (
-                      <div className="pt-2 border-t border-border">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{job.notes}</p>
-                      </div>
-                    )}
-                    {!job.client && !job.address && !job.notes && (
-                      <p className="text-sm text-muted-foreground italic">
-                        No additional details. Click Edit to add client, address, and notes.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Coming soon modules */}
-              <div className="bg-white rounded-xl border border-border p-5">
-                <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {['Forms', 'Files', 'Estimating'].map((m) => (
-                    <div key={m} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-                      <FileText size={14} className="text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{m}</span>
-                      <span className="ml-auto text-[10px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">Soon</span>
-                    </div>
-                  ))}
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* ── Photos tab ── */}
+              {activeTab === 'photos' && (
+                <JobPhotos jobId={job.id} />
+              )}
+
+              {/* Coming soon modules — only show on details tab */}
+              {activeTab === 'details' && (
+                <div className="bg-white rounded-xl border border-border p-5">
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {['Forms', 'Files', 'Estimating'].map((m) => (
+                      <div key={m} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                        <FileText size={14} className="text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{m}</span>
+                        <span className="ml-auto text-[10px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">Soon</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </div>
