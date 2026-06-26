@@ -692,6 +692,32 @@ if (import.meta.env.PROD) {
 	const host = process.env.HOST || "0.0.0.0";
 	const server = app.listen(port, host, () => {
 		console.log(`Server listening on http://${host}:${port}`);
+		// Run lightweight startup migrations (CREATE TABLE IF NOT EXISTS — safe to re-run)
+		void (async () => {
+			try {
+				const { db: _db } = await import('./db/client.js');
+				const { sql: _sql } = await import('drizzle-orm');
+				await _db.execute(_sql`
+					CREATE TABLE IF NOT EXISTS dazza_knowledge (
+						id            INT AUTO_INCREMENT PRIMARY KEY,
+						company_id    INT NOT NULL,
+						title         VARCHAR(255) NOT NULL,
+						category      VARCHAR(100) NOT NULL DEFAULT 'Company procedure',
+						content       LONGTEXT NOT NULL,
+						source_name   VARCHAR(255) DEFAULT NULL,
+						active        TINYINT(1) NOT NULL DEFAULT 1,
+						created_by    VARCHAR(255) NOT NULL DEFAULT '',
+						created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+						INDEX idx_dk_company (company_id),
+						INDEX idx_dk_active  (company_id, active)
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+				`);
+				console.log('[startup] dazza_knowledge table ready');
+			} catch (e) {
+				console.warn('[startup] dazza_knowledge migration skipped:', (e as Error)?.message?.slice(0, 120));
+			}
+		})();
 	});
 	server.on("error", (err: NodeJS.ErrnoException) => {
 		console.error("ssr.server.listen-failed", {

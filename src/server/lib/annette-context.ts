@@ -97,7 +97,6 @@ export async function buildAnnetteContext(
   const today = now.toISOString().slice(0, 10);
   const in14  = new Date(now.getTime() + 14 * 86400000).toISOString().slice(0, 10);
   const ago14 = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10);
-  const ago30 = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
 
   const warnings: string[] = [];
   const moduleCounts: Record<string, number> = {};
@@ -204,7 +203,7 @@ export async function buildAnnetteContext(
       return rows;
     }, [], warnings, moduleCounts);
 
-    // Stalled active jobs — no todo/progress update in 14+ days
+    // Stalled active jobs — no update in 14+ days
     await safeQuery('jobs_stalled', async () => {
       const [rows] = await db.execute(
         sql`SELECT j.id, j.job_number, j.name, j.status,
@@ -265,14 +264,14 @@ export async function buildAnnetteContext(
       return rows;
     }, [], warnings, moduleCounts);
 
-    // Service overdue
+    // Service overdue — service_date is a timestamp, compare date portion
     await safeQuery('fleet_service_overdue', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, name, rego, service_date,
+        sql`SELECT id, name, rego, DATE(service_date) as service_date,
                    DATEDIFF(NOW(), service_date) as days_overdue
             FROM fleet_assets
             WHERE company_id = ${companyId} AND archived = 0
-              AND service_date IS NOT NULL AND service_date < ${today}
+              AND service_date IS NOT NULL AND DATE(service_date) < ${today}
             ORDER BY service_date ASC LIMIT 20`
       ) as unknown as [Array<{ id: number; name: string; rego: string | null; service_date: string; days_overdue: number }>, unknown];
       data.fleet.serviceOverdue = (rows ?? []).map((r) => ({ ...r, days_overdue: Number(r.days_overdue) }));
@@ -282,12 +281,12 @@ export async function buildAnnetteContext(
     // Rego overdue
     await safeQuery('fleet_rego_overdue', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, name, rego, rego_expiry,
+        sql`SELECT id, name, rego, DATE(rego_expiry) as rego_expiry,
                    DATEDIFF(NOW(), rego_expiry) as days_overdue
             FROM fleet_assets
             WHERE company_id = ${companyId} AND archived = 0
               AND rego_not_applicable = 0
-              AND rego_expiry IS NOT NULL AND rego_expiry < ${today}
+              AND rego_expiry IS NOT NULL AND DATE(rego_expiry) < ${today}
             ORDER BY rego_expiry ASC LIMIT 20`
       ) as unknown as [Array<{ id: number; name: string; rego: string | null; rego_expiry: string; days_overdue: number }>, unknown];
       data.fleet.regoOverdue = (rows ?? []).map((r) => ({ ...r, days_overdue: Number(r.days_overdue) }));
@@ -297,12 +296,12 @@ export async function buildAnnetteContext(
     // Service due in 14 days
     await safeQuery('fleet_service_due14', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, name, rego, service_date,
+        sql`SELECT id, name, rego, DATE(service_date) as service_date,
                    DATEDIFF(service_date, NOW()) as days_until
             FROM fleet_assets
             WHERE company_id = ${companyId} AND archived = 0
               AND service_date IS NOT NULL
-              AND service_date >= ${today} AND service_date <= ${in14}
+              AND DATE(service_date) >= ${today} AND DATE(service_date) <= ${in14}
             ORDER BY service_date ASC LIMIT 20`
       ) as unknown as [Array<{ id: number; name: string; rego: string | null; service_date: string; days_until: number }>, unknown];
       data.fleet.serviceDue14 = (rows ?? []).map((r) => ({ ...r, days_until: Number(r.days_until) }));
@@ -312,20 +311,20 @@ export async function buildAnnetteContext(
     // Rego due in 14 days
     await safeQuery('fleet_rego_due14', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, name, rego, rego_expiry,
+        sql`SELECT id, name, rego, DATE(rego_expiry) as rego_expiry,
                    DATEDIFF(rego_expiry, NOW()) as days_until
             FROM fleet_assets
             WHERE company_id = ${companyId} AND archived = 0
               AND rego_not_applicable = 0
               AND rego_expiry IS NOT NULL
-              AND rego_expiry >= ${today} AND rego_expiry <= ${in14}
+              AND DATE(rego_expiry) >= ${today} AND DATE(rego_expiry) <= ${in14}
             ORDER BY rego_expiry ASC LIMIT 20`
       ) as unknown as [Array<{ id: number; name: string; rego: string | null; rego_expiry: string; days_until: number }>, unknown];
       data.fleet.regoDue14 = (rows ?? []).map((r) => ({ ...r, days_until: Number(r.days_until) }));
       return rows;
     }, [], warnings, moduleCounts);
 
-    // Open flags
+    // Open prestart flags — issue_needs_attention = 1
     await safeQuery('fleet_flags', async () => {
       const [rows] = await db.execute(
         sql`SELECT fa.name as asset_name, fp.issue_comment, fp.created_at as flagged_at
@@ -352,50 +351,64 @@ export async function buildAnnetteContext(
   }
 
   // ── Estimates ─────────────────────────────────────────────────────────────
+  // Note: estimates table has no total_amount column — calculate from estimate_lines
   if (permissions.canEstimating) {
     await safeQuery('estimates_draft_long', async () => {
       const [rows] = await db.execute(
         sql`SELECT e.id, j.name as job_name, e.title,
-                   DATEDIFF(NOW(), e.created_at) as days_in_draft
-                   ${permissions.seeDollars ? sql`, e.total_amount as amount` : sql``}
+                   DATEDIFF(NOW(), e.created_at) as days_in_draft,
+                   COALESCE(SUM(CAST(el.quantity AS DECIMAL(10,2)) * CAST(el.rate AS DECIMAL(10,2))), 0) as amount
             FROM estimates e
             JOIN jobs j ON j.id = e.job_id
+            LEFT JOIN estimate_lines el ON el.estimate_id = e.id
             WHERE j.company_id = ${companyId}
               AND e.status = 'Draft'
               AND e.created_at < ${ago14}
+            GROUP BY e.id, j.name, e.title, e.created_at
             ORDER BY e.created_at ASC LIMIT 15`
-      ) as unknown as [Array<{ id: number; job_name: string; title: string; days_in_draft: number; amount?: number }>, unknown];
-      data.estimates.draftTooLong = (rows ?? []).map((r) => ({ ...r, days_in_draft: Number(r.days_in_draft) }));
+      ) as unknown as [Array<{ id: number; job_name: string; title: string; days_in_draft: number; amount: number }>, unknown];
+      data.estimates.draftTooLong = (rows ?? []).map((r) => ({
+        ...r,
+        days_in_draft: Number(r.days_in_draft),
+        amount: permissions.seeDollars ? Number(r.amount) : undefined,
+      }));
       return rows;
     }, [], warnings, moduleCounts);
 
     await safeQuery('estimates_pending', async () => {
       const [rows] = await db.execute(
         sql`SELECT e.id, j.name as job_name, e.title,
-                   DATEDIFF(NOW(), e.updated_at) as days_pending
-                   ${permissions.seeDollars ? sql`, e.total_amount as amount` : sql``}
+                   DATEDIFF(NOW(), e.updated_at) as days_pending,
+                   COALESCE(SUM(CAST(el.quantity AS DECIMAL(10,2)) * CAST(el.rate AS DECIMAL(10,2))), 0) as amount
             FROM estimates e
             JOIN jobs j ON j.id = e.job_id
+            LEFT JOIN estimate_lines el ON el.estimate_id = e.id
             WHERE j.company_id = ${companyId}
               AND e.status = 'Pending Approval'
+            GROUP BY e.id, j.name, e.title, e.updated_at
             ORDER BY e.updated_at ASC LIMIT 15`
-      ) as unknown as [Array<{ id: number; job_name: string; title: string; days_pending: number; amount?: number }>, unknown];
-      data.estimates.pendingApproval = (rows ?? []).map((r) => ({ ...r, days_pending: Number(r.days_pending) }));
+      ) as unknown as [Array<{ id: number; job_name: string; title: string; days_pending: number; amount: number }>, unknown];
+      data.estimates.pendingApproval = (rows ?? []).map((r) => ({
+        ...r,
+        days_pending: Number(r.days_pending),
+        amount: permissions.seeDollars ? Number(r.amount) : undefined,
+      }));
       return rows;
     }, [], warnings, moduleCounts);
   }
 
   // ── Forms ─────────────────────────────────────────────────────────────────
+  // job_form_submissions: template_id (not form_template_id), status = 'in_progress'
   if (permissions.canForms) {
     await safeQuery('forms_incomplete', async () => {
       const [rows] = await db.execute(
-        sql`SELECT ft.name as form_name, j.name as job_name, jfs.submitted_at
+        sql`SELECT ft.name as form_name, j.name as job_name, jfs.created_at as submitted_at
             FROM job_form_submissions jfs
-            JOIN form_templates ft ON ft.id = jfs.form_template_id
+            JOIN form_templates ft ON ft.id = jfs.template_id
             JOIN jobs j ON j.id = jfs.job_id
             WHERE j.company_id = ${companyId}
-              AND jfs.status = 'In Progress'
-            ORDER BY jfs.submitted_at DESC LIMIT 20`
+              AND jfs.status = 'in_progress'
+            ORDER BY jfs.created_at DESC LIMIT 20`
       ) as unknown as [Array<{ form_name: string; job_name: string; submitted_at: string }>, unknown];
       data.forms.incompleteSubmissions = rows ?? [];
       return rows;
@@ -421,7 +434,6 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
   lines.push(`- ${d.seeDollars ? 'Dollar amounts are included where available.' : 'Do NOT show dollar amounts — this user does not have the See Dollars permission.'}`);
   lines.push('');
 
-  // ── Raw data dump for the model ──────────────────────────────────────────
   lines.push(`=== ANALYSIS DATA ===`);
   lines.push('');
 
@@ -587,3 +599,4 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
 
   return lines.join('\n');
 }
+
