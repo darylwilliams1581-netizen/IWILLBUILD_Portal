@@ -136,6 +136,7 @@ import team_id_put_128 from "./api/team/[id]/PUT";
 import settings_backup_get from "./api/settings/backup/GET";
 import settings_backup_post from "./api/settings/backup/POST";
 import settings_backup_run_post from "./api/settings/backup/run/POST";
+import settings_backup_export_get from "./api/settings/backup/export/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -331,6 +332,7 @@ app.get("/api/company-settings", company_settings_get_7);
 app.get("/api/settings/backup", settings_backup_get);
 app.post("/api/settings/backup", settings_backup_post);
 app.post("/api/settings/backup/run", settings_backup_run_post);
+app.get("/api/settings/backup/export", settings_backup_export_get);
 app.put("/api/company-settings", company_settings_put_8);
 app.get("/api/cost-guide", cost_guide_get_9);
 app.post("/api/cost-guide", cost_guide_post_10);
