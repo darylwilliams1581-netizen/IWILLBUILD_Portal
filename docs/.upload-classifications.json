@@ -12,6 +12,19 @@
       "summary": "Screenshot of a competitor/reference website (IWILLBUILD portal) showing layout, navigation, and UI components. The user's prompt 'remove one' appears to reference removing a duplicate element (the two circled 'Launch Portal' buttons), suggesting this is a reference for design critique or inspiration rather than a file to display on their own site.",
       "fileName": "screenshot-2026-06-25T22-03-27.jpg",
       "storedUploadFilename": "f38wenbvln_1782425008201_file_Fp6QOc00H4.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a domain management dashboard showing renewal and quick links options. User is asking for clarification on UI interaction, not requesting any site build changes.",
+      "fileName": "screenshot-2026-06-26T00-18-01.jpg",
+      "storedUploadFilename": "f38wenbvln_1782433083111_file_qFk2_yWz6k.jpg"
     }
   ]
 }
