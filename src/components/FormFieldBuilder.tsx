@@ -190,7 +190,7 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
           <Icon size={15} className="text-slate-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 truncate">
+          <p className="text-sm font-semibold text-slate-800 break-words" style={{ overflowWrap: 'anywhere' }}>
             {label || <span className="text-slate-400 italic">Untitled field</span>}
           </p>
           <p className="text-[11px] text-slate-400">{currentDef.label}{!isLayout && required ? ' · Required' : ''}</p>
@@ -248,7 +248,8 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
                     onBlur={saveLabel}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
                     placeholder={isLayout ? (fieldType === 'section' ? 'e.g. Site Details' : 'e.g. Please complete all fields') : 'e.g. Client name'}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors break-words overflow-wrap-anywhere"
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                   />
                   {labelSaving && <Loader2 size={14} className="animate-spin text-slate-400 self-center" />}
                 </div>
@@ -302,7 +303,8 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
                           value={opt}
                           onChange={(e) => editOption(i, e.target.value)}
                           onBlur={() => blurOption(i)}
-                          className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          className="flex-1 min-w-0 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                         />
                         <button
                           onClick={() => removeOption(i)}
@@ -320,7 +322,7 @@ function FieldCard({ field, index, total, onMoveUp, onMoveDown, onDelete, onUpda
                       onChange={(e) => setNewOption(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') void addOption(); }}
                       placeholder="Add option…"
-                      className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                      className="flex-1 min-w-0 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                     />
                     <button
                       onClick={addOption}
