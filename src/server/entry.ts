@@ -292,7 +292,7 @@ async function runStartupMigrations() {
   // Back-fill trial_ends_at for companies that existed before subscription columns
   try {
     await db.execute(sql`
-      UPDATE companies SET trial_ends_at = DATE_ADD(created_at, INTERVAL 14 DAY)
+      UPDATE companies SET trial_ends_at = DATE_ADD(created_at, INTERVAL 30 DAY)
       WHERE trial_ends_at IS NULL
     `);
   } catch { /* non-fatal */ }

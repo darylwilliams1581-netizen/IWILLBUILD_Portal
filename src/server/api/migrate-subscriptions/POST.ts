@@ -38,11 +38,11 @@ export default async function handler(req: Request, res: Response) {
     await ensureCol('companies', 'stripe_price_id',        'VARCHAR(100) NULL');
     await ensureCol('companies', 'max_users',              'INT NOT NULL DEFAULT 1');
 
-    // Back-fill existing companies: set trial_ends_at = created_at + 14 days
+    // Back-fill existing companies: set trial_ends_at = created_at + 30 days
     // Only for rows where trial_ends_at is still NULL
     await db.execute(sql`
       UPDATE companies
-      SET trial_ends_at = DATE_ADD(created_at, INTERVAL 14 DAY)
+      SET trial_ends_at = DATE_ADD(created_at, INTERVAL 30 DAY)
       WHERE trial_ends_at IS NULL
     `);
 

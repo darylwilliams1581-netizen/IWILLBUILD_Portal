@@ -214,7 +214,7 @@ export default function SignupPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
       <Helmet>
         <title>Get Started — IWILLBUILD Portal</title>
-        <meta name="description" content="Create your IWILLBUILD portal account. 14-day free trial, no credit card required." />
+        <meta name="description" content="Create your IWILLBUILD portal account. 30-day free trial, no credit card required." />
         <link rel="canonical" href="https://iwillbuild.com/signup" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -250,7 +250,7 @@ export default function SignupPage() {
               {step === 2 && (
                 <motion.div key="h2" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2 }}>
                   <h1 className="font-heading font-bold text-xl text-white text-center">Choose your plan</h1>
-                  <p className="text-sm text-white/40 text-center mt-1">14-day free trial · No credit card required</p>
+                  <p className="text-sm text-white/40 text-center mt-1">30-day free trial · No credit card required</p>
                 </motion.div>
               )}
               {step === 3 && (
@@ -342,7 +342,7 @@ export default function SignupPage() {
                     </div>
 
                     <p className="text-center text-xs text-white/30 mt-1">
-                      All plans include a 14-day free trial. Billing starts after trial ends.
+                      All plans include a 30-day free trial. Billing starts after trial ends.
                     </p>
 
                     <div className="flex gap-2 mt-1">

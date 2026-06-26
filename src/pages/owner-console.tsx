@@ -976,7 +976,7 @@ export default function OwnerConsolePage() {
                   onChange={(e) => setCreateForm((f) => ({ ...f, plan: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
                 >
-                  <option value="trial">Trial (14 days)</option>
+                  <option value="trial">Trial (30 days)</option>
                   <option value="solo">Solo — 1 user ($19/mo +GST)</option>
                   <option value="team">Team — 5 users ($79/mo +GST)</option>
                   <option value="pro">Pro — 10 users ($149/mo +GST)</option>
