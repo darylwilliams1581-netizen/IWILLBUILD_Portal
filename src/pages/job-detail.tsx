@@ -316,6 +316,10 @@ export default function JobDetailPage() {
 
               {/* ── Details tab ── */}
               {activeTab === 'details' && (
+                <QuickCameraCard jobId={job.id} onPhotoTab={() => setActiveTab('photos')} />
+              )}
+
+              {activeTab === 'details' && (
                 <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
                   <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Details</h2>
 
@@ -409,9 +413,6 @@ export default function JobDetailPage() {
               )}
 
               {/* ── Details quick camera card ── */}
-              {activeTab === 'details' && (
-                <QuickCameraCard jobId={job.id} onPhotoTab={() => setActiveTab('photos')} />
-              )}
 
               {/* ── Photos tab ── */}
               {activeTab === 'photos' && (

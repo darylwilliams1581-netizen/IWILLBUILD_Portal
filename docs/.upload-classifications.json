@@ -114,6 +114,19 @@
       "summary": "Screenshot of the iWillBuild Jobs interface showing the Photos tab. Used as a reference for understanding the current UI layout and where to implement photo editing features.",
       "fileName": "screenshot-2026-06-26T04-59-03.jpg",
       "storedUploadFilename": "f38wenbvln_1782449945379_file_loCwaYW_sS.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a job management interface (JOB-001) showing client details, site address, and a PHOTOS section with Take Photo and Upload buttons. User is requesting a layout adjustment to move the photos section to the top.",
+      "fileName": "screenshot-2026-06-26T05-43-49.jpg",
+      "storedUploadFilename": "f38wenbvln_1782452631045_file_zlg81FdPu0.jpg"
     }
   ]
 }
