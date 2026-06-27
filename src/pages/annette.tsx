@@ -203,7 +203,7 @@ export default function AnnettePage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <div className="portal-page">
         <PortalSidebar />
 
         <main className="flex-1 overflow-y-auto">

@@ -84,7 +84,7 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Jobs — IWILLBUILD Portal</title>
         <meta name="description" content="Manage and track all construction jobs." />
@@ -95,7 +95,7 @@ export default function JobsPage() {
       <PortalSidebar />
       <NewJobModal open={showNewJob} onClose={() => setShowNewJob(false)} onCreated={handleCreated} />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">

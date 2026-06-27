@@ -173,7 +173,7 @@ export default function BillingPage() {
   const isActive = subInfo?.status === 'active';
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Billing & Subscription — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />

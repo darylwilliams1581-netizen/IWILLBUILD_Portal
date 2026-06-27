@@ -43,7 +43,7 @@ const downloads = [
 
 export default function DownloadsPage() {
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Downloads — IWILLBUILD Portal</title>
         <meta name="description" content="Download Clean Blocks, templates and compliance documents from the IWILLBUILD portal." />

@@ -634,7 +634,7 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Settings — IWILLBUILD Portal</title>
         <meta name="description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
@@ -644,7 +644,7 @@ export default function SettingsPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 shrink-0">
           <Settings size={20} className="text-primary mr-3" />

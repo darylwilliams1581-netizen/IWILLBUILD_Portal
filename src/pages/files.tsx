@@ -30,7 +30,7 @@ export default function FilesPage() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Files — IWILLBUILD Portal</title>
         <meta name="description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />

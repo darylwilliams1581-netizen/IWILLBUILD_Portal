@@ -1,0 +1,18 @@
+{
+  "name": "IWILLBUILD Portal",
+  "short_name": "IWILLBUILD",
+  "description": "Internal construction company portal — jobs, fleet, forms, estimating and more.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F1117",
+  "theme_color": "#F97316",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}

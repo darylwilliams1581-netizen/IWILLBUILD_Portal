@@ -445,7 +445,7 @@ export default function SchedulerPage() {
   });
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Scheduler — IWILLBUILD</title>
         <meta name="description" content="View and manage job schedules, timelines and upcoming work." />

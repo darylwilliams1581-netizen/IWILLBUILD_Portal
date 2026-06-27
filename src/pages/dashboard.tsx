@@ -114,7 +114,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
+    <div className="portal-page">
       <Helmet>
         <title>Dashboard — IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
@@ -125,7 +125,7 @@ export default function DashboardPage() {
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="portal-main">
 
         {/* Top bar */}
         <header className="bg-white border-b border-border shrink-0 print:hidden">

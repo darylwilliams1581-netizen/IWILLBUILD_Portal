@@ -297,7 +297,7 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Fleet — IWILLBUILD Portal</title>
         <meta name="description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
@@ -307,7 +307,7 @@ export default function FleetPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">

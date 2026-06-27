@@ -792,7 +792,7 @@ export default function EstimatingPage() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Estimating Library — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
@@ -800,7 +800,7 @@ export default function EstimatingPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <PortalSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
           <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">

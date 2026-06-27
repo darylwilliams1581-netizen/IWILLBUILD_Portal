@@ -405,7 +405,8 @@ export default function PortalSidebar() {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.25, ease: 'easeOut' as const }}
-              className="fixed top-0 left-0 h-full w-64 bg-[#1A1D23] text-white flex flex-col z-50 md:hidden"
+              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-[#1A1D23] text-white flex flex-col z-50 md:hidden shadow-2xl"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
             </motion.aside>

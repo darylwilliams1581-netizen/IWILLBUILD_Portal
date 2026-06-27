@@ -557,7 +557,7 @@ export default function TeamPage() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Team — IWILLBUILD Portal</title>
         <meta name="description" content="Manage team members, roles and access for the IWILLBUILD portal." />

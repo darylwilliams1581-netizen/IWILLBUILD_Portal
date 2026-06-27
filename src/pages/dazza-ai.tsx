@@ -424,7 +424,7 @@ export default function DazzaAIPage() {
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Dazza AI — IWILLBUILD Portal</title>
         <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
@@ -494,7 +494,7 @@ export default function DazzaAIPage() {
 
         <div className="flex-1 flex overflow-hidden">
           {/* ── Main chat column ── */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className="portal-main">
 
             {/* Quick actions */}
             <div className="px-4 pt-3 pb-2 bg-white border-b border-slate-100 shrink-0">

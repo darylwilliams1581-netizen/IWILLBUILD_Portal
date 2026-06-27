@@ -153,7 +153,7 @@ export default function JobDetailPage() {
   const statusStyle = job ? getStatusStyle(job.status) : null;
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>{job ? `${job.jobNumber ?? job.name} — IWILLBUILD` : 'Job — IWILLBUILD'}</title>
         <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWILLBUILD Portal'} />
@@ -163,7 +163,7 @@ export default function JobDetailPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
