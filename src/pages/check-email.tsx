@@ -40,7 +40,25 @@ export default function CheckEmailPage() {
         <title>Check Your Email — IWILLBUILD Portal</title>
         <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
         <link rel="canonical" href="https://iwillbuild.com/check-email" />
-        <meta name="robots" content="noindex" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Check Your Email — IWILLBUILD Portal" />
+        <meta property="og:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/check-email" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Check Your Email — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': 'https://iwillbuild.com/check-email#webpage',
+          name: 'Check Your Email — IWILLBUILD Portal',
+          url: 'https://iwillbuild.com/check-email',
+          description: 'Verify your email address to activate your IWILLBUILD Portal account.',
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0F1117] flex items-center justify-center px-4">
