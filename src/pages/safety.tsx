@@ -5,10 +5,11 @@ import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
-  Users, Calendar, Building2, ChevronDown,
+  Users, Calendar, Building2, ChevronDown, Wand2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
+import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,14 @@ interface SafetyPoster {
   mime_type: string;
   size_bytes: number;
   notes: string | null;
+  created_at: string;
+}
+
+interface GeneratedPoster {
+  id: number;
+  title: string;
+  poster_type: string;
+  data_json: string;
   created_at: string;
 }
 
@@ -1002,16 +1011,21 @@ function PoliciesTab() {
 
 function PostersTab() {
   const [posters, setPosters] = useState<SafetyPoster[]>([]);
+  const [generated, setGenerated] = useState<GeneratedPoster[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [showGenerator, setShowGenerator] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [deletingGen, setDeletingGen] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/safety/posters', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => setPosters(d.posters ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/safety/posters', { credentials: 'include' }).then((r) => r.json()),
+      fetch('/api/safety/generated-posters', { credentials: 'include' }).then((r) => r.json()),
+    ]).then(([pd, gd]) => {
+      setPosters(pd.posters ?? []);
+      setGenerated(gd.posters ?? []);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function handleDelete(id: number) {
@@ -1025,44 +1039,97 @@ function PostersTab() {
     }
   }
 
+  async function handleDeleteGenerated(id: number) {
+    if (!confirm('Delete this generated poster?')) return;
+    setDeletingGen(id);
+    try {
+      await fetch(`/api/safety/generated-posters/${id}`, { method: 'DELETE', credentials: 'include' });
+      setGenerated((prev) => prev.filter((p) => p.id !== id));
+    } finally {
+      setDeletingGen(null);
+    }
+  }
+
+  const totalCount = posters.length + generated.length;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{posters.length} poster{posters.length !== 1 ? 's' : ''}</p>
-        <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-          <Plus size={15} /><span className="hidden sm:inline">Upload Poster</span>
-        </button>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">{totalCount} poster{totalCount !== 1 ? 's' : ''}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowGenerator(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors"
+          >
+            <Wand2 size={14} /><span className="hidden sm:inline">Generate Poster</span>
+          </button>
+          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+            <Plus size={14} /><span className="hidden sm:inline">Upload</span>
+          </button>
+        </div>
       </div>
 
       {loading && <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>}
 
-      {!loading && posters.length === 0 && (
+      {!loading && totalCount === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><Image size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No site posters yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Upload emergency contacts, risk matrix, life saving rules, and other site posters.</p>
-          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-            <Plus size={15} />Upload First Poster
-          </button>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Generate professional safety posters — risk matrix, emergency contacts, PPE, life saving rules, and more.</p>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowGenerator(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+              <Wand2 size={14} />Generate Poster
+            </button>
+            <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+              <Plus size={14} />Upload Poster
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Generated posters */}
+      {!loading && generated.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Generated Posters</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {generated.map((p) => (
+              <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 transition-colors">
+                <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                  <Wand2 size={16} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800 truncate">{p.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 capitalize">{p.poster_type.replace(/_/g, ' ')} · Generated</p>
+                </div>
+                <button onClick={() => handleDeleteGenerated(p.id)} disabled={deletingGen === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
+                  {deletingGen === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uploaded posters */}
       {!loading && posters.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {posters.map((p) => (
-            <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 transition-colors">
-              <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
-                <Image size={18} className="text-primary" />
+        <div>
+          {generated.length > 0 && <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1 mt-2">Uploaded Posters</div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {posters.map((p) => (
+              <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 transition-colors">
+                <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                  <Image size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800 truncate">{p.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{p.poster_type} · {fmtBytes(p.size_bytes)}</p>
+                </div>
+                <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
+                  {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-slate-800 truncate">{p.title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{p.poster_type} · {fmtBytes(p.size_bytes)}</p>
-              </div>
-              <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0">
-                {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -1075,6 +1142,12 @@ function PostersTab() {
             typeField="posterType"
             onClose={() => setShowUpload(false)}
             onUploaded={(p) => { setPosters((prev) => [p as SafetyPoster, ...prev]); setShowUpload(false); }}
+          />
+        )}
+        {showGenerator && (
+          <SafetyPosterGenerator
+            onClose={() => setShowGenerator(false)}
+            onSaved={(p) => { setGenerated((prev) => [p as GeneratedPoster, ...prev]); setShowGenerator(false); }}
           />
         )}
       </AnimatePresence>

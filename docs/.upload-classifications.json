@@ -529,6 +529,152 @@
       "summary": "An incident/injury report form template from Austen Landscaping & Earthmoving. User explicitly marks this as reference material not to be used with names or branding, indicating it should inform site structure/content without direct display.",
       "fileName": "Incident Report Form.png",
       "storedUploadFilename": "f38wenbvln_1782515822118_file_3O3rBpbMcJ.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "reference_design",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#000000",
+        "#FF0000",
+        "#FFFFFF"
+      ],
+      "extractedPages": null,
+      "summary": "A set of nine safety/PPE category icons in a circular badge design with black backgrounds, red text, and white iconography. Provided as visual reference material for poster design direction without direct placement on the site.",
+      "fileName": "Safety Icons.png",
+      "storedUploadFilename": "f38wenbvln_1782515903420_file_ObmeO29IMx.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "reference_design",
+      "designDirection": "partial",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF0000",
+        "#FFFF00",
+        "#00FF00",
+        "#FFFFFF",
+        "#000000"
+      ],
+      "extractedPages": null,
+      "summary": "A risk matrix reference poster showing a structured framework for assessing likelihood, impact, and risk levels. Provided as visual/structural reference only, not for direct display on the site.",
+      "fileName": "Risk assesment.png",
+      "storedUploadFilename": "f38wenbvln_1782515903415_file_SKnL2nMHrZ.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "reference_design",
+      "designDirection": "partial",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#DC143C",
+        "#000000",
+        "#FFFFFF"
+      ],
+      "extractedPages": null,
+      "summary": "A PPE safety poster with visual layout, color scheme, and content structure to reference for design inspiration. User explicitly requests no branding or names be used, indicating this is a style/layout reference only.",
+      "fileName": "PPE site poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515904734_file_7GzoA0ubw6.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF0000",
+        "#000000",
+        "#FFFFFF"
+      ],
+      "extractedPages": null,
+      "summary": "Emergency contacts poster design showing layout, typography, color scheme (red/black/white), and information hierarchy structure. User intends to use as a style reference without reproducing the specific names or branding.",
+      "fileName": "Emergency contact site poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515903428_file_xo8nIpRbTY.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#8B1A1A",
+        "#FFFFFF",
+        "#000000",
+        "#FF8C00",
+        "#D4A574"
+      ],
+      "extractedPages": null,
+      "summary": "A safety poster showing lifting best practices with illustrated worker, icons, and text. User intends this as a design reference for style and layout, not for direct display on the site.",
+      "fileName": "lifting Site poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515904729_file_KrwuaMYvQH.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "reference_design",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#CC0000",
+        "#FFFFFF",
+        "#000000",
+        "#228B22",
+        "#FFD700",
+        "#FF8C00"
+      ],
+      "extractedPages": null,
+      "summary": "A workplace health and safety risk matrix poster showing visual hierarchy, color-coded risk levels, and structured information layout. User intends to use this as a design reference for style and structure, not to display it directly on the site.",
+      "fileName": "Risk Matrix Site Poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515903417_file_yZwzGXao7g.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "reference_design",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#8B3A3A",
+        "#1a1a1a",
+        "#FFFFFF",
+        "#D4A5A5"
+      ],
+      "extractedPages": null,
+      "summary": "A safety poster with a burgundy and black color scheme featuring 12 iconographic safety rules in a grid layout. Provided as reference material for design style and layout inspiration, not for direct display.",
+      "fileName": "life saving rule Site poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515904721_file_vuwRFm30sP.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF0000",
+        "#000000",
+        "#FFFFFF",
+        "#228B22",
+        "#FFCC00"
+      ],
+      "extractedPages": null,
+      "summary": "A safety poster template showing layout, color scheme, typography, and information hierarchy for an emergency assembly point sign. User intends to use this as a design reference without reproducing the specific branding or contact details.",
+      "fileName": "Emergency Assemble Point site poster.png",
+      "storedUploadFilename": "f38wenbvln_1782515903424_file_zDe3MqsLJ7.png"
     }
   ]
 }

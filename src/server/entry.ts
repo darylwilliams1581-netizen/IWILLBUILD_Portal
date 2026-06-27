@@ -163,6 +163,9 @@ import safety_documents_id_delete from "./api/safety/documents/[id]/DELETE";
 import safety_posters_get from "./api/safety/posters/GET";
 import safety_posters_post from "./api/safety/posters/POST";
 import safety_posters_id_delete from "./api/safety/posters/[id]/DELETE";
+import safety_generated_posters_get from "./api/safety/generated-posters/GET";
+import safety_generated_posters_post from "./api/safety/generated-posters/POST";
+import safety_generated_posters_id_delete from "./api/safety/generated-posters/[id]/DELETE";
 import jobs_id_swms_get from "./api/jobs/[id]/swms/GET";
 import jobs_id_swms_post from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
@@ -336,6 +339,7 @@ async function runStartupMigrations() {
     { name: 'swms_signoffs', ddl: "CREATE TABLE IF NOT EXISTS swms_signoffs (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, worker_name VARCHAR(255) NOT NULL, white_card_number VARCHAR(100) NULL, signature_data LONGTEXT NULL, signed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_job_swms (job_swms_id), INDEX idx_company (company_id))" },
     { name: 'safety_documents', ddl: "CREATE TABLE IF NOT EXISTS safety_documents (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, doc_type VARCHAR(60) NOT NULL DEFAULT 'policy', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, review_date DATE NULL, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
@@ -543,6 +547,9 @@ app.delete("/api/safety/documents/:id", safety_documents_id_delete);
 app.get("/api/safety/posters", safety_posters_get);
 app.post("/api/safety/posters", safety_posters_post);
 app.delete("/api/safety/posters/:id", safety_posters_id_delete);
+app.get("/api/safety/generated-posters", safety_generated_posters_get);
+app.post("/api/safety/generated-posters", safety_generated_posters_post);
+app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_delete);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post);
