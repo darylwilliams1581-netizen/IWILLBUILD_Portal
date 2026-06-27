@@ -126,34 +126,15 @@ const SESSION_TIMEOUT_MS = 30000;
 
 // ProtectedRoute component with timeout handling
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isPending, user } = useSession();
+  const { isAuthenticated, isPending } = useSession();
   const location = useLocation();
   const [timedOut, setTimedOut] = useState(false);
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!isPending) return;
     const timeout = setTimeout(() => setTimedOut(true), SESSION_TIMEOUT_MS);
     return () => clearTimeout(timeout);
   }, [isPending]);
-
-  // Check email verification status once authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
-      setEmailVerified(null);
-      return;
-    }
-    let cancelled = false;
-    fetch('/api/me/email-status', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) setEmailVerified(data.emailVerified === true);
-      })
-      .catch(() => {
-        if (!cancelled) setEmailVerified(true); // fail open — don't block on network error
-      });
-    return () => { cancelled = true; };
-  }, [isAuthenticated, user?.id]);
 
   if (timedOut) {
     return (
@@ -179,20 +160,6 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  // Wait for email verification check to resolve
-  if (emailVerified === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  // Unverified users can only access /verify-required
-  if (!emailVerified && location.pathname !== '/verify-required') {
-    return <Navigate to="/verify-required" replace />;
   }
 
   return <>{children}</>;
