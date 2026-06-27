@@ -853,6 +853,29 @@ export default function OwnerConsolePage() {
                                         )}
                                       </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
+                                      {u.emailVerified === false && (
+                                        <button
+                                          onClick={async () => {
+                                            if (!confirm(`Manually verify email for ${u.name} (${u.email})?`)) return;
+                                            const r = await fetch('/api/owner-console/users/verify', {
+                                              method: 'POST',
+                                              credentials: 'include',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ userId: u.id }),
+                                            });
+                                            if (r.ok) {
+                                              alert(`✓ ${u.name}'s email is now verified. They can log in.`);
+                                              window.location.reload();
+                                            } else {
+                                              const d = await r.json() as { error?: string };
+                                              alert(`Failed: ${d.error ?? 'Unknown error'}`);
+                                            }
+                                          }}
+                                          className="mt-1 text-[10px] font-bold text-primary hover:text-orange-600 underline underline-offset-2 transition-colors"
+                                        >
+                                          Force verify &amp; unlock
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </td>

@@ -675,6 +675,19 @@
       "summary": "A safety poster template showing layout, color scheme, typography, and information hierarchy for an emergency assembly point sign. User intends to use this as a design reference without reproducing the specific branding or contact details.",
       "fileName": "Emergency Assemble Point site poster.png",
       "storedUploadFilename": "f38wenbvln_1782515903424_file_zDe3MqsLJ7.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of an email verification portal screen showing a verification status message and troubleshooting tips. User is referencing this to report a technical issue with email delivery.",
+      "fileName": "screenshot-2026-06-27T04-46-38.jpg",
+      "storedUploadFilename": "f38wenbvln_1782535599390_file_oObOWEpb47.jpg"
     }
   ]
 }

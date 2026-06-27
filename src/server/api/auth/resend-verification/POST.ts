@@ -33,10 +33,18 @@ export default async function handler(req: Request, res: Response) {
       .limit(1);
 
     if (existing && !existing.emailVerified) {
-      // Fire-and-forget — don't await so timing doesn't reveal existence
-      sendVerificationEmail(existing.id, email.trim().toLowerCase(), existing.name ?? 'there').catch((e) =>
-        console.error('resend-verification.send.error', e)
-      );
+      // Await so we can log any send failure — still return success to caller
+      try {
+        const result = await sendVerificationEmail(existing.id, email.trim().toLowerCase(), existing.name ?? 'there');
+        console.log(`[resend-verification] sent to ${email} messageId=${result?.messageId ?? 'unknown'}`);
+      } catch (e) {
+        console.error('[resend-verification] EMAIL SEND FAILED:', e);
+        // Still return 200 — don't reveal existence, but the error is now visible in logs
+      }
+    } else if (!existing) {
+      console.log(`[resend-verification] no user found for ${email}`);
+    } else {
+      console.log(`[resend-verification] user ${email} is already verified`);
     }
 
     // Always return the same response

@@ -146,9 +146,11 @@ export default async function handler(req: Request, res: Response) {
     });
 
     // ── Send verification email (fire-and-forget — don't fail signup if email fails) ──
-    sendVerificationEmail(userId, email.trim().toLowerCase(), name.trim()).catch((e) => {
-      console.error('signup.verification_email.error', e);
-    });
+    sendVerificationEmail(userId, email.trim().toLowerCase(), name.trim())
+      .then((r) => console.log(`[signup] verification email sent to ${email} messageId=${r?.messageId ?? 'unknown'}`))
+      .catch((e) => {
+        console.error('[signup] VERIFICATION EMAIL FAILED:', e);
+      });
 
     return res.status(201).json({
       ok: true,
