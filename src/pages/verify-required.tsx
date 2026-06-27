@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ShieldAlert, RefreshCw, CheckCircle, LogOut } from 'lucide-react';
+import { ShieldAlert, RefreshCw, CheckCircle, LogOut, ShieldCheck } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { useSession } from '@/lib/auth/auth-client';
 
@@ -11,6 +11,33 @@ export default function VerifyRequiredPage() {
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [error, setError] = useState('');
+  const [selfVerifying, setSelfVerifying] = useState(false);
+  const [selfVerified, setSelfVerified] = useState(false);
+
+  async function handleSelfVerify() {
+    if (selfVerifying || selfVerified) return;
+    setSelfVerifying(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/self-verify', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        setSelfVerified(true);
+        // Reload after short delay so session refreshes
+        setTimeout(() => window.location.href = '/dashboard', 1500);
+      } else {
+        setError(data.error ?? 'Self-verification failed. You may not have owner access.');
+      }
+    } catch {
+      setError('Request failed. Please try again.');
+    } finally {
+      setSelfVerifying(false);
+    }
+  }
 
   async function handleResend() {
     if (resending || resent) return;
@@ -118,6 +145,29 @@ export default function VerifyRequiredPage() {
                 <li>• The link expires after 24 hours</li>
                 <li>• After clicking the link, refresh this page</li>
               </ul>
+            </div>
+
+            {/* Owner emergency bypass */}
+            <div className="border border-white/10 rounded-xl p-4 mb-6 text-left">
+              <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1">Platform Owner?</p>
+              <p className="text-white/35 text-xs mb-3 leading-relaxed">
+                If you're the platform owner and can't receive email (e.g. blocked by your organisation), you can bypass verification below.
+              </p>
+              {selfVerified ? (
+                <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                  <CheckCircle size={15} />
+                  Verified! Redirecting to dashboard…
+                </div>
+              ) : (
+                <button
+                  onClick={handleSelfVerify}
+                  disabled={selfVerifying}
+                  className="flex items-center gap-2 text-xs font-bold text-primary hover:text-orange-400 disabled:opacity-50 transition-colors"
+                >
+                  <ShieldCheck size={14} className={selfVerifying ? 'animate-pulse' : ''} />
+                  {selfVerifying ? 'Verifying…' : 'Bypass email — I am the platform owner'}
+                </button>
+              )}
             </div>
 
             <button

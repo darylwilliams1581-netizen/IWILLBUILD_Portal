@@ -135,6 +135,7 @@ import settings_backup_run_post_115 from "./api/settings/backup/run/POST";
 import signup_post_116 from "./api/signup/POST";
 import auth_verify_email_post from "./api/auth/verify-email/POST";
 import auth_resend_verification_post from "./api/auth/resend-verification/POST";
+import auth_self_verify_post from "./api/auth/self-verify/POST";
 import me_email_status_get from "./api/me/email-status/GET";
 import stripe_create_checkout_session_post_117 from "./api/stripe/create-checkout-session/POST";
 import stripe_session_sessionId_get_118 from "./api/stripe/session/[sessionId]/GET";
@@ -397,6 +398,7 @@ app.post("/api/active-ping", active_ping_post_0);
 // ── Email verification (must be before BetterAuth wildcard) ──────────────────
 app.post("/api/auth/verify-email", auth_verify_email_post);
 app.post("/api/auth/resend-verification", auth_resend_verification_post);
+app.post("/api/auth/self-verify", auth_self_verify_post);
 // ── BetterAuth wildcard handlers ─────────────────────────────────────────────
 app.get("/api/auth/:action", auth_action_get_1);
 app.post("/api/auth/:action", auth_action_post_2);
