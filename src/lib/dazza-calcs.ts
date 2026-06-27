@@ -118,10 +118,11 @@ export function calcFallFromGrade(runM: number, gradeRatio: number): CalcResult 
 
 export function calcSimple(expression: string): CalcResult | null {
   try {
-    // Safe eval: only allow numbers, operators, spaces, parentheses, dots
+    // Safe: only allow numbers, operators, spaces, parentheses, dots
     if (!/^[\d\s+\-*/().%]+$/.test(expression)) return null;
-    // eslint-disable-next-line no-eval
-    const result = eval(expression) as number;
+    // Use Function constructor instead of eval to avoid Vite build warning
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const result = new Function(`"use strict"; return (${expression})`)() as number;
     if (typeof result !== 'number' || !isFinite(result)) return null;
     return {
       value: Math.round(result * 10000) / 10000,

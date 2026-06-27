@@ -9,12 +9,16 @@ import path from 'path';
 import fs from 'fs/promises';
 import type { ResultSetHeader } from 'mysql2';
 
+async function getJimp() {
+  const { Jimp, JimpMime } = await import('jimp');
+  return { Jimp, JimpMime };
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const mime = file.mimetype.toLowerCase();
     if (ext === '.heic' || ext === '.heif') return cb(new Error('HEIC/HEIF not supported'));
     const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
     if (!allowed.includes(ext)) return cb(new Error('Only images and PDFs are allowed'));
@@ -61,9 +65,8 @@ export default async function handler(req: Request, res: Response) {
       // Compress images (not PDFs)
       if (!isPdf) {
         try {
-          const { getJimp, JimpMime } = await import('@/lib/jimp-helper.js' as string);
-          const jimp = await getJimp();
-          const img = await jimp.read(buffer);
+          const { Jimp, JimpMime } = await getJimp();
+          const img = await Jimp.read(buffer);
           if (img.width > 1600) img.resize({ w: 1600 });
           buffer = await img.getBuffer(JimpMime.jpeg, { quality: 82 });
         } catch {
