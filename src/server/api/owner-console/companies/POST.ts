@@ -40,7 +40,7 @@ export default async function handler(req: Request, res: Response) {
 
     const resolvedPlan = PLAN_MAX_USERS[plan ?? ''] ? (plan as string) : 'trial';
     const maxUsers = PLAN_MAX_USERS[resolvedPlan] ?? 1;
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const [newCompany] = await db
       .insert(companies)
