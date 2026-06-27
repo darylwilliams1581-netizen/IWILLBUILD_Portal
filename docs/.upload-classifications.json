@@ -498,6 +498,37 @@
       "summary": "Screenshot of a settings interface showing Job Statuses and Form Categories lists, provided as a reference to discuss UI/UX improvements (drag-and-drop or arrow ordering functionality).",
       "fileName": "screenshot-2026-06-26T16-43-39.jpg",
       "storedUploadFilename": "f38wenbvln_1782492220294_file_YMP0Kx3NZ4.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "content_doc",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF0000",
+        "#000000",
+        "#FFFFFF",
+        "#FFC700"
+      ],
+      "extractedPages": null,
+      "summary": "A worker sign-off register form template with safety branding and layout. User explicitly marks this as reference material not for direct site display.",
+      "fileName": "Sign Off Induction Register.png",
+      "storedUploadFilename": "f38wenbvln_1782515822124_file_bJyg-8Rga0.png"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "content_doc",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "An incident/injury report form template from Austen Landscaping & Earthmoving. User explicitly marks this as reference material not to be used with names or branding, indicating it should inform site structure/content without direct display.",
+      "fileName": "Incident Report Form.png",
+      "storedUploadFilename": "f38wenbvln_1782515822118_file_3O3rBpbMcJ.png"
     }
   ]
 }

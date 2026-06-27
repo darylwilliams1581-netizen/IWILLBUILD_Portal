@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
-  LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap,
+  LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -344,6 +344,8 @@ export default function FormsPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [builderTemplateId, setBuilderTemplateId] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -387,6 +389,24 @@ export default function FormsPage() {
       await fetchTemplates();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed'); }
     finally { setSaving(false); }
+  };
+
+  const handleSeed = async () => {
+    setSeeding(true); setSeedMsg('');
+    try {
+      const r = await fetch('/api/form-templates/seed', { method: 'POST', credentials: 'include' });
+      const d = await r.json() as { ok?: boolean; message?: string; error?: string };
+      if (r.ok) {
+        setSeedMsg(d.message ?? 'Templates added.');
+        await fetchTemplates();
+      } else {
+        setSeedMsg(d.error ?? 'Failed to seed templates.');
+      }
+    } catch {
+      setSeedMsg('Failed to seed templates.');
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -443,12 +463,23 @@ export default function FormsPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
-          >
-            <Plus size={15} /> New Template
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              title="Load 7 industry-standard form templates"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
+              <span className="hidden sm:inline">Load Templates</span>
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
+            >
+              <Plus size={15} /> New Template
+            </button>
+          </div>
         </header>
 
         {/* Error banner */}
@@ -456,6 +487,14 @@ export default function FormsPage() {
           <div className="mx-6 mt-4 px-4 py-3 rounded-xl text-sm text-red-700 flex items-center justify-between border border-red-200 bg-red-50">
             {error}
             <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4"><X size={14} /></button>
+          </div>
+        )}
+
+        {/* Seed success banner */}
+        {seedMsg && (
+          <div className="mx-6 mt-4 px-4 py-3 rounded-xl text-sm text-emerald-700 flex items-center justify-between border border-emerald-200 bg-emerald-50">
+            <span className="flex items-center gap-2"><Check size={14} className="shrink-0" />{seedMsg}</span>
+            <button onClick={() => setSeedMsg('')} className="text-emerald-400 hover:text-emerald-600 ml-4"><X size={14} /></button>
           </div>
         )}
 
@@ -481,14 +520,24 @@ export default function FormsPage() {
               </div>
               <h2 className="font-heading font-bold text-xl text-slate-900 mb-2">No form templates yet</h2>
               <p className="text-slate-500 text-sm max-w-xs mb-7 leading-relaxed">
-                Build reusable templates for safety forms, inductions, prestarts and more — linked to jobs and fleet.
+                Build reusable templates for safety forms, inductions, prestarts and more — or load 7 industry-standard templates to get started quickly.
               </p>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-white px-6 py-3 rounded-xl transition-all hover:brightness-110 bg-primary"
-              >
-                <Plus size={15} /> Create First Template
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSeed}
+                  disabled={seeding}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 px-5 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  {seeding ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
+                  Load Templates
+                </button>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="inline-flex items-center gap-2 text-sm font-bold text-white px-6 py-3 rounded-xl transition-all hover:brightness-110 bg-primary"
+                >
+                  <Plus size={15} /> Create Template
+                </button>
+              </div>
             </motion.div>
           ) : (
             <motion.div
