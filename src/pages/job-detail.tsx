@@ -25,6 +25,7 @@ import {
   Upload,
   ClipboardList,
   ShieldAlert,
+  Receipt,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -35,9 +36,10 @@ import JobTodos from '@/components/job/JobTodos';
 import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
 import JobSafety from '@/components/job/JobSafety';
+import JobCosts from '@/components/job/JobCosts';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
+type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,9 +55,10 @@ export default function JobDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [formRunnerActive, setFormRunnerActive] = useState(false);
+  const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
     return 'details';
   });
 
@@ -76,6 +79,16 @@ export default function JobDetailPage() {
       .then((r) => r.json())
       .then((d: { profile?: { role?: string } }) => { if (d.profile?.role) setUserRole(d.profile.role); })
       .catch(() => {});
+    // Fetch cost summary for header bar
+    if (id) {
+      fetch(`/api/jobs/${id}/costs`, { credentials: 'include' })
+        .then((r) => r.json())
+        .then((d: { costs?: Array<{ amount: string | number }>; approvedTotal?: number }) => {
+          const actual = (d.costs ?? []).reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0);
+          setCostSummary({ actual, approved: d.approvedTotal ?? 0 });
+        })
+        .catch(() => {});
+    }
   }, [id]);
 
   async function loadJob(jobId: number) {
@@ -259,6 +272,26 @@ export default function JobDetailPage() {
                   </span>
                 </div>
 
+                {/* Cost mini-summary */}
+                {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && (
+                  <button
+                    onClick={() => setActiveTab('costs')}
+                    className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="text-slate-500">Costs</span>
+                    <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                    {costSummary.approved > 0 && (
+                      <>
+                        <span className="text-slate-300">/</span>
+                        <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {costSummary.actual > costSummary.approved ? '⚠ Over' : `${((costSummary.actual / costSummary.approved) * 100).toFixed(0)}%`}
+                        </span>
+                      </>
+                    )}
+                    <Receipt size={11} className="text-slate-400" />
+                  </button>
+                )}
+
                 {/* Quick status change */}
                 <div className="relative shrink-0">
                   <button
@@ -297,6 +330,7 @@ export default function JobDetailPage() {
                 {([
                   { key: 'details',   label: 'Details',   icon: FileText },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },
+                  { key: 'costs',     label: 'Costs',     icon: Receipt },
                   { key: 'progress',  label: 'Progress',  icon: TrendingUp },
                   { key: 'todos',     label: 'To-do',     icon: CheckSquare },
                   { key: 'photos',    label: 'Photos',    icon: Camera },
@@ -437,6 +471,11 @@ export default function JobDetailPage() {
               {/* ── Estimates tab ── */}
               {activeTab === 'estimates' && (
                 <JobEstimates jobId={job.id} />
+              )}
+
+              {/* ── Costs tab ── */}
+              {activeTab === 'costs' && (
+                <JobCosts jobId={job.id} />
               )}
 
               {/* ── Files tab ── */}

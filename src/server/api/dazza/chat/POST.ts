@@ -413,6 +413,14 @@ function buildSystemPrompt(ctx: DazzaContext): string {
       lines.push(JSON.stringify(ctx.jobProgress, null, 0));
       lines.push('');
     }
+
+    if (ctx.jobCosts?.length) {
+      lines.push(`## JOB COSTS — ${ctx.companyName} only (Source: Cost Tracker) — ${ctx.jobCosts.length} job(s) with costs`);
+      lines.push('Fields: job_id, job_name, job_number, total_actual, total_gst, total_ex_gst, entry_count, approved_estimate');
+      lines.push('Use this to answer: what has a job cost, which jobs are over budget, profit/margin per job, total spend.');
+      lines.push(JSON.stringify(ctx.jobCosts, null, 0));
+      lines.push('');
+    }
   }
 
   if (p.canFleet) {

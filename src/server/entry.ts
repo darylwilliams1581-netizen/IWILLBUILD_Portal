@@ -75,6 +75,12 @@ import jobs_id_photos_photoId_delete_62 from "./api/jobs/[id]/photos/[photoId]/D
 import jobs_id_photos_photoId_patch_63 from "./api/jobs/[id]/photos/[photoId]/PATCH";
 import jobs_id_photos_photoId_download_get_64 from "./api/jobs/[id]/photos/[photoId]/download/GET";
 import jobs_id_photos_photoId_replace_post_65 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
+import jobs_id_costs_get from "./api/jobs/[id]/costs/GET";
+import jobs_id_costs_post from "./api/jobs/[id]/costs/POST";
+import jobs_id_costs_export_get from "./api/jobs/[id]/costs/export/GET";
+import jobs_id_costs_costId_put from "./api/jobs/[id]/costs/[costId]/PUT";
+import jobs_id_costs_costId_delete from "./api/jobs/[id]/costs/[costId]/DELETE";
+import jobs_id_costs_costId_receipt_post from "./api/jobs/[id]/costs/[costId]/receipt/POST";
 import jobs_id_progress_get_66 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_67 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_sync_post_68 from "./api/jobs/[id]/progress/sync/POST";
@@ -341,6 +347,7 @@ async function runStartupMigrations() {
     { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'job_costs', ddl: "CREATE TABLE IF NOT EXISTS job_costs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, user_id VARCHAR(36) NULL, purchase_date DATE NULL, merchant VARCHAR(255) NULL, description TEXT NOT NULL, category VARCHAR(60) NOT NULL DEFAULT 'Other', amount DECIMAL(12,2) NOT NULL DEFAULT 0, gst_included TINYINT(1) NOT NULL DEFAULT 0, gst_amount DECIMAL(12,2) NOT NULL DEFAULT 0, amount_ex_gst DECIMAL(12,2) NOT NULL DEFAULT 0, receipt_file_id INT NULL, notes TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -458,6 +465,13 @@ app.get("/api/jobs/:id/photos", jobs_id_photos_get_60);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post_61);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_62);
 app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_63);
+// Costs — specific routes BEFORE wildcard :costId
+app.get("/api/jobs/:id/costs/export", jobs_id_costs_export_get);
+app.get("/api/jobs/:id/costs", jobs_id_costs_get);
+app.post("/api/jobs/:id/costs", jobs_id_costs_post);
+app.put("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_put);
+app.delete("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_delete);
+app.post("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_post);
 app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_64);
 app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace_post_65);
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_66);

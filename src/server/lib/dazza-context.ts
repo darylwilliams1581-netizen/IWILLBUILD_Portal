@@ -54,6 +54,7 @@ export interface DazzaContext {
   jobs?:            unknown[];
   openTodos?:       unknown[];
   jobProgress?:     unknown[];
+  jobCosts?:        unknown[];
   fleet?:           unknown[];
   fleetFlags?:      unknown[];
   fleetDueDates?:   unknown[];
@@ -248,6 +249,29 @@ export async function buildDazzaContext(
       ) as unknown as [Array<Record<string, unknown>>, unknown];
       return rows ?? [];
     });
+
+    // ── Job Costs ──────────────────────────────────────────────────────────
+    if (seeDollars) {
+      ctx.jobCosts = await safeQuery('job_costs', async () => {
+        const [rows] = await db.execute(
+          sql`SELECT jc.job_id, j.name as job_name, j.job_number,
+                     SUM(jc.amount) as total_actual,
+                     SUM(jc.gst_amount) as total_gst,
+                     SUM(jc.amount_ex_gst) as total_ex_gst,
+                     COUNT(*) as entry_count,
+                     COALESCE((
+                       SELECT SUM(e.total_amount) FROM estimates e
+                       WHERE e.job_id = jc.job_id AND e.company_id = ${effectiveCompanyId} AND e.status = 'approved'
+                     ), 0) as approved_estimate
+              FROM job_costs jc
+              JOIN jobs j ON j.id = jc.job_id
+              WHERE jc.company_id = ${effectiveCompanyId}
+              GROUP BY jc.job_id, j.name, j.job_number
+              ORDER BY total_actual DESC LIMIT 50`
+        ) as unknown as [Array<Record<string, unknown>>, unknown];
+        return rows ?? [];
+      });
+    }
   }
 
   // ── Fleet ─────────────────────────────────────────────────────────────────
