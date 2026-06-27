@@ -145,6 +145,25 @@ import team_get_130 from "./api/team/GET";
 import team_invite_post_131 from "./api/team/invite/POST";
 import team_id_delete_132 from "./api/team/[id]/DELETE";
 import team_id_put_133 from "./api/team/[id]/PUT";
+import safety_swms_get from "./api/safety/swms/GET";
+import safety_swms_post from "./api/safety/swms/POST";
+import safety_swms_id_get from "./api/safety/swms/[id]/GET";
+import safety_swms_id_put from "./api/safety/swms/[id]/PUT";
+import safety_swms_id_duplicate_post from "./api/safety/swms/[id]/duplicate/POST";
+import safety_plans_get from "./api/safety/plans/GET";
+import safety_plans_post from "./api/safety/plans/POST";
+import safety_plans_id_put from "./api/safety/plans/[id]/PUT";
+import safety_documents_get from "./api/safety/documents/GET";
+import safety_documents_post from "./api/safety/documents/POST";
+import safety_documents_id_download_get from "./api/safety/documents/[id]/download/GET";
+import safety_documents_id_delete from "./api/safety/documents/[id]/DELETE";
+import safety_posters_get from "./api/safety/posters/GET";
+import safety_posters_post from "./api/safety/posters/POST";
+import safety_posters_id_delete from "./api/safety/posters/[id]/DELETE";
+import jobs_id_swms_get from "./api/jobs/[id]/swms/GET";
+import jobs_id_swms_post from "./api/jobs/[id]/swms/POST";
+import jobs_id_swms_swmsId_signoff_post from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
+import migrate_safety_post from "./api/migrate-safety/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import {
@@ -305,6 +324,28 @@ async function runStartupMigrations() {
       WHERE trial_ends_at IS NULL
     `);
   } catch { /* non-fatal */ }
+
+  // Safety module tables (idempotent)
+  const safetyTables = [
+    { name: 'swms_templates', ddl: "CREATE TABLE IF NOT EXISTS swms_templates (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, work_activity TEXT NULL, hazards TEXT NULL, risks TEXT NULL, controls TEXT NULL, ppe TEXT NULL, plant_equipment TEXT NULL, training_competency TEXT NULL, emergency_controls TEXT NULL, environmental_controls TEXT NULL, sign_off_requirements TEXT NULL, revision_number VARCHAR(20) NOT NULL DEFAULT '1', review_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'safety_plans', ddl: "CREATE TABLE IF NOT EXISTS safety_plans (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NULL, title VARCHAR(255) NOT NULL, project_value DECIMAL(15,2) NULL, is_principal_contractor TINYINT(1) NOT NULL DEFAULT 0, site_address TEXT NULL, site_supervisor VARCHAR(255) NULL, first_aid_officer VARCHAR(255) NULL, emergency_contact TEXT NULL, nearest_hospital VARCHAR(255) NULL, emergency_assembly_point TEXT NULL, evacuation_notes TEXT NULL, site_rules TEXT NULL, high_risk_activities TEXT NULL, required_posters TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
+    { name: 'job_swms', ddl: "CREATE TABLE IF NOT EXISTS job_swms (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, swms_template_id INT NOT NULL, assigned_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
+    { name: 'swms_signoffs', ddl: "CREATE TABLE IF NOT EXISTS swms_signoffs (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, worker_name VARCHAR(255) NOT NULL, white_card_number VARCHAR(100) NULL, signature_data LONGTEXT NULL, signed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_job_swms (job_swms_id), INDEX idx_company (company_id))" },
+    { name: 'safety_documents', ddl: "CREATE TABLE IF NOT EXISTS safety_documents (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, doc_type VARCHAR(60) NOT NULL DEFAULT 'policy', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, review_date DATE NULL, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'safety_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, poster_type VARCHAR(60) NOT NULL DEFAULT 'general', original_name VARCHAR(255) NOT NULL, stored_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL, size_bytes INT NOT NULL DEFAULT 0, notes TEXT NULL, uploaded_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+  ];
+  for (const { name, ddl } of safetyTables) {
+    try {
+      await db.execute(sql.raw(ddl));
+      console.log(`[startup-migration] ${name} table ready`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+        console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
+      }
+    }
+  }
 }
 runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
 // ─────────────────────────────────────────────────────────────────────────────
@@ -480,6 +521,26 @@ app.get("/api/team", team_get_130);
 app.post("/api/team/invite", team_invite_post_131);
 app.delete("/api/team/:id", team_id_delete_132);
 app.put("/api/team/:id", team_id_put_133);
+// Safety module
+app.get("/api/safety/swms", safety_swms_get);
+app.post("/api/safety/swms", safety_swms_post);
+app.get("/api/safety/swms/:id", safety_swms_id_get);
+app.put("/api/safety/swms/:id", safety_swms_id_put);
+app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post);
+app.get("/api/safety/plans", safety_plans_get);
+app.post("/api/safety/plans", safety_plans_post);
+app.put("/api/safety/plans/:id", safety_plans_id_put);
+app.get("/api/safety/documents", safety_documents_get);
+app.post("/api/safety/documents", safety_documents_post);
+app.get("/api/safety/documents/:id/download", safety_documents_id_download_get);
+app.delete("/api/safety/documents/:id", safety_documents_id_delete);
+app.get("/api/safety/posters", safety_posters_get);
+app.post("/api/safety/posters", safety_posters_post);
+app.delete("/api/safety/posters/:id", safety_posters_id_delete);
+app.get("/api/jobs/:id/swms", jobs_id_swms_get);
+app.post("/api/jobs/:id/swms", jobs_id_swms_post);
+app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post);
+app.post("/api/migrate-safety", migrate_safety_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

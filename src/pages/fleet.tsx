@@ -388,12 +388,12 @@ export default function FleetPage() {
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="scroll-x-hide flex items-center gap-2 pb-0.5">
                   {FILTERS.map((f) => (
                     <button
                       key={f.value}
                       onClick={() => setFilter(f.value)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                      className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
                         filter === f.value
                           ? 'bg-primary text-white border-primary'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'

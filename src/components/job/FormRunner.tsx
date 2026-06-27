@@ -1038,8 +1038,8 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </AnimatePresence>
       </div>
 
-      {/* Footer action bar */}
-      <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6">
+      {/* Footer action bar — sticky on mobile */}
+      <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6 sm:mb-6 sticky bottom-0 sm:static z-20">
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
           <button
             onClick={saveProgress}

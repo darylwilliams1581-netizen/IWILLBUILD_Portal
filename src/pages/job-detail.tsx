@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Upload,
   ClipboardList,
+  ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -33,9 +34,10 @@ import JobNotes from '@/components/job/JobNotes';
 import JobTodos from '@/components/job/JobTodos';
 import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
+import JobSafety from '@/components/job/JobSafety';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes';
+type Tab = 'details' | 'estimates' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,7 +55,7 @@ export default function JobDetailPage() {
   const [formRunnerActive, setFormRunnerActive] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms') return t;
+    if (t === 'photos' || t === 'estimates' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
     return 'details';
   });
 
@@ -290,7 +292,8 @@ export default function JobDetailPage() {
               </div>
 
               {/* Tabs */}
-              <div className="flex flex-wrap gap-1 bg-white rounded-xl border border-border p-1">
+              <div className="scroll-x-hide bg-white rounded-xl border border-border p-1">
+                <div className="flex gap-1 min-w-max">
                 {([
                   { key: 'details',   label: 'Details',   icon: FileText },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },
@@ -299,21 +302,23 @@ export default function JobDetailPage() {
                   { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
                   { key: 'forms',     label: 'Forms',     icon: ClipboardList },
+                  { key: 'safety',    label: 'Safety',    icon: ShieldAlert },
                   { key: 'notes',     label: 'Notes',     icon: StickyNote },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
                     onClick={() => { setActiveTab(key); setStatusOpen(false); if (key !== 'forms') setFormRunnerActive(false); }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-colors min-w-[60px] ${
+                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                       activeTab === key
                         ? 'bg-slate-900 text-white'
                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     <Icon size={13} />
-                    <span className="hidden sm:inline">{label}</span>
+                    <span>{label}</span>
                   </button>
                 ))}
+                </div>
               </div>
 
               {/* Save error */}
@@ -461,6 +466,11 @@ export default function JobDetailPage() {
                 <div>
                   <JobForms jobId={job.id} userRole={userRole} job={job} onRunnerActive={setFormRunnerActive} />
                 </div>
+              )}
+
+              {/* ── Safety tab ── */}
+              {activeTab === 'safety' && (
+                <JobSafety jobId={job.id} />
               )}
 
             </motion.div>

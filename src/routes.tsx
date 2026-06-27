@@ -22,6 +22,7 @@ import FormsPage from './pages/forms';
 import FilesPage from './pages/files';
 import EstimatingPage from './pages/estimating';
 import EstimateEditorPage from './pages/estimate-editor';
+import SafetyPage from './pages/safety';
 import OwnerConsolePage from './pages/owner-console';
 import BillingPage from './pages/billing';
 import ProdNotFoundPage from './pages/_404';
@@ -51,6 +52,7 @@ export const routes: RouteObject[] = [
   { path: '/files',       element: protect(<FilesPage />) },
   { path: '/estimating',  element: protect(<EstimatingPage />) },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />) },
+  { path: '/safety',      element: protect(<SafetyPage />) },
   { path: '/downloads',   element: protect(<DownloadsPage />) },
   { path: '/dazza-ai',    element: protect(<DazzaAIPage />) },
   { path: '/annette',     element: protect(<AnnettePage />) },

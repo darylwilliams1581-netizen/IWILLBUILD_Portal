@@ -904,7 +904,7 @@ export default function EstimateEditorPage() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 sm:pb-6">
           {loading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="animate-spin text-primary" />
@@ -1248,6 +1248,33 @@ export default function EstimateEditorPage() {
             </div>
           )}
         </div>
+        {/* ── Mobile sticky bottom save bar ── */}
+        {estimate && !isLocked && (
+          <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border px-4 py-3 flex items-center gap-3 z-30 safe-bottom">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{estimate.title}</p>
+              {dirty && <p className="text-xs text-amber-600 font-semibold">Unsaved changes</p>}
+              {!dirty && saved && <p className="text-xs text-emerald-600 font-semibold">Saved</p>}
+            </div>
+            <button
+              onClick={() => setShowPrint(true)}
+              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Printer size={16} />
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${
+                dirty ? 'bg-primary hover:bg-orange-600 text-white' : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {dirty ? 'Save' : 'Saved'}
+            </button>
+          </div>
+        )}
+
       </div>
 
       {showPrint && estimate && (

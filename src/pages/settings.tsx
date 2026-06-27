@@ -652,10 +652,23 @@ export default function SettingsPage() {
         </header>
 
         <div className="flex-1 overflow-auto">
-          <div className="p-6 flex gap-6">
+          <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6">
 
-            {/* Sidebar tabs */}
-            <div className="w-52 shrink-0">
+            {/* Mobile: dropdown tab selector */}
+            <div className="md:hidden">
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>{tab.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Desktop: sidebar tabs */}
+            <div className="hidden md:block w-52 shrink-0">
               <nav className="flex flex-col gap-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;

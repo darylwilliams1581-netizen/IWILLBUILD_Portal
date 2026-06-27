@@ -153,7 +153,7 @@ export default function JobsPage() {
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
               />
             </div>
-            <div className="flex gap-1.5 flex-wrap">
+            <div className="scroll-x-hide flex gap-1.5 pb-0.5">
               {['All', 'Works in Progress', 'Quoting', 'On Hold', 'Completed'].map((f) => (
                 <button
                   key={f}

@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   CalendarDays,
   ChevronDown,
+  ShieldAlert,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe } from '@/lib/usePermissions';
@@ -54,6 +55,7 @@ const navItems = [
   { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
   { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
   { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
+  { label: 'Safety',     icon: ShieldAlert,     href: '/safety',     permKey: null },
   { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
   { label: 'Estimating', icon: Calculator,      href: '/estimating', permKey: 'estimating' },
 ] as const;
