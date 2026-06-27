@@ -5,7 +5,8 @@ import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
-  Users, Calendar, Building2, ChevronDown, Wand2,
+  Users, Calendar, Building2, ChevronDown, Wand2, Bot, Send,
+  Sparkles, FileDown, Package, RefreshCw,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
@@ -755,8 +756,14 @@ function SwmsLibraryTab() {
                 <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Duplicate">
                   {duplicating === s.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                 </button>
-                <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                <a href={`/api/safety/swms/${s.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
+                  <FileDown size={14} />
+                </a>
+                <a href={`/api/safety/swms/${s.id}/export?format=docx`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Export DOCX">
                   <FileText size={14} />
+                </a>
+                <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                  <Wand2 size={14} />
                 </button>
                 <button onClick={() => handleArchive(s.id, s.status)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title={s.status === 'archived' ? 'Unarchive' : 'Archive'}>
                   <ChevronDown size={14} />
@@ -889,9 +896,20 @@ function SafetyPlansTab() {
                   {p.project_value && <span>${parseFloat(p.project_value).toLocaleString()}</span>}
                 </div>
               </div>
-              <button onClick={() => { setEditing(p); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors shrink-0">
-                <FileText size={14} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <a href={`/api/safety/plans/${p.id}/pack`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Download Safety Pack (Plan + all SWMS)">
+                  <Package size={14} />
+                </a>
+                <a href={`/api/safety/plans/${p.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
+                  <FileDown size={14} />
+                </a>
+                <a href={`/api/safety/plans/${p.id}/export?format=docx`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Export DOCX">
+                  <FileText size={14} />
+                </a>
+                <button onClick={() => { setEditing(p); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                  <Wand2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -1248,13 +1266,295 @@ function SafetyDashboardTab() {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <ExternalLink size={16} className="text-blue-600 shrink-0 mt-0.5" />
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+        <Sparkles size={16} className="text-primary shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-bold text-blue-800">Coming Next Phase</p>
-          <p className="text-xs text-blue-700 mt-0.5">PDF generation, DOCX export, Dazza AI safety drafting assistant, SWMS suggestion from job scope, and safety plan pack generator.</p>
+          <p className="text-sm font-bold text-orange-800">Dazza AI Safety Assistant</p>
+          <p className="text-xs text-orange-700 mt-0.5">Use the AI tab to draft SWMS documents, get SWMS suggestions from your job scope, and generate safety plan content — all powered by GPT-4o.</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Dazza Safety AI Tab ───────────────────────────────────────────────────────
+
+type AiMode = 'swms' | 'plan' | 'suggest';
+
+interface AiMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface SwmsSuggestion {
+  title: string;
+  work_activity: string;
+  reason: string;
+}
+
+const AI_MODES: Array<{ id: AiMode; label: string; icon: typeof Bot; desc: string; placeholder: string }> = [
+  {
+    id: 'swms',
+    label: 'Draft SWMS',
+    icon: ShieldAlert,
+    desc: 'Describe a work activity and Dazza will draft a full SWMS with hazards, controls, PPE and legislation.',
+    placeholder: 'e.g. Excavation work adjacent to existing services on a residential site in Queensland…',
+  },
+  {
+    id: 'suggest',
+    label: 'Suggest SWMS',
+    icon: Sparkles,
+    desc: 'Paste your job scope or description and Dazza will identify which SWMS documents you need.',
+    placeholder: 'e.g. Two-storey residential build including slab, framing, roofing, electrical rough-in, plumbing, tiling and painting…',
+  },
+  {
+    id: 'plan',
+    label: 'Draft Safety Plan',
+    icon: ClipboardList,
+    desc: 'Get help drafting site rules, emergency procedures, high-risk activity lists and other safety plan sections.',
+    placeholder: 'e.g. Write site rules for a commercial fitout in a live shopping centre with public access…',
+  },
+];
+
+function DazzaAiTab() {
+  const [mode, setMode] = useState<AiMode>('swms');
+  const [messages, setMessages] = useState<AiMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [suggestions, setSuggestions] = useState<SwmsSuggestion[]>([]);
+  const [draftJson, setDraftJson] = useState<Record<string, string> | null>(null);
+  const [copyMsg, setCopyMsg] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const currentMode = AI_MODES.find((m) => m.id === mode)!;
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streaming]);
+
+  function clearChat() {
+    setMessages([]);
+    setSuggestions([]);
+    setDraftJson(null);
+    setCopyMsg('');
+  }
+
+  async function handleSend() {
+    const prompt = input.trim();
+    if (!prompt || streaming) return;
+    setInput('');
+    setSuggestions([]);
+    setDraftJson(null);
+
+    const userMsg: AiMessage = { id: Date.now().toString(), role: 'user', content: prompt };
+    setMessages((prev) => [...prev, userMsg]);
+    setStreaming(true);
+
+    const assistantId = (Date.now() + 1).toString();
+    setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
+
+    try {
+      const res = await fetch('/api/safety/ai/draft', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, prompt }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: `Error: ${err.error ?? 'Request failed'}` } : m));
+        setStreaming(false);
+        return;
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data) as { delta?: string; error?: string };
+            if (parsed.delta) {
+              fullText += parsed.delta;
+              setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText } : m));
+            }
+          } catch { /* skip */ }
+        }
+      }
+
+      // Parse structured output
+      if (mode === 'suggest') {
+        try {
+          const jsonMatch = fullText.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]) as SwmsSuggestion[];
+            setSuggestions(parsed);
+          }
+        } catch { /* raw text fallback */ }
+      } else if (mode === 'swms') {
+        try {
+          const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>;
+            setDraftJson(parsed);
+          }
+        } catch { /* raw text fallback */ }
+      }
+    } catch (err) {
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: 'Connection error. Please try again.' } : m));
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  async function copyDraft() {
+    if (!draftJson) return;
+    const text = Object.entries(draftJson).map(([k, v]) => `${k.replace(/_/g, ' ').toUpperCase()}\n${v}`).join('\n\n');
+    await navigator.clipboard.writeText(text);
+    setCopyMsg('Copied!');
+    setTimeout(() => setCopyMsg(''), 2000);
+  }
+
+  return (
+    <div className="flex flex-col gap-4 max-w-3xl">
+      {/* Mode selector */}
+      <div className="flex gap-2 flex-wrap">
+        {AI_MODES.map((m) => {
+          const Icon = m.icon;
+          return (
+            <button
+              key={m.id}
+              onClick={() => { setMode(m.id); clearChat(); }}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors border ${
+                mode === m.id
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <Icon size={13} />
+              {m.label}
+            </button>
+          );
+        })}
+        {messages.length > 0 && (
+          <button onClick={clearChat} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors ml-auto">
+            <RefreshCw size={12} />Clear
+          </button>
+        )}
+      </div>
+
+      {/* Mode description */}
+      <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 flex items-start gap-3">
+        <Bot size={16} className="text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-orange-900">{currentMode.label}</p>
+          <p className="text-xs text-orange-700 mt-0.5">{currentMode.desc}</p>
+        </div>
+      </div>
+
+      {/* Chat messages */}
+      {messages.length > 0 && (
+        <div className="flex flex-col gap-3 bg-white border border-slate-200 rounded-xl p-4 max-h-[480px] overflow-y-auto">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-slate-800' : 'bg-primary'}`}>
+                {msg.role === 'user' ? <Users size={13} className="text-white" /> : <Bot size={13} className="text-white" />}
+              </div>
+              <div className={`flex-1 min-w-0 rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === 'user' ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-700 border border-slate-200'
+              }`}>
+                {msg.content || (streaming && msg.role === 'assistant' ? <span className="inline-flex gap-1"><span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} /><span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} /><span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} /></span> : '')}
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      )}
+
+      {/* SWMS Suggestions structured output */}
+      {suggestions.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Suggested SWMS Documents ({suggestions.length})</p>
+          <div className="flex flex-col gap-2">
+            {suggestions.map((s, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldAlert size={12} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-800">{s.title}</p>
+                  {s.work_activity && <p className="text-xs text-slate-500 mt-0.5">{s.work_activity}</p>}
+                  {s.reason && <p className="text-xs text-orange-700 mt-1 italic">{s.reason}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">Go to SWMS Library → New SWMS to create each of these documents.</p>
+        </div>
+      )}
+
+      {/* SWMS Draft structured output */}
+      {draftJson && (
+        <div className="bg-white border border-emerald-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Draft SWMS Ready</p>
+            <button onClick={copyDraft} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors">
+              {copyMsg ? <Check size={12} /> : <Copy size={12} />}
+              {copyMsg || 'Copy all'}
+            </button>
+          </div>
+          <div className="flex flex-col gap-3">
+            {Object.entries(draftJson).map(([key, val]) => (
+              <div key={key}>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{key.replace(/_/g, ' ')}</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{val}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-4">Go to SWMS Library → New SWMS and paste this content to create the document.</p>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="bg-white border border-slate-200 rounded-xl p-3 flex gap-3 items-end">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={currentMode.placeholder}
+          rows={3}
+          disabled={streaming}
+          className="flex-1 resize-none text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none disabled:opacity-50 leading-relaxed"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || streaming}
+          className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shrink-0"
+        >
+          {streaming ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          {streaming ? 'Thinking…' : 'Ask Dazza'}
+        </button>
+      </div>
+      <p className="text-xs text-slate-400 -mt-2">Requires OpenAI API key configured in settings. Press Enter to send, Shift+Enter for new line.</p>
     </div>
   );
 }
@@ -1267,6 +1567,7 @@ const TABS = [
   { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
   { id: 'policies',  label: 'Policies',     icon: BookOpen },
   { id: 'posters',   label: 'Posters',      icon: Image },
+  { id: 'ai',        label: 'Dazza AI',     icon: Bot },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -1340,6 +1641,7 @@ export default function SafetyPage() {
             {activeTab === 'plans'     && <SafetyPlansTab />}
             {activeTab === 'policies'  && <PoliciesTab />}
             {activeTab === 'posters'   && <PostersTab />}
+            {activeTab === 'ai'        && <DazzaAiTab />}
           </motion.div>
         </div>
       </div>
