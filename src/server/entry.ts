@@ -153,6 +153,7 @@ import safety_swms_id_duplicate_post from "./api/safety/swms/[id]/duplicate/POST
 import safety_swms_seed_post from "./api/safety/swms/seed/POST";
 import safety_plans_get from "./api/safety/plans/GET";
 import safety_plans_post from "./api/safety/plans/POST";
+import safety_plans_seed_post from "./api/safety/plans/seed/POST";
 import safety_plans_id_put from "./api/safety/plans/[id]/PUT";
 import safety_documents_get from "./api/safety/documents/GET";
 import safety_documents_post from "./api/safety/documents/POST";
@@ -531,6 +532,7 @@ app.put("/api/safety/swms/:id", safety_swms_id_put);
 app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post);
 app.get("/api/safety/plans", safety_plans_get);
 app.post("/api/safety/plans", safety_plans_post);
+app.post("/api/safety/plans/seed", safety_plans_seed_post);
 app.put("/api/safety/plans/:id", safety_plans_id_put);
 app.get("/api/safety/documents", safety_documents_get);
 app.post("/api/safety/documents", safety_documents_post);
