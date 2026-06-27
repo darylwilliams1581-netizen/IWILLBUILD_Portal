@@ -150,6 +150,7 @@ import safety_swms_post from "./api/safety/swms/POST";
 import safety_swms_id_get from "./api/safety/swms/[id]/GET";
 import safety_swms_id_put from "./api/safety/swms/[id]/PUT";
 import safety_swms_id_duplicate_post from "./api/safety/swms/[id]/duplicate/POST";
+import safety_swms_seed_post from "./api/safety/swms/seed/POST";
 import safety_plans_get from "./api/safety/plans/GET";
 import safety_plans_post from "./api/safety/plans/POST";
 import safety_plans_id_put from "./api/safety/plans/[id]/PUT";
@@ -524,6 +525,7 @@ app.put("/api/team/:id", team_id_put_133);
 // Safety module
 app.get("/api/safety/swms", safety_swms_get);
 app.post("/api/safety/swms", safety_swms_post);
+app.post("/api/safety/swms/seed", safety_swms_seed_post);
 app.get("/api/safety/swms/:id", safety_swms_id_get);
 app.put("/api/safety/swms/:id", safety_swms_id_put);
 app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post);

@@ -616,6 +616,8 @@ function SwmsLibraryTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<SwmsTemplate | null>(null);
   const [duplicating, setDuplicating] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
 
   useEffect(() => {
     fetch('/api/safety/swms', { credentials: 'include' })
@@ -624,6 +626,27 @@ function SwmsLibraryTab() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleSeed() {
+    setSeeding(true); setSeedMsg('');
+    try {
+      const r = await fetch('/api/safety/swms/seed', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (r.ok) {
+        setSeedMsg(d.message ?? 'Templates added.');
+        // Reload list
+        const r2 = await fetch('/api/safety/swms', { credentials: 'include' });
+        const d2 = await r2.json();
+        setSwmsList(d2.swms ?? []);
+      } else {
+        setSeedMsg(d.error ?? 'Failed to seed templates.');
+      }
+    } catch {
+      setSeedMsg('Failed to seed templates.');
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   async function handleDuplicate(id: number) {
     setDuplicating(id);
@@ -663,10 +686,27 @@ function SwmsLibraryTab() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SWMS…" className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
         </div>
-        <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-          <Plus size={15} /><span className="hidden sm:inline">New SWMS</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            title="Load 6 industry-standard SWMS templates"
+          >
+            {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
+            <span className="hidden sm:inline">Load Templates</span>
+          </button>
+          <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+            <Plus size={15} /><span className="hidden sm:inline">New SWMS</span>
+          </button>
+        </div>
       </div>
+
+      {seedMsg && (
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2 text-sm">
+          <Check size={14} className="shrink-0" />{seedMsg}
+        </div>
+      )}
 
       {loading && <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>}
 
@@ -674,10 +714,16 @@ function SwmsLibraryTab() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldAlert size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No SWMS templates yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create reusable Safe Work Method Statements for your common work activities.</p>
-          <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-            <Plus size={15} />Create First SWMS
-          </button>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create reusable Safe Work Method Statements, or load 6 industry-standard templates to get started quickly.</p>
+          <div className="flex items-center gap-3">
+            <button onClick={handleSeed} disabled={seeding} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+              {seeding ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
+              Load Templates
+            </button>
+            <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+              <Plus size={15} />Create SWMS
+            </button>
+          </div>
         </div>
       )}
 
