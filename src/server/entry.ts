@@ -474,7 +474,7 @@ async function runStartupMigrations() {
     },
     {
       name: 'manual_verification_log',
-      ddl: "CREATE TABLE IF NOT EXISTS manual_verification_log (id INT AUTO_INCREMENT PRIMARY KEY, target_user_id VARCHAR(36) NOT NULL, verified_by_user_id VARCHAR(36) NOT NULL, method VARCHAR(60) NOT NULL DEFAULT 'manual_admin', note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_target (target_user_id))",
+      ddl: "CREATE TABLE IF NOT EXISTS manual_verification_log (id INT AUTO_INCREMENT PRIMARY KEY, target_user_id VARCHAR(36) NOT NULL, verified_by_user_id VARCHAR(36) NOT NULL, method VARCHAR(60) NOT NULL DEFAULT 'manual_admin', note TEXT NULL, target_user_email VARCHAR(255) NULL, verified_by_email VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_target (target_user_id))",
     },
   ];
   for (const { name, ddl } of recoveryTables) {
@@ -509,6 +509,29 @@ async function runStartupMigrations() {
       const msg = String((e as Error)?.message ?? e);
       if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
         console.warn(`[startup-migration] Could not ensure user.${column}:`, msg);
+      }
+    }
+  }
+
+  // Ensure email columns on manual_verification_log (added in v2)
+  const manualVerifCols = [
+    { column: 'target_user_email',  definition: 'VARCHAR(255) NULL' },
+    { column: 'verified_by_email',  definition: 'VARCHAR(255) NULL' },
+  ];
+  for (const { column, definition } of manualVerifCols) {
+    try {
+      const [checkRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'manual_verification_log' AND COLUMN_NAME = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      if (!exists) {
+        await db.execute(sql.raw(`ALTER TABLE \`manual_verification_log\` ADD COLUMN \`${column}\` ${definition}`));
+        console.log(`[startup-migration] Added manual_verification_log.${column}`);
+      }
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+        console.warn(`[startup-migration] Could not ensure manual_verification_log.${column}:`, msg);
       }
     }
   }

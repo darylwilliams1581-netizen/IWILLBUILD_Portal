@@ -14,6 +14,7 @@ import { useSupportMode } from '@/lib/useSupportMode';
 import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
+import ManualVerifyModal from '@/components/ManualVerifyModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -435,6 +436,9 @@ export default function OwnerConsolePage() {
   const [createForm, setCreateForm] = useState({ name: '', plan: 'team', abn: '', phone: '', email: '' });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  // Manual verify modal state
+  const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; email: string } | null>(null);
 
   // Run migrations once on mount
   useEffect(() => {
@@ -902,27 +906,12 @@ export default function OwnerConsolePage() {
                                         )}
                                       </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
-                                      {u.emailVerified === false && (
+                                      {u.emailVerified === false && isOwner && (
                                         <button
-                                          onClick={async () => {
-                                            if (!confirm(`Manually verify email for ${u.name} (${u.email})?`)) return;
-                                            const r = await fetch('/api/owner-console/users/verify', {
-                                              method: 'POST',
-                                              credentials: 'include',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ userId: u.id }),
-                                            });
-                                            if (r.ok) {
-                                              alert(`✓ ${u.name}'s email is now verified. They can log in.`);
-                                              window.location.reload();
-                                            } else {
-                                              const d = await r.json() as { error?: string };
-                                              alert(`Failed: ${d.error ?? 'Unknown error'}`);
-                                            }
-                                          }}
+                                          onClick={() => setVerifyTarget({ id: u.id, name: u.name, email: u.email })}
                                           className="mt-1 text-[10px] font-bold text-primary hover:text-orange-600 underline underline-offset-2 transition-colors"
                                         >
-                                          Force verify &amp; unlock
+                                          Verify manually
                                         </button>
                                       )}
                                     </div>
@@ -1123,6 +1112,20 @@ export default function OwnerConsolePage() {
           </div>
         </div>
       )}
+
+      {/* Manual verify modal — owner only */}
+      <ManualVerifyModal
+        user={verifyTarget}
+        onClose={() => setVerifyTarget(null)}
+        onVerified={(userId) => {
+          // Update local state so the Unverified badge disappears immediately
+          setUsers(prev => prev.map(u =>
+            u.id === userId
+              ? { ...u, emailVerified: true, verificationMethod: 'manual_owner' } as typeof u
+              : u
+          ));
+        }}
+      />
     </div>
   );
 }
