@@ -48,8 +48,8 @@ const PLANS = [
     highlight: true,
   },
   {
-    id: 'pro',
-    name: 'Pro',
+    id: 'business',
+    name: 'Business',
     price: 149,
     period: '/mo +GST',
     maxUsers: 10,

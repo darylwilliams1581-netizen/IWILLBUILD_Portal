@@ -13,7 +13,8 @@ import { eq, sql } from 'drizzle-orm';
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
   team:       5,
-  pro:        10,
+  business:   10,
+  pro:        10,   // legacy alias — kept so old subscriptions still resolve correctly
   enterprise: 999,
 };
 

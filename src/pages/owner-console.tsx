@@ -1036,7 +1036,8 @@ export default function OwnerConsolePage() {
                   <option value="trial">Trial (30 days)</option>
                   <option value="solo">Solo — 1 user ($19/mo +GST)</option>
                   <option value="team">Team — 5 users ($79/mo +GST)</option>
-                  <option value="pro">Pro — 10 users ($149/mo +GST)</option>
+                  <option value="business">Business — 10 users ($149/mo +GST)</option>
+                  <option value="pro">Pro (legacy) — 10 users ($149/mo +GST)</option>
                   <option value="enterprise">Enterprise — Unlimited</option>
                 </select>
               </div>
