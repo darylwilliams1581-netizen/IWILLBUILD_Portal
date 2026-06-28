@@ -12,6 +12,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSupportMode } from '@/lib/useSupportMode';
 import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
+import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -420,7 +421,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -629,6 +630,7 @@ export default function OwnerConsolePage() {
           </Tab>
           <Tab active={tab === 'activity'} onClick={() => { setTab('activity'); setFilterCompanyId(null); setSearchParams({}); }}>Activity Log</Tab>
           <Tab active={tab === 'usage'} onClick={() => { setTab('usage'); setSearchParams({}); }}>Usage</Tab>
+          <Tab active={tab === 'storage'} onClick={() => { setTab('storage'); setSearchParams({}); }}>System Storage</Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -999,6 +1001,9 @@ export default function OwnerConsolePage() {
 
               {/* ── Usage ── */}
               {tab === 'usage' && <OwnerUsageTab />}
+
+              {/* ── System Storage ── */}
+              {tab === 'storage' && <SystemStorageTab />}
             </>
           )}
         </div>

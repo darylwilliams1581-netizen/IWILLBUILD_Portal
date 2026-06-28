@@ -124,6 +124,7 @@ import owner_console_activity_get_102 from "./api/owner-console/activity/GET";
 import owner_console_companies_get_103 from "./api/owner-console/companies/GET";
 import owner_console_companies_usage_get from "./api/owner-console/companies/usage/GET";
 import owner_console_companies_limits_put from "./api/owner-console/companies/[id]/limits/PUT";
+import owner_console_storage_get from "./api/owner-console/storage/GET";
 import settings_retention_get from "./api/settings/retention/GET";
 import settings_retention_post from "./api/settings/retention/POST";
 import owner_console_companies_post_104 from "./api/owner-console/companies/POST";
@@ -682,6 +683,7 @@ app.get("/api/owner-console/activity", requireOwner, owner_console_activity_get_
 app.get("/api/owner-console/companies", requireOwner, owner_console_companies_get_103);
 app.get("/api/owner-console/companies/usage", requireOwner, owner_console_companies_usage_get);
 app.put("/api/owner-console/companies/:id/limits", requireOwner, owner_console_companies_limits_put);
+app.get("/api/owner-console/storage", requireOwner, owner_console_storage_get);
 app.get("/api/settings/retention", settings_retention_get);
 app.post("/api/settings/retention", settings_retention_post);
 app.post("/api/owner-console/companies", requireOwner, owner_console_companies_post_104);
