@@ -163,6 +163,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     outDir: "dist/client",
     emptyOutDir: true,
     copyPublicDir: true,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks(id) {
