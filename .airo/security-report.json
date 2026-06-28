@@ -2,6 +2,1529 @@
   "version": 1,
   "reports": [
     {
+      "id": "l5sSjPfd",
+      "scannedAt": "2026-06-28T12:48:30.633Z",
+      "executionTime": 22733,
+      "result": {
+        "success": true,
+        "executionTime": 22733,
+        "recommendations": {
+          "autoFixable": [],
+          "manualReview": [
+            {
+              "package": "@esbuild-kit/core-utils",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "@esbuild-kit/esm-loader",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "@yarnpkg/parsers",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "better-auth",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Consider updating to latest version: npm update better-auth"
+            },
+            {
+              "package": "drizzle-kit",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "esbuild",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "js-yaml",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            },
+            {
+              "package": "lockfile-lint",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Consider updating to latest version: npm update lockfile-lint"
+            },
+            {
+              "package": "lockfile-lint-api",
+              "severity": "medium",
+              "reason": "Lower severity - manual review recommended",
+              "suggestedAction": "Review vulnerability details and consider alternative packages"
+            }
+          ],
+          "deprecatedReplacements": []
+        },
+        "formattedReport": "🔒 **Vulnerability Scan Results**\n\n**NPM Audit:**\nFound 9 vulnerabilities:\n  🟡 Medium: 9\n\n**Available Updates:**\nFound 71 packages with available updates:\n  📦 @babel/core: 7.29.7 → 8.0.1\n  📦 @babel/generator: 7.29.7 → 8.0.0\n  📦 @babel/parser: 7.29.7 → 8.0.0\n  📦 @babel/traverse: 7.29.7 → 8.0.0\n  📦 @babel/types: 7.29.7 → 8.0.0\n  📦 @dr.pogodin/react-helmet: 3.1.1 → 3.2.2\n  📦 @eslint/js: 9.39.4 → 10.0.1\n  📦 @hookform/resolvers: 3.10.0 → 5.4.0\n  📦 @lexical/html: 0.43.0 → 0.46.0\n  📦 @lexical/link: 0.43.0 → 0.46.0\n  ... and 61 more\n\n**Recommendations:**\n\n**Manual Review Required:**\n  • @esbuild-kit/core-utils (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • @esbuild-kit/esm-loader (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • @yarnpkg/parsers (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • better-auth (medium): Lower severity - manual review recommended\n    Suggested: Consider updating to latest version: npm update better-auth\n  • drizzle-kit (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • esbuild (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • js-yaml (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • lockfile-lint (medium): Lower severity - manual review recommended\n    Suggested: Consider updating to latest version: npm update lockfile-lint\n  • lockfile-lint-api (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n\n\n---\n\n🔐 **Secrets Scan Results**\n\n✅ **No hard-coded secrets or credentials found!**\n\n\n---\n\n**Supply Chain:**\n✅ No supply-chain findings.\n",
+        "npmAudit": {
+          "summary": {
+            "total": 9,
+            "critical": 0,
+            "high": 0,
+            "medium": 9,
+            "low": 0
+          },
+          "vulnerabilities": [
+            {
+              "id": "npm-@esbuild-kit/core-utils",
+              "name": "@esbuild-kit/core-utils",
+              "severity": "medium",
+              "via": [
+                "esbuild"
+              ],
+              "title": "@esbuild-kit/core-utils",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-@esbuild-kit/esm-loader",
+              "name": "@esbuild-kit/esm-loader",
+              "severity": "medium",
+              "via": [
+                "@esbuild-kit/core-utils"
+              ],
+              "title": "@esbuild-kit/esm-loader",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-@yarnpkg/parsers",
+              "name": "@yarnpkg/parsers",
+              "severity": "medium",
+              "via": [
+                "js-yaml"
+              ],
+              "title": "@yarnpkg/parsers",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-better-auth",
+              "name": "better-auth",
+              "severity": "medium",
+              "via": [
+                "drizzle-kit"
+              ],
+              "title": "better-auth",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-drizzle-kit",
+              "name": "drizzle-kit",
+              "severity": "medium",
+              "via": [
+                "@esbuild-kit/esm-loader"
+              ],
+              "title": "drizzle-kit",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-esbuild",
+              "name": "esbuild",
+              "severity": "medium",
+              "via": [
+                {
+                  "source": 1102341,
+                  "name": "esbuild",
+                  "dependency": "esbuild",
+                  "title": "esbuild enables any website to send any requests to the development server and read the response",
+                  "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+                  "severity": "moderate",
+                  "cwe": [
+                    "CWE-346"
+                  ],
+                  "cvss": {
+                    "score": 5.3,
+                    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+                  },
+                  "range": "<=0.24.2"
+                }
+              ],
+              "title": "esbuild enables any website to send any requests to the development server and read the response",
+              "description": "esbuild enables any website to send any requests to the development server and read the response"
+            },
+            {
+              "id": "npm-js-yaml",
+              "name": "js-yaml",
+              "severity": "medium",
+              "via": [
+                {
+                  "source": 1120792,
+                  "name": "js-yaml",
+                  "dependency": "js-yaml",
+                  "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+                  "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+                  "severity": "moderate",
+                  "cwe": [
+                    "CWE-407"
+                  ],
+                  "cvss": {
+                    "score": 5.3,
+                    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+                  },
+                  "range": "<=4.1.1"
+                }
+              ],
+              "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+              "description": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases"
+            },
+            {
+              "id": "npm-lockfile-lint",
+              "name": "lockfile-lint",
+              "severity": "medium",
+              "via": [
+                "lockfile-lint-api"
+              ],
+              "title": "lockfile-lint",
+              "description": "Vulnerability detected"
+            },
+            {
+              "id": "npm-lockfile-lint-api",
+              "name": "lockfile-lint-api",
+              "severity": "medium",
+              "via": [
+                "@yarnpkg/parsers"
+              ],
+              "title": "lockfile-lint-api",
+              "description": "Vulnerability detected"
+            }
+          ],
+          "rawData": {
+            "auditReportVersion": 2,
+            "vulnerabilities": {
+              "@esbuild-kit/core-utils": {
+                "name": "@esbuild-kit/core-utils",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  "esbuild"
+                ],
+                "effects": [
+                  "@esbuild-kit/esm-loader"
+                ],
+                "range": "*",
+                "nodes": [
+                  "node_modules/@esbuild-kit/core-utils"
+                ],
+                "fixAvailable": {
+                  "name": "drizzle-kit",
+                  "version": "0.18.1",
+                  "isSemVerMajor": true
+                }
+              },
+              "@esbuild-kit/esm-loader": {
+                "name": "@esbuild-kit/esm-loader",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  "@esbuild-kit/core-utils"
+                ],
+                "effects": [
+                  "drizzle-kit"
+                ],
+                "range": "*",
+                "nodes": [
+                  "node_modules/@esbuild-kit/esm-loader"
+                ],
+                "fixAvailable": {
+                  "name": "drizzle-kit",
+                  "version": "0.18.1",
+                  "isSemVerMajor": true
+                }
+              },
+              "@yarnpkg/parsers": {
+                "name": "@yarnpkg/parsers",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  "js-yaml"
+                ],
+                "effects": [
+                  "lockfile-lint-api"
+                ],
+                "range": "*",
+                "nodes": [
+                  "node_modules/@yarnpkg/parsers"
+                ],
+                "fixAvailable": {
+                  "name": "lockfile-lint",
+                  "version": "4.7.4",
+                  "isSemVerMajor": true
+                }
+              },
+              "better-auth": {
+                "name": "better-auth",
+                "severity": "moderate",
+                "isDirect": true,
+                "via": [
+                  "drizzle-kit"
+                ],
+                "effects": [],
+                "range": ">=1.4.7-beta.2",
+                "nodes": [
+                  "node_modules/better-auth"
+                ],
+                "fixAvailable": {
+                  "name": "better-auth",
+                  "version": "1.4.6",
+                  "isSemVerMajor": true
+                }
+              },
+              "drizzle-kit": {
+                "name": "drizzle-kit",
+                "severity": "moderate",
+                "isDirect": true,
+                "via": [
+                  "@esbuild-kit/esm-loader"
+                ],
+                "effects": [
+                  "better-auth"
+                ],
+                "range": "0.19.0 - 1.0.0-beta.1-fd8bfcc",
+                "nodes": [
+                  "node_modules/drizzle-kit"
+                ],
+                "fixAvailable": {
+                  "name": "drizzle-kit",
+                  "version": "0.18.1",
+                  "isSemVerMajor": true
+                }
+              },
+              "esbuild": {
+                "name": "esbuild",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  {
+                    "source": 1102341,
+                    "name": "esbuild",
+                    "dependency": "esbuild",
+                    "title": "esbuild enables any website to send any requests to the development server and read the response",
+                    "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+                    "severity": "moderate",
+                    "cwe": [
+                      "CWE-346"
+                    ],
+                    "cvss": {
+                      "score": 5.3,
+                      "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+                    },
+                    "range": "<=0.24.2"
+                  }
+                ],
+                "effects": [
+                  "@esbuild-kit/core-utils"
+                ],
+                "range": "<=0.24.2",
+                "nodes": [
+                  "node_modules/@esbuild-kit/core-utils/node_modules/esbuild"
+                ],
+                "fixAvailable": {
+                  "name": "drizzle-kit",
+                  "version": "0.18.1",
+                  "isSemVerMajor": true
+                }
+              },
+              "js-yaml": {
+                "name": "js-yaml",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  {
+                    "source": 1120792,
+                    "name": "js-yaml",
+                    "dependency": "js-yaml",
+                    "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+                    "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+                    "severity": "moderate",
+                    "cwe": [
+                      "CWE-407"
+                    ],
+                    "cvss": {
+                      "score": 5.3,
+                      "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+                    },
+                    "range": "<=4.1.1"
+                  }
+                ],
+                "effects": [
+                  "@yarnpkg/parsers"
+                ],
+                "range": "<=4.1.1",
+                "nodes": [
+                  "node_modules/@yarnpkg/parsers/node_modules/js-yaml"
+                ],
+                "fixAvailable": {
+                  "name": "lockfile-lint",
+                  "version": "4.7.4",
+                  "isSemVerMajor": true
+                }
+              },
+              "lockfile-lint": {
+                "name": "lockfile-lint",
+                "severity": "moderate",
+                "isDirect": true,
+                "via": [
+                  "lockfile-lint-api"
+                ],
+                "effects": [],
+                "range": ">=4.7.5",
+                "nodes": [
+                  "node_modules/lockfile-lint"
+                ],
+                "fixAvailable": {
+                  "name": "lockfile-lint",
+                  "version": "4.7.4",
+                  "isSemVerMajor": true
+                }
+              },
+              "lockfile-lint-api": {
+                "name": "lockfile-lint-api",
+                "severity": "moderate",
+                "isDirect": false,
+                "via": [
+                  "@yarnpkg/parsers"
+                ],
+                "effects": [
+                  "lockfile-lint"
+                ],
+                "range": ">=5.2.5",
+                "nodes": [
+                  "node_modules/lockfile-lint-api"
+                ],
+                "fixAvailable": {
+                  "name": "lockfile-lint",
+                  "version": "4.7.4",
+                  "isSemVerMajor": true
+                }
+              }
+            },
+            "metadata": {
+              "vulnerabilities": {
+                "info": 0,
+                "low": 0,
+                "moderate": 9,
+                "high": 0,
+                "critical": 0,
+                "total": 9
+              },
+              "dependencies": {
+                "prod": 554,
+                "dev": 425,
+                "optional": 100,
+                "peer": 10,
+                "peerOptional": 0,
+                "total": 1056
+              }
+            }
+          }
+        },
+        "availableUpdates": {
+          "packages": [
+            {
+              "name": "@babel/core",
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.1",
+              "location": "/app/node_modules/@babel/core",
+              "type": "dependencies"
+            },
+            {
+              "name": "@babel/generator",
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "location": "/app/node_modules/@babel/generator",
+              "type": "dependencies"
+            },
+            {
+              "name": "@babel/parser",
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "location": "/app/node_modules/@babel/parser",
+              "type": "dependencies"
+            },
+            {
+              "name": "@babel/traverse",
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "location": "/app/node_modules/@babel/traverse",
+              "type": "dependencies"
+            },
+            {
+              "name": "@babel/types",
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "location": "/app/node_modules/@babel/types",
+              "type": "dependencies"
+            },
+            {
+              "name": "@dr.pogodin/react-helmet",
+              "current": "3.1.1",
+              "wanted": "3.2.2",
+              "latest": "3.2.2",
+              "location": "/app/node_modules/@dr.pogodin/react-helmet",
+              "type": "dependencies"
+            },
+            {
+              "name": "@eslint/js",
+              "current": "9.39.4",
+              "wanted": "9.39.4",
+              "latest": "10.0.1",
+              "location": "/app/node_modules/@eslint/js",
+              "type": "dependencies"
+            },
+            {
+              "name": "@hookform/resolvers",
+              "current": "3.10.0",
+              "wanted": "3.10.0",
+              "latest": "5.4.0",
+              "location": "/app/node_modules/@hookform/resolvers",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/html",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/html",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/link",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/link",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/list",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/list",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/react",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/react",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/selection",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/selection",
+              "type": "dependencies"
+            },
+            {
+              "name": "@lexical/utils",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/@lexical/utils",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-accordion",
+              "current": "1.2.12",
+              "wanted": "1.2.14",
+              "latest": "1.2.14",
+              "location": "/app/node_modules/@radix-ui/react-accordion",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-alert-dialog",
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "location": "/app/node_modules/@radix-ui/react-alert-dialog",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-aspect-ratio",
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "location": "/app/node_modules/@radix-ui/react-aspect-ratio",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-avatar",
+              "current": "1.1.11",
+              "wanted": "1.2.0",
+              "latest": "1.2.0",
+              "location": "/app/node_modules/@radix-ui/react-avatar",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-checkbox",
+              "current": "1.3.3",
+              "wanted": "1.3.5",
+              "latest": "1.3.5",
+              "location": "/app/node_modules/@radix-ui/react-checkbox",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-collapsible",
+              "current": "1.1.12",
+              "wanted": "1.1.14",
+              "latest": "1.1.14",
+              "location": "/app/node_modules/@radix-ui/react-collapsible",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-context-menu",
+              "current": "2.2.16",
+              "wanted": "2.3.1",
+              "latest": "2.3.1",
+              "location": "/app/node_modules/@radix-ui/react-context-menu",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-dialog",
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "location": "/app/node_modules/@radix-ui/react-dialog",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-hover-card",
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "location": "/app/node_modules/@radix-ui/react-hover-card",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-label",
+              "current": "2.1.8",
+              "wanted": "2.1.10",
+              "latest": "2.1.10",
+              "location": "/app/node_modules/@radix-ui/react-label",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-menubar",
+              "current": "1.1.16",
+              "wanted": "1.1.18",
+              "latest": "1.1.18",
+              "location": "/app/node_modules/@radix-ui/react-menubar",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-navigation-menu",
+              "current": "1.2.14",
+              "wanted": "1.2.16",
+              "latest": "1.2.16",
+              "location": "/app/node_modules/@radix-ui/react-navigation-menu",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-popover",
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "location": "/app/node_modules/@radix-ui/react-popover",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-progress",
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "location": "/app/node_modules/@radix-ui/react-progress",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-scroll-area",
+              "current": "1.2.10",
+              "wanted": "1.2.12",
+              "latest": "1.2.12",
+              "location": "/app/node_modules/@radix-ui/react-scroll-area",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-select",
+              "current": "2.2.6",
+              "wanted": "2.3.1",
+              "latest": "2.3.1",
+              "location": "/app/node_modules/@radix-ui/react-select",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-separator",
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "location": "/app/node_modules/@radix-ui/react-separator",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-slider",
+              "current": "1.3.6",
+              "wanted": "1.4.1",
+              "latest": "1.4.1",
+              "location": "/app/node_modules/@radix-ui/react-slider",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-slot",
+              "current": "1.2.4",
+              "wanted": "1.3.0",
+              "latest": "1.3.0",
+              "location": "/app/node_modules/@radix-ui/react-slot",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-switch",
+              "current": "1.2.6",
+              "wanted": "1.3.1",
+              "latest": "1.3.1",
+              "location": "/app/node_modules/@radix-ui/react-switch",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-tabs",
+              "current": "1.1.13",
+              "wanted": "1.1.15",
+              "latest": "1.1.15",
+              "location": "/app/node_modules/@radix-ui/react-tabs",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-toast",
+              "current": "1.2.15",
+              "wanted": "1.2.17",
+              "latest": "1.2.17",
+              "location": "/app/node_modules/@radix-ui/react-toast",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-toggle",
+              "current": "1.1.10",
+              "wanted": "1.1.12",
+              "latest": "1.1.12",
+              "location": "/app/node_modules/@radix-ui/react-toggle",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-toggle-group",
+              "current": "1.1.11",
+              "wanted": "1.1.13",
+              "latest": "1.1.13",
+              "location": "/app/node_modules/@radix-ui/react-toggle-group",
+              "type": "dependencies"
+            },
+            {
+              "name": "@radix-ui/react-tooltip",
+              "current": "1.2.8",
+              "wanted": "1.2.10",
+              "latest": "1.2.10",
+              "location": "/app/node_modules/@radix-ui/react-tooltip",
+              "type": "dependencies"
+            },
+            {
+              "name": "@tanstack/react-query",
+              "current": "5.99.2",
+              "wanted": "5.101.2",
+              "latest": "5.101.2",
+              "location": "/app/node_modules/@tanstack/react-query",
+              "type": "dependencies"
+            },
+            {
+              "name": "@types/node",
+              "current": "22.19.17",
+              "wanted": "22.20.0",
+              "latest": "26.0.1",
+              "location": "/app/node_modules/@types/node",
+              "type": "dependencies"
+            },
+            {
+              "name": "@types/react",
+              "current": "19.2.14",
+              "wanted": "19.2.17",
+              "latest": "19.2.17",
+              "location": "/app/node_modules/@types/react",
+              "type": "dependencies"
+            },
+            {
+              "name": "@typescript-eslint/eslint-plugin",
+              "current": "8.59.0",
+              "wanted": "8.62.0",
+              "latest": "8.62.0",
+              "location": "/app/node_modules/@typescript-eslint/eslint-plugin",
+              "type": "dependencies"
+            },
+            {
+              "name": "@typescript-eslint/parser",
+              "current": "8.59.0",
+              "wanted": "8.62.0",
+              "latest": "8.62.0",
+              "location": "/app/node_modules/@typescript-eslint/parser",
+              "type": "dependencies"
+            },
+            {
+              "name": "@vitejs/plugin-react",
+              "current": "4.7.0",
+              "wanted": "4.7.0",
+              "latest": "6.0.3",
+              "location": "/app/node_modules/@vitejs/plugin-react",
+              "type": "dependencies"
+            },
+            {
+              "name": "autoprefixer",
+              "current": "10.5.0",
+              "wanted": "10.5.2",
+              "latest": "10.5.2",
+              "location": "/app/node_modules/autoprefixer",
+              "type": "dependencies"
+            },
+            {
+              "name": "baseline-browser-mapping",
+              "current": "2.10.21",
+              "wanted": "2.10.40",
+              "latest": "2.10.40",
+              "location": "/app/node_modules/baseline-browser-mapping",
+              "type": "dependencies"
+            },
+            {
+              "name": "better-auth",
+              "current": "1.6.15",
+              "wanted": "1.6.22",
+              "latest": "1.6.22",
+              "location": "/app/node_modules/better-auth",
+              "type": "dependencies"
+            },
+            {
+              "name": "date-fns",
+              "current": "4.1.0",
+              "wanted": "4.4.0",
+              "latest": "4.4.0",
+              "location": "/app/node_modules/date-fns",
+              "type": "dependencies"
+            },
+            {
+              "name": "eslint",
+              "current": "9.39.4",
+              "wanted": "9.39.4",
+              "latest": "10.6.0",
+              "location": "/app/node_modules/eslint",
+              "type": "dependencies"
+            },
+            {
+              "name": "eslint-plugin-react-hooks",
+              "current": "5.2.0",
+              "wanted": "5.2.0",
+              "latest": "7.1.1",
+              "location": "/app/node_modules/eslint-plugin-react-hooks",
+              "type": "dependencies"
+            },
+            {
+              "name": "eslint-plugin-react-refresh",
+              "current": "0.4.26",
+              "wanted": "0.4.26",
+              "latest": "0.5.3",
+              "location": "/app/node_modules/eslint-plugin-react-refresh",
+              "type": "dependencies"
+            },
+            {
+              "name": "eslint-plugin-security",
+              "current": "3.0.1",
+              "wanted": "3.0.1",
+              "latest": "4.0.1",
+              "location": "/app/node_modules/eslint-plugin-security",
+              "type": "dependencies"
+            },
+            {
+              "name": "lexical",
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "location": "/app/node_modules/lexical",
+              "type": "dependencies"
+            },
+            {
+              "name": "lockfile-lint",
+              "current": "4.13.2",
+              "wanted": "4.13.2",
+              "latest": "5.0.0",
+              "location": "/app/node_modules/lockfile-lint",
+              "type": "dependencies"
+            },
+            {
+              "name": "lucide-react",
+              "current": "0.454.0",
+              "wanted": "0.454.0",
+              "latest": "1.21.0",
+              "location": "/app/node_modules/lucide-react",
+              "type": "dependencies"
+            },
+            {
+              "name": "motion",
+              "current": "12.38.0",
+              "wanted": "12.42.0",
+              "latest": "12.42.0",
+              "location": "/app/node_modules/motion",
+              "type": "dependencies"
+            },
+            {
+              "name": "prettier",
+              "current": "3.8.3",
+              "wanted": "3.9.1",
+              "latest": "3.9.1",
+              "location": "/app/node_modules/prettier",
+              "type": "dependencies"
+            },
+            {
+              "name": "react",
+              "current": "19.2.5",
+              "wanted": "19.2.7",
+              "latest": "19.2.7",
+              "location": "/app/node_modules/react",
+              "type": "dependencies"
+            },
+            {
+              "name": "react-day-picker",
+              "current": "9.14.0",
+              "wanted": "9.14.0",
+              "latest": "10.0.1",
+              "location": "/app/node_modules/react-day-picker",
+              "type": "dependencies"
+            },
+            {
+              "name": "react-dom",
+              "current": "19.2.5",
+              "wanted": "19.2.7",
+              "latest": "19.2.7",
+              "location": "/app/node_modules/react-dom",
+              "type": "dependencies"
+            },
+            {
+              "name": "react-hook-form",
+              "current": "7.73.1",
+              "wanted": "7.80.0",
+              "latest": "7.80.0",
+              "location": "/app/node_modules/react-hook-form",
+              "type": "dependencies"
+            },
+            {
+              "name": "react-markdown",
+              "current": "9.1.0",
+              "wanted": "9.1.0",
+              "latest": "10.1.0",
+              "location": "/app/node_modules/react-markdown",
+              "type": "dependencies"
+            },
+            {
+              "name": "react-resizable-panels",
+              "current": "3.0.6",
+              "wanted": "3.0.6",
+              "latest": "4.11.2",
+              "location": "/app/node_modules/react-resizable-panels",
+              "type": "dependencies"
+            },
+            {
+              "name": "stripe",
+              "current": "20.4.1",
+              "wanted": "20.4.1",
+              "latest": "22.3.0",
+              "location": "/app/node_modules/stripe",
+              "type": "dependencies"
+            },
+            {
+              "name": "tailwind-merge",
+              "current": "2.6.1",
+              "wanted": "2.6.1",
+              "latest": "3.6.0",
+              "location": "/app/node_modules/tailwind-merge",
+              "type": "dependencies"
+            },
+            {
+              "name": "tailwindcss",
+              "current": "3.4.19",
+              "wanted": "3.4.19",
+              "latest": "4.3.1",
+              "location": "/app/node_modules/tailwindcss",
+              "type": "dependencies"
+            },
+            {
+              "name": "typescript",
+              "current": "5.9.3",
+              "wanted": "5.9.3",
+              "latest": "6.0.3",
+              "location": "/app/node_modules/typescript",
+              "type": "dependencies"
+            },
+            {
+              "name": "vite",
+              "current": "6.4.3",
+              "wanted": "6.4.3",
+              "latest": "8.1.0",
+              "location": "/app/node_modules/vite",
+              "type": "dependencies"
+            },
+            {
+              "name": "zod",
+              "current": "3.25.76",
+              "wanted": "3.25.76",
+              "latest": "4.4.3",
+              "location": "/app/node_modules/zod",
+              "type": "dependencies"
+            },
+            {
+              "name": "zustand",
+              "current": "5.0.12",
+              "wanted": "5.0.14",
+              "latest": "5.0.14",
+              "location": "/app/node_modules/zustand",
+              "type": "dependencies"
+            }
+          ],
+          "rawData": {
+            "@babel/core": {
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@babel/core"
+            },
+            "@babel/generator": {
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@babel/generator"
+            },
+            "@babel/parser": {
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@babel/parser"
+            },
+            "@babel/traverse": {
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@babel/traverse"
+            },
+            "@babel/types": {
+              "current": "7.29.7",
+              "wanted": "7.29.7",
+              "latest": "8.0.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@babel/types"
+            },
+            "@dr.pogodin/react-helmet": {
+              "current": "3.1.1",
+              "wanted": "3.2.2",
+              "latest": "3.2.2",
+              "dependent": "app",
+              "location": "/app/node_modules/@dr.pogodin/react-helmet"
+            },
+            "@eslint/js": {
+              "current": "9.39.4",
+              "wanted": "9.39.4",
+              "latest": "10.0.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@eslint/js"
+            },
+            "@hookform/resolvers": {
+              "current": "3.10.0",
+              "wanted": "3.10.0",
+              "latest": "5.4.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@hookform/resolvers"
+            },
+            "@lexical/html": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/html"
+            },
+            "@lexical/link": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/link"
+            },
+            "@lexical/list": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/list"
+            },
+            "@lexical/react": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/react"
+            },
+            "@lexical/selection": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/selection"
+            },
+            "@lexical/utils": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@lexical/utils"
+            },
+            "@radix-ui/react-accordion": {
+              "current": "1.2.12",
+              "wanted": "1.2.14",
+              "latest": "1.2.14",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-accordion"
+            },
+            "@radix-ui/react-alert-dialog": {
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-alert-dialog"
+            },
+            "@radix-ui/react-aspect-ratio": {
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-aspect-ratio"
+            },
+            "@radix-ui/react-avatar": {
+              "current": "1.1.11",
+              "wanted": "1.2.0",
+              "latest": "1.2.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-avatar"
+            },
+            "@radix-ui/react-checkbox": {
+              "current": "1.3.3",
+              "wanted": "1.3.5",
+              "latest": "1.3.5",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-checkbox"
+            },
+            "@radix-ui/react-collapsible": {
+              "current": "1.1.12",
+              "wanted": "1.1.14",
+              "latest": "1.1.14",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-collapsible"
+            },
+            "@radix-ui/react-context-menu": {
+              "current": "2.2.16",
+              "wanted": "2.3.1",
+              "latest": "2.3.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-context-menu"
+            },
+            "@radix-ui/react-dialog": {
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-dialog"
+            },
+            "@radix-ui/react-hover-card": {
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-hover-card"
+            },
+            "@radix-ui/react-label": {
+              "current": "2.1.8",
+              "wanted": "2.1.10",
+              "latest": "2.1.10",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-label"
+            },
+            "@radix-ui/react-menubar": {
+              "current": "1.1.16",
+              "wanted": "1.1.18",
+              "latest": "1.1.18",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-menubar"
+            },
+            "@radix-ui/react-navigation-menu": {
+              "current": "1.2.14",
+              "wanted": "1.2.16",
+              "latest": "1.2.16",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-navigation-menu"
+            },
+            "@radix-ui/react-popover": {
+              "current": "1.1.15",
+              "wanted": "1.1.17",
+              "latest": "1.1.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-popover"
+            },
+            "@radix-ui/react-progress": {
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-progress"
+            },
+            "@radix-ui/react-scroll-area": {
+              "current": "1.2.10",
+              "wanted": "1.2.12",
+              "latest": "1.2.12",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-scroll-area"
+            },
+            "@radix-ui/react-select": {
+              "current": "2.2.6",
+              "wanted": "2.3.1",
+              "latest": "2.3.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-select"
+            },
+            "@radix-ui/react-separator": {
+              "current": "1.1.8",
+              "wanted": "1.1.10",
+              "latest": "1.1.10",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-separator"
+            },
+            "@radix-ui/react-slider": {
+              "current": "1.3.6",
+              "wanted": "1.4.1",
+              "latest": "1.4.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-slider"
+            },
+            "@radix-ui/react-slot": {
+              "current": "1.2.4",
+              "wanted": "1.3.0",
+              "latest": "1.3.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-slot"
+            },
+            "@radix-ui/react-switch": {
+              "current": "1.2.6",
+              "wanted": "1.3.1",
+              "latest": "1.3.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-switch"
+            },
+            "@radix-ui/react-tabs": {
+              "current": "1.1.13",
+              "wanted": "1.1.15",
+              "latest": "1.1.15",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-tabs"
+            },
+            "@radix-ui/react-toast": {
+              "current": "1.2.15",
+              "wanted": "1.2.17",
+              "latest": "1.2.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-toast"
+            },
+            "@radix-ui/react-toggle": {
+              "current": "1.1.10",
+              "wanted": "1.1.12",
+              "latest": "1.1.12",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-toggle"
+            },
+            "@radix-ui/react-toggle-group": {
+              "current": "1.1.11",
+              "wanted": "1.1.13",
+              "latest": "1.1.13",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-toggle-group"
+            },
+            "@radix-ui/react-tooltip": {
+              "current": "1.2.8",
+              "wanted": "1.2.10",
+              "latest": "1.2.10",
+              "dependent": "app",
+              "location": "/app/node_modules/@radix-ui/react-tooltip"
+            },
+            "@tanstack/react-query": {
+              "current": "5.99.2",
+              "wanted": "5.101.2",
+              "latest": "5.101.2",
+              "dependent": "app",
+              "location": "/app/node_modules/@tanstack/react-query"
+            },
+            "@types/node": {
+              "current": "22.19.17",
+              "wanted": "22.20.0",
+              "latest": "26.0.1",
+              "dependent": "app",
+              "location": "/app/node_modules/@types/node"
+            },
+            "@types/react": {
+              "current": "19.2.14",
+              "wanted": "19.2.17",
+              "latest": "19.2.17",
+              "dependent": "app",
+              "location": "/app/node_modules/@types/react"
+            },
+            "@typescript-eslint/eslint-plugin": {
+              "current": "8.59.0",
+              "wanted": "8.62.0",
+              "latest": "8.62.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@typescript-eslint/eslint-plugin"
+            },
+            "@typescript-eslint/parser": {
+              "current": "8.59.0",
+              "wanted": "8.62.0",
+              "latest": "8.62.0",
+              "dependent": "app",
+              "location": "/app/node_modules/@typescript-eslint/parser"
+            },
+            "@vitejs/plugin-react": {
+              "current": "4.7.0",
+              "wanted": "4.7.0",
+              "latest": "6.0.3",
+              "dependent": "app",
+              "location": "/app/node_modules/@vitejs/plugin-react"
+            },
+            "autoprefixer": {
+              "current": "10.5.0",
+              "wanted": "10.5.2",
+              "latest": "10.5.2",
+              "dependent": "app",
+              "location": "/app/node_modules/autoprefixer"
+            },
+            "baseline-browser-mapping": {
+              "current": "2.10.21",
+              "wanted": "2.10.40",
+              "latest": "2.10.40",
+              "dependent": "app",
+              "location": "/app/node_modules/baseline-browser-mapping"
+            },
+            "better-auth": {
+              "current": "1.6.15",
+              "wanted": "1.6.22",
+              "latest": "1.6.22",
+              "dependent": "app",
+              "location": "/app/node_modules/better-auth"
+            },
+            "date-fns": {
+              "current": "4.1.0",
+              "wanted": "4.4.0",
+              "latest": "4.4.0",
+              "dependent": "app",
+              "location": "/app/node_modules/date-fns"
+            },
+            "eslint": {
+              "current": "9.39.4",
+              "wanted": "9.39.4",
+              "latest": "10.6.0",
+              "dependent": "app",
+              "location": "/app/node_modules/eslint"
+            },
+            "eslint-plugin-react-hooks": {
+              "current": "5.2.0",
+              "wanted": "5.2.0",
+              "latest": "7.1.1",
+              "dependent": "app",
+              "location": "/app/node_modules/eslint-plugin-react-hooks"
+            },
+            "eslint-plugin-react-refresh": {
+              "current": "0.4.26",
+              "wanted": "0.4.26",
+              "latest": "0.5.3",
+              "dependent": "app",
+              "location": "/app/node_modules/eslint-plugin-react-refresh"
+            },
+            "eslint-plugin-security": {
+              "current": "3.0.1",
+              "wanted": "3.0.1",
+              "latest": "4.0.1",
+              "dependent": "app",
+              "location": "/app/node_modules/eslint-plugin-security"
+            },
+            "lexical": {
+              "current": "0.43.0",
+              "wanted": "0.43.0",
+              "latest": "0.46.0",
+              "dependent": "app",
+              "location": "/app/node_modules/lexical"
+            },
+            "lockfile-lint": {
+              "current": "4.13.2",
+              "wanted": "4.13.2",
+              "latest": "5.0.0",
+              "dependent": "app",
+              "location": "/app/node_modules/lockfile-lint"
+            },
+            "lucide-react": {
+              "current": "0.454.0",
+              "wanted": "0.454.0",
+              "latest": "1.21.0",
+              "dependent": "app",
+              "location": "/app/node_modules/lucide-react"
+            },
+            "motion": {
+              "current": "12.38.0",
+              "wanted": "12.42.0",
+              "latest": "12.42.0",
+              "dependent": "app",
+              "location": "/app/node_modules/motion"
+            },
+            "prettier": {
+              "current": "3.8.3",
+              "wanted": "3.9.1",
+              "latest": "3.9.1",
+              "dependent": "app",
+              "location": "/app/node_modules/prettier"
+            },
+            "react": {
+              "current": "19.2.5",
+              "wanted": "19.2.7",
+              "latest": "19.2.7",
+              "dependent": "app",
+              "location": "/app/node_modules/react"
+            },
+            "react-day-picker": {
+              "current": "9.14.0",
+              "wanted": "9.14.0",
+              "latest": "10.0.1",
+              "dependent": "app",
+              "location": "/app/node_modules/react-day-picker"
+            },
+            "react-dom": {
+              "current": "19.2.5",
+              "wanted": "19.2.7",
+              "latest": "19.2.7",
+              "dependent": "app",
+              "location": "/app/node_modules/react-dom"
+            },
+            "react-hook-form": {
+              "current": "7.73.1",
+              "wanted": "7.80.0",
+              "latest": "7.80.0",
+              "dependent": "app",
+              "location": "/app/node_modules/react-hook-form"
+            },
+            "react-markdown": {
+              "current": "9.1.0",
+              "wanted": "9.1.0",
+              "latest": "10.1.0",
+              "dependent": "app",
+              "location": "/app/node_modules/react-markdown"
+            },
+            "react-resizable-panels": {
+              "current": "3.0.6",
+              "wanted": "3.0.6",
+              "latest": "4.11.2",
+              "dependent": "app",
+              "location": "/app/node_modules/react-resizable-panels"
+            },
+            "stripe": {
+              "current": "20.4.1",
+              "wanted": "20.4.1",
+              "latest": "22.3.0",
+              "dependent": "app",
+              "location": "/app/node_modules/stripe"
+            },
+            "tailwind-merge": {
+              "current": "2.6.1",
+              "wanted": "2.6.1",
+              "latest": "3.6.0",
+              "dependent": "app",
+              "location": "/app/node_modules/tailwind-merge"
+            },
+            "tailwindcss": {
+              "current": "3.4.19",
+              "wanted": "3.4.19",
+              "latest": "4.3.1",
+              "dependent": "app",
+              "location": "/app/node_modules/tailwindcss"
+            },
+            "typescript": {
+              "current": "5.9.3",
+              "wanted": "5.9.3",
+              "latest": "6.0.3",
+              "dependent": "app",
+              "location": "/app/node_modules/typescript"
+            },
+            "vite": {
+              "current": "6.4.3",
+              "wanted": "6.4.3",
+              "latest": "8.1.0",
+              "dependent": "app",
+              "location": "/app/node_modules/vite"
+            },
+            "zod": {
+              "current": "3.25.76",
+              "wanted": "3.25.76",
+              "latest": "4.4.3",
+              "dependent": "app",
+              "location": "/app/node_modules/zod"
+            },
+            "zustand": {
+              "current": "5.0.12",
+              "wanted": "5.0.14",
+              "latest": "5.0.14",
+              "dependent": "app",
+              "location": "/app/node_modules/zustand"
+            }
+          }
+        },
+        "deprecatedPackages": [],
+        "secretsScan": {
+          "findings": [],
+          "summary": {
+            "total": 0,
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "formattedReport": "🔐 **Secrets Scan Results**\n\n✅ **No hard-coded secrets or credentials found!**\n"
+        },
+        "supplyChainScan": {
+          "findings": [],
+          "summary": {
+            "total": 0,
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          }
+        }
+      }
+    },
+    {
       "id": "wtVLmkpF",
       "scannedAt": "2026-06-28T12:12:57.777Z",
       "executionTime": 23331,
@@ -12162,1514 +13685,6 @@
       "result": {
         "success": true,
         "executionTime": 18501,
-        "recommendations": {
-          "autoFixable": [],
-          "manualReview": [
-            {
-              "package": "@esbuild-kit/core-utils",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "@esbuild-kit/esm-loader",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "@yarnpkg/parsers",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "better-auth",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Consider updating to latest version: npm update better-auth"
-            },
-            {
-              "package": "drizzle-kit",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "esbuild",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "js-yaml",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            },
-            {
-              "package": "lockfile-lint",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Consider updating to latest version: npm update lockfile-lint"
-            },
-            {
-              "package": "lockfile-lint-api",
-              "severity": "medium",
-              "reason": "Lower severity - manual review recommended",
-              "suggestedAction": "Review vulnerability details and consider alternative packages"
-            }
-          ],
-          "deprecatedReplacements": []
-        },
-        "formattedReport": "🔒 **Vulnerability Scan Results**\n\n**NPM Audit:**\nFound 9 vulnerabilities:\n  🟡 Medium: 9\n\n**Available Updates:**\nFound 70 packages with available updates:\n  📦 @babel/core: 7.29.7 → 8.0.1\n  📦 @babel/generator: 7.29.7 → 8.0.0\n  📦 @babel/parser: 7.29.7 → 8.0.0\n  📦 @babel/traverse: 7.29.7 → 8.0.0\n  📦 @babel/types: 7.29.7 → 8.0.0\n  📦 @dr.pogodin/react-helmet: 3.1.1 → 3.2.2\n  📦 @eslint/js: 9.39.4 → 10.0.1\n  📦 @hookform/resolvers: 3.10.0 → 5.4.0\n  📦 @lexical/html: 0.43.0 → 0.46.0\n  📦 @lexical/link: 0.43.0 → 0.46.0\n  ... and 60 more\n\n**Recommendations:**\n\n**Manual Review Required:**\n  • @esbuild-kit/core-utils (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • @esbuild-kit/esm-loader (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • @yarnpkg/parsers (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • better-auth (medium): Lower severity - manual review recommended\n    Suggested: Consider updating to latest version: npm update better-auth\n  • drizzle-kit (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • esbuild (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • js-yaml (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n  • lockfile-lint (medium): Lower severity - manual review recommended\n    Suggested: Consider updating to latest version: npm update lockfile-lint\n  • lockfile-lint-api (medium): Lower severity - manual review recommended\n    Suggested: Review vulnerability details and consider alternative packages\n\n\n---\n\n🔐 **Secrets Scan Results**\n\n✅ **No hard-coded secrets or credentials found!**\n\n\n---\n\n**Supply Chain:**\n✅ No supply-chain findings.\n",
-        "npmAudit": {
-          "summary": {
-            "total": 9,
-            "critical": 0,
-            "high": 0,
-            "medium": 9,
-            "low": 0
-          },
-          "vulnerabilities": [
-            {
-              "id": "npm-@esbuild-kit/core-utils",
-              "name": "@esbuild-kit/core-utils",
-              "severity": "medium",
-              "via": [
-                "esbuild"
-              ],
-              "title": "@esbuild-kit/core-utils",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-@esbuild-kit/esm-loader",
-              "name": "@esbuild-kit/esm-loader",
-              "severity": "medium",
-              "via": [
-                "@esbuild-kit/core-utils"
-              ],
-              "title": "@esbuild-kit/esm-loader",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-@yarnpkg/parsers",
-              "name": "@yarnpkg/parsers",
-              "severity": "medium",
-              "via": [
-                "js-yaml"
-              ],
-              "title": "@yarnpkg/parsers",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-better-auth",
-              "name": "better-auth",
-              "severity": "medium",
-              "via": [
-                "drizzle-kit"
-              ],
-              "title": "better-auth",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-drizzle-kit",
-              "name": "drizzle-kit",
-              "severity": "medium",
-              "via": [
-                "@esbuild-kit/esm-loader"
-              ],
-              "title": "drizzle-kit",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-esbuild",
-              "name": "esbuild",
-              "severity": "medium",
-              "via": [
-                {
-                  "source": 1102341,
-                  "name": "esbuild",
-                  "dependency": "esbuild",
-                  "title": "esbuild enables any website to send any requests to the development server and read the response",
-                  "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
-                  "severity": "moderate",
-                  "cwe": [
-                    "CWE-346"
-                  ],
-                  "cvss": {
-                    "score": 5.3,
-                    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
-                  },
-                  "range": "<=0.24.2"
-                }
-              ],
-              "title": "esbuild enables any website to send any requests to the development server and read the response",
-              "description": "esbuild enables any website to send any requests to the development server and read the response"
-            },
-            {
-              "id": "npm-js-yaml",
-              "name": "js-yaml",
-              "severity": "medium",
-              "via": [
-                {
-                  "source": 1120792,
-                  "name": "js-yaml",
-                  "dependency": "js-yaml",
-                  "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
-                  "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
-                  "severity": "moderate",
-                  "cwe": [
-                    "CWE-407"
-                  ],
-                  "cvss": {
-                    "score": 5.3,
-                    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
-                  },
-                  "range": "<=4.1.1"
-                }
-              ],
-              "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
-              "description": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases"
-            },
-            {
-              "id": "npm-lockfile-lint",
-              "name": "lockfile-lint",
-              "severity": "medium",
-              "via": [
-                "lockfile-lint-api"
-              ],
-              "title": "lockfile-lint",
-              "description": "Vulnerability detected"
-            },
-            {
-              "id": "npm-lockfile-lint-api",
-              "name": "lockfile-lint-api",
-              "severity": "medium",
-              "via": [
-                "@yarnpkg/parsers"
-              ],
-              "title": "lockfile-lint-api",
-              "description": "Vulnerability detected"
-            }
-          ],
-          "rawData": {
-            "auditReportVersion": 2,
-            "vulnerabilities": {
-              "@esbuild-kit/core-utils": {
-                "name": "@esbuild-kit/core-utils",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  "esbuild"
-                ],
-                "effects": [
-                  "@esbuild-kit/esm-loader"
-                ],
-                "range": "*",
-                "nodes": [
-                  "node_modules/@esbuild-kit/core-utils"
-                ],
-                "fixAvailable": {
-                  "name": "drizzle-kit",
-                  "version": "0.18.1",
-                  "isSemVerMajor": true
-                }
-              },
-              "@esbuild-kit/esm-loader": {
-                "name": "@esbuild-kit/esm-loader",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  "@esbuild-kit/core-utils"
-                ],
-                "effects": [
-                  "drizzle-kit"
-                ],
-                "range": "*",
-                "nodes": [
-                  "node_modules/@esbuild-kit/esm-loader"
-                ],
-                "fixAvailable": {
-                  "name": "drizzle-kit",
-                  "version": "0.18.1",
-                  "isSemVerMajor": true
-                }
-              },
-              "@yarnpkg/parsers": {
-                "name": "@yarnpkg/parsers",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  "js-yaml"
-                ],
-                "effects": [
-                  "lockfile-lint-api"
-                ],
-                "range": "*",
-                "nodes": [
-                  "node_modules/@yarnpkg/parsers"
-                ],
-                "fixAvailable": {
-                  "name": "lockfile-lint",
-                  "version": "4.7.4",
-                  "isSemVerMajor": true
-                }
-              },
-              "better-auth": {
-                "name": "better-auth",
-                "severity": "moderate",
-                "isDirect": true,
-                "via": [
-                  "drizzle-kit"
-                ],
-                "effects": [],
-                "range": ">=1.4.7-beta.2",
-                "nodes": [
-                  "node_modules/better-auth"
-                ],
-                "fixAvailable": {
-                  "name": "better-auth",
-                  "version": "1.4.6",
-                  "isSemVerMajor": true
-                }
-              },
-              "drizzle-kit": {
-                "name": "drizzle-kit",
-                "severity": "moderate",
-                "isDirect": true,
-                "via": [
-                  "@esbuild-kit/esm-loader"
-                ],
-                "effects": [
-                  "better-auth"
-                ],
-                "range": "0.19.0 - 1.0.0-beta.1-fd8bfcc",
-                "nodes": [
-                  "node_modules/drizzle-kit"
-                ],
-                "fixAvailable": {
-                  "name": "drizzle-kit",
-                  "version": "0.18.1",
-                  "isSemVerMajor": true
-                }
-              },
-              "esbuild": {
-                "name": "esbuild",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  {
-                    "source": 1102341,
-                    "name": "esbuild",
-                    "dependency": "esbuild",
-                    "title": "esbuild enables any website to send any requests to the development server and read the response",
-                    "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
-                    "severity": "moderate",
-                    "cwe": [
-                      "CWE-346"
-                    ],
-                    "cvss": {
-                      "score": 5.3,
-                      "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
-                    },
-                    "range": "<=0.24.2"
-                  }
-                ],
-                "effects": [
-                  "@esbuild-kit/core-utils"
-                ],
-                "range": "<=0.24.2",
-                "nodes": [
-                  "node_modules/@esbuild-kit/core-utils/node_modules/esbuild"
-                ],
-                "fixAvailable": {
-                  "name": "drizzle-kit",
-                  "version": "0.18.1",
-                  "isSemVerMajor": true
-                }
-              },
-              "js-yaml": {
-                "name": "js-yaml",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  {
-                    "source": 1120792,
-                    "name": "js-yaml",
-                    "dependency": "js-yaml",
-                    "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
-                    "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
-                    "severity": "moderate",
-                    "cwe": [
-                      "CWE-407"
-                    ],
-                    "cvss": {
-                      "score": 5.3,
-                      "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
-                    },
-                    "range": "<=4.1.1"
-                  }
-                ],
-                "effects": [
-                  "@yarnpkg/parsers"
-                ],
-                "range": "<=4.1.1",
-                "nodes": [
-                  "node_modules/@yarnpkg/parsers/node_modules/js-yaml"
-                ],
-                "fixAvailable": {
-                  "name": "lockfile-lint",
-                  "version": "4.7.4",
-                  "isSemVerMajor": true
-                }
-              },
-              "lockfile-lint": {
-                "name": "lockfile-lint",
-                "severity": "moderate",
-                "isDirect": true,
-                "via": [
-                  "lockfile-lint-api"
-                ],
-                "effects": [],
-                "range": ">=4.7.5",
-                "nodes": [
-                  "node_modules/lockfile-lint"
-                ],
-                "fixAvailable": {
-                  "name": "lockfile-lint",
-                  "version": "4.7.4",
-                  "isSemVerMajor": true
-                }
-              },
-              "lockfile-lint-api": {
-                "name": "lockfile-lint-api",
-                "severity": "moderate",
-                "isDirect": false,
-                "via": [
-                  "@yarnpkg/parsers"
-                ],
-                "effects": [
-                  "lockfile-lint"
-                ],
-                "range": ">=5.2.5",
-                "nodes": [
-                  "node_modules/lockfile-lint-api"
-                ],
-                "fixAvailable": {
-                  "name": "lockfile-lint",
-                  "version": "4.7.4",
-                  "isSemVerMajor": true
-                }
-              }
-            },
-            "metadata": {
-              "vulnerabilities": {
-                "info": 0,
-                "low": 0,
-                "moderate": 9,
-                "high": 0,
-                "critical": 0,
-                "total": 9
-              },
-              "dependencies": {
-                "prod": 523,
-                "dev": 425,
-                "optional": 100,
-                "peer": 10,
-                "peerOptional": 0,
-                "total": 1025
-              }
-            }
-          }
-        },
-        "availableUpdates": {
-          "packages": [
-            {
-              "name": "@babel/core",
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.1",
-              "location": "/app/node_modules/@babel/core",
-              "type": "dependencies"
-            },
-            {
-              "name": "@babel/generator",
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "location": "/app/node_modules/@babel/generator",
-              "type": "dependencies"
-            },
-            {
-              "name": "@babel/parser",
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "location": "/app/node_modules/@babel/parser",
-              "type": "dependencies"
-            },
-            {
-              "name": "@babel/traverse",
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "location": "/app/node_modules/@babel/traverse",
-              "type": "dependencies"
-            },
-            {
-              "name": "@babel/types",
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "location": "/app/node_modules/@babel/types",
-              "type": "dependencies"
-            },
-            {
-              "name": "@dr.pogodin/react-helmet",
-              "current": "3.1.1",
-              "wanted": "3.2.2",
-              "latest": "3.2.2",
-              "location": "/app/node_modules/@dr.pogodin/react-helmet",
-              "type": "dependencies"
-            },
-            {
-              "name": "@eslint/js",
-              "current": "9.39.4",
-              "wanted": "9.39.4",
-              "latest": "10.0.1",
-              "location": "/app/node_modules/@eslint/js",
-              "type": "dependencies"
-            },
-            {
-              "name": "@hookform/resolvers",
-              "current": "3.10.0",
-              "wanted": "3.10.0",
-              "latest": "5.4.0",
-              "location": "/app/node_modules/@hookform/resolvers",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/html",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/html",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/link",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/link",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/list",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/list",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/react",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/react",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/selection",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/selection",
-              "type": "dependencies"
-            },
-            {
-              "name": "@lexical/utils",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/@lexical/utils",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-accordion",
-              "current": "1.2.12",
-              "wanted": "1.2.14",
-              "latest": "1.2.14",
-              "location": "/app/node_modules/@radix-ui/react-accordion",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-alert-dialog",
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "location": "/app/node_modules/@radix-ui/react-alert-dialog",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-aspect-ratio",
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "location": "/app/node_modules/@radix-ui/react-aspect-ratio",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-avatar",
-              "current": "1.1.11",
-              "wanted": "1.2.0",
-              "latest": "1.2.0",
-              "location": "/app/node_modules/@radix-ui/react-avatar",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-checkbox",
-              "current": "1.3.3",
-              "wanted": "1.3.5",
-              "latest": "1.3.5",
-              "location": "/app/node_modules/@radix-ui/react-checkbox",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-collapsible",
-              "current": "1.1.12",
-              "wanted": "1.1.14",
-              "latest": "1.1.14",
-              "location": "/app/node_modules/@radix-ui/react-collapsible",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-context-menu",
-              "current": "2.2.16",
-              "wanted": "2.3.1",
-              "latest": "2.3.1",
-              "location": "/app/node_modules/@radix-ui/react-context-menu",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-dialog",
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "location": "/app/node_modules/@radix-ui/react-dialog",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-hover-card",
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "location": "/app/node_modules/@radix-ui/react-hover-card",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-label",
-              "current": "2.1.8",
-              "wanted": "2.1.10",
-              "latest": "2.1.10",
-              "location": "/app/node_modules/@radix-ui/react-label",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-menubar",
-              "current": "1.1.16",
-              "wanted": "1.1.18",
-              "latest": "1.1.18",
-              "location": "/app/node_modules/@radix-ui/react-menubar",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-navigation-menu",
-              "current": "1.2.14",
-              "wanted": "1.2.16",
-              "latest": "1.2.16",
-              "location": "/app/node_modules/@radix-ui/react-navigation-menu",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-popover",
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "location": "/app/node_modules/@radix-ui/react-popover",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-progress",
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "location": "/app/node_modules/@radix-ui/react-progress",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-scroll-area",
-              "current": "1.2.10",
-              "wanted": "1.2.12",
-              "latest": "1.2.12",
-              "location": "/app/node_modules/@radix-ui/react-scroll-area",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-select",
-              "current": "2.2.6",
-              "wanted": "2.3.1",
-              "latest": "2.3.1",
-              "location": "/app/node_modules/@radix-ui/react-select",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-separator",
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "location": "/app/node_modules/@radix-ui/react-separator",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-slider",
-              "current": "1.3.6",
-              "wanted": "1.4.1",
-              "latest": "1.4.1",
-              "location": "/app/node_modules/@radix-ui/react-slider",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-slot",
-              "current": "1.2.4",
-              "wanted": "1.3.0",
-              "latest": "1.3.0",
-              "location": "/app/node_modules/@radix-ui/react-slot",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-switch",
-              "current": "1.2.6",
-              "wanted": "1.3.1",
-              "latest": "1.3.1",
-              "location": "/app/node_modules/@radix-ui/react-switch",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-tabs",
-              "current": "1.1.13",
-              "wanted": "1.1.15",
-              "latest": "1.1.15",
-              "location": "/app/node_modules/@radix-ui/react-tabs",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-toast",
-              "current": "1.2.15",
-              "wanted": "1.2.17",
-              "latest": "1.2.17",
-              "location": "/app/node_modules/@radix-ui/react-toast",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-toggle",
-              "current": "1.1.10",
-              "wanted": "1.1.12",
-              "latest": "1.1.12",
-              "location": "/app/node_modules/@radix-ui/react-toggle",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-toggle-group",
-              "current": "1.1.11",
-              "wanted": "1.1.13",
-              "latest": "1.1.13",
-              "location": "/app/node_modules/@radix-ui/react-toggle-group",
-              "type": "dependencies"
-            },
-            {
-              "name": "@radix-ui/react-tooltip",
-              "current": "1.2.8",
-              "wanted": "1.2.10",
-              "latest": "1.2.10",
-              "location": "/app/node_modules/@radix-ui/react-tooltip",
-              "type": "dependencies"
-            },
-            {
-              "name": "@tanstack/react-query",
-              "current": "5.99.2",
-              "wanted": "5.101.1",
-              "latest": "5.101.1",
-              "location": "/app/node_modules/@tanstack/react-query",
-              "type": "dependencies"
-            },
-            {
-              "name": "@types/node",
-              "current": "22.19.17",
-              "wanted": "22.20.0",
-              "latest": "26.0.1",
-              "location": "/app/node_modules/@types/node",
-              "type": "dependencies"
-            },
-            {
-              "name": "@types/react",
-              "current": "19.2.14",
-              "wanted": "19.2.17",
-              "latest": "19.2.17",
-              "location": "/app/node_modules/@types/react",
-              "type": "dependencies"
-            },
-            {
-              "name": "@typescript-eslint/eslint-plugin",
-              "current": "8.59.0",
-              "wanted": "8.62.0",
-              "latest": "8.62.0",
-              "location": "/app/node_modules/@typescript-eslint/eslint-plugin",
-              "type": "dependencies"
-            },
-            {
-              "name": "@typescript-eslint/parser",
-              "current": "8.59.0",
-              "wanted": "8.62.0",
-              "latest": "8.62.0",
-              "location": "/app/node_modules/@typescript-eslint/parser",
-              "type": "dependencies"
-            },
-            {
-              "name": "@vitejs/plugin-react",
-              "current": "4.7.0",
-              "wanted": "4.7.0",
-              "latest": "6.0.3",
-              "location": "/app/node_modules/@vitejs/plugin-react",
-              "type": "dependencies"
-            },
-            {
-              "name": "autoprefixer",
-              "current": "10.5.0",
-              "wanted": "10.5.2",
-              "latest": "10.5.2",
-              "location": "/app/node_modules/autoprefixer",
-              "type": "dependencies"
-            },
-            {
-              "name": "baseline-browser-mapping",
-              "current": "2.10.21",
-              "wanted": "2.10.40",
-              "latest": "2.10.40",
-              "location": "/app/node_modules/baseline-browser-mapping",
-              "type": "dependencies"
-            },
-            {
-              "name": "better-auth",
-              "current": "1.6.15",
-              "wanted": "1.6.21",
-              "latest": "1.6.21",
-              "location": "/app/node_modules/better-auth",
-              "type": "dependencies"
-            },
-            {
-              "name": "date-fns",
-              "current": "4.1.0",
-              "wanted": "4.4.0",
-              "latest": "4.4.0",
-              "location": "/app/node_modules/date-fns",
-              "type": "dependencies"
-            },
-            {
-              "name": "eslint",
-              "current": "9.39.4",
-              "wanted": "9.39.4",
-              "latest": "10.5.0",
-              "location": "/app/node_modules/eslint",
-              "type": "dependencies"
-            },
-            {
-              "name": "eslint-plugin-react-hooks",
-              "current": "5.2.0",
-              "wanted": "5.2.0",
-              "latest": "7.1.1",
-              "location": "/app/node_modules/eslint-plugin-react-hooks",
-              "type": "dependencies"
-            },
-            {
-              "name": "eslint-plugin-react-refresh",
-              "current": "0.4.26",
-              "wanted": "0.4.26",
-              "latest": "0.5.3",
-              "location": "/app/node_modules/eslint-plugin-react-refresh",
-              "type": "dependencies"
-            },
-            {
-              "name": "eslint-plugin-security",
-              "current": "3.0.1",
-              "wanted": "3.0.1",
-              "latest": "4.0.1",
-              "location": "/app/node_modules/eslint-plugin-security",
-              "type": "dependencies"
-            },
-            {
-              "name": "lexical",
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "location": "/app/node_modules/lexical",
-              "type": "dependencies"
-            },
-            {
-              "name": "lockfile-lint",
-              "current": "4.13.2",
-              "wanted": "4.13.2",
-              "latest": "5.0.0",
-              "location": "/app/node_modules/lockfile-lint",
-              "type": "dependencies"
-            },
-            {
-              "name": "lucide-react",
-              "current": "0.454.0",
-              "wanted": "0.454.0",
-              "latest": "1.21.0",
-              "location": "/app/node_modules/lucide-react",
-              "type": "dependencies"
-            },
-            {
-              "name": "motion",
-              "current": "12.38.0",
-              "wanted": "12.42.0",
-              "latest": "12.42.0",
-              "location": "/app/node_modules/motion",
-              "type": "dependencies"
-            },
-            {
-              "name": "prettier",
-              "current": "3.8.3",
-              "wanted": "3.8.4",
-              "latest": "3.8.4",
-              "location": "/app/node_modules/prettier",
-              "type": "dependencies"
-            },
-            {
-              "name": "react",
-              "current": "19.2.5",
-              "wanted": "19.2.7",
-              "latest": "19.2.7",
-              "location": "/app/node_modules/react",
-              "type": "dependencies"
-            },
-            {
-              "name": "react-day-picker",
-              "current": "9.14.0",
-              "wanted": "9.14.0",
-              "latest": "10.0.1",
-              "location": "/app/node_modules/react-day-picker",
-              "type": "dependencies"
-            },
-            {
-              "name": "react-dom",
-              "current": "19.2.5",
-              "wanted": "19.2.7",
-              "latest": "19.2.7",
-              "location": "/app/node_modules/react-dom",
-              "type": "dependencies"
-            },
-            {
-              "name": "react-hook-form",
-              "current": "7.73.1",
-              "wanted": "7.80.0",
-              "latest": "7.80.0",
-              "location": "/app/node_modules/react-hook-form",
-              "type": "dependencies"
-            },
-            {
-              "name": "react-markdown",
-              "current": "9.1.0",
-              "wanted": "9.1.0",
-              "latest": "10.1.0",
-              "location": "/app/node_modules/react-markdown",
-              "type": "dependencies"
-            },
-            {
-              "name": "react-resizable-panels",
-              "current": "3.0.6",
-              "wanted": "3.0.6",
-              "latest": "4.11.2",
-              "location": "/app/node_modules/react-resizable-panels",
-              "type": "dependencies"
-            },
-            {
-              "name": "tailwind-merge",
-              "current": "2.6.1",
-              "wanted": "2.6.1",
-              "latest": "3.6.0",
-              "location": "/app/node_modules/tailwind-merge",
-              "type": "dependencies"
-            },
-            {
-              "name": "tailwindcss",
-              "current": "3.4.19",
-              "wanted": "3.4.19",
-              "latest": "4.3.1",
-              "location": "/app/node_modules/tailwindcss",
-              "type": "dependencies"
-            },
-            {
-              "name": "typescript",
-              "current": "5.9.3",
-              "wanted": "5.9.3",
-              "latest": "6.0.3",
-              "location": "/app/node_modules/typescript",
-              "type": "dependencies"
-            },
-            {
-              "name": "vite",
-              "current": "6.4.3",
-              "wanted": "6.4.3",
-              "latest": "8.1.0",
-              "location": "/app/node_modules/vite",
-              "type": "dependencies"
-            },
-            {
-              "name": "zod",
-              "current": "3.25.76",
-              "wanted": "3.25.76",
-              "latest": "4.4.3",
-              "location": "/app/node_modules/zod",
-              "type": "dependencies"
-            },
-            {
-              "name": "zustand",
-              "current": "5.0.12",
-              "wanted": "5.0.14",
-              "latest": "5.0.14",
-              "location": "/app/node_modules/zustand",
-              "type": "dependencies"
-            }
-          ],
-          "rawData": {
-            "@babel/core": {
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@babel/core"
-            },
-            "@babel/generator": {
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@babel/generator"
-            },
-            "@babel/parser": {
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@babel/parser"
-            },
-            "@babel/traverse": {
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@babel/traverse"
-            },
-            "@babel/types": {
-              "current": "7.29.7",
-              "wanted": "7.29.7",
-              "latest": "8.0.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@babel/types"
-            },
-            "@dr.pogodin/react-helmet": {
-              "current": "3.1.1",
-              "wanted": "3.2.2",
-              "latest": "3.2.2",
-              "dependent": "app",
-              "location": "/app/node_modules/@dr.pogodin/react-helmet"
-            },
-            "@eslint/js": {
-              "current": "9.39.4",
-              "wanted": "9.39.4",
-              "latest": "10.0.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@eslint/js"
-            },
-            "@hookform/resolvers": {
-              "current": "3.10.0",
-              "wanted": "3.10.0",
-              "latest": "5.4.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@hookform/resolvers"
-            },
-            "@lexical/html": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/html"
-            },
-            "@lexical/link": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/link"
-            },
-            "@lexical/list": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/list"
-            },
-            "@lexical/react": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/react"
-            },
-            "@lexical/selection": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/selection"
-            },
-            "@lexical/utils": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@lexical/utils"
-            },
-            "@radix-ui/react-accordion": {
-              "current": "1.2.12",
-              "wanted": "1.2.14",
-              "latest": "1.2.14",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-accordion"
-            },
-            "@radix-ui/react-alert-dialog": {
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-alert-dialog"
-            },
-            "@radix-ui/react-aspect-ratio": {
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-aspect-ratio"
-            },
-            "@radix-ui/react-avatar": {
-              "current": "1.1.11",
-              "wanted": "1.2.0",
-              "latest": "1.2.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-avatar"
-            },
-            "@radix-ui/react-checkbox": {
-              "current": "1.3.3",
-              "wanted": "1.3.5",
-              "latest": "1.3.5",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-checkbox"
-            },
-            "@radix-ui/react-collapsible": {
-              "current": "1.1.12",
-              "wanted": "1.1.14",
-              "latest": "1.1.14",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-collapsible"
-            },
-            "@radix-ui/react-context-menu": {
-              "current": "2.2.16",
-              "wanted": "2.3.1",
-              "latest": "2.3.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-context-menu"
-            },
-            "@radix-ui/react-dialog": {
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-dialog"
-            },
-            "@radix-ui/react-hover-card": {
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-hover-card"
-            },
-            "@radix-ui/react-label": {
-              "current": "2.1.8",
-              "wanted": "2.1.10",
-              "latest": "2.1.10",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-label"
-            },
-            "@radix-ui/react-menubar": {
-              "current": "1.1.16",
-              "wanted": "1.1.18",
-              "latest": "1.1.18",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-menubar"
-            },
-            "@radix-ui/react-navigation-menu": {
-              "current": "1.2.14",
-              "wanted": "1.2.16",
-              "latest": "1.2.16",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-navigation-menu"
-            },
-            "@radix-ui/react-popover": {
-              "current": "1.1.15",
-              "wanted": "1.1.17",
-              "latest": "1.1.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-popover"
-            },
-            "@radix-ui/react-progress": {
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-progress"
-            },
-            "@radix-ui/react-scroll-area": {
-              "current": "1.2.10",
-              "wanted": "1.2.12",
-              "latest": "1.2.12",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-scroll-area"
-            },
-            "@radix-ui/react-select": {
-              "current": "2.2.6",
-              "wanted": "2.3.1",
-              "latest": "2.3.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-select"
-            },
-            "@radix-ui/react-separator": {
-              "current": "1.1.8",
-              "wanted": "1.1.10",
-              "latest": "1.1.10",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-separator"
-            },
-            "@radix-ui/react-slider": {
-              "current": "1.3.6",
-              "wanted": "1.4.1",
-              "latest": "1.4.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-slider"
-            },
-            "@radix-ui/react-slot": {
-              "current": "1.2.4",
-              "wanted": "1.3.0",
-              "latest": "1.3.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-slot"
-            },
-            "@radix-ui/react-switch": {
-              "current": "1.2.6",
-              "wanted": "1.3.1",
-              "latest": "1.3.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-switch"
-            },
-            "@radix-ui/react-tabs": {
-              "current": "1.1.13",
-              "wanted": "1.1.15",
-              "latest": "1.1.15",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-tabs"
-            },
-            "@radix-ui/react-toast": {
-              "current": "1.2.15",
-              "wanted": "1.2.17",
-              "latest": "1.2.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-toast"
-            },
-            "@radix-ui/react-toggle": {
-              "current": "1.1.10",
-              "wanted": "1.1.12",
-              "latest": "1.1.12",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-toggle"
-            },
-            "@radix-ui/react-toggle-group": {
-              "current": "1.1.11",
-              "wanted": "1.1.13",
-              "latest": "1.1.13",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-toggle-group"
-            },
-            "@radix-ui/react-tooltip": {
-              "current": "1.2.8",
-              "wanted": "1.2.10",
-              "latest": "1.2.10",
-              "dependent": "app",
-              "location": "/app/node_modules/@radix-ui/react-tooltip"
-            },
-            "@tanstack/react-query": {
-              "current": "5.99.2",
-              "wanted": "5.101.1",
-              "latest": "5.101.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@tanstack/react-query"
-            },
-            "@types/node": {
-              "current": "22.19.17",
-              "wanted": "22.20.0",
-              "latest": "26.0.1",
-              "dependent": "app",
-              "location": "/app/node_modules/@types/node"
-            },
-            "@types/react": {
-              "current": "19.2.14",
-              "wanted": "19.2.17",
-              "latest": "19.2.17",
-              "dependent": "app",
-              "location": "/app/node_modules/@types/react"
-            },
-            "@typescript-eslint/eslint-plugin": {
-              "current": "8.59.0",
-              "wanted": "8.62.0",
-              "latest": "8.62.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@typescript-eslint/eslint-plugin"
-            },
-            "@typescript-eslint/parser": {
-              "current": "8.59.0",
-              "wanted": "8.62.0",
-              "latest": "8.62.0",
-              "dependent": "app",
-              "location": "/app/node_modules/@typescript-eslint/parser"
-            },
-            "@vitejs/plugin-react": {
-              "current": "4.7.0",
-              "wanted": "4.7.0",
-              "latest": "6.0.3",
-              "dependent": "app",
-              "location": "/app/node_modules/@vitejs/plugin-react"
-            },
-            "autoprefixer": {
-              "current": "10.5.0",
-              "wanted": "10.5.2",
-              "latest": "10.5.2",
-              "dependent": "app",
-              "location": "/app/node_modules/autoprefixer"
-            },
-            "baseline-browser-mapping": {
-              "current": "2.10.21",
-              "wanted": "2.10.40",
-              "latest": "2.10.40",
-              "dependent": "app",
-              "location": "/app/node_modules/baseline-browser-mapping"
-            },
-            "better-auth": {
-              "current": "1.6.15",
-              "wanted": "1.6.21",
-              "latest": "1.6.21",
-              "dependent": "app",
-              "location": "/app/node_modules/better-auth"
-            },
-            "date-fns": {
-              "current": "4.1.0",
-              "wanted": "4.4.0",
-              "latest": "4.4.0",
-              "dependent": "app",
-              "location": "/app/node_modules/date-fns"
-            },
-            "eslint": {
-              "current": "9.39.4",
-              "wanted": "9.39.4",
-              "latest": "10.5.0",
-              "dependent": "app",
-              "location": "/app/node_modules/eslint"
-            },
-            "eslint-plugin-react-hooks": {
-              "current": "5.2.0",
-              "wanted": "5.2.0",
-              "latest": "7.1.1",
-              "dependent": "app",
-              "location": "/app/node_modules/eslint-plugin-react-hooks"
-            },
-            "eslint-plugin-react-refresh": {
-              "current": "0.4.26",
-              "wanted": "0.4.26",
-              "latest": "0.5.3",
-              "dependent": "app",
-              "location": "/app/node_modules/eslint-plugin-react-refresh"
-            },
-            "eslint-plugin-security": {
-              "current": "3.0.1",
-              "wanted": "3.0.1",
-              "latest": "4.0.1",
-              "dependent": "app",
-              "location": "/app/node_modules/eslint-plugin-security"
-            },
-            "lexical": {
-              "current": "0.43.0",
-              "wanted": "0.43.0",
-              "latest": "0.46.0",
-              "dependent": "app",
-              "location": "/app/node_modules/lexical"
-            },
-            "lockfile-lint": {
-              "current": "4.13.2",
-              "wanted": "4.13.2",
-              "latest": "5.0.0",
-              "dependent": "app",
-              "location": "/app/node_modules/lockfile-lint"
-            },
-            "lucide-react": {
-              "current": "0.454.0",
-              "wanted": "0.454.0",
-              "latest": "1.21.0",
-              "dependent": "app",
-              "location": "/app/node_modules/lucide-react"
-            },
-            "motion": {
-              "current": "12.38.0",
-              "wanted": "12.42.0",
-              "latest": "12.42.0",
-              "dependent": "app",
-              "location": "/app/node_modules/motion"
-            },
-            "prettier": {
-              "current": "3.8.3",
-              "wanted": "3.8.4",
-              "latest": "3.8.4",
-              "dependent": "app",
-              "location": "/app/node_modules/prettier"
-            },
-            "react": {
-              "current": "19.2.5",
-              "wanted": "19.2.7",
-              "latest": "19.2.7",
-              "dependent": "app",
-              "location": "/app/node_modules/react"
-            },
-            "react-day-picker": {
-              "current": "9.14.0",
-              "wanted": "9.14.0",
-              "latest": "10.0.1",
-              "dependent": "app",
-              "location": "/app/node_modules/react-day-picker"
-            },
-            "react-dom": {
-              "current": "19.2.5",
-              "wanted": "19.2.7",
-              "latest": "19.2.7",
-              "dependent": "app",
-              "location": "/app/node_modules/react-dom"
-            },
-            "react-hook-form": {
-              "current": "7.73.1",
-              "wanted": "7.80.0",
-              "latest": "7.80.0",
-              "dependent": "app",
-              "location": "/app/node_modules/react-hook-form"
-            },
-            "react-markdown": {
-              "current": "9.1.0",
-              "wanted": "9.1.0",
-              "latest": "10.1.0",
-              "dependent": "app",
-              "location": "/app/node_modules/react-markdown"
-            },
-            "react-resizable-panels": {
-              "current": "3.0.6",
-              "wanted": "3.0.6",
-              "latest": "4.11.2",
-              "dependent": "app",
-              "location": "/app/node_modules/react-resizable-panels"
-            },
-            "tailwind-merge": {
-              "current": "2.6.1",
-              "wanted": "2.6.1",
-              "latest": "3.6.0",
-              "dependent": "app",
-              "location": "/app/node_modules/tailwind-merge"
-            },
-            "tailwindcss": {
-              "current": "3.4.19",
-              "wanted": "3.4.19",
-              "latest": "4.3.1",
-              "dependent": "app",
-              "location": "/app/node_modules/tailwindcss"
-            },
-            "typescript": {
-              "current": "5.9.3",
-              "wanted": "5.9.3",
-              "latest": "6.0.3",
-              "dependent": "app",
-              "location": "/app/node_modules/typescript"
-            },
-            "vite": {
-              "current": "6.4.3",
-              "wanted": "6.4.3",
-              "latest": "8.1.0",
-              "dependent": "app",
-              "location": "/app/node_modules/vite"
-            },
-            "zod": {
-              "current": "3.25.76",
-              "wanted": "3.25.76",
-              "latest": "4.4.3",
-              "dependent": "app",
-              "location": "/app/node_modules/zod"
-            },
-            "zustand": {
-              "current": "5.0.12",
-              "wanted": "5.0.14",
-              "latest": "5.0.14",
-              "dependent": "app",
-              "location": "/app/node_modules/zustand"
-            }
-          }
-        },
-        "deprecatedPackages": [],
-        "secretsScan": {
-          "findings": [],
-          "summary": {
-            "total": 0,
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          },
-          "formattedReport": "🔐 **Secrets Scan Results**\n\n✅ **No hard-coded secrets or credentials found!**\n"
-        },
-        "supplyChainScan": {
-          "findings": [],
-          "summary": {
-            "total": 0,
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-          }
-        }
-      }
-    },
-    {
-      "id": "MgMJDFEy",
-      "scannedAt": "2026-06-26T12:21:51.459Z",
-      "executionTime": 18332,
-      "result": {
-        "success": true,
-        "executionTime": 18332,
         "recommendations": {
           "autoFixable": [],
           "manualReview": [

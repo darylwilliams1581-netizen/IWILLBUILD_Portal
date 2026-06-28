@@ -2,6 +2,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
+import { getSecret } from '#airo/secrets';
 
 // <api-imports>
 import active_ping_post_0 from "./api/active-ping/POST";
@@ -24,6 +25,7 @@ import dashboard_todos_get_14 from "./api/dashboard/todos/GET";
 import dazza_annette_post_15 from "./api/dazza/annette/POST";
 import dazza_chat_post_16 from "./api/dazza/chat/POST";
 import dazza_context_get_17 from "./api/dazza/context/GET";
+import dazza_key_status_get from "./api/dazza/key-status/GET";
 import dazza_knowledge_get_18 from "./api/dazza/knowledge/GET";
 import dazza_knowledge_post_19 from "./api/dazza/knowledge/POST";
 import dazza_knowledge_id_delete_20 from "./api/dazza/knowledge/[id]/DELETE";
@@ -468,6 +470,14 @@ async function runStartupMigrations() {
   }
 }
 runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
+
+// ── Startup checks ────────────────────────────────────────────────────────────
+const openAiKey = getSecret('OPENAI_API_KEY');
+if (!openAiKey || openAiKey.trim().length === 0) {
+  console.warn('[dazza] ⚠️  OPENAI_API_KEY is not configured. Dazza AI will answer portal lookups and calculators only. Add the key in Airo Secrets to enable full AI responses.');
+} else {
+  console.log('[dazza] ✅ OPENAI_API_KEY is configured. Dazza AI full responses enabled.');
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Temporary: table diagnostic (no auth — structure only, no data) ──────────
@@ -538,6 +548,7 @@ app.get("/api/dashboard/todos", dashboard_todos_get_14);
 app.post("/api/dazza/annette", dazza_annette_post_15);
 app.post("/api/dazza/chat", dazza_chat_post_16);
 app.get("/api/dazza/context", dazza_context_get_17);
+app.get("/api/dazza/key-status", dazza_key_status_get);
 app.get("/api/dazza/knowledge", dazza_knowledge_get_18);
 app.post("/api/dazza/knowledge", dazza_knowledge_post_19);
 app.delete("/api/dazza/knowledge/:id", dazza_knowledge_id_delete_20);

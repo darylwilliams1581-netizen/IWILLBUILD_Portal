@@ -273,10 +273,18 @@ export default function DazzaAIPage() {
   const loadContext = useCallback(async () => {
     setCtxLoading(true);
     try {
-      const res = await fetch('/api/dazza/context', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json() as DazzaContextSummary;
+      const [ctxRes, keyRes] = await Promise.all([
+        fetch('/api/dazza/context', { credentials: 'include' }),
+        fetch('/api/dazza/key-status', { credentials: 'include' }),
+      ]);
+      if (ctxRes.ok) {
+        const data = await ctxRes.json() as DazzaContextSummary;
         setDazzaCtx(data);
+      }
+      if (keyRes.ok) {
+        const keyData = await keyRes.json() as { configured: boolean };
+        // Only show the banner if key is NOT configured
+        setNoApiKey(!keyData.configured);
       }
     } catch {
       // silent — right panel will show zeros
@@ -284,7 +292,6 @@ export default function DazzaAIPage() {
       setCtxLoading(false);
     }
   }, []);
-
   useEffect(() => { void loadContext(); }, [loadContext]);
 
   useEffect(() => {
@@ -351,7 +358,12 @@ export default function DazzaAIPage() {
         tokens?: number;
       };
 
-      if (data.noApiKey) setNoApiKey(true);
+      if (data.noApiKey) {
+        setNoApiKey(true);
+      } else {
+        // Key is working — clear the banner if it was showing
+        setNoApiKey(false);
+      }
 
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
