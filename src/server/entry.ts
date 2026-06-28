@@ -81,6 +81,7 @@ import jobs_id_costs_export_get from "./api/jobs/[id]/costs/export/GET";
 import jobs_id_costs_costId_put from "./api/jobs/[id]/costs/[costId]/PUT";
 import jobs_id_costs_costId_delete from "./api/jobs/[id]/costs/[costId]/DELETE";
 import jobs_id_costs_costId_receipt_post from "./api/jobs/[id]/costs/[costId]/receipt/POST";
+import jobs_id_costs_costId_receipt_get from "./api/jobs/[id]/costs/[costId]/receipt/GET";
 import jobs_id_progress_get_66 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_67 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_sync_post_68 from "./api/jobs/[id]/progress/sync/POST";
@@ -184,6 +185,8 @@ import jobs_id_swms_swmsId_signoff_post from "./api/jobs/[id]/swms/[swmsId]/sign
 import migrate_safety_post from "./api/migrate-safety/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
+import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
+import { getAuth } from "../lib/auth/auth.js";
 import {
 	loadAdSenseRuntimeConfig,
 	resolveAdSenseTextFile,
@@ -262,6 +265,33 @@ app.set("trust proxy", true);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ── API catch-all authentication guard ───────────────────────────────────────
+// Every /api/* request must be authenticated UNLESS it is on the public
+// whitelist (auth routes, signup, Stripe webhook, health check).
+// This is a defence-in-depth layer — individual handlers also check auth,
+// but this guard ensures no new endpoint can accidentally be left open.
+app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
+  // Let public routes through immediately
+  if (isPublicRoute(req.method, req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`)) {
+    return next();
+  }
+  // Check session
+  try {
+    const auth = getAuth();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) {
+      return res.status(401).json({ error: 'Unauthorised' });
+    }
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Unauthorised' });
+  }
+});
 
 // ── Startup self-healing migrations ──────────────────────────────────────────
 // NOTE: Drizzle sql.raw rejects DEFAULT '{}' because {} looks like an
@@ -479,6 +509,7 @@ app.post("/api/jobs/:id/costs", jobs_id_costs_post);
 app.put("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_put);
 app.delete("/api/jobs/:id/costs/:costId", jobs_id_costs_costId_delete);
 app.post("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_post);
+app.get("/api/jobs/:id/costs/:costId/receipt", jobs_id_costs_costId_receipt_get);
 app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_64);
 app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace_post_65);
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_66);
@@ -492,38 +523,38 @@ app.get("/api/me", me_get_73);
 app.put("/api/me", me_put_74);
 app.post("/api/me/change-password", me_change_password_post_75);
 app.get("/api/me/email-status", me_email_status_get);
-app.post("/api/migrate-company-settings", migrate_company_settings_post_76);
-app.post("/api/migrate-dazza-audit", migrate_dazza_audit_post_77);
-app.post("/api/migrate-dazza-knowledge", migrate_dazza_knowledge_post_78);
-app.post("/api/migrate-estimates", migrate_estimates_post_79);
-app.post("/api/migrate-estimating-library", migrate_estimating_library_post_80);
-app.post("/api/migrate-files", migrate_files_post_81);
-app.post("/api/migrate-fleet", migrate_fleet_post_82);
-app.post("/api/migrate-form-fields", migrate_form_fields_post_83);
-app.post("/api/migrate-form-logic", migrate_form_logic_post_84);
-app.post("/api/migrate-form-templates", migrate_form_templates_post_85);
-app.post("/api/migrate-job-forms", migrate_job_forms_post_86);
-app.post("/api/migrate-job-photos", migrate_job_photos_post_87);
-app.post("/api/migrate-job-tabs", migrate_job_tabs_post_88);
-app.post("/api/migrate-jobs", migrate_jobs_post_89);
-app.post("/api/migrate-notifications", migrate_notifications_post_90);
-app.post("/api/migrate-owner-console", migrate_owner_console_post_91);
-app.post("/api/migrate-owner-role", migrate_owner_role_post_92);
-app.post("/api/migrate-pdf-settings", migrate_pdf_settings_post_93);
-app.post("/api/migrate-subscriptions", migrate_subscriptions_post_94);
-app.post("/api/migrate-support-mode", migrate_support_mode_post_95);
-app.post("/api/migrate-takeoff-pad", migrate_takeoff_pad_post_96);
-app.post("/api/migrate-team", migrate_team_post_97);
+app.post("/api/migrate-company-settings", requireOwner, migrate_company_settings_post_76);
+app.post("/api/migrate-dazza-audit", requireOwner, migrate_dazza_audit_post_77);
+app.post("/api/migrate-dazza-knowledge", requireOwner, migrate_dazza_knowledge_post_78);
+app.post("/api/migrate-estimates", requireOwner, migrate_estimates_post_79);
+app.post("/api/migrate-estimating-library", requireOwner, migrate_estimating_library_post_80);
+app.post("/api/migrate-files", requireOwner, migrate_files_post_81);
+app.post("/api/migrate-fleet", requireOwner, migrate_fleet_post_82);
+app.post("/api/migrate-form-fields", requireOwner, migrate_form_fields_post_83);
+app.post("/api/migrate-form-logic", requireOwner, migrate_form_logic_post_84);
+app.post("/api/migrate-form-templates", requireOwner, migrate_form_templates_post_85);
+app.post("/api/migrate-job-forms", requireOwner, migrate_job_forms_post_86);
+app.post("/api/migrate-job-photos", requireOwner, migrate_job_photos_post_87);
+app.post("/api/migrate-job-tabs", requireOwner, migrate_job_tabs_post_88);
+app.post("/api/migrate-jobs", requireOwner, migrate_jobs_post_89);
+app.post("/api/migrate-notifications", requireOwner, migrate_notifications_post_90);
+app.post("/api/migrate-owner-console", requireOwner, migrate_owner_console_post_91);
+app.post("/api/migrate-owner-role", requireOwner, migrate_owner_role_post_92);
+app.post("/api/migrate-pdf-settings", requireOwner, migrate_pdf_settings_post_93);
+app.post("/api/migrate-subscriptions", requireOwner, migrate_subscriptions_post_94);
+app.post("/api/migrate-support-mode", requireOwner, migrate_support_mode_post_95);
+app.post("/api/migrate-takeoff-pad", requireOwner, migrate_takeoff_pad_post_96);
+app.post("/api/migrate-team", requireOwner, migrate_team_post_97);
 app.get("/api/notifications/alerts", notifications_alerts_get_98);
 app.get("/api/notifications/prefs", notifications_prefs_get_99);
 app.put("/api/notifications/prefs", notifications_prefs_put_100);
 app.post("/api/notifications/read", notifications_read_post_101);
-app.get("/api/owner-console/activity", owner_console_activity_get_102);
-app.get("/api/owner-console/companies", owner_console_companies_get_103);
-app.post("/api/owner-console/companies", owner_console_companies_post_104);
-app.get("/api/owner-console/stats", owner_console_stats_get_105);
-app.get("/api/owner-console/users", owner_console_users_get_106);
-app.post("/api/owner-console/users/verify", owner_console_users_verify_post);
+app.get("/api/owner-console/activity", requireOwner, owner_console_activity_get_102);
+app.get("/api/owner-console/companies", requireOwner, owner_console_companies_get_103);
+app.post("/api/owner-console/companies", requireOwner, owner_console_companies_post_104);
+app.get("/api/owner-console/stats", requireOwner, owner_console_stats_get_105);
+app.get("/api/owner-console/users", requireOwner, owner_console_users_get_106);
+app.post("/api/owner-console/users/verify", requireOwner, owner_console_users_verify_post);
 app.get("/api/recipes", recipes_get_107);
 app.post("/api/recipes", recipes_post_108);
 app.delete("/api/recipes/:id", recipes_id_delete_109);
@@ -539,18 +570,18 @@ app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_118);
 app.post("/api/subscription/create-checkout", subscription_create_checkout_post_119);
 app.get("/api/subscription/status", subscription_status_get_120);
 app.post("/api/subscription/webhook", subscription_webhook_post_121);
-app.get("/api/support-mode/audit", support_mode_audit_get_122);
-app.get("/api/support-mode/checklist", support_mode_checklist_get_123);
-app.put("/api/support-mode/checklist", support_mode_checklist_put_124);
-app.post("/api/support-mode/enter", support_mode_enter_post_125);
-app.post("/api/support-mode/exit", support_mode_exit_post_126);
-app.get("/api/support-mode/status", support_mode_status_get_127);
+app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
+app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);
+app.put("/api/support-mode/checklist", requireOwner, support_mode_checklist_put_124);
+app.post("/api/support-mode/enter", requireOwner, support_mode_enter_post_125);
+app.post("/api/support-mode/exit", requireOwner, support_mode_exit_post_126);
+app.get("/api/support-mode/status", requireOwner, support_mode_status_get_127);
 app.get("/api/takeoff-pad", takeoff_pad_get_128);
 app.put("/api/takeoff-pad", takeoff_pad_put_129);
-app.get("/api/team", team_get_130);
-app.post("/api/team/invite", team_invite_post_131);
-app.delete("/api/team/:id", team_id_delete_132);
-app.put("/api/team/:id", team_id_put_133);
+app.get("/api/team", requireAdmin, team_get_130);
+app.post("/api/team/invite", requireAdmin, team_invite_post_131);
+app.delete("/api/team/:id", requireAdmin, team_id_delete_132);
+app.put("/api/team/:id", requireAdmin, team_id_put_133);
 // Safety module
 app.get("/api/safety/swms", safety_swms_get);
 app.post("/api/safety/swms", safety_swms_post);
@@ -579,7 +610,7 @@ app.delete("/api/safety/generated-posters/:id", safety_generated_posters_id_dele
 app.get("/api/jobs/:id/swms", jobs_id_swms_get);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post);
-app.post("/api/migrate-safety", migrate_safety_post);
+app.post("/api/migrate-safety", requireOwner, migrate_safety_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
