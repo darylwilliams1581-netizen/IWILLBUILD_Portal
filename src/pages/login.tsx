@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2 } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
 
 // ── Device fingerprint (stable per browser) ──────────────────────────────────
@@ -35,6 +35,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [hasTrustedDevice, setHasTrustedDevice] = useState(false);
 
+  // Unverified email state — shown instead of generic error
+  const [unverified, setUnverified] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useSession();
@@ -55,6 +59,45 @@ export default function LoginPage() {
     }
   }, [email]);
 
+  // Clear unverified state when the user changes their email
+  useEffect(() => {
+    if (unverified) {
+      setUnverified(false);
+      setResendState('idle');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
+
+  /** Returns true if an error message is about email verification */
+  function isVerificationError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('verif') ||
+      lower.includes('not verified') ||
+      lower.includes('confirm your email') ||
+      lower.includes('email not confirmed')
+    );
+  }
+
+  async function handleResendVerification() {
+    if (!email.trim()) return;
+    setResendState('sending');
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      if (res.ok) {
+        setResendState('sent');
+      } else {
+        setResendState('error');
+      }
+    } catch {
+      setResendState('error');
+    }
+  }
+
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) {
@@ -62,11 +105,27 @@ export default function LoginPage() {
       return;
     }
     setError('');
+    setUnverified(false);
+    setResendState('idle');
     setLoading(true);
     try {
       const result = await signIn.email({ email, password });
       if (result.error) {
-        setError(result.error.message || 'Invalid email or password.');
+        const msg = result.error.message || '';
+        if (isVerificationError(msg)) {
+          // Show the friendly unverified panel instead of a raw error
+          setUnverified(true);
+        } else {
+          setError(msg || 'Invalid email or password.');
+        }
+        setLoading(false);
+        return;
+      }
+      // Login succeeded — check if the user is unverified (better-auth may allow
+      // unverified logins; the app will redirect them to /verify-required)
+      const userData = result.data?.user as { emailVerified?: boolean } | undefined;
+      if (userData && userData.emailVerified === false) {
+        setUnverified(true);
         setLoading(false);
         return;
       }
@@ -212,7 +271,70 @@ export default function LoginPage() {
                 className="px-8 py-6"
               >
                 <div className="flex flex-col gap-4">
-                  {error && (
+                  {/* Unverified email panel — shown instead of generic error */}
+                  {unverified && (
+                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-4 flex flex-col gap-3">
+                      {/* Header */}
+                      <div className="flex items-start gap-2.5">
+                        <MailWarning size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-300 leading-snug">
+                            Your email is not verified yet.
+                          </p>
+                          <p className="text-xs text-amber-400/70 mt-0.5 leading-relaxed">
+                            Check your inbox for a verification link, or use the options below.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Resend button */}
+                      <button
+                        type="button"
+                        onClick={() => void handleResendVerification()}
+                        disabled={resendState === 'sending' || resendState === 'sent'}
+                        className="flex items-center justify-center gap-2 w-full bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-60 border border-amber-500/30 text-amber-300 text-xs font-semibold py-2 rounded-lg transition-colors"
+                      >
+                        {resendState === 'sending' ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                            Sending…
+                          </>
+                        ) : resendState === 'sent' ? (
+                          <>
+                            <CheckCircle2 size={13} />
+                            Verification email sent — check your inbox
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={13} />
+                            Resend verification email
+                          </>
+                        )}
+                      </button>
+                      {resendState === 'error' && (
+                        <p className="text-xs text-red-400 text-center -mt-1">
+                          Failed to send. Please try again shortly.
+                        </p>
+                      )}
+
+                      {/* Contact admin */}
+                      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+                        <Users size={13} className="text-white/40 shrink-0" />
+                        <p className="text-xs text-white/50 leading-relaxed">
+                          <span className="text-white/70 font-medium">Can&apos;t receive the email?</span>{' '}
+                          Contact your company admin or owner — they can verify your account manually from the portal.
+                        </p>
+                      </div>
+
+                      {/* Fallback note */}
+                      <p className="text-[11px] text-white/30 leading-relaxed text-center">
+                        If your workplace blocks verification emails, your company owner can manually verify your account.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Generic error (non-verification) */}
+                  {error && !unverified && (
                     <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-sm text-red-400">
                       <AlertCircle size={14} className="shrink-0" />
                       {error}
