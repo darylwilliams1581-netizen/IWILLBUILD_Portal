@@ -652,6 +652,27 @@ export default function OwnerConsolePage() {
               {/* ── Overview ── */}
               {tab === 'overview' && (
                 <div className="flex flex-col gap-6 max-w-5xl">
+
+                  {/* GoDaddy Dev Dashboard shortcut */}
+                  <a
+                    href="https://dashboard.godaddy.com/venture?ventureId=97327aea-9a8c-4bb2-bad7-3bd8ec50d6c6&ua_placement=shared_header"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#1BDBAD]/10 border border-[#1BDBAD]/30 flex items-center justify-center shrink-0">
+                      <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 3C8.82 3 3 8.82 3 16s5.82 13 13 13 13-5.82 13-13S23.18 3 16 3zm0 23.4A10.4 10.4 0 1 1 16 5.6a10.4 10.4 0 0 1 0 20.8z" fill="#1BDBAD"/>
+                        <path d="M16 10.4a5.6 5.6 0 1 0 0 11.2A5.6 5.6 0 0 0 16 10.4z" fill="#1BDBAD"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">GoDaddy Developer Dashboard</p>
+                      <p className="text-xs text-slate-400 truncate">Open the IWILLBUILD Portal development workspace</p>
+                    </div>
+                    <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+                  </a>
+
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <StatCard label="Total Companies" value={stats?.totalCompanies ?? 0} icon={Building2} color="bg-blue-50 text-blue-600" />
                     <StatCard label="Total Users" value={stats?.totalUsers ?? 0} icon={Users} color="bg-slate-100 text-slate-600" />
