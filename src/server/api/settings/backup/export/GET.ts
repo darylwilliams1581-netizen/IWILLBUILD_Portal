@@ -21,10 +21,7 @@ import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import * as archiverLib from 'archiver';
-// archiver uses CommonJS default export — access via .default or the module itself
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const archiver: typeof archiverLib.default = (archiverLib as any).default ?? archiverLib;
+import JSZip from 'jszip';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -123,30 +120,27 @@ export default async function handler(req: Request, res: Response) {
       },
     };
 
-    // ── Stream ZIP ────────────────────────────────────────────────────────────
+    // ── Build ZIP with JSZip ──────────────────────────────────────────────────
+
+    const zip = new JSZip();
+    zip.file('company-summary.json', JSON.stringify(companySummary, null, 2));
+    zip.file('jobs.json', JSON.stringify(jobRows, null, 2));
+    zip.file('estimates.json', JSON.stringify({ estimates: estimateRows, lines: estimateLineRows }, null, 2));
+    zip.file('job-costs.json', JSON.stringify(jobCostRows, null, 2));
+    zip.file('forms.json', JSON.stringify({ templates: formRows, submissions: formSubmissionRows }, null, 2));
+    zip.file('fleet.json', JSON.stringify(fleetRows, null, 2));
+    zip.file('users.json', JSON.stringify(userRows, null, 2));
+    zip.file('settings.json', JSON.stringify(settingsRows[0] ?? {}, null, 2));
+    zip.file('files-manifest.csv', filesCsv);
+    zip.file('photos-manifest.csv', photosCsv);
+
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 
     const dateStr = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="iwillbuild-backup-${dateStr}.zip"`);
-
-    const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.pipe(res);
-
-    const addJson = (name: string, data: unknown) =>
-      archive.append(JSON.stringify(data, null, 2), { name });
-
-    addJson('company-summary.json', companySummary);
-    addJson('jobs.json', jobRows);
-    addJson('estimates.json', { estimates: estimateRows, lines: estimateLineRows });
-    addJson('job-costs.json', jobCostRows);
-    addJson('forms.json', { templates: formRows, submissions: formSubmissionRows });
-    addJson('fleet.json', fleetRows);
-    addJson('users.json', userRows);
-    addJson('settings.json', settingsRows[0] ?? {});
-    archive.append(filesCsv, { name: 'files-manifest.csv' });
-    archive.append(photosCsv, { name: 'photos-manifest.csv' });
-
-    await archive.finalize();
+    res.setHeader('Content-Length', String(zipBuffer.length));
+    res.send(zipBuffer);
 
     // Update last_backup_at
     try {
