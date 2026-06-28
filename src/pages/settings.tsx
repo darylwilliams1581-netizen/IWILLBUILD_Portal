@@ -25,9 +25,11 @@ import {
   Bot,
   Megaphone,
   FileText,
+  Factory,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
+import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DazzaAITab from '@/components/settings/DazzaAITab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
@@ -56,6 +58,7 @@ interface Company {
   email: string | null;
   website: string | null;
   address: string | null;
+  industry: string | null;
 }
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
@@ -464,6 +467,7 @@ function CompanyTab() {
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
+  const [industry, setIndustry] = useState<IndustryId>('construction');
 
   useEffect(() => {
     fetch('/api/company', { credentials: 'include' })
@@ -477,6 +481,7 @@ function CompanyTab() {
           setEmail(c.email ?? '');
           setWebsite(c.website ?? '');
           setAddress(c.address ?? '');
+          setIndustry((c.industry as IndustryId) ?? 'construction');
         }
       })
       .catch(() => setErrorMsg('Failed to load company profile'))
@@ -493,7 +498,7 @@ function CompanyTab() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, abn, phone, email, website, address }),
+        body: JSON.stringify({ name, abn, phone, email, website, address, industry }),
       });
       const data = await res.json() as { company?: Company; error?: string };
       if (!res.ok) {
@@ -559,6 +564,37 @@ function CompanyTab() {
                 <span className="flex items-center gap-1"><MapPin size={11} /> Address</span>
               </label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="Brisbane, QLD 4000" />
+            </div>
+          </div>
+
+          {/* Industry Mode */}
+          <div className="pt-4 border-t border-slate-100">
+            <label className={labelClass}>
+              <span className="flex items-center gap-1"><Factory size={11} /> Industry Mode</span>
+            </label>
+            <p className="text-xs text-slate-400 mb-3">
+              Sets default job types, form templates and Dazza AI context for your industry.
+              Existing data is not affected when you change this.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {INDUSTRY_LIST.map((ind) => (
+                <button
+                  key={ind.id}
+                  type="button"
+                  onClick={() => setIndustry(ind.id)}
+                  className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-sm text-left transition-all ${
+                    industry === ind.id
+                      ? 'border-primary bg-primary/5 text-primary font-semibold'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-base leading-none shrink-0">{ind.icon}</span>
+                  <span className="font-medium">{ind.label}</span>
+                  {industry === ind.id && (
+                    <CheckCircle2 size={13} className="ml-auto text-primary shrink-0" />
+                  )}
+                </button>
+              ))}
             </div>
           </div>
 

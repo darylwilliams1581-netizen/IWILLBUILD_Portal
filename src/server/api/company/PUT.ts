@@ -24,16 +24,21 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const { name, abn, phone, email, website, address } = req.body as {
+    const { name, abn, phone, email, website, address, industry } = req.body as {
       name?: string;
       abn?: string;
       phone?: string;
       email?: string;
       website?: string;
       address?: string;
+      industry?: string;
     };
 
     if (!name?.trim()) return res.status(400).json({ error: 'Company name is required' });
+
+    // Validate industry — must be a known value or null (falls back to construction)
+    const VALID_INDUSTRIES = ['construction','civil','landscaping','fuel_dangerous_goods','plant_hire','general_trades','other'];
+    const cleanIndustry = industry && VALID_INDUSTRIES.includes(industry) ? industry : undefined;
 
     await db.update(companies)
       .set({
@@ -43,6 +48,7 @@ export default async function handler(req: Request, res: Response) {
         email: email?.trim() ?? null,
         website: website?.trim() ?? null,
         address: address?.trim() ?? null,
+        ...(cleanIndustry !== undefined ? { industry: cleanIndustry } : {}),
       })
       .where(eq(companies.id, profile.companyId));
 

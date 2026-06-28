@@ -87,6 +87,7 @@ export const companies = mysqlTable('companies', {
   cancelledAt: timestamp('cancelled_at'),
   pastDueSince: timestamp('past_due_since'),
   maxUsers: int('max_users').notNull().default(1),
+  industry: varchar('industry', { length: 50 }).notNull().default('construction'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });

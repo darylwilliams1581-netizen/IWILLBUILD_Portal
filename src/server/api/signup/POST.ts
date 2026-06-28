@@ -32,7 +32,7 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const {
-    name, email, password, companyName, plan,
+    name, email, password, companyName, plan, industry,
     // Anti-spam fields
     _hp,          // honeypot — must be empty
     _t,           // form load timestamp (ms since epoch)
@@ -42,6 +42,7 @@ export default async function handler(req: Request, res: Response) {
     password?: string;
     companyName?: string;
     plan?: string;
+    industry?: string;
     _hp?: string;
     _t?: number | string;
   };
@@ -113,6 +114,9 @@ export default async function handler(req: Request, res: Response) {
     // Create a new company for this signup (30-day trial)
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+    const VALID_INDUSTRIES = ['construction','civil','landscaping','fuel_dangerous_goods','plant_hire','general_trades','other'];
+    const cleanIndustry = industry && VALID_INDUSTRIES.includes(industry) ? industry : 'construction';
+
     const [newCompany] = await db
       .insert(companies)
       .values({
@@ -121,6 +125,7 @@ export default async function handler(req: Request, res: Response) {
         subscriptionStatus: 'trial',
         trialEndsAt,
         maxUsers,
+        industry: cleanIndustry,
       })
       .$returningId();
 

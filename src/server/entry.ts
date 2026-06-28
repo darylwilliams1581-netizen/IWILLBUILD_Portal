@@ -497,6 +497,9 @@ async function runStartupMigrations() {
   const companiesBillingCols = [
     { column: 'current_period_end',   definition: 'DATETIME NULL' },
     { column: 'cancel_at_period_end', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { column: 'cancelled_at',         definition: 'DATETIME NULL' },
+    { column: 'past_due_since',       definition: 'DATETIME NULL' },
+    { column: 'industry',             definition: "VARCHAR(50) NOT NULL DEFAULT 'construction'" },
   ];
   for (const { column, definition } of companiesBillingCols) {
     try {

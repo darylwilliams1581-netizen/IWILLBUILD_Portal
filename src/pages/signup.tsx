@@ -7,6 +7,7 @@ import {
   CheckCircle2, Building2, ChevronRight, Users, Zap, Crown,
 } from 'lucide-react';
 import { signIn } from '@/lib/auth/auth-client';
+import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 
 // ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
@@ -133,6 +134,7 @@ export default function SignupPage() {
 
   // Step 1 — company
   const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState<IndustryId>('construction');
 
   // Step 2 — plan
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('team');
@@ -185,6 +187,7 @@ export default function SignupPage() {
           password,
           companyName: companyName.trim(),
           plan: selectedPlan,
+          industry,
           // Anti-spam fields
           _hp: '',                          // honeypot — always empty for real users
           _t: formLoadTime.current,         // form load timestamp
@@ -281,7 +284,7 @@ export default function SignupPage() {
 
             <AnimatePresence mode="wait">
 
-              {/* ── Step 1: Company name ─────────────────────────────────── */}
+              {/* ── Step 1: Company name + industry ──────────────────────── */}
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
                   <div className="flex flex-col gap-4">
@@ -302,6 +305,34 @@ export default function SignupPage() {
                         />
                       </div>
                     </div>
+
+                    {/* Industry selector */}
+                    <div>
+                      <label className="block text-xs font-medium text-white/60 mb-2 uppercase tracking-wider">
+                        Industry
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {INDUSTRY_LIST.map((ind) => (
+                          <button
+                            key={ind.id}
+                            type="button"
+                            onClick={() => setIndustry(ind.id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition-all ${
+                              industry === ind.id
+                                ? 'border-primary bg-primary/20 text-white font-semibold'
+                                : 'border-white/10 text-white/50 hover:border-white/25 hover:text-white/70 hover:bg-white/5'
+                            }`}
+                          >
+                            <span className="text-sm leading-none shrink-0">{ind.icon}</span>
+                            <span className="truncate">{ind.label}</span>
+                            {industry === ind.id && (
+                              <CheckCircle2 size={11} className="ml-auto text-primary shrink-0" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <button
                       onClick={goStep2}
                       className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150 mt-1"

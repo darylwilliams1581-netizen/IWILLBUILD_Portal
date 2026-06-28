@@ -45,6 +45,7 @@ export interface DazzaContext {
   userId:      string;
   companyId:   number;
   companyName: string;
+  industry:    string;
   user: { name: string; email: string; role: string };
   permissions: DazzaPermissions;
   companyKnowledge: DazzaCompanyKnowledge;
@@ -139,6 +140,7 @@ export async function buildDazzaContext(
     userId,
     companyId,
     companyName: '',
+    industry: 'construction',
     user: { name: userName, email: userEmail, role },
     permissions,
     companyKnowledge: { enabled: false, companyNotes: '', safetyNotes: '', tone: 'professional', disclaimer: '' },
@@ -167,18 +169,20 @@ export async function buildDazzaContext(
     }
   }
 
-  // ── Company name ──────────────────────────────────────────────────────────
+  // ── Company name + industry ───────────────────────────────────────────────
   try {
     const [companyRows] = await db.execute(
-      sql`SELECT name FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
-    ) as unknown as [Array<{ name: string }>, unknown];
+      sql`SELECT name, industry FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ name: string; industry: string | null }>, unknown];
     ctx.companyName = companyRows?.[0]?.name ?? 'Unknown';
+    ctx.industry = companyRows?.[0]?.industry ?? 'construction';
     moduleCounts['company'] = 1;
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     console.warn(`[dazza-context] company FAILED: ${msg}`);
     warnings.push(`company: ${msg.slice(0, 120)}`);
     ctx.companyName = 'Unknown';
+    ctx.industry = 'construction';
     moduleCounts['company'] = -1;
   }
 
