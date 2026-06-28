@@ -688,6 +688,19 @@
       "summary": "Screenshot of an email verification portal screen showing a verification status message and troubleshooting tips. User is referencing this to report a technical issue with email delivery.",
       "fileName": "screenshot-2026-06-27T04-46-38.jpg",
       "storedUploadFilename": "f38wenbvln_1782535599390_file_oObOWEpb47.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a pricing table showing three SaaS product tiers (Pro, Solo, Team) with monthly costs and eligibility status. Appears to be a reference for understanding the user's business model or pricing structure.",
+      "fileName": "screenshot-2026-06-28T19-02-24.jpg",
+      "storedUploadFilename": "f38wenbvln_1782673345057_file_F2isRGJENY.jpg"
     }
   ]
 }
