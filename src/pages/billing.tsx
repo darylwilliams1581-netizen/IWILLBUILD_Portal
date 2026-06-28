@@ -1,6 +1,6 @@
 /**
  * /billing — Subscription & billing management page.
- * Shows current plan, trial status, and upgrade options.
+ * Shows current plan, trial status, billing actions, and upgrade options.
  * Accessible to admin/owner of a company.
  */
 import { useState, useEffect } from 'react';
@@ -9,19 +9,24 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   CreditCard, CheckCircle2, AlertTriangle, Clock, Zap,
   Users, User, Crown, ArrowRight, Loader2, RefreshCw,
-  ShieldCheck, XCircle,
+  ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw,
+  CalendarClock, Receipt, Info,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SubscriptionInfo {
-  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'no_company';
+  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'cancel_pending' | 'no_company';
   plan: string;
   trialEndsAt: string | null;
   daysLeft: number | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
 }
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
@@ -71,6 +76,29 @@ const PLANS = [
 
 type PlanId = typeof PLANS[number]['id'];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function planLabel(plan: string): string {
+  const map: Record<string, string> = {
+    solo: 'Solo', team: 'Team', business: 'Business',
+    pro: 'Business', enterprise: 'Enterprise', trial: 'Free Trial', owner: 'Platform Owner',
+  };
+  return map[plan] ?? plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+function planPrice(plan: string): string {
+  const map: Record<string, string> = {
+    solo: '$19/mo', team: '$79/mo', business: '$149/mo', pro: '$149/mo',
+    enterprise: 'Custom', trial: 'Free', owner: '—',
+  };
+  return map[plan] ?? '—';
+}
+
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | null }) {
@@ -78,6 +106,13 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
         <ShieldCheck size={12} /> Active
+      </span>
+    );
+  }
+  if (status === 'cancel_pending') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+        <CalendarClock size={12} /> Cancelling
       </span>
     );
   }
@@ -112,6 +147,78 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
   return null;
 }
 
+// ── Cancel confirmation modal ─────────────────────────────────────────────────
+
+function CancelConfirmModal({
+  periodEnd,
+  onConfirm,
+  onClose,
+  loading,
+}: {
+  periodEnd: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 bg-red-100 rounded-xl">
+            <Ban size={18} className="text-red-600" />
+          </div>
+          <h3 className="font-heading font-black text-lg text-slate-900">Cancel Subscription?</h3>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+          <p className="text-sm text-amber-800 leading-relaxed">
+            Your portal will remain <strong>fully active</strong> until the end of the current billing period
+            {periodEnd ? ` (${fmtDate(periodEnd)})` : ''}.
+            No data will be deleted. You can reactivate at any time before then.
+          </p>
+        </div>
+
+        <ul className="flex flex-col gap-2 mb-6">
+          {[
+            'Access continues until billing period ends',
+            'All your data is preserved',
+            'You can reactivate before the period ends',
+            'No immediate charges or refunds',
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm text-slate-600">
+              <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            Keep Subscription
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+            Yes, Cancel
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
@@ -121,14 +228,17 @@ export default function BillingPage() {
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [reactivateLoading, setReactivateLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [error, setError] = useState('');
+  const [actionMsg, setActionMsg] = useState('');
 
   const paymentSuccess = searchParams.get('success') === '1';
   const paymentCancelled = searchParams.get('cancelled') === '1';
 
-  useEffect(() => {
-    void fetchStatus();
-  }, []);
+  useEffect(() => { void fetchStatus(); }, []);
 
   async function fetchStatus() {
     setLoading(true);
@@ -169,8 +279,78 @@ export default function BillingPage() {
     }
   }
 
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/billing/customer-portal', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error ?? 'Could not open billing portal. Please try again.');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError('Something went wrong opening the billing portal.');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
+  async function handleCancelConfirm() {
+    setCancelLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/billing/cancel-subscription', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string; currentPeriodEnd?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not cancel subscription. Please try again.');
+        return;
+      }
+      setActionMsg(data.message ?? 'Subscription set to cancel at period end.');
+      setShowCancelModal(false);
+      await fetchStatus();
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
+  async function handleReactivate() {
+    setReactivateLoading(true);
+    setError('');
+    setActionMsg('');
+    try {
+      const res = await fetch('/api/billing/reactivate-subscription', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not reactivate subscription. Please try again.');
+        return;
+      }
+      setActionMsg(data.message ?? 'Subscription reactivated.');
+      await fetchStatus();
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setReactivateLoading(false);
+    }
+  }
+
   const currentPlanId = subInfo?.plan ?? 'trial';
   const isActive = subInfo?.status === 'active';
+  const isCancelPending = subInfo?.status === 'cancel_pending';
+  const hasPaidSub = isActive || isCancelPending;
+  const canManage = isAdmin || isOwner;
 
   return (
     <div className="portal-page">
@@ -192,74 +372,145 @@ export default function BillingPage() {
             <p className="text-sm text-slate-500 mt-1">Manage your plan and payment details</p>
           </div>
 
-          {/* Payment success / cancelled banners */}
-          {paymentSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-6"
-            >
-              <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-emerald-800">Subscription activated!</p>
-                <p className="text-xs text-emerald-600">Your plan is now active. Welcome aboard.</p>
+          {/* Banners */}
+          <AnimatePresence>
+            {paymentSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5"
+              >
+                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-emerald-800">Subscription activated!</p>
+                  <p className="text-xs text-emerald-600">Your plan is now active. Welcome aboard.</p>
+                </div>
+              </motion.div>
+            )}
+            {paymentCancelled && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5"
+              >
+                <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                <p className="text-sm text-amber-800">Payment was cancelled. No charges were made.</p>
+              </motion.div>
+            )}
+            {actionMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5"
+              >
+                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                <p className="text-sm text-emerald-800">{actionMsg}</p>
+              </motion.div>
+            )}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5"
+              >
+                <AlertTriangle size={18} className="text-red-600 shrink-0" />
+                <p className="text-sm text-red-800">{error}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Cancel pending banner ── */}
+          {isCancelPending && subInfo?.currentPeriodEnd && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+              <CalendarClock size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800">
+                  Subscription set to cancel on {fmtDate(subInfo.currentPeriodEnd)}
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Your portal remains fully active until then. You can reactivate before that date.
+                </p>
               </div>
-            </motion.div>
-          )}
-          {paymentCancelled && (
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
-              <AlertTriangle size={18} className="text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800">Payment was cancelled. No charges were made.</p>
+              {canManage && (
+                <button
+                  onClick={handleReactivate}
+                  disabled={reactivateLoading}
+                  className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {reactivateLoading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                  Reactivate
+                </button>
+              )}
             </div>
           )}
 
-          {error && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">
-              <AlertTriangle size={18} className="text-red-600 shrink-0" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          {/* Current plan card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
+          {/* ── Current plan card ── */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Current Plan</p>
                 {loading ? (
-                  <div className="h-7 w-32 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-7 w-40 bg-slate-100 rounded animate-pulse" />
                 ) : (
-                  <div className="flex items-center gap-3">
-                    <h2 className="font-heading font-black text-xl text-slate-900 capitalize">
-                      {currentPlanId === 'trial' ? 'Free Trial' : currentPlanId}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h2 className="font-heading font-black text-xl text-slate-900">
+                      {planLabel(currentPlanId)}
                     </h2>
                     {subInfo && <StatusBadge status={subInfo.status} daysLeft={subInfo.daysLeft} />}
                   </div>
                 )}
-                {subInfo?.trialEndsAt && subInfo.status === 'trial' && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Trial ends {new Date(subInfo.trialEndsAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                )}
               </div>
               <button
                 onClick={fetchStatus}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                disabled={loading}
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
                 title="Refresh status"
               >
-                <RefreshCw size={15} />
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               </button>
             </div>
 
-            {/* Trial expiry warning */}
+            {/* Billing detail grid */}
+            {!loading && subInfo && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <div className="bg-slate-50 rounded-xl p-3.5">
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Plan</p>
+                  <p className="text-sm font-bold text-slate-800">{planLabel(currentPlanId)}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3.5">
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Amount</p>
+                  <p className="text-sm font-bold text-slate-800">{planPrice(currentPlanId)} +GST</p>
+                </div>
+                {subInfo.trialEndsAt && subInfo.status === 'trial' && (
+                  <div className="bg-slate-50 rounded-xl p-3.5">
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Trial Ends</p>
+                    <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.trialEndsAt)}</p>
+                  </div>
+                )}
+                {subInfo.currentPeriodEnd && hasPaidSub && (
+                  <div className="bg-slate-50 rounded-xl p-3.5">
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+                      {isCancelPending ? 'Access Until' : 'Next Billing Date'}
+                    </p>
+                    <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.currentPeriodEnd)}</p>
+                  </div>
+                )}
+                <div className="bg-slate-50 rounded-xl p-3.5">
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-sm font-bold text-slate-800 capitalize">
+                    {subInfo.status === 'cancel_pending' ? 'Cancelling at period end' : subInfo.status.replace('_', ' ')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Status alerts */}
             {subInfo?.status === 'trial' && (subInfo.daysLeft ?? 14) <= 5 && (
-              <div className="mt-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4">
                 <AlertTriangle size={14} className="text-amber-600 shrink-0" />
                 <p className="text-xs text-amber-800 font-medium">
-                  Your trial expires in {subInfo.daysLeft} day{subInfo.daysLeft !== 1 ? 's' : ''}. Subscribe below to keep access.
+                  Trial expires in {subInfo.daysLeft} day{subInfo.daysLeft !== 1 ? 's' : ''}. Subscribe below to keep access.
                 </p>
               </div>
             )}
             {subInfo?.status === 'trial_expired' && (
-              <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                 <XCircle size={14} className="text-red-600 shrink-0" />
                 <p className="text-xs text-red-800 font-medium">
                   Your trial has expired. Subscribe to a plan below to restore access.
@@ -267,25 +518,89 @@ export default function BillingPage() {
               </div>
             )}
             {subInfo?.status === 'past_due' && (
-              <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
                 <AlertTriangle size={14} className="text-red-600 shrink-0" />
                 <p className="text-xs text-red-800 font-medium">
-                  Your last payment failed. Please update your payment method to avoid losing access.
+                  Your last payment failed. Update your payment method to avoid losing access.
                 </p>
+              </div>
+            )}
+
+            {/* ── Management action buttons (owner/admin + paid sub only) ── */}
+            {canManage && hasPaidSub && (
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                {/* Manage Billing — opens Stripe Customer Portal */}
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
+                  Manage Billing
+                  <ExternalLink size={12} className="opacity-60" />
+                </button>
+
+                {/* Change Plan — opens Stripe Customer Portal (plan switching configured there) */}
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
+                  Change Plan
+                </button>
+
+                {/* Cancel — only show if not already cancelling */}
+                {isActive && !isCancelPending && (
+                  <button
+                    onClick={() => setShowCancelModal(true)}
+                    className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
+                  >
+                    <Ban size={14} />
+                    Cancel Subscription
+                  </button>
+                )}
+
+                {/* Reactivate — only show if cancelling */}
+                {isCancelPending && (
+                  <button
+                    onClick={handleReactivate}
+                    disabled={reactivateLoading}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {reactivateLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    Reactivate Subscription
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Past due — direct to portal */}
+            {canManage && subInfo?.status === 'past_due' && (
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
+                  Update Payment Method
+                  <ExternalLink size={12} className="opacity-60" />
+                </button>
               </div>
             )}
           </div>
 
-          {/* Plan cards */}
-          {(!isActive || isOwner) && (
+          {/* ── Plan cards ── */}
+          {(!hasPaidSub || isOwner) && (
             <>
               <h2 className="font-heading font-bold text-base text-slate-800 mb-4">
-                {isActive ? 'Change Plan' : 'Choose a Plan'}
+                {hasPaidSub ? 'Change Plan' : 'Choose a Plan'}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {PLANS.map((plan) => {
                   const Icon = plan.icon;
-                  const isCurrent = isActive && currentPlanId === plan.id;
+                  const isCurrent = hasPaidSub && currentPlanId === plan.id;
                   const isLoading = checkoutLoading === plan.id;
 
                   return (
@@ -302,7 +617,7 @@ export default function BillingPage() {
                           : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
-                      {plan.highlight && (
+                      {plan.highlight && !isCurrent && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
                             Most Popular
@@ -348,7 +663,7 @@ export default function BillingPage() {
                         <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold">
                           <CheckCircle2 size={12} /> Active
                         </div>
-                      ) : (isAdmin || isOwner) ? (
+                      ) : canManage ? (
                         <button
                           onClick={() => void handleSubscribe(plan.id)}
                           disabled={isLoading || !!checkoutLoading}
@@ -365,7 +680,7 @@ export default function BillingPage() {
                           ) : (
                             <>
                               <CreditCard size={13} />
-                              {isActive ? 'Switch Plan' : 'Subscribe'}
+                              {hasPaidSub ? 'Switch Plan' : 'Subscribe'}
                             </>
                           )}
                         </button>
@@ -377,8 +692,8 @@ export default function BillingPage() {
             </>
           )}
 
-          {/* Active subscription info */}
-          {isActive && !isOwner && (
+          {/* Active sub — non-admin view */}
+          {hasPaidSub && !canManage && (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <ShieldCheck size={18} className="text-emerald-600" />
@@ -398,6 +713,18 @@ export default function BillingPage() {
           </p>
         </div>
       </main>
+
+      {/* Cancel confirmation modal */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <CancelConfirmModal
+            periodEnd={subInfo?.currentPeriodEnd ?? null}
+            onConfirm={handleCancelConfirm}
+            onClose={() => setShowCancelModal(false)}
+            loading={cancelLoading}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

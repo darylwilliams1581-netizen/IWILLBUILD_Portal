@@ -159,6 +159,9 @@ import stripe_session_sessionId_get_118 from "./api/stripe/session/[sessionId]/G
 import subscription_create_checkout_post_119 from "./api/subscription/create-checkout/POST";
 import subscription_status_get_120 from "./api/subscription/status/GET";
 import subscription_webhook_post_121 from "./api/subscription/webhook/POST";
+import billing_customer_portal_post from "./api/billing/customer-portal/POST";
+import billing_cancel_subscription_post from "./api/billing/cancel-subscription/POST";
+import billing_reactivate_subscription_post from "./api/billing/reactivate-subscription/POST";
 import support_mode_audit_get_122 from "./api/support-mode/audit/GET";
 import support_mode_checklist_get_123 from "./api/support-mode/checklist/GET";
 import support_mode_checklist_put_124 from "./api/support-mode/checklist/PUT";
@@ -468,6 +471,29 @@ async function runStartupMigrations() {
       }
     }
   }
+
+  // Ensure billing columns on companies table
+  const companiesBillingCols = [
+    { column: 'current_period_end',   definition: 'DATETIME NULL' },
+    { column: 'cancel_at_period_end', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+  ];
+  for (const { column, definition } of companiesBillingCols) {
+    try {
+      const [checkRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      if (!exists) {
+        await db.execute(sql.raw(`ALTER TABLE \`companies\` ADD COLUMN \`${column}\` ${definition}`));
+        console.log(`[startup-migration] Added companies.${column}`);
+      }
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+        console.warn(`[startup-migration] Could not ensure companies.${column}:`, msg);
+      }
+    }
+  }
 }
 runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
 
@@ -666,6 +692,9 @@ app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_118);
 app.post("/api/subscription/create-checkout", subscription_create_checkout_post_119);
 app.get("/api/subscription/status", subscription_status_get_120);
 app.post("/api/subscription/webhook", subscription_webhook_post_121);
+app.post("/api/billing/customer-portal", billing_customer_portal_post);
+app.post("/api/billing/cancel-subscription", billing_cancel_subscription_post);
+app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post);
 app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
 app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);
 app.put("/api/support-mode/checklist", requireOwner, support_mode_checklist_put_124);

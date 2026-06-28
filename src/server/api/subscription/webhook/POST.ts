@@ -44,6 +44,7 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     switch (event.type) {
+
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const companyId = session.metadata?.companyId;
@@ -59,20 +60,63 @@ export default async function handler(req: Request, res: Response) {
               plan,
               stripeSubscriptionId: subscriptionId,
               maxUsers: PLAN_MAX_USERS[plan] ?? 10,
+              cancelAtPeriodEnd: false,
             })
             .where(eq(companies.id, Number(companyId)));
         }
         break;
       }
 
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const cancelAtEnd = subscription.cancel_at_period_end ?? false;
+        const periodEnd = subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000)
+          : null;
+
+        // Determine status
+        let status: string;
+        if (subscription.status === 'canceled') {
+          status = 'cancelled';
+        } else if (subscription.status === 'past_due') {
+          status = 'past_due';
+        } else if (cancelAtEnd) {
+          status = 'cancel_pending';
+        } else {
+          status = 'active';
+        }
+
+        await db.execute(sql`
+          UPDATE companies
+          SET
+            subscription_status = ${status},
+            cancel_at_period_end = ${cancelAtEnd ? 1 : 0},
+            current_period_end = ${periodEnd ? periodEnd.toISOString().slice(0, 19).replace('T', ' ') : null}
+          WHERE stripe_subscription_id = ${subscription.id}
+        `);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        await db.execute(sql`
+          UPDATE companies
+          SET subscription_status = 'cancelled', cancel_at_period_end = 0
+          WHERE stripe_subscription_id = ${subscription.id}
+        `);
+        break;
+      }
+
+      case 'invoice.paid':
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
         const sub = invoice.subscription;
         const subId = typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null;
         if (subId) {
-          // Keep subscription active on renewal
+          // Keep subscription active on renewal; clear cancel_pending if it was set
           await db.execute(sql`
-            UPDATE companies SET subscription_status = 'active'
+            UPDATE companies
+            SET subscription_status = 'active', cancel_at_period_end = 0
             WHERE stripe_subscription_id = ${subId}
           `);
         }
@@ -89,28 +133,6 @@ export default async function handler(req: Request, res: Response) {
             WHERE stripe_subscription_id = ${subId}
           `);
         }
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        await db.execute(sql`
-          UPDATE companies SET subscription_status = 'cancelled'
-          WHERE stripe_subscription_id = ${subscription.id}
-        `);
-        break;
-      }
-
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const status = subscription.status === 'active' ? 'active'
-          : subscription.status === 'past_due' ? 'past_due'
-          : subscription.status === 'canceled' ? 'cancelled'
-          : 'active';
-        await db.execute(sql`
-          UPDATE companies SET subscription_status = ${status}
-          WHERE stripe_subscription_id = ${subscription.id}
-        `);
         break;
       }
     }
