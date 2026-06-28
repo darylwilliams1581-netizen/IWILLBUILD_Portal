@@ -537,31 +537,7 @@ if (!openAiKey || openAiKey.trim().length === 0) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Temporary: table diagnostic (no auth — structure only, no data) ──────────
-app.get('/api/_diag/settings-table', async (_req, res) => {
-  try {
-    const [cols] = await db.execute(
-      sql`SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' ORDER BY ORDINAL_POSITION`
-    ) as unknown as [Array<{ COLUMN_NAME: string; DATA_TYPE: string }>, unknown];
-
-    if (!cols || cols.length === 0) {
-      return res.json({ exists: false, columns: [], rowCount: 0 });
-    }
-
-    const [rowCount] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM company_settings`
-    ) as unknown as [Array<{ cnt: number }>, unknown];
-
-    // Also read raw dazza_json for debugging
-    const [rows] = await db.execute(
-      sql`SELECT company_id, LEFT(dazza_json, 200) as dazza_preview FROM company_settings LIMIT 5`
-    ) as unknown as [Array<{ company_id: number; dazza_preview: string | null }>, unknown];
-
-    res.json({ exists: true, columns: cols, rowCount: rowCount?.[0]?.cnt ?? 0, rows: rows ?? [] });
-  } catch (e) {
-    res.status(500).json({ error: String((e as Error)?.message ?? e) });
-  }
-});
+// ── Diagnostic endpoint removed — was unauthenticated and leaked DB schema ────
 // ─────────────────────────────────────────────────────────────────────────────
 
 // <api-registrations>
@@ -711,7 +687,7 @@ app.get("/api/owner-console/companies", requireOwner, owner_console_companies_ge
 app.get("/api/owner-console/companies/usage", requireOwner, owner_console_companies_usage_get);
 app.put("/api/owner-console/companies/:id/limits", requireOwner, owner_console_companies_limits_put);
 app.get("/api/owner-console/storage", requireOwner, owner_console_storage_get);
-app.get("/api/owner-console/cancellation-feedback", owner_console_cancellation_feedback_get);
+app.get("/api/owner-console/cancellation-feedback", requireOwner, owner_console_cancellation_feedback_get);
 app.get("/api/settings/retention", settings_retention_get);
 app.post("/api/settings/retention", settings_retention_post);
 app.post("/api/owner-console/companies", requireOwner, owner_console_companies_post_104);
