@@ -14,36 +14,71 @@ interface RootLayoutProps {
   children: ReactElement;
 }
 
+/**
+ * Public auth routes that must never trigger portal API calls.
+ * These pages render without a session and must not mount any
+ * component that fetches /api/me, /api/subscription/status, etc.
+ */
+const PUBLIC_ROUTES = new Set([
+  '/login',
+  '/signup',
+  '/verify-email',
+  '/verify-required',
+  '/forgot-password',
+  '/reset-password',
+]);
+
+function isPublicRoute(pathname: string): boolean {
+  // Exact match or prefix match (e.g. /reset-password/token123)
+  if (PUBLIC_ROUTES.has(pathname)) return true;
+  for (const route of PUBLIC_ROUTES) {
+    if (pathname.startsWith(route + '/')) return true;
+  }
+  return false;
+}
+
 /** Sends a lightweight ping to update last_active_at. Fires on mount and every 2 minutes. */
 function ActivePing() {
   const { user } = useSession();
   const location = useLocation();
   const lastPingRef = useRef<number>(0);
 
+  // Never ping on public auth pages
+  const isPublic = isPublicRoute(location.pathname);
+
   const ping = () => {
-    if (!user) return;
+    if (!user || isPublic) return;
     const now = Date.now();
-    // Throttle: don't ping more than once per 60 seconds
     if (now - lastPingRef.current < 60_000) return;
     lastPingRef.current = now;
     void fetch('/api/active-ping', { method: 'POST', credentials: 'include' }).catch(() => {});
   };
 
-  // Ping on route change
   useEffect(() => {
     ping();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, user?.id]);
 
-  // Ping every 2 minutes
   useEffect(() => {
-    if (!user) return;
+    if (!user || isPublic) return;
     const interval = setInterval(ping, 2 * 60 * 1000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, isPublic]);
 
   return null;
+}
+
+/** Portal-only banners — only mounted when the user is on a protected route. */
+function PortalBanners() {
+  const location = useLocation();
+  if (isPublicRoute(location.pathname)) return null;
+  return (
+    <>
+      <SupportModeBanner />
+      <ViewOnlyBanner />
+    </>
+  );
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -53,8 +88,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <title>IWILLBUILD Portal</title>
         <meta name="description" content="Internal operations portal for IWILLBUILD — manage jobs, crews, fleet, and more." />
       </Helmet>
-      <SupportModeBanner />
-      <ViewOnlyBanner />
+      <PortalBanners />
       <ScrollRestoration />
       <ActivePing />
       <Toaster position="top-right" richColors />
