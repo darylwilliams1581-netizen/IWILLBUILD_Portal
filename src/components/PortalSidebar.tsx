@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -67,6 +67,38 @@ const adminItems = [
   { label: 'Settings', icon: Settings,   href: '/settings', adminOnly: true  },
 ] as const;
 
+// ─── User strip sub-component ─────────────────────────────────────────────────
+// Extracted from an IIFE to a proper component so React hook count is always
+// stable regardless of whether session/me data is present (fixes React #310).
+function SidebarUserStrip({
+  sessionUser,
+  me,
+  collapsed,
+}: {
+  sessionUser: { name?: string; email?: string } | null;
+  me: import('@/lib/usePermissions').MeData | null;
+  collapsed: boolean;
+}) {
+  const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
+  const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
+  const initial = (displayName || displayEmail || '?')[0].toUpperCase();
+
+  if (!sessionUser && !me) return null;
+
+  return (
+    <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
+      <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+        {initial}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
+        <div className="text-[10px] text-white/35 truncate">{displayEmail}</div>
+      </div>
+      <NotificationBell collapsed={collapsed} />
+    </div>
+  );
+}
+
 // ─── Shared nav content ───────────────────────────────────────────────────────
 function SidebarContent({
   collapsed,
@@ -94,9 +126,21 @@ function SidebarContent({
   const isActive = (href: string) => location.pathname === href;
 
   async function handleLogout() {
-    invalidateMeCache();
-    await signOut();
-    navigate('/login', { replace: true });
+    try {
+      // Bust the me-cache first so any re-render triggered by signOut
+      // sees null immediately rather than stale data that could cause
+      // a hook-order mismatch (React error #310) on mobile.
+      invalidateMeCache();
+      await signOut();
+    } catch {
+      // Even if signOut fails, navigate away — the session will expire naturally
+    } finally {
+      // Use window.location for a hard navigation so the entire React tree
+      // is unmounted cleanly. navigate() can trigger a re-render of the
+      // still-mounted sidebar before the router has fully transitioned,
+      // which is the primary cause of the #310 crash on mobile.
+      window.location.replace('/login');
+    }
   }
 
   const linkClass = (active: boolean) =>
@@ -317,23 +361,9 @@ function SidebarContent({
         )}
 
         {/* User strip */}
-        {!collapsed && (sessionUser || me) && (() => {
-          const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
-          const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
-          const initial = (displayName || displayEmail || '?')[0].toUpperCase();
-          return (
-            <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
-                {initial}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
-                <div className="text-[10px] text-white/35 truncate">{displayEmail}</div>
-              </div>
-              <NotificationBell collapsed={collapsed} />
-            </div>
-          );
-        })()}
+        {!collapsed && (
+          <SidebarUserStrip sessionUser={sessionUser ?? null} me={me} collapsed={collapsed} />
+        )}
         {collapsed && (
           <div className="flex justify-center mt-1">
             <NotificationBell collapsed={collapsed} />

@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
+import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
@@ -43,13 +44,16 @@ const rootElement = (
 // window.onerror/unhandledrejection handlers. This inner boundary only catches
 // route render errors via componentDidCatch — installing window handlers here
 // too would double-forward async errors and stack a second overlay.
+//
+// In production we use PortalErrorBoundary (class-based) which shows a friendly
+// "Something went wrong — Refresh / Go to Login" screen instead of a blank crash.
 const routeTree: RouteObject[] = [
   {
     element:
       import.meta.env.MODE === 'development' ? (
         <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
       ) : (
-        rootElement
+        <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
       ),
     children: routes,
   },

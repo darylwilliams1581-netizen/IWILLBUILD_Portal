@@ -1,6 +1,7 @@
 import { RouteObject } from 'react-router-dom';
 import { lazy } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
+import RouteErrorFallback from '@/components/RouteErrorFallback';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
@@ -33,6 +34,9 @@ const NotFoundPage = import.meta.env.DEV
   ? lazy(() => import('../dev-tools/src/PageNotFound'))
   : ProdNotFoundPage;
 
+// Inline error element — renders inside the layout so header/sidebar stay mounted
+const routeError = <RouteErrorFallback />;
+
 function protect(element: React.ReactElement) {
   return <ProtectedRoute>{element}</ProtectedRoute>;
 }
@@ -46,24 +50,24 @@ export const routes: RouteObject[] = [
   { path: '/verify-required', element: protect(<VerifyRequiredPage />) },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password',  element: <ResetPasswordPage /> },
-  { path: '/dashboard',     element: protect(<DashboardPage />) },
-  { path: '/jobs',          element: protect(<JobsPage />) },
-  { path: '/jobs/:id',      element: protect(<JobDetailPage />) },
-  { path: '/scheduler',     element: protect(<SchedulerPage />) },
-  { path: '/fleet',         element: protect(<FleetPage />) },
-  { path: '/fleet/:id',     element: protect(<FleetDetailPage />) },
-  { path: '/forms',         element: protect(<FormsPage />) },
-  { path: '/files',         element: protect(<FilesPage />) },
-  { path: '/estimating',    element: protect(<EstimatingPage />) },
-  { path: '/estimates/:id', element: protect(<EstimateEditorPage />) },
-  { path: '/safety',        element: protect(<SafetyPage />) },
-  { path: '/downloads',     element: protect(<DownloadsPage />) },
-  { path: '/dazza-ai',      element: protect(<DazzaAIPage />) },
-  { path: '/annette',       element: protect(<AnnettePage />) },
-  { path: '/team',          element: protect(<TeamPage />) },
-  { path: '/settings',      element: protect(<SettingsPage />) },
-  { path: '/owner-console', element: protect(<OwnerConsolePage />) },
-  { path: '/billing',       element: protect(<BillingPage />) },
+  { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
+  { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
+  { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
+  { path: '/scheduler',     element: protect(<SchedulerPage />),       errorElement: routeError },
+  { path: '/fleet',         element: protect(<FleetPage />),           errorElement: routeError },
+  { path: '/fleet/:id',     element: protect(<FleetDetailPage />),     errorElement: routeError },
+  { path: '/forms',         element: protect(<FormsPage />),           errorElement: routeError },
+  { path: '/files',         element: protect(<FilesPage />),           errorElement: routeError },
+  { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
+  { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
+  { path: '/safety',        element: protect(<SafetyPage />),          errorElement: routeError },
+  { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
+  { path: '/dazza-ai',      element: protect(<DazzaAIPage />),         errorElement: routeError },
+  { path: '/annette',       element: protect(<AnnettePage />),         errorElement: routeError },
+  { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
+  { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
+  { path: '/owner-console', element: protect(<OwnerConsolePage />),    errorElement: routeError },
+  { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '*',              element: <NotFoundPage /> },
 ];
 
