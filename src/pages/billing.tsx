@@ -19,10 +19,12 @@ import { usePermissions } from '@/lib/usePermissions';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SubscriptionInfo {
-  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'cancel_pending' | 'no_company';
+  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'cancel_at_period_end' | 'cancel_pending' | 'suspended' | 'no_company';
   plan: string;
   trialEndsAt: string | null;
   daysLeft: number | null;
+  graceDaysLeft: number | null;
+  isViewOnly: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
@@ -109,7 +111,7 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
       </span>
     );
   }
-  if (status === 'cancel_pending') {
+  if (status === 'cancel_at_period_end' || status === 'cancel_pending') {
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
         <CalendarClock size={12} /> Cancelling
@@ -141,6 +143,13 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
         <XCircle size={12} /> Cancelled
+      </span>
+    );
+  }
+  if (status === 'suspended') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">
+        <Ban size={12} /> Suspended
       </span>
     );
   }
@@ -348,7 +357,10 @@ export default function BillingPage() {
 
   const currentPlanId = subInfo?.plan ?? 'trial';
   const isActive = subInfo?.status === 'active';
-  const isCancelPending = subInfo?.status === 'cancel_pending';
+  const isCancelPending = subInfo?.status === 'cancel_at_period_end' || subInfo?.status === 'cancel_pending';
+  const isCancelled = subInfo?.status === 'cancelled';
+  const isPastDue = subInfo?.status === 'past_due';
+  const isViewOnly = subInfo?.isViewOnly ?? false;
   const hasPaidSub = isActive || isCancelPending;
   const canManage = isAdmin || isOwner;
 
@@ -421,10 +433,10 @@ export default function BillingPage() {
               <CalendarClock size={18} className="text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-amber-800">
-                  Subscription set to cancel on {fmtDate(subInfo.currentPeriodEnd)}
+                  Subscription scheduled to cancel on {fmtDate(subInfo.currentPeriodEnd)}
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Your portal remains fully active until then. You can reactivate before that date.
+                  Your portal remains fully active until then. Reactivate before that date to keep your subscription.
                 </p>
               </div>
               {canManage && (
@@ -435,6 +447,70 @@ export default function BillingPage() {
                 >
                   {reactivateLoading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
                   Reactivate
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── Cancelled view-only banner ── */}
+          {isCancelled && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+              <XCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-red-800">
+                  Your subscription has ended. Your account is now view-only.
+                </p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  You can browse your data and download files. Subscribe to a plan below to restore full access.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Past due banner ── */}
+          {isPastDue && !isViewOnly && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800">
+                  Payment failed — {subInfo?.graceDaysLeft ?? 7} day{subInfo?.graceDaysLeft !== 1 ? 's' : ''} left to update your payment method.
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Your account remains fully active during this grace period. After that, it becomes view-only.
+                </p>
+              </div>
+              {canManage && (
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 size={12} className="animate-spin" /> : <CreditCard size={12} />}
+                  Update Payment
+                </button>
+              )}
+            </div>
+          )}
+
+          {isPastDue && isViewOnly && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+              <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-red-800">
+                  Your account is now view-only — payment overdue.
+                </p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  Update your payment method to restore full access immediately.
+                </p>
+              </div>
+              {canManage && (
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="shrink-0 flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 size={12} className="animate-spin" /> : <CreditCard size={12} />}
+                  Update Payment
                 </button>
               )}
             </div>
@@ -483,10 +559,10 @@ export default function BillingPage() {
                     <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.trialEndsAt)}</p>
                   </div>
                 )}
-                {subInfo.currentPeriodEnd && hasPaidSub && (
+                {subInfo.currentPeriodEnd && (hasPaidSub || isCancelled) && (
                   <div className="bg-slate-50 rounded-xl p-3.5">
                     <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
-                      {isCancelPending ? 'Access Until' : 'Next Billing Date'}
+                      {isCancelPending ? 'Access Until' : isCancelled ? 'Ended On' : 'Next Billing Date'}
                     </p>
                     <p className="text-sm font-bold text-slate-800">{fmtDate(subInfo.currentPeriodEnd)}</p>
                   </div>
@@ -494,7 +570,9 @@ export default function BillingPage() {
                 <div className="bg-slate-50 rounded-xl p-3.5">
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Status</p>
                   <p className="text-sm font-bold text-slate-800 capitalize">
-                    {subInfo.status === 'cancel_pending' ? 'Cancelling at period end' : subInfo.status.replace('_', ' ')}
+                    {subInfo.status === 'cancel_at_period_end' || subInfo.status === 'cancel_pending'
+                      ? 'Cancelling at period end'
+                      : subInfo.status.replace(/_/g, ' ')}
                   </p>
                 </div>
               </div>
@@ -517,14 +595,6 @@ export default function BillingPage() {
                 </p>
               </div>
             )}
-            {subInfo?.status === 'past_due' && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-                <AlertTriangle size={14} className="text-red-600 shrink-0" />
-                <p className="text-xs text-red-800 font-medium">
-                  Your last payment failed. Update your payment method to avoid losing access.
-                </p>
-              </div>
-            )}
 
             {/* ── Management action buttons (owner/admin + paid sub only) ── */}
             {canManage && hasPaidSub && (
@@ -540,7 +610,7 @@ export default function BillingPage() {
                   <ExternalLink size={12} className="opacity-60" />
                 </button>
 
-                {/* Change Plan — opens Stripe Customer Portal (plan switching configured there) */}
+                {/* Change Plan — opens Stripe Customer Portal */}
                 <button
                   onClick={handleManageBilling}
                   disabled={portalLoading}
@@ -550,7 +620,7 @@ export default function BillingPage() {
                   Change Plan
                 </button>
 
-                {/* Cancel — only show if not already cancelling */}
+                {/* Cancel — only show if active and not already cancelling */}
                 {isActive && !isCancelPending && (
                   <button
                     onClick={() => setShowCancelModal(true)}
@@ -561,7 +631,7 @@ export default function BillingPage() {
                   </button>
                 )}
 
-                {/* Reactivate — only show if cancelling */}
+                {/* Reactivate — only show if cancellation is scheduled */}
                 {isCancelPending && (
                   <button
                     onClick={handleReactivate}
@@ -576,7 +646,7 @@ export default function BillingPage() {
             )}
 
             {/* Past due — direct to portal */}
-            {canManage && subInfo?.status === 'past_due' && (
+            {canManage && isPastDue && (
               <div className="pt-4 border-t border-slate-100">
                 <button
                   onClick={handleManageBilling}
@@ -591,11 +661,11 @@ export default function BillingPage() {
             )}
           </div>
 
-          {/* ── Plan cards ── */}
-          {(!hasPaidSub || isOwner) && (
+          {/* ── Plan cards — show when no active paid sub, or cancelled, or owner ── */}
+          {(!hasPaidSub || isCancelled || isOwner) && (
             <>
               <h2 className="font-heading font-bold text-base text-slate-800 mb-4">
-                {hasPaidSub ? 'Change Plan' : 'Choose a Plan'}
+                {hasPaidSub ? 'Change Plan' : isCancelled ? 'Reactivate — Choose a Plan' : 'Choose a Plan'}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {PLANS.map((plan) => {
@@ -693,7 +763,7 @@ export default function BillingPage() {
           )}
 
           {/* Active sub — non-admin view */}
-          {hasPaidSub && !canManage && (
+          {hasPaidSub && !isCancelled && !canManage && (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <ShieldCheck size={18} className="text-emerald-600" />

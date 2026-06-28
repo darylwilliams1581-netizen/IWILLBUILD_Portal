@@ -84,6 +84,8 @@ export const companies = mysqlTable('companies', {
   stripePriceId: varchar('stripe_price_id', { length: 100 }),
   currentPeriodEnd: timestamp('current_period_end'),
   cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+  cancelledAt: timestamp('cancelled_at'),
+  pastDueSince: timestamp('past_due_since'),
   maxUsers: int('max_users').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),

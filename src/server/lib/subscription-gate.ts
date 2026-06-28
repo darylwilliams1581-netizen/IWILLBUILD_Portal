@@ -1,28 +1,44 @@
 /**
- * Subscription gate middleware.
+ * subscription-gate.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Provides:
- *   getSubscriptionInfo(req)          — resolve subscription state for a user
- *   requireActiveSubscription         — blocks ALL access when expired (old gate)
- *   requireWritableSubscription       — blocks WRITE actions when expired;
- *                                       allows read/download/billing always
+ * Subscription state resolution and write-gate middleware.
  *
- * VIEW-ONLY STATES (write actions blocked, reads allowed):
- *   trial_expired | past_due | cancelled | suspended
+ * SUBSCRIPTION STATES
+ * ───────────────────
+ *   trial              — free trial, still running
+ *   trial_expired      — trial ended, no paid sub → VIEW-ONLY
+ *   active             — paid, all good → FULL ACCESS
+ *   cancel_at_period_end — paid, cancellation scheduled but period not ended
+ *                          → FULL ACCESS (warning banner shown)
+ *   cancelled          — subscription ended AND current_period_end has passed
+ *                          → VIEW-ONLY
+ *   past_due           — payment failed
+ *                          → FULL ACCESS during 7-day grace period
+ *                          → VIEW-ONLY after grace period
+ *   suspended          — manually suspended by platform owner → VIEW-ONLY
+ *   no_company         — user has no company record
  *
- * ALWAYS WRITABLE (bypass view-only gate):
- *   active | trial (still running) | cancel_pending (paid, just cancelling)
+ * VIEW-ONLY STATES (writes blocked):
+ *   trial_expired | cancelled | suspended | past_due (after grace)
+ *
+ * ALWAYS WRITABLE:
+ *   active | trial | cancel_at_period_end | past_due (within grace)
  *   platform owner (role === 'owner') — always bypasses
  *
- * Usage in entry.ts:
- *   import { requireWritableSubscription } from './lib/subscription-gate.js';
- *   app.post('/api/jobs', requireWritableSubscription, handler);
+ * PAST-DUE GRACE PERIOD: 7 days from past_due_since
+ *   If past_due_since is NULL, grace period starts from now (fail-open).
  */
+
 import type { Request, Response, NextFunction } from 'express';
 import { db } from '../db/client.js';
 import { profiles, companies } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../lib/auth/auth.js';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PAST_DUE_GRACE_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,37 +46,44 @@ export type SubscriptionStatus =
   | 'active'
   | 'trial'
   | 'trial_expired'
+  | 'cancel_at_period_end'
   | 'cancelled'
   | 'past_due'
-  | 'cancel_pending'
   | 'suspended'
   | 'no_company';
 
 export interface SubscriptionInfo {
+  /** Resolved status string */
   status: SubscriptionStatus;
+  /** Plan name: solo | team | business | enterprise | trial | owner */
   plan: string;
-  trialEndsAt: Date | null;
-  daysLeft: number | null;
-  /** true when the company is in a view-only state (expired/cancelled/past_due/suspended) */
+  /** true when the company is in a view-only state */
   isViewOnly: boolean;
-  // Billing management fields (null when not on a paid subscription)
+  /** Trial days remaining (null when not on trial) */
+  daysLeft: number | null;
+  /** Days remaining in past-due grace period (null when not past_due) */
+  graceDaysLeft: number | null;
+  /** When the current billing period ends (or when access ends for cancel_at_period_end) */
   currentPeriodEnd: Date | null;
+  /** Whether a cancellation is scheduled at period end */
   cancelAtPeriodEnd: boolean;
+  /** When the trial ends (null for paid subs) */
+  trialEndsAt: Date | null;
+  /** Stripe customer ID */
   stripeCustomerId: string | null;
+  /** Stripe subscription ID */
   stripeSubscriptionId: string | null;
 }
 
 /** Statuses that put a company into view-only mode */
 const VIEW_ONLY_STATUSES: ReadonlySet<SubscriptionStatus> = new Set([
   'trial_expired',
-  'past_due',
   'cancelled',
   'suspended',
 ]);
 
 // ── Core resolver ─────────────────────────────────────────────────────────────
 
-/** Resolve subscription status for the authenticated user's company. */
 export async function getSubscriptionInfo(req: Request): Promise<SubscriptionInfo | null> {
   try {
     const auth = getAuth();
@@ -74,88 +97,142 @@ export async function getSubscriptionInfo(req: Request): Promise<SubscriptionInf
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.userId, session.user.id),
     });
+
     if (!profile?.companyId) {
-      return {
-        status: 'no_company', plan: 'none', isViewOnly: false,
-        trialEndsAt: null, daysLeft: null,
-        currentPeriodEnd: null, cancelAtPeriodEnd: false,
-        stripeCustomerId: null, stripeSubscriptionId: null,
-      };
+      return noCompany();
     }
 
     // Platform owner bypasses all gates — always writable
     if (profile.role === 'owner') {
-      return {
-        status: 'active', plan: 'owner', isViewOnly: false,
-        trialEndsAt: null, daysLeft: null,
-        currentPeriodEnd: null, cancelAtPeriodEnd: false,
-        stripeCustomerId: null, stripeSubscriptionId: null,
-      };
+      return ownerInfo();
     }
 
     const company = await db.query.companies.findFirst({
       where: eq(companies.id, profile.companyId),
     });
-    if (!company) {
-      return {
-        status: 'no_company', plan: 'none', isViewOnly: false,
-        trialEndsAt: null, daysLeft: null,
-        currentPeriodEnd: null, cancelAtPeriodEnd: false,
-        stripeCustomerId: null, stripeSubscriptionId: null,
-      };
-    }
+    if (!company) return noCompany();
 
-    const subStatus = (company.subscriptionStatus ?? 'trial') as string;
-    const trialEndsAt = company.trialEndsAt ? new Date(company.trialEndsAt) : null;
-    const currentPeriodEnd = (company as unknown as { currentPeriodEnd?: Date | null }).currentPeriodEnd
-      ? new Date((company as unknown as { currentPeriodEnd: Date }).currentPeriodEnd)
-      : null;
-    const cancelAtPeriodEnd = Boolean((company as unknown as { cancelAtPeriodEnd?: boolean }).cancelAtPeriodEnd);
-    const stripeCustomerId = company.stripeCustomerId ?? null;
-    const stripeSubscriptionId = company.stripeSubscriptionId ?? null;
-    const now = new Date();
-
-    const base = { currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId, stripeSubscriptionId };
-
-    // ── Active paid subscription ──────────────────────────────────────────────
-    if (subStatus === 'active') {
-      return { status: 'active', plan: company.plan ?? 'team', isViewOnly: false, trialEndsAt, daysLeft: null, ...base };
-    }
-
-    // ── Cancellation pending (still paid until period end) ────────────────────
-    if (subStatus === 'cancel_pending') {
-      return { status: 'cancel_pending', plan: company.plan ?? 'team', isViewOnly: false, trialEndsAt, daysLeft: null, ...base };
-    }
-
-    // ── Active trial ──────────────────────────────────────────────────────────
-    if (subStatus === 'trial') {
-      if (!trialEndsAt) {
-        return { status: 'trial', plan: company.plan ?? 'trial', isViewOnly: false, trialEndsAt: null, daysLeft: 14, ...base };
-      }
-      const msLeft = trialEndsAt.getTime() - now.getTime();
-      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-      if (daysLeft > 0) {
-        return { status: 'trial', plan: company.plan ?? 'trial', isViewOnly: false, trialEndsAt, daysLeft, ...base };
-      }
-      // Trial has expired
-      return { status: 'trial_expired', plan: company.plan ?? 'trial', isViewOnly: true, trialEndsAt, daysLeft: 0, ...base };
-    }
-
-    // ── Past due ──────────────────────────────────────────────────────────────
-    if (subStatus === 'past_due') {
-      return { status: 'past_due', plan: company.plan ?? 'team', isViewOnly: true, trialEndsAt, daysLeft: null, ...base };
-    }
-
-    // ── Suspended ─────────────────────────────────────────────────────────────
-    if (subStatus === 'suspended') {
-      return { status: 'suspended', plan: company.plan ?? 'team', isViewOnly: true, trialEndsAt, daysLeft: null, ...base };
-    }
-
-    // ── Cancelled / anything else ─────────────────────────────────────────────
-    return { status: 'cancelled', plan: company.plan ?? 'team', isViewOnly: true, trialEndsAt, daysLeft: null, ...base };
+    return resolveCompanyStatus(company);
   } catch {
     return null;
   }
+}
+
+// ── Status resolution ─────────────────────────────────────────────────────────
+
+type CompanyRow = typeof companies.$inferSelect;
+
+function resolveCompanyStatus(company: CompanyRow): SubscriptionInfo {
+  const now = new Date();
+  const rawStatus = company.subscriptionStatus ?? 'trial';
+
+  const trialEndsAt = company.trialEndsAt ? new Date(company.trialEndsAt) : null;
+  const currentPeriodEnd = company.currentPeriodEnd ? new Date(company.currentPeriodEnd) : null;
+  const cancelAtPeriodEnd = Boolean(company.cancelAtPeriodEnd);
+  const pastDueSince = (company as unknown as { pastDueSince?: Date | null }).pastDueSince
+    ? new Date((company as unknown as { pastDueSince: Date }).pastDueSince)
+    : null;
+
+  const base = {
+    plan: company.plan ?? 'trial',
+    trialEndsAt,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    stripeCustomerId: company.stripeCustomerId ?? null,
+    stripeSubscriptionId: company.stripeSubscriptionId ?? null,
+    graceDaysLeft: null as number | null,
+  };
+
+  // ── Active paid subscription ──────────────────────────────────────────────
+  if (rawStatus === 'active') {
+    // If cancelAtPeriodEnd is set, treat as cancel_at_period_end
+    if (cancelAtPeriodEnd && currentPeriodEnd) {
+      if (now < currentPeriodEnd) {
+        // Still within paid period — full access, warning banner
+        return { ...base, status: 'cancel_at_period_end', isViewOnly: false, daysLeft: null };
+      } else {
+        // Period has passed — view-only
+        return { ...base, status: 'cancelled', isViewOnly: true, daysLeft: null };
+      }
+    }
+    return { ...base, status: 'active', isViewOnly: false, daysLeft: null };
+  }
+
+  // ── Cancellation scheduled (Stripe sets cancel_at_period_end=true, status=active) ──
+  // This branch handles the DB status being explicitly 'cancel_pending' or 'cancel_at_period_end'
+  if (rawStatus === 'cancel_pending' || rawStatus === 'cancel_at_period_end') {
+    if (currentPeriodEnd && now >= currentPeriodEnd) {
+      // Period has ended — view-only
+      return { ...base, status: 'cancelled', isViewOnly: true, daysLeft: null };
+    }
+    // Still within paid period — full access
+    return { ...base, status: 'cancel_at_period_end', isViewOnly: false, daysLeft: null };
+  }
+
+  // ── Cancelled ─────────────────────────────────────────────────────────────
+  if (rawStatus === 'cancelled') {
+    // If current_period_end is in the future, still give full access
+    if (currentPeriodEnd && now < currentPeriodEnd) {
+      return { ...base, status: 'cancel_at_period_end', isViewOnly: false, daysLeft: null };
+    }
+    return { ...base, status: 'cancelled', isViewOnly: true, daysLeft: null };
+  }
+
+  // ── Past due ──────────────────────────────────────────────────────────────
+  if (rawStatus === 'past_due') {
+    const graceSince = pastDueSince ?? now; // fail-open: if no timestamp, grace starts now
+    const graceEnds = new Date(graceSince.getTime() + PAST_DUE_GRACE_DAYS * MS_PER_DAY);
+    const msLeft = graceEnds.getTime() - now.getTime();
+    const graceDaysLeft = Math.max(0, Math.ceil(msLeft / MS_PER_DAY));
+
+    if (now < graceEnds) {
+      // Within grace period — full access but warning
+      return { ...base, status: 'past_due', isViewOnly: false, daysLeft: null, graceDaysLeft };
+    }
+    // Grace period expired — view-only
+    return { ...base, status: 'past_due', isViewOnly: true, daysLeft: null, graceDaysLeft: 0 };
+  }
+
+  // ── Suspended ─────────────────────────────────────────────────────────────
+  if (rawStatus === 'suspended') {
+    return { ...base, status: 'suspended', isViewOnly: true, daysLeft: null };
+  }
+
+  // ── Trial ─────────────────────────────────────────────────────────────────
+  if (rawStatus === 'trial') {
+    if (!trialEndsAt) {
+      return { ...base, status: 'trial', isViewOnly: false, daysLeft: 14 };
+    }
+    const msLeft = trialEndsAt.getTime() - now.getTime();
+    const daysLeft = Math.ceil(msLeft / MS_PER_DAY);
+    if (daysLeft > 0) {
+      return { ...base, status: 'trial', isViewOnly: false, daysLeft };
+    }
+    return { ...base, status: 'trial_expired', isViewOnly: true, daysLeft: 0 };
+  }
+
+  // ── Fallback ──────────────────────────────────────────────────────────────
+  return { ...base, status: 'cancelled', isViewOnly: true, daysLeft: null };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function noCompany(): SubscriptionInfo {
+  return {
+    status: 'no_company', plan: 'none', isViewOnly: false,
+    trialEndsAt: null, daysLeft: null, graceDaysLeft: null,
+    currentPeriodEnd: null, cancelAtPeriodEnd: false,
+    stripeCustomerId: null, stripeSubscriptionId: null,
+  };
+}
+
+function ownerInfo(): SubscriptionInfo {
+  return {
+    status: 'active', plan: 'owner', isViewOnly: false,
+    trialEndsAt: null, daysLeft: null, graceDaysLeft: null,
+    currentPeriodEnd: null, cancelAtPeriodEnd: false,
+    stripeCustomerId: null, stripeSubscriptionId: null,
+  };
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -164,16 +241,13 @@ export async function getSubscriptionInfo(req: Request): Promise<SubscriptionInf
  * requireWritableSubscription
  * ─────────────────────────────────────────────────────────────────────────────
  * Blocks write (create/update/delete/upload) API calls when the company is in
- * a view-only state (trial_expired, past_due, cancelled, suspended).
+ * a view-only state.
  *
  * Returns HTTP 402 with:
  *   { error: 'view_only', message: '...', subscriptionStatus: '...' }
  *
- * Apply to any route that mutates data.  Read routes and download routes
- * should NOT use this middleware — they remain accessible in view-only mode.
- *
- * Billing routes (checkout, customer portal, cancel, reactivate) must also
- * NOT use this middleware — they must always be reachable.
+ * Apply to any route that mutates data. Read routes, download routes, and
+ * billing routes must NOT use this middleware.
  */
 export async function requireWritableSubscription(
   req: Request,
@@ -188,19 +262,19 @@ export async function requireWritableSubscription(
       return;
     }
 
-    if (VIEW_ONLY_STATUSES.has(info.status)) {
+    if (info.isViewOnly) {
       const statusLabels: Record<string, string> = {
-        trial_expired: 'Your free trial has ended.',
-        past_due:      'Your subscription payment is overdue.',
-        cancelled:     'Your subscription has been cancelled.',
-        suspended:     'Your account has been suspended.',
+        trial_expired:  'Your free trial has ended.',
+        cancelled:      'Your subscription has ended.',
+        suspended:      'Your account has been suspended.',
+        past_due:       'Your subscription payment is overdue and the grace period has expired.',
       };
       const label = statusLabels[info.status] ?? 'Your subscription is inactive.';
 
       res.status(402).json({
         error: 'view_only',
         subscriptionStatus: info.status,
-        message: `${label} Your account is now view-only. Subscribe to continue creating and editing work.`,
+        message: `${label} Your account is now view-only. Subscribe or reactivate to continue creating and editing work.`,
         billingUrl: '/billing',
       });
       return;
@@ -208,15 +282,14 @@ export async function requireWritableSubscription(
 
     next();
   } catch {
-    // On unexpected error, fail open (don't block the user) — auth middleware
-    // will catch any real auth failures upstream.
+    // Fail open — auth middleware catches real auth failures upstream
     next();
   }
 }
 
 /**
  * requireActiveSubscription  (legacy — blocks ALL access when expired)
- * Use requireWritableSubscription for new write-gate logic instead.
+ * Prefer requireWritableSubscription for new write-gate logic.
  */
 export async function requireActiveSubscription(
   req: Request,

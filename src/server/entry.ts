@@ -374,6 +374,9 @@ async function runStartupMigrations() {
     { table: 'companies', column: 'stripe_subscription_id', definition: 'VARCHAR(100) NULL' },
     { table: 'companies', column: 'stripe_price_id',        definition: 'VARCHAR(100) NULL' },
     { table: 'companies', column: 'max_users',              definition: 'INT NOT NULL DEFAULT 1' },
+    // Cancellation / past-due tracking
+    { table: 'companies', column: 'cancelled_at',           definition: 'DATETIME NULL' },
+    { table: 'companies', column: 'past_due_since',         definition: 'DATETIME NULL' },
     // Scheduler columns on jobs
     { table: 'jobs', column: 'start_date',         definition: 'DATE NULL' },
     { table: 'jobs', column: 'finish_date',        definition: 'DATE NULL' },
