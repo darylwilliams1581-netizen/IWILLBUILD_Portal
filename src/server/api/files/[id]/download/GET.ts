@@ -3,10 +3,9 @@ import { db } from '../../../../db/client.js';
 import { companyFiles, profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import { createReadStream } from 'node:fs';
-import { join } from 'node:path';
+import { getDownloadStream } from '../../../../storage/storage-service.js';
 
-const FDIR = '/shared-storage/public/assets/company-files';
+const BUCKET = 'company-files';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -23,15 +22,16 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(fileId)) return res.status(400).json({ error: 'Invalid ID' });
     const record = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, fileId) });
     if (!record || record.companyId !== profile.companyId) return res.status(404).json({ error: 'File not found' });
-    const filePath = join(FDIR, record.storedName);
-    res.setHeader('Content-Type', record.mimeType);
+
+    const { stream, mimeType, sizeBytes } = await getDownloadStream(record.storedName, BUCKET);
+
     const inline = req.query['inline'] === '1';
     const disposition = inline
       ? 'inline; filename="' + encodeURIComponent(record.originalName) + '"'
       : 'attachment; filename="' + encodeURIComponent(record.originalName) + '"';
+    res.setHeader('Content-Type', record.mimeType || mimeType);
     res.setHeader('Content-Disposition', disposition);
-    res.setHeader('Content-Length', record.sizeBytes);
-    const stream = createReadStream(filePath);
+    if (sizeBytes > 0) res.setHeader('Content-Length', String(sizeBytes));
     stream.on('error', () => { if (!res.headersSent) res.status(404).json({ error: 'File not found on disk' }); });
     stream.pipe(res);
   } catch (err) {

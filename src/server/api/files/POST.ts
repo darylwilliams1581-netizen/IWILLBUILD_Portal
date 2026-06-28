@@ -1,48 +1,46 @@
+/**
+ * POST /api/files
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Upload a company file (PDF, Office doc, image, CSV, TXT, ZIP).
+ * Uses the central storage service — swap providers in storage-service.ts.
+ */
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { companyFiles, profiles } from '../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import multer from 'multer';
 import {
-  fileUploadMiddleware,
-  extForMime,
-  isHeic,
-  isBlockedExtension,
-  ALLOWED_MIMES,
-} from '../../lib/file-upload.js';
-import { getPlanLimits, getCompanyPlan, checkLimit } from '../../lib/plan-limits.js';
+  validateUpload,
+  saveFile,
+  compressImageIfNeeded,
+  checkStorageQuota,
+  BUCKET_COMPANY_FILES,
+  ALLOWED_IMAGE_MIMES,
+  MAX_FILE_SIZE_BYTES,
+} from '../../storage/storage-service.js';
+import { getPlanLimits, getCompanyPlan } from '../../lib/plan-limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
-const FILES_DIR = '/shared-storage/public/assets/company-files';
+// ── Multer: memory storage, 25 MB limit, 1 file ───────────────────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
+}).single('file');
 
 const FILE_CATEGORIES = ['Job','Fleet','Company','User','Template','Report','Other'] as const;
 
 export default async function handler(req: Request, res: Response) {
-  // Run multer
+  // Parse multipart
   let multerError: unknown = null;
   await new Promise<void>((resolve) => {
-    fileUploadMiddleware(req, res, (err: unknown) => {
-      if (err) multerError = err;
-      resolve();
-    });
+    upload(req, res, (err: unknown) => { if (err) multerError = err; resolve(); });
   });
 
   if (multerError) {
     const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    if (msg.startsWith('HEIC_REJECTED:')) {
-      return res.status(400).json({ error: 'HEIC/HEIF files are not supported. Convert to JPEG or PNG first.' });
-    }
-    if (msg.startsWith('BLOCKED_EXT:')) {
-      return res.status(400).json({ error: 'Executable and script files are not allowed.' });
-    }
-    if (msg.startsWith('UNSUPPORTED_TYPE:')) {
-      return res.status(400).json({ error: 'File type not supported. Allowed: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX, CSV, TXT, ZIP.' });
-    }
-    if (msg.includes('File too large')) {
-      return res.status(400).json({ error: 'File exceeds the 20 MB limit.' });
+    if (msg.includes('File too large') || msg.includes('LIMIT_FILE_SIZE')) {
+      return res.status(400).json({ error: `File exceeds the ${Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024))} MB limit.` });
     }
     return res.status(400).json({ error: msg });
   }
@@ -62,27 +60,39 @@ export default async function handler(req: Request, res: Response) {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-    // Double-check extension/mime on server side
-    if (isHeic(file.originalname)) return res.status(400).json({ error: 'HEIC/HEIF not supported.' });
-    if (isBlockedExtension(file.originalname)) return res.status(400).json({ error: 'File type not allowed.' });
-    if (!ALLOWED_MIMES[file.mimetype]) return res.status(400).json({ error: 'File type not supported.' });
-
-    // ── Plan limit check: file storage ────────────────────────────────────────
-    const plan = await getCompanyPlan(profile.companyId);
-    const limits = await getPlanLimits(profile.companyId, plan);
-    const [storageRow] = await db.execute(
-      sql`SELECT COALESCE(SUM(size_bytes),0) as total FROM company_files WHERE company_id = ${profile.companyId}`
-    ) as unknown as [Array<{ total: number }>, unknown];
-    const usedBytes = Number(storageRow?.[0]?.total ?? 0);
-    if (usedBytes + file.size > limits.storageBytes) {
-      const usedGB = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
-      const limitGB = (limits.storageBytes / (1024 * 1024 * 1024)).toFixed(0);
-      return res.status(403).json({
-        code: 'limit_reached',
-        error: `Your plan limit has been reached (File Storage: ${usedGB} GB / ${limitGB} GB). Upgrade your plan or remove old files.`,
-      });
+    // ── Centralised validation ────────────────────────────────────────────────
+    const validation = validateUpload({
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+    if (!validation.ok) {
+      return res.status(400).json({ code: validation.code, error: validation.error });
     }
 
+    // ── Plan limit: storage quota ─────────────────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
+    const quotaCheck = await checkStorageQuota(profile.companyId, file.size, limits.storageBytes);
+    if (!quotaCheck.allowed) {
+      return res.status(403).json({ code: 'limit_reached', error: quotaCheck.error });
+    }
+
+    // ── Compress images ───────────────────────────────────────────────────────
+    const isImage = !!ALLOWED_IMAGE_MIMES[file.mimetype];
+    let { buffer, mimeType } = isImage
+      ? await compressImageIfNeeded(file.buffer, file.mimetype)
+      : { buffer: file.buffer, mimeType: file.mimetype };
+
+    // ── Save via storage service ──────────────────────────────────────────────
+    const saved = await saveFile({
+      buffer,
+      originalName: file.originalname,
+      mimeType,
+      bucket: BUCKET_COMPANY_FILES,
+    });
+
+    // ── Parse request body ────────────────────────────────────────────────────
     const { jobId, fleetAssetId, fileCategory, label, notes } = req.body as {
       jobId?: string;
       fleetAssetId?: string;
@@ -95,30 +105,25 @@ export default async function handler(req: Request, res: Response) {
       ? (fileCategory as string)
       : 'Other';
 
-    const ext = extForMime(file.mimetype);
-    const storedName = `${randomUUID()}.${ext}`;
-    const filePath = join(FILES_DIR, storedName);
-
-    await mkdir(FILES_DIR, { recursive: true });
-    await writeFile(filePath, file.buffer);
-
+    // ── Insert DB record ──────────────────────────────────────────────────────
     const result = await db.insert(companyFiles).values({
       companyId: profile.companyId,
       jobId: jobId ? parseInt(jobId, 10) : null,
       fleetAssetId: fleetAssetId ? parseInt(fleetAssetId, 10) : null,
       uploadedByUserId: session.user.id,
       originalName: file.originalname,
-      storedName,
-      mimeType: file.mimetype,
-      sizeBytes: file.size,
+      storedName: saved.storageKey,
+      mimeType,
+      sizeBytes: saved.sizeBytes,
       fileCategory: cat,
       label: label?.trim() || null,
       notes: notes?.trim() || null,
     });
     const header = result[0] as unknown as ResultSetHeader;
 
-    const saved = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, header.insertId) });
-    res.status(201).json({ file: saved });
+    const record = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, header.insertId) });
+    res.status(201).json({ file: record });
+
   } catch (err) {
     console.error('POST /api/files error:', err);
     res.status(500).json({ error: 'Failed to upload file' });

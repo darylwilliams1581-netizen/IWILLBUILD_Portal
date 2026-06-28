@@ -3,10 +3,9 @@ import { db } from '../../../db/client.js';
 import { companyFiles, profiles } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
-import { unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { deleteFile } from '../../../storage/storage-service.js';
 
-const FDIR = '/shared-storage/public/assets/company-files';
+const BUCKET = 'company-files';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -24,7 +23,7 @@ export default async function handler(req: Request, res: Response) {
     const record = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, fileId) });
     if (!record || record.companyId !== profile.companyId) return res.status(404).json({ error: 'File not found' });
     await db.delete(companyFiles).where(eq(companyFiles.id, fileId));
-    try { await unlink(join(FDIR, record.storedName)); } catch { /* already gone */ }
+    await deleteFile(record.storedName, BUCKET);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

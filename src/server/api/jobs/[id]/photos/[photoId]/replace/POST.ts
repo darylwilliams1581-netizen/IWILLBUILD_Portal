@@ -3,47 +3,27 @@ import { db } from '../../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
-import { writeFile, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
+import {
+  compressImageIfNeeded,
+  saveFile,
+  deleteFile,
+  ALLOWED_IMAGE_MIMES,
+} from '../../../../../../storage/storage-service.js';
 
-const PHOTO_DIR = '/shared-storage/public/assets/job-photos';
+const PHOTO_BUCKET = 'job-photos';
 
 // ── Multer (memory storage) ───────────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowed = Object.keys(ALLOWED_IMAGE_MIMES);
     if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error(`UNSUPPORTED_TYPE:${file.originalname}`));
   },
 }).single('photo');
-
-// ── Jimp lazy-loaded ──────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _CustomJimp: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _JimpMime: any = null;
-
-async function getJimp() {
-  if (_CustomJimp) return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
-  const [core, jimpPkg, resizePkg] = await Promise.all([
-    import('@jimp/core'),
-    import('jimp'),
-    import('@jimp/plugin-resize'),
-  ]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createJimp = (core as any).createJimp;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { defaultPlugins, defaultFormats, JimpMime } = jimpPkg as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resizeMethods = (resizePkg as any).methods;
-  _JimpMime = JimpMime;
-  _CustomJimp = createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats });
-  return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
-}
 
 export default async function handler(req: Request, res: Response) {
   // Run multer
@@ -99,30 +79,33 @@ export default async function handler(req: Request, res: Response) {
     const file = (req as unknown as { file?: Express.Multer.File }).file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-    // Compress with Jimp (max 1920px, JPEG 82%)
-    const { CustomJimp, JimpMime } = await getJimp();
-    const img = await CustomJimp.read(file.buffer);
-    if (img.width > 1920 || img.height > 1920) {
-      if (img.width >= img.height) img.resize({ w: 1920 });
-      else img.resize({ h: 1920 });
-    }
-    const isPng = file.mimetype === 'image/png';
-    const outMime = isPng ? JimpMime.png : JimpMime.jpeg;
-    const compressed: Buffer = await img.getBuffer(outMime, !isPng ? { quality: 82 } : undefined);
+    // Compress via storage service
+    const { buffer: compressed, mimeType: outMime } = await compressImageIfNeeded(
+      file.buffer,
+      file.mimetype,
+    );
 
-    // Write new file
-    const newFilename = `${randomUUID()}.${isPng ? 'png' : 'jpg'}`;
-    await writeFile(join(PHOTO_DIR, newFilename), compressed);
+    const ext = outMime === 'image/png' ? 'png' : 'jpg';
+    const storageKey = `${randomUUID()}.${ext}`;
+
+    // Save new file via storage service
+    const result = await saveFile({
+      buffer: compressed,
+      originalName: file.originalname,
+      mimeType: outMime,
+      bucket: PHOTO_BUCKET,
+      storageKey,
+    });
 
     // Delete old file (best-effort)
-    try { await unlink(join(PHOTO_DIR, photo.filename)); } catch { /* ignore */ }
+    await deleteFile(photo.filename, PHOTO_BUCKET);
 
     // Update DB
     await db.update(jobPhotos).set({
-      filename: newFilename,
+      filename: result.storageKey,
       originalName: file.originalname,
-      mimeType: isPng ? 'image/png' : 'image/jpeg',
-      sizeBytes: compressed.length,
+      mimeType: outMime,
+      sizeBytes: result.sizeBytes,
     }).where(eq(jobPhotos.id, photoId));
 
     const updated = await db.query.jobPhotos.findFirst({ where: eq(jobPhotos.id, photoId) });

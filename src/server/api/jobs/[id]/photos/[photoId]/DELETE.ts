@@ -3,10 +3,9 @@ import { db } from '../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-import { unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { deleteFile } from '../../../../../storage/storage-service.js';
 
-const PHOTO_DIR = '/shared-storage/public/assets/job-photos';
+const PHOTO_BUCKET = 'job-photos';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -42,14 +41,9 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!photo) return res.status(404).json({ error: 'Photo not found' });
 
-    // Delete file from disk
-    try {
-      await unlink(join(PHOTO_DIR, photo.filename));
-    } catch {
-      // File may already be gone — continue with DB delete
-    }
-
+    // Delete from DB first, then storage (best-effort)
     await db.delete(jobPhotos).where(eq(jobPhotos.id, photoId));
+    await deleteFile(photo.filename, PHOTO_BUCKET);
 
     res.json({ ok: true });
   } catch (error) {

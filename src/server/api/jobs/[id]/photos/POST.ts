@@ -4,41 +4,24 @@ import { jobPhotos, profiles, jobs } from '../../../../db/schema.js';
 import { eq, and, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../../lib/plan-limits.js';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
+import {
+  validateBatch,
+  compressImageIfNeeded,
+  saveFile,
+  ALLOWED_IMAGE_MIMES,
+} from '../../../../storage/storage-service.js';
 
-// ── Jimp lazy-loaded to avoid ESM/CJS conflicts in both dev and prod ──────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _CustomJimp: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _JimpMime: any = null;
-
-async function getJimp() {
-  if (_CustomJimp) return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
-  const [core, jimpPkg, resizePkg] = await Promise.all([
-    import('@jimp/core'),
-    import('jimp'),
-    import('@jimp/plugin-resize'),
-  ]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createJimp = (core as any).createJimp;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { defaultPlugins, defaultFormats, JimpMime } = jimpPkg as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resizeMethods = (resizePkg as any).methods;
-  _JimpMime = JimpMime;
-  _CustomJimp = createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats });
-  return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
-}
+const PHOTO_BUCKET = 'job-photos';
+const MAX_PHOTOS_PER_JOB = 200;
 
 // ── multer: memory storage, 20 MB per file, max 10 files ─────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024, files: 10 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const allowed = Object.keys(ALLOWED_IMAGE_MIMES);
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -46,36 +29,6 @@ const upload = multer({
     }
   },
 }).array('photos', 10);
-
-const PHOTO_DIR = '/shared-storage/public/assets/job-photos';
-const MAX_DIMENSION = 1920;
-const JPEG_QUALITY = 82;
-
-async function compressImage(buffer: Buffer, mime: string): Promise<Buffer> {
-  try {
-    const { CustomJimp, JimpMime } = await getJimp();
-    const img = await CustomJimp.read(buffer);
-    const { width, height } = img;
-
-    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-      // Scale down maintaining aspect ratio
-      if (width >= height) {
-        img.resize({ w: MAX_DIMENSION });
-      } else {
-        img.resize({ h: MAX_DIMENSION });
-      }
-    }
-
-    if (mime === 'image/png') {
-      return await img.getBuffer(JimpMime.png);
-    }
-    // JPEG/WebP/GIF → compress as JPEG
-    return await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
-  } catch {
-    // If Jimp can't process it, return original buffer unchanged
-    return buffer;
-  }
-}
 
 export default async function handler(req: Request, res: Response) {
   // Run multer
@@ -93,13 +46,13 @@ export default async function handler(req: Request, res: Response) {
       const name = msg.replace('UNSUPPORTED_TYPE:', '');
       return res.status(400).json({
         code: 'invalid_file_type',
-        error: `"${name}" is not a supported image type. Please upload JPEG, PNG, WebP, or GIF. HEIC/HEIF files must be converted first.`,
+        error: `"${name}" is not a supported image type. Please upload JPEG, PNG, or WebP. HEIC/HEIF files must be converted first.`,
       });
     }
     if (msg.includes('Too many files') || msg.includes('too many files')) {
       return res.status(400).json({
         code: 'too_many_files',
-        error: `Maximum ${10} photos per upload batch. Please select fewer files.`,
+        error: `Maximum 10 photos per upload batch. Please select fewer files.`,
       });
     }
     return res.status(400).json({ code: 'upload_error', error: msg });
@@ -127,32 +80,43 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // ── Enforce 200-photo limit per job ──────────────────────────────────────
-    const MAX_PHOTOS_PER_JOB = 200;
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // ── Centralised batch validation ──────────────────────────────────────────
+    const batchValidation = validateBatch(files.map(f => ({
+      originalname: f.originalname,
+      mimetype: f.mimetype,
+      size: f.size,
+    })), { isImage: true });
+    if (!batchValidation.ok) {
+      return res.status(400).json({ code: batchValidation.code, error: batchValidation.error });
+    }
+
+    // ── Per-job photo limit ───────────────────────────────────────────────────
     const [photoCountRow] = await db
       .select({ c: count() })
       .from(jobPhotos)
       .where(and(eq(jobPhotos.jobId, jobId), eq(jobPhotos.companyId, profile.companyId)));
     const currentCount = photoCountRow?.c ?? 0;
-    const files = req.files as Express.Multer.File[] | undefined;
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: 'No files uploaded' });
-    }
+
     if (currentCount >= MAX_PHOTOS_PER_JOB) {
       return res.status(400).json({
         code: 'limit_reached',
-        error: `This job has reached the 200-photo limit. Delete some photos before uploading more.`,
+        error: `This job has reached the ${MAX_PHOTOS_PER_JOB}-photo limit. Delete some photos before uploading more.`,
       });
     }
     if (currentCount + files.length > MAX_PHOTOS_PER_JOB) {
       const remaining = MAX_PHOTOS_PER_JOB - currentCount;
       return res.status(400).json({
         code: 'limit_reached',
-        error: `Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added before reaching the 200-photo limit. Please select fewer files.`,
+        error: `Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added before reaching the ${MAX_PHOTOS_PER_JOB}-photo limit.`,
       });
     }
 
-    // ── Enforce plan-level total photo limit ──────────────────────────────────
+    // ── Plan-level total photo limit ──────────────────────────────────────────
     const plan = await getCompanyPlan(profile.companyId);
     const limits = await getPlanLimits(profile.companyId, plan);
     const [totalPhotoRow] = await db.execute(
@@ -164,53 +128,47 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ code: planCheck.code, error: planCheck.message });
     }
 
-    // Reject HEIC/HEIF by original filename extension
-    const heicFiles = files.filter((f) => {
-      const ext = f.originalname.split('.').pop()?.toLowerCase() ?? '';
-      return ext === 'heic' || ext === 'heif';
-    });
-    if (heicFiles.length > 0) {
-      return res.status(400).json({
-        code: 'invalid_file_type',
-        error: `HEIC/HEIF files are not supported. Please convert "${heicFiles[0].originalname}" to JPEG or PNG before uploading.`,
-      });
-    }
-
     const label = typeof req.body?.label === 'string' ? req.body.label.trim() : null;
-
-    // Uploader info
     const uploaderName = session.user.name ?? session.user.email ?? null;
     const uploaderUserId = session.user.id ?? null;
-
-    // Ensure storage dir exists
-    await mkdir(PHOTO_DIR, { recursive: true });
 
     const saved: Array<{ id: number; filename: string; url: string }> = [];
 
     for (const file of files) {
-      const ext = file.mimetype === 'image/png' ? 'png' : 'jpg';
-      const filename = `${randomUUID()}.${ext}`;
-      const filePath = join(PHOTO_DIR, filename);
+      // Compress via storage service
+      const { buffer: compressed, mimeType: outMime } = await compressImageIfNeeded(
+        file.buffer,
+        file.mimetype,
+      );
 
-      const compressed = await compressImage(file.buffer, file.mimetype);
-      await writeFile(filePath, compressed);
+      const ext = outMime === 'image/png' ? 'png' : 'jpg';
+      const storageKey = `${randomUUID()}.${ext}`;
+
+      // Save via storage service
+      const result = await saveFile({
+        buffer: compressed,
+        originalName: file.originalname,
+        mimeType: outMime,
+        bucket: PHOTO_BUCKET,
+        storageKey,
+      });
 
       const [inserted] = await db.insert(jobPhotos).values({
         jobId,
         companyId: profile.companyId,
-        filename,
+        filename: result.storageKey,
         originalName: file.originalname,
         label: label || null,
-        mimeType: file.mimetype,
-        sizeBytes: compressed.length,
+        mimeType: outMime,
+        sizeBytes: result.sizeBytes,
         uploadedByUserId: uploaderUserId,
         uploadedByName: uploaderName,
       }).$returningId();
 
       saved.push({
         id: inserted.id,
-        filename,
-        url: `/airo-assets/uploads/job-photos/${filename}`,
+        filename: result.storageKey,
+        url: result.publicUrl,
       });
     }
 

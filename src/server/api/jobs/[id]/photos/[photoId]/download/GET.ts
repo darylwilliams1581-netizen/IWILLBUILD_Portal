@@ -3,10 +3,9 @@ import { db } from '../../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
-import { createReadStream } from 'node:fs';
-import { join } from 'node:path';
+import { getDownloadStream } from '../../../../../../storage/storage-service.js';
 
-const PHOTO_DIR = '/shared-storage/public/assets/job-photos';
+const PHOTO_BUCKET = 'job-photos';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -41,13 +40,13 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!photo) return res.status(404).json({ error: 'Photo not found' });
 
-    const filePath = join(PHOTO_DIR, photo.filename);
+    const { stream, mimeType, sizeBytes } = await getDownloadStream(photo.filename, PHOTO_BUCKET);
     const downloadName = photo.originalName ?? photo.filename;
 
-    res.setHeader('Content-Type', photo.mimeType ?? 'image/jpeg');
+    res.setHeader('Content-Type', photo.mimeType ?? mimeType ?? 'image/jpeg');
     res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    if (sizeBytes > 0) res.setHeader('Content-Length', String(sizeBytes));
 
-    const stream = createReadStream(filePath);
     stream.on('error', () => {
       if (!res.headersSent) res.status(404).json({ error: 'File not found on disk' });
     });
