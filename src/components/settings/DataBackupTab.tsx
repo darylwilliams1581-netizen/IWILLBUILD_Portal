@@ -28,6 +28,8 @@ import {
   BarChart3,
   Archive,
   Trash2,
+  ExternalLink,
+  Link2,
 } from 'lucide-react';
 import UsageCards from './UsageCards';
 
@@ -136,6 +138,34 @@ const CONTENT_OPTIONS: {
   { key: 'dataCompanySettings', label: 'Company Settings',      desc: 'Company configuration and preferences',           icon: Settings2,     folder: 'Company' },
 ];
 
+// ─── Backup Destination types ─────────────────────────────────────────────────
+
+type BackupProvider = 'onedrive_sharepoint' | 'google_drive' | 'icloud_drive' | 'dropbox' | 'other' | '';
+type BackupMode = 'manual_link' | 'future_sync';
+
+interface BackupDestination {
+  provider: BackupProvider;
+  folderUrl: string;
+  notes: string;
+  mode: BackupMode;
+  updatedAt?: string;
+}
+
+const DEFAULT_DESTINATION: BackupDestination = {
+  provider: '',
+  folderUrl: '',
+  notes: '',
+  mode: 'manual_link',
+};
+
+const PROVIDER_OPTIONS: { value: BackupProvider; label: string; icon: string }[] = [
+  { value: 'onedrive_sharepoint', label: 'OneDrive / SharePoint', icon: '☁️' },
+  { value: 'google_drive',        label: 'Google Drive',          icon: '📁' },
+  { value: 'icloud_drive',        label: 'iCloud Drive',          icon: '🍎' },
+  { value: 'dropbox',             label: 'Dropbox',               icon: '📦' },
+  { value: 'other',               label: 'Other',                 icon: '🔗' },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function SectionCard({ icon: Icon, title, children }: {
@@ -187,6 +217,13 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
   const [retentionSaving, setRetentionSaving] = useState(false);
   const [retentionSaved, setRetentionSaved] = useState(false);
 
+  // Backup destination
+  const [destination, setDestination] = useState<BackupDestination>(DEFAULT_DESTINATION);
+  const [destSaving, setDestSaving] = useState(false);
+  const [destSaved, setDestSaved] = useState(false);
+  const [destError, setDestError] = useState('');
+  const [destUrlError, setDestUrlError] = useState('');
+
   useEffect(() => {
     fetch('/api/settings/backup')
       .then(r => r.ok ? r.json() : null)
@@ -200,6 +237,11 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
     fetch('/api/settings/retention')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.settings) setRetention({ ...DEFAULT_RETENTION, ...data.settings }); })
+      .catch(() => {});
+
+    fetch('/api/settings/backup-destination', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.destination) setDestination({ ...DEFAULT_DESTINATION, ...data.destination }); })
       .catch(() => {});
   }, []);
 
@@ -259,6 +301,41 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
       setError('Failed to save retention settings.');
     } finally {
       setRetentionSaving(false);
+    }
+  };
+
+  const handleSaveDestination = async () => {
+    setDestError('');
+    setDestUrlError('');
+    // Validate URL if provided
+    if (destination.folderUrl) {
+      try {
+        new URL(destination.folderUrl);
+      } catch {
+        setDestUrlError('Please enter a valid URL (e.g. https://...)');
+        return;
+      }
+    }
+    setDestSaving(true);
+    try {
+      const payload: BackupDestination = { ...destination, updatedAt: new Date().toISOString() };
+      const res = await fetch('/api/settings/backup-destination', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination: payload }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? 'Save failed');
+      }
+      setDestination(payload);
+      setDestSaved(true);
+      setTimeout(() => setDestSaved(false), 3000);
+    } catch (e) {
+      setDestError(e instanceof Error ? e.message : 'Failed to save. Please try again.');
+    } finally {
+      setDestSaving(false);
     }
   };
 
@@ -336,6 +413,144 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
       {/* ── Plan Usage ── */}
       <SectionCard icon={BarChart3} title="Plan Usage">
         <UsageCards />
+      </SectionCard>
+
+      {/* ── External Backup Destination ── */}
+      <SectionCard icon={Link2} title="External Backup Destination">
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Save a link to your preferred cloud storage folder. Admins can use this as a reference when manually exporting and uploading backups. Automatic sync is not yet active.
+          </p>
+
+          {/* Provider */}
+          <Field label="Backup provider">
+            <select
+              disabled={!isAdmin}
+              value={destination.provider}
+              onChange={e => setDestination(d => ({ ...d, provider: e.target.value as BackupProvider }))}
+              className={inputCls(!isAdmin)}
+            >
+              <option value="">— Select a provider —</option>
+              {PROVIDER_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
+              ))}
+            </select>
+          </Field>
+
+          {/* Folder URL */}
+          <Field
+            label="Backup folder / share link"
+            hint="Paste the shareable link to your backup folder. No passwords are stored."
+          >
+            <input
+              type="url"
+              disabled={!isAdmin}
+              value={destination.folderUrl}
+              onChange={e => { setDestination(d => ({ ...d, folderUrl: e.target.value })); setDestUrlError(''); }}
+              placeholder="https://..."
+              className={`${inputCls(!isAdmin)} ${destUrlError ? 'border-red-400 focus:ring-red-300' : ''}`}
+            />
+            {destUrlError && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle size={11} /> {destUrlError}
+              </p>
+            )}
+          </Field>
+
+          {/* Notes */}
+          <Field label="Notes" hint="Optional — folder structure, access instructions, etc.">
+            <textarea
+              disabled={!isAdmin}
+              value={destination.notes}
+              onChange={e => setDestination(d => ({ ...d, notes: e.target.value }))}
+              rows={3}
+              placeholder="e.g. Shared with IT team. Folder: /IWILLBUILD/Backups"
+              className={inputCls(!isAdmin)}
+            />
+          </Field>
+
+          {/* Backup mode */}
+          <Field label="Backup mode">
+            <div className="flex flex-col gap-2">
+              {[
+                { value: 'manual_link' as BackupMode, label: 'Manual link only', desc: 'Use this link as a reference when manually uploading exports.' },
+                { value: 'future_sync' as BackupMode, label: 'Future cloud sync', desc: 'Reserve this destination for automatic sync when cloud integration is enabled.' },
+              ].map(opt => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none ${
+                    destination.mode === opt.value ? 'border-orange-300 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                  } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="backup_mode"
+                    disabled={!isAdmin}
+                    checked={destination.mode === opt.value}
+                    onChange={() => setDestination(d => ({ ...d, mode: opt.value }))}
+                    className="mt-0.5 accent-orange-500 shrink-0"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{opt.label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </Field>
+
+          {/* Open folder button */}
+          {destination.folderUrl && (
+            <a
+              href={destination.folderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0078D4] hover:text-[#005fa3] transition-colors"
+            >
+              <ExternalLink size={14} />
+              Open Backup Folder
+            </a>
+          )}
+
+          {/* Future sync notice */}
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+            <Info size={13} className="shrink-0 mt-0.5 text-amber-600" />
+            <span>
+              <strong>Automatic SharePoint / OneDrive sync</strong> will require Microsoft Azure OAuth setup and admin consent. This will be available in a future update. No passwords or OAuth tokens are stored here.
+            </span>
+          </div>
+
+          {/* Error */}
+          {destError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+              <AlertCircle size={12} className="shrink-0" /> {destError}
+            </div>
+          )}
+
+          {/* Save */}
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => void handleSaveDestination()}
+                disabled={destSaving}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              >
+                {destSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save Destination
+              </button>
+              {destSaved && (
+                <span className="flex items-center gap-1.5 text-sm text-green-700">
+                  <CheckCircle2 size={13} /> Saved
+                </span>
+              )}
+              {destination.updatedAt && !destSaved && (
+                <span className="text-xs text-slate-400">
+                  Last saved {new Date(destination.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </SectionCard>
 
       {/* ── Retention & Archive Settings ── */}

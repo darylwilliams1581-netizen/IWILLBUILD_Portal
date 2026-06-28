@@ -144,6 +144,8 @@ import settings_backup_get_112 from "./api/settings/backup/GET";
 import settings_backup_post_113 from "./api/settings/backup/POST";
 import settings_backup_export_get_114 from "./api/settings/backup/export/GET";
 import settings_backup_run_post_115 from "./api/settings/backup/run/POST";
+import settings_backup_destination_get from "./api/settings/backup-destination/GET";
+import settings_backup_destination_post from "./api/settings/backup-destination/POST";
 import signup_post_116 from "./api/signup/POST";
 import auth_verify_email_post from "./api/auth/verify-email/POST";
 import auth_resend_verification_post from "./api/auth/resend-verification/POST";
@@ -372,11 +374,12 @@ async function runStartupMigrations() {
     { table: 'profiles',         column: 'last_active_at',     definition: 'DATETIME NULL' },
     // Email verification on BetterAuth user table
     { table: 'user',             column: 'email_verified',     definition: 'BOOLEAN NOT NULL DEFAULT FALSE' },
-    { table: 'company_settings', column: 'pdf_json',           definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'backup_json',        definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'last_backup_at',     definition: 'DATETIME NULL' },
-    { table: 'company_settings', column: 'custom_limits_json', definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'retention_json',     definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'pdf_json',                  definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'backup_json',               definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'last_backup_at',            definition: 'DATETIME NULL' },
+    { table: 'company_settings', column: 'custom_limits_json',        definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'retention_json',            definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'backup_destination_json',   definition: 'LONGTEXT NULL' },
     // Subscription columns
     { table: 'companies', column: 'plan',                   definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'subscription_status',    definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
@@ -713,6 +716,8 @@ app.get("/api/settings/backup", settings_backup_get_112);
 app.post("/api/settings/backup", settings_backup_post_113);
 app.get("/api/settings/backup/export", settings_backup_export_get_114);
 app.post("/api/settings/backup/run", settings_backup_run_post_115);
+app.get("/api/settings/backup-destination", settings_backup_destination_get);
+app.post("/api/settings/backup-destination", settings_backup_destination_post);
 app.post("/api/signup", signup_post_116);
 app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_117);
 app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_118);
