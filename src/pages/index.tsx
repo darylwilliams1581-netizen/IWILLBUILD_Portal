@@ -205,36 +205,61 @@ function PortalMockup() {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
-  const title = 'IWILLBUILD — Construction Portal for Builders';
+  const title = 'IWILLBUILD | Construction Job Management Software Australia';
   const description =
-    'Run your construction jobs, forms, photos, fleet and estimates in one clean portal. 30-day free trial. No setup fee.';
+    'IWILLBUILD helps builders and trade teams manage jobs, estimates, forms, photos, fleet prestarts, files and Dazza AI in one clean construction portal. Start a 30-day free trial.';
+  const ogDescription =
+    'Run construction jobs, estimates, forms, photos, fleet and files in one clean portal with Dazza AI.';
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'WebSite', '@id': `${site}/#website`, name: 'IWILLBUILD', url: `${site}/` },
+      {
+        '@type': 'WebSite',
+        '@id': `${site}/#website`,
+        name: 'IWILLBUILD',
+        url: `${site}/`,
+      },
       {
         '@type': 'SoftwareApplication',
-        '@id': `${site}/#organization`,
+        '@id': `${site}/#app`,
         name: 'IWILLBUILD',
         url: `${site}/`,
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        description,
-        offers: {
-          '@type': 'AggregateOffer',
-          lowPrice: '19',
-          highPrice: '149',
-          priceCurrency: 'AUD',
-        },
+        description: 'Construction job management software for builders and field teams.',
+        offers: [
+          {
+            '@type': 'Offer',
+            name: 'Solo',
+            price: '19',
+            priceCurrency: 'AUD',
+            billingIncrement: 'P1M',
+          },
+          {
+            '@type': 'Offer',
+            name: 'Team',
+            price: '79',
+            priceCurrency: 'AUD',
+            billingIncrement: 'P1M',
+          },
+          {
+            '@type': 'Offer',
+            name: 'Business',
+            price: '149',
+            priceCurrency: 'AUD',
+            billingIncrement: 'P1M',
+          },
+        ],
       },
       {
         '@type': 'WebPage',
         '@id': `${site}/#webpage`,
         url: `${site}/`,
         name: title,
+        description,
         isPartOf: { '@id': `${site}/#website` },
-        about: { '@id': `${site}/#organization` },
+        about: { '@id': `${site}/#app` },
         datePublished: '2026-06-25',
         dateModified: '2026-06-29',
       },
@@ -247,11 +272,16 @@ export default function HomePage() {
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={`${site}/`} />
+        {/* Open Graph */}
         <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
+        <meta property="og:description" content={ogDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${site}/`} />
+        {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={ogDescription} />
+        {/* Structured data */}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -352,7 +382,7 @@ export default function HomePage() {
               color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
               margin: '0 0 32px', maxWidth: 600,
             }}>
-              IWILLBUILD helps builders and field teams keep job files organised, complete forms, manage photos, track fleet prestarts, build estimates and use Dazza AI to find what needs attention.
+              IWILLBUILD is construction job management software for builders and trade teams. Keep job files organised, build estimates, complete forms, manage photos and files, track fleet prestarts and use Dazza AI to find what needs attention — all in one place.
             </motion.p>
 
             <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -415,10 +445,10 @@ export default function HomePage() {
       <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
           <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
-            Everything a builder needs in one place
+            Construction job management software built for the field
           </motion.h2>
           <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
-            Built around the way construction work actually moves — from job setup through to closeout.
+            Jobs, estimating, forms, photos, files, fleet prestarts and Dazza AI — built around the way construction work actually moves, from job setup through to closeout.
           </motion.p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
             {features.map((f) => {
