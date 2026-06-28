@@ -59,27 +59,37 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
   const hashed = hashToken(token);
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS);
 
-  // Delete any existing tokens for this user
-  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, existing.id));
-
-  // Insert new token
-  await db.insert(passwordResetTokens).values({
-    id: randomId(),
-    userId: existing.id,
-    tokenHash: hashed,
-    expiresAt,
-  });
+  // Delete any existing tokens for this user, then insert new one.
+  // Wrapped in try/catch — if the table doesn't exist yet, fall through
+  // to a "tokenless" email so the user at least gets a helpful message.
+  let tokenStored = false;
+  try {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, existing.id));
+    await db.insert(passwordResetTokens).values({
+      id: randomId(),
+      userId: existing.id,
+      tokenHash: hashed,
+      expiresAt,
+    });
+    tokenStored = true;
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes('ER_NO_SUCH_TABLE') || msg.includes("doesn't exist")) {
+      console.warn('[password-reset] password_reset_tokens table missing — migration not yet run. Sending fallback email.');
+    } else {
+      console.error('[password-reset] token insert failed:', err);
+      return; // Unknown DB error — bail silently
+    }
+  }
 
   const baseUrl = process.env.BETTER_AUTH_URL || process.env.AIRO_PREVIEW_URL || 'https://iwillbuild.com';
-  const resetUrl = `${baseUrl}/reset-password?token=${token}&uid=${existing.id}`;
+  const resetUrl = tokenStored
+    ? `${baseUrl}/reset-password?token=${token}&uid=${existing.id}`
+    : null;
   const firstName = (existing.name ?? 'there').split(' ')[0];
 
-  try {
-    await sendEmail({
-      fromName: 'IWILLBUILD Portal',
-      to: normalised,
-      subject: 'Reset your password — IWILLBUILD Portal',
-      text: [
+  const bodyText = tokenStored
+    ? [
         `Hi ${firstName},`,
         '',
         'We received a request to reset your IWILLBUILD Portal password.',
@@ -91,8 +101,18 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
         'If you did not request a password reset, you can safely ignore this email.',
         '',
         '— The IWILLBUILD Team',
-      ].join('\n'),
-      html: `
+      ].join('\n')
+    : [
+        `Hi ${firstName},`,
+        '',
+        'We received a request to reset your IWILLBUILD Portal password.',
+        '',
+        'Our system is currently being set up. Please ask your platform owner to visit the Owner Console to complete the setup, then try again.',
+        '',
+        '— The IWILLBUILD Team',
+      ].join('\n');
+
+  const bodyHtml = tokenStored ? `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -131,7 +151,42 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     </td></tr>
   </table>
 </body>
-</html>`,
+</html>` : `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0F1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0F1117;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+        <tr><td style="background:#F97316;padding:24px 32px;">
+          <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">IWILLBUILD Portal</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;">Password Reset Request</h1>
+          <p style="margin:0 0 16px;font-size:15px;color:rgba(255,255,255,0.6);line-height:1.6;">
+            Hi ${firstName}, we received your request but the system is still being set up.
+          </p>
+          <p style="margin:0;font-size:15px;color:rgba(255,255,255,0.6);line-height:1.6;">
+            Please ask your platform owner to visit the <strong style="color:#fff;">Owner Console</strong> to complete the database setup, then try again.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWILLBUILD Portal.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    await sendEmail({
+      fromName: 'IWILLBUILD Portal',
+      to: normalised,
+      subject: 'Reset your password — IWILLBUILD Portal',
+      text: bodyText,
+      html: bodyHtml,
     });
   } catch (e) {
     console.error('[password-reset] EMAIL SEND FAILED:', e);

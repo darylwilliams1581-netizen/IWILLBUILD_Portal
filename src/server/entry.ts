@@ -411,6 +411,61 @@ async function runStartupMigrations() {
       }
     }
   }
+
+  // Account recovery tables (idempotent — safe to run on every startup)
+  const recoveryTables = [
+    {
+      name: 'password_reset_tokens',
+      ddl: "CREATE TABLE IF NOT EXISTS password_reset_tokens (id VARCHAR(36) NOT NULL PRIMARY KEY, user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id), INDEX idx_hash (token_hash))",
+    },
+    {
+      name: 'sms_verification_codes',
+      ddl: "CREATE TABLE IF NOT EXISTS sms_verification_codes (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, code_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
+    },
+    {
+      name: 'trusted_devices',
+      ddl: "CREATE TABLE IF NOT EXISTS trusted_devices (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, device_fingerprint VARCHAR(512) NOT NULL, device_name VARCHAR(255) NULL, pin_hash VARCHAR(255) NULL, pin_attempts INT NOT NULL DEFAULT 0, pin_locked_until DATETIME NULL, last_used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id))",
+    },
+    {
+      name: 'manual_verification_log',
+      ddl: "CREATE TABLE IF NOT EXISTS manual_verification_log (id INT AUTO_INCREMENT PRIMARY KEY, target_user_id VARCHAR(36) NOT NULL, verified_by_user_id VARCHAR(36) NOT NULL, method VARCHAR(60) NOT NULL DEFAULT 'manual_admin', note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_target (target_user_id))",
+    },
+  ];
+  for (const { name, ddl } of recoveryTables) {
+    try {
+      await db.execute(sql.raw(ddl));
+      console.log(`[startup-migration] ${name} table ready`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+        console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
+      }
+    }
+  }
+
+  // Ensure phone_number and verification_method columns on user table
+  const userRecoveryCols = [
+    { column: 'phone_number',        definition: 'VARCHAR(30) NULL' },
+    { column: 'verification_method', definition: 'VARCHAR(60) NULL' },
+    { column: 'updated_at',          definition: 'DATETIME NULL' },
+  ];
+  for (const { column, definition } of userRecoveryCols) {
+    try {
+      const [checkRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
+      if (!exists) {
+        await db.execute(sql.raw(`ALTER TABLE \`user\` ADD COLUMN \`${column}\` ${definition}`));
+        console.log(`[startup-migration] Added user.${column}`);
+      }
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+        console.warn(`[startup-migration] Could not ensure user.${column}:`, msg);
+      }
+    }
+  }
 }
 runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
 // ─────────────────────────────────────────────────────────────────────────────
