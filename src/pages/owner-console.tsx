@@ -6,7 +6,7 @@ import {
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, Plus, X,
+  ShieldAlert, Plus, X, BookOpen,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -675,6 +675,23 @@ export default function OwnerConsolePage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">GoDaddy Developer Dashboard</p>
                       <p className="text-xs text-slate-400 truncate">Open the IWILLBUILD Portal development workspace</p>
+                    </div>
+                    <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+                  </a>
+
+                  {/* System Map shortcut */}
+                  <a
+                    href="/docs/IWILLBUILD_SYSTEM_MAP.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+                      <BookOpen size={18} className="text-violet-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">System Map / Product Bible</p>
+                      <p className="text-xs text-slate-400 truncate">Full platform architecture, modules, permissions, DB schema, API reference</p>
                     </div>
                     <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
                   </a>
