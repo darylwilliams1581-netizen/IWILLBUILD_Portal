@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { jobs, profiles } from '../../db/schema.js';
-import { eq, count } from 'drizzle-orm';
+import { eq, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../lib/plan-limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -18,6 +19,20 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!profile?.companyId) return res.status(400).json({ error: 'No company found for user' });
+
+    // ── Plan limit check: active jobs ─────────────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
+
+    const [activeCountRow] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM jobs WHERE company_id = ${profile.companyId} AND status NOT IN ('Archived','Closed')`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    const activeCount = Number(activeCountRow?.[0]?.cnt ?? 0);
+
+    const limitCheck = checkLimit(activeCount, limits.activeJobs, 'Active Jobs');
+    if (!limitCheck.allowed) {
+      return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
+    }
 
     const { name, client, address, status, notes, jobNumber } = req.body as {
       name: string;

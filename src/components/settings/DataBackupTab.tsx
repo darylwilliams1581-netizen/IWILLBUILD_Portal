@@ -25,7 +25,11 @@ import {
   StickyNote,
   FolderTree,
   Shield,
+  BarChart3,
+  Archive,
+  Trash2,
 } from 'lucide-react';
+import UsageCards from './UsageCards';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +87,21 @@ const DEFAULT: BackupConfig = {
   scheduleDay: 'sunday',
 };
 
-// ─── Folder structure preview ─────────────────────────────────────────────────
+// ─── Retention defaults ───────────────────────────────────────────────────────
+
+interface RetentionSettings {
+  autoArchiveClosedJobsMonths: number;
+  keepDeletedRecordsDays: number;
+  keepCompletedFormsForever: boolean;
+  keepPhotosForever: boolean;
+}
+
+const DEFAULT_RETENTION: RetentionSettings = {
+  autoArchiveClosedJobsMonths: 0,
+  keepDeletedRecordsDays: 30,
+  keepCompletedFormsForever: true,
+  keepPhotosForever: true,
+};
 
 const FOLDER_TREE = [
   { name: 'IWILLBUILD - Documents', depth: 0, isRoot: true },
@@ -164,6 +182,11 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
   const [testingConn, setTestingConn] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
 
+  // Retention settings
+  const [retention, setRetention] = useState<RetentionSettings>(DEFAULT_RETENTION);
+  const [retentionSaving, setRetentionSaving] = useState(false);
+  const [retentionSaved, setRetentionSaved] = useState(false);
+
   useEffect(() => {
     fetch('/api/settings/backup')
       .then(r => r.ok ? r.json() : null)
@@ -173,6 +196,11 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch('/api/settings/retention')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.settings) setRetention({ ...DEFAULT_RETENTION, ...data.settings }); })
+      .catch(() => {});
   }, []);
 
   const set = <K extends keyof BackupConfig>(key: K, val: BackupConfig[K]) =>
@@ -206,13 +234,31 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `iwillbuild-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `iwillbuild-backup-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       setError('Export failed. Please try again.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleSaveRetention = async () => {
+    setRetentionSaving(true);
+    try {
+      const res = await fetch('/api/settings/retention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: retention }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setRetentionSaved(true);
+      setTimeout(() => setRetentionSaved(false), 3000);
+    } catch {
+      setError('Failed to save retention settings.');
+    } finally {
+      setRetentionSaving(false);
     }
   };
 
@@ -286,6 +332,120 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
           IWILLBUILD live data remains securely stored in the portal. Each company's backup settings and exported files are completely isolated — no other company can access your data.
         </p>
       </div>
+
+      {/* ── Plan Usage ── */}
+      <SectionCard icon={BarChart3} title="Plan Usage">
+        <UsageCards />
+      </SectionCard>
+
+      {/* ── Retention & Archive Settings ── */}
+      <SectionCard icon={Archive} title="Retention & Archive Settings">
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500">
+            Control how long data is kept and when jobs are automatically archived.
+            Archiving reduces your active job count without deleting data.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field
+              label="Auto-archive closed jobs after"
+              hint="0 = disabled. Jobs with status 'Closed' will be archived automatically."
+            >
+              <select
+                disabled={!isAdmin}
+                value={retention.autoArchiveClosedJobsMonths}
+                onChange={e => setRetention(r => ({ ...r, autoArchiveClosedJobsMonths: Number(e.target.value) }))}
+                className={inputCls(!isAdmin)}
+              >
+                <option value={0}>Disabled</option>
+                {[1, 2, 3, 6, 12, 24].map(m => (
+                  <option key={m} value={m}>{m} month{m !== 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field
+              label="Keep soft-deleted records for"
+              hint="Records are soft-deleted first. Permanent deletion happens after this period."
+            >
+              <select
+                disabled={!isAdmin}
+                value={retention.keepDeletedRecordsDays}
+                onChange={e => setRetention(r => ({ ...r, keepDeletedRecordsDays: Number(e.target.value) }))}
+                className={inputCls(!isAdmin)}
+              >
+                {[7, 14, 30, 60, 90, 180, 365].map(d => (
+                  <option key={d} value={d}>{d} day{d !== 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {[
+              {
+                key: 'keepCompletedFormsForever' as const,
+                label: 'Keep completed forms forever',
+                desc: 'Completed form submissions are never automatically deleted',
+                icon: ClipboardList,
+              },
+              {
+                key: 'keepPhotosForever' as const,
+                label: 'Keep job photos forever',
+                desc: 'Job photos are never automatically deleted',
+                icon: Image,
+              },
+            ].map(({ key, label, desc, icon: Icon }) => (
+              <label
+                key={key}
+                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none ${
+                  retention[key] ? 'border-orange-300 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  disabled={!isAdmin}
+                  checked={retention[key]}
+                  onChange={e => setRetention(r => ({ ...r, [key]: e.target.checked }))}
+                  className="mt-0.5 accent-orange-500 shrink-0"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Icon size={12} className="text-slate-500 shrink-0" />
+                    <span className="text-sm font-medium text-slate-800">{label}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <Trash2 size={13} className="text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-700">
+              Permanent deletion of archived data requires explicit admin confirmation and cannot be undone.
+            </p>
+          </div>
+
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveRetention}
+                disabled={retentionSaving}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              >
+                {retentionSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save Retention Settings
+              </button>
+              {retentionSaved && (
+                <span className="flex items-center gap-1.5 text-sm text-green-700">
+                  <CheckCircle2 size={13} /> Saved
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* ── Section 1: Backup Destination ── */}
       <SectionCard icon={Cloud} title="1. Backup Destination">

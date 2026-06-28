@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../db/schema.js';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../../lib/plan-limits.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -149,6 +150,18 @@ export default async function handler(req: Request, res: Response) {
         code: 'limit_reached',
         error: `Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added before reaching the 200-photo limit. Please select fewer files.`,
       });
+    }
+
+    // ── Enforce plan-level total photo limit ──────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
+    const [totalPhotoRow] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM job_photos WHERE company_id = ${profile.companyId}`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    const totalPhotos = Number(totalPhotoRow?.[0]?.cnt ?? 0);
+    const planCheck = checkLimit(totalPhotos, limits.totalPhotos, 'Total Job Photos');
+    if (!planCheck.allowed) {
+      return res.status(403).json({ code: planCheck.code, error: planCheck.message });
     }
 
     // Reject HEIC/HEIF by original filename extension

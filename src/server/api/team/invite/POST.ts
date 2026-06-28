@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { profiles, user } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../lib/plan-limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -24,6 +25,20 @@ export default async function handler(req: Request, res: Response) {
 
     if (!callerIsOwner && !callerIsAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // ── Plan limit check: users ───────────────────────────────────────────────
+    const plan = await getCompanyPlan(callerProfile.companyId);
+    const limits = await getPlanLimits(callerProfile.companyId, plan);
+
+    const [countRow] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM profiles WHERE company_id = ${callerProfile.companyId} AND status != 'inactive'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    const currentUserCount = Number(countRow?.[0]?.cnt ?? 0);
+
+    const limitCheck = checkLimit(currentUserCount, limits.users, 'Users');
+    if (!limitCheck.allowed) {
+      return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
     }
 
     const { name, email, role = 'worker' } = req.body as {

@@ -392,6 +392,68 @@ export async function buildDazzaContext(
     });
   }
 
+  // ── Usage / Plan limits context ───────────────────────────────────────────
+  try {
+    const [planRows] = await db.execute(
+      sql`SELECT plan FROM companies WHERE id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ plan: string }>, unknown];
+    const plan = planRows?.[0]?.plan ?? 'trial';
+
+    const safeCount = async (q: ReturnType<typeof sql>): Promise<number> => {
+      try {
+        const [rows] = await db.execute(q) as unknown as [Array<{ cnt: number | string }>, unknown];
+        return Number(rows?.[0]?.cnt ?? 0);
+      } catch { return 0; }
+    };
+    const safeSum = async (q: ReturnType<typeof sql>): Promise<number> => {
+      try {
+        const [rows] = await db.execute(q) as unknown as [Array<{ total: number | string | null }>, unknown];
+        return Number(rows?.[0]?.total ?? 0);
+      } catch { return 0; }
+    };
+
+    const [users, activeJobs, totalPhotos, fileBytes, fleet, formTemplates, costGuide] = await Promise.all([
+      safeCount(sql`SELECT COUNT(*) as cnt FROM profiles WHERE company_id = ${effectiveCompanyId} AND status != 'inactive'`),
+      safeCount(sql`SELECT COUNT(*) as cnt FROM jobs WHERE company_id = ${effectiveCompanyId} AND status NOT IN ('Archived','Closed')`),
+      safeCount(sql`SELECT COUNT(*) as cnt FROM job_photos WHERE company_id = ${effectiveCompanyId}`),
+      safeSum(sql`SELECT COALESCE(SUM(size_bytes),0) as total FROM company_files WHERE company_id = ${effectiveCompanyId}`),
+      safeCount(sql`SELECT COUNT(*) as cnt FROM fleet_assets WHERE company_id = ${effectiveCompanyId} AND (archived = 0 OR archived IS NULL)`),
+      safeCount(sql`SELECT COUNT(*) as cnt FROM form_templates WHERE company_id = ${effectiveCompanyId}`),
+      safeCount(sql`SELECT COUNT(*) as cnt FROM cost_guide_items WHERE company_id = ${effectiveCompanyId}`),
+    ]);
+
+    // Top 5 jobs by photo count
+    const [photoJobRows] = await db.execute(
+      sql`SELECT j.name as job_name, j.job_number, COUNT(p.id) as photo_count
+          FROM job_photos p
+          JOIN jobs j ON j.id = p.job_id
+          WHERE p.company_id = ${effectiveCompanyId}
+          GROUP BY p.job_id, j.name, j.job_number
+          ORDER BY photo_count DESC LIMIT 5`
+    ) as unknown as [Array<{ job_name: string; job_number: string | null; photo_count: number }>, unknown];
+
+    const fileMB = (fileBytes / (1024 * 1024)).toFixed(1);
+    const fileGB = (fileBytes / (1024 * 1024 * 1024)).toFixed(2);
+
+    (ctx as Record<string, unknown>).usageContext = {
+      plan,
+      users,
+      activeJobs,
+      totalPhotos,
+      fileStorageMB: parseFloat(fileMB),
+      fileStorageGB: parseFloat(fileGB),
+      fleet,
+      formTemplates,
+      costGuide,
+      topPhotoJobs: photoJobRows ?? [],
+    };
+    moduleCounts['usage'] = 1;
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    console.warn(`[dazza-context] usage FAILED: ${msg}`);
+    warnings.push(`usage: ${msg.slice(0, 120)}`);
+  }
+
   if (warnings.length > 0) {
     console.warn(`[dazza-context] Context built with ${warnings.length} warning(s) for company ${effectiveCompanyId}`);
   }

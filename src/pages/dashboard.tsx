@@ -16,6 +16,8 @@ import {
   Wrench,
   CheckSquare,
   Clock,
+  XCircle,
+  BarChart3,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -67,6 +69,9 @@ export default function DashboardPage() {
   const [setupChecked, setSetupChecked] = useState(false);
   const [isSetup, setIsSetup] = useState(false); // true = company has real data
 
+  // Usage warnings
+  const [usageWarning, setUsageWarning] = useState<{ hasWarnings: boolean; hasBlocked: boolean; warnings: string[] } | null>(null);
+
   useEffect(() => {
     fetchJobs()
       .then((data) => { setJobs(data); setJobsLoaded(true); })
@@ -86,6 +91,15 @@ export default function DashboardPage() {
       .then((r) => r.ok ? r.json() as Promise<{ isSetup: boolean }> : Promise.reject())
       .then((d) => { setIsSetup(d.isSetup); setSetupChecked(true); })
       .catch(() => { setIsSetup(false); setSetupChecked(true); });
+    // Load usage warnings (admin/owner only — silently ignore 403)
+    fetch('/api/usage', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d && (d.hasWarnings || d.hasBlocked)) {
+          setUsageWarning({ hasWarnings: d.hasWarnings, hasBlocked: d.hasBlocked, warnings: d.warnings ?? [] });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const activeJobCount = jobs.filter((j) =>
@@ -175,6 +189,43 @@ export default function DashboardPage() {
 
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
+
+          {/* ── Usage warning banner ── */}
+          {usageWarning && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 ${
+                usageWarning.hasBlocked
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-amber-50 border-amber-200'
+              }`}
+            >
+              {usageWarning.hasBlocked
+                ? <XCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                : <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              }
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold ${usageWarning.hasBlocked ? 'text-red-800' : 'text-amber-800'}`}>
+                  {usageWarning.hasBlocked ? 'Plan limit reached' : 'Storage usage above 80%'}
+                </p>
+                <p className={`text-xs mt-0.5 ${usageWarning.hasBlocked ? 'text-red-700' : 'text-amber-700'}`}>
+                  {usageWarning.warnings.join(' · ')}
+                </p>
+              </div>
+              <Link
+                to="/settings?tab=data-backup"
+                className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                  usageWarning.hasBlocked
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                }`}
+              >
+                <BarChart3 size={11} />
+                View Usage
+              </Link>
+            </motion.div>
+          )}
 
           {/* ── Welcome banner — dynamic based on setup state ── */}
           {setupChecked && (

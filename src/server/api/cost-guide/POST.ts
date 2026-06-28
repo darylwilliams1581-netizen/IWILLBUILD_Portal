@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { costGuideItems, profiles } from '../../db/schema.js';
-import { eq, count } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
-import { LIMITS } from '../../lib/limits.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../lib/plan-limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
 export default async function handler(req: Request, res: Response) {
@@ -22,15 +22,18 @@ export default async function handler(req: Request, res: Response) {
     const { description, unit, rate } = req.body as { description?: string; unit?: string; rate?: string };
     if (!description?.trim()) return res.status(400).json({ error: 'Description is required' });
 
-    const [countRow] = await db.select({ c: count() }).from(costGuideItems).where(eq(costGuideItems.companyId, profile.companyId));
-    const currentCount = countRow?.c ?? 0;
+    // ── Plan limit check ──────────────────────────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
 
-    // ── Enforce limit ─────────────────────────────────────────────────────────
-    if (currentCount >= LIMITS.COST_GUIDE_ITEMS) {
-      return res.status(400).json({
-        code: 'limit_reached',
-        error: `Cost Guide limit reached (${LIMITS.COST_GUIDE_ITEMS} items). Delete unused items before adding more.`,
-      });
+    const [countRow] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM cost_guide_items WHERE company_id = ${profile.companyId}`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    const currentCount = Number(countRow?.[0]?.cnt ?? 0);
+
+    const limitCheck = checkLimit(currentCount, limits.costGuideItems, 'Cost Guide Items');
+    if (!limitCheck.allowed) {
+      return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
     }
 
     const sortOrder = currentCount;

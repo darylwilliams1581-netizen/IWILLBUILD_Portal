@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { formTemplates, profiles } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../lib/plan-limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -18,6 +19,20 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    // ── Plan limit check: form templates ──────────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
+
+    const [countRow] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM form_templates WHERE company_id = ${profile.companyId}`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    const currentCount = Number(countRow?.[0]?.cnt ?? 0);
+
+    const limitCheck = checkLimit(currentCount, limits.formTemplates, 'Form Templates');
+    if (!limitCheck.allowed) {
+      return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
+    }
 
     const {
       name,

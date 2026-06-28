@@ -122,6 +122,10 @@ import notifications_prefs_put_100 from "./api/notifications/prefs/PUT";
 import notifications_read_post_101 from "./api/notifications/read/POST";
 import owner_console_activity_get_102 from "./api/owner-console/activity/GET";
 import owner_console_companies_get_103 from "./api/owner-console/companies/GET";
+import owner_console_companies_usage_get from "./api/owner-console/companies/usage/GET";
+import owner_console_companies_limits_put from "./api/owner-console/companies/[id]/limits/PUT";
+import settings_retention_get from "./api/settings/retention/GET";
+import settings_retention_post from "./api/settings/retention/POST";
 import owner_console_companies_post_104 from "./api/owner-console/companies/POST";
 import owner_console_stats_get_105 from "./api/owner-console/stats/GET";
 import owner_console_users_get_106 from "./api/owner-console/users/GET";
@@ -162,6 +166,7 @@ import subscription_webhook_post_121 from "./api/subscription/webhook/POST";
 import billing_customer_portal_post from "./api/billing/customer-portal/POST";
 import billing_cancel_subscription_post from "./api/billing/cancel-subscription/POST";
 import billing_reactivate_subscription_post from "./api/billing/reactivate-subscription/POST";
+import usage_get from "./api/usage/GET";
 import support_mode_audit_get_122 from "./api/support-mode/audit/GET";
 import support_mode_checklist_get_123 from "./api/support-mode/checklist/GET";
 import support_mode_checklist_put_124 from "./api/support-mode/checklist/PUT";
@@ -348,9 +353,11 @@ async function runStartupMigrations() {
     { table: 'profiles',         column: 'last_active_at',     definition: 'DATETIME NULL' },
     // Email verification on BetterAuth user table
     { table: 'user',             column: 'email_verified',     definition: 'BOOLEAN NOT NULL DEFAULT FALSE' },
-    { table: 'company_settings', column: 'pdf_json',        definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'backup_json',     definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'last_backup_at',  definition: 'DATETIME NULL' },
+    { table: 'company_settings', column: 'pdf_json',           definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'backup_json',        definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'last_backup_at',     definition: 'DATETIME NULL' },
+    { table: 'company_settings', column: 'custom_limits_json', definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'retention_json',     definition: 'LONGTEXT NULL' },
     // Subscription columns
     { table: 'companies', column: 'plan',                   definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
     { table: 'companies', column: 'subscription_status',    definition: "VARCHAR(30) NOT NULL DEFAULT 'trial'" },
@@ -673,6 +680,10 @@ app.put("/api/notifications/prefs", notifications_prefs_put_100);
 app.post("/api/notifications/read", notifications_read_post_101);
 app.get("/api/owner-console/activity", requireOwner, owner_console_activity_get_102);
 app.get("/api/owner-console/companies", requireOwner, owner_console_companies_get_103);
+app.get("/api/owner-console/companies/usage", requireOwner, owner_console_companies_usage_get);
+app.put("/api/owner-console/companies/:id/limits", requireOwner, owner_console_companies_limits_put);
+app.get("/api/settings/retention", settings_retention_get);
+app.post("/api/settings/retention", settings_retention_post);
 app.post("/api/owner-console/companies", requireOwner, owner_console_companies_post_104);
 app.get("/api/owner-console/stats", requireOwner, owner_console_stats_get_105);
 app.get("/api/owner-console/users", requireOwner, owner_console_users_get_106);
@@ -695,6 +706,7 @@ app.post("/api/subscription/webhook", subscription_webhook_post_121);
 app.post("/api/billing/customer-portal", billing_customer_portal_post);
 app.post("/api/billing/cancel-subscription", billing_cancel_subscription_post);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post);
+app.get("/api/usage", usage_get);
 app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
 app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);
 app.put("/api/support-mode/checklist", requireOwner, support_mode_checklist_put_124);

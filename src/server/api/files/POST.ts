@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { companyFiles, profiles } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -13,6 +13,7 @@ import {
   isBlockedExtension,
   ALLOWED_MIMES,
 } from '../../lib/file-upload.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../lib/plan-limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
 const FILES_DIR = '/shared-storage/public/assets/company-files';
@@ -65,6 +66,22 @@ export default async function handler(req: Request, res: Response) {
     if (isHeic(file.originalname)) return res.status(400).json({ error: 'HEIC/HEIF not supported.' });
     if (isBlockedExtension(file.originalname)) return res.status(400).json({ error: 'File type not allowed.' });
     if (!ALLOWED_MIMES[file.mimetype]) return res.status(400).json({ error: 'File type not supported.' });
+
+    // ── Plan limit check: file storage ────────────────────────────────────────
+    const plan = await getCompanyPlan(profile.companyId);
+    const limits = await getPlanLimits(profile.companyId, plan);
+    const [storageRow] = await db.execute(
+      sql`SELECT COALESCE(SUM(size_bytes),0) as total FROM company_files WHERE company_id = ${profile.companyId}`
+    ) as unknown as [Array<{ total: number }>, unknown];
+    const usedBytes = Number(storageRow?.[0]?.total ?? 0);
+    if (usedBytes + file.size > limits.storageBytes) {
+      const usedGB = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
+      const limitGB = (limits.storageBytes / (1024 * 1024 * 1024)).toFixed(0);
+      return res.status(403).json({
+        code: 'limit_reached',
+        error: `Your plan limit has been reached (File Storage: ${usedGB} GB / ${limitGB} GB). Upgrade your plan or remove old files.`,
+      });
+    }
 
     const { jobId, fleetAssetId, fileCategory, label, notes } = req.body as {
       jobId?: string;
