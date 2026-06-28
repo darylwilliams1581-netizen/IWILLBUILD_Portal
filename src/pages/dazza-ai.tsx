@@ -152,8 +152,161 @@ const CALCULATORS: CalcDef[] = [
 
 // ── Message formatter ─────────────────────────────────────────────────────────
 
+// ── Structured answer section definitions ─────────────────────────────────────
+
+const ANSWER_SECTIONS: Array<{
+  prefix: string;
+  label: string;
+  icon: string;
+  chipClass: string;
+  borderClass: string;
+  bgClass: string;
+}> = [
+  {
+    prefix: '📋 From IWILLBUILD data:',
+    label: 'From IWILLBUILD data',
+    icon: '📋',
+    chipClass: 'bg-blue-600 text-white',
+    borderClass: 'border-blue-200',
+    bgClass: 'bg-blue-50',
+  },
+  {
+    prefix: '🧠 AI reasoning:',
+    label: 'AI reasoning',
+    icon: '🧠',
+    chipClass: 'bg-violet-600 text-white',
+    borderClass: 'border-violet-200',
+    bgClass: 'bg-violet-50',
+  },
+  {
+    prefix: '📦 Source modules:',
+    label: 'Source modules',
+    icon: '📦',
+    chipClass: 'bg-slate-600 text-white',
+    borderClass: 'border-slate-200',
+    bgClass: 'bg-slate-50',
+  },
+  {
+    prefix: '📊 Confidence:',
+    label: 'Confidence',
+    icon: '📊',
+    chipClass: 'bg-emerald-600 text-white',
+    borderClass: 'border-emerald-200',
+    bgClass: 'bg-emerald-50',
+  },
+  {
+    prefix: '💡 Suggested next action:',
+    label: 'Suggested next action',
+    icon: '💡',
+    chipClass: 'bg-amber-500 text-white',
+    borderClass: 'border-amber-200',
+    bgClass: 'bg-amber-50',
+  },
+  {
+    prefix: '⚠️ Verification reminder:',
+    label: 'Verification reminder',
+    icon: '⚠️',
+    chipClass: 'bg-red-600 text-white',
+    borderClass: 'border-red-200',
+    bgClass: 'bg-red-50',
+  },
+];
+
+// ── Inline text formatter (bold, plain) ───────────────────────────────────────
+
+function formatInline(text: string, key: string | number) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <span key={key}>
+      {parts.map((part, j) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={j} className="font-semibold text-slate-900">{part.replace(/\*\*/g, '')}</strong>
+          : part
+      )}
+    </span>
+  );
+}
+
+// ── Main message formatter ────────────────────────────────────────────────────
+
 function formatMessage(content: string) {
-  const lines = content.split('\n');
+  // Split into structured sections first
+  type Section = { def: typeof ANSWER_SECTIONS[number]; body: string[] } | { def: null; body: string[] };
+  const sections: Section[] = [];
+  let currentSection: Section = { def: null, body: [] };
+
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine;
+
+    // Check if this line starts a known section
+    const matchedDef = ANSWER_SECTIONS.find((s) => line.trimStart().startsWith(s.prefix));
+    if (matchedDef) {
+      // Save previous section
+      if (currentSection.body.length > 0 || currentSection.def !== null) {
+        sections.push(currentSection);
+      }
+      // Remainder of the line after the prefix is the first body line
+      const remainder = line.trimStart().slice(matchedDef.prefix.length).trim();
+      currentSection = { def: matchedDef, body: remainder ? [remainder] : [] };
+    } else {
+      currentSection.body.push(line);
+    }
+  }
+  // Push last section
+  if (currentSection.body.length > 0 || currentSection.def !== null) {
+    sections.push(currentSection);
+  }
+
+  // If no structured sections were found, fall back to the legacy renderer
+  const hasStructured = sections.some((s) => s.def !== null);
+  if (!hasStructured) {
+    return renderLegacyLines(content.split('\n'));
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {sections.map((section, si) => {
+        if (section.def === null) {
+          // Plain text before any section header
+          const trimmed = section.body.filter((l) => l.trim() !== '');
+          if (trimmed.length === 0) return null;
+          return (
+            <div key={si} className="flex flex-col gap-0.5">
+              {renderLegacyLines(section.body)}
+            </div>
+          );
+        }
+
+        const { def } = section;
+        const bodyText = section.body.join('\n').trim();
+        if (!bodyText) return null;
+
+        return (
+          <div
+            key={si}
+            className={`rounded-xl border ${def.borderClass} ${def.bgClass} overflow-hidden`}
+          >
+            {/* Section header chip */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 ${def.bgClass}`}>
+              <span className="text-xs leading-none">{def.icon}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${def.chipClass}`}>
+                {def.label}
+              </span>
+            </div>
+            {/* Section body */}
+            <div className="px-3 pb-3 pt-1 text-[13px] text-slate-700 leading-relaxed flex flex-col gap-0.5">
+              {renderLegacyLines(bodyText.split('\n'))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Legacy line renderer (headings, bold, plain) ──────────────────────────────
+
+function renderLegacyLines(lines: string[]) {
   return lines.map((line, i) => {
     if (line.startsWith('## ')) {
       return <p key={i} className="font-bold text-slate-900 mt-3 mb-1 text-sm border-b border-slate-100 pb-1">{line.replace('## ', '')}</p>;
@@ -161,14 +314,17 @@ function formatMessage(content: string) {
     if (line.startsWith('# ')) {
       return <p key={i} className="font-bold text-slate-900 mt-2 mb-1">{line.replace('# ', '')}</p>;
     }
-    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      return (
+        <p key={i} className="leading-relaxed flex gap-1.5">
+          <span className="text-slate-400 shrink-0 mt-0.5">•</span>
+          <span>{formatInline(line.replace(/^[-•]\s*/, ''), `${i}-inner`)}</span>
+        </p>
+      );
+    }
     return (
-      <p key={i} className={line === '' ? 'mt-1.5' : 'leading-relaxed'}>
-        {parts.map((part, j) =>
-          part.startsWith('**') && part.endsWith('**')
-            ? <strong key={j} className="font-semibold text-slate-900">{part.replace(/\*\*/g, '')}</strong>
-            : part
-        )}
+      <p key={i} className={line.trim() === '' ? 'mt-1' : 'leading-relaxed'}>
+        {formatInline(line, i)}
       </p>
     );
   });
