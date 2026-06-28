@@ -701,6 +701,8 @@ export default async function handler(req: Request, res: Response) {
       reply: answer.reply,
       tokens: answer.tokens ?? 0,
       source: answer.source,
+      // noApiKey: true tells the frontend to show the "no OpenAI key" banner
+      noApiKey: answer.source === 'no_key',
       confidence: answer.confidence,
       modulesUsed: answer.modulesUsed,
       conflictDetected: answer.conflictDetected,

@@ -318,8 +318,15 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json() as SubscriptionInfo;
         setSubInfo(data);
+        setError('');
+      } else if (res.status === 401 || res.status === 403) {
+        // Not logged in or no company — don't show a generic error, just leave subInfo null
+      } else {
+        setError('Could not load subscription status. Please refresh the page.');
       }
-    } catch { /* silent */ }
+    } catch {
+      setError('Could not reach the server. Please check your connection and refresh.');
+    }
     setLoading(false);
   }
 
