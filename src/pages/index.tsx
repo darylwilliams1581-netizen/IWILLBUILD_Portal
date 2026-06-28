@@ -1,27 +1,16 @@
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
+import {
+  Briefcase, FileText, Camera, Truck, LayoutDashboard,
+  Bot, ShieldCheck, Users, CheckCircle, ArrowRight,
+  Star, ChevronRight,
+} from 'lucide-react';
 
-const features = [
-  { icon: 'J', title: 'Jobs', desc: 'Register jobs, track status, notes, to-do items, photos, forms and approved work.' },
-  { icon: '$', title: 'Estimating', desc: 'Cost guide, recipes, scope lines, approved estimate locking and PDF quote output.' },
-  { icon: 'F', title: 'Forms', desc: 'Reusable templates, conditional logic, media upload, signatures and completed PDFs.' },
-  { icon: 'P', title: 'Photos', desc: 'Job photo upload, labels, thumbnails and report photo album output.' },
-  { icon: 'V', title: 'Fleet', desc: 'Assets, daily prestarts, service dates, rego reminders and dashboard flags.' },
-  { icon: 'D', title: 'Dashboard', desc: 'Due items, active jobs, fleet attention, forms and notice board in one place.' },
-  { icon: 'S', title: 'Settings', desc: 'Company profile, users, permissions, PDF branding and backup/export controls.' },
-  { icon: 'A', title: 'Dazza AI', desc: 'Local assistant with update packs, file learning, NCC reference guidance and data health checks.' },
-];
-
-const workflow = [
-  { n: '1', title: 'Add the job', desc: 'Create the job record, add notes, to-do items, photos and files as work starts.' },
-  { n: '2', title: 'Build and approve', desc: 'Create estimate lines, print the quote, approve the estimate and lock the scope.' },
-  { n: '3', title: 'Track and report', desc: 'Update progress, complete forms, upload photos and generate PDFs for the file.' },
-];
-
+// ── Animation variants ────────────────────────────────────────────────────────
 const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.42, ease: 'easeOut' as const } },
 } as const;
 
 const stagger = {
@@ -29,11 +18,196 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.07 } },
 } as const;
 
+// ── Data ──────────────────────────────────────────────────────────────────────
+const features = [
+  { icon: Briefcase,     title: 'Jobs and job files',         desc: 'Create jobs, track status, add notes, to-do items, costs and close them out cleanly.' },
+  { icon: FileText,      title: 'Estimates and recipes',      desc: 'Build cost guides, scope lines, approve estimates and print PDF quotes for clients.' },
+  { icon: FileText,      title: 'Forms and signatures',       desc: 'Reusable templates, conditional logic, photo capture, multi-signer and completed PDFs.' },
+  { icon: Camera,        title: 'Photos and files',           desc: 'Upload site photos, label them, view in lightbox and attach files to the job record.' },
+  { icon: Truck,         title: 'Fleet prestarts',            desc: 'Daily prestart checks, service dates, rego reminders and dashboard flags for attention.' },
+  { icon: Bot,           title: 'Dazza AI assistant',         desc: 'Ask Dazza what needs attention, check data health, summarise jobs and flag gaps.' },
+  { icon: ShieldCheck,   title: 'Safety and compliance',      desc: 'SWMS library, site safety plans, policies, posters and safety pack export.' },
+  { icon: Users,         title: 'Team permissions',           desc: 'Role-based access, invite users, control what each person can see and do.' },
+];
+
+const howItWorks = [
+  { n: '1', title: 'Create your company account',       desc: 'Sign up, choose a plan and set up your company profile in a few minutes.' },
+  { n: '2', title: 'Add jobs, users and fleet',         desc: 'Register your active jobs, invite your team and add your vehicles and plant.' },
+  { n: '3', title: 'Complete forms and upload photos',  desc: 'Field teams fill in forms, upload photos and update job progress from site.' },
+  { n: '4', title: 'Use Dazza AI to check in',          desc: 'Ask Dazza what needs attention, what fleet service is due or what forms are incomplete.' },
+];
+
+const plans = [
+  {
+    id: 'solo',
+    name: 'Solo',
+    price: '$19',
+    period: '/ month + GST',
+    users: '1 user',
+    popular: false,
+    features: [
+      'Jobs, photos, forms, fleet, estimating',
+      'Dazza AI helper',
+      '30-day free trial',
+      'Cancel anytime',
+    ],
+    cta: 'Start Solo Trial',
+    ctaStyle: 'outline',
+  },
+  {
+    id: 'team',
+    name: 'Team',
+    price: '$79',
+    period: '/ month + GST',
+    users: 'Up to 5 users',
+    popular: true,
+    features: [
+      'Everything in Solo',
+      'Team permissions',
+      'Fleet and forms workflows',
+      'Dazza AI + health checks',
+      '30-day free trial',
+    ],
+    cta: 'Start Team Trial',
+    ctaStyle: 'primary',
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    price: '$149',
+    period: '/ month + GST',
+    users: 'Up to 10 users',
+    popular: false,
+    features: [
+      'Everything in Team',
+      'More storage',
+      'Owner and admin controls',
+      'Better suited for growing crews',
+      '30-day free trial',
+    ],
+    cta: 'Start Business Trial',
+    ctaStyle: 'outline',
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 'Custom',
+    period: 'pricing',
+    users: 'Larger teams',
+    popular: false,
+    features: [
+      'Custom setup',
+      'Industry template packs',
+      'Priority support',
+      'Contact us to discuss',
+    ],
+    cta: 'Contact Us',
+    ctaStyle: 'ghost',
+    href: 'mailto:hello@iwillbuild.com',
+  },
+];
+
+// ── Portal mockup component ───────────────────────────────────────────────────
+function PortalMockup() {
+  const tabs = ['Dashboard', 'Jobs', 'Fleet', 'Forms', 'Estimating'];
+  const rows = [
+    { label: 'Job #1042 — Riverside Reno',   status: 'In Progress', color: '#1263d8' },
+    { label: 'Job #1038 — Warehouse Fitout', status: 'Pending',     color: '#f97316' },
+    { label: 'Job #1035 — Office Strip-out', status: 'Complete',    color: '#16a34a' },
+  ];
+  return (
+    <div style={{
+      background: '#0f172a',
+      borderRadius: 14,
+      overflow: 'hidden',
+      boxShadow: '0 32px 80px rgba(0,0,0,.55)',
+      border: '1px solid rgba(255,255,255,.08)',
+      width: '100%',
+      maxWidth: 560,
+    }}>
+      {/* Window chrome */}
+      <div style={{ background: '#1e293b', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7 }}>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+        <span style={{ flex: 1, background: '#334155', borderRadius: 4, height: 18, marginLeft: 8 }} />
+      </div>
+
+      {/* Sidebar + content */}
+      <div style={{ display: 'flex', minHeight: 340 }}>
+        {/* Sidebar */}
+        <div style={{ width: 52, background: '#111827', padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          {[LayoutDashboard, Briefcase, Truck, FileText, FileText].map((Icon, i) => (
+            <div key={i} style={{
+              width: 34, height: 34, borderRadius: 8,
+              background: i === 0 ? '#1263d8' : 'transparent',
+              display: 'grid', placeItems: 'center',
+              color: i === 0 ? '#fff' : '#64748b',
+            }}>
+              <Icon size={16} />
+            </div>
+          ))}
+        </div>
+
+        {/* Main panel */}
+        <div style={{ flex: 1, padding: '16px 18px', color: '#f1f5f9' }}>
+          {/* Tab bar */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+            {tabs.map((t, i) => (
+              <span key={t} style={{
+                fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                borderRadius: 6,
+                background: i === 0 ? '#1263d8' : '#1e293b',
+                color: i === 0 ? '#fff' : '#94a3b8',
+                border: i === 0 ? 'none' : '1px solid #334155',
+              }}>{t}</span>
+            ))}
+          </div>
+
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+            {[
+              { label: 'Active Jobs', val: '12' },
+              { label: 'Forms Due',   val: '4'  },
+              { label: 'Fleet Flags', val: '2'  },
+            ].map((s) => (
+              <div key={s.label} style={{
+                background: '#1e293b', borderRadius: 8, padding: '10px 12px',
+                border: '1px solid #334155',
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#f97316' }}>{s.val}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Job rows */}
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Jobs</div>
+          {rows.map((r) => (
+            <div key={r.label} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: '#1e293b', borderRadius: 7, padding: '9px 12px',
+              marginBottom: 6, border: '1px solid #334155',
+            }}>
+              <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{r.label}</span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '3px 8px',
+                borderRadius: 20, background: `${r.color}22`, color: r.color,
+              }}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const site = 'https://iwillbuild.com.au';
-  const title = 'IWILLBUILD — Construction Portal';
+  const site = 'https://iwillbuild.com';
+  const title = 'IWILLBUILD — Construction Portal for Builders';
   const description =
-    'A practical local portal for builders and site teams. Keep the job file organised, approve estimates, track progress, complete forms, manage fleet prestarts and give Dazza AI the data it needs to help.';
+    'Run your construction jobs, forms, photos, fleet and estimates in one clean portal. 30-day free trial. No setup fee.';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -47,6 +221,12 @@ export default function HomePage() {
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         description,
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '19',
+          highPrice: '149',
+          priceCurrency: 'AUD',
+        },
       },
       {
         '@type': 'WebPage',
@@ -56,13 +236,13 @@ export default function HomePage() {
         isPartOf: { '@id': `${site}/#website` },
         about: { '@id': `${site}/#organization` },
         datePublished: '2026-06-25',
-        dateModified: '2026-06-25',
+        dateModified: '2026-06-29',
       },
     ],
   };
 
   return (
-    <div style={{ background: '#eef3f9', color: '#101828', fontFamily: 'Arial, Helvetica, sans-serif', margin: 0 }}>
+    <div style={{ background: '#f1f5f9', color: '#101828', fontFamily: "'Inter', Arial, Helvetica, sans-serif", margin: 0 }}>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -75,262 +255,415 @@ export default function HomePage() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      {/* ── Topbar ── */}
+      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
       <header style={{
-        position: 'sticky', top: 0, zIndex: 10,
-        background: 'rgba(255,255,255,0.96)',
-        borderBottom: '1px solid #ccd8e8',
-        backdropFilter: 'blur(12px)',
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'rgba(255,255,255,0.97)',
+        borderBottom: '1px solid #e2e8f0',
+        backdropFilter: 'blur(14px)',
       }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '14px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18 }}>
-          {/* Brand */}
-          <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
+        <div style={{
+          maxWidth: 1180, margin: '0 auto',
+          padding: '0 22px', height: 64,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18,
+        }}>
+          <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
             <span style={{
-              width: 42, height: 42, borderRadius: 10,
+              width: 38, height: 38, borderRadius: 9,
               background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
               display: 'grid', placeItems: 'center',
-              color: '#fff', fontWeight: 900, fontSize: 20,
+              color: '#fff', fontWeight: 900, fontSize: 16, flexShrink: 0,
             }}>IW</span>
-            <strong style={{ fontSize: 24, letterSpacing: '-0.02em' }}>IWILLBUILD</strong>
+            <strong style={{ fontSize: 20, letterSpacing: '-0.03em', color: '#0f172a' }}>IWILLBUILD</strong>
           </a>
 
-          {/* Nav */}
-          <nav className="hidden md:flex" style={{ gap: 20, alignItems: 'center', color: '#5f6f86', fontWeight: 800, fontSize: 14 }}>
+          <nav className="hidden md:flex" style={{ gap: 24, alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#475569' }}>
             <a href="#features" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Features</a>
-            <a href="#dazza" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Dazza AI</a>
-            <a href="#workflow" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Workflow</a>
-            <Link
-              to="/login"
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                border: 'none', borderRadius: 8,
-                background: '#1263d8', color: '#fff',
-                padding: '10px 18px', fontWeight: 900, fontSize: 14,
-                textDecoration: 'none', cursor: 'pointer',
-              }}
-            >
-              Launch Portal
-            </Link>
+            <a href="#pricing"  style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Pricing</a>
+            <a href="#dazza"    style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Dazza AI</a>
+            <Link to="/login" style={{
+              padding: '8px 16px', borderRadius: 8,
+              border: '1.5px solid #1263d8', color: '#1263d8',
+              fontWeight: 700, fontSize: 14, textDecoration: 'none',
+            }}>Sign in</Link>
+            <Link to="/signup" style={{
+              padding: '8px 18px', borderRadius: 8,
+              background: '#f97316', color: '#fff',
+              fontWeight: 700, fontSize: 14, textDecoration: 'none',
+            }}>Start free trial</Link>
           </nav>
 
-          {/* Mobile CTA — only shown when nav is hidden (below md breakpoint) */}
-          <div className="md:hidden">
-            <Link
-              to="/login"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: '#1263d8', color: '#fff',
-                padding: '9px 14px', borderRadius: 8, fontWeight: 900, fontSize: 13,
-                textDecoration: 'none',
-              }}
-            >
-              Sign In
-            </Link>
+          {/* Mobile */}
+          <div className="md:hidden" style={{ display: 'flex', gap: 8 }}>
+            <Link to="/login" style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: '1.5px solid #1263d8', color: '#1263d8',
+              fontWeight: 700, fontSize: 13, textDecoration: 'none',
+            }}>Sign in</Link>
+            <Link to="/signup" style={{
+              padding: '8px 12px', borderRadius: 8,
+              background: '#f97316', color: '#fff',
+              fontWeight: 700, fontSize: 13, textDecoration: 'none',
+            }}>Free trial</Link>
           </div>
         </div>
       </header>
 
-      {/* ── Hero ── */}
+      {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section id="top" style={{
-        position: 'relative', minHeight: 680, overflow: 'hidden', background: '#111827',
+        background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 55%, #0f2d4a 100%)',
+        position: 'relative', overflow: 'hidden',
       }}>
-        <h1 className="sr-only">IWILLBUILD — Construction Portal for Jobs, Estimates, Forms, Fleet and Dazza AI</h1>
-        {/* Background overlay + SVG construction scene */}
+        {/* Subtle grid texture */}
         <div style={{
-          position: 'absolute', inset: 0,
-          background: `
-            linear-gradient(90deg,rgba(15,23,42,.94) 0%,rgba(15,23,42,.78) 45%,rgba(15,23,42,.30) 100%),
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23e0f2fe'/%3E%3Cstop offset='1' stop-color='%2394a3b8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1600' height='900' fill='url(%23sky)'/%3E%3Crect x='0' y='570' width='1600' height='330' fill='%23d9b48f'/%3E%3Crect x='910' y='250' width='430' height='320' fill='%23f8fafc' stroke='%2394a3b8' stroke-width='8'/%3E%3Crect x='950' y='295' width='120' height='100' fill='%23bfdbfe'/%3E%3Crect x='1105' y='295' width='120' height='100' fill='%23bfdbfe'/%3E%3Crect x='1025' y='430' width='130' height='140' fill='%2394a3b8'/%3E%3Cpath d='M870 250 L1125 90 L1380 250 Z' fill='%230f172a'/%3E%3Crect x='180' y='610' width='430' height='34' fill='%23475569'/%3E%3Crect x='235' y='545' width='210' height='65' fill='%23facc15'/%3E%3Ccircle cx='275' cy='650' r='48' fill='%23111827'/%3E%3Ccircle cx='495' cy='650' r='48' fill='%23111827'/%3E%3Cpath d='M620 570 C760 520 850 600 980 555 C1120 505 1250 535 1430 500' stroke='%231263d8' stroke-width='18' fill='none' opacity='.45'/%3E%3C/svg%3E")`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          position: 'absolute', inset: 0, opacity: 0.06,
+          backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
+          backgroundSize: '48px 48px',
         }} />
 
         <div style={{
           position: 'relative',
           maxWidth: 1180, margin: '0 auto',
-          padding: '92px 22px 70px',
+          padding: '80px 22px 72px',
           display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) 420px',
-          gap: 40,
-          alignItems: 'end',
-          minHeight: 680,
+          gap: 48,
+          alignItems: 'center',
         }} className="hero-grid">
-          {/* Left: copy */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
-          >
-            <motion.h1
-              variants={fadeUp}
-              style={{ fontSize: 'clamp(36px,5vw,60px)', lineHeight: 0.98, letterSpacing: '-0.045em', color: '#fff', margin: '0 0 18px', maxWidth: 760 }}
-            >
-              Construction jobs, estimates, forms, photos and fleet in one clean portal.
+          {/* Left copy */}
+          <motion.div initial="hidden" animate="visible" variants={stagger}>
+            <motion.div variants={fadeUp} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
+              borderRadius: 20, padding: '5px 14px', marginBottom: 22,
+            }}>
+              <Star size={13} color="#f97316" fill="#f97316" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>30-day free trial — no credit card needed</span>
+            </motion.div>
+
+            <motion.h1 variants={fadeUp} style={{
+              fontSize: 'clamp(32px,4.8vw,58px)',
+              lineHeight: 1.04, letterSpacing: '-0.04em',
+              color: '#fff', margin: '0 0 20px',
+            }}>
+              Run your construction jobs, forms, photos, fleet and estimates in one clean portal.
             </motion.h1>
-            <motion.p variants={fadeUp} style={{ color: '#d7e2f3', fontSize: 20, lineHeight: 1.5, margin: '0 0 28px', maxWidth: 720 }}>
-              IWILLBUILD is a practical local portal for builders and site teams. Keep the job file organised, approve estimates, track progress, complete forms, manage fleet prestarts and give Dazza AI the data it needs to help.
+
+            <motion.p variants={fadeUp} style={{
+              color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
+              margin: '0 0 32px', maxWidth: 600,
+            }}>
+              IWILLBUILD helps builders and field teams keep job files organised, complete forms, manage photos, track fleet prestarts, build estimates and use Dazza AI to find what needs attention.
             </motion.p>
-            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+
+            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              <Link to="/signup" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: '#f97316', borderRadius: 9, color: '#fff',
+                padding: '14px 26px', fontWeight: 800, fontSize: 15,
+                textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.4)',
+              }}>
+                Start 30-day free trial
+                <ArrowRight size={16} />
+              </Link>
               <Link to="/login" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#1263d8', border: '1px solid #1263d8',
-                borderRadius: 8, color: '#fff', padding: '13px 22px',
-                fontWeight: 900, fontSize: 15, textDecoration: 'none',
+                background: 'rgba(255,255,255,.08)', border: '1.5px solid rgba(255,255,255,.2)',
+                borderRadius: 9, color: '#fff',
+                padding: '14px 24px', fontWeight: 700, fontSize: 15,
+                textDecoration: 'none',
               }}>
-                Launch IWILLBUILD
-              </Link>
-              <Link to="/dazza-ai" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#0f172a', border: '1px solid #0f172a',
-                borderRadius: 8, color: '#fff', padding: '13px 22px',
-                fontWeight: 900, fontSize: 15, textDecoration: 'none',
-              }}>
-                Open Dazza AI
+                Sign in
               </Link>
             </motion.div>
+
+            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
+              No setup fee. Cancel anytime. View-only access keeps your records available if you cancel.
+            </motion.p>
           </motion.div>
 
-          {/* Right: login card */}
-          <motion.aside
-            initial={{ opacity: 0, y: 24 }}
+          {/* Right: portal mockup */}
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.2, ease: 'easeOut' as const }}
-            style={{
-              background: 'rgba(255,255,255,0.96)',
-              border: '1px solid rgba(255,255,255,0.72)',
-              borderRadius: 10, padding: 22,
-              boxShadow: '0 18px 46px rgba(17,24,39,.12)',
-              alignSelf: 'center',
-            }}
+            transition={{ duration: 0.55, delay: 0.25, ease: 'easeOut' as const }}
+            style={{ display: 'flex', justifyContent: 'center' }}
           >
-            <h2 style={{ margin: '0 0 8px', fontSize: 26 }}>Portal Access</h2>
-            <p style={{ color: '#5f6f86', fontSize: 15, margin: '0 0 18px' }}>
-              Email and password login is enabled. Default test users can be changed in Settings.
-            </p>
-            <div style={{ display: 'grid', gap: 10 }}>
-              <Link to="/login" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                background: '#1263d8', border: '1px solid #1263d8',
-                borderRadius: 8, color: '#fff', padding: '13px 16px',
-                fontWeight: 900, fontSize: 15, textDecoration: 'none',
-              }}>
-                Go to Login
-              </Link>
-              <Link to="/dazza-ai" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                border: '1px solid #ccd8e8', borderRadius: 8,
-                background: '#fff', color: '#101828',
-                padding: '13px 16px', fontWeight: 900, fontSize: 15,
-                textDecoration: 'none',
-                boxShadow: '0 2px 0 rgba(15,23,42,.04)',
-              }}>
-                Ask Dazza
-              </Link>
-            </div>
-          </motion.aside>
+            <PortalMockup />
+          </motion.div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '54px 22px' }}>
-        <h2 style={{ fontSize: 34, letterSpacing: '-0.03em', margin: '0 0 12px' }}>Built for the job file</h2>
-        <p style={{ color: '#5f6f86', fontSize: 18, margin: '0 0 26px', maxWidth: 850 }}>
-          The portal is designed around the way construction work actually moves: job setup, estimate, approval, progress, forms, photos, files and closeout.
-        </p>
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}
-        >
-          {features.map((f) => (
-            <motion.div
-              key={f.title}
-              variants={fadeUp}
-              whileHover={{ y: -3, boxShadow: '0 16px 32px rgba(15,23,42,.12)' }}
-              style={{
-                background: '#fff', border: '1px solid #ccd8e8',
-                borderRadius: 8, padding: 20,
-                boxShadow: '0 10px 28px rgba(15,23,42,.07)',
-                cursor: 'default',
-              }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: 8,
-                background: '#eaf2ff', color: '#1263d8',
-                display: 'grid', placeItems: 'center',
-                fontWeight: 900, marginBottom: 14, fontSize: 18,
-              }}>
-                {f.icon}
-              </div>
-              <h3 style={{ margin: '0 0 8px', fontSize: 19 }}>{f.title}</h3>
-              <p style={{ margin: 0, color: '#5f6f86', lineHeight: 1.45 }}>{f.desc}</p>
-            </motion.div>
+      {/* ── Trust bar ──────────────────────────────────────────────────────── */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{
+          maxWidth: 1180, margin: '0 auto', padding: '18px 22px',
+          display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {[
+            '✓ Australian-built',
+            '✓ No lock-in contracts',
+            '✓ 30-day free trial',
+            '✓ Your data stays yours',
+            '✓ Cancel anytime',
+          ].map((t) => (
+            <span key={t} style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{t}</span>
           ))}
+        </div>
+      </div>
+
+      {/* ── Features ───────────────────────────────────────────────────────── */}
+      <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+          <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+            Everything a builder needs in one place
+          </motion.h2>
+          <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
+            Built around the way construction work actually moves — from job setup through to closeout.
+          </motion.p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
+            {features.map((f) => {
+              const Icon = f.icon;
+              return (
+                <motion.div
+                  key={f.title}
+                  variants={fadeUp}
+                  whileHover={{ y: -3, boxShadow: '0 16px 36px rgba(15,23,42,.1)' }}
+                  style={{
+                    background: '#fff', border: '1px solid #e2e8f0',
+                    borderRadius: 10, padding: '22px 20px',
+                    boxShadow: '0 2px 8px rgba(15,23,42,.05)',
+                  }}
+                >
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 10,
+                    background: '#eff6ff', color: '#1263d8',
+                    display: 'grid', placeItems: 'center', marginBottom: 14,
+                  }}>
+                    <Icon size={20} />
+                  </div>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{f.title}</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{f.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
         </motion.div>
       </section>
 
-      {/* ── Dazza AI ── */}
-      <section id="dazza" style={{ background: '#fff', borderTop: '1px solid #ccd8e8', borderBottom: '1px solid #ccd8e8' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '54px 22px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24, alignItems: 'center' }}>
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeUp} style={{ fontSize: 34, letterSpacing: '-0.03em', margin: '0 0 12px' }}>
-              Dazza AI grows with the data
+      {/* ── How it works ───────────────────────────────────────────────────── */}
+      <section id="how" style={{ background: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+              Up and running in minutes
             </motion.h2>
-            <motion.p variants={fadeUp} style={{ color: '#5f6f86', fontSize: 18, margin: '0 0 26px', maxWidth: 850 }}>
-              Dazza is young and still learning. The more useful data you put into IWILLBUILD, the smarter he becomes. He can summarise jobs, check estimates, review forms, flag data gaps and learn reference files.
+            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
+              No complicated setup. Start with a free trial and add your team as you go.
             </motion.p>
-            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link to="/dazza-ai" style={{
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
+              {howItWorks.map((w) => (
+                <motion.div
+                  key={w.n}
+                  variants={fadeUp}
+                  style={{
+                    background: '#f8fafc', border: '1px solid #e2e8f0',
+                    borderRadius: 10, padding: '24px 20px',
+                    position: 'relative',
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: '#f97316', color: '#fff',
+                    display: 'grid', placeItems: 'center',
+                    fontWeight: 900, fontSize: 16, marginBottom: 14,
+                  }}>{w.n}</div>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{w.title}</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{w.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      <section id="pricing" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+          <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+            Simple, honest pricing
+          </motion.h2>
+          <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
+            All plans include a 30-day free trial. No credit card required to start.
+          </motion.p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 20, alignItems: 'start' }}>
+            {plans.map((plan) => {
+              const isPrimary = plan.ctaStyle === 'primary';
+              const isGhost   = plan.ctaStyle === 'ghost';
+              const href = plan.href ?? `/signup?plan=${plan.id}`;
+              return (
+                <motion.div
+                  key={plan.id}
+                  variants={fadeUp}
+                  style={{
+                    background: isPrimary ? '#0f172a' : '#fff',
+                    border: isPrimary ? '2px solid #f97316' : '1.5px solid #e2e8f0',
+                    borderRadius: 12, padding: '28px 24px',
+                    boxShadow: isPrimary ? '0 20px 50px rgba(15,23,42,.25)' : '0 2px 8px rgba(15,23,42,.05)',
+                    position: 'relative',
+                  }}
+                >
+                  {plan.popular && (
+                    <div style={{
+                      position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)',
+                      background: '#f97316', color: '#fff',
+                      fontSize: 11, fontWeight: 800, padding: '4px 14px',
+                      borderRadius: 20, whiteSpace: 'nowrap',
+                    }}>Most popular</div>
+                  )}
+
+                  <div style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: isPrimary ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{plan.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+                    <span style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-0.04em', color: isPrimary ? '#fff' : '#0f172a' }}>{plan.price}</span>
+                    <span style={{ fontSize: 14, color: isPrimary ? '#94a3b8' : '#64748b' }}>{plan.period}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: isPrimary ? '#64748b' : '#94a3b8', marginBottom: 22 }}>{plan.users}</div>
+
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {plan.features.map((f) => (
+                      <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 14, color: isPrimary ? '#cbd5e1' : '#374151' }}>
+                        <CheckCircle size={15} color={isPrimary ? '#f97316' : '#16a34a'} style={{ flexShrink: 0, marginTop: 1 }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {isGhost ? (
+                    <a href={href} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '12px 16px', borderRadius: 8,
+                      border: '1.5px solid #e2e8f0', background: '#fff',
+                      color: '#374151', fontWeight: 700, fontSize: 14,
+                      textDecoration: 'none',
+                    }}>
+                      {plan.cta}
+                      <ChevronRight size={15} />
+                    </a>
+                  ) : isPrimary ? (
+                    <Link to={href} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '13px 16px', borderRadius: 8,
+                      background: '#f97316', color: '#fff',
+                      fontWeight: 800, fontSize: 14, textDecoration: 'none',
+                      boxShadow: '0 4px 14px rgba(249,115,22,.4)',
+                    }}>
+                      {plan.cta}
+                      <ArrowRight size={15} />
+                    </Link>
+                  ) : (
+                    <Link to={href} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '12px 16px', borderRadius: 8,
+                      border: '1.5px solid #1263d8', color: '#1263d8',
+                      fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                      background: 'transparent',
+                    }}>
+                      {plan.cta}
+                      <ArrowRight size={15} />
+                    </Link>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── Dazza AI ───────────────────────────────────────────────────────── */}
+      <section id="dazza" style={{ background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+        <div style={{
+          maxWidth: 1180, margin: '0 auto', padding: '72px 22px',
+          display: 'grid', gap: 48, alignItems: 'center',
+        }} className="dazza-grid">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+            <motion.div variants={fadeUp} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)',
+              borderRadius: 20, padding: '5px 14px', marginBottom: 20,
+            }}>
+              <Bot size={13} color="#f97316" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Dazza AI</span>
+            </motion.div>
+
+            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#fff' }}>
+              Ask Dazza what needs attention
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{ color: '#94a3b8', fontSize: 17, lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560 }}>
+              Dazza AI reads your IWILLBUILD data and helps you ask questions like: What jobs need attention? What fleet service is due? What forms are incomplete?
+            </motion.p>
+            <motion.p variants={fadeUp} style={{
+              color: '#64748b', fontSize: 13, lineHeight: 1.6,
+              margin: '0 0 28px', maxWidth: 520,
+              padding: '12px 16px', background: '#1e293b',
+              borderRadius: 8, borderLeft: '3px solid #334155',
+            }}>
+              Dazza helps summarise and organise information. Always verify building, WHS, legal and compliance decisions with a competent person.
+            </motion.p>
+            <motion.div variants={fadeUp}>
+              <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#0f172a', border: '1px solid #0f172a',
-                borderRadius: 8, color: '#fff', padding: '13px 22px',
-                fontWeight: 900, fontSize: 15, textDecoration: 'none',
-              }}>
-                Open Dazza AI
-              </Link>
-              <Link to="/login" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                border: '1px solid #ccd8e8', borderRadius: 8,
-                background: '#fff', color: '#101828',
-                padding: '13px 22px', fontWeight: 900, fontSize: 15,
+                background: '#f97316', borderRadius: 8, color: '#fff',
+                padding: '13px 22px', fontWeight: 800, fontSize: 14,
                 textDecoration: 'none',
-                boxShadow: '0 2px 0 rgba(15,23,42,.04)',
               }}>
-                Launch Portal
+                Try Dazza free for 30 days
+                <ArrowRight size={15} />
               </Link>
             </motion.div>
           </motion.div>
 
           {/* Chat preview */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.45, ease: 'easeOut' as const }}
             style={{
-              background: '#0f172a', borderRadius: 10, padding: 18,
-              color: '#fff', boxShadow: '0 18px 46px rgba(17,24,39,.12)',
+              background: '#1e293b', borderRadius: 12, padding: 20,
+              border: '1px solid #334155',
+              boxShadow: '0 20px 50px rgba(0,0,0,.4)',
             }}
           >
-            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>Dazza AI</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid #334155' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
+                display: 'grid', placeItems: 'center',
+              }}>
+                <Bot size={16} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>Dazza AI</div>
+                <div style={{ fontSize: 11, color: '#22c55e' }}>● Online</div>
+              </div>
+            </div>
             {[
-              { user: false, text: 'Hi, I am Dazza AI help bot. I am young and still learning. We will grow together.' },
-              { user: true, text: 'Run a data health check.' },
-              { user: false, text: 'I can check jobs, estimates, forms, fleet, users and files for missing or messy data.' },
+              { user: false, text: 'G&apos;day. I can check your jobs, fleet, forms and estimates. What do you need?' },
+              { user: true,  text: 'What jobs need attention this week?' },
+              { user: false, text: 'Job #1042 has 2 incomplete forms. Job #1038 has a fleet prestart overdue. Job #1035 estimate is not yet approved.' },
+              { user: true,  text: 'What fleet service is coming up?' },
+              { user: false, text: 'Truck IW-04 is due for a service in 3 days. Trailer IW-07 rego expires in 12 days.' },
             ].map((b, i) => (
               <div key={i} style={{
-                background: b.user ? '#1263d8' : '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: 16, padding: '13px 14px',
-                margin: '10px 0', lineHeight: 1.4, fontSize: 14,
-                marginLeft: b.user ? 52 : 0,
+                background: b.user ? '#1263d8' : '#0f172a',
+                borderRadius: 10, padding: '10px 14px',
+                marginBottom: 8, lineHeight: 1.5, fontSize: 13,
+                color: b.user ? '#fff' : '#cbd5e1',
+                marginLeft: b.user ? 40 : 0,
+                marginRight: b.user ? 0 : 40,
+                border: b.user ? 'none' : '1px solid #1e293b',
               }}>
                 {b.text}
               </div>
@@ -339,49 +672,122 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Workflow ── */}
-      <section id="workflow" style={{ maxWidth: 1180, margin: '0 auto', padding: '54px 22px' }}>
-        <h2 style={{ fontSize: 34, letterSpacing: '-0.03em', margin: '0 0 12px' }}>Simple launch workflow</h2>
-        <p style={{ color: '#5f6f86', fontSize: 18, margin: '0 0 26px', maxWidth: 850 }}>
-          Start clean, keep the records linked, and let Dazza help spot what needs attention.
-        </p>
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}
-        >
-          {workflow.map((w) => (
-            <motion.div
-              key={w.n}
-              variants={fadeUp}
-              style={{
-                background: '#fff', border: '1px solid #ccd8e8',
-                borderRadius: 8, padding: 20,
-                boxShadow: '0 10px 28px rgba(15,23,42,.07)',
-              }}
-            >
-              <h3 style={{ margin: '0 0 8px', fontSize: 19 }}>{w.n}. {w.title}</h3>
-              <p style={{ margin: 0, color: '#5f6f86', lineHeight: 1.45 }}>{w.desc}</p>
+      {/* ── Final CTA ──────────────────────────────────────────────────────── */}
+      <section style={{ background: '#fff', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 22px', textAlign: 'center' }}>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0f172a' }}>
+              Ready to clean up your job paperwork?
+            </motion.h2>
+            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 32px' }}>
+              Start your 30-day free trial today. No credit card. No setup fee. Cancel anytime.
+            </motion.p>
+            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/signup" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: '#f97316', borderRadius: 9, color: '#fff',
+                padding: '14px 28px', fontWeight: 800, fontSize: 15,
+                textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.35)',
+              }}>
+                Start 30-day free trial
+                <ArrowRight size={16} />
+              </Link>
+              <Link to="/login" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                border: '1.5px solid #e2e8f0', borderRadius: 9,
+                background: '#fff', color: '#374151',
+                padding: '14px 24px', fontWeight: 700, fontSize: 15,
+                textDecoration: 'none',
+              }}>
+                Sign in
+              </Link>
             </motion.div>
-          ))}
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{ padding: '28px 22px', borderTop: '1px solid #ccd8e8', background: '#fff', color: '#5f6f86' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <strong style={{ color: '#101828' }}>IWILLBUILD</strong>
-          <span>Local clean block portal. Built for practical construction management.</span>
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <footer style={{ background: '#0f172a', borderTop: '1px solid #1e293b', color: '#64748b' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 22px 32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 32, marginBottom: 32 }}>
+            {/* Brand */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{
+                  width: 34, height: 34, borderRadius: 8,
+                  background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
+                  display: 'grid', placeItems: 'center',
+                  color: '#fff', fontWeight: 900, fontSize: 14,
+                }}>IW</span>
+                <strong style={{ color: '#f1f5f9', fontSize: 16 }}>IWILLBUILD</strong>
+              </div>
+              <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                A practical portal for builders and field teams.
+              </p>
+            </div>
+
+            {/* Links */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Portal</div>
+              {[
+                { label: 'Sign in',  to: '/login'  },
+                { label: 'Sign up',  to: '/signup' },
+                { label: 'Pricing',  href: '#pricing' },
+              ].map((l) => (
+                <div key={l.label} style={{ marginBottom: 8 }}>
+                  {l.to ? (
+                    <Link to={l.to} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</Link>
+                  ) : (
+                    <a href={l.href} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</a>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Legal</div>
+              {[
+                { label: 'Privacy Policy', to: '/privacy' },
+                { label: 'Terms of Use',   to: '/terms'   },
+              ].map((l) => (
+                <div key={l.label} style={{ marginBottom: 8 }}>
+                  <Link to={l.to} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</Link>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Contact</div>
+              <a href="mailto:hello@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">
+                hello@iwillbuild.com
+              </a>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <span style={{ fontSize: 13 }}>© {new Date().getFullYear()} IWILLBUILD. All rights reserved.</span>
+            <span style={{ fontSize: 13 }}>Australian-built construction portal.</span>
+          </div>
         </div>
       </footer>
 
-      {/* Responsive hero grid fix */}
+      {/* Responsive styles */}
       <style>{`
+        .hero-grid {
+          grid-template-columns: minmax(0,1fr) 520px;
+        }
+        .dazza-grid {
+          grid-template-columns: minmax(0,1fr) 420px;
+        }
         @media (max-width: 900px) {
-          .hero-grid {
+          .hero-grid, .dazza-grid {
             grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-grid a, .hero-grid button {
+            width: 100%;
+            justify-content: center;
           }
         }
       `}</style>
