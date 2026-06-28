@@ -43,11 +43,15 @@ export default function LoginPage() {
   const location = useLocation();
   const { isAuthenticated } = useSession();
 
-  if (isAuthenticated) {
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-    navigate(from, { replace: true });
-    return null;
-  }
+  // ── All hooks must be declared before any conditional return ──────────────
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location.state]);
 
   // Check if this device has a trusted PIN for the entered email
   useEffect(() => {
@@ -67,6 +71,9 @@ export default function LoginPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
+
+  // Don't render the form while redirecting
+  if (isAuthenticated) return null;
 
   /** Returns true if an error message is about email verification */
   function isVerificationError(msg: string): boolean {
