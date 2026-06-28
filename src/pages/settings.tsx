@@ -26,6 +26,7 @@ import {
   Megaphone,
   FileText,
   Factory,
+  Plug,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
@@ -37,17 +38,19 @@ import NotificationsTab from '@/components/settings/NotificationsTab';
 import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
 import PdfStyleTab from '@/components/settings/PdfStyleTab';
 import DataBackupTab from '@/components/settings/DataBackupTab';
+import IntegrationsTab from '@/components/settings/IntegrationsTab';
 
 const tabs = [
-  { id: 'account',    label: 'My Account',        icon: User },
-  { id: 'company',    label: 'Company Profile',    icon: Building2 },
-  { id: 'team',       label: 'Team & Permissions', icon: Users },
-  { id: 'structure',  label: 'Company Structure',  icon: Layers },
-  { id: 'pdf',        label: 'PDF / Print Style',  icon: FileText },
-  { id: 'dazza',      label: 'Dazza AI',           icon: Bot },
-  { id: 'banner',     label: 'Dashboard Banner',   icon: Megaphone },
-  { id: 'notifications', label: 'Notifications',   icon: Bell },
-  { id: 'data',       label: 'Data & Backup',      icon: Database },
+  { id: 'account',      label: 'My Account',        icon: User },
+  { id: 'company',      label: 'Company Profile',    icon: Building2 },
+  { id: 'team',         label: 'Team & Permissions', icon: Users },
+  { id: 'structure',    label: 'Company Structure',  icon: Layers },
+  { id: 'pdf',          label: 'PDF / Print Style',  icon: FileText },
+  { id: 'dazza',        label: 'Dazza AI',           icon: Bot },
+  { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
+  { id: 'notifications',label: 'Notifications',      icon: Bell },
+  { id: 'integrations', label: 'Integrations',       icon: Plug },
+  { id: 'data',         label: 'Data & Backup',      icon: Database },
 ];
 
 interface Company {
@@ -739,6 +742,7 @@ export default function SettingsPage() {
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}
+              {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'data' && (
                 <DataBackupTab isAdmin={isAdmin} />
               )}

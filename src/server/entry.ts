@@ -214,6 +214,12 @@ import jobs_id_swms_post from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import migrate_safety_post from "./api/migrate-safety/POST";
 import migrate_account_recovery_post from "./api/migrate-account-recovery/POST";
+// OneDrive / SharePoint integration
+import integrations_onedrive_auth_url_get from "./api/integrations/onedrive/auth-url/GET";
+import integrations_onedrive_callback_get from "./api/integrations/onedrive/callback/GET";
+import integrations_onedrive_status_get from "./api/integrations/onedrive/status/GET";
+import integrations_onedrive_disconnect_post from "./api/integrations/onedrive/disconnect/POST";
+import integrations_onedrive_upload_file_post from "./api/integrations/onedrive/upload-file/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -434,6 +440,8 @@ async function runStartupMigrations() {
     { name: 'dazza_brain_interactions', ddl: "CREATE TABLE IF NOT EXISTS dazza_brain_interactions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, user_id VARCHAR(36) NOT NULL, question_summary VARCHAR(500) NOT NULL, answer_source VARCHAR(50) NOT NULL DEFAULT 'openai', modules_used VARCHAR(255) NULL, confidence_level VARCHAR(20) NULL DEFAULT 'Medium', conflict_detected TINYINT(1) NOT NULL DEFAULT 0, dollars_included TINYINT(1) NOT NULL DEFAULT 0, support_mode TINYINT(1) NOT NULL DEFAULT 0, support_company_id INT NULL, tokens_used INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_created (company_id, created_at))" },
     // Legacy audit log — kept for backward compat with auditLog() in chat/POST.ts
     { name: 'dazza_audit_log', ddl: "CREATE TABLE IF NOT EXISTS dazza_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, question_summary VARCHAR(500) NOT NULL, modules_used VARCHAR(255) NULL, dollars_included TINYINT(1) NOT NULL DEFAULT 0, support_mode TINYINT(1) NOT NULL DEFAULT 0, support_company_id INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_user (user_id))" },
+    // OneDrive / SharePoint OAuth connections
+    { name: 'onedrive_connections', ddl: "CREATE TABLE IF NOT EXISTS onedrive_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, display_name VARCHAR(255) NOT NULL DEFAULT 'OneDrive User', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -716,6 +724,13 @@ app.post("/api/billing/cancel-subscription", billing_cancel_subscription_post);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post);
 app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_post);
 app.get("/api/usage", usage_get);
+// OneDrive / SharePoint integration routes
+// Note: callback is public — it receives the OAuth redirect from Microsoft (no session yet)
+app.get("/api/integrations/onedrive/auth-url", integrations_onedrive_auth_url_get);
+app.get("/api/integrations/onedrive/callback", integrations_onedrive_callback_get);
+app.get("/api/integrations/onedrive/status", integrations_onedrive_status_get);
+app.post("/api/integrations/onedrive/disconnect", integrations_onedrive_disconnect_post);
+app.post("/api/integrations/onedrive/upload-file", integrations_onedrive_upload_file_post);
 app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
 app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);
 app.put("/api/support-mode/checklist", requireOwner, support_mode_checklist_put_124);

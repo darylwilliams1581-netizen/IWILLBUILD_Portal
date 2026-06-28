@@ -147,6 +147,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/auth\/validate-reset-token$/ },
   // PIN login (no session — this IS the login)
   { method: 'POST', pattern: /^\/api\/auth\/pin-login$/ },
+  // OneDrive OAuth callback — Microsoft redirects here before session is re-established
+  { method: 'GET',  pattern: /^\/api\/integrations\/onedrive\/callback$/ },
 ];
 
 /**

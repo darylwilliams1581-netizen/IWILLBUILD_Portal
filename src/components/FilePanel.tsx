@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, Download, Trash2, FolderOpen, FileText, FileImage,
   File, AlertCircle, X, Loader2, Search, Filter,
-  ChevronDown, ZoomIn, LayoutGrid, List,
+  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -532,6 +532,10 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
   const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
   const [showUpload, setShowUpload] = useState(false);
   const [preview, setPreview] = useState<CompanyFile | null>(null);
+  // OneDrive transfer state
+  const [oneDriveConnected, setOneDriveConnected] = useState<boolean | null>(null);
+  const [transferringId, setTransferringId] = useState<number | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState<{ id: number; url: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompanyFile | null>(null);
 
   const load = useCallback(async () => {
@@ -548,6 +552,37 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
   }, [jobId, fleetAssetId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Check OneDrive connection status once on mount
+  useEffect(() => {
+    fetch('/api/integrations/onedrive/status', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { connected?: boolean } | null) => setOneDriveConnected(d?.connected ?? false))
+      .catch(() => setOneDriveConnected(false));
+  }, []);
+
+  async function handleSendToOneDrive(fileId: number) {
+    setTransferringId(fileId);
+    setTransferSuccess(null);
+    try {
+      const res = await fetch('/api/integrations/onedrive/upload-file', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId }),
+      });
+      const data = await res.json() as { ok?: boolean; oneDriveUrl?: string; error?: string };
+      if (res.ok && data.ok) {
+        setTransferSuccess({ id: fileId, url: data.oneDriveUrl ?? null });
+        setTimeout(() => setTransferSuccess(null), 5000);
+      } else {
+        setError(data.error ?? 'Failed to transfer file to OneDrive');
+      }
+    } catch {
+      setError('Could not reach the server');
+    }
+    setTransferringId(null);
+  }
 
   // Category counts
   const categoryCounts = FILTER_CATS.reduce<Record<string, number>>((acc, c) => {
@@ -726,6 +761,31 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {oneDriveConnected && (
+                    transferSuccess?.id === f.id ? (
+                      <a
+                        href={transferSuccess.url ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors"
+                        title="Sent to OneDrive — click to open"
+                      >
+                        <CheckCircle2 size={15} />
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => void handleSendToOneDrive(f.id)}
+                        disabled={transferringId === f.id}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-[#0078D4] hover:bg-blue-50 transition-colors disabled:opacity-40"
+                        title="Send to OneDrive"
+                      >
+                        {transferringId === f.id
+                          ? <Loader2 size={15} className="animate-spin" />
+                          : <Cloud size={15} />
+                        }
+                      </button>
+                    )
+                  )}
                   <button
                     onClick={() => downloadFile(f.id, f.originalName)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
