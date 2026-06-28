@@ -6,6 +6,7 @@ import {
   RefreshCw, Calculator, Wrench, AlertTriangle,
   CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
+  Brain,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe } from '@/lib/usePermissions';
@@ -13,6 +14,7 @@ import {
   calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
   calcFall, calcFallFromGrade, calcSimple,
 } from '@/lib/dazza-calcs';
+import DazzaBrainStatus from '@/components/DazzaBrainStatus';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -422,6 +424,7 @@ export default function DazzaAIPage() {
   const [activeCalc, setActiveCalc] = useState<string | null>(null);
   const [simpleExpr, setSimpleExpr] = useState('');
   const [simpleResult, setSimpleResult] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -621,6 +624,30 @@ export default function DazzaAIPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
+                    activeTab === 'chat'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Bot size={12} /> Chat
+                </button>
+                <button
+                  onClick={() => setActiveTab('brain')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
+                    activeTab === 'brain'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Brain size={12} /> Brain
+                </button>
+              </div>
+            )}
             <button
               onClick={exportChat}
               className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
@@ -661,7 +688,16 @@ export default function DazzaAIPage() {
         )}
 
         <div className="flex-1 flex overflow-hidden">
-          {/* ── Main chat column ── */}
+          {/* ── Brain Status tab ── */}
+          {activeTab === 'brain' && isAdmin && (
+            <div className="flex-1 overflow-y-auto bg-slate-50">
+              <DazzaBrainStatus supportCompanyId={dazzaCtx?.supportCompanyId} />
+            </div>
+          )}
+
+          {/* ── Main chat column + right panel ── */}
+          {activeTab === 'chat' && (
+          <>
           <div className="portal-main">
 
             {/* Quick actions */}
@@ -935,6 +971,8 @@ export default function DazzaAIPage() {
               </div>
             </div>
           </div>
+          </> /* end activeTab === 'chat' Fragment */
+          )}
         </div>
       </div>
     </div>

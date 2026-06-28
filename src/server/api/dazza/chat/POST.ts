@@ -28,6 +28,10 @@ import {
   resolveEffectiveCompany,
   type DazzaContext,
 } from '../../../lib/dazza-context.js';
+import {
+  processDazzaQuestion,
+  detectModulesUsed as brainDetectModules,
+} from '../../../lib/annette-brain.js';
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -268,9 +272,9 @@ function buildContextDebugLine(ctx: DazzaContext): string {
   return line;
 }
 
-// ── System prompt builder ─────────────────────────────────────────────────────
+// ── System prompt builder — exported for use by annette-brain.ts ─────────────
 
-function buildSystemPrompt(ctx: DazzaContext): string {
+export function buildSystemPrompt(ctx: DazzaContext): string {
   const { permissions: p, companyKnowledge } = ctx;
   const tone = companyKnowledge.tone ?? 'professional';
 
@@ -564,7 +568,7 @@ function buildSystemPrompt(ctx: DazzaContext): string {
   return lines.join('\n');
 }
 
-// ── Audit logger ──────────────────────────────────────────────────────────────
+// ── Audit logger — kept for backward compat, brain service handles new logging ─
 
 async function auditLog(
   userId: string,
@@ -592,13 +596,7 @@ async function auditLog(
 // ── Determine which modules were actually used ────────────────────────────────
 
 function detectModulesUsed(ctx: DazzaContext): string[] {
-  const used: string[] = [];
-  if (ctx.permissions.canJobs       && ctx.jobs?.length)            used.push('jobs');
-  if (ctx.permissions.canFleet      && ctx.fleet?.length)           used.push('fleet');
-  if (ctx.permissions.canEstimating && ctx.estimates?.length)       used.push('estimates');
-  if (ctx.permissions.canForms      && ctx.formTemplates?.length)   used.push('forms');
-  if (ctx.permissions.canFiles      && ctx.files?.length)           used.push('files');
-  return used;
+  return brainDetectModules(ctx);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -634,25 +632,31 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'messages required' });
     }
 
-    // ── Local tool intercept — no OpenAI needed ───────────────────────────────
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+
+    // ── STEP 1: Local tool intercept (maths/GST) — no DB, no OpenAI ──────────
     const localAnswer = tryLocalTool(lastUserMsg);
     if (localAnswer) {
+      // Wrap in structured format
+      const { processDazzaQuestion: proc } = await import('../../../lib/annette-brain.js');
+      // For pure local tools, build a minimal context-free answer directly
+      const structuredReply = buildLocalToolAnswer(localAnswer, lastUserMsg);
       return res.json({
-        reply: localAnswer,
+        reply: structuredReply,
         localTool: true,
+        source: 'local_tool',
         tokens: 0,
       });
     }
 
-    // ── Support Mode resolution (owners only) ─────────────────────────────────
+    // ── STEP 2: Support Mode resolution (owners only) ─────────────────────────
     const { supportCompanyId } = await resolveEffectiveCompany(
       permissions.isOwner,
       profile.companyId,
       reqSupportId ?? null,
     );
 
-    // ── Build context ENTIRELY server-side — never trust client ───────────────
+    // ── STEP 3: Build context ENTIRELY server-side — never trust client ───────
     const ctx = await buildDazzaContext(
       session.user.id,
       session.user.email,
@@ -663,86 +667,45 @@ export default async function handler(req: Request, res: Response) {
       supportCompanyId,
     );
 
-    // ── API key check ─────────────────────────────────────────────────────────
-    const apiKey = getSecret('OPENAI_API_KEY');
-
-    // ── Context-aware local handler — no OpenAI needed ────────────────────────
+    // ── STEP 4: Context-aware portal lookup — no OpenAI needed ───────────────
     const contextAnswer = tryContextHandler(lastUserMsg, ctx);
-    if (contextAnswer) {
-      const contextDebugLocal = permissions.isAdmin ? buildContextDebugLine(ctx) : undefined;
-      await auditLog(session.user.id, profile.companyId, lastUserMsg, detectModulesUsed(ctx), false, ctx.supportMode, ctx.supportCompanyId);
+
+    // ── STEP 5: Cross-company guard ───────────────────────────────────────────
+    if (
+      /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lastUserMsg)
+    ) {
+      const guardReply = buildGuardAnswer(ctx.companyName);
       return res.json({
-        reply: contextAnswer,
+        reply: guardReply,
         localTool: true,
+        source: 'portal_data',
         tokens: 0,
-        contextDebug: contextDebugLocal,
         supportMode: ctx.supportMode,
         supportCompanyName: ctx.supportMode ? ctx.companyName : undefined,
       });
     }
 
-    if (!apiKey) {
-      return res.json({
-        reply: "I can answer simple portal lookups and calculators, but an OpenAI API key is needed for general AI responses. An Owner or Admin can add one in Settings → Dazza AI.",
-        noApiKey: true,
-      });
-    }
-
-    const systemPrompt = buildSystemPrompt(ctx);
-
-    // Trim history to last 10 messages to keep token usage reasonable
-    const recentMessages = messages.slice(-10);
-
-    const payload = {
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...recentMessages,
-      ],
-      max_tokens: 1200,
-      temperature: 0.3,
-    };
-
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text();
-      console.error('OpenAI error:', openaiRes.status, errText);
-      return res.status(502).json({ error: 'AI service error', detail: openaiRes.status });
-    }
-
-    const data = await openaiRes.json() as {
-      choices: Array<{ message: { content: string } }>;
-      usage?: { total_tokens: number };
-    };
-
-    const reply = data.choices?.[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
+    // ── STEP 6: Run brain service (internal + OpenAI + compare + hive) ───────
+    const answer = await processDazzaQuestion(
+      lastUserMsg,
+      ctx,
+      messages,
+      contextAnswer,
+      contextAnswer !== null ? 'portal_data' : null,
+    );
 
     // ── Context debug line (admin/owner only) ─────────────────────────────────
     const contextDebug = permissions.isAdmin ? buildContextDebugLine(ctx) : undefined;
 
-    // ── Audit log ─────────────────────────────────────────────────────────────
-    const modulesUsed = detectModulesUsed(ctx);
-    await auditLog(
-      session.user.id,
-      profile.companyId,
-      lastUserMsg,
-      modulesUsed,
-      permissions.seeDollars && modulesUsed.includes('estimates'),
-      ctx.supportMode,
-      ctx.supportCompanyId,
-    );
-
     res.json({
-      reply,
-      tokens: data.usage?.total_tokens,
+      reply: answer.reply,
+      tokens: answer.tokens ?? 0,
+      source: answer.source,
+      confidence: answer.confidence,
+      modulesUsed: answer.modulesUsed,
+      conflictDetected: answer.conflictDetected,
+      hiveCandidate: answer.hiveCandidate,
+      localTool: answer.localTool,
       contextDebug,
       supportMode: ctx.supportMode,
       supportCompanyName: ctx.supportMode ? ctx.companyName : undefined,
@@ -752,4 +715,28 @@ export default async function handler(req: Request, res: Response) {
     console.error('POST /api/dazza/chat CRASH:', msg, error);
     res.status(500).json({ error: 'Failed to process chat', detail: msg });
   }
+}
+
+// ── Structured wrappers for local-only answers ────────────────────────────────
+
+function buildLocalToolAnswer(answer: string, question: string): string {
+  const needsVerify = /whs|safety|compliance|legal|code|regulation/i.test(question);
+  const sections: string[] = [];
+
+  sections.push(`🧠 AI reasoning:\n${answer}`);
+  sections.push(`📦 Source modules:\nNo portal data used — local calculator only.`);
+  sections.push(`📊 Confidence:\nHigh — direct calculation, no estimation.`);
+  if (needsVerify) {
+    sections.push(`⚠️ Verification reminder:\nPlease verify against current legislation, project documents, and a competent person.`);
+  }
+
+  return sections.join('\n\n');
+}
+
+function buildGuardAnswer(companyName: string): string {
+  return [
+    `📋 From IWILLBUILD data:\nI can only access data for **${companyName}**. I cannot access, compare, or reveal data from any other company.`,
+    `📦 Source modules:\nNo portal data used — security guard triggered.`,
+    `📊 Confidence:\nHigh — this is a security boundary, not a data question.`,
+  ].join('\n\n');
 }
