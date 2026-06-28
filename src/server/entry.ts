@@ -94,6 +94,10 @@ import jobs_id_todos_get_69 from "./api/jobs/[id]/todos/GET";
 import jobs_id_todos_post_70 from "./api/jobs/[id]/todos/POST";
 import jobs_id_todos_todoId_delete_71 from "./api/jobs/[id]/todos/[todoId]/DELETE";
 import jobs_id_todos_todoId_put_72 from "./api/jobs/[id]/todos/[todoId]/PUT";
+import jobs_id_delays_get from "./api/jobs/[id]/delays/GET";
+import jobs_id_delays_post from "./api/jobs/[id]/delays/POST";
+import jobs_id_delays_delayId_put from "./api/jobs/[id]/delays/[delayId]/PUT";
+import jobs_id_delays_delayId_delete from "./api/jobs/[id]/delays/[delayId]/DELETE";
 import me_get_73 from "./api/me/GET";
 import me_put_74 from "./api/me/PUT";
 import me_change_password_post_75 from "./api/me/change-password/POST";
@@ -476,6 +480,10 @@ async function runStartupMigrations() {
       name: 'manual_verification_log',
       ddl: "CREATE TABLE IF NOT EXISTS manual_verification_log (id INT AUTO_INCREMENT PRIMARY KEY, target_user_id VARCHAR(36) NOT NULL, verified_by_user_id VARCHAR(36) NOT NULL, method VARCHAR(60) NOT NULL DEFAULT 'manual_admin', note TEXT NULL, target_user_email VARCHAR(255) NULL, verified_by_email VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_target (target_user_id))",
     },
+    {
+      name: 'job_delays',
+      ddl: "CREATE TABLE IF NOT EXISTS job_delays (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, reason VARCHAR(500) NOT NULL, days DECIMAL(6,2) NOT NULL DEFAULT 0, delay_date DATE NOT NULL, notes TEXT NULL, created_by_user_id VARCHAR(36) NOT NULL, created_by_name VARCHAR(255) NOT NULL DEFAULT '', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_job (job_id), INDEX idx_company (company_id))",
+    },
   ];
   for (const { name, ddl } of recoveryTables) {
     try {
@@ -688,6 +696,10 @@ app.get("/api/jobs/:id/todos", jobs_id_todos_get_69);
 app.post("/api/jobs/:id/todos", jobs_id_todos_post_70);
 app.delete("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_delete_71);
 app.put("/api/jobs/:id/todos/:todoId", jobs_id_todos_todoId_put_72);
+app.get("/api/jobs/:id/delays", jobs_id_delays_get);
+app.post("/api/jobs/:id/delays", jobs_id_delays_post);
+app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put);
+app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete);
 app.get("/api/me", me_get_73);
 app.put("/api/me", me_put_74);
 app.post("/api/me/change-password", me_change_password_post_75);

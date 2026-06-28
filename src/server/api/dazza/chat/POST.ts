@@ -461,6 +461,14 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
       lines.push(JSON.stringify(ctx.jobCosts, null, 0));
       lines.push('');
     }
+
+    if (ctx.jobDelays?.length) {
+      lines.push(`## JOB DELAYS — ${ctx.companyName} only (Source: Delays) — ${ctx.jobDelays.length} job(s) with delays`);
+      lines.push('Fields: job_id, job_name, job_number, total_delay_days, delay_count');
+      lines.push('Use this to answer: how many delay days does a job have, which jobs have the most delays, total delay days across all jobs.');
+      lines.push(JSON.stringify(ctx.jobDelays, null, 0));
+      lines.push('');
+    }
   }
 
   if (p.canFleet) {

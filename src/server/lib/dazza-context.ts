@@ -56,6 +56,7 @@ export interface DazzaContext {
   openTodos?:       unknown[];
   jobProgress?:     unknown[];
   jobCosts?:        unknown[];
+  jobDelays?:       unknown[];
   fleet?:           unknown[];
   fleetFlags?:      unknown[];
   fleetDueDates?:   unknown[];
@@ -276,6 +277,21 @@ export async function buildDazzaContext(
         return rows ?? [];
       });
     }
+
+    // ── Job Delays ─────────────────────────────────────────────────────────
+    ctx.jobDelays = await safeQuery('job_delays', async () => {
+      const [rows] = await db.execute(
+        sql`SELECT d.job_id, j.name as job_name, j.job_number,
+                   SUM(d.days) as total_delay_days,
+                   COUNT(*) as delay_count
+            FROM job_delays d
+            JOIN jobs j ON j.id = d.job_id
+            WHERE d.company_id = ${effectiveCompanyId}
+            GROUP BY d.job_id, j.name, j.job_number
+            ORDER BY total_delay_days DESC LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return rows ?? [];
+    });
   }
 
   // ── Fleet ─────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import {
   ClipboardList,
   ShieldAlert,
   Receipt,
+  Clock,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -37,9 +38,10 @@ import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
 import JobSafety from '@/components/job/JobSafety';
 import JobCosts from '@/components/job/JobCosts';
+import JobDelays from '@/components/job/JobDelays';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
+type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -58,7 +60,7 @@ export default function JobDetailPage() {
   const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'files' || t === 'notes' || t === 'todos' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
     return 'details';
   });
 
@@ -333,6 +335,7 @@ export default function JobDetailPage() {
                   { key: 'costs',     label: 'Costs',     icon: Receipt },
                   { key: 'progress',  label: 'Progress',  icon: TrendingUp },
                   { key: 'todos',     label: 'To-do',     icon: CheckSquare },
+                  { key: 'delays',    label: 'Delays',    icon: Clock },
                   { key: 'photos',    label: 'Photos',    icon: Camera },
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
                   { key: 'forms',     label: 'Forms',     icon: ClipboardList },
@@ -493,6 +496,11 @@ export default function JobDetailPage() {
               {/* ── To-do tab ── */}
               {activeTab === 'todos' && (
                 <JobTodos jobId={job.id} />
+              )}
+
+              {/* ── Delays tab ── */}
+              {activeTab === 'delays' && (
+                <JobDelays jobId={job.id} />
               )}
 
               {/* ── Progress tab ── */}
