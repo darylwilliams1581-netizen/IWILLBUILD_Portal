@@ -25,7 +25,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { signOut, useSession } from '@/lib/auth/auth-client';
-import { usePermissions, useMe } from '@/lib/usePermissions';
+import { usePermissions, useMe, invalidateMeCache } from '@/lib/usePermissions';
 import NotificationBell from '@/components/NotificationBell';
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
@@ -94,6 +94,7 @@ function SidebarContent({
   const isActive = (href: string) => location.pathname === href;
 
   async function handleLogout() {
+    invalidateMeCache();
     await signOut();
     navigate('/login', { replace: true });
   }

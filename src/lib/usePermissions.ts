@@ -29,8 +29,16 @@ export interface MeData {
 
 let cachedMe: MeData | null = null;
 let fetchPromise: Promise<MeData | null> | null = null;
+// Track the session user id so we can bust the cache on user switch
+let cachedUserId: string | null = null;
 
-async function fetchMe(): Promise<MeData | null> {
+async function fetchMe(forceUserId?: string): Promise<MeData | null> {
+  // Bust cache if the session user has changed (e.g. logged in as different account)
+  if (forceUserId && cachedUserId && forceUserId !== cachedUserId) {
+    cachedMe = null;
+    fetchPromise = null;
+    cachedUserId = null;
+  }
   if (cachedMe) return cachedMe;
   if (fetchPromise) return fetchPromise;
 
@@ -41,6 +49,7 @@ async function fetchMe(): Promise<MeData | null> {
     })
     .then((data) => {
       cachedMe = data;
+      cachedUserId = data?.user?.id ?? null;
       fetchPromise = null;
       return data;
     })
@@ -55,6 +64,7 @@ async function fetchMe(): Promise<MeData | null> {
 export function invalidateMeCache() {
   cachedMe = null;
   fetchPromise = null;
+  cachedUserId = null;
 }
 
 export function useMe() {
@@ -70,10 +80,19 @@ export function useMe() {
   }, []);
 
   useEffect(() => {
+    // Initial load
     fetchMe().then((data) => {
       setMe(data);
       setLoading(false);
     });
+
+    // Re-fetch on window focus — catches login in another tab or session switch
+    const onFocus = () => {
+      invalidateMeCache();
+      fetchMe().then((data) => setMe(data));
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   return { me, loading, reload };
