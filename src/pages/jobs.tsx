@@ -16,6 +16,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
+import { useViewOnly } from '@/components/ViewOnlyGuard';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -35,6 +36,7 @@ export default function JobsPage() {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [showNewJob, setShowNewJob] = useState(false);
+  const { isViewOnly } = useViewOnly();
 
   useEffect(() => {
     loadJobs();
@@ -114,8 +116,10 @@ export default function JobsPage() {
             )}
           </div>
           <button
-            onClick={() => setShowNewJob(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 md:px-4 py-2 rounded-lg transition-colors"
+            onClick={() => !isViewOnly && setShowNewJob(true)}
+            disabled={isViewOnly}
+            title={isViewOnly ? 'Subscribe to continue' : undefined}
+            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 md:px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
             <span className="hidden sm:inline">New Job</span>
@@ -197,8 +201,10 @@ export default function JobsPage() {
                 Create your first job to start tracking work, crew, and progress.
               </p>
               <button
-                onClick={() => setShowNewJob(true)}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+                onClick={() => !isViewOnly && setShowNewJob(true)}
+                disabled={isViewOnly}
+                title={isViewOnly ? 'Subscribe to continue' : undefined}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={15} />
                 Create First Job

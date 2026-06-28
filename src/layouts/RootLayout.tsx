@@ -3,6 +3,7 @@ import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
+import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 
 /**
  * Root layout for IWILLBUILD Portal — fullscreen dashboard app.
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="description" content="Internal operations portal for IWILLBUILD — manage jobs, crews, fleet, and more." />
       </Helmet>
       <SupportModeBanner />
+      <ViewOnlyBanner />
       <ScrollRestoration />
       <ActivePing />
       <div className="flex-1 flex flex-col overflow-hidden">

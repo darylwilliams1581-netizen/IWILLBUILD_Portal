@@ -26,6 +26,7 @@ import {
   type FleetAsset,
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
+import { useViewOnly } from '@/components/ViewOnlyGuard';
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
@@ -258,6 +259,7 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
+  const { isViewOnly } = useViewOnly();
 
   function openMobileMenu() {
     window.dispatchEvent(new Event('portal:open-menu'));
@@ -333,8 +335,10 @@ export default function FleetPage() {
             )}
           </div>
           <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+            onClick={() => !isViewOnly && setShowModal(true)}
+            disabled={isViewOnly}
+            title={isViewOnly ? 'Subscribe to continue' : undefined}
+            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
             <span className="hidden sm:inline">New Asset</span>
@@ -416,8 +420,10 @@ export default function FleetPage() {
                     Add your vehicles, plant, and equipment to track prestarts, service dates, and rego.
                   </p>
                   <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+                    onClick={() => !isViewOnly && setShowModal(true)}
+                    disabled={isViewOnly}
+                    title={isViewOnly ? 'Subscribe to continue' : undefined}
+                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={15} />
                     Add First Asset

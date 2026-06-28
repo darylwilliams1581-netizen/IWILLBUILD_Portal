@@ -213,6 +213,7 @@ import migrate_account_recovery_post from "./api/migrate-account-recovery/POST";
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
+import { applyWriteGate } from "./lib/write-gate-apply.js";
 import {
 	loadAdSenseRuntimeConfig,
 	resolveAdSenseTextFile,
@@ -318,6 +319,12 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 });
+
+// ── View-only write gate ───────────────────────────────────────────────────────
+// Blocks create/update/delete/upload for companies in trial_expired, past_due,
+// cancelled, or suspended state.  Reads, downloads, billing, and auth are exempt.
+// Must be registered AFTER the auth guard and BEFORE route handlers.
+applyWriteGate(app);
 
 // ── Startup self-healing migrations ──────────────────────────────────────────
 // NOTE: Drizzle sql.raw rejects DEFAULT '{}' because {} looks like an
