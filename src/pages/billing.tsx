@@ -165,62 +165,124 @@ function CancelConfirmModal({
   loading,
 }: {
   periodEnd: string | null;
-  onConfirm: () => void;
+  onConfirm: (reason: string | null, comment: string | null) => void;
   onClose: () => void;
   loading: boolean;
 }) {
+  const REASONS = [
+    'Too expensive',
+    'Not using it enough',
+    'Missing features',
+    'Too hard to use',
+    'Changed business / no longer needed',
+    'Moving to another system',
+    'Technical issues',
+    'Prefer not to say',
+    'Other',
+  ] as const;
+
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
+
+  function handleConfirm() {
+    onConfirm(selectedReason, comment.trim() || null);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2.5 bg-red-100 rounded-xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2.5 bg-red-100 rounded-xl shrink-0">
             <Ban size={18} className="text-red-600" />
           </div>
-          <h3 className="font-heading font-black text-lg text-slate-900">Cancel Subscription?</h3>
+          <h3 className="font-heading font-black text-lg text-slate-900">Sorry to see you go</h3>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+        <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+          We'll keep your account in view-only mode after your paid period ends, so your records are still here if you choose to come back.
+        </p>
+
+        {/* Access info */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5">
           <p className="text-sm text-amber-800 leading-relaxed">
-            Your portal will remain <strong>fully active</strong> until the end of the current billing period
+            Your portal remains <strong>fully active</strong> until the end of your current billing period
             {periodEnd ? ` (${fmtDate(periodEnd)})` : ''}.
             No data will be deleted. You can reactivate at any time before then.
           </p>
         </div>
 
-        <ul className="flex flex-col gap-2 mb-6">
-          {[
-            'Access continues until billing period ends',
-            'All your data is preserved',
-            'You can reactivate before the period ends',
-            'No immediate charges or refunds',
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-slate-600">
-              <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
-              {item}
-            </li>
-          ))}
-        </ul>
+        {/* Feedback question */}
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-slate-700 mb-3">
+            Why are you leaving IWILLBUILD?{' '}
+            <span className="font-normal text-slate-400">(optional)</span>
+          </p>
+          <div className="flex flex-col gap-2">
+            {REASONS.map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => setSelectedReason(selectedReason === reason ? null : reason)}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-sm text-left transition-all ${
+                  selectedReason === reason
+                    ? 'border-primary bg-primary/5 text-primary font-semibold'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span
+                  className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+                    selectedReason === reason ? 'border-primary' : 'border-slate-300'
+                  }`}
+                >
+                  {selectedReason === reason && (
+                    <span className="w-2 h-2 rounded-full bg-primary block" />
+                  )}
+                </span>
+                {reason}
+              </button>
+            ))}
+          </div>
+        </div>
 
+        {/* Comment box — always visible but labelled contextually */}
+        <div className="mb-6">
+          <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+            {selectedReason === 'Other'
+              ? 'Please tell us more (optional)'
+              : "Anything else you'd like to share? (optional)"}
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Your feedback helps us improve…"
+            rows={3}
+            maxLength={2000}
+            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+          />
+        </div>
+
+        {/* Action buttons */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
             disabled={loading}
             className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
-            Keep Subscription
+            Keep my subscription
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             disabled={loading}
             className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
-            Yes, Cancel
+            Continue to cancel
           </button>
         </div>
       </motion.div>
@@ -309,10 +371,24 @@ export default function BillingPage() {
     }
   }
 
-  async function handleCancelConfirm() {
+  async function handleCancelConfirm(reason: string | null, comment: string | null) {
     setCancelLoading(true);
     setError('');
     try {
+      // Save feedback first (fire-and-forget — don't block cancellation on failure)
+      if (reason || comment) {
+        try {
+          await fetch('/api/billing/cancellation-feedback', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason, comment }),
+          });
+        } catch {
+          // Non-fatal — proceed with cancellation regardless
+        }
+      }
+
       const res = await fetch('/api/billing/cancel-subscription', {
         method: 'POST',
         credentials: 'include',
@@ -461,7 +537,7 @@ export default function BillingPage() {
                   Your subscription has ended. Your account is now view-only.
                 </p>
                 <p className="text-xs text-red-700 mt-0.5">
-                  You can browse your data and download files. Subscribe to a plan below to restore full access.
+                  Your records are still here if you choose to come back. Subscribe to a plan below to restore full access.
                 </p>
               </div>
             </div>

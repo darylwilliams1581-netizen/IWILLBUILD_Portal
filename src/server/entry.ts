@@ -125,6 +125,7 @@ import owner_console_companies_get_103 from "./api/owner-console/companies/GET";
 import owner_console_companies_usage_get from "./api/owner-console/companies/usage/GET";
 import owner_console_companies_limits_put from "./api/owner-console/companies/[id]/limits/PUT";
 import owner_console_storage_get from "./api/owner-console/storage/GET";
+import owner_console_cancellation_feedback_get from "./api/owner-console/cancellation-feedback/GET";
 import settings_retention_get from "./api/settings/retention/GET";
 import settings_retention_post from "./api/settings/retention/POST";
 import owner_console_companies_post_104 from "./api/owner-console/companies/POST";
@@ -167,6 +168,7 @@ import subscription_webhook_post_121 from "./api/subscription/webhook/POST";
 import billing_customer_portal_post from "./api/billing/customer-portal/POST";
 import billing_cancel_subscription_post from "./api/billing/cancel-subscription/POST";
 import billing_reactivate_subscription_post from "./api/billing/reactivate-subscription/POST";
+import billing_cancellation_feedback_post from "./api/billing/cancellation-feedback/POST";
 import usage_get from "./api/usage/GET";
 import support_mode_audit_get_122 from "./api/support-mode/audit/GET";
 import support_mode_checklist_get_123 from "./api/support-mode/checklist/GET";
@@ -422,6 +424,7 @@ async function runStartupMigrations() {
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'job_costs', ddl: "CREATE TABLE IF NOT EXISTS job_costs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, user_id VARCHAR(36) NULL, purchase_date DATE NULL, merchant VARCHAR(255) NULL, description TEXT NOT NULL, category VARCHAR(60) NOT NULL DEFAULT 'Other', amount DECIMAL(12,2) NOT NULL DEFAULT 0, gst_included TINYINT(1) NOT NULL DEFAULT 0, gst_amount DECIMAL(12,2) NOT NULL DEFAULT 0, amount_ex_gst DECIMAL(12,2) NOT NULL DEFAULT 0, receipt_file_id INT NULL, notes TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
+    { name: 'subscription_cancellation_feedback', ddl: "CREATE TABLE IF NOT EXISTS subscription_cancellation_feedback (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, user_id VARCHAR(36) NOT NULL, subscription_id VARCHAR(100) NULL, plan VARCHAR(30) NOT NULL DEFAULT 'unknown', reason VARCHAR(100) NULL, comment TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_user (user_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -694,6 +697,7 @@ app.get("/api/owner-console/companies", requireOwner, owner_console_companies_ge
 app.get("/api/owner-console/companies/usage", requireOwner, owner_console_companies_usage_get);
 app.put("/api/owner-console/companies/:id/limits", requireOwner, owner_console_companies_limits_put);
 app.get("/api/owner-console/storage", requireOwner, owner_console_storage_get);
+app.get("/api/owner-console/cancellation-feedback", owner_console_cancellation_feedback_get);
 app.get("/api/settings/retention", settings_retention_get);
 app.post("/api/settings/retention", settings_retention_post);
 app.post("/api/owner-console/companies", requireOwner, owner_console_companies_post_104);
@@ -718,6 +722,7 @@ app.post("/api/subscription/webhook", subscription_webhook_post_121);
 app.post("/api/billing/customer-portal", billing_customer_portal_post);
 app.post("/api/billing/cancel-subscription", billing_cancel_subscription_post);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post);
+app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_post);
 app.get("/api/usage", usage_get);
 app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
 app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);

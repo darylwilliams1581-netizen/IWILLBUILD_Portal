@@ -122,8 +122,8 @@ export default function ViewOnlyBanner() {
       icon: CreditCard,
     },
     cancelled: {
-      title: 'Your subscription has ended.',
-      body: 'Your account is now view-only. Reactivate your subscription to continue creating and editing work.',
+      title: 'Your subscription has ended. Your account is now view-only.',
+      body: 'Your records are still here if you choose to come back. Reactivate your subscription to restore full access.',
       cta: 'Reactivate',
       icon: RotateCcw,
     },
