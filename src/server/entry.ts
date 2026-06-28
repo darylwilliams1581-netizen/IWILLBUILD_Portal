@@ -138,6 +138,20 @@ import auth_verify_email_post from "./api/auth/verify-email/POST";
 import auth_resend_verification_post from "./api/auth/resend-verification/POST";
 import auth_self_verify_post from "./api/auth/self-verify/POST";
 import me_email_status_get from "./api/me/email-status/GET";
+// Account recovery
+import auth_forgot_password_post from "./api/auth/forgot-password/POST";
+import auth_reset_password_post from "./api/auth/reset-password/POST";
+import auth_validate_reset_token_get from "./api/auth/validate-reset-token/GET";
+import auth_change_email_post from "./api/auth/change-email/POST";
+import auth_send_sms_code_post from "./api/auth/send-sms-code/POST";
+import auth_verify_sms_code_post from "./api/auth/verify-sms-code/POST";
+import auth_trusted_devices_get from "./api/auth/trusted-devices/GET";
+import auth_trusted_devices_post from "./api/auth/trusted-devices/POST";
+import auth_trusted_devices_deviceId_delete from "./api/auth/trusted-devices/[deviceId]/DELETE";
+import auth_pin_login_post from "./api/auth/pin-login/POST";
+import auth_sms_configured_get from "./api/auth/sms-configured/GET";
+import team_verify_user_post from "./api/team/verify-user/POST";
+import team_resend_verification_post from "./api/team/resend-verification/POST";
 import stripe_create_checkout_session_post_117 from "./api/stripe/create-checkout-session/POST";
 import stripe_session_sessionId_get_118 from "./api/stripe/session/[sessionId]/GET";
 import subscription_create_checkout_post_119 from "./api/subscription/create-checkout/POST";
@@ -183,6 +197,7 @@ import jobs_id_swms_get from "./api/jobs/[id]/swms/GET";
 import jobs_id_swms_post from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import migrate_safety_post from "./api/migrate-safety/POST";
+import migrate_account_recovery_post from "./api/migrate-account-recovery/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -433,6 +448,21 @@ app.post("/api/active-ping", active_ping_post_0);
 app.post("/api/auth/verify-email", auth_verify_email_post);
 app.post("/api/auth/resend-verification", auth_resend_verification_post);
 app.post("/api/auth/self-verify", auth_self_verify_post);
+// Account recovery routes (public — no session required for forgot/reset)
+app.post("/api/auth/forgot-password", auth_forgot_password_post);
+app.post("/api/auth/reset-password", auth_reset_password_post);
+app.get("/api/auth/validate-reset-token", auth_validate_reset_token_get);
+app.post("/api/auth/change-email", auth_change_email_post);
+app.post("/api/auth/send-sms-code", auth_send_sms_code_post);
+app.post("/api/auth/verify-sms-code", auth_verify_sms_code_post);
+app.get("/api/auth/trusted-devices", auth_trusted_devices_get);
+app.post("/api/auth/trusted-devices", auth_trusted_devices_post);
+app.delete("/api/auth/trusted-devices/:deviceId", auth_trusted_devices_deviceId_delete);
+app.post("/api/auth/pin-login", auth_pin_login_post);
+app.get("/api/auth/sms-configured", auth_sms_configured_get);
+// Team verification management
+app.post("/api/team/verify-user", requireAdmin, team_verify_user_post);
+app.post("/api/team/resend-verification", requireAdmin, team_resend_verification_post);
 // ── BetterAuth wildcard handlers ─────────────────────────────────────────────
 app.get("/api/auth/:action", auth_action_get_1);
 app.post("/api/auth/:action", auth_action_post_2);
@@ -611,6 +641,7 @@ app.get("/api/jobs/:id/swms", jobs_id_swms_get);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post);
 app.post("/api/migrate-safety", requireOwner, migrate_safety_post);
+app.post("/api/migrate-account-recovery", requireOwner, migrate_account_recovery_post);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

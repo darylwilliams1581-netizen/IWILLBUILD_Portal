@@ -46,6 +46,26 @@ export function checkResendRate(ip: string): boolean {
   return check(ip, 'resend', 3, 10 * 60 * 1000);
 }
 
+/** Returns true if the password-reset request is allowed (5 per IP per 15 min) */
+export function checkPasswordResetRate(ip: string): boolean {
+  return check(ip, 'pwreset', 5, 15 * 60 * 1000);
+}
+
+/** Returns true if the SMS send request is allowed (3 per IP per 10 min) */
+export function checkSmsRate(ip: string): boolean {
+  return check(ip, 'sms', 3, 10 * 60 * 1000);
+}
+
+/** Returns true if the PIN attempt is allowed (5 per device per 15 min) */
+export function checkPinRate(deviceId: string): boolean {
+  return check(deviceId, 'pin', 5, 15 * 60 * 1000);
+}
+
+/** Returns true if the change-email request is allowed (3 per IP per 15 min) */
+export function checkChangeEmailRate(ip: string): boolean {
+  return check(ip, 'changeemail', 3, 15 * 60 * 1000);
+}
+
 // Prune stale buckets every 30 minutes to avoid unbounded memory growth
 setInterval(() => {
   const now = Date.now();

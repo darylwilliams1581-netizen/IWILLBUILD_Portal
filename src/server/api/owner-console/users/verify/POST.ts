@@ -1,11 +1,6 @@
-/**
- * POST /api/owner-console/users/verify
- * Owner only — manually mark a user's email as verified (unlock their account).
- * Body: { userId: string }
- */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
-import { profiles, user } from '../../../../db/schema.js';
+import { profiles, user, manualVerificationLog } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { sql } from 'drizzle-orm';
@@ -30,13 +25,28 @@ export default async function handler(req: Request, res: Response) {
     const { userId } = req.body as { userId?: string };
     if (!userId?.trim()) return res.status(400).json({ error: 'userId is required.' });
 
-    // Mark email as verified
-    await db.update(user).set({ emailVerified: true }).where(eq(user.id, userId));
+    // Mark email as verified and set verification method
+    await db.update(user)
+      .set({ emailVerified: true, verificationMethod: 'manual_owner', updatedAt: new Date() })
+      .where(eq(user.id, userId));
 
     // Clean up any pending verification tokens
     await db.execute(
       sql`DELETE FROM verification WHERE identifier = ${'email-verify:' + userId}`
     );
+
+    // Log the manual verification
+    try {
+      await db.insert(manualVerificationLog).values({
+        id: undefined as unknown as number,
+        targetUserId: userId,
+        verifiedByUserId: session.user.id,
+        method: 'manual_owner',
+        note: 'Verified via Owner Console',
+      });
+    } catch {
+      // Non-fatal — table may not exist yet if migration hasn't run
+    }
 
     const [updated] = await db
       .select({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified })

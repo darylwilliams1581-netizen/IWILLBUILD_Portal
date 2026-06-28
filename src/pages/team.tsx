@@ -26,6 +26,9 @@ import {
   ToggleLeft,
   ToggleRight,
   Lock,
+  ShieldCheck,
+  RefreshCw,
+  ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -81,6 +84,8 @@ interface TeamMember {
   phone: string;
   role: string;
   status: string;
+  emailVerified?: boolean;
+  verificationMethod?: string | null;
   permissions: Record<string, boolean>;
   joinedAt: string | null;
 }
@@ -491,8 +496,13 @@ export default function TeamPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState('');
 
   const { isOwner, isAdmin } = usePermissions();
+
+  const canManageVerification = isOwner || isAdmin;
 
   const loadTeam = useCallback(async () => {
     try {
@@ -511,6 +521,57 @@ export default function TeamPage() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => { loadTeam(); }, [loadTeam]);
+
+  async function handleManualVerify(userId: string) {
+    setVerifyingUserId(userId);
+    setActionMsg('');
+    try {
+      const res = await fetch('/api/team/verify-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        setActionMsg('User verified successfully.');
+        loadTeam();
+      } else {
+        setActionMsg(data.error ?? 'Failed to verify user.');
+      }
+    } catch {
+      setActionMsg('Network error. Please try again.');
+    } finally {
+      setVerifyingUserId(null);
+      setOpenMenuId(null);
+    }
+  }
+
+  async function handleResendVerification(userId: string) {
+    setResendingUserId(userId);
+    setActionMsg('');
+    try {
+      const res = await fetch('/api/team/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        setActionMsg('Verification email resent.');
+      } else {
+        setActionMsg(data.error ?? 'Failed to resend.');
+      }
+    } catch {
+      setActionMsg('Network error. Please try again.');
+    } finally {
+      setResendingUserId(null);
+      setOpenMenuId(null);
+    }
+  }
 
   useEffect(() => { loadTeam(); }, [loadTeam]);
 
@@ -626,6 +687,13 @@ export default function TeamPage() {
               </div>
             )}
 
+            {/* Action message */}
+            {actionMsg && (
+              <div className="flex items-center gap-2 text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                <CheckCircle2 size={15} />{actionMsg}
+              </div>
+            )}
+
             {/* Loading */}
             {loading && (
               <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
@@ -662,6 +730,21 @@ export default function TeamPage() {
                             <StatusIcon size={11} />
                             {statusCfg.label}
                           </span>
+                          {/* Verification badge */}
+                          {member.emailVerified ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                              <ShieldCheck size={10} />
+                              Verified
+                              {member.verificationMethod && member.verificationMethod !== 'email' && (
+                                <span className="text-emerald-400">({member.verificationMethod.replace('_', ' ')})</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                              <ShieldAlert size={10} />
+                              Unverified
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-xs text-slate-400 flex-wrap">
                           <span className="flex items-center gap-1"><Mail size={10} />{member.email}</span>
@@ -684,7 +767,7 @@ export default function TeamPage() {
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: -4 }}
                               transition={{ duration: 0.12 }}
-                              className="absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[150px] py-1 overflow-hidden"
+                              className="absolute right-0 top-8 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[180px] py-1 overflow-hidden"
                             >
                               <button
                                 onClick={() => { setEditMember(member); setOpenMenuId(null); }}
@@ -693,6 +776,34 @@ export default function TeamPage() {
                                 <Edit2 size={13} />
                                 {memberIsOwner && !isOwner ? 'View Member' : 'Edit Member'}
                               </button>
+                              {/* Verification actions — admin/owner only */}
+                              {canManageVerification && !member.emailVerified && (
+                                <>
+                                  <div className="border-t border-slate-100 my-1" />
+                                  <button
+                                    onClick={() => handleManualVerify(member.userId)}
+                                    disabled={verifyingUserId === member.userId}
+                                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                  >
+                                    {verifyingUserId === member.userId
+                                      ? <Loader2 size={13} className="animate-spin" />
+                                      : <ShieldCheck size={13} />
+                                    }
+                                    Mark as verified
+                                  </button>
+                                  <button
+                                    onClick={() => handleResendVerification(member.userId)}
+                                    disabled={resendingUserId === member.userId}
+                                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                                  >
+                                    {resendingUserId === member.userId
+                                      ? <Loader2 size={13} className="animate-spin" />
+                                      : <RefreshCw size={13} />
+                                    }
+                                    Resend verification
+                                  </button>
+                                </>
+                              )}
                             </motion.div>
                           )}
                         </AnimatePresence>

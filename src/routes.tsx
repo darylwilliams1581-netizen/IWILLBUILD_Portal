@@ -7,6 +7,8 @@ import SignupPage from './pages/signup';
 import CheckEmailPage from './pages/check-email';
 import VerifyEmailPage from './pages/verify-email';
 import VerifyRequiredPage from './pages/verify-required';
+import ForgotPasswordPage from './pages/forgot-password';
+import ResetPasswordPage from './pages/reset-password';
 import DashboardPage from './pages/dashboard';
 import JobsPage from './pages/jobs';
 import SchedulerPage from './pages/scheduler';
@@ -36,31 +38,33 @@ function protect(element: React.ReactElement) {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/',            element: <HomePage /> },
-  { path: '/login',       element: <LoginPage /> },
-  { path: '/signup',      element: <SignupPage /> },
-  { path: '/check-email', element: <CheckEmailPage /> },
-  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/',              element: <HomePage /> },
+  { path: '/login',         element: <LoginPage /> },
+  { path: '/signup',        element: <SignupPage /> },
+  { path: '/check-email',   element: <CheckEmailPage /> },
+  { path: '/verify-email',  element: <VerifyEmailPage /> },
   { path: '/verify-required', element: protect(<VerifyRequiredPage />) },
-  { path: '/dashboard',   element: protect(<DashboardPage />) },
-  { path: '/jobs',        element: protect(<JobsPage />) },
-  { path: '/jobs/:id',    element: protect(<JobDetailPage />) },
-  { path: '/scheduler',   element: protect(<SchedulerPage />) },
-  { path: '/fleet',       element: protect(<FleetPage />) },
-  { path: '/fleet/:id',   element: protect(<FleetDetailPage />) },
-  { path: '/forms',       element: protect(<FormsPage />) },
-  { path: '/files',       element: protect(<FilesPage />) },
-  { path: '/estimating',  element: protect(<EstimatingPage />) },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password',  element: <ResetPasswordPage /> },
+  { path: '/dashboard',     element: protect(<DashboardPage />) },
+  { path: '/jobs',          element: protect(<JobsPage />) },
+  { path: '/jobs/:id',      element: protect(<JobDetailPage />) },
+  { path: '/scheduler',     element: protect(<SchedulerPage />) },
+  { path: '/fleet',         element: protect(<FleetPage />) },
+  { path: '/fleet/:id',     element: protect(<FleetDetailPage />) },
+  { path: '/forms',         element: protect(<FormsPage />) },
+  { path: '/files',         element: protect(<FilesPage />) },
+  { path: '/estimating',    element: protect(<EstimatingPage />) },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />) },
-  { path: '/safety',      element: protect(<SafetyPage />) },
-  { path: '/downloads',   element: protect(<DownloadsPage />) },
-  { path: '/dazza-ai',    element: protect(<DazzaAIPage />) },
-  { path: '/annette',     element: protect(<AnnettePage />) },
-  { path: '/team',        element: protect(<TeamPage />) },
-  { path: '/settings',    element: protect(<SettingsPage />) },
+  { path: '/safety',        element: protect(<SafetyPage />) },
+  { path: '/downloads',     element: protect(<DownloadsPage />) },
+  { path: '/dazza-ai',      element: protect(<DazzaAIPage />) },
+  { path: '/annette',       element: protect(<AnnettePage />) },
+  { path: '/team',          element: protect(<TeamPage />) },
+  { path: '/settings',      element: protect(<SettingsPage />) },
   { path: '/owner-console', element: protect(<OwnerConsolePage />) },
   { path: '/billing',       element: protect(<BillingPage />) },
-  { path: '*',            element: <NotFoundPage /> },
+  { path: '*',              element: <NotFoundPage /> },
 ];
 
 export type Path =
@@ -70,6 +74,8 @@ export type Path =
   | '/check-email'
   | '/verify-email'
   | '/verify-required'
+  | '/forgot-password'
+  | '/reset-password'
   | '/dashboard'
   | '/jobs'
   | '/fleet'

@@ -16,6 +16,9 @@ export const user = mysqlTable('user', {
   emailVerified: boolean('email_verified').default(false),
   image: text('image'),
   isAdmin: boolean('is_admin').default(false),
+  // Account recovery additions
+  phoneNumber: varchar('phone_number', { length: 30 }),
+  verificationMethod: varchar('verification_method', { length: 30 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
@@ -460,4 +463,47 @@ export const supportAuditEvents = mysqlTable('support_audit_events', {
   summary:         text('summary'),
   metadataJson:    text('metadata_json'),
   createdAt:       timestamp('created_at').defaultNow(),
+});
+
+// ── Account recovery tables ───────────────────────────────────────────────────
+
+export const passwordResetTokens = mysqlTable('password_reset_tokens', {
+  id:        varchar('id', { length: 36 }).primaryKey(),
+  userId:    varchar('user_id', { length: 36 }).notNull(),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt:    timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const smsVerificationCodes = mysqlTable('sms_verification_codes', {
+  id:         varchar('id', { length: 36 }).primaryKey(),
+  userId:     varchar('user_id', { length: 36 }).notNull(),
+  codeHash:   varchar('code_hash', { length: 64 }).notNull(),
+  phone:      varchar('phone', { length: 30 }).notNull(),
+  expiresAt:  timestamp('expires_at').notNull(),
+  attempts:   int('attempts').notNull().default(0),
+  verifiedAt: timestamp('verified_at'),
+  createdAt:  timestamp('created_at').defaultNow(),
+});
+
+export const trustedDevices = mysqlTable('trusted_devices', {
+  id:                varchar('id', { length: 36 }).primaryKey(),
+  userId:            varchar('user_id', { length: 36 }).notNull(),
+  deviceName:        varchar('device_name', { length: 255 }),
+  deviceFingerprint: varchar('device_fingerprint', { length: 255 }).notNull(),
+  pinHash:           varchar('pin_hash', { length: 255 }),
+  pinAttempts:       int('pin_attempts').notNull().default(0),
+  pinLockedUntil:    timestamp('pin_locked_until'),
+  lastUsedAt:        timestamp('last_used_at'),
+  createdAt:         timestamp('created_at').defaultNow(),
+});
+
+export const manualVerificationLog = mysqlTable('manual_verification_log', {
+  id:               int('id').primaryKey().autoincrement(),
+  targetUserId:     varchar('target_user_id', { length: 36 }).notNull(),
+  verifiedByUserId: varchar('verified_by_user_id', { length: 36 }).notNull(),
+  method:           varchar('method', { length: 30 }).notNull().default('manual_admin'),
+  note:             text('note'),
+  createdAt:        timestamp('created_at').defaultNow(),
 });

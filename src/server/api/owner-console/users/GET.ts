@@ -48,6 +48,7 @@ export default async function handler(req: Request, res: Response) {
       name: r.userName ?? 'Unknown',
       email: r.userEmail,
       emailVerified: r.emailVerified ?? false,
+      verificationMethod: (r as unknown as { verificationMethod?: string }).verificationMethod ?? null,
       company: r.companyName ?? '—',
       companyId: r.companyId,
       role: r.role,

@@ -438,6 +438,7 @@ export default function OwnerConsolePage() {
     Promise.all([
       fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' }),
       fetch('/api/migrate-support-mode', { method: 'POST', credentials: 'include' }),
+      fetch('/api/migrate-account-recovery', { method: 'POST', credentials: 'include' }),
     ]).finally(() => setMigrated(true));
   }, []);
 
@@ -846,9 +847,13 @@ export default function OwnerConsolePage() {
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5">
                                         <p className="font-semibold text-slate-800 truncate">{u.name}</p>
-                                        {u.emailVerified === false && (
+                                        {u.emailVerified === false ? (
                                           <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
                                             Unverified
+                                          </span>
+                                        ) : (
+                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                            Verified{(u as unknown as { verificationMethod?: string }).verificationMethod && (u as unknown as { verificationMethod?: string }).verificationMethod !== 'email' ? ` (${(u as unknown as { verificationMethod?: string }).verificationMethod?.replace('_', ' ')})` : ''}
                                           </span>
                                         )}
                                       </div>

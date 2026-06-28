@@ -141,6 +141,12 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Email verification (token-based, no session)
   { method: 'POST', pattern: /^\/api\/auth\/verify-email$/ },
   { method: 'POST', pattern: /^\/api\/auth\/resend-verification$/ },
+  // Password reset (token-based, no session)
+  { method: 'POST', pattern: /^\/api\/auth\/forgot-password$/ },
+  { method: 'POST', pattern: /^\/api\/auth\/reset-password$/ },
+  { method: 'GET',  pattern: /^\/api\/auth\/validate-reset-token$/ },
+  // PIN login (no session — this IS the login)
+  { method: 'POST', pattern: /^\/api\/auth\/pin-login$/ },
 ];
 
 /**

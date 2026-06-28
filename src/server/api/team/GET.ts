@@ -51,6 +51,8 @@ export default async function handler(req: Request, res: Response) {
         createdAt: profiles.createdAt,
         userName: user.name,
         userEmail: user.email,
+        emailVerified: user.emailVerified,
+        verificationMethod: user.verificationMethod,
       })
       .from(profiles)
       .innerJoin(user, eq(profiles.userId, user.id))
@@ -64,6 +66,8 @@ export default async function handler(req: Request, res: Response) {
       phone: r.phone ?? '',
       role: r.role,
       status: r.status,
+      emailVerified: r.emailVerified ?? false,
+      verificationMethod: r.verificationMethod ?? null,
       permissions: {
         jobs: r.permJobs,
         fleet: r.permFleet,
