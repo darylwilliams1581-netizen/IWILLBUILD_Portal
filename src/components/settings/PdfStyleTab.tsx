@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 import {
   Save, Loader2, CheckCircle2, AlertCircle, FileText,
-  ToggleLeft, ToggleRight, Lock,
+  ToggleLeft, ToggleRight, Lock, Building2, Image,
 } from 'lucide-react';
 
 export interface PdfStyle {
+  // Business details printed on PDFs
+  businessAbn: string;
+  businessLicence: string;
+  businessPhone: string;
+  businessEmail: string;
+  businessAddress: string;
+  businessWebsite: string;
+  // Logo size on PDFs
+  logoSize: 'small' | 'medium' | 'large';
+  // Header / footer text
   headerText: string;
   footerText: string;
+  // Disclaimers
   estimateDisclaimer: string;
   formDisclaimer: string;
   paymentTerms: string;
   acceptanceNote: string;
+  // Display toggles
   showLogoOnEstimates: boolean;
   showLogoOnForms: boolean;
   showFooterOnEstimates: boolean;
@@ -18,6 +30,13 @@ export interface PdfStyle {
 }
 
 const DEFAULTS: PdfStyle = {
+  businessAbn: '',
+  businessLicence: '',
+  businessPhone: '',
+  businessEmail: '',
+  businessAddress: '',
+  businessWebsite: '',
+  logoSize: 'medium',
   headerText: '',
   footerText: '',
   estimateDisclaimer: '',
@@ -132,6 +151,12 @@ export default function PdfStyleTab({ isAdmin }: Props) {
     );
   }
 
+  const logoSizes: { value: PdfStyle['logoSize']; label: string; hint: string }[] = [
+    { value: 'small',  label: 'Small',  hint: '~40px' },
+    { value: 'medium', label: 'Medium', hint: '~70px' },
+    { value: 'large',  label: 'Large',  hint: '~110px' },
+  ];
+
   return (
     <form onSubmit={(e) => void handleSave(e)} className="flex flex-col gap-6">
 
@@ -142,6 +167,126 @@ export default function PdfStyleTab({ isAdmin }: Props) {
           Only Owners and Admins can edit PDF style settings. Your current settings are shown below.
         </div>
       )}
+
+      {/* ── Business Details ─────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
+        <div>
+          <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
+            <Building2 size={16} className="text-primary" /> Business Details
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Printed on invoices, estimates, forms and reports. Keeps your PDFs looking professional and compliant.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>ABN</label>
+            <input
+              type="text"
+              value={style.businessAbn}
+              onChange={(e) => set('businessAbn', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. 12 345 678 901"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Licence Number</label>
+            <input
+              type="text"
+              value={style.businessLicence}
+              onChange={(e) => set('businessLicence', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. QBCC 1234567"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Phone</label>
+            <input
+              type="text"
+              value={style.businessPhone}
+              onChange={(e) => set('businessPhone', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. 07 1234 5678"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Email</label>
+            <input
+              type="email"
+              value={style.businessEmail}
+              onChange={(e) => set('businessEmail', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. hello@iwillbuild.com"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Business Address</label>
+            <input
+              type="text"
+              value={style.businessAddress}
+              onChange={(e) => set('businessAddress', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. 123 Builder St, Townsville QLD 4810"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Website</label>
+            <input
+              type="text"
+              value={style.businessWebsite}
+              onChange={(e) => set('businessWebsite', e.target.value)}
+              disabled={!isAdmin}
+              className={inputClass}
+              placeholder="e.g. https://iwillbuild.com"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Logo Size ────────────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
+        <div>
+          <h2 className="font-bold text-base text-slate-800 flex items-center gap-2">
+            <Image size={16} className="text-primary" /> Logo Size on PDFs
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Controls how large the company logo appears in the header of printed documents. One logo per page.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {logoSizes.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              disabled={!isAdmin}
+              onClick={() => set('logoSize', s.value)}
+              className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all text-sm font-semibold
+                ${style.logoSize === s.value
+                  ? 'border-primary bg-orange-50 text-primary'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                }
+                ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              `}
+            >
+              {/* Visual size indicator */}
+              <span className={`block rounded bg-current opacity-30 ${
+                s.value === 'small'  ? 'w-6 h-6'  :
+                s.value === 'medium' ? 'w-9 h-9'  :
+                                       'w-14 h-14'
+              }`} />
+              <span>{s.label}</span>
+              <span className="text-xs font-normal text-slate-400">{s.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── Header & Footer text ─────────────────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
@@ -287,3 +432,4 @@ export default function PdfStyleTab({ isAdmin }: Props) {
     </form>
   );
 }
+
