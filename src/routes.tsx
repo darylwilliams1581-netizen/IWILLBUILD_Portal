@@ -12,6 +12,8 @@ import VerifyEmailPage from './pages/verify-email';
 import VerifyRequiredPage from './pages/verify-required';
 import ForgotPasswordPage from './pages/forgot-password';
 import ResetPasswordPage from './pages/reset-password';
+import PrivacyPage from './pages/privacy';
+import TermsPage from './pages/terms';
 import ProdNotFoundPage from './pages/_404';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
@@ -64,6 +66,8 @@ export const routes: RouteObject[] = [
   { path: '/',              element: <HomePage /> },
   { path: '/login',         element: <LoginPage /> },
   { path: '/signup',        element: <SignupPage /> },
+  { path: '/privacy',       element: <PrivacyPage /> },
+  { path: '/terms',         element: <TermsPage /> },
   { path: '/check-email',   element: <CheckEmailPage /> },
   { path: '/verify-email',  element: <VerifyEmailPage /> },
   { path: '/verify-required', element: <VerifyRequiredPage /> },
