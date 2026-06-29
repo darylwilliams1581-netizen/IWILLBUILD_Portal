@@ -9,7 +9,6 @@ import {
   Sparkles, FileDown, Package, RefreshCw,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import { useMe } from '@/lib/usePermissions';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1574,7 +1573,6 @@ type TabId = typeof TABS[number]['id'];
 
 export default function SafetyPage() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const { me } = useMe();
 
   function openMobileMenu() {
     window.dispatchEvent(new Event('portal:open-menu'));

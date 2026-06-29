@@ -2,7 +2,7 @@
  * Annette Protocol v1 — Structured health-check report page.
  * Accessible to any user with Dazza AI permission.
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Activity,
@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
-import { useMe } from '@/lib/usePermissions';
 
 // ── Markdown-lite renderer ────────────────────────────────────────────────────
 // Renders the Annette report (headings, bullets, bold) without a full MD lib.
@@ -112,8 +111,19 @@ function renderInline(text: string): React.ReactNode {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AnnettePage() {
-  const { can, loading: permsLoading } = usePermissions();
-  const { me } = useMe();
+  const { can, loading: permsLoading, me } = usePermissions();
+
+  // Support mode: fetch supportCompanyId from the server context (same as dazza-ai.tsx).
+  // me?.profile does NOT have a supportCompanyId field — it must come from the server.
+  const [supportCompanyId, setSupportCompanyId] = useState<number | null>(null);
+  useEffect(() => {
+    fetch('/api/dazza/context', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { supportCompanyId?: number | null } | null) => {
+        setSupportCompanyId(d?.supportCompanyId ?? null);
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [reportText, setReportText] = useState('');
@@ -121,8 +131,6 @@ export default function AnnettePage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
-
-  const supportCompanyId = (me?.profile as { supportCompanyId?: number } | undefined)?.supportCompanyId;
 
   const runAnnette = useCallback(async () => {
     setStatus('running');

@@ -9,7 +9,7 @@ import {
   Brain,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import { useMe } from '@/lib/usePermissions';
+import { usePermissions } from '@/lib/usePermissions';
 import {
   calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
   calcFall, calcFallFromGrade, calcSimple,
@@ -411,7 +411,7 @@ I can help summarise jobs, check fleet issues, review forms, look at estimates, 
 What do you need today?`;
 
 export default function DazzaAIPage() {
-  const { me } = useMe();
+  const { me, isAdmin } = usePermissions();
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: WELCOME_MSG, timestamp: new Date() },
   ]);
@@ -591,7 +591,6 @@ export default function DazzaAIPage() {
   }
 
   const perms = dazzaCtx?.permissions;
-  const isAdmin = me?.profile?.role === 'owner' || me?.profile?.role === 'admin';
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (

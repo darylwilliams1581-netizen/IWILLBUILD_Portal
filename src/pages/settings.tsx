@@ -29,7 +29,7 @@ import {
   Plug,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import { useMe } from '@/lib/usePermissions';
+import { useMe, usePermissions } from '@/lib/usePermissions';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DazzaAITab from '@/components/settings/DazzaAITab';
@@ -661,9 +661,7 @@ function ComingSoonTab({ title, description }: { title: string; description: str
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('account');
-  const { me } = useMe();
-  const role = me?.profile?.role ?? '';
-  const isAdmin = role === 'owner' || role === 'admin';
+  const { me, isAdmin } = usePermissions();
 
   // Run migration once on mount to ensure company_settings table exists
   useEffect(() => {
