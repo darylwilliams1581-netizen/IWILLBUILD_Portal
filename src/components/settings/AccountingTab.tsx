@@ -215,18 +215,56 @@ export default function AccountingTab({ isAdmin }: Props) {
               {xero?.platformReady === false && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
                   <Info size={13} className="shrink-0 mt-0.5 text-amber-600" />
-                  <div>
-                    <p className="font-semibold mb-1">Xero app setup required (owner action)</p>
-                    <p className="text-amber-700 leading-relaxed">
-                      To enable Xero for all customers, the IWILLBUILD owner needs to create a Xero Developer App and add the credentials to Settings → Secrets:
-                    </p>
-                    <ol className="mt-2 space-y-0.5 list-decimal list-inside text-amber-700">
-                      <li>Go to <a href="https://developer.xero.com/app/manage" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">developer.xero.com/app/manage</a> and create an app</li>
-                      <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
-                      <li>Set the redirect URI to <code className="bg-amber-100 px-1 rounded font-mono">{window.location.origin}/api/integrations/xero/callback</code></li>
-                      <li>Add <code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_ID</code>, <code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_SECRET</code> and <code className="bg-amber-100 px-1 rounded font-mono">XERO_REDIRECT_URI</code> to Secrets</li>
+                  <div className="w-full">
+                    <p className="font-semibold mb-1 text-sm">Xero app setup required (owner action)</p>
+
+                    {/* Critical warning — wrong app type */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                      <p className="font-bold text-red-700 mb-0.5">⚠ Important — choose the correct app type</p>
+                      <p className="text-red-600 leading-relaxed">
+                        Do <strong>not</strong> create a <em>"Sign In with Xero"</em> app — that is for user authentication only and won't work here.
+                        You need a <strong>"Web App"</strong> which gives access to the Accounting API (invoices, contacts, payments).
+                      </p>
+                    </div>
+
+                    <p className="text-amber-700 font-semibold mb-1">Step-by-step setup:</p>
+                    <ol className="space-y-1.5 list-decimal list-inside text-amber-700 leading-relaxed">
+                      <li>
+                        Go to{' '}
+                        <a href="https://developer.xero.com/app/manage" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900 font-semibold">
+                          developer.xero.com/app/manage
+                        </a>{' '}
+                        and click <strong>New App</strong>
+                      </li>
+                      <li>
+                        On the app type screen, select <strong>"Web App"</strong>{' '}
+                        <span className="text-amber-600">(NOT "Sign In with Xero" — that is the wrong type)</span>
+                      </li>
+                      <li>
+                        Set the <strong>Redirect URI</strong> to exactly:{' '}
+                        <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-900 break-all">
+                          {window.location.origin}/api/integrations/xero/callback
+                        </code>
+                      </li>
+                      <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from the app page</li>
+                      <li>
+                        Add these three secrets in{' '}
+                        <strong>Settings → Secrets</strong>:
+                        <ul className="mt-1 ml-4 space-y-0.5 list-none">
+                          <li><code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_ID</code> — your Client ID</li>
+                          <li><code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_SECRET</code> — your Client Secret</li>
+                          <li>
+                            <code className="bg-amber-100 px-1 rounded font-mono">XERO_REDIRECT_URI</code> —{' '}
+                            <code className="bg-amber-100 px-1 rounded font-mono text-amber-900 break-all">
+                              {window.location.origin}/api/integrations/xero/callback
+                            </code>
+                          </li>
+                        </ul>
+                      </li>
                     </ol>
-                    <p className="mt-2 text-amber-600 italic">Once configured, customers simply click Connect Xero and log in to their own Xero account — they never enter any credentials here.</p>
+                    <p className="mt-2.5 text-amber-600 italic">
+                      Once configured, customers click Connect Xero and log in to their own Xero organisation — they never enter credentials here.
+                    </p>
                   </div>
                 </div>
               )}
