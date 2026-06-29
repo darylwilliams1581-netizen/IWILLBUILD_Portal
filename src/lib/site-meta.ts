@@ -16,5 +16,5 @@ export interface SiteMeta {
 
 export const siteMeta: SiteMeta = {
 	name: "IWILLBUILD",
-	summary: "Internal operations portal for IWILLBUILD — manage job sites, crews, fleet, documents, and AI assistance.",
+	summary: "IWILLBUILD is the construction operations layer for builders and trade teams — manage jobs, estimates, forms, photos, fleet and safety, then sync approved invoices and contacts to Xero, QuickBooks or MYOB.",
 };
