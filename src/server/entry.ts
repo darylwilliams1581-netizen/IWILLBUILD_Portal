@@ -236,6 +236,8 @@ import settings_backup_export_get_220 from "./api/settings/backup/export/GET";
 import settings_backup_run_post_221 from "./api/settings/backup/run/POST";
 import settings_backup_destination_get_222 from "./api/settings/backup-destination/GET";
 import settings_backup_destination_post_223 from "./api/settings/backup-destination/POST";
+import settings_file_transfer_backup_get from "./api/settings/file-transfer-backup/GET";
+import settings_file_transfer_backup_post from "./api/settings/file-transfer-backup/POST";
 import settings_retention_get_224 from "./api/settings/retention/GET";
 import settings_retention_post_225 from "./api/settings/retention/POST";
 import settings_terminology_get_226 from "./api/settings/terminology/GET";
@@ -495,7 +497,8 @@ async function runStartupMigrations() {
     { table: 'company_settings', column: 'last_backup_at',            definition: 'DATETIME NULL' },
     { table: 'company_settings', column: 'custom_limits_json',        definition: 'LONGTEXT NULL' },
     { table: 'company_settings', column: 'retention_json',            definition: 'LONGTEXT NULL' },
-    { table: 'company_settings', column: 'backup_destination_json',   definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'backup_destination_json',      definition: 'LONGTEXT NULL' },
+    { table: 'company_settings', column: 'file_transfer_backup_json',   definition: 'LONGTEXT NULL' },
     { table: 'company_settings', column: 'work_label_singular',       definition: "VARCHAR(60) NULL" },
     { table: 'company_settings', column: 'work_label_plural',         definition: "VARCHAR(60) NULL" },
     // Subscription columns
@@ -999,6 +1002,8 @@ app.get("/api/settings/backup/export", settings_backup_export_get_220);
 app.post("/api/settings/backup/run", settings_backup_run_post_221);
 app.get("/api/settings/backup-destination", settings_backup_destination_get_222);
 app.post("/api/settings/backup-destination", settings_backup_destination_post_223);
+app.get("/api/settings/file-transfer-backup", settings_file_transfer_backup_get);
+app.post("/api/settings/file-transfer-backup", settings_file_transfer_backup_post);
 app.get("/api/settings/retention", settings_retention_get_224);
 app.post("/api/settings/retention", settings_retention_post_225);
 app.get("/api/settings/terminology", settings_terminology_get_226);

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import UsageCards from './UsageCards';
 import StorageProviderCard from './StorageProviderCard';
+import FileTransferBackupCard from './FileTransferBackupCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -413,6 +414,9 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
 
       {/* ── Storage Provider ── */}
       {isAdmin && <StorageProviderCard />}
+
+      {/* ── File Transfer & Backup ── */}
+      <FileTransferBackupCard isAdmin={isAdmin} />
 
       {/* ── Plan Usage ── */}
       <SectionCard icon={BarChart3} title="Plan Usage">
