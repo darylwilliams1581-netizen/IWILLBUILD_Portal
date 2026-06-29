@@ -119,8 +119,10 @@ body {
 }
 
 /* ── Portal layout helpers ───────────────────────────────────────────────────
-   .portal-page  — full-screen flex container used by every portal page
-   .portal-main  — the scrollable content area beside the sidebar
+   .portal-page    — full-screen flex container used by every portal page
+   .portal-main    — the scrollable content area beside the sidebar
+   .portal-content — scrollable content column used by pages that embed
+                     PortalSidebar directly (invoices, customers, etc.)
 */
 .portal-page {
   display: flex;
@@ -135,6 +137,20 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;            /* prevent flex children from overflowing */
+}
+
+.portal-content {
+  flex: 1 1 0%;
+  min-width: 0;            /* prevent flex children from overflowing */
+  overflow-y: auto;        /* vertical scroll within the content area */
+  overflow-x: auto;        /* horizontal scroll reachable — not clipped by page */
+  padding: 1.25rem 1rem;
+}
+
+@media (min-width: 1024px) {
+  .portal-content {
+    padding: 1.5rem;
+  }
 }
 
 /* ── Sticky bottom action bar safe area ─────────────────────────────────────
