@@ -5,6 +5,7 @@ import {
   boolean,
   timestamp,
   int,
+  date,
 } from 'drizzle-orm/mysql-core';
 
 // ── BetterAuth required tables ──────────────────────────────────────────────
@@ -147,6 +148,13 @@ export const jobs = mysqlTable('jobs', {
   address: text('address'),
   status: varchar('status', { length: 60 }).notNull().default('New'),
   notes: text('notes'),
+  // Scheduler v2 — explicit scheduled vs actual dates
+  scheduledStartDate: date('scheduled_start_date'),
+  expectedCompletionDate: date('expected_completion_date'),
+  actualStartDate: date('actual_start_date'),
+  actualCompletionDate: date('actual_completion_date'),
+  assignedSupervisorUserId: varchar('assigned_supervisor_user_id', { length: 36 }),
+  assignedTeamLabel: varchar('assigned_team_label', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });

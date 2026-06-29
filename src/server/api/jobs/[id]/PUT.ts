@@ -26,7 +26,12 @@ export default async function handler(req: Request, res: Response) {
     if (!existing) return res.status(404).json({ error: 'Job not found' });
     if (existing.companyId !== profile.companyId) return res.status(403).json({ error: 'Forbidden' });
 
-    const { name, client, address, status, notes, jobNumber, customerId } = req.body as {
+    const {
+      name, client, address, status, notes, jobNumber, customerId,
+      scheduledStartDate, expectedCompletionDate,
+      actualStartDate, actualCompletionDate,
+      assignedSupervisorUserId, assignedTeamLabel,
+    } = req.body as {
       name?: string;
       client?: string;
       address?: string;
@@ -34,6 +39,12 @@ export default async function handler(req: Request, res: Response) {
       notes?: string;
       jobNumber?: string;
       customerId?: number | null;
+      scheduledStartDate?: string | null;
+      expectedCompletionDate?: string | null;
+      actualStartDate?: string | null;
+      actualCompletionDate?: string | null;
+      assignedSupervisorUserId?: string | null;
+      assignedTeamLabel?: string | null;
     };
 
     await db.update(jobs).set({
@@ -43,6 +54,12 @@ export default async function handler(req: Request, res: Response) {
       ...(status !== undefined && { status }),
       ...(notes !== undefined && { notes: notes.trim() || null }),
       ...(jobNumber !== undefined && { jobNumber: jobNumber.trim() || null }),
+      ...(scheduledStartDate !== undefined && { scheduledStartDate: scheduledStartDate || null }),
+      ...(expectedCompletionDate !== undefined && { expectedCompletionDate: expectedCompletionDate || null }),
+      ...(actualStartDate !== undefined && { actualStartDate: actualStartDate || null }),
+      ...(actualCompletionDate !== undefined && { actualCompletionDate: actualCompletionDate || null }),
+      ...(assignedSupervisorUserId !== undefined && { assignedSupervisorUserId: assignedSupervisorUserId || null }),
+      ...(assignedTeamLabel !== undefined && { assignedTeamLabel: assignedTeamLabel?.trim() || null }),
     }).where(eq(jobs.id, jobId));
 
     // customer_id via raw SQL (not in Drizzle schema)

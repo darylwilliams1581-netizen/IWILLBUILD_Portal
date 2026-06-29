@@ -32,6 +32,9 @@ import {
   Mail,
   ExternalLink,
   DollarSign,
+  Users,
+  CalendarCheck,
+  CalendarClock,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -84,6 +87,12 @@ export default function JobDetailPage() {
     address: '',
     status: '',
     notes: '',
+    scheduledStartDate: '',
+    expectedCompletionDate: '',
+    actualStartDate: '',
+    actualCompletionDate: '',
+    assignedSupervisorUserId: '',
+    assignedTeamLabel: '',
   });
   useEffect(() => {
     if (id) loadJob(parseInt(id, 10));
@@ -117,6 +126,12 @@ export default function JobDetailPage() {
         address: data.address ?? '',
         status: data.status,
         notes: data.notes ?? '',
+        scheduledStartDate: data.scheduledStartDate ?? '',
+        expectedCompletionDate: data.expectedCompletionDate ?? '',
+        actualStartDate: data.actualStartDate ?? '',
+        actualCompletionDate: data.actualCompletionDate ?? '',
+        assignedSupervisorUserId: data.assignedSupervisorUserId ?? '',
+        assignedTeamLabel: data.assignedTeamLabel ?? '',
       });
       // Load linked customer if present
       if (data.customerId) {
@@ -148,6 +163,12 @@ export default function JobDetailPage() {
         status: form.status,
         notes: form.notes.trim() || undefined,
         customerId: editingCustomer?.id ?? null,
+        scheduledStartDate: form.scheduledStartDate || null,
+        expectedCompletionDate: form.expectedCompletionDate || null,
+        actualStartDate: form.actualStartDate || null,
+        actualCompletionDate: form.actualCompletionDate || null,
+        assignedSupervisorUserId: form.assignedSupervisorUserId || null,
+        assignedTeamLabel: form.assignedTeamLabel.trim() || null,
       });
       setJob(updated);
       setLinkedCustomer(editingCustomer);
@@ -467,6 +488,59 @@ export default function JobDetailPage() {
                           className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
                         />
                       </div>
+
+                      {/* ── Schedule ── */}
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
+                            <input
+                              type="date"
+                              value={form.scheduledStartDate}
+                              onChange={(e) => setForm((f) => ({ ...f, scheduledStartDate: e.target.value }))}
+                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
+                            <input
+                              type="date"
+                              value={form.expectedCompletionDate}
+                              onChange={(e) => setForm((f) => ({ ...f, expectedCompletionDate: e.target.value }))}
+                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5">Actual Start</label>
+                            <input
+                              type="date"
+                              value={form.actualStartDate}
+                              onChange={(e) => setForm((f) => ({ ...f, actualStartDate: e.target.value }))}
+                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5">Actual Completion</label>
+                            <input
+                              type="date"
+                              value={form.actualCompletionDate}
+                              onChange={(e) => setForm((f) => ({ ...f, actualCompletionDate: e.target.value }))}
+                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="block text-xs font-semibold mb-1.5">Team / Crew Label</label>
+                          <input
+                            type="text"
+                            value={form.assignedTeamLabel}
+                            onChange={(e) => setForm((f) => ({ ...f, assignedTeamLabel: e.target.value }))}
+                            placeholder="e.g. Crew A, Framing Team"
+                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
@@ -488,6 +562,44 @@ export default function JobDetailPage() {
                           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                         })}
                       />
+
+                      {/* ── Schedule fields (view mode) ── */}
+                      {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel) && (
+                        <div className="pt-2 border-t border-border flex flex-col gap-3">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
+                          {job.scheduledStartDate && (
+                            <DetailRow
+                              icon={CalendarClock}
+                              label="Scheduled Start"
+                              value={new Date(job.scheduledStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            />
+                          )}
+                          {job.expectedCompletionDate && (
+                            <DetailRow
+                              icon={CalendarCheck}
+                              label="Expected Completion"
+                              value={new Date(job.expectedCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            />
+                          )}
+                          {job.actualStartDate && (
+                            <DetailRow
+                              icon={CalendarClock}
+                              label="Actual Start"
+                              value={new Date(job.actualStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            />
+                          )}
+                          {job.actualCompletionDate && (
+                            <DetailRow
+                              icon={CalendarCheck}
+                              label="Actual Completion"
+                              value={new Date(job.actualCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            />
+                          )}
+                          {job.assignedTeamLabel && (
+                            <DetailRow icon={Users} label="Team / Crew" value={job.assignedTeamLabel} />
+                          )}
+                        </div>
+                      )}
                       {job.notes && (
                         <div className="pt-2 border-t border-border">
                           <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>

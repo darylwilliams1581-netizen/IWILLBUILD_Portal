@@ -5,7 +5,6 @@ import {
   HardHat,
   Users,
   Truck,
-  Download,
   Bot,
   Bell,
   ChevronRight,
@@ -131,6 +130,18 @@ export default function DashboardPage() {
   const activeJobCount = jobs.filter((j) =>
     ['New', 'Quoting', 'Submitted', 'Awaiting Approval', 'Works Approved', 'Ready to Start', 'Works in Progress'].includes(j.status)
   ).length;
+
+  // Scheduled this week — jobs with scheduledStartDate within the next 7 days
+  const scheduledThisWeek = (() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+    return jobs.filter((j) => {
+      const d = (j as Job & { scheduledStartDate?: string | null }).scheduledStartDate;
+      if (!d) return false;
+      const start = new Date(d);
+      return start >= now && start <= weekEnd;
+    }).length;
+  })();
 
   const recentJobs = jobs.slice(0, 5);
 
@@ -342,14 +353,14 @@ export default function DashboardPage() {
                 cta: fleetCount === 0 ? 'Add fleet asset' : 'View fleet',
               },
               {
-                label: 'Downloads',
-                value: '0',
-                sub: 'No files uploaded',
-                icon: Download,
-                color: 'text-purple-600',
-                bg: 'bg-purple-50',
-                href: '/downloads',
-                cta: 'Upload a file',
+                label: 'Scheduled This Week',
+                value: jobsLoaded ? String(scheduledThisWeek) : '—',
+                sub: scheduledThisWeek === 0 ? 'No jobs starting this week' : `${scheduledThisWeek} job${scheduledThisWeek !== 1 ? 's' : ''} starting soon`,
+                icon: Calendar,
+                color: 'text-cyan-600',
+                bg: 'bg-cyan-50',
+                href: '/scheduler',
+                cta: 'View scheduler',
               },
             ].map((m) => (
               <motion.div

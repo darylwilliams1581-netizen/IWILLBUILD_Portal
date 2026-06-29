@@ -457,11 +457,18 @@ async function runStartupMigrations() {
     { table: 'companies', column: 'cancelled_at',           definition: 'DATETIME NULL' },
     { table: 'companies', column: 'past_due_since',         definition: 'DATETIME NULL' },
     // Scheduler columns on jobs
-    { table: 'jobs', column: 'start_date',         definition: 'DATE NULL' },
-    { table: 'jobs', column: 'finish_date',        definition: 'DATE NULL' },
-    { table: 'jobs', column: 'supervisor_user_id', definition: 'VARCHAR(36) NULL' },
-    { table: 'jobs', column: 'crew_name',          definition: 'VARCHAR(255) NULL' },
-    { table: 'jobs', column: 'progress',           definition: 'INT NOT NULL DEFAULT 0' },
+    { table: 'jobs', column: 'start_date',                  definition: 'DATE NULL' },
+    { table: 'jobs', column: 'finish_date',                 definition: 'DATE NULL' },
+    { table: 'jobs', column: 'supervisor_user_id',          definition: 'VARCHAR(36) NULL' },
+    { table: 'jobs', column: 'crew_name',                   definition: 'VARCHAR(255) NULL' },
+    { table: 'jobs', column: 'progress',                    definition: 'INT NOT NULL DEFAULT 0' },
+    // Scheduler v2 — explicit scheduled vs actual dates
+    { table: 'jobs', column: 'scheduled_start_date',        definition: 'DATE NULL' },
+    { table: 'jobs', column: 'expected_completion_date',    definition: 'DATE NULL' },
+    { table: 'jobs', column: 'actual_start_date',           definition: 'DATE NULL' },
+    { table: 'jobs', column: 'actual_completion_date',      definition: 'DATE NULL' },
+    { table: 'jobs', column: 'assigned_supervisor_user_id', definition: 'VARCHAR(36) NULL' },
+    { table: 'jobs', column: 'assigned_team_label',         definition: 'VARCHAR(255) NULL' },
     // ── swms_templates: extended fields (v2) ──────────────────────────────────
     { table: 'swms_templates', column: 'category',              definition: 'VARCHAR(100) NULL' },
     { table: 'swms_templates', column: 'purpose_scope',         definition: 'TEXT NULL' },

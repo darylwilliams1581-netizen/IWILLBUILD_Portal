@@ -26,6 +26,13 @@ export interface Job {
   status: string;
   notes: string | null;
   customerId: number | null;
+  // Scheduler v2 fields
+  scheduledStartDate: string | null;
+  expectedCompletionDate: string | null;
+  actualStartDate: string | null;
+  actualCompletionDate: string | null;
+  assignedSupervisorUserId: string | null;
+  assignedTeamLabel: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,6 +102,12 @@ export async function updateJob(id: number, payload: Partial<{
   notes: string;
   jobNumber: string;
   customerId: number | null;
+  scheduledStartDate: string | null;
+  expectedCompletionDate: string | null;
+  actualStartDate: string | null;
+  actualCompletionDate: string | null;
+  assignedSupervisorUserId: string | null;
+  assignedTeamLabel: string | null;
 }>): Promise<Job> {
   const res = await fetch(`/api/jobs/${id}`, {
     method: 'PUT',
