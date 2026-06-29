@@ -338,6 +338,37 @@ app.set("trust proxy", true);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // Prevent MIME-type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Force HTTPS for 1 year (including subdomains)
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Referrer policy — don't leak full URL to third parties
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Permissions policy — disable unused browser features
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  // Basic CSP — allows same-origin + trusted CDNs; tightened for portal
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://api.stripe.com https://login.xero.com https://api.xero.com",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+  );
+  next();
+});
+
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
 // whitelist (auth routes, signup, Stripe webhook, health check).
