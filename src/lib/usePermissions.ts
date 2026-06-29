@@ -99,6 +99,9 @@ export function useMe() {
 }
 
 export function usePermissions() {
+  // Single call to useMe — callers should NOT call useMe() separately when they
+  // already call usePermissions(), to avoid duplicate hook instances and
+  // out-of-sync state between two independent useMe() state machines.
   const { me, loading } = useMe();
 
   const role = me?.profile?.role ?? null;
@@ -111,6 +114,10 @@ export function usePermissions() {
     isOwner,
     isAdmin,
     role,
+    // Expose me + user so callers can avoid a second useMe() call
+    me,
+    user: me?.user ?? null,
+    company: me?.company ?? null,
     permissions: me?.profile?.permissions ?? null,
     can: (key: keyof NonNullable<UserProfile['permissions']>) => {
       if (!me?.profile) return false;

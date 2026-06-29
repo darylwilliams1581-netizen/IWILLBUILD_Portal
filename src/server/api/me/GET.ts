@@ -4,6 +4,13 @@ import { profiles, companies } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
+/** Safe server-side auth log — never logs passwords or tokens */
+function authLog(event: string, data?: Record<string, unknown>) {
+  try {
+    console.info(JSON.stringify({ event: `server.auth.${event}`, ...data, ts: Date.now() }));
+  } catch { /* best-effort */ }
+}
+
 export default async function handler(req: Request, res: Response) {
   try {
     const auth = getAuth();
@@ -12,7 +19,10 @@ export default async function handler(req: Request, res: Response) {
       if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
     }
     const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+    if (!session?.user) {
+      authLog('me.unauthenticated', { ip: req.ip });
+      return res.status(401).json({ error: 'Unauthorised' });
+    }
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.userId, session.user.id),
@@ -25,6 +35,13 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    authLog('me.ok', {
+      userId: session.user.id,
+      role: profile?.role ?? 'none',
+      companyId: profile?.companyId ?? null,
+      status: profile?.status ?? 'none',
+    });
+
     res.json({
       user: {
         id: session.user.id,
@@ -35,6 +52,7 @@ export default async function handler(req: Request, res: Response) {
       company: company ?? null,
     });
   } catch (error) {
+    authLog('me.error', { errorMsg: String((error as Error)?.message ?? error).slice(0, 120) });
     console.error('GET /api/me error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
   }

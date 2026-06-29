@@ -24,8 +24,8 @@ import {
   ChevronDown,
   ShieldAlert,
 } from 'lucide-react';
-import { signOut, useSession } from '@/lib/auth/auth-client';
-import { usePermissions, useMe, invalidateMeCache } from '@/lib/usePermissions';
+import { signOut } from '@/lib/auth/auth-client';
+import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 import NotificationBell from '@/components/NotificationBell';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
@@ -73,8 +73,7 @@ const adminItems = [
 ] as const;
 
 // ─── User strip sub-component ─────────────────────────────────────────────────
-// Extracted from an IIFE to a proper component so React hook count is always
-// stable regardless of whether session/me data is present (fixes React #310).
+// Receives user data from usePermissions() — no separate useSession() call needed.
 function SidebarUserStrip({
   sessionUser,
   me,
@@ -88,7 +87,17 @@ function SidebarUserStrip({
   const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
   const initial = (displayName || displayEmail || '?')[0].toUpperCase();
 
-  if (!sessionUser && !me) return null;
+  // Render a placeholder strip while loading so the layout doesn't shift
+  if (!me && !sessionUser) {
+    return (
+      <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5 opacity-40">
+        <div className="w-7 h-7 rounded-lg bg-white/10 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="h-2.5 w-20 bg-white/10 rounded" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
@@ -118,9 +127,11 @@ function SidebarContent({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user: sessionUser } = useSession();
-  const { me } = useMe();
-  const { isAdmin, loading: permsLoading, can, isOwner } = usePermissions();
+  // Single source of truth for user/permissions — usePermissions() calls useMe()
+  // internally, so we must NOT call useMe() or useSession() separately here.
+  // Calling useMe() twice creates two independent state machines that can be
+  // out-of-sync during initial load, which is the primary cause of React #310.
+  const { isAdmin, loading: permsLoading, can, isOwner, me } = usePermissions();
   const subInfo = useSubscriptionStatus();
 
   // Dazza AI sub-menu: auto-open when on /dazza-ai or /annette
@@ -372,7 +383,7 @@ function SidebarContent({
 
         {/* User strip */}
         {!collapsed && (
-          <SidebarUserStrip sessionUser={sessionUser ?? null} me={me} collapsed={collapsed} />
+          <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />
         )}
         {collapsed && (
           <div className="flex justify-center mt-1">

@@ -28,9 +28,32 @@ export async function authHandler(req: Request, res: Response) {
     req.method === 'POST' &&
     (req.path.includes('sign-in') || req.path.includes('signin'));
 
+  const isSignOut =
+    req.method === 'POST' &&
+    (req.path.includes('sign-out') || req.path.includes('signout'));
+
+  // Log the auth action (safe — no passwords or tokens)
+  console.info(JSON.stringify({
+    event: 'server.auth.request',
+    method: req.method,
+    path: req.path,
+    isSignIn,
+    isSignOut,
+    ts: Date.now(),
+  }));
+
   try {
     const auth = getAuth();
     const webResponse = await auth.handler(toWebRequest(req));
+
+    // Log the response status for sign-in and sign-out
+    if (isSignIn || isSignOut) {
+      console.info(JSON.stringify({
+        event: isSignIn ? 'server.auth.signin.response' : 'server.auth.signout.response',
+        status: webResponse.status,
+        ts: Date.now(),
+      }));
+    }
 
     // If sign-in succeeded (2xx), record the login event
     if (isSignIn && webResponse.status >= 200 && webResponse.status < 300) {
