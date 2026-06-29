@@ -714,6 +714,19 @@
       "summary": "Screenshot of a job management interface showing a job details tab with address field. User is requesting a feature enhancement (clickable address linking to Google Maps) rather than asking to display this image on a website.",
       "fileName": "screenshot-2026-06-29T06-52-19.jpg",
       "storedUploadFilename": "f38wenbvln_1782715942212_file_vNN5zvwWZb.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Safety Plans dashboard interface showing a list of draft safety management plans. User is referencing this to report a missing delete functionality.",
+      "fileName": "screenshot-2026-06-29T07-21-52.jpg",
+      "storedUploadFilename": "f38wenbvln_1782717715064_file_qDvEkO6xFy.jpg"
     }
   ]
 }

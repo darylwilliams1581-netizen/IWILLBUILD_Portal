@@ -799,6 +799,7 @@ function SafetyPlansTab() {
   const [editing, setEditing] = useState<SafetyPlan | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -827,6 +828,24 @@ function SafetyPlansTab() {
       setSeedMsg('Failed to seed plans.');
     } finally {
       setSeeding(false);
+    }
+  }
+
+  async function handleDelete(id: number, title: string) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeleting(id);
+    try {
+      const r = await fetch(`/api/safety/plans/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (r.ok) {
+        setPlans((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        const d = await r.json();
+        alert(d.error ?? 'Failed to delete plan.');
+      }
+    } catch {
+      alert('Failed to delete plan.');
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -907,6 +926,9 @@ function SafetyPlansTab() {
                 </a>
                 <button onClick={() => { setEditing(p); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
                   <Wand2 size={14} />
+                </button>
+                <button onClick={() => handleDelete(p.id, p.title)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete plan">
+                  {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 </button>
               </div>
             </div>
