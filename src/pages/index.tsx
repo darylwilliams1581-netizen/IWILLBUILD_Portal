@@ -205,11 +205,11 @@ function PortalMockup() {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
-  const title = 'IWILLBUILD | Construction Operations Software — Syncs to Xero, QuickBooks & MYOB';
+  const title = 'IWILLBUILD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
   const description =
-    'IWILLBUILD is the construction operations layer for builders and trade teams. Manage jobs, estimates, forms, photos, fleet and safety — then sync approved invoices to Xero, QuickBooks or MYOB. 30-day free trial.';
+    'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. As the platform grows, accounting integrations help approved invoices flow into Xero, QuickBooks and MYOB. 30-day free trial.';
   const ogDescription =
-    'Manage construction jobs, estimates, forms, photos and fleet. Sync invoices to Xero, QuickBooks or MYOB. Your accountant stays in their platform.';
+    'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero, QuickBooks and MYOB.';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -227,7 +227,7 @@ export default function HomePage() {
         url: `${site}/`,
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        description: 'Construction operations software for builders and trade teams. Manage jobs, estimates, forms, photos, fleet and safety. Syncs approved invoices and contacts to Xero, QuickBooks and MYOB.',
+        description: 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
         offers: [
           {
             '@type': 'Offer',
@@ -376,7 +376,7 @@ export default function HomePage() {
               color: '#fff', margin: '0 0 20px',
             }}>
               <h1 style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit', color: 'inherit', margin: 0 }}>
-                The construction operations layer. Your accounting platform stays the ledger.
+                Construction job management — jobs, forms, fleet, safety and files in one clean portal.
               </h1>
             </motion.div>
 
@@ -384,7 +384,7 @@ export default function HomePage() {
               color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
               margin: '0 0 32px', maxWidth: 600,
             }}>
-              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. When it's done, approved invoices and contacts sync straight to Xero, QuickBooks or MYOB. Your accountant never needs to touch the portal.
+              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. As the platform grows, accounting integrations help approved invoices, customers and supporting documents flow into Xero, QuickBooks and MYOB.
             </motion.p>
 
             <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>

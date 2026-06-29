@@ -16,5 +16,5 @@ export interface SiteMeta {
 
 export const siteMeta: SiteMeta = {
 	name: "IWILLBUILD",
-	summary: "IWILLBUILD is the construction operations layer for builders and trade teams — manage jobs, estimates, forms, photos, fleet and safety, then sync approved invoices and contacts to Xero, QuickBooks or MYOB.",
+	summary: "IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. As the platform grows, accounting integrations will help approved invoices, customers and supporting documents flow into systems like Xero, QuickBooks and MYOB.",
 };
