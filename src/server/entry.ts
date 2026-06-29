@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { getSecret } from '#airo/secrets';
+import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
 
 // <api-imports>
 import active_ping_post_0 from "./api/active-ping/POST";
@@ -338,14 +339,34 @@ normalizeCommerceApiBaseUrlEnv();
 
 const app = express();
 
+// ── Harden Express defaults ───────────────────────────────────────────────────
+// Remove the "X-Powered-By: Express" fingerprint header
+app.disable('x-powered-by');
+
 // Honour x-forwarded-* from the load balancer so req.protocol/req.hostname
 // reflect the public-facing values. Express-maintained parsing respects the
 // existing trust-proxy config; direct header reads would let a client spoof
 // the sitemap origin in robots.txt.
 app.set("trust proxy", true);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── HTTPS enforcement ─────────────────────────────────────────────────────────
+// Redirect any plain HTTP request to HTTPS in production.
+// The load balancer sets x-forwarded-proto; trust proxy is enabled above.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    req.headers['x-forwarded-proto'] === 'http'
+  ) {
+    return res.redirect(301, `https://${req.hostname}${req.originalUrl}`);
+  }
+  next();
+});
+
+// ── Body size limits ──────────────────────────────────────────────────────────
+// Tighten JSON / urlencoded body limits to prevent large-payload DoS.
+// File uploads use multer (memoryStorage) with its own 20 MB limit.
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -354,29 +375,51 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   // Prevent MIME-type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // Force HTTPS for 1 year (including subdomains)
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   // Referrer policy — don't leak full URL to third parties
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Permissions policy — disable unused browser features
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-  // Basic CSP — allows same-origin + trusted CDNs; tightened for portal
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()');
+  // Disable DNS prefetching to reduce info leakage
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
+  // Prevent cross-origin window attacks
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  // Prevent cross-origin resource embedding
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // CSP — same-origin + trusted third parties only
+  // connect-src includes R2 public URL if configured
+  const r2PublicUrl = process.env.R2_PUBLIC_URL ? process.env.R2_PUBLIC_URL.replace(/\/$/, '') : null;
+  const connectSrc = [
+    "'self'",
+    'https://api.stripe.com',
+    'https://login.xero.com',
+    'https://api.xero.com',
+    ...(r2PublicUrl ? [r2PublicUrl] : []),
+  ].join(' ');
   res.setHeader(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.stripe.com https://login.xero.com https://api.xero.com",
+      `connect-src ${connectSrc}`,
       "frame-src https://js.stripe.com https://hooks.stripe.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      "upgrade-insecure-requests",
     ].join('; ')
   );
   next();
 });
+
+// ── Global API rate limiting ───────────────────────────────────────────────────
+// Applied before auth guard so even unauthenticated flood attempts are throttled.
+// Auth routes get a tighter sub-limit on top of the global one.
+app.use('/api', globalApiLimiter);
+app.use('/api/auth', authApiLimiter);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
