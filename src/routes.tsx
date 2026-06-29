@@ -1,7 +1,9 @@
 import { RouteObject } from 'react-router-dom';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
+
+// ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
@@ -10,35 +12,48 @@ import VerifyEmailPage from './pages/verify-email';
 import VerifyRequiredPage from './pages/verify-required';
 import ForgotPasswordPage from './pages/forgot-password';
 import ResetPasswordPage from './pages/reset-password';
-import DashboardPage from './pages/dashboard';
-import JobsPage from './pages/jobs';
-import SchedulerPage from './pages/scheduler';
-import JobDetailPage from './pages/job-detail';
-import FleetPage from './pages/fleet';
-import FleetDetailPage from './pages/fleet-detail';
-import DazzaAIPage from './pages/dazza-ai';
-import AnnettePage from './pages/annette';
-import DownloadsPage from './pages/downloads';
-import TeamPage from './pages/team';
-import SettingsPage from './pages/settings';
-import FormsPage from './pages/forms';
-import FilesPage from './pages/files';
-import EstimatingPage from './pages/estimating';
-import EstimateEditorPage from './pages/estimate-editor';
-import SafetyPage from './pages/safety';
-import OwnerConsolePage from './pages/owner-console';
-import BillingPage from './pages/billing';
 import ProdNotFoundPage from './pages/_404';
+
+// ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
+const DashboardPage      = lazy(() => import('./pages/dashboard'));
+const JobsPage           = lazy(() => import('./pages/jobs'));
+const SchedulerPage      = lazy(() => import('./pages/scheduler'));
+const JobDetailPage      = lazy(() => import('./pages/job-detail'));
+const FleetPage          = lazy(() => import('./pages/fleet'));
+const FleetDetailPage    = lazy(() => import('./pages/fleet-detail'));
+const DazzaAIPage        = lazy(() => import('./pages/dazza-ai'));
+const AnnettePage        = lazy(() => import('./pages/annette'));
+const DownloadsPage      = lazy(() => import('./pages/downloads'));
+const TeamPage           = lazy(() => import('./pages/team'));
+const SettingsPage       = lazy(() => import('./pages/settings'));
+const FormsPage          = lazy(() => import('./pages/forms'));
+const FilesPage          = lazy(() => import('./pages/files'));
+const EstimatingPage     = lazy(() => import('./pages/estimating'));
+const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
+const SafetyPage         = lazy(() => import('./pages/safety'));
+const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
+const BillingPage        = lazy(() => import('./pages/billing'));
 
 const NotFoundPage = import.meta.env.DEV
   ? lazy(() => import('../dev-tools/src/PageNotFound'))
   : ProdNotFoundPage;
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 // Inline error element — renders inside the layout so header/sidebar stay mounted
 const routeError = <RouteErrorFallback />;
 
+/** Minimal loading shell shown while a lazy portal page loads */
+function PageLoader() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
+      <div style={{ width: 28, height: 28, border: '3px solid #e2e8f0', borderTopColor: '#f97316', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function protect(element: React.ReactElement) {
-  return <ProtectedRoute>{element}</ProtectedRoute>;
+  return <ProtectedRoute><Suspense fallback={<PageLoader />}>{element}</Suspense></ProtectedRoute>;
 }
 
 export const routes: RouteObject[] = [

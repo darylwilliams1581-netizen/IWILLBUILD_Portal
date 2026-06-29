@@ -163,7 +163,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     outDir: "dist/client",
     emptyOutDir: true,
     copyPublicDir: true,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 3000,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -175,6 +175,15 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           }
           if (id.includes('node_modules/@tanstack/')) {
             return 'query';
+          }
+          if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion')) {
+            return 'motion';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide';
+          }
+          if (id.includes('node_modules/drizzle-orm') || id.includes('node_modules/mysql2')) {
+            return 'db-vendor';
           }
         }
       }
