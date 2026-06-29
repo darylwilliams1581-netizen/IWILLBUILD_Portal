@@ -379,8 +379,8 @@ export default function JobDetailPage() {
               </div>
 
               {/* Tabs */}
-              <div className="scroll-x-hide bg-white rounded-xl border border-border p-1">
-                <div className="flex gap-1 min-w-max">
+              <div className="bg-white rounded-xl border border-border p-1">
+                <div className="flex flex-wrap gap-1">
                 {([
                   { key: 'details',   label: 'Details',   icon: FileText },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },

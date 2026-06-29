@@ -766,6 +766,19 @@
       "summary": "A requirements and safety compliance document with structured sections (PPE, Plant & Equipment, Training, Sign-off, Emergency/Environmental Controls). The user is asking for a layout restructure, not to display this file on a website.",
       "fileName": "screenshot-2026-06-29T11-26-36.jpg",
       "storedUploadFilename": "f38wenbvln_1782732399440_file_juqkgiThKd.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a project management interface showing a tab navigation bar with multiple tabs (Details, Estimates, Costs, Invoices, Progress, To-do, Delays, etc.). User is reporting a layout issue where tabs are too long to fit on the page and requesting a fix without reducing font size.",
+      "fileName": "screenshot-2026-06-29T13-59-49.jpg",
+      "storedUploadFilename": "f38wenbvln_1782741593039_file_51LJcPLAJS.jpg"
     }
   ]
 }
