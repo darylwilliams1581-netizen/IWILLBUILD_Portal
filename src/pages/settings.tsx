@@ -668,6 +668,7 @@ function ComingSoonTab({ title, description }: { title: string; description: str
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('account');
   const { me, isAdmin } = usePermissions();
+  const isOwner = me?.profile?.role === 'owner';
 
   // Run migration once on mount to ensure company_settings table exists
   useEffect(() => {
@@ -753,7 +754,7 @@ export default function SettingsPage() {
               {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
               {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
-              {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} />}
+              {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}

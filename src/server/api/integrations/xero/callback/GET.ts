@@ -5,9 +5,9 @@
  * Redirects to /settings?tab=accounting&xero=connected on success.
  */
 import type { Request, Response } from 'express';
-import { getSecret } from '#airo/secrets';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
+import { getXeroCredentials } from '../../../../lib/xero-credentials.js';
 
 interface XeroTokenResponse {
   access_token: string;
@@ -47,11 +47,8 @@ export default async function handler(req: Request, res: Response) {
       return res.redirect('/settings?tab=accounting&xero=error&reason=invalid_state');
     }
 
-    const clientId = getSecret('XERO_CLIENT_ID');
-    const clientSecret = getSecret('XERO_CLIENT_SECRET');
-    const redirectUri = getSecret('XERO_REDIRECT_URI');
-
-    if (!clientId || !clientSecret || !redirectUri) {
+    const creds = await getXeroCredentials(companyId);
+    if (!creds) {
       return res.redirect('/settings?tab=accounting&xero=error&reason=missing_credentials');
     }
 
@@ -60,12 +57,12 @@ export default async function handler(req: Request, res: Response) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        'Authorization': 'Basic ' + Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString('base64'),
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: redirectUri,
+        redirect_uri: creds.redirectUri,
       }).toString(),
     });
 
@@ -78,7 +75,7 @@ export default async function handler(req: Request, res: Response) {
     const tokens = await tokenRes.json() as XeroTokenResponse;
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-    // Fetch tenant list (which Xero organisations this token has access to)
+    // Fetch tenant list
     const tenantsRes = await fetch('https://api.xero.com/connections', {
       headers: { 'Authorization': `Bearer ${tokens.access_token}` },
     });
@@ -87,7 +84,6 @@ export default async function handler(req: Request, res: Response) {
     let tenantName = '';
     if (tenantsRes.ok) {
       const tenants = await tenantsRes.json() as XeroTenant[];
-      // Pick the first ORGANISATION tenant
       const org = tenants.find((t) => t.tenantType === 'ORGANISATION') ?? tenants[0];
       if (org) {
         tenantId = org.tenantId;

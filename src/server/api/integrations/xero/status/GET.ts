@@ -11,7 +11,7 @@ import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
-import { getSecret } from '#airo/secrets';
+import { getXeroCredentials } from '../../../../lib/xero-credentials.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -23,9 +23,9 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    // Check whether the platform-level Xero Developer App is configured.
-    // These are set once by the IWILLBUILD owner — customers never touch them.
-    const platformReady = !!(getSecret('XERO_CLIENT_ID') && getSecret('XERO_REDIRECT_URI'));
+    // Check whether Xero credentials are configured (company or platform)
+    const creds = await getXeroCredentials(profile?.companyId ?? null);
+    const platformReady = creds !== null;
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.json({ connected: false, platformReady });

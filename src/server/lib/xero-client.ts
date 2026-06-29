@@ -5,7 +5,7 @@
  */
 import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getSecret } from '#airo/secrets';
+import { getXeroCredentials } from './xero-credentials.js';
 
 interface XeroConnection {
   id: number;
@@ -51,15 +51,14 @@ export async function getValidXeroToken(companyId: number): Promise<{ accessToke
 
   // Refresh if within 5 minutes of expiry
   if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-    const clientId = getSecret('XERO_CLIENT_ID');
-    const clientSecret = getSecret('XERO_CLIENT_SECRET');
-    if (!clientId || !clientSecret) throw new Error('Xero credentials not configured');
+    const creds = await getXeroCredentials(companyId);
+    if (!creds) throw new Error('Xero credentials not configured');
 
     const tokenRes = await fetch('https://identity.xero.com/connect/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        'Authorization': 'Basic ' + Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString('base64'),
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',

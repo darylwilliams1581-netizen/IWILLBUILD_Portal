@@ -4,12 +4,12 @@
  * Requires admin/owner.
  */
 import type { Request, Response } from 'express';
-import { getSecret } from '#airo/secrets';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { getXeroCredentials } from '../../../../lib/xero-credentials.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -27,10 +27,9 @@ export default async function handler(req: Request, res: Response) {
     const isAdmin = profile.role === 'owner' || profile.role === 'admin' || profile.permAdmin === true;
     if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
 
-    const clientId = getSecret('XERO_CLIENT_ID');
-    const redirectUri = getSecret('XERO_REDIRECT_URI');
-    if (!clientId || !redirectUri) {
-      return res.status(500).json({ error: 'Xero credentials not configured. Add XERO_CLIENT_ID and XERO_REDIRECT_URI in Settings → Secrets.' });
+    const creds = await getXeroCredentials(profile.companyId);
+    if (!creds) {
+      return res.status(500).json({ error: 'Xero credentials not configured. Set them up in Settings → Accounting.' });
     }
 
     // State = base64(companyId:randomNonce) — verified in callback
@@ -40,23 +39,19 @@ export default async function handler(req: Request, res: Response) {
     const scopes = [
       'openid', 'profile', 'email',
       'offline_access',
-      // Contacts — read/write for customer sync
       'accounting.contacts',
       'accounting.contacts.read',
-      // Invoices — read/write for invoice sync
       'accounting.invoices',
       'accounting.invoices.read',
-      // Settings — read org details, tax rates, accounts
       'accounting.settings.read',
-      // Attachments — push receipts, dockets, PDFs to Xero records
       'accounting.attachments',
       'accounting.attachments.read',
     ].join(' ');
 
     const url = new URL('https://login.xero.com/identity/connect/authorize');
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('client_id', creds.clientId);
+    url.searchParams.set('redirect_uri', creds.redirectUri);
     url.searchParams.set('scope', scopes);
     url.searchParams.set('state', state);
 
