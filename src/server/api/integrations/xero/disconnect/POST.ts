@@ -5,8 +5,8 @@
  */
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import { db } from '../../../../../db/client.js';
-import { profiles } from '../../../../../db/schema.js';
+import { db } from '../../../../db/client.js';
+import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 

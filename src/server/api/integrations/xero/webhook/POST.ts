@@ -10,7 +10,7 @@
  */
 import type { Request, Response } from 'express';
 import { getSecret } from '#airo/secrets';
-import { db } from '../../../../../db/client.js';
+import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
