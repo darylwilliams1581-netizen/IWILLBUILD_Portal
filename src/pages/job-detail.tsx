@@ -73,6 +73,7 @@ export default function JobDetailPage() {
   const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
   const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [teamMembers, setTeamMembers] = useState<Array<{ userId: string; name: string; role: string }>>([]);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
@@ -100,6 +101,13 @@ export default function JobDetailPage() {
     fetch('/api/me', { credentials: 'include' })
       .then((r) => r.json())
       .then((d: { profile?: { role?: string } }) => { if (d.profile?.role) setUserRole(d.profile.role); })
+      .catch(() => {});
+    // Fetch team members for supervisor dropdown
+    fetch('/api/team/members', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((d: { members?: Array<{ userId: string; name: string; role: string }> }) => {
+        setTeamMembers(d.members ?? []);
+      })
       .catch(() => {});
     // Fetch cost summary for header bar
     if (id) {
@@ -531,6 +539,19 @@ export default function JobDetailPage() {
                           </div>
                         </div>
                         <div className="mt-3">
+                          <label className="block text-xs font-semibold mb-1.5">Assigned Supervisor</label>
+                          <select
+                            value={form.assignedSupervisorUserId}
+                            onChange={(e) => setForm((f) => ({ ...f, assignedSupervisorUserId: e.target.value }))}
+                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                          >
+                            <option value="">— Unassigned —</option>
+                            {teamMembers.map((m) => (
+                              <option key={m.userId} value={m.userId}>{m.name}{m.role === 'owner' ? ' (Owner)' : m.role === 'admin' ? ' (Admin)' : ''}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="mt-3">
                           <label className="block text-xs font-semibold mb-1.5">Team / Crew Label</label>
                           <input
                             type="text"
@@ -564,7 +585,7 @@ export default function JobDetailPage() {
                       />
 
                       {/* ── Schedule fields (view mode) ── */}
-                      {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel) && (
+                      {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel || job.assignedSupervisorUserId) && (
                         <div className="pt-2 border-t border-border flex flex-col gap-3">
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
                           {job.scheduledStartDate && (
@@ -593,6 +614,13 @@ export default function JobDetailPage() {
                               icon={CalendarCheck}
                               label="Actual Completion"
                               value={new Date(job.actualCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            />
+                          )}
+                          {job.assignedSupervisorUserId && (
+                            <DetailRow
+                              icon={UserCheck}
+                              label="Supervisor"
+                              value={teamMembers.find((m) => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
                             />
                           )}
                           {job.assignedTeamLabel && (

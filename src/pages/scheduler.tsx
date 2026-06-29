@@ -32,8 +32,14 @@ interface SchedulerJob {
   address: string | null;
   status: string;
   progress: number;
+  // Resolved display dates (v2 with fallback to legacy)
   startDate: string | null;
   finishDate: string | null;
+  // v2 explicit fields
+  scheduledStartDate: string | null;
+  expectedCompletionDate: string | null;
+  actualStartDate: string | null;
+  actualCompletionDate: string | null;
   supervisorUserId: string | null;
   supervisorName: string | null;
   crewName: string | null;
@@ -117,7 +123,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {['Job', 'Client', 'Location', 'Status', 'Start', 'Finish', 'Duration', 'Supervisor / Crew', 'Progress', ''].map(h => (
+              {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Crew', 'Progress', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -145,8 +151,8 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.startDate)}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.finishDate)}</td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.scheduledStartDate ?? job.startDate)}</td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.expectedCompletionDate ?? job.finishDate)}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{duration}</td>
                   <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{supervisor}</td>
                   <td className="px-4 py-3">
@@ -194,8 +200,11 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               <div className="grid grid-cols-2 gap-1 text-xs text-slate-500">
                 {job.client && <span className="flex items-center gap-1"><User size={10} />{job.client}</span>}
                 {job.address && <span className="flex items-center gap-1"><MapPin size={10} />{job.address}</span>}
-                <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.startDate)}</span>
-                <span className="flex items-center gap-1"><Clock size={10} />{fmt(job.finishDate)}</span>
+                <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.scheduledStartDate ?? job.startDate)}</span>
+                <span className="flex items-center gap-1"><Clock size={10} />{fmt(job.expectedCompletionDate ?? job.finishDate)}</span>
+                {(job.supervisorName ?? job.crewName) && (
+                  <span className="flex items-center gap-1 col-span-2"><User size={10} />{job.supervisorName ?? job.crewName}</span>
+                )}
               </div>
               {/* Progress */}
               <div className="flex items-center gap-2">
