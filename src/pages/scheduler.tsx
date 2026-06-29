@@ -15,15 +15,17 @@ import {
   User,
   MapPin,
   Calendar,
-  ChevronLeft,
   AlertTriangle,
-  Menu,
 } from 'lucide-react';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * A job as returned by GET /api/scheduler/jobs.
+ * The scheduler reads ONLY these job-record fields — no estimates, no derived dates.
+ */
 interface SchedulerJob {
   id: number;
   jobNumber: string | null;
@@ -32,29 +34,25 @@ interface SchedulerJob {
   address: string | null;
   status: string;
   progress: number;
-  // Resolved display dates (v2 with fallback to legacy)
-  startDate: string | null;
-  finishDate: string | null;
-  // v2 explicit fields
-  scheduledStartDate: string | null;
-  expectedCompletionDate: string | null;
+  scheduledStartDate: string | null;       // set on the job record
+  expectedCompletionDate: string | null;   // set on the job record
   actualStartDate: string | null;
   actualCompletionDate: string | null;
   supervisorUserId: string | null;
   supervisorName: string | null;
-  crewName: string | null;
-  createdAt: string;
+  teamLabel: string | null;
+  createdAt: string | null;
 }
 
-type ViewMode = 'table' | 'timeline';
+type ViewMode  = 'table' | 'timeline';
 type DateRange = 'week' | 'month' | 'next30' | 'all';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(dateStr: string | null): string {
-  if (!dateStr) return 'Not set';
+  if (!dateStr) return '—';
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return 'Not set';
+  if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -63,12 +61,16 @@ function daysBetween(a: string, b: string): number {
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
+/** A job is "scheduled" when it has both scheduledStartDate AND expectedCompletionDate. */
+function isScheduled(job: SchedulerJob): boolean {
+  return !!(job.scheduledStartDate && job.expectedCompletionDate);
+}
+
 function isInRange(job: SchedulerJob, range: DateRange): boolean {
   if (range === 'all') return true;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const start = job.startDate ? new Date(job.startDate) : null;
-  const finish = job.finishDate ? new Date(job.finishDate) : null;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const start  = job.scheduledStartDate     ? new Date(job.scheduledStartDate)     : null;
+  const finish = job.expectedCompletionDate ? new Date(job.expectedCompletionDate) : null;
 
   if (range === 'week') {
     const end = new Date(now); end.setDate(end.getDate() + 7);
@@ -85,7 +87,8 @@ function isInRange(job: SchedulerJob, range: DateRange): boolean {
   return true;
 }
 
-// Status bar colours for Gantt
+// ─── Status bar colours for Gantt ─────────────────────────────────────────────
+
 const STATUS_BAR: Record<string, string> = {
   'New':                    'bg-slate-400',
   'Quoting':                'bg-amber-400',
@@ -123,7 +126,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Crew', 'Progress', ''].map(h => (
+              {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Team', 'Progress', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -132,11 +135,11 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {jobs.map(job => {
-              const style = getStatusStyle(job.status);
-              const duration = job.startDate && job.finishDate
-                ? `${daysBetween(job.startDate, job.finishDate)}d`
+              const style    = getStatusStyle(job.status);
+              const duration = job.scheduledStartDate && job.expectedCompletionDate
+                ? `${daysBetween(job.scheduledStartDate, job.expectedCompletionDate)}d`
                 : '—';
-              const supervisor = job.supervisorName ?? job.crewName ?? '—';
+              const supervisor = job.supervisorName ?? job.teamLabel ?? '—';
               return (
                 <tr key={job.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">
@@ -151,19 +154,16 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.scheduledStartDate ?? job.startDate)}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.expectedCompletionDate ?? job.finishDate)}</td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.scheduledStartDate)}</td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.expectedCompletionDate)}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{duration}</td>
-                  <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{supervisor}</td>
+                  <td className="px-4 py-3 text-slate-600 truncate max-w-[140px]">{supervisor}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden w-16">
-                        <div
-                          className="h-full bg-orange-500 rounded-full"
-                          style={{ width: `${job.progress ?? 0}%` }}
-                        />
+                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress}%` }} />
                       </div>
-                      <span className="text-xs text-slate-500 w-8 text-right">{job.progress ?? 0}%</span>
+                      <span className="text-xs text-slate-500 w-8 text-right">{job.progress}%</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -198,20 +198,21 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs text-slate-500">
-                {job.client && <span className="flex items-center gap-1"><User size={10} />{job.client}</span>}
+                {job.client  && <span className="flex items-center gap-1"><User   size={10} />{job.client}</span>}
                 {job.address && <span className="flex items-center gap-1"><MapPin size={10} />{job.address}</span>}
-                <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.scheduledStartDate ?? job.startDate)}</span>
-                <span className="flex items-center gap-1"><Clock size={10} />{fmt(job.expectedCompletionDate ?? job.finishDate)}</span>
-                {(job.supervisorName ?? job.crewName) && (
-                  <span className="flex items-center gap-1 col-span-2"><User size={10} />{job.supervisorName ?? job.crewName}</span>
+                <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.scheduledStartDate)}</span>
+                <span className="flex items-center gap-1"><Clock    size={10} />{fmt(job.expectedCompletionDate)}</span>
+                {(job.supervisorName ?? job.teamLabel) && (
+                  <span className="flex items-center gap-1 col-span-2">
+                    <User size={10} />{job.supervisorName ?? job.teamLabel}
+                  </span>
                 )}
               </div>
-              {/* Progress */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress ?? 0}%` }} />
+                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress}%` }} />
                 </div>
-                <span className="text-xs text-slate-500">{job.progress ?? 0}%</span>
+                <span className="text-xs text-slate-500">{job.progress}%</span>
               </div>
               <Link
                 to={`/jobs/${job.id}`}
@@ -231,14 +232,14 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
 
 function TimelineView({ jobs }: { jobs: SchedulerJob[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const DAY_WIDTH = 36; // px per day
+  const DAY_WIDTH = 36;
 
-  // Compute visible date range from jobs
   const { rangeStart, totalDays } = useMemo(() => {
-    const dates = jobs.flatMap(j => [j.startDate, j.finishDate]).filter(Boolean) as string[];
+    const dates = jobs
+      .flatMap(j => [j.scheduledStartDate, j.expectedCompletionDate])
+      .filter((d): d is string => !!d);
     if (dates.length === 0) {
-      const today = new Date();
-      return { rangeStart: today, totalDays: 30 };
+      return { rangeStart: new Date(), totalDays: 30 };
     }
     const min = new Date(dates.reduce((a, b) => a < b ? a : b));
     const max = new Date(dates.reduce((a, b) => a > b ? a : b));
@@ -248,25 +249,22 @@ function TimelineView({ jobs }: { jobs: SchedulerJob[] }) {
     return { rangeStart: min, totalDays: days };
   }, [jobs]);
 
-  // Build header days
-  const headerDays = useMemo(() => {
-    return Array.from({ length: totalDays }, (_, i) => {
+  const headerDays = useMemo(() =>
+    Array.from({ length: totalDays }, (_, i) => {
       const d = new Date(rangeStart);
       d.setDate(d.getDate() + i);
       return d;
-    });
-  }, [rangeStart, totalDays]);
+    }),
+  [rangeStart, totalDays]);
 
-  // Today marker offset
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayOffset = Math.round((today.getTime() - rangeStart.getTime()) / 86400000);
 
   function barProps(job: SchedulerJob) {
-    if (!job.startDate || !job.finishDate) return null;
-    const start = new Date(job.startDate);
-    const finish = new Date(job.finishDate);
-    const left = Math.round((start.getTime() - rangeStart.getTime()) / 86400000);
+    if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
+    const start  = new Date(job.scheduledStartDate);
+    const finish = new Date(job.expectedCompletionDate);
+    const left  = Math.round((start.getTime()  - rangeStart.getTime()) / 86400000);
     const width = Math.max(1, Math.round((finish.getTime() - start.getTime()) / 86400000) + 1);
     return { left: left * DAY_WIDTH, width: width * DAY_WIDTH };
   }
@@ -283,16 +281,14 @@ function TimelineView({ jobs }: { jobs: SchedulerJob[] }) {
   return (
     <div className="overflow-x-auto" ref={scrollRef}>
       <div style={{ minWidth: totalDays * DAY_WIDTH + 200 }}>
-        {/* Header row */}
+        {/* Header */}
         <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-          {/* Job label column */}
           <div className="w-48 shrink-0 px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-r border-slate-200">
             Job
           </div>
-          {/* Day headers */}
           <div className="flex">
             {headerDays.map((d, i) => {
-              const isToday = d.toDateString() === new Date().toDateString();
+              const isToday      = d.toDateString() === new Date().toDateString();
               const isMonthStart = d.getDate() === 1;
               return (
                 <div
@@ -319,29 +315,23 @@ function TimelineView({ jobs }: { jobs: SchedulerJob[] }) {
           const bar = barProps(job);
           return (
             <div key={job.id} className="flex border-b border-slate-100 hover:bg-slate-50 transition-colors" style={{ height: 44 }}>
-              {/* Label */}
               <div className="w-48 shrink-0 px-3 flex items-center border-r border-slate-200 overflow-hidden">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 truncate">{job.name}</p>
                   {job.jobNumber && <p className="text-[10px] text-slate-400">#{job.jobNumber}</p>}
                 </div>
               </div>
-
-              {/* Bar area */}
               <div className="relative flex-1" style={{ width: totalDays * DAY_WIDTH }}>
-                {/* Today line */}
                 {todayOffset >= 0 && todayOffset < totalDays && (
                   <div
                     className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-60"
                     style={{ left: todayOffset * DAY_WIDTH + DAY_WIDTH / 2 }}
                   />
                 )}
-
-                {/* Gantt bar */}
                 {bar && (
                   <Link
                     to={`/jobs/${job.id}`}
-                    title={`${job.name} — ${fmt(job.startDate)} → ${fmt(job.finishDate)}`}
+                    title={`${job.name} — ${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}`}
                     className={`absolute top-2.5 h-5 rounded-md flex items-center px-2 text-white text-[10px] font-semibold truncate shadow-sm hover:brightness-110 transition-all ${barColor(job.status)}`}
                     style={{ left: bar.left, width: bar.width }}
                   >
@@ -366,7 +356,7 @@ function UnscheduledSection({ jobs }: { jobs: SchedulerJob[] }) {
       <div className="flex items-center gap-2 mb-3">
         <AlertTriangle size={15} className="text-amber-500" />
         <h3 className="text-sm font-semibold text-slate-700">Unscheduled Jobs ({jobs.length})</h3>
-        <span className="text-xs text-slate-400">— no start or finish date set</span>
+        <span className="text-xs text-slate-400">— open the job and set Scheduled Start + Expected Completion</span>
       </div>
       <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
         <div className="divide-y divide-amber-100">
@@ -378,8 +368,8 @@ function UnscheduledSection({ jobs }: { jobs: SchedulerJob[] }) {
                   <p className="text-sm font-semibold text-slate-800 truncate">{job.name}</p>
                   <div className="flex items-center gap-3 mt-0.5">
                     {job.jobNumber && <span className="text-xs text-slate-400">#{job.jobNumber}</span>}
-                    {job.client && <span className="text-xs text-slate-500">{job.client}</span>}
-                    {job.address && <span className="text-xs text-slate-400 truncate">{job.address}</span>}
+                    {job.client    && <span className="text-xs text-slate-500">{job.client}</span>}
+                    {job.address   && <span className="text-xs text-slate-400 truncate">{job.address}</span>}
                   </div>
                 </div>
                 <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${style.bg} ${style.color}`}>
@@ -404,14 +394,14 @@ function UnscheduledSection({ jobs }: { jobs: SchedulerJob[] }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SchedulerPage() {
-  const [jobs, setJobs] = useState<SchedulerJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [view, setView] = useState<ViewMode>('table');
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [jobs, setJobs]                   = useState<SchedulerJob[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState('');
+  const [view, setView]                   = useState<ViewMode>('table');
+  const [search, setSearch]               = useState('');
+  const [statusFilter, setStatusFilter]   = useState('All');
   const [supervisorFilter, setSupervisorFilter] = useState('All');
-  const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [dateRange, setDateRange]         = useState<DateRange>('all');
 
   useEffect(() => {
     fetch('/api/scheduler/jobs', { credentials: 'include' })
@@ -421,23 +411,23 @@ export default function SchedulerPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Supervisors list for filter
+  // Supervisor filter options — built from actual job data
   const supervisors = useMemo(() => {
     const names = jobs
-      .map(j => j.supervisorName ?? j.crewName)
+      .map(j => j.supervisorName ?? j.teamLabel)
       .filter((n): n is string => !!n);
-    return ['All', ...Array.from(new Set(names))];
+    return ['All', ...Array.from(new Set(names)).sort()];
   }, [jobs]);
 
-  // Split scheduled vs unscheduled
-  const scheduled = jobs.filter(j => j.startDate && j.finishDate);
-  const unscheduled = jobs.filter(j => !j.startDate || !j.finishDate);
+  // Split: scheduled = both dates set; unscheduled = either missing
+  const scheduled   = jobs.filter(isScheduled);
+  const unscheduled = jobs.filter(j => !isScheduled(j));
 
-  // Apply filters to scheduled jobs
+  // Apply filters to scheduled jobs only
   const filtered = scheduled.filter(job => {
     if (statusFilter !== 'All' && job.status !== statusFilter) return false;
     if (supervisorFilter !== 'All') {
-      const sup = job.supervisorName ?? job.crewName ?? '';
+      const sup = job.supervisorName ?? job.teamLabel ?? '';
       if (sup !== supervisorFilter) return false;
     }
     if (!isInRange(job, dateRange)) return false;
@@ -445,8 +435,8 @@ export default function SchedulerPage() {
       const q = search.toLowerCase();
       return (
         job.name.toLowerCase().includes(q) ||
-        (job.client ?? '').toLowerCase().includes(q) ||
-        (job.address ?? '').toLowerCase().includes(q) ||
+        (job.client    ?? '').toLowerCase().includes(q) ||
+        (job.address   ?? '').toLowerCase().includes(q) ||
         (job.jobNumber ?? '').toLowerCase().includes(q)
       );
     }
@@ -459,6 +449,7 @@ export default function SchedulerPage() {
         <title>Scheduler — IWILLBUILD</title>
         <meta name="description" content="View and manage job schedules, timelines and upcoming work." />
         <link rel="canonical" href="https://iwillbuild.com/scheduler" />
+        <meta name="robots" content="noindex" />
       </Helmet>
 
       <PortalSidebar />
@@ -472,7 +463,6 @@ export default function SchedulerPage() {
           <CalendarDays size={18} className="text-orange-500 shrink-0" />
           <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
           <div className="ml-auto flex items-center gap-2">
-            {/* View toggle */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setView('table')}
@@ -496,7 +486,6 @@ export default function SchedulerPage() {
 
         {/* Filters bar */}
         <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center gap-2 shrink-0">
-          {/* Search */}
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -508,7 +497,6 @@ export default function SchedulerPage() {
             />
           </div>
 
-          {/* Status */}
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -518,24 +506,24 @@ export default function SchedulerPage() {
             {JOB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          {/* Supervisor */}
           {supervisors.length > 1 && (
             <select
               value={supervisorFilter}
               onChange={e => setSupervisorFilter(e.target.value)}
               className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
             >
-              {supervisors.map(s => <option key={s} value={s}>{s === 'All' ? 'All supervisors' : s}</option>)}
+              {supervisors.map(s => (
+                <option key={s} value={s}>{s === 'All' ? 'All supervisors' : s}</option>
+              ))}
             </select>
           )}
 
-          {/* Date range */}
           <div className="flex items-center gap-1">
             {([
-              { id: 'week',   label: 'This week' },
-              { id: 'month',  label: 'This month' },
+              { id: 'week',   label: 'This week'    },
+              { id: 'month',  label: 'This month'   },
               { id: 'next30', label: 'Next 30 days' },
-              { id: 'all',    label: 'All' },
+              { id: 'all',    label: 'All'          },
             ] as { id: DateRange; label: string }[]).map(opt => (
               <button
                 key={opt.id}
@@ -551,7 +539,6 @@ export default function SchedulerPage() {
             ))}
           </div>
 
-          {/* Counts */}
           <div className="ml-auto text-xs text-slate-400">
             {filtered.length} scheduled · {unscheduled.length} unscheduled
           </div>
@@ -577,15 +564,12 @@ export default function SchedulerPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {/* Scheduled jobs */}
               <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 {view === 'table'
                   ? <TableView jobs={filtered} />
                   : <TimelineView jobs={filtered} />
                 }
               </div>
-
-              {/* Unscheduled jobs */}
               <UnscheduledSection jobs={unscheduled} />
             </motion.div>
           )}
