@@ -2444,6 +2444,15 @@ export default function SafetyPage() {
         <meta name="description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Safety — IWILLBUILD Portal" />
+        <meta property="og:description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/safety" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Safety — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

@@ -628,6 +628,15 @@ export default function TeamPage() {
         <meta name="description" content="Manage team members, roles and access for the IWILLBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/team" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Team — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage team members, roles and access for the IWILLBUILD portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/team" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Team — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage team members, roles and access for the IWILLBUILD portal." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 import { useCart } from '@/contexts/use-cart';
 import { clearFunnelSession, getCheckoutSnapshot, getStripeMode } from '@/lib/analytics/funnel-session';
@@ -270,6 +271,19 @@ export default function CheckoutSuccess() {
   // VERIFIED STATE - Payment confirmed! Show success
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <Helmet>
+        <title>Payment Successful — IWILLBUILD</title>
+        <meta name="description" content="Your payment was successful. Welcome to IWILLBUILD." />
+        <link rel="canonical" href="https://iwillbuild.com/checkout/success" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Payment Successful — IWILLBUILD" />
+        <meta property="og:description" content="Your payment was successful. Welcome to IWILLBUILD." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/checkout/success" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+      </Helmet>
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
         {/* Success Icon */}
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">

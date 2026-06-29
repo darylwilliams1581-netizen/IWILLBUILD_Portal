@@ -32,11 +32,9 @@ export interface SeoRoute {
 export const seoRoutes: SeoRoute[] = [
   // ── Public marketing pages ────────────────────────────────────────────────
   { path: "/",              changefreq: "weekly",  priority: 1.0 },
-  { path: "/login",         changefreq: "monthly", priority: 0.5 },
-  { path: "/signup",        changefreq: "monthly", priority: 0.7 },
+  { path: "/login",         changefreq: "monthly", priority: 0.6 },
+  { path: "/signup",        changefreq: "monthly", priority: 0.8 },
   { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
-  { path: "/privacy",       changefreq: "yearly",  priority: 0.3 },
-  { path: "/terms",         changefreq: "yearly",  priority: 0.3 },
   // ── Auth/utility pages — noindex in page Helmet, low priority here ────────
   // (kept so crawlers can discover them but they carry noindex meta tags)
   { path: "/check-email",   changefreq: "monthly", priority: 0.1 },

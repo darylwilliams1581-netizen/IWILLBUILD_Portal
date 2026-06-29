@@ -13,6 +13,7 @@
 import { useState, FormEvent, ReactElement } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { signIn, signUp, useSession } from '@/lib/auth/auth-client';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 const PROVIDER_CONFIG: Record<string, { name: string; icon: ReactElement; bg: string; hover: string }> = {
   google: {
@@ -157,10 +158,23 @@ export default function AuthPage({ mode, providers }: AuthPageProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+      <Helmet>
+        <title>Sign In — IWILLBUILD</title>
+        <meta name="description" content="Sign in to your IWILLBUILD Portal account." />
+        <link rel="canonical" href="https://iwillbuild.com/login" />
+        <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Sign In — IWILLBUILD" />
+        <meta property="og:description" content="Sign in to your IWILLBUILD Portal account." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/login" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+      </Helmet>
       <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center mb-2">
+        <h1 className="text-2xl font-bold text-center mb-2">
           {showEmail ? (isLogin ? 'Sign In' : 'Create Account') : 'Welcome'}
-        </h2>
+        </h1>
         {!showEmail && <p className="text-gray-600 text-center mb-6">Sign in to continue</p>}
 
         {error && (

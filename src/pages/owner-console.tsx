@@ -595,6 +595,15 @@ export default function OwnerConsolePage() {
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
+          <meta property="og:title" content="Owner Console — IWILLBUILD Portal" />
+          <meta property="og:description" content="Owner-only control room for managing companies, users, and activity." />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content="https://iwillbuild.com/owner-console" />
+          <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Owner Console — IWILLBUILD Portal" />
+          <meta name="twitter:description" content="Owner-only control room for managing companies, users, and activity." />
+          <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
         </Helmet>
 
         {/* Header */}

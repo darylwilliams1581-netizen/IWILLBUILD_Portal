@@ -171,6 +171,15 @@ export default function DashboardPage() {
         <meta name="description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
         <link rel="canonical" href="https://iwillbuild.com/dashboard" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Dashboard — IWILLBUILD Portal" />
+        <meta property="og:description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/dashboard" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Dashboard — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="IWILLBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

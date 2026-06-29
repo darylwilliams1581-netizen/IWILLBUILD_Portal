@@ -600,6 +600,15 @@ export default function DazzaAIPage() {
         <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/dazza-ai" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Dazza AI — IWILLBUILD Portal" />
+        <meta property="og:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/dazza-ai" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Dazza AI — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

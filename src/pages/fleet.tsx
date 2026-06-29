@@ -305,6 +305,15 @@ export default function FleetPage() {
         <meta name="description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/fleet" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Fleet — IWILLBUILD Portal" />
+        <meta property="og:description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/fleet" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Fleet — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

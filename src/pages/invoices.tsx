@@ -146,6 +146,15 @@ export default function InvoicesPage() {
         <meta name="description" content="Manage invoices linked to jobs and customers." />
         <link rel="canonical" href="https://iwillbuild.com/invoices" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Invoices — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage invoices linked to jobs and customers." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/invoices" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Invoices — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage invoices linked to jobs and customers." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

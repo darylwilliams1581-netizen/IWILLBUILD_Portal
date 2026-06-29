@@ -49,6 +49,15 @@ export default function DownloadsPage() {
         <meta name="description" content="Download Clean Blocks, templates and compliance documents from the IWILLBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/downloads" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Downloads — IWILLBUILD Portal" />
+        <meta property="og:description" content="Download Clean Blocks, templates and compliance documents from the IWILLBUILD portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/downloads" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Downloads — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Download Clean Blocks, templates and compliance documents from the IWILLBUILD portal." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

@@ -36,6 +36,15 @@ export default function FilesPage() {
         <meta name="description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
         <link rel="canonical" href="https://iwillbuild.com/files" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Files — IWILLBUILD Portal" />
+        <meta property="og:description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/files" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Files — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
       <PortalSidebar />
 

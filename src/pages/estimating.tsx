@@ -798,6 +798,15 @@ export default function EstimatingPage() {
         <meta name="description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
         <link rel="canonical" href="https://iwillbuild.com/estimating" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Estimating Library — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/estimating" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Estimating Library — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
       <PortalSidebar />
       <div className="portal-main">

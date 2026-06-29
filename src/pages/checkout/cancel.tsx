@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 import { clearFunnelSession, getCheckoutSnapshot } from '@/lib/analytics/funnel-session';
 import { track } from '@/lib/analytics/track';
@@ -29,6 +30,19 @@ export default function CheckoutCancel() {
   }, []);
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <Helmet>
+        <title>Checkout Cancelled — IWILLBUILD</title>
+        <meta name="description" content="Your checkout was cancelled. No payment was made." />
+        <link rel="canonical" href="https://iwillbuild.com/checkout/cancel" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Checkout Cancelled — IWILLBUILD" />
+        <meta property="og:description" content="Your checkout was cancelled. No payment was made." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/checkout/cancel" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+      </Helmet>
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
         {/* Cancel Icon */}
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">

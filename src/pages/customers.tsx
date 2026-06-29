@@ -318,6 +318,15 @@ export default function CustomersPage() {
         <meta name="description" content="Manage your customer register." />
         <link rel="canonical" href="https://iwillbuild.com/customers" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Customers — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage your customer register." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/customers" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Customers — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage your customer register." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />

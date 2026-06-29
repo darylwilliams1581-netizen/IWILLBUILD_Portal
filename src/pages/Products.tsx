@@ -21,6 +21,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 import { useCart } from '../contexts/use-cart';
 import { startTrackedCheckout } from '../lib/analytics/checkout';
@@ -161,6 +162,21 @@ export default function Products() {
 
   return (
     <>
+      <Helmet>
+        <title>Products — IWILLBUILD</title>
+        <meta name="description" content="Browse IWILLBUILD subscription plans and add-ons for your construction business." />
+        <link rel="canonical" href="https://iwillbuild.com/Products" />
+        <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Products — IWILLBUILD" />
+        <meta property="og:description" content="Browse IWILLBUILD subscription plans and add-ons." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/Products" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Products — IWILLBUILD" />
+        <meta name="twitter:description" content="Browse IWILLBUILD subscription plans and add-ons." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+      </Helmet>
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         {/* Cart Button - Links to /cart page */}
         {ENABLE_CART && (

@@ -277,10 +277,15 @@ export default function HomePage() {
         <meta property="og:description" content={ogDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${site}/`} />
+        <meta property="og:image" content={`${site}/og-image.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="IWILLBUILD" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={`${site}/og-image.png`} />
         {/* Structured data */}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>

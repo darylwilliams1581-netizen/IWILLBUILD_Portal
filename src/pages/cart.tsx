@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 import { useCart } from '@/contexts/use-cart';
 import { startTrackedCheckout } from '@/lib/analytics/checkout';
@@ -46,8 +47,20 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Cart — IWILLBUILD</title>
+        <meta name="description" content="Review your selected IWILLBUILD plans before checkout." />
+        <link rel="canonical" href="https://iwillbuild.com/cart" />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Cart — IWILLBUILD" />
+        <meta property="og:description" content="Review your selected IWILLBUILD plans before checkout." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/cart" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+      </Helmet>
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <Link
             to="/"
@@ -202,4 +215,3 @@ export default function CartPage() {
     </div>
   );
 }
-

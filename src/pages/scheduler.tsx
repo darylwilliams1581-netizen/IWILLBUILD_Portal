@@ -663,6 +663,15 @@ export default function SchedulerPage() {
         <meta name="description" content="View and manage job schedules, timelines and upcoming work." />
         <link rel="canonical" href="https://iwillbuild.com/scheduler" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Scheduler — IWILLBUILD" />
+        <meta property="og:description" content="View and manage job schedules, timelines and upcoming work." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/scheduler" />
+        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Scheduler — IWILLBUILD" />
+        <meta name="twitter:description" content="View and manage job schedules, timelines and upcoming work." />
+        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
       <PortalSidebar />
