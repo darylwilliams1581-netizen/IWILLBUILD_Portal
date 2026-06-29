@@ -205,11 +205,11 @@ function PortalMockup() {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
-  const title = 'IWILLBUILD | Construction Job Management Software Australia';
+  const title = 'IWILLBUILD | Construction Operations Software — Syncs to Xero, QuickBooks & MYOB';
   const description =
-    'IWILLBUILD helps builders and trade teams manage jobs, estimates, forms, photos, fleet prestarts, files and Dazza AI in one clean construction portal. Start a 30-day free trial.';
+    'IWILLBUILD is the construction operations layer for builders and trade teams. Manage jobs, estimates, forms, photos, fleet and safety — then sync approved invoices to Xero, QuickBooks or MYOB. 30-day free trial.';
   const ogDescription =
-    'Run construction jobs, estimates, forms, photos, fleet and files in one clean portal with Dazza AI.';
+    'Manage construction jobs, estimates, forms, photos and fleet. Sync invoices to Xero, QuickBooks or MYOB. Your accountant stays in their platform.';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -227,7 +227,7 @@ export default function HomePage() {
         url: `${site}/`,
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        description: 'Construction job management software for builders and field teams.',
+        description: 'Construction operations software for builders and trade teams. Manage jobs, estimates, forms, photos, fleet and safety. Syncs approved invoices and contacts to Xero, QuickBooks and MYOB.',
         offers: [
           {
             '@type': 'Offer',
@@ -376,7 +376,7 @@ export default function HomePage() {
               color: '#fff', margin: '0 0 20px',
             }}>
               <h1 style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit', color: 'inherit', margin: 0 }}>
-                Run your construction jobs, forms, photos, fleet and estimates in one clean portal.
+                The construction operations layer. Your accounting platform stays the ledger.
               </h1>
             </motion.div>
 
@@ -384,7 +384,7 @@ export default function HomePage() {
               color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
               margin: '0 0 32px', maxWidth: 600,
             }}>
-              IWILLBUILD is construction job management software for builders and trade teams. Keep job files organised, build estimates, complete forms, manage photos and files, track fleet prestarts and use Dazza AI to find what needs attention — all in one place.
+              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. When it's done, approved invoices and contacts sync straight to Xero, QuickBooks or MYOB. Your accountant never needs to touch the portal.
             </motion.p>
 
             <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -440,6 +440,35 @@ export default function HomePage() {
           ].map((t) => (
             <span key={t} style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>{t}</span>
           ))}
+        </div>
+      </div>
+
+      {/* ── Accounting sync strip ───────────────────────────────────────────── */}
+      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{
+          maxWidth: 1180, margin: '0 auto', padding: '20px 22px',
+          display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginRight: 8 }}>
+            Syncs approved invoices &amp; contacts to:
+          </span>
+          {[
+            { name: 'Xero', color: '#13B5EA', bg: '#e8f8fd' },
+            { name: 'QuickBooks', color: '#2CA01C', bg: '#edf7ec' },
+            { name: 'MYOB', color: '#6B21A8', bg: '#f3e8ff' },
+          ].map((p) => (
+            <span key={p.name} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: p.bg, border: `1px solid ${p.color}30`,
+              borderRadius: 20, padding: '5px 14px',
+              fontSize: 13, fontWeight: 700, color: p.color,
+            }}>
+              {p.name}
+            </span>
+          ))}
+          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>
+            — your accountant stays in their platform
+          </span>
         </div>
       </div>
 
