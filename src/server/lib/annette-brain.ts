@@ -502,7 +502,48 @@ export async function processDazzaQuestion(
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
       console.error('[annette-brain] OpenAI error:', openaiRes.status, errText);
-      // Fall back to internal answer if available
+
+      // ── 429 Rate limit / quota exceeded ──────────────────────────────────
+      if (openaiRes.status === 429) {
+        // If we have portal data, return it with a note that AI reasoning is unavailable
+        if (internalAnswer) {
+          const fallback: InternalDazzaAnswer = {
+            reply: '',
+            source: internalSource ?? 'portal_data',
+            modulesUsed,
+            confidence: 'Medium',
+            confidenceReason: 'AI reasoning temporarily unavailable (rate limit) — portal data only',
+            conflictDetected: false,
+            hasVerificationReminder: needsVerificationReminder(question),
+            hiveCandidate: false,
+            localTool: internalSource === 'local_tool',
+            tokens: 0,
+            portalDataSection: internalSource === 'portal_data' ? internalAnswer : undefined,
+            aiReasoningSection: internalSource === 'local_tool' ? internalAnswer : undefined,
+          };
+          fallback.reply = formatDazzaAnswer(fallback);
+          return fallback;
+        }
+        // No portal data either — return a clean user-facing message, not a 500
+        const rateLimitAnswer: InternalDazzaAnswer = {
+          reply: [
+            `🧠 AI reasoning:\nDazza's AI is temporarily unavailable due to a rate limit on the OpenAI API. This usually resolves within a minute — please try again shortly.`,
+            `📦 Source modules:\nNo portal data used.`,
+            `📊 Confidence:\nLow — AI unavailable.`,
+          ].join('\n\n'),
+          source: 'no_key',
+          modulesUsed: [],
+          confidence: 'Low',
+          conflictDetected: false,
+          hasVerificationReminder: false,
+          hiveCandidate: false,
+          localTool: false,
+          tokens: 0,
+        };
+        return rateLimitAnswer;
+      }
+
+      // ── Other OpenAI errors — fall back to internal answer if available ──
       if (internalAnswer) {
         const fallback: InternalDazzaAnswer = {
           reply: '',
@@ -531,6 +572,26 @@ export async function processDazzaQuestion(
     openaiReply = data.choices?.[0]?.message?.content ?? '';
     tokens = data.usage?.total_tokens ?? 0;
   } catch (e) {
+    const errMsg = String((e as Error)?.message ?? e);
+    // 429 rate limit — never surface as a 500
+    if (errMsg.includes('429')) {
+      const rateLimitAnswer: InternalDazzaAnswer = {
+        reply: [
+          `🧠 AI reasoning:\nDazza's AI is temporarily unavailable due to a rate limit on the OpenAI API. This usually resolves within a minute — please try again shortly.`,
+          `📦 Source modules:\nNo portal data used.`,
+          `📊 Confidence:\nLow — AI unavailable.`,
+        ].join('\n\n'),
+        source: 'no_key',
+        modulesUsed: [],
+        confidence: 'Low',
+        conflictDetected: false,
+        hasVerificationReminder: false,
+        hiveCandidate: false,
+        localTool: false,
+        tokens: 0,
+      };
+      return rateLimitAnswer;
+    }
     if (internalAnswer) {
       const fallback: InternalDazzaAnswer = {
         reply: '',

@@ -818,6 +818,19 @@
       "summary": "Screenshot of a settings panel showing header/footer text configuration and disclaimer fields. User is referencing this as an example of existing business detail settings, seeking clarification on similar functionality for their site.",
       "fileName": "screenshot-2026-06-29T14-36-38.jpg",
       "storedUploadFilename": "f38wenbvln_1782743800211_file_FZQwukV8ul.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a chat interface showing a conversation with an AI assistant and an HTTP 500 error message. User is inspecting an OpenAI API issue for reference/troubleshooting purposes.",
+      "fileName": "screenshot-2026-06-29T14-47-18.jpg",
+      "storedUploadFilename": "f38wenbvln_1782744440200_file_jBcVEPFRC_.jpg"
     }
   ]
 }
