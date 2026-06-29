@@ -668,6 +668,7 @@ function SwmsLibraryTab() {
   const [duplicating, setDuplicating] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const [printing, setPrinting] = useState<SwmsTemplate | null>(null);
 
   useEffect(() => {
     fetch('/api/safety/swms', { credentials: 'include' })
@@ -796,6 +797,9 @@ function SwmsLibraryTab() {
                 <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Duplicate">
                   {duplicating === s.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                 </button>
+                <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
+                  <Printer size={14} />
+                </button>
                 <a href={`/api/safety/swms/${s.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
                   <FileDown size={14} />
                 </a>
@@ -825,6 +829,7 @@ function SwmsLibraryTab() {
             }}
           />
         )}
+        {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
       </AnimatePresence>
     </div>
   );
@@ -1621,11 +1626,791 @@ function DazzaAiTab() {
   );
 }
 
-// ── Main Safety Page ──────────────────────────────────────────────────────────
+// ── SWMS Print Modal ──────────────────────────────────────────────────────────
+
+interface SwmsPrintData {
+  title: string;
+  work_activity?: string | null;
+  revision_number?: string;
+  review_date?: string | null;
+  status?: string;
+  hazards?: string | null;
+  risks?: string | null;
+  controls?: string | null;
+  ppe?: string | null;
+  plant_equipment?: string | null;
+  training_competency?: string | null;
+  emergency_controls?: string | null;
+  environmental_controls?: string | null;
+  sign_off_requirements?: string | null;
+  permits_approvals?: string | null;
+  monitoring_review?: string | null;
+  notes?: string | null;
+  // job context (optional)
+  job_name?: string | null;
+  job_number?: string | null;
+  client_name?: string | null;
+  job_site_address?: string | null;
+  supervisor?: string | null;
+}
+
+function nl2bullets(text: string | null | undefined) {
+  if (!text?.trim()) return null;
+  const lines = text.split('\n').map((l) => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+  return lines;
+}
+
+function PrintSection({ title, content }: { title: string; content: string | null | undefined }) {
+  const bullets = nl2bullets(content);
+  if (!bullets) return null;
+  return (
+    <div className="mb-4">
+      <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 border-b border-slate-200 pb-1 mb-2">{title}</h3>
+      <ul className="list-none space-y-0.5">
+        {bullets.map((b, i) => (
+          <li key={i} className="text-xs text-slate-700 flex gap-2">
+            <span className="text-slate-400 shrink-0 mt-0.5">•</span>
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SwmsPrintModal({ swms, onClose }: { swms: SwmsPrintData; onClose: () => void }) {
+  const printRef = useRef<HTMLDivElement>(null);
+
+  function handlePrint() {
+    const content = printRef.current;
+    if (!content) return;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <title>SWMS — ${swms.title}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 20mm 18mm; }
+        .print-root { max-width: 100%; }
+        .header-bar { background: #0f172a; color: #fff; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-bar h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+        .header-bar .sub { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+        .header-bar .badge { background: #f97316; color: #fff; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+        .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+        .meta-cell { border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px; }
+        .meta-cell .label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 2px; }
+        .meta-cell .value { font-size: 11px; font-weight: 600; color: #1e293b; }
+        .section-title { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px; margin-top: 14px; }
+        ul.bullets { list-style: none; padding: 0; }
+        ul.bullets li { display: flex; gap: 6px; margin-bottom: 3px; font-size: 10.5px; color: #334155; }
+        ul.bullets li::before { content: "•"; color: #94a3b8; flex-shrink: 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .divider { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+        .sign-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .sign-table th { background: #f8fafc; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; padding: 6px 8px; border: 1px solid #e2e8f0; text-align: left; }
+        .sign-table td { border: 1px solid #e2e8f0; padding: 0; height: 28px; }
+        .disclaimer { margin-top: 16px; background: #fef9f0; border: 1px solid #fed7aa; border-radius: 4px; padding: 10px 12px; }
+        .disclaimer p { font-size: 9px; color: #92400e; line-height: 1.5; }
+        .disclaimer strong { font-weight: 700; }
+        .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+        @media print { body { padding: 10mm 12mm; } @page { margin: 10mm; } }
+      </style>
+    </head><body><div class="print-root">${content.innerHTML}</div></body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  }
+
+  const today = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.15 }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col"
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-slate-100 rounded-md"><Printer size={15} className="text-slate-600" /></div>
+            <div>
+              <h2 className="font-heading font-bold text-sm">Print Preview</h2>
+              <p className="text-xs text-slate-400">{swms.title}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrint} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+              <Printer size={14} />Print / Save PDF
+            </button>
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          </div>
+        </div>
+
+        {/* Scrollable preview */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div ref={printRef} className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-3xl mx-auto text-[11px] leading-relaxed">
+
+            {/* Header bar */}
+            <div className="bg-slate-900 text-white rounded-lg px-5 py-4 flex justify-between items-start mb-5">
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Safe Work Method Statement</div>
+                <h1 className="text-base font-extrabold leading-tight">{swms.title}</h1>
+                {swms.work_activity && <p className="text-[10px] text-slate-300 mt-1">{swms.work_activity}</p>}
+              </div>
+              <span className="bg-primary text-white text-[9px] font-bold px-2.5 py-1 rounded-full shrink-0 ml-4">
+                {(swms.status ?? 'draft').toUpperCase()}
+              </span>
+            </div>
+
+            {/* Meta grid */}
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {[
+                ['Revision', `Rev ${swms.revision_number ?? '1'}`],
+                ['Review Date', swms.review_date ? fmtDate(swms.review_date) : '—'],
+                ['Print Date', today],
+                ...(swms.job_number ? [['Job No.', swms.job_number]] : []),
+                ...(swms.job_name ? [['Job', swms.job_name]] : []),
+                ...(swms.client_name ? [['Client', swms.client_name]] : []),
+                ...(swms.job_site_address ? [['Site Address', swms.job_site_address]] : []),
+                ...(swms.supervisor ? [['Supervisor', swms.supervisor]] : []),
+              ].map(([label, value]) => (
+                <div key={label} className="border border-slate-200 rounded-lg px-3 py-2">
+                  <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</div>
+                  <div className="text-[11px] font-semibold text-slate-800">{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <hr className="border-slate-200 mb-4" />
+
+            {/* Two-column hazard/risk/controls */}
+            <div className="grid grid-cols-2 gap-5 mb-4">
+              <PrintSection title="Hazards Identified" content={swms.hazards} />
+              <PrintSection title="Risks" content={swms.risks} />
+            </div>
+            <PrintSection title="Control Measures / Risk Mitigation" content={swms.controls} />
+
+            <hr className="border-slate-200 my-4" />
+
+            <div className="grid grid-cols-2 gap-5">
+              <PrintSection title="PPE Required" content={swms.ppe} />
+              <PrintSection title="Plant & Equipment" content={swms.plant_equipment} />
+              <PrintSection title="Training & Competency" content={swms.training_competency} />
+              <PrintSection title="Sign-off Requirements" content={swms.sign_off_requirements} />
+              <PrintSection title="Emergency Controls" content={swms.emergency_controls} />
+              <PrintSection title="Environmental Controls" content={swms.environmental_controls} />
+              {swms.permits_approvals && <PrintSection title="Permits & Approvals" content={swms.permits_approvals} />}
+              {swms.monitoring_review && <PrintSection title="Monitoring & Review" content={swms.monitoring_review} />}
+              {swms.notes && <PrintSection title="Notes" content={swms.notes} />}
+            </div>
+
+            <hr className="border-slate-200 my-5" />
+
+            {/* Sign-on register */}
+            <div className="mb-5">
+              <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-200 pb-1.5 mb-3">
+                Worker Sign-On Register
+              </h3>
+              <p className="text-[9px] text-slate-500 mb-3">
+                All workers must read and understand this SWMS before commencing work. By signing below, you confirm you have read, understood, and agree to comply with all controls listed in this document.
+              </p>
+              <table className="w-full border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-slate-50">
+                    {['#', 'Full Name', 'Company / Trade', 'Date', 'Signature'].map((h) => (
+                      <th key={h} className="border border-slate-200 px-2 py-1.5 text-left text-[8px] font-bold uppercase tracking-wide text-slate-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="border border-slate-200 px-2 py-0 h-7 text-slate-400 text-[9px] w-6">{i + 1}</td>
+                      <td className="border border-slate-200 px-2 py-0 h-7 w-40" />
+                      <td className="border border-slate-200 px-2 py-0 h-7 w-32" />
+                      <td className="border border-slate-200 px-2 py-0 h-7 w-20" />
+                      <td className="border border-slate-200 px-2 py-0 h-7 w-36" />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+              <p className="text-[9px] text-amber-800 leading-relaxed">
+                <strong>Disclaimer:</strong> This Safe Work Method Statement has been prepared to assist in managing workplace health and safety risks associated with the described work activity. It is the responsibility of the principal contractor, site supervisor, and all workers to ensure this document is reviewed, understood, and followed at all times. This document must be reviewed and updated whenever there is a change in work conditions, personnel, equipment, or legislation. Compliance with this SWMS does not guarantee the elimination of all risks — workers must remain vigilant and report any new hazards immediately to their supervisor. This document does not replace the need for site-specific risk assessments or compliance with applicable WHS legislation, codes of practice, and Australian Standards.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-200 pt-3">
+              <span>IWILLBUILD Portal — Safety Management System</span>
+              <span>Rev {swms.revision_number ?? '1'} · Printed {today}</span>
+            </div>
+
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Job SWMS Tab ───────────────────────────────────────────────────────────────
+
+interface JobSwms {
+  id: number;
+  job_id: number;
+  template_id: number | null;
+  title: string;
+  work_activity: string | null;
+  hazards: string | null;
+  risks: string | null;
+  controls: string | null;
+  ppe: string | null;
+  plant_equipment: string | null;
+  training_competency: string | null;
+  emergency_controls: string | null;
+  environmental_controls: string | null;
+  sign_off_requirements: string | null;
+  permits_approvals: string | null;
+  monitoring_review: string | null;
+  notes: string | null;
+  revision_number: string;
+  review_date: string | null;
+  status: string;
+  reviewed_at: string | null;
+  approved_at: string | null;
+  job_name: string | null;
+  job_number: string | null;
+  client_name: string | null;
+  job_site_address: string | null;
+  supervisor: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function JobSwmsEditModal({ initial, onClose, onSaved }: {
+  initial: JobSwms;
+  onClose: () => void;
+  onSaved: (updated: JobSwms) => void;
+}) {
+  const [form, setForm] = useState({
+    title: initial.title ?? '',
+    workActivity: initial.work_activity ?? '',
+    hazards: initial.hazards ?? '',
+    risks: initial.risks ?? '',
+    controls: initial.controls ?? '',
+    ppe: initial.ppe ?? '',
+    plantEquipment: initial.plant_equipment ?? '',
+    trainingCompetency: initial.training_competency ?? '',
+    emergencyControls: initial.emergency_controls ?? '',
+    environmentalControls: initial.environmental_controls ?? '',
+    signOffRequirements: initial.sign_off_requirements ?? '',
+    permitsApprovals: initial.permits_approvals ?? '',
+    monitoringReview: initial.monitoring_review ?? '',
+    notes: initial.notes ?? '',
+    revisionNumber: initial.revision_number ?? '1',
+    reviewDate: initial.review_date?.slice(0, 10) ?? '',
+    status: initial.status ?? 'draft',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    setSaving(true); setError('');
+    try {
+      const r = await fetch(`/api/safety/job-swms/${initial.id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
+      onSaved(d.jobSwms);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const labelCls = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5';
+  const inputCls = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
+  const textareaCls = `${inputCls} resize-y`;
+  const sectionHeadCls = 'flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-1';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[95vh] sm:max-h-[92vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-orange-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
+            <div>
+              <h2 className="font-heading font-bold text-base leading-tight">Edit Job SWMS</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{initial.job_name ?? `Job #${initial.job_id}`}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 flex flex-col gap-6">
+
+            <div>
+              <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Identity<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-3">
+                  <label className={labelCls}>Title <span className="text-red-500">*</span></label>
+                  <input value={form.title} onChange={(e) => set('title', e.target.value)} className={inputCls} autoFocus />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className={labelCls}>Work Activity</label>
+                  <input value={form.workActivity} onChange={(e) => set('workActivity', e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Revision No.</label>
+                  <input value={form.revisionNumber} onChange={(e) => set('revisionNumber', e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Review Date</label>
+                  <input type="date" value={form.reviewDate} onChange={(e) => set('reviewDate', e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Status</label>
+                  <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputCls}>
+                    {JOB_SWMS_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Hazard &amp; Risk<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Hazards</label>
+                  <textarea value={form.hazards} onChange={(e) => set('hazards', e.target.value)} rows={6} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Risks</label>
+                  <textarea value={form.risks} onChange={(e) => set('risks', e.target.value)} rows={6} className={textareaCls} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Controls / Risk Mitigation</label>
+                  <textarea value={form.controls} onChange={(e) => set('controls', e.target.value)} rows={7} className={textareaCls} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Requirements<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>PPE Required</label>
+                  <textarea value={form.ppe} onChange={(e) => set('ppe', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Plant &amp; Equipment</label>
+                  <textarea value={form.plantEquipment} onChange={(e) => set('plantEquipment', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Training &amp; Competency</label>
+                  <textarea value={form.trainingCompetency} onChange={(e) => set('trainingCompetency', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Sign-off Requirements</label>
+                  <textarea value={form.signOffRequirements} onChange={(e) => set('signOffRequirements', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Permits &amp; Approvals</label>
+                  <textarea value={form.permitsApprovals} onChange={(e) => set('permitsApprovals', e.target.value)} rows={4} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Monitoring &amp; Review</label>
+                  <textarea value={form.monitoringReview} onChange={(e) => set('monitoringReview', e.target.value)} rows={4} className={textareaCls} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Response &amp; Environment<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Emergency Controls</label>
+                  <textarea value={form.emergencyControls} onChange={(e) => set('emergencyControls', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Environmental Controls</label>
+                  <textarea value={form.environmentalControls} onChange={(e) => set('environmentalControls', e.target.value)} rows={5} className={textareaCls} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Notes</label>
+                  <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={3} className={textareaCls} />
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="px-6 pb-6 flex flex-col gap-3">
+            {error && (
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+                <AlertCircle size={14} className="shrink-0" />{error}
+              </div>
+            )}
+            <div className="flex gap-3 pt-2 border-t border-slate-100">
+              <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Add-from-template picker ───────────────────────────────────────────────────
+
+interface Job { id: number; name: string; job_number: string | null; }
+
+function AddJobSwmsModal({ onClose, onAdded }: {
+  onClose: () => void;
+  onAdded: (items: JobSwms[]) => void;
+}) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [templates, setTemplates] = useState<SwmsTemplate[]>([]);
+  const [selectedJob, setSelectedJob] = useState<number | null>(null);
+  const [selectedTpls, setSelectedTpls] = useState<Set<number>>(new Set());
+  const [jobSearch, setJobSearch] = useState('');
+  const [tplSearch, setTplSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/jobs', { credentials: 'include' }).then((r) => r.json()),
+      fetch('/api/safety/swms', { credentials: 'include' }).then((r) => r.json()),
+    ]).then(([jd, sd]) => {
+      setJobs(jd.jobs ?? []);
+      setTemplates((sd.swms ?? []).filter((s: SwmsTemplate) => s.status !== 'archived'));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const filteredJobs = jobs.filter((j) =>
+    !jobSearch || j.name.toLowerCase().includes(jobSearch.toLowerCase()) ||
+    (j.job_number ?? '').toLowerCase().includes(jobSearch.toLowerCase())
+  );
+  const filteredTpls = templates.filter((t) =>
+    !tplSearch || t.title.toLowerCase().includes(tplSearch.toLowerCase())
+  );
+
+  function toggleTpl(id: number) {
+    setSelectedTpls((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleAdd() {
+    if (!selectedJob) { setError('Select a job first'); return; }
+    if (selectedTpls.size === 0) { setError('Select at least one SWMS template'); return; }
+    setSaving(true); setError('');
+    try {
+      const r = await fetch('/api/safety/job-swms', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: selectedJob, templateIds: Array.from(selectedTpls) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
+      onAdded(d.jobSwms ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-orange-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
+            <div>
+              <h2 className="font-heading font-bold text-base">Add SWMS to Job</h2>
+              <p className="text-xs text-slate-400">Select a job and one or more templates</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+          {loading && <div className="flex items-center justify-center py-10"><Loader2 size={20} className="animate-spin text-primary" /></div>}
+
+          {!loading && (
+            <>
+              {/* Job picker */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Select Job</label>
+                <div className="relative mb-2">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={jobSearch} onChange={(e) => setJobSearch(e.target.value)} placeholder="Search jobs…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                </div>
+                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-44 overflow-y-auto">
+                  {filteredJobs.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No jobs found</p>}
+                  {filteredJobs.map((j) => (
+                    <button
+                      key={j.id}
+                      onClick={() => setSelectedJob(j.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedJob === j.id ? 'bg-orange-50 text-primary font-semibold' : 'hover:bg-slate-50 text-slate-700'}`}
+                    >
+                      {selectedJob === j.id ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
+                      <span className="flex-1 truncate">{j.name}</span>
+                      {j.job_number && <span className="text-xs text-slate-400 shrink-0">{j.job_number}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Template picker */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Select Templates</label>
+                  {selectedTpls.size > 0 && <span className="text-xs font-semibold text-primary">{selectedTpls.size} selected</span>}
+                </div>
+                <div className="relative mb-2">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                </div>
+                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                  {filteredTpls.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No templates found — create some in the SWMS Library first</p>}
+                  {filteredTpls.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => toggleTpl(t.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedTpls.has(t.id) ? 'bg-orange-50' : 'hover:bg-slate-50'}`}
+                    >
+                      {selectedTpls.has(t.id) ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
+                      <span className="flex-1 truncate font-medium text-slate-800">{t.title}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+              <AlertCircle size={14} className="shrink-0" />{error}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 pb-6 flex gap-3 border-t border-slate-100 pt-4">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+          <button onClick={handleAdd} disabled={saving || !selectedJob || selectedTpls.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Add {selectedTpls.size > 0 ? `${selectedTpls.size} SWMS` : 'SWMS'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function JobSwmsTab() {
+  const [list, setList] = useState<JobSwms[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<JobSwms | null>(null);
+  const [printing, setPrinting] = useState<JobSwms | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch('/api/safety/job-swms', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setList(d.jobSwms ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleDelete(id: number, title: string) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeleting(id);
+    try {
+      const r = await fetch(`/api/safety/job-swms/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (r.ok) setList((prev) => prev.filter((j) => j.id !== id));
+      else { const d = await r.json(); alert(d.error ?? 'Failed to delete'); }
+    } finally { setDeleting(null); }
+  }
+
+  async function handleStatusChange(item: JobSwms, newStatus: string) {
+    const r = await fetch(`/api/safety/job-swms/${item.id}`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...item, workActivity: item.work_activity, plantEquipment: item.plant_equipment, trainingCompetency: item.training_competency, emergencyControls: item.emergency_controls, environmentalControls: item.environmental_controls, signOffRequirements: item.sign_off_requirements, permitsApprovals: item.permits_approvals, monitoringReview: item.monitoring_review, revisionNumber: item.revision_number, reviewDate: item.review_date, status: newStatus }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setList((prev) => prev.map((j) => j.id === item.id ? d.jobSwms : j));
+    }
+  }
+
+  const filtered = list.filter((j) => {
+    const matchSearch = !search ||
+      j.title.toLowerCase().includes(search.toLowerCase()) ||
+      (j.job_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (j.job_number ?? '').toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || j.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const statusCounts = list.reduce((acc, j) => { acc[j.status] = (acc[j.status] ?? 0) + 1; return acc; }, {} as Record<string, number>);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title or job…" className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+        </div>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <option value="all">All statuses</option>
+          {JOB_SWMS_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)} {statusCounts[s] ? `(${statusCounts[s]})` : ''}</option>)}
+        </select>
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors shrink-0">
+          <Plus size={15} />Add SWMS to Job
+        </button>
+      </div>
+
+      {/* Status summary chips */}
+      {list.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {(['draft', 'reviewed', 'approved'] as const).map((s) => (
+            <button key={s} onClick={() => setStatusFilter(statusFilter === s ? 'all' : s)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${statusFilter === s ? 'bg-slate-900 text-white border-slate-900' : `${statusBadge(s)} hover:opacity-80`}`}>
+              {statusCounts[s] ?? 0} {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading && <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>}
+
+      {!loading && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><HardHat size={24} className="text-primary" /></div>
+          <p className="font-heading font-bold text-slate-700 mb-1">No job SWMS yet</p>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Assign SWMS templates to specific jobs. Workers sign on before starting work.</p>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+            <Plus size={15} />Add SWMS to Job
+          </button>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {filtered.map((j) => (
+            <div key={j.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between gap-3 hover:border-slate-300 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(j.status)}`}>
+                    {j.status.charAt(0).toUpperCase() + j.status.slice(1)}
+                  </span>
+                  <span className="text-xs text-slate-400">Rev {j.revision_number}</span>
+                  {j.review_date && <span className="text-xs text-slate-400">Review: {fmtDate(j.review_date)}</span>}
+                  {j.approved_at && <span className="text-xs text-emerald-600 font-semibold">Approved {fmtDate(j.approved_at)}</span>}
+                </div>
+                <h3 className="font-bold text-sm text-slate-800 truncate">{j.title}</h3>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  {j.job_name && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Building2 size={11} className="text-slate-400" />
+                      {j.job_name}{j.job_number ? ` · ${j.job_number}` : ''}
+                    </span>
+                  )}
+                  {j.client_name && <span className="text-xs text-slate-400">{j.client_name}</span>}
+                  {j.job_site_address && <span className="text-xs text-slate-400 truncate max-w-xs">{j.job_site_address}</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Quick status advance */}
+                {j.status === 'draft' && (
+                  <button onClick={() => handleStatusChange(j, 'reviewed')} className="px-2 py-1 rounded-md text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors" title="Mark as Reviewed">
+                    Review
+                  </button>
+                )}
+                {j.status === 'reviewed' && (
+                  <button onClick={() => handleStatusChange(j, 'approved')} className="px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors" title="Mark as Approved">
+                    Approve
+                  </button>
+                )}
+                <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
+                  <Printer size={14} />
+                </button>
+                <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                  <Wand2 size={14} />
+                </button>
+                <button onClick={() => handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                  {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showAdd && <AddJobSwmsModal onClose={() => setShowAdd(false)} onAdded={(items) => { setList((prev) => [...items, ...prev]); setShowAdd(false); }} />}
+        {editing && <JobSwmsEditModal initial={editing} onClose={() => setEditing(null)} onSaved={(updated) => { setList((prev) => prev.map((j) => j.id === updated.id ? updated : j)); setEditing(null); }} />}
+        {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard',   icon: ShieldCheck },
+  { id: 'dashboard', label: 'Dashboard',    icon: ShieldCheck },
   { id: 'swms',      label: 'SWMS Library', icon: ShieldAlert },
+  { id: 'jobswms',   label: 'Job SWMS',     icon: HardHat },
   { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
   { id: 'policies',  label: 'Policies',     icon: BookOpen },
   { id: 'posters',   label: 'Posters',      icon: Image },
@@ -1699,6 +2484,7 @@ export default function SafetyPage() {
           >
             {activeTab === 'dashboard' && <SafetyDashboardTab />}
             {activeTab === 'swms'      && <SwmsLibraryTab />}
+            {activeTab === 'jobswms'   && <JobSwmsTab />}
             {activeTab === 'plans'     && <SafetyPlansTab />}
             {activeTab === 'policies'  && <PoliciesTab />}
             {activeTab === 'posters'   && <PostersTab />}
