@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -41,6 +42,11 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasTrustedDevice, setHasTrustedDevice] = useState(false);
+
+  // 2FA challenge state
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [tfaToken, setTfaToken] = useState('');
+  const [tfaLoading, setTfaLoading] = useState(false);
 
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
@@ -145,6 +151,14 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+      // Check if 2FA is required
+      const tfaRes = await fetch('/api/me/2fa/status', { credentials: 'include' });
+      const tfaData = await tfaRes.json() as { enabled?: boolean };
+      if (tfaData.enabled) {
+        setLoading(false);
+        setNeeds2FA(true);
+        return;
+      }
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
       authLog('redirect', { to: from });
       navigate(from, { replace: true });
@@ -193,6 +207,25 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handle2FA(e: React.FormEvent) {
+    e.preventDefault();
+    if (tfaToken.length !== 6) { setError('Enter the 6-digit code from your authenticator app.'); return; }
+    setError(''); setTfaLoading(true);
+    try {
+      const res = await fetch('/api/me/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ token: tfaToken }),
+      });
+      const d = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code. Please try again.'); return; }
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch { setError('Something went wrong. Please try again.'); }
+    finally { setTfaLoading(false); }
   }
 
   return (
@@ -249,7 +282,7 @@ export default function LoginPage() {
           </div>
 
           {/* Mode tabs (only show PIN tab if trusted device exists) */}
-          {hasTrustedDevice && (
+          {hasTrustedDevice && !needs2FA && (
             <div className="flex border-b border-white/10">
               <button
                 onClick={() => { setMode('password'); setError(''); }}
@@ -276,7 +309,66 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* 2FA Challenge */}
+          {needs2FA && (
+            <div className="px-8 py-8">
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-12 h-12 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-center justify-center mb-3">
+                  <ShieldCheck size={22} className="text-primary" />
+                </div>
+                <h2 className="text-white font-bold text-base">Two-Factor Authentication</h2>
+                <p className="text-white/40 text-xs mt-1 text-center">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
+                  <AlertCircle size={13} className="shrink-0" />{error}
+                </div>
+              )}
+
+              <form onSubmit={handle2FA} className="flex flex-col items-center gap-5">
+                <InputOTP
+                  maxLength={6}
+                  value={tfaToken}
+                  onChange={setTfaToken}
+                  autoFocus
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+
+                <button
+                  type="submit"
+                  disabled={tfaLoading || tfaToken.length !== 6}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {tfaLoading
+                    ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</>
+                    : <><ShieldCheck size={15} />Verify Code</>
+                  }
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setNeeds2FA(false); setTfaToken(''); setError(''); }}
+                  className="text-xs text-white/30 hover:text-white/50 transition-colors"
+                >
+                  Back to login
+                </button>
+              </form>
+            </div>
+          )}
+
           {/* Form */}
+          {!needs2FA && (
           <AnimatePresence mode="wait">
             {mode === 'password' ? (
               <motion.form
@@ -529,6 +621,7 @@ export default function LoginPage() {
               </motion.form>
             )}
           </AnimatePresence>
+          )} {/* end !needs2FA */}
 
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">

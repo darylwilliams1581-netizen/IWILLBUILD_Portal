@@ -149,6 +149,11 @@ import me_get_140 from "./api/me/GET";
 import me_put_141 from "./api/me/PUT";
 import me_change_password_post_142 from "./api/me/change-password/POST";
 import me_email_status_get_143 from "./api/me/email-status/GET";
+import me_2fa_status_get from "./api/me/2fa/status/GET";
+import me_2fa_setup_get from "./api/me/2fa/setup/GET";
+import me_2fa_enable_post from "./api/me/2fa/enable/POST";
+import me_2fa_disable_post from "./api/me/2fa/disable/POST";
+import me_2fa_verify_post from "./api/me/2fa/verify/POST";
 import migrate_account_recovery_post_144 from "./api/migrate-account-recovery/POST";
 import migrate_company_settings_post_145 from "./api/migrate-company-settings/POST";
 import migrate_dazza_audit_post_146 from "./api/migrate-dazza-audit/POST";
@@ -522,6 +527,9 @@ async function runStartupMigrations() {
     { table: 'profiles', column: 'perm_invoices', definition: "TINYINT(1) NOT NULL DEFAULT 1" },
     // ── customers: Xero contact ID ────────────────────────────────────────────
     { table: 'customers', column: 'xero_contact_id', definition: "VARCHAR(100) NULL" },
+    // ── user: TOTP 2FA ────────────────────────────────────────────────────────
+    { table: 'user', column: 'totp_secret',        definition: 'VARCHAR(64) NULL' },
+    { table: 'user', column: 'two_factor_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -858,6 +866,11 @@ app.get("/api/me", me_get_140);
 app.put("/api/me", me_put_141);
 app.post("/api/me/change-password", me_change_password_post_142);
 app.get("/api/me/email-status", me_email_status_get_143);
+app.get("/api/me/2fa/status", me_2fa_status_get);
+app.get("/api/me/2fa/setup", me_2fa_setup_get);
+app.post("/api/me/2fa/enable", me_2fa_enable_post);
+app.post("/api/me/2fa/disable", me_2fa_disable_post);
+app.post("/api/me/2fa/verify", me_2fa_verify_post);
 app.post("/api/migrate-account-recovery", migrate_account_recovery_post_144);
 app.post("/api/migrate-company-settings", migrate_company_settings_post_145);
 app.post("/api/migrate-dazza-audit", migrate_dazza_audit_post_146);

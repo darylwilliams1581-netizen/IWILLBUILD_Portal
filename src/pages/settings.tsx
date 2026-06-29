@@ -28,6 +28,7 @@ import {
   Factory,
   Plug,
   Receipt,
+  ShieldCheck,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe, usePermissions } from '@/lib/usePermissions';
@@ -41,9 +42,11 @@ import PdfStyleTab from '@/components/settings/PdfStyleTab';
 import DataBackupTab from '@/components/settings/DataBackupTab';
 import IntegrationsTab from '@/components/settings/IntegrationsTab';
 import AccountingTab from '@/components/settings/AccountingTab';
+import SecurityTab from '@/components/settings/SecurityTab';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
+  { id: 'security',     label: 'Security',           icon: ShieldCheck },
   { id: 'company',      label: 'Company Profile',    icon: Building2 },
   { id: 'team',         label: 'Team & Permissions', icon: Users },
   { id: 'structure',    label: 'Company Structure',  icon: Layers },
@@ -736,6 +739,7 @@ export default function SettingsPage() {
             {/* Content */}
             <div className="flex-1 min-w-0">
               {activeTab === 'account'    && <MyAccountTab />}
+              {activeTab === 'security'   && <SecurityTab />}
               {activeTab === 'company'    && <CompanyTab />}
               {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
