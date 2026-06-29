@@ -5,12 +5,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Receipt, CheckCircle2, XCircle, Loader2, AlertCircle,
-  ExternalLink, Unplug, RefreshCw, ArrowRight,
+  ExternalLink, Unplug, RefreshCw, ArrowRight, Info,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 interface XeroStatus {
   connected: boolean;
+  platformReady?: boolean;
   tenantName?: string;
   connectedAt?: string;
   expiresAt?: string;
@@ -66,12 +67,14 @@ export default function AccountingTab({ isAdmin }: Props) {
       const res = await fetch('/api/integrations/xero/auth-url', { credentials: 'include' });
       const d = await res.json() as { url?: string; error?: string };
       if (!res.ok || !d.url) {
-        setError(d.error ?? 'Failed to get Xero auth URL');
+        // Surface a clean message — the raw API error mentions "Settings → Secrets"
+        // which is only relevant to the IWILLBUILD owner, not the customer.
+        setError(d.error ?? 'Failed to start Xero connection. Please try again.');
         return;
       }
       window.location.href = d.url;
     } catch {
-      setError('Failed to start Xero connection');
+      setError('Failed to start Xero connection. Please try again.');
     } finally {
       setConnecting(false);
     }
@@ -208,12 +211,33 @@ export default function AccountingTab({ isAdmin }: Props) {
                 </ul>
               </div>
 
+              {/* Platform not yet configured — owner-only notice */}
+              {xero?.platformReady === false && (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
+                  <Info size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <p className="font-semibold mb-1">Xero app setup required (owner action)</p>
+                    <p className="text-amber-700 leading-relaxed">
+                      To enable Xero for all customers, the IWILLBUILD owner needs to create a Xero Developer App and add the credentials to Settings → Secrets:
+                    </p>
+                    <ol className="mt-2 space-y-0.5 list-decimal list-inside text-amber-700">
+                      <li>Go to <a href="https://developer.xero.com/app/manage" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">developer.xero.com/app/manage</a> and create an app</li>
+                      <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                      <li>Set the redirect URI to <code className="bg-amber-100 px-1 rounded font-mono">{window.location.origin}/api/integrations/xero/callback</code></li>
+                      <li>Add <code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_ID</code>, <code className="bg-amber-100 px-1 rounded font-mono">XERO_CLIENT_SECRET</code> and <code className="bg-amber-100 px-1 rounded font-mono">XERO_REDIRECT_URI</code> to Secrets</li>
+                    </ol>
+                    <p className="mt-2 text-amber-600 italic">Once configured, customers simply click Connect Xero and log in to their own Xero account — they never enter any credentials here.</p>
+                  </div>
+                </div>
+              )}
+
               {isAdmin ? (
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleConnect}
-                    disabled={connecting}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#13B5EA] hover:bg-[#0fa0d4] text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60"
+                    disabled={connecting || xero?.platformReady === false}
+                    title={xero?.platformReady === false ? 'Xero app credentials not yet configured' : undefined}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#13B5EA] hover:bg-[#0fa0d4] text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {connecting ? <Loader2 size={14} className="animate-spin" /> : (
                       <span className="font-black text-white text-sm">X</span>

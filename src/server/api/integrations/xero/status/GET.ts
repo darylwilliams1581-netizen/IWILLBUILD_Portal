@@ -1,6 +1,9 @@
 /**
  * GET /api/integrations/xero/status
  * Returns the Xero connection status for the current company.
+ * Also returns platformReady: true/false so the UI knows whether the
+ * IWILLBUILD owner has configured the Xero Developer App credentials.
+ * Customers never need to touch those credentials — they just click Connect.
  */
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../../lib/auth/auth.js';
@@ -8,6 +11,7 @@ import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+import { getSecret } from '#airo/secrets';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -19,18 +23,23 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
+    // Check whether the platform-level Xero Developer App is configured.
+    // These are set once by the IWILLBUILD owner — customers never touch them.
+    const platformReady = !!(getSecret('XERO_CLIENT_ID') && getSecret('XERO_REDIRECT_URI'));
+
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (!profile?.companyId) return res.json({ connected: false });
+    if (!profile?.companyId) return res.json({ connected: false, platformReady });
 
     const [rows] = await db.execute(
       sql`SELECT id, tenant_name, connected_at, expires_at FROM xero_connections WHERE company_id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<{ id: number; tenant_name: string; connected_at: string; expires_at: string }>, unknown];
 
     const conn = rows?.[0];
-    if (!conn) return res.json({ connected: false });
+    if (!conn) return res.json({ connected: false, platformReady });
 
     res.json({
       connected: true,
+      platformReady,
       tenantName: conn.tenant_name,
       connectedAt: conn.connected_at,
       expiresAt: conn.expires_at,

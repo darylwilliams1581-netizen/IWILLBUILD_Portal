@@ -779,6 +779,19 @@
       "summary": "Screenshot of a project management interface showing a tab navigation bar with multiple tabs (Details, Estimates, Costs, Invoices, Progress, To-do, Delays, etc.). User is reporting a layout issue where tabs are too long to fit on the page and requesting a fix without reducing font size.",
       "fileName": "screenshot-2026-06-29T13-59-49.jpg",
       "storedUploadFilename": "f38wenbvln_1782741593039_file_51LJcPLAJS.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Xero integration interface showing the current (broken) connection state and setup requirements. The user's prompt explains the correct OAuth flow and identifies this as a reference point for understanding what needs to be fixed.",
+      "fileName": "screenshot-2026-06-29T14-19-32.jpg",
+      "storedUploadFilename": "f38wenbvln_1782742774322_file_JMWGANfNwR.jpg"
     }
   ]
 }
