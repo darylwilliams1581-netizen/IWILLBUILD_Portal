@@ -293,7 +293,7 @@ function SwmsFormModal({ initial, onClose, onSaved }: SwmsFormModalProps) {
             {/* ── Requirements ── */}
             <div>
               <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Requirements<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className={labelCls}>PPE Required</label>
                   <textarea value={form.ppe} onChange={(e) => set('ppe', e.target.value)} rows={5} className={textareaCls} placeholder={"• Safety glasses or goggles (mandatory)\n• Face shield for grinding\n• Hearing protection\n• Steel-capped boots\n• Hi-vis vest"} />
@@ -316,7 +316,7 @@ function SwmsFormModal({ initial, onClose, onSaved }: SwmsFormModalProps) {
             {/* ── Response & Environment ── */}
             <div>
               <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Response &amp; Environment<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className={labelCls}>Emergency Controls</label>
                   <textarea value={form.emergencyControls} onChange={(e) => set('emergencyControls', e.target.value)} rows={5} className={textareaCls} placeholder={"• First aid kit accessible at all times\n• Nearest hospital: [name & address]\n• Emergency contact: [name & phone]\n• Call 000 for serious injury"} />
@@ -2021,7 +2021,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
 
             <div>
               <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Requirements<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className={labelCls}>PPE Required</label>
                   <textarea value={form.ppe} onChange={(e) => set('ppe', e.target.value)} rows={5} className={textareaCls} />
@@ -2051,7 +2051,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
 
             <div>
               <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Response &amp; Environment<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className={labelCls}>Emergency Controls</label>
                   <textarea value={form.emergencyControls} onChange={(e) => set('emergencyControls', e.target.value)} rows={5} className={textareaCls} />
@@ -2060,7 +2060,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
                   <label className={labelCls}>Environmental Controls</label>
                   <textarea value={form.environmentalControls} onChange={(e) => set('environmentalControls', e.target.value)} rows={5} className={textareaCls} />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className={labelCls}>Notes</label>
                   <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={3} className={textareaCls} />
                 </div>

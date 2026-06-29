@@ -753,6 +753,19 @@
       "summary": "A safety document (SWMS excerpt) detailing hazards, risks, and control measures for roadside work. The user is requesting an edit to reformat this content into a single full-width column layout on the site.",
       "fileName": "screenshot-2026-06-29T08-54-58.jpg",
       "storedUploadFilename": "f38wenbvln_1782723303382_file_cJPU7qblmh.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "design_spec",
+      "designDirection": "partial",
+      "contentStructure": "full",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "A requirements and safety compliance document with structured sections (PPE, Plant & Equipment, Training, Sign-off, Emergency/Environmental Controls). The user is asking for a layout restructure, not to display this file on a website.",
+      "fileName": "screenshot-2026-06-29T11-26-36.jpg",
+      "storedUploadFilename": "f38wenbvln_1782732399440_file_juqkgiThKd.jpg"
     }
   ]
 }
