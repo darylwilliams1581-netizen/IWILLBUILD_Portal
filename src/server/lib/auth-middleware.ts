@@ -149,6 +149,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'POST', pattern: /^\/api\/auth\/pin-login$/ },
   // OneDrive OAuth callback — Microsoft redirects here before session is re-established
   { method: 'GET',  pattern: /^\/api\/integrations\/onedrive\/callback$/ },
+  // Public contact form — no auth required, spam-protected by honeypot + timing
+  { method: 'POST', pattern: /^\/api\/contact$/ },
 ];
 
 /**

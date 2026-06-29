@@ -7,6 +7,7 @@ import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
 
 // <api-imports>
 import active_ping_post_0 from "./api/active-ping/POST";
+import contact_post from "./api/contact/POST";
 import auth_change_email_post_1 from "./api/auth/change-email/POST";
 import auth_forgot_password_post_2 from "./api/auth/forgot-password/POST";
 import auth_pin_login_post_3 from "./api/auth/pin-login/POST";
@@ -769,6 +770,7 @@ if (!openAiKey || openAiKey.trim().length === 0) {
 
 // <api-registrations>
 app.post("/api/active-ping", active_ping_post_0);
+app.post("/api/contact", contact_post);
 app.post("/api/auth/change-email", auth_change_email_post_1);
 app.post("/api/auth/forgot-password", auth_forgot_password_post_2);
 app.post("/api/auth/pin-login", auth_pin_login_post_3);

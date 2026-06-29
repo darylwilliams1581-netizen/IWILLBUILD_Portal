@@ -6,6 +6,7 @@ import {
   Bot, ShieldCheck, Users, CheckCircle, ArrowRight,
   Star, ChevronRight,
 } from 'lucide-react';
+import ContactForm from '@/components/ContactForm';
 
 // ── Animation variants ────────────────────────────────────────────────────────
 const fadeUp = {
@@ -775,10 +776,13 @@ export default function HomePage() {
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#0f172a', borderTop: '1px solid #1e293b', color: '#64748b' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 22px 32px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 32, marginBottom: 32 }}>
-            {/* Brand */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+
+          {/* ── Contact form + links grid ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 40, marginBottom: 40 }}>
+
+            {/* Brand + contact details */}
+            <div style={{ minWidth: 220 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <span style={{
                   width: 34, height: 34, borderRadius: 8,
                   background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
@@ -787,12 +791,25 @@ export default function HomePage() {
                 }}>IW</span>
                 <strong style={{ color: '#f1f5f9', fontSize: 16 }}>IWILLBUILD</strong>
               </div>
-              <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.7, margin: '0 0 16px' }}>
                 A practical portal for builders and field teams.
               </p>
+              <div style={{ fontSize: 13, lineHeight: 2 }}>
+                <div>
+                  <a href="mailto:hello@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
+                    hello@iwillbuild.com
+                  </a>
+                </div>
+                <div>
+                  <a href="tel:+61498350566" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
+                    +61 498 350 566
+                  </a>
+                </div>
+                <div style={{ color: '#475569', fontSize: 12, marginTop: 4 }}>ABN 89 791 350 823</div>
+              </div>
             </div>
 
-            {/* Links */}
+            {/* Portal links */}
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Portal</div>
               {[
@@ -810,6 +827,7 @@ export default function HomePage() {
               ))}
             </div>
 
+            {/* Legal links */}
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Legal</div>
               {[
@@ -822,12 +840,12 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Contact</div>
-              <a href="mailto:hello@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">
-                hello@iwillbuild.com
-              </a>
+            {/* Contact form */}
+            <div style={{ minWidth: 260 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Send us a message</div>
+              <ContactForm />
             </div>
+
           </div>
 
           <div style={{ borderTop: '1px solid #1e293b', paddingTop: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
