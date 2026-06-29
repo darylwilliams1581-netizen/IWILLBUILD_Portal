@@ -25,7 +25,16 @@ export default async function handler(_req: Request, res: Response) {
       id                    INT AUTO_INCREMENT PRIMARY KEY,
       company_id            INT NOT NULL,
       title                 VARCHAR(255) NOT NULL,
+      category              VARCHAR(100) NULL,
       work_activity         TEXT NULL,
+      purpose_scope         TEXT NULL,
+      critical_risks        TEXT NULL,
+      mandatory_controls    TEXT NULL,
+      hazard_identification TEXT NULL,
+      high_risk_work        TEXT NULL,
+      ppe_requirements      TEXT NULL,
+      risk_rating           TEXT NULL,
+      sequence_controls     TEXT NULL,
       hazards               TEXT NULL,
       risks                 TEXT NULL,
       controls              TEXT NULL,
@@ -35,6 +44,10 @@ export default async function handler(_req: Request, res: Response) {
       emergency_controls    TEXT NULL,
       environmental_controls TEXT NULL,
       sign_off_requirements TEXT NULL,
+      permits_approvals     TEXT NULL,
+      monitoring_review     TEXT NULL,
+      notes                 TEXT NULL,
+      source_file_id        INT NULL,
       revision_number       VARCHAR(20) NOT NULL DEFAULT '1',
       review_date           DATE NULL,
       status                VARCHAR(30) NOT NULL DEFAULT 'draft',
@@ -44,6 +57,26 @@ export default async function handler(_req: Request, res: Response) {
       INDEX idx_company (company_id)
     )
   `);
+
+  // Add new columns to swms_templates if they don't exist yet (idempotent)
+  const swmsNewCols: [string, string][] = [
+    ['category',              'VARCHAR(100) NULL'],
+    ['purpose_scope',         'TEXT NULL'],
+    ['critical_risks',        'TEXT NULL'],
+    ['mandatory_controls',    'TEXT NULL'],
+    ['hazard_identification', 'TEXT NULL'],
+    ['high_risk_work',        'TEXT NULL'],
+    ['ppe_requirements',      'TEXT NULL'],
+    ['risk_rating',           'TEXT NULL'],
+    ['sequence_controls',     'TEXT NULL'],
+    ['permits_approvals',     'TEXT NULL'],
+    ['monitoring_review',     'TEXT NULL'],
+    ['notes',                 'TEXT NULL'],
+    ['source_file_id',        'INT NULL'],
+  ];
+  for (const [col, def] of swmsNewCols) {
+    await run(`swms_templates.${col}`, `ALTER TABLE swms_templates ADD COLUMN ${col} ${def}`);
+  }
 
   await run('safety_plans', `
     CREATE TABLE IF NOT EXISTS safety_plans (
@@ -74,16 +107,86 @@ export default async function handler(_req: Request, res: Response) {
 
   await run('job_swms', `
     CREATE TABLE IF NOT EXISTS job_swms (
-      id                  INT AUTO_INCREMENT PRIMARY KEY,
-      company_id          INT NOT NULL,
-      job_id              INT NOT NULL,
-      swms_template_id    INT NOT NULL,
-      assigned_by_user_id VARCHAR(36) NULL,
-      created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      id                    INT AUTO_INCREMENT PRIMARY KEY,
+      company_id            INT NOT NULL,
+      job_id                INT NOT NULL,
+      template_id           INT NULL,
+      swms_template_id      INT NULL,
+      assigned_by_user_id   VARCHAR(36) NULL,
+      title                 VARCHAR(255) NOT NULL DEFAULT '',
+      category              VARCHAR(100) NULL,
+      work_activity         TEXT NULL,
+      purpose_scope         TEXT NULL,
+      critical_risks        TEXT NULL,
+      mandatory_controls    TEXT NULL,
+      hazard_identification TEXT NULL,
+      high_risk_work        TEXT NULL,
+      ppe_requirements      TEXT NULL,
+      risk_rating           TEXT NULL,
+      sequence_controls     TEXT NULL,
+      hazards               TEXT NULL,
+      risks                 TEXT NULL,
+      controls              TEXT NULL,
+      ppe                   TEXT NULL,
+      plant_equipment       TEXT NULL,
+      training_competency   TEXT NULL,
+      emergency_controls    TEXT NULL,
+      environmental_controls TEXT NULL,
+      sign_off_requirements TEXT NULL,
+      permits_approvals     TEXT NULL,
+      monitoring_review     TEXT NULL,
+      notes                 TEXT NULL,
+      revision_number       VARCHAR(20) NOT NULL DEFAULT '1',
+      review_date           DATE NULL,
+      status                VARCHAR(30) NOT NULL DEFAULT 'draft',
+      reviewed_by_user_id   VARCHAR(36) NULL,
+      reviewed_at           DATETIME NULL,
+      approved_by_user_id   VARCHAR(36) NULL,
+      approved_at           DATETIME NULL,
+      created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id),
       INDEX idx_job (job_id)
     )
   `);
+
+  // Add new columns to job_swms if upgrading from the old thin schema
+  const jobSwmsNewCols: [string, string][] = [
+    ['template_id',           'INT NULL'],
+    ['title',                 "VARCHAR(255) NOT NULL DEFAULT ''"],
+    ['category',              'VARCHAR(100) NULL'],
+    ['work_activity',         'TEXT NULL'],
+    ['purpose_scope',         'TEXT NULL'],
+    ['critical_risks',        'TEXT NULL'],
+    ['mandatory_controls',    'TEXT NULL'],
+    ['hazard_identification', 'TEXT NULL'],
+    ['high_risk_work',        'TEXT NULL'],
+    ['ppe_requirements',      'TEXT NULL'],
+    ['risk_rating',           'TEXT NULL'],
+    ['sequence_controls',     'TEXT NULL'],
+    ['hazards',               'TEXT NULL'],
+    ['risks',                 'TEXT NULL'],
+    ['controls',              'TEXT NULL'],
+    ['ppe',                   'TEXT NULL'],
+    ['plant_equipment',       'TEXT NULL'],
+    ['training_competency',   'TEXT NULL'],
+    ['emergency_controls',    'TEXT NULL'],
+    ['environmental_controls','TEXT NULL'],
+    ['sign_off_requirements', 'TEXT NULL'],
+    ['permits_approvals',     'TEXT NULL'],
+    ['monitoring_review',     'TEXT NULL'],
+    ['notes',                 'TEXT NULL'],
+    ['revision_number',       "VARCHAR(20) NOT NULL DEFAULT '1'"],
+    ['review_date',           'DATE NULL'],
+    ['status',                "VARCHAR(30) NOT NULL DEFAULT 'draft'"],
+    ['reviewed_by_user_id',   'VARCHAR(36) NULL'],
+    ['reviewed_at',           'DATETIME NULL'],
+    ['approved_by_user_id',   'VARCHAR(36) NULL'],
+    ['approved_at',           'DATETIME NULL'],
+  ];
+  for (const [col, def] of jobSwmsNewCols) {
+    await run(`job_swms.${col}`, `ALTER TABLE job_swms ADD COLUMN ${col} ${def}`);
+  }
 
   await run('swms_signoffs', `
     CREATE TABLE IF NOT EXISTS swms_signoffs (

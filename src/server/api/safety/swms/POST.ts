@@ -19,26 +19,38 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
+    const b = req.body as Record<string, string>;
     const {
-      title, workActivity, hazards, risks, controls, ppe,
+      title, category, workActivity,
+      purposeScope, criticalRisks, mandatoryControls, hazardIdentification,
+      highRiskWork, ppeRequirements, riskRating, sequenceControls,
+      hazards, risks, controls, ppe,
       plantEquipment, trainingCompetency, emergencyControls,
-      environmentalControls, signOffRequirements, revisionNumber,
-      reviewDate, status,
-    } = req.body as Record<string, string>;
+      environmentalControls, signOffRequirements,
+      permitsApprovals, monitoringReview, notes,
+      revisionNumber, reviewDate, status,
+    } = b;
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
 
     const [result] = await db.execute(sql`
       INSERT INTO swms_templates
-        (company_id, title, work_activity, hazards, risks, controls, ppe,
+        (company_id, title, category, work_activity,
+         purpose_scope, critical_risks, mandatory_controls, hazard_identification,
+         high_risk_work, ppe_requirements, risk_rating, sequence_controls,
+         hazards, risks, controls, ppe,
          plant_equipment, training_competency, emergency_controls,
-         environmental_controls, sign_off_requirements, revision_number,
-         review_date, status, created_by_user_id)
+         environmental_controls, sign_off_requirements,
+         permits_approvals, monitoring_review, notes,
+         revision_number, review_date, status, created_by_user_id)
       VALUES
-        (${profile.companyId}, ${title.trim()}, ${workActivity ?? null}, ${hazards ?? null},
-         ${risks ?? null}, ${controls ?? null}, ${ppe ?? null},
+        (${profile.companyId}, ${title.trim()}, ${category ?? null}, ${workActivity ?? null},
+         ${purposeScope ?? null}, ${criticalRisks ?? null}, ${mandatoryControls ?? null}, ${hazardIdentification ?? null},
+         ${highRiskWork ?? null}, ${ppeRequirements ?? null}, ${riskRating ?? null}, ${sequenceControls ?? null},
+         ${hazards ?? null}, ${risks ?? null}, ${controls ?? null}, ${ppe ?? null},
          ${plantEquipment ?? null}, ${trainingCompetency ?? null}, ${emergencyControls ?? null},
          ${environmentalControls ?? null}, ${signOffRequirements ?? null},
+         ${permitsApprovals ?? null}, ${monitoringReview ?? null}, ${notes ?? null},
          ${revisionNumber ?? '1'}, ${reviewDate ?? null},
          ${status ?? 'draft'}, ${session.user.id})
     `) as unknown as [ResultSetHeader, unknown];
