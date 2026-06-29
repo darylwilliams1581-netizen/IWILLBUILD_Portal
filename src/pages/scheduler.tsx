@@ -50,12 +50,81 @@ type TimeWindow  = 'day' | 'week' | 'month' | '3months';
 
 // ─── Window config ────────────────────────────────────────────────────────────
 
-const WINDOW_CONFIG: Record<TimeWindow, { label: string; days: number; dayWidth: number }> = {
-  day:      { label: 'Day',      days: 1,   dayWidth: 80  },
-  week:     { label: 'Week',     days: 7,   dayWidth: 60  },
-  month:    { label: 'Month',    days: 30,  dayWidth: 36  },
-  '3months':{ label: '3 Months', days: 91,  dayWidth: 18  },
+const WINDOW_LABELS: Record<TimeWindow, string> = {
+  day:      'Day',
+  week:     'Week',
+  month:    'Month',
+  '3months':'3 Months',
 };
+
+const DAY_WIDTH: Record<TimeWindow, number> = {
+  day:      80,
+  week:     60,
+  month:    36,
+  '3months':14,
+};
+
+/**
+ * Returns the anchor date snapped to the natural start of the window:
+ *  - Day/Week: today as-is
+ *  - Month: 1st of the current month
+ *  - 3 Months: 1st of the current month
+ */
+function snapAnchor(tw: TimeWindow): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  if (tw === 'month' || tw === '3months') d.setDate(1);
+  return d;
+}
+
+/**
+ * Returns the inclusive end date for a window starting at anchor.
+ * Month = last day of that calendar month.
+ * 3 Months = last day of the 3rd calendar month from anchor.
+ * Week = anchor + 6 days.
+ * Day = anchor.
+ */
+function windowEndDate(anchor: Date, tw: TimeWindow): Date {
+  const d = new Date(anchor);
+  if (tw === 'day') {
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  if (tw === 'week') {
+    d.setDate(d.getDate() + 6);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  if (tw === 'month') {
+    // last day of the same calendar month
+    d.setMonth(d.getMonth() + 1, 0);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  // 3months: last day of the 3rd calendar month
+  d.setMonth(d.getMonth() + 3, 0);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+/**
+ * Steps the anchor forward or back by one natural period.
+ */
+function stepAnchor(anchor: Date, tw: TimeWindow, dir: -1 | 1): Date {
+  const d = new Date(anchor);
+  if (tw === 'day')      { d.setDate(d.getDate() + dir); return d; }
+  if (tw === 'week')     { d.setDate(d.getDate() + dir * 7); return d; }
+  if (tw === 'month')    { d.setMonth(d.getMonth() + dir); return d; }
+  /* 3months */            d.setMonth(d.getMonth() + dir * 3); return d;
+}
+
+/** Total calendar days in a window (for building the header day array). */
+function windowDayCount(anchor: Date, tw: TimeWindow): number {
+  const end = windowEndDate(anchor, tw);
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(anchor); start.setHours(0, 0, 0, 0);
+  return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -245,30 +314,21 @@ interface TimelineViewProps {
 
 function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const cfg = WINDOW_CONFIG[timeWindow];
-  const DAY_WIDTH = cfg.dayWidth;
-  const totalDays = cfg.days;
+  const DW = DAY_WIDTH[timeWindow];
 
-  // Window bounds — anchor is the first visible day
+  // Window bounds derived from anchor + calendar-accurate helpers
   const windowStart = useMemo(() => {
-    const d = new Date(anchorDate);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const d = new Date(anchorDate); d.setHours(0, 0, 0, 0); return d;
   }, [anchorDate]);
 
-  const windowEnd = useMemo(() => {
-    const d = new Date(windowStart);
-    d.setDate(d.getDate() + totalDays - 1);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }, [windowStart, totalDays]);
+  const windowEnd = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
+
+  const totalDays = useMemo(() => windowDayCount(anchorDate, timeWindow), [anchorDate, timeWindow]);
 
   // Header days
   const headerDays = useMemo(() =>
     Array.from({ length: totalDays }, (_, i) => {
-      const d = new Date(windowStart);
-      d.setDate(d.getDate() + i);
-      return d;
+      const d = new Date(windowStart); d.setDate(d.getDate() + i); return d;
     }),
   [windowStart, totalDays]);
 
@@ -283,31 +343,24 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
     const jobStart  = new Date(job.scheduledStartDate);
     const jobFinish = new Date(job.expectedCompletionDate);
 
-    // Clamp to window bounds for display
     const clampedStart  = jobStart  < windowStart ? windowStart : jobStart;
     const clampedFinish = jobFinish > windowEnd   ? windowEnd   : jobFinish;
 
     const leftDays  = Math.round((clampedStart.getTime()  - windowStart.getTime()) / 86400000);
     const widthDays = Math.max(1, Math.round((clampedFinish.getTime() - clampedStart.getTime()) / 86400000) + 1);
 
-    // Whether the bar is clipped on either side (job extends beyond window)
-    const clippedLeft  = jobStart  < windowStart;
-    const clippedRight = jobFinish > windowEnd;
-
     return {
-      left: leftDays * DAY_WIDTH,
-      width: widthDays * DAY_WIDTH,
-      clippedLeft,
-      clippedRight,
+      left: leftDays * DW,
+      width: widthDays * DW,
+      clippedLeft:  jobStart  < windowStart,
+      clippedRight: jobFinish > windowEnd,
     };
   }
 
-  // Month boundary markers for the header
   function shouldShowMonth(d: Date, i: number): boolean {
     return i === 0 || d.getDate() === 1;
   }
 
-  // Day label — show every day for Day/Week, every 2nd for Month, every 7th for 3 Months
   function showDayLabel(i: number): boolean {
     if (timeWindow === 'day')      return true;
     if (timeWindow === 'week')     return true;
@@ -327,7 +380,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
 
   return (
     <div className="overflow-x-auto" ref={scrollRef}>
-      <div style={{ minWidth: totalDays * DAY_WIDTH + 200 }}>
+      <div style={{ minWidth: totalDays * DW + 200 }}>
 
         {/* Two-row header: month labels + day numbers */}
         <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
@@ -342,9 +395,8 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
             <div className="flex border-b border-slate-100">
               {headerDays.map((d, i) => {
                 if (!shouldShowMonth(d, i)) {
-                  return <div key={i} style={{ width: DAY_WIDTH }} className="shrink-0" />;
+                  return <div key={i} style={{ width: DW }} className="shrink-0" />;
                 }
-                // Count how many days until next month boundary (or end)
                 let span = 1;
                 for (let j = i + 1; j < headerDays.length; j++) {
                   if (headerDays[j].getDate() === 1) break;
@@ -353,7 +405,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                 return (
                   <div
                     key={i}
-                    style={{ width: span * DAY_WIDTH }}
+                    style={{ width: span * DW }}
                     className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide border-r border-slate-200 bg-slate-50"
                   >
                     {d.toLocaleDateString('en-AU', { month: 'short', year: timeWindow === '3months' ? '2-digit' : undefined })}
@@ -371,14 +423,14 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                 return (
                   <div
                     key={i}
-                    style={{ width: DAY_WIDTH }}
+                    style={{ width: DW }}
                     className={`shrink-0 text-center py-0.5 border-r ${
                       isMonthEdge ? 'border-slate-300' : 'border-slate-100'
                     } ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}
                   >
                     {showDayLabel(i) && (
                       <span className={`text-[10px] font-medium ${
-                        isToday ? 'text-orange-600 font-bold' : isWeekend ? 'text-slate-400' : 'text-slate-400'
+                        isToday ? 'text-orange-600 font-bold' : 'text-slate-400'
                       }`}>
                         {d.getDate()}
                       </span>
@@ -410,7 +462,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
               </div>
 
               {/* Bar area */}
-              <div className="relative" style={{ width: totalDays * DAY_WIDTH }}>
+              <div className="relative" style={{ width: totalDays * DW }}>
                 {/* Weekend shading */}
                 {headerDays.map((d, i) => {
                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
@@ -418,7 +470,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                     <div
                       key={i}
                       className="absolute top-0 bottom-0 bg-slate-50/80"
-                      style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
+                      style={{ left: i * DW, width: DW }}
                     />
                   ) : null;
                 })}
@@ -427,7 +479,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                 {todayOffset >= 0 && todayOffset < totalDays && (
                   <div
                     className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70"
-                    style={{ left: todayOffset * DAY_WIDTH + DAY_WIDTH / 2 }}
+                    style={{ left: todayOffset * DW + DW / 2 }}
                   />
                 )}
 
@@ -437,24 +489,16 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                     to={`/jobs/${job.id}`}
                     title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}\n${job.supervisorName ?? job.teamLabel ?? ''}`}
                     className={`absolute top-2.5 h-[18px] flex items-center text-white text-[10px] font-semibold truncate shadow-sm hover:brightness-110 transition-all ${barColor(job.status)} ${
-                      bar.clippedLeft  ? 'rounded-r-md' : ''
-                    } ${
-                      bar.clippedRight ? 'rounded-l-md' : ''
-                    } ${
-                      !bar.clippedLeft && !bar.clippedRight ? 'rounded-md' : ''
+                      bar.clippedLeft && !bar.clippedRight ? 'rounded-r-md' :
+                      bar.clippedRight && !bar.clippedLeft ? 'rounded-l-md' :
+                      bar.clippedLeft && bar.clippedRight  ? '' :
+                      'rounded-md'
                     }`}
                     style={{ left: bar.left, width: bar.width }}
                   >
-                    {/* Clip indicators */}
-                    {bar.clippedLeft && (
-                      <span className="shrink-0 pl-0.5 opacity-70">◀</span>
-                    )}
-                    <span className="px-1.5 truncate">
-                      {bar.width > 50 ? job.name : ''}
-                    </span>
-                    {bar.clippedRight && (
-                      <span className="shrink-0 pr-0.5 ml-auto opacity-70">▶</span>
-                    )}
+                    {bar.clippedLeft  && <span className="shrink-0 pl-0.5 opacity-70">◀</span>}
+                    <span className="px-1.5 truncate">{bar.width > 50 ? job.name : ''}</span>
+                    {bar.clippedRight && <span className="shrink-0 pr-0.5 ml-auto opacity-70">▶</span>}
                   </Link>
                 )}
               </div>
@@ -462,7 +506,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
           );
         })}
 
-        {/* Legend row at bottom */}
+        {/* Legend */}
         <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 bg-slate-50/50 flex-wrap">
           {Object.entries(STATUS_BAR).map(([status, cls]) => (
             <span key={status} className="flex items-center gap-1 text-[10px] text-slate-500">
@@ -528,9 +572,7 @@ export default function SchedulerPage() {
   const [error, setError]                       = useState('');
   const [view, setView]                         = useState<ViewMode>('table');
   const [timeWindow, setTimeWindow]             = useState<TimeWindow>('month');
-  const [anchorDate, setAnchorDate]             = useState<Date>(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-  });
+  const [anchorDate, setAnchorDate]             = useState<Date>(() => snapAnchor('month'));
   const [search, setSearch]                     = useState('');
   const [statusFilter, setStatusFilter]         = useState('All');
   const [supervisorFilter, setSupervisorFilter] = useState('All');
@@ -574,27 +616,23 @@ export default function SchedulerPage() {
     return true;
   });
 
-  // Navigation: move anchor by one window period
+  // Navigation: step by one calendar period
   function navigate(direction: -1 | 1) {
-    const cfg = WINDOW_CONFIG[timeWindow];
-    setAnchorDate(prev => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + direction * cfg.days);
-      return d;
-    });
+    setAnchorDate(prev => stepAnchor(prev, timeWindow, direction));
   }
 
   function goToToday() {
-    const d = new Date(); d.setHours(0, 0, 0, 0);
-    setAnchorDate(d);
+    setAnchorDate(snapAnchor(timeWindow));
+  }
+
+  function switchWindow(tw: TimeWindow) {
+    setTimeWindow(tw);
+    setAnchorDate(snapAnchor(tw));
   }
 
   // Window label for the nav bar
   const windowLabel = useMemo(() => {
-    const cfg = WINDOW_CONFIG[timeWindow];
-    const end = new Date(anchorDate);
-    end.setDate(end.getDate() + cfg.days - 1);
-
+    const end = windowEndDate(anchorDate, timeWindow);
     if (timeWindow === 'day') {
       return anchorDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
@@ -605,19 +643,14 @@ export default function SchedulerPage() {
       return anchorDate.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
     }
     // 3 months
-    const startLabel = anchorDate.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
-    const endLabel   = end.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
-    return `${startLabel} – ${endLabel}`;
+    const s = anchorDate.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+    const e = end.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+    return `${s} – ${e}`;
   }, [anchorDate, timeWindow]);
 
-  // Count jobs visible in the current timeline window (for the counter)
+  // Window bounds for the visible-count calculation
   const windowStart = useMemo(() => { const d = new Date(anchorDate); d.setHours(0,0,0,0); return d; }, [anchorDate]);
-  const windowEnd   = useMemo(() => {
-    const d = new Date(windowStart);
-    d.setDate(d.getDate() + WINDOW_CONFIG[timeWindow].days - 1);
-    d.setHours(23,59,59,999);
-    return d;
-  }, [windowStart, timeWindow]);
+  const windowEnd   = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
 
   const visibleCount = view === 'timeline'
     ? filtered.filter(j => overlapsWindow(j, windowStart, windowEnd)).length
@@ -645,7 +678,27 @@ export default function SchedulerPage() {
           <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* View toggle: Table / Timeline */}
+            {/* Time window: Day / Week / Month / 3 Months — primary control */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+              {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
+                <button
+                  key={key}
+                  onClick={() => switchWindow(key)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    timeWindow === key
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {WINDOW_LABELS[key]}
+                </button>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-slate-200" />
+
+            {/* Table / Timeline toggle */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setView('table')}
@@ -705,28 +758,8 @@ export default function SchedulerPage() {
             </select>
           )}
 
-          {/* Divider */}
-          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
-
-          {/* Time window selector: Day / Week / Month / 3 Months */}
-          <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-            {(Object.entries(WINDOW_CONFIG) as [TimeWindow, typeof WINDOW_CONFIG[TimeWindow]][]).map(([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => { setTimeWindow(key); goToToday(); }}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  timeWindow === key
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {cfg.label}
-              </button>
-            ))}
-          </div>
-
           {/* Period navigation: prev / label / today / next */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 ml-auto">
             <button
               onClick={() => navigate(-1)}
               className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
@@ -734,7 +767,7 @@ export default function SchedulerPage() {
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="text-xs font-medium text-slate-700 min-w-[120px] text-center px-1">
+            <span className="text-xs font-semibold text-slate-700 min-w-[140px] text-center px-1">
               {windowLabel}
             </span>
             <button
@@ -746,14 +779,14 @@ export default function SchedulerPage() {
             </button>
             <button
               onClick={goToToday}
-              className="px-2 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1"
+              className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1"
             >
               Today
             </button>
           </div>
 
           {/* Counts */}
-          <div className="ml-auto text-xs text-slate-400 hidden sm:block">
+          <div className="text-xs text-slate-400 hidden lg:block">
             {visibleCount} scheduled · {unscheduled.length} unscheduled
           </div>
         </div>
