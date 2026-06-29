@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
-import { PosterPPE } from '@/components/safety-posters';
+import PPEBanner from '@/components/safety-posters/PPEBanner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1798,13 +1798,9 @@ function SwmsPrintModal({ swms, onClose }: { swms: SwmsPrintData; onClose: () =>
 
             <hr className="border-slate-200 my-4" />
 
-            {/* PPE poster — printed above the PPE requirements section */}
+            {/* PPE banner — compact icon strip above the PPE requirements section */}
             <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
-              <PosterPPE data={{
-                projectName: swms.job_name ?? undefined,
-                siteAddress: swms.site_address ?? undefined,
-                additionalRequirements: swms.ppe ?? undefined,
-              }} />
+              <PPEBanner />
             </div>
 
             <div className="grid grid-cols-2 gap-5">
