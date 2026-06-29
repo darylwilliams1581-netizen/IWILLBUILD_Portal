@@ -274,7 +274,7 @@ function SwmsFormModal({ initial, onClose, onSaved }: SwmsFormModalProps) {
             {/* ── Hazard & Risk ── */}
             <div>
               <p className={sectionHeadCls}><span className="w-5 h-px bg-slate-200 inline-block" />Hazard &amp; Risk<span className="flex-1 h-px bg-slate-200 inline-block" /></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <div>
                   <label className={labelCls}>Hazards</label>
                   <textarea value={form.hazards} onChange={(e) => set('hazards', e.target.value)} rows={6} className={textareaCls} placeholder={"• Contact with rotating parts\n• Flying debris\n• Electric shock from damaged tools"} />
@@ -283,7 +283,7 @@ function SwmsFormModal({ initial, onClose, onSaved }: SwmsFormModalProps) {
                   <label className={labelCls}>Risks</label>
                   <textarea value={form.risks} onChange={(e) => set('risks', e.target.value)} rows={6} className={textareaCls} placeholder={"• Laceration or amputation — HIGH\n• Eye injury from flying debris — HIGH\n• Electric shock — HIGH"} />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className={labelCls}>Controls / Risk Mitigation</label>
                   <textarea value={form.controls} onChange={(e) => set('controls', e.target.value)} rows={7} className={textareaCls} placeholder={"• Inspect all tools before use; remove from service any damaged tool\n• Use the correct tool for the task\n• Ensure all guards are in place before use\n• Isolate and tag out defective equipment"} />
                 </div>

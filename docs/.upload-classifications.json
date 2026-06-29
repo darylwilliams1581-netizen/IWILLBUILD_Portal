@@ -740,6 +740,19 @@
       "summary": "A safety work method statement (SWMS) form showing hazards, risks, controls, PPE, and emergency procedures for portable power tool operation. This is a reference document for reviewing and understanding safety requirements, not a visual asset for the website.",
       "fileName": "screenshot-2026-06-29T07-23-56.jpg",
       "storedUploadFilename": "f38wenbvln_1782717838581_file_xhp0RupbF9.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "content_doc",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "A safety document (SWMS excerpt) detailing hazards, risks, and control measures for roadside work. The user is requesting an edit to reformat this content into a single full-width column layout on the site.",
+      "fileName": "screenshot-2026-06-29T08-54-58.jpg",
+      "storedUploadFilename": "f38wenbvln_1782723303382_file_cJPU7qblmh.jpg"
     }
   ]
 }
