@@ -286,6 +286,9 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `Company: ${ctx.companyName}`,
     `Industry: ${ctx.industry ?? 'construction'}`,
     `User: ${ctx.user.name} (${ctx.user.role})`,
+    `Work module terminology: this company calls their main work records "${ctx.workLabelPlural}" (singular: "${ctx.workLabelSingular}").`,
+    `  - Always use "${ctx.workLabelPlural}" / "${ctx.workLabelSingular}" when referring to work records in your answers.`,
+    `  - If the user asks about "jobs", "projects", "sites", "stations", "stores", or "work orders", treat them as the same thing — the main work records.`,
     ctx.supportMode
       ? `⚠️ SUPPORT MODE ACTIVE — answering from company: ${ctx.companyName} (ID: ${ctx.supportCompanyId}). Do NOT blend data from any other company.`
       : `Normal mode — answering from user's own company only.`,

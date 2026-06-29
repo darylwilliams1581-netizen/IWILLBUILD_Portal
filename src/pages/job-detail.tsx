@@ -40,6 +40,7 @@ import JobSafety from '@/components/job/JobSafety';
 import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
+import { useTerminology } from '@/lib/useTerminology';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
@@ -47,6 +48,7 @@ export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { workSingular, workPlural } = useTerminology();
 
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,7 +251,7 @@ export default function JobDetailPage() {
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg">
               <AlertCircle size={16} className="shrink-0" />
               {error}
-              <button onClick={() => navigate('/jobs')} className="ml-auto font-semibold underline">Back to Jobs</button>
+              <button onClick={() => navigate('/jobs')} className="ml-auto font-semibold underline">Back to {workPlural}</button>
             </div>
           )}
 
@@ -373,7 +375,7 @@ export default function JobDetailPage() {
 
               {activeTab === 'details' && (
                 <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
-                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Details</h2>
+                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">{workSingular} Details</h2>
 
                   {editing ? (
                     <div className="flex flex-col gap-4">

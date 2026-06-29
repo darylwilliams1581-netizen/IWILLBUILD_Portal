@@ -46,6 +46,9 @@ export interface DazzaContext {
   companyId:   number;
   companyName: string;
   industry:    string;
+  /** Company-configured label for the main work module (e.g. "Job", "Site", "Project") */
+  workLabelSingular: string;
+  workLabelPlural:   string;
   user: { name: string; email: string; role: string };
   permissions: DazzaPermissions;
   companyKnowledge: DazzaCompanyKnowledge;
@@ -142,6 +145,8 @@ export async function buildDazzaContext(
     companyId,
     companyName: '',
     industry: 'construction',
+    workLabelSingular: 'Job',
+    workLabelPlural:   'Jobs',
     user: { name: userName, email: userEmail, role },
     permissions,
     companyKnowledge: { enabled: false, companyNotes: '', safetyNotes: '', tone: 'professional', disclaimer: '' },
@@ -190,8 +195,8 @@ export async function buildDazzaContext(
   // ── Dazza settings (from effective company) ───────────────────────────────
   try {
     const [settingsRows] = await db.execute(
-      sql`SELECT dazza_json FROM company_settings WHERE company_id = ${effectiveCompanyId} LIMIT 1`
-    ) as unknown as [Array<{ dazza_json: string }>, unknown];
+      sql`SELECT dazza_json, work_label_singular, work_label_plural FROM company_settings WHERE company_id = ${effectiveCompanyId} LIMIT 1`
+    ) as unknown as [Array<{ dazza_json: string; work_label_singular: string | null; work_label_plural: string | null }>, unknown];
     const dazzaSettings = settingsRows?.[0]?.dazza_json ? JSON.parse(settingsRows[0].dazza_json) : {};
     ctx.companyKnowledge = {
       enabled:      dazzaSettings.enabled       ?? false,
@@ -200,6 +205,9 @@ export async function buildDazzaContext(
       tone:         dazzaSettings.preferredTone ?? dazzaSettings.tone ?? 'professional',
       disclaimer:   dazzaSettings.disclaimer    ?? '',
     };
+    // Work label terminology
+    if (settingsRows?.[0]?.work_label_singular) ctx.workLabelSingular = settingsRows[0].work_label_singular;
+    if (settingsRows?.[0]?.work_label_plural)   ctx.workLabelPlural   = settingsRows[0].work_label_plural;
     moduleCounts['settings'] = 1;
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);

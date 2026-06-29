@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, HardHat, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { JOB_STATUSES, createJob, type Job } from '@/lib/jobs-api';
+import { useTerminology } from '@/lib/useTerminology';
 
 interface Props {
   open: boolean;
@@ -22,6 +23,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
   const [form, setForm] = useState(INITIAL);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { workSingular } = useTerminology();
 
   function set(field: keyof typeof INITIAL, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -90,7 +92,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                   <div className="p-1.5 bg-orange-50 rounded-md">
                     <HardHat size={16} className="text-primary" />
                   </div>
-                  <h2 className="font-heading font-bold text-base">New Job</h2>
+                  <h2 className="font-heading font-bold text-base">New {workSingular}</h2>
                 </div>
                 <button
                   onClick={handleClose}
@@ -202,7 +204,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                     disabled={saving}
                     className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
-                    {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : 'Create Job'}
+                    {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : `Create ${workSingular}`}
                   </button>
                 </div>
               </form>

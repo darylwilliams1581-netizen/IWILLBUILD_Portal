@@ -25,6 +25,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
+import { useTerminology } from '@/lib/useTerminology';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -58,6 +59,7 @@ interface DashTodo {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
+  const { workSingular, workPlural, addWorkLabel } = useTerminology();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
   const [fleetCount, setFleetCount] = useState(0);
@@ -251,7 +253,7 @@ export default function DashboardPage() {
                     className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
                   >
                     <Plus size={15} />
-                    + New Job
+                    + New {workSingular}
                   </Link>
                 </>
               ) : (
@@ -262,7 +264,7 @@ export default function DashboardPage() {
                       Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Your portal is ready.
                     </h2>
                     <p className="text-sm text-white/50 mt-1">
-                      Add your first job, fleet asset, or team member to get started.
+                      Add your first {workSingular.toLowerCase()}, fleet asset, or team member to get started.
                     </p>
                   </div>
                   <Link
@@ -270,7 +272,7 @@ export default function DashboardPage() {
                     className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
                   >
                     <Plus size={15} />
-                    Add First Job
+                    {addWorkLabel}
                   </Link>
                 </>
               )}
@@ -286,14 +288,14 @@ export default function DashboardPage() {
           >
             {[
               {
-                label: 'Active Jobs',
+                label: `Active ${workPlural}`,
                 value: jobsLoaded ? String(activeJobCount) : '—',
-                sub: activeJobCount === 0 ? 'No jobs added yet' : `${activeJobCount} in progress`,
+                sub: activeJobCount === 0 ? `No ${workPlural.toLowerCase()} added yet` : `${activeJobCount} in progress`,
                 icon: HardHat,
                 color: 'text-primary',
                 bg: 'bg-orange-50',
                 href: '/jobs',
-                cta: activeJobCount === 0 ? 'Add first job' : 'View jobs',
+                cta: activeJobCount === 0 ? `Add first ${workSingular.toLowerCase()}` : `View ${workPlural.toLowerCase()}`,
               },
               {
                 label: 'Crew On-Site',

@@ -14,7 +14,9 @@ import {
   GripVertical,
   ChevronUp,
   ChevronDown,
+  Type,
 } from 'lucide-react';
+import { invalidateTerminologyCache } from '@/lib/useTerminology';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -323,6 +325,19 @@ function NamedListEditor({
   );
 }
 
+// ── Preset options ────────────────────────────────────────────────────────────
+const PRESET_OPTIONS = [
+  { label: 'Jobs',        singular: 'Job',        plural: 'Jobs' },
+  { label: 'Projects',    singular: 'Project',    plural: 'Projects' },
+  { label: 'Sites',       singular: 'Site',       plural: 'Sites' },
+  { label: 'Stations',    singular: 'Station',    plural: 'Stations' },
+  { label: 'Stores',      singular: 'Store',      plural: 'Stores' },
+  { label: 'Work Orders', singular: 'Work Order', plural: 'Work Orders' },
+  { label: 'Custom',      singular: '',           plural: '' },
+] as const;
+
+type PresetLabel = typeof PRESET_OPTIONS[number]['label'];
+
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
@@ -332,15 +347,43 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // ── Terminology state ──────────────────────────────────────────────────────
+  const [termSingular, setTermSingular] = useState('Job');
+  const [termPlural,   setTermPlural]   = useState('Jobs');
+  const [termPreset,   setTermPreset]   = useState<PresetLabel>('Jobs');
+  const [termSaving,   setTermSaving]   = useState(false);
+  const [termSaveState, setTermSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [termErrorMsg, setTermErrorMsg] = useState('');
+
+  function applyPreset(label: PresetLabel) {
+    setTermPreset(label);
+    const opt = PRESET_OPTIONS.find((o) => o.label === label);
+    if (opt && label !== 'Custom') {
+      setTermSingular(opt.singular);
+      setTermPlural(opt.plural);
+    }
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/company-settings', { credentials: 'include' });
-      if (res.ok) {
-        const json = await res.json() as { structure?: Partial<CompanyStructureData> };
+      const [settingsRes, termRes] = await Promise.all([
+        fetch('/api/company-settings', { credentials: 'include' }),
+        fetch('/api/settings/terminology', { credentials: 'include' }),
+      ]);
+      if (settingsRes.ok) {
+        const json = await settingsRes.json() as { structure?: Partial<CompanyStructureData> };
         if (json.structure && Object.keys(json.structure).length > 0) {
           setData({ ...DEFAULT_STRUCTURE, ...json.structure });
         }
+      }
+      if (termRes.ok) {
+        const t = await termRes.json() as { singular: string; plural: string };
+        setTermSingular(t.singular);
+        setTermPlural(t.plural);
+        // Detect which preset matches
+        const match = PRESET_OPTIONS.find((o) => o.label !== 'Custom' && o.singular === t.singular && o.plural === t.plural);
+        setTermPreset(match ? match.label : 'Custom');
       }
     } catch {
       // use defaults
@@ -377,6 +420,38 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
     }
   }
 
+  async function handleTermSave() {
+    if (!isAdmin) return;
+    if (!termSingular.trim() || !termPlural.trim()) {
+      setTermErrorMsg('Both singular and plural labels are required.');
+      setTermSaveState('error');
+      return;
+    }
+    setTermSaving(true);
+    setTermErrorMsg('');
+    setTermSaveState('idle');
+    try {
+      const res = await fetch('/api/settings/terminology', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ singular: termSingular.trim(), plural: termPlural.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? 'Save failed');
+      }
+      invalidateTerminologyCache();
+      setTermSaveState('saved');
+      setTimeout(() => setTermSaveState('idle'), 2500);
+    } catch (e) {
+      setTermErrorMsg(e instanceof Error ? e.message : 'Save failed');
+      setTermSaveState('error');
+    } finally {
+      setTermSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
@@ -399,6 +474,89 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
           <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-1.5 font-semibold shrink-0">
             View only — Owner/Admin can edit
           </span>
+        )}
+      </div>
+
+      {/* ── Main Work Label ─────────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Type size={15} className="text-primary" />
+          <h3 className="font-heading font-semibold text-sm text-slate-800">Main Work Label</h3>
+        </div>
+        <p className="text-xs text-slate-500 mb-4">
+          Choose what your company calls its main work records. This updates the sidebar, dashboard and register headings.
+        </p>
+
+        {/* Preset chips */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {PRESET_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              disabled={!isAdmin}
+              onClick={() => applyPreset(opt.label)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                termPreset === opt.label
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom inputs — shown for Custom preset or when preset doesn&apos;t match */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Singular label</label>
+            <input
+              className={inputClass}
+              value={termSingular}
+              onChange={(e) => { setTermSingular(e.target.value); setTermPreset('Custom'); }}
+              placeholder="e.g. Job"
+              disabled={!isAdmin}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Plural label</label>
+            <input
+              className={inputClass}
+              value={termPlural}
+              onChange={(e) => { setTermPlural(e.target.value); setTermPreset('Custom'); }}
+              placeholder="e.g. Jobs"
+              disabled={!isAdmin}
+            />
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-400 mb-4">
+          Preview: <span className="font-semibold text-slate-600">{termPlural || '…'}</span> register &nbsp;·&nbsp;
+          Add <span className="font-semibold text-slate-600">{termSingular || '…'}</span> &nbsp;·&nbsp;
+          Active <span className="font-semibold text-slate-600">{termPlural || '…'}</span>
+        </div>
+
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTermSave}
+              disabled={termSaving || !termSingular.trim() || !termPlural.trim()}
+              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {termSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              Save Label
+            </button>
+            {termSaveState === 'saved' && (
+              <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                <CheckCircle2 size={13} />Saved — reload to see changes
+              </span>
+            )}
+            {termSaveState === 'error' && termErrorMsg && (
+              <span className="flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle size={13} />{termErrorMsg}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -27,6 +27,7 @@ import {
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe, invalidateMeCache } from '@/lib/usePermissions';
 import NotificationBell from '@/components/NotificationBell';
+import { useTerminology } from '@/lib/useTerminology';
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
@@ -48,17 +49,19 @@ function useSubscriptionStatus() {
 
 // ── Main nav items ────────────────────────────────────────────────────────────
 // Annette lives as a sub-item under Dazza AI — not a top-level item.
-const navItems = [
-  { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
-  { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
-  { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
-  { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
-  { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
-  { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
-  { label: 'Safety',     icon: ShieldAlert,     href: '/safety',     permKey: null },
-  { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
-  { label: 'Estimating', icon: Calculator,      href: '/estimating', permKey: 'estimating' },
-] as const;
+function buildNavItems(workPlural: string) {
+  return [
+    { label: 'Dashboard',  icon: LayoutDashboard, href: '/dashboard',  permKey: null },
+    { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
+    { label: workPlural,   icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
+    { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
+    { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
+    { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },
+    { label: 'Safety',     icon: ShieldAlert,     href: '/safety',     permKey: null },
+    { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
+    { label: 'Estimating', icon: Calculator,      href: '/estimating', permKey: 'estimating' },
+  ] as const;
+}
 
 // ── Admin group (shown below a divider) ───────────────────────────────────────
 const adminItems = [
@@ -104,10 +107,12 @@ function SidebarContent({
   collapsed,
   onClose,
   onToggle,
+  navItems,
 }: {
   collapsed: boolean;
   onClose?: () => void;
   onToggle?: () => void;
+  navItems: ReturnType<typeof buildNavItems>;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -392,6 +397,8 @@ export default function PortalSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { workPlural } = useTerminology();
+  const navItems = buildNavItems(workPlural);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -416,7 +423,7 @@ export default function PortalSidebar() {
         className="relative hidden md:flex flex-col h-screen bg-[#1A1D23] text-white shrink-0 overflow-hidden"
         style={{ minWidth: collapsed ? 72 : 240 }}
       >
-        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} navItems={navItems} />
       </motion.aside>
 
       {/* ── Mobile overlay drawer ── */}
@@ -441,7 +448,7 @@ export default function PortalSidebar() {
               className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-[#1A1D23] text-white flex flex-col z-50 md:hidden shadow-2xl"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
+              <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} navItems={navItems} />
             </motion.aside>
           </>
         )}

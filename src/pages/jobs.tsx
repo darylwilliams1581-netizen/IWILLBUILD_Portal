@@ -17,6 +17,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
+import { useTerminology } from '@/lib/useTerminology';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -30,6 +31,7 @@ const stagger = {
 
 export default function JobsPage() {
   const navigate = useNavigate();
+  const { workSingular, workPlural, addWorkLabel } = useTerminology();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,7 +110,7 @@ export default function JobsPage() {
               <Menu size={20} />
             </button>
             <HardHat size={18} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base md:text-lg">Jobs</h1>
+            <h1 className="font-heading font-bold text-base md:text-lg">{workPlural}</h1>
             {!loading && (
               <span className="text-xs bg-muted text-muted-foreground font-semibold px-2 py-0.5 rounded-full">
                 {jobs.length}
@@ -122,7 +124,7 @@ export default function JobsPage() {
             className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 md:px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
-            <span className="hidden sm:inline">New Job</span>
+            <span className="hidden sm:inline">{addWorkLabel}</span>
           </button>
         </header>
 
@@ -196,9 +198,9 @@ export default function JobsPage() {
               <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
                 <HardHat size={26} className="text-primary" />
               </div>
-              <p className="font-heading font-bold text-base text-foreground mb-1">No jobs yet</p>
+              <p className="font-heading font-bold text-base text-foreground mb-1">No {workPlural.toLowerCase()} yet</p>
               <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-                Create your first job to start tracking work, crew, and progress.
+                Create your first {workSingular.toLowerCase()} to start tracking work, crew, and progress.
               </p>
               <button
                 onClick={() => !isViewOnly && setShowNewJob(true)}
@@ -207,7 +209,7 @@ export default function JobsPage() {
                 className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={15} />
-                Create First Job
+                {addWorkLabel}
               </button>
             </div>
           )}
@@ -215,7 +217,7 @@ export default function JobsPage() {
           {/* No results from filter/search */}
           {!loading && !error && jobs.length > 0 && filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">
-              No jobs match your search or filter.
+              No {workPlural.toLowerCase()} match your search or filter.
             </div>
           )}
 

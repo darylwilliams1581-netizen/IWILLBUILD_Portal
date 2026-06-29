@@ -370,13 +370,15 @@ export default function HomePage() {
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>30-day free trial — no credit card needed</span>
             </motion.div>
 
-            <motion.h1 variants={fadeUp} style={{
+            <motion.div variants={fadeUp} style={{
               fontSize: 'clamp(32px,4.8vw,58px)',
               lineHeight: 1.04, letterSpacing: '-0.04em',
               color: '#fff', margin: '0 0 20px',
             }}>
-              Run your construction jobs, forms, photos, fleet and estimates in one clean portal.
-            </motion.h1>
+              <h1 style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit', color: 'inherit', margin: 0 }}>
+                Run your construction jobs, forms, photos, fleet and estimates in one clean portal.
+              </h1>
+            </motion.div>
 
             <motion.p variants={fadeUp} style={{
               color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
