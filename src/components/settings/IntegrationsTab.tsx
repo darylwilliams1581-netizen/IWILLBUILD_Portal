@@ -1,7 +1,7 @@
 /**
  * Settings → Integrations tab
  * ─────────────────────────────────────────────────────────────────────────────
- * Manages third-party integrations. Currently: OneDrive / SharePoint.
+ * Manages third-party integrations. Currently: OneDrive / SharePoint, Dazza AI key.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   Info,
   FolderOpen,
 } from 'lucide-react';
+import DazzaAiKeyCard from './DazzaAiKeyCard';
 
 interface OneDriveStatus {
   configured: boolean;
@@ -28,7 +29,7 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function IntegrationsTab() {
+export default function IntegrationsTab({ isOwner = false }: { isOwner?: boolean }) {
   const [status, setStatus] = useState<OneDriveStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -261,6 +262,9 @@ export default function IntegrationsTab() {
       <div className="border border-dashed border-slate-200 rounded-2xl px-5 py-6 text-center">
         <p className="text-sm text-slate-400">More integrations coming soon — Google Drive, Dropbox, and more.</p>
       </div>
+
+      {/* Dazza AI — company OpenAI key (owner only) */}
+      <DazzaAiKeyCard isOwner={isOwner} />
     </div>
   );
 }

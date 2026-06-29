@@ -392,7 +392,20 @@ export async function processDazzaQuestion(
   const companyId = ctx.companyId;
   const userId = ctx.userId;
   const modulesUsed = detectModulesUsed(ctx);
-  const apiKey = getSecret('OPENAI_API_KEY');
+
+  // ── Resolve API key: company key takes priority over platform key ─────────
+  let apiKey = getSecret('OPENAI_API_KEY'); // platform fallback
+  try {
+    const [keyRows] = await db.execute(
+      sql`SELECT openai_api_key FROM company_settings WHERE company_id = ${companyId} LIMIT 1`
+    ) as unknown as [Array<{ openai_api_key: string | null }>, unknown];
+    const companyKey = keyRows?.[0]?.openai_api_key?.trim();
+    if (companyKey) {
+      apiKey = companyKey; // company key wins
+    }
+  } catch {
+    // If lookup fails, fall back to platform key silently
+  }
 
   // ── STEP 1: Check brain entries ───────────────────────────────────────────
   const brainEntry = await tryBrainLookup(question, ctx.companyId);

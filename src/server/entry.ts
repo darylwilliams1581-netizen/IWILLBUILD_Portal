@@ -238,6 +238,8 @@ import settings_backup_destination_get_222 from "./api/settings/backup-destinati
 import settings_backup_destination_post_223 from "./api/settings/backup-destination/POST";
 import settings_file_transfer_backup_get from "./api/settings/file-transfer-backup/GET";
 import settings_file_transfer_backup_post from "./api/settings/file-transfer-backup/POST";
+import settings_dazza_ai_key_get from "./api/settings/dazza-ai-key/GET";
+import settings_dazza_ai_key_post from "./api/settings/dazza-ai-key/POST";
 import settings_retention_get_224 from "./api/settings/retention/GET";
 import settings_retention_post_225 from "./api/settings/retention/POST";
 import settings_terminology_get_226 from "./api/settings/terminology/GET";
@@ -580,6 +582,8 @@ async function runStartupMigrations() {
     // ── user: TOTP 2FA ────────────────────────────────────────────────────────
     { table: 'user', column: 'totp_secret',        definition: 'VARCHAR(64) NULL' },
     { table: 'user', column: 'two_factor_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── Dazza AI — per-company OpenAI key ────────────────────────────────────
+    { table: 'company_settings', column: 'openai_api_key', definition: 'TEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1004,6 +1008,8 @@ app.get("/api/settings/backup-destination", settings_backup_destination_get_222)
 app.post("/api/settings/backup-destination", settings_backup_destination_post_223);
 app.get("/api/settings/file-transfer-backup", settings_file_transfer_backup_get);
 app.post("/api/settings/file-transfer-backup", settings_file_transfer_backup_post);
+app.get("/api/settings/dazza-ai-key", settings_dazza_ai_key_get);
+app.post("/api/settings/dazza-ai-key", settings_dazza_ai_key_post);
 app.get("/api/settings/retention", settings_retention_get_224);
 app.post("/api/settings/retention", settings_retention_post_225);
 app.get("/api/settings/terminology", settings_terminology_get_226);

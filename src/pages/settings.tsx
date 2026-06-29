@@ -757,7 +757,7 @@ export default function SettingsPage() {
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}
-              {activeTab === 'integrations' && <IntegrationsTab />}
+              {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
               {activeTab === 'data' && (
                 <DataBackupTab isAdmin={isAdmin} />
               )}
