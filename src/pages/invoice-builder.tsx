@@ -5,7 +5,7 @@ import {
   Receipt, ArrowLeft, Save, Send, Printer, Copy, Trash2,
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
-  ChevronUp, User, Building2,
+  ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -234,6 +234,8 @@ export default function InvoiceBuilderPage() {
   const [dirty, setDirty] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [xeroSyncing, setXeroSyncing] = useState(false);
+  const [xeroMsg, setXeroMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   // Form state
   const today = new Date().toISOString().split('T')[0];
@@ -397,6 +399,34 @@ export default function InvoiceBuilderPage() {
     };
   }
 
+  async function handleXeroSync() {
+    if (!invoice) return;
+    // Save first if dirty
+    if (dirty) await handleSave(false);
+    setXeroSyncing(true); setXeroMsg(null);
+    try {
+      const res = await fetch(`/api/integrations/xero/sync-invoice/${invoice.id}`, {
+        method: 'POST', credentials: 'include',
+      });
+      const d = await res.json() as { ok?: boolean; message?: string; error?: string; xeroInvoiceId?: string };
+      if (!res.ok) {
+        setXeroMsg({ type: 'error', text: d.error ?? 'Xero sync failed' });
+      } else {
+        setXeroMsg({ type: 'ok', text: d.message ?? 'Synced to Xero' });
+        // Refresh invoice to get updated accounting fields
+        const updated = await fetch(`/api/invoices/${invoice.id}`, { credentials: 'include' });
+        if (updated.ok) {
+          const ud = await updated.json() as { invoice: Invoice };
+          setInvoice(ud.invoice);
+        }
+      }
+    } catch {
+      setXeroMsg({ type: 'error', text: 'Network error syncing to Xero' });
+    } finally {
+      setXeroSyncing(false);
+    }
+  }
+
   async function handleSave(andNavigate = false) {
     if (!title.trim()) { setSaveError('Invoice title is required'); return; }
     setSaving(true); setSaveError('');
@@ -551,6 +581,32 @@ export default function InvoiceBuilderPage() {
                       <DollarSign size={13} />Record Payment
                     </button>
                   )}
+                  {/* Xero sync button */}
+                  {!isNew && canEdit && (
+                    <button
+                      onClick={handleXeroSync}
+                      disabled={xeroSyncing || saving}
+                      title={invoice?.accounting_invoice_id ? `Synced to Xero (${invoice.accounting_invoice_id})` : 'Push to Xero'}
+                      className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        invoice?.accounting_sync_status === 'synced'
+                          ? 'border-[#13B5EA]/30 bg-[#13B5EA]/5 text-[#0fa0d4] hover:bg-[#13B5EA]/10'
+                          : invoice?.accounting_sync_status === 'error'
+                          ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {xeroSyncing ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : invoice?.accounting_sync_status === 'synced' ? (
+                        <CheckCircle2 size={13} />
+                      ) : invoice?.accounting_sync_status === 'error' ? (
+                        <XCircle size={13} />
+                      ) : (
+                        <span className="font-black text-xs">X</span>
+                      )}
+                      {invoice?.accounting_invoice_id ? 'Re-sync Xero' : 'Sync to Xero'}
+                    </button>
+                  )}
                   {!isNew && (
                     <button onClick={handleDuplicate} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
                       <Copy size={13} />Duplicate
@@ -572,6 +628,18 @@ export default function InvoiceBuilderPage() {
               {saveError && (
                 <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm mb-4">
                   <AlertCircle size={13} className="shrink-0" />{saveError}
+                </div>
+              )}
+
+              {xeroMsg && (
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm mb-4 ${
+                  xeroMsg.type === 'ok'
+                    ? 'bg-[#13B5EA]/10 border border-[#13B5EA]/30 text-[#0a7fa0]'
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
+                  {xeroMsg.type === 'ok' ? <CheckCircle2 size={13} className="shrink-0" /> : <AlertCircle size={13} className="shrink-0" />}
+                  {xeroMsg.text}
+                  <button onClick={() => setXeroMsg(null)} className="ml-auto opacity-60 hover:opacity-100"><X size={12} /></button>
                 </div>
               )}
 
@@ -761,20 +829,46 @@ export default function InvoiceBuilderPage() {
               </div>
             )}
 
-            {/* Accounting integrations placeholder */}
+            {/* Accounting integrations */}
             {!isNew && (
               <div className="bg-white border border-border rounded-xl p-5">
                 <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Accounting Integration</h2>
-                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                  <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-                    <Building2 size={14} className="text-slate-500" />
+                {invoice?.accounting_provider === 'xero' && invoice?.accounting_invoice_id ? (
+                  <div className="flex items-center gap-3 p-3 bg-[#13B5EA]/5 border border-[#13B5EA]/20 rounded-lg">
+                    <div className="w-8 h-8 rounded-lg bg-[#13B5EA]/10 flex items-center justify-center shrink-0">
+                      <span className="text-[#13B5EA] font-black text-sm">X</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Synced to Xero</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">ID: {invoice.accounting_invoice_id}</p>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
+                      invoice.accounting_sync_status === 'synced'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : invoice.accounting_sync_status === 'error'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                      {invoice.accounting_sync_status === 'synced' ? 'Synced' : invoice.accounting_sync_status === 'error' ? 'Error' : invoice.accounting_sync_status ?? 'Unknown'}
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">Not connected</p>
-                    <p className="text-xs text-muted-foreground">Connect Xero, QuickBooks or MYOB in Settings → Accounting.</p>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                      <Building2 size={14} className="text-slate-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">Not synced</p>
+                      <p className="text-xs text-muted-foreground">Use the "Sync to Xero" button above, or connect Xero in Settings → Accounting.</p>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-500 rounded-full">Coming Soon</span>
-                </div>
+                )}
+                {invoice?.accounting_sync_error && (
+                  <div className="mt-2 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                    <span className="break-all">{invoice.accounting_sync_error}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

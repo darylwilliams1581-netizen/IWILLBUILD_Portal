@@ -249,6 +249,14 @@ import integrations_onedrive_callback_get from "./api/integrations/onedrive/call
 import integrations_onedrive_status_get from "./api/integrations/onedrive/status/GET";
 import integrations_onedrive_disconnect_post from "./api/integrations/onedrive/disconnect/POST";
 import integrations_onedrive_upload_file_post from "./api/integrations/onedrive/upload-file/POST";
+// Xero accounting integration
+import integrations_xero_auth_url_get from "./api/integrations/xero/auth-url/GET";
+import integrations_xero_callback_get from "./api/integrations/xero/callback/GET";
+import integrations_xero_status_get from "./api/integrations/xero/status/GET";
+import integrations_xero_disconnect_post from "./api/integrations/xero/disconnect/POST";
+import integrations_xero_sync_invoice_post from "./api/integrations/xero/sync-invoice/POST";
+import integrations_xero_sync_customer_post from "./api/integrations/xero/sync-customer/POST";
+import integrations_xero_webhook_post from "./api/integrations/xero/webhook/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -476,6 +484,8 @@ async function runStartupMigrations() {
     { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
     // ── profiles: invoices permission ────────────────────────────────────────
     { table: 'profiles', column: 'perm_invoices', definition: "TINYINT(1) NOT NULL DEFAULT 1" },
+    // ── customers: Xero contact ID ────────────────────────────────────────────
+    { table: 'customers', column: 'xero_contact_id', definition: "VARCHAR(100) NULL" },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -530,6 +540,8 @@ async function runStartupMigrations() {
     { name: 'invoices', ddl: "CREATE TABLE IF NOT EXISTS invoices (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NULL, customer_id INT NULL, invoice_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', issue_date DATE NULL, due_date DATE NULL, subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst_amount DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0, balance_due DECIMAL(12,2) NOT NULL DEFAULT 0, notes TEXT NULL, terms TEXT NULL, accounting_provider VARCHAR(30) NULL, accounting_invoice_id VARCHAR(255) NULL, accounting_sync_status VARCHAR(30) NULL DEFAULT 'not_synced', accounting_sync_error TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
     { name: 'invoice_lines', ddl: "CREATE TABLE IF NOT EXISTS invoice_lines (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT NOT NULL, quantity DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
     { name: 'invoice_payments', ddl: "CREATE TABLE IF NOT EXISTS invoice_payments (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 0, method VARCHAR(50) NULL, reference VARCHAR(255) NULL, notes TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
+    // ── Xero OAuth connections ─────────────────────────────────────────────────
+    { name: 'xero_connections', ddl: "CREATE TABLE IF NOT EXISTS xero_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, tenant_id VARCHAR(100) NOT NULL DEFAULT '', tenant_name VARCHAR(255) NOT NULL DEFAULT '', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -854,6 +866,19 @@ app.get("/api/integrations/onedrive/callback", integrations_onedrive_callback_ge
 app.get("/api/integrations/onedrive/status", integrations_onedrive_status_get);
 app.post("/api/integrations/onedrive/disconnect", integrations_onedrive_disconnect_post);
 app.post("/api/integrations/onedrive/upload-file", integrations_onedrive_upload_file_post);
+// Xero accounting integration
+app.get("/api/integrations/xero/auth-url", integrations_xero_auth_url_get);
+app.get("/api/integrations/xero/callback", integrations_xero_callback_get);
+app.get("/api/integrations/xero/status", integrations_xero_status_get);
+app.post("/api/integrations/xero/disconnect", integrations_xero_disconnect_post);
+app.post("/api/integrations/xero/sync-invoice/:invoiceId", integrations_xero_sync_invoice_post);
+app.post("/api/integrations/xero/sync-customer/:customerId", integrations_xero_sync_customer_post);
+// Xero webhook — needs raw body for HMAC verification
+app.post("/api/integrations/xero/webhook", express.raw({ type: 'application/json' }), (req, res, next) => {
+  (req as Request & { rawBody?: Buffer }).rawBody = req.body as Buffer;
+  req.body = req.body.length ? JSON.parse(req.body.toString()) : {};
+  next();
+}, integrations_xero_webhook_post);
 app.get("/api/support-mode/audit", requireOwner, support_mode_audit_get_122);
 app.get("/api/support-mode/checklist", requireOwner, support_mode_checklist_get_123);
 app.put("/api/support-mode/checklist", requireOwner, support_mode_checklist_put_124);
