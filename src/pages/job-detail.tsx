@@ -442,7 +442,14 @@ export default function JobDetailPage() {
                       <DetailRow icon={HardHat} label="Job Title" value={job.name} />
                       {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
                       {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
-                      {job.address && <DetailRow icon={MapPin} label="Site Address" value={job.address} />}
+                      {job.address && (
+                        <DetailRow
+                          icon={MapPin}
+                          label="Site Address"
+                          value={job.address}
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                        />
+                      )}
                       <DetailRow
                         icon={Calendar}
                         label="Created"
@@ -535,11 +542,13 @@ function DetailRow({
   label,
   value,
   mono = false,
+  href,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   mono?: boolean;
+  href?: string;
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -548,7 +557,18 @@ function DetailRow({
       </div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`text-sm font-medium text-foreground ${mono ? 'font-mono' : ''}`}>{value}</p>
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`text-sm font-medium text-primary underline underline-offset-2 hover:text-orange-600 transition-colors ${mono ? 'font-mono' : ''}`}
+          >
+            {value}
+          </a>
+        ) : (
+          <p className={`text-sm font-medium text-foreground ${mono ? 'font-mono' : ''}`}>{value}</p>
+        )}
       </div>
     </div>
   );
