@@ -39,10 +39,18 @@ export default async function handler(req: Request, res: Response) {
 
     const scopes = [
       'openid', 'profile', 'email',
-      'accounting.transactions',
-      'accounting.contacts',
-      'accounting.settings',
       'offline_access',
+      // Contacts — read/write for customer sync
+      'accounting.contacts',
+      'accounting.contacts.read',
+      // Invoices — read/write for invoice sync
+      'accounting.invoices',
+      'accounting.invoices.read',
+      // Settings — read org details, tax rates, accounts
+      'accounting.settings.read',
+      // Attachments — push receipts, dockets, PDFs to Xero records
+      'accounting.attachments',
+      'accounting.attachments.read',
     ].join(' ');
 
     const url = new URL('https://login.xero.com/identity/connect/authorize');
