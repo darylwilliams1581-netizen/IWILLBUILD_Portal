@@ -3,10 +3,27 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Used as the `errorElement` on every protected route.
  * Renders inside the layout so the sidebar/header stay mounted.
- * Shows a friendly recovery screen with Refresh and Go to Login buttons.
+ * Shows a friendly recovery screen with Refresh, Go to Login, and
+ * "Clear session & go to login" buttons.
  */
 import { useRouteError, isRouteErrorResponse } from 'react-router-dom';
-import { RefreshCw, LogIn, AlertTriangle } from 'lucide-react';
+import { RefreshCw, LogIn, AlertTriangle, ShieldOff } from 'lucide-react';
+import { invalidateMeCache } from '@/lib/usePermissions';
+import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
+import { invalidateTerminologyCache } from '@/lib/useTerminology';
+import { invalidateSupportModeCache } from '@/lib/useSupportMode';
+
+function clearAllCachesAndGoToLogin() {
+  try {
+    invalidateMeCache();
+    invalidateSubscriptionCache();
+    invalidateTerminologyCache();
+    invalidateSupportModeCache();
+  } catch {
+    // best-effort
+  }
+  window.location.replace('/login');
+}
 
 export default function RouteErrorFallback() {
   const error = useRouteError();
@@ -14,12 +31,16 @@ export default function RouteErrorFallback() {
   let message = 'An unexpected error occurred on this page.';
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) message = 'This page could not be found.';
-    else if (error.status === 403) message = 'You don\'t have permission to view this page.';
+    else if (error.status === 403) message = "You don't have permission to view this page.";
     else message = `Server error ${error.status}: ${error.statusText}`;
   } else if (error instanceof Error) {
     // React #310 and similar hook-order errors land here
     message = error.message;
   }
+
+  // Detect if this looks like a session/auth error
+  const isAuthError =
+    isRouteErrorResponse(error) && (error.status === 401 || error.status === 403);
 
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center min-h-[60vh]">
@@ -31,10 +52,10 @@ export default function RouteErrorFallback() {
         Something went wrong
       </h2>
       <p className="text-sm text-slate-500 mb-8 max-w-sm leading-relaxed">
-        Please refresh the page or return to login. If the problem keeps happening, try clearing your browser cache.
+        Please refresh the page or return to login. If the problem keeps happening, try clearing your session.
       </p>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => window.location.reload()}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm"
@@ -49,7 +70,26 @@ export default function RouteErrorFallback() {
           <LogIn size={14} />
           Go to Login
         </button>
+        {isAuthError && (
+          <button
+            onClick={clearAllCachesAndGoToLogin}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-colors"
+          >
+            <ShieldOff size={14} />
+            Clear session &amp; go to login
+          </button>
+        )}
       </div>
+
+      {/* Always show the clear-session option as a subtle link */}
+      {!isAuthError && (
+        <button
+          onClick={clearAllCachesAndGoToLogin}
+          className="mt-5 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+        >
+          Clear session &amp; go to login
+        </button>
+      )}
 
       {/* Dev-only detail */}
       {import.meta.env.DEV && (

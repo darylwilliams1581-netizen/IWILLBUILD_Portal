@@ -20,8 +20,10 @@ interface RootLayoutProps {
  * component that fetches /api/me, /api/subscription/status, etc.
  */
 const PUBLIC_ROUTES = new Set([
+  '/',
   '/login',
   '/signup',
+  '/check-email',
   '/verify-email',
   '/verify-required',
   '/forgot-password',

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -27,7 +27,9 @@ import {
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { usePermissions, useMe, invalidateMeCache } from '@/lib/usePermissions';
 import NotificationBell from '@/components/NotificationBell';
-import { useTerminology } from '@/lib/useTerminology';
+import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
+import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
+import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
@@ -132,10 +134,13 @@ function SidebarContent({
 
   async function handleLogout() {
     try {
-      // Bust the me-cache first so any re-render triggered by signOut
-      // sees null immediately rather than stale data that could cause
+      // Bust all module-level caches before signOut so any re-render triggered
+      // by signOut sees null immediately rather than stale data that could cause
       // a hook-order mismatch (React error #310) on mobile.
       invalidateMeCache();
+      invalidateSubscriptionCache();
+      invalidateTerminologyCache();
+      invalidateSupportModeCache();
       await signOut();
     } catch {
       // Even if signOut fails, navigate away — the session will expire naturally

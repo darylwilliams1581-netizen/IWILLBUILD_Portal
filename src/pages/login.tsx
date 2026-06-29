@@ -5,6 +5,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2 } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
 
+// ── Safe auth logger ──────────────────────────────────────────────────────────
+function authLog(event: string, data?: Record<string, unknown>) {
+  try {
+    console.info(JSON.stringify({ event: `auth.login.${event}`, ...data, ts: Date.now() }));
+  } catch { /* best-effort */ }
+}
+
 // ── Device fingerprint (stable per browser) ──────────────────────────────────
 function getDeviceFingerprint(): string {
   const key = 'iwb_device_fp';
@@ -49,6 +56,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      authLog('already_authenticated', { redirectTo: from });
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location.state]);
@@ -115,12 +123,13 @@ export default function LoginPage() {
     setUnverified(false);
     setResendState('idle');
     setLoading(true);
+    authLog('submit', { route: '/login', emailDomain: email.split('@')[1] ?? 'unknown' });
     try {
       const result = await signIn.email({ email, password });
       if (result.error) {
         const msg = result.error.message || '';
+        authLog('error', { errorMsg: msg.slice(0, 120), status: result.error.status });
         if (isVerificationError(msg)) {
-          // Show the friendly unverified panel instead of a raw error
           setUnverified(true);
         } else {
           setError(msg || 'Invalid email or password.');
@@ -128,17 +137,19 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Login succeeded — check if the user is unverified (better-auth may allow
-      // unverified logins; the app will redirect them to /verify-required)
-      const userData = result.data?.user as { emailVerified?: boolean } | undefined;
+      // Login succeeded — check if the user is unverified
+      const userData = result.data?.user as { emailVerified?: boolean; id?: string } | undefined;
+      authLog('success', { emailVerified: userData?.emailVerified, userId: userData?.id });
       if (userData && userData.emailVerified === false) {
         setUnverified(true);
         setLoading(false);
         return;
       }
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      authLog('redirect', { to: from });
       navigate(from, { replace: true });
-    } catch {
+    } catch (err) {
+      authLog('exception', { errorMsg: String((err as Error)?.message ?? err).slice(0, 120) });
       setError('Something went wrong. Please try again.');
       setLoading(false);
     }

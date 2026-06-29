@@ -62,7 +62,7 @@ export const routes: RouteObject[] = [
   { path: '/signup',        element: <SignupPage /> },
   { path: '/check-email',   element: <CheckEmailPage /> },
   { path: '/verify-email',  element: <VerifyEmailPage /> },
-  { path: '/verify-required', element: protect(<VerifyRequiredPage />) },
+  { path: '/verify-required', element: <VerifyRequiredPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password',  element: <ResetPasswordPage /> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },

@@ -15,6 +15,16 @@ import {
   clearSessionRecovery,
 } from './session-recovery';
 
+// ── Safe auth logger ──────────────────────────────────────────────────────────
+// Logs only non-sensitive fields. Never logs passwords or tokens.
+function authLog(event: string, data?: Record<string, unknown>) {
+  try {
+    console.info(JSON.stringify({ event: `auth.${event}`, ...data, ts: Date.now() }));
+  } catch {
+    // best-effort
+  }
+}
+
 // Auth client - baseURL must be the full origin for BetterAuth's URL construction.
 // window.location.origin works in all environments (local dev, iframe preview, published).
 const _authClient = createAuthClient({
@@ -58,6 +68,7 @@ function useStaleSessionRecovery(error: unknown, isPending: boolean, isAuthentic
       if (typeof window === 'undefined') return;
 
       if (error) {
+        authLog('session.error', { errorMsg: String((error as Error)?.message ?? error).slice(0, 120) });
         recoverFromStaleSession();
         return;
       }
@@ -101,7 +112,6 @@ export function useSession() {
     isAuthenticated,
   };
 }
-
 // Alias for useSession (common naming convention)
 export const useAuth = useSession;
 
@@ -132,9 +142,19 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isPending) return;
-    const timeout = setTimeout(() => setTimedOut(true), SESSION_TIMEOUT_MS);
+    const timeout = setTimeout(() => {
+      authLog('protected_route.timeout', { path: location.pathname });
+      setTimedOut(true);
+    }, SESSION_TIMEOUT_MS);
     return () => clearTimeout(timeout);
-  }, [isPending]);
+  }, [isPending, location.pathname]);
+
+  // Log redirect to login
+  useEffect(() => {
+    if (!isPending && !isAuthenticated) {
+      authLog('protected_route.redirect_to_login', { from: location.pathname });
+    }
+  }, [isPending, isAuthenticated, location.pathname]);
 
   if (timedOut) {
     return (
