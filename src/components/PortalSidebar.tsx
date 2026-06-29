@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ShieldAlert,
   UserCheck,
+  Receipt,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -58,6 +59,7 @@ function buildNavItems(workPlural: string) {
     { label: 'Dazza AI',   icon: Bot,             href: '/dazza-ai',   permKey: 'dazzaAi' },
     { label: workPlural,   icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
     { label: 'Customers',  icon: UserCheck,       href: '/customers',  permKey: 'jobs' },
+    { label: 'Invoices',   icon: Receipt,         href: '/invoices',   permKey: 'invoices' },
     { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
     { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
     { label: 'Forms',      icon: FileText,        href: '/forms',      permKey: 'forms' },

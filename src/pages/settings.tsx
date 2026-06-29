@@ -27,6 +27,8 @@ import {
   FileText,
   Factory,
   Plug,
+  Receipt,
+  ExternalLink,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe, usePermissions } from '@/lib/usePermissions';
@@ -46,6 +48,7 @@ const tabs = [
   { id: 'team',         label: 'Team & Permissions', icon: Users },
   { id: 'structure',    label: 'Company Structure',  icon: Layers },
   { id: 'pdf',          label: 'PDF / Print Style',  icon: FileText },
+  { id: 'accounting',   label: 'Accounting',         icon: Receipt },
   { id: 'dazza',        label: 'Dazza AI',           icon: Bot },
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
@@ -737,6 +740,42 @@ export default function SettingsPage() {
               {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
               {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
+              {activeTab === 'accounting' && (
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <h2 className="font-heading font-bold text-base text-foreground mb-1">Accounting Integrations</h2>
+                    <p className="text-sm text-muted-foreground">Connect your accounting software to sync invoices automatically.</p>
+                  </div>
+                  {[
+                    { name: 'Xero', desc: 'Sync invoices, contacts and payments with Xero.', color: 'bg-blue-50 border-blue-200' },
+                    { name: 'QuickBooks', desc: 'Push invoices and customers to QuickBooks Online.', color: 'bg-green-50 border-green-200' },
+                    { name: 'MYOB', desc: 'Sync invoices and contacts with MYOB AccountRight or Essentials.', color: 'bg-purple-50 border-purple-200' },
+                  ].map((provider) => (
+                    <div key={provider.name} className={`flex items-center justify-between gap-4 p-4 border rounded-xl ${provider.color}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                          <Receipt size={16} className="text-slate-500" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-foreground">{provider.name}</p>
+                          <p className="text-xs text-muted-foreground">{provider.desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-full">Not Connected</span>
+                        <button disabled className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed">
+                          Connect <span className="text-[10px] font-bold bg-slate-300 text-slate-500 px-1.5 py-0.5 rounded-full ml-1">Soon</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Coming soon:</strong> Once connected, you'll be able to sync invoices to your accounting software with one click. Invoice data including line items, GST, customer details and payment status will be pushed automatically.
+                    </p>
+                  </div>
+                </div>
+              )}
               {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}

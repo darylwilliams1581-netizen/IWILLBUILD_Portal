@@ -252,6 +252,23 @@ export async function buildDazzaContext(
       return rows ?? [];
     });
 
+    if (permissions.seeDollars) {
+      ctx.invoices = await safeQuery('invoices', async () => {
+        const [rows] = await db.execute(
+          sql`SELECT i.id, i.invoice_number, i.title, i.status, i.total, i.amount_paid, i.balance_due,
+                     i.issue_date, i.due_date, i.job_id,
+                     j.name as job_name, j.job_number,
+                     c.name as customer_name
+              FROM invoices i
+              LEFT JOIN jobs j ON j.id = i.job_id AND j.company_id = i.company_id
+              LEFT JOIN customers c ON c.id = i.customer_id AND c.company_id = i.company_id
+              WHERE i.company_id = ${effectiveCompanyId}
+              ORDER BY i.created_at DESC LIMIT 50`
+        ) as unknown as [Array<Record<string, unknown>>, unknown];
+        return rows ?? [];
+      });
+    }
+
     ctx.openTodos = await safeQuery('todos', async () => {      const [rows] = await db.execute(
         sql`SELECT t.id, t.job_id, t.title, t.status, t.due_date, t.notes, j.name as job_name
             FROM job_todos t

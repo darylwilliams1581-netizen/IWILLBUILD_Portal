@@ -18,6 +18,8 @@ import {
   Clock,
   XCircle,
   BarChart3,
+  Receipt,
+  DollarSign,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -26,6 +28,8 @@ import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import { useTerminology } from '@/lib/useTerminology';
+import { usePermissions } from '@/lib/usePermissions';
+import { fmtMoney } from '@/lib/invoices-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -60,12 +64,14 @@ interface DashTodo {
 export default function DashboardPage() {
   const { user } = useSession();
   const { workSingular, workPlural, addWorkLabel } = useTerminology();
+  const { can, isAdmin, isOwner, loading: permLoading } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
   const [fleetCount, setFleetCount] = useState(0);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
   const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
+  const [invoiceSummary, setInvoiceSummary] = useState<{ unpaid: number; overdue: number; balanceDue: number } | null>(null);
 
   // Setup detection — true once we know whether the company has real data
   const [setupChecked, setSetupChecked] = useState(false);
@@ -103,6 +109,24 @@ export default function DashboardPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Load invoice summary once permissions are known
+  useEffect(() => {
+    if (permLoading) return;
+    const canInvoices = isAdmin || isOwner || can('invoices');
+    const seeDollars = isAdmin || isOwner || can('seeDollars');
+    if (!canInvoices || !seeDollars) return;
+    fetch('/api/invoices', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const invs = d.invoices ?? [];
+        const unpaid = invs.filter((i: { status: string }) => ['sent', 'partially_paid', 'overdue'].includes(i.status));
+        const overdue = invs.filter((i: { status: string }) => i.status === 'overdue');
+        const balanceDue = unpaid.reduce((s: number, i: { balance_due: string }) => s + parseFloat(i.balance_due ?? '0'), 0);
+        setInvoiceSummary({ unpaid: unpaid.length, overdue: overdue.length, balanceDue });
+      })
+      .catch(() => {});
+  }, [permLoading, isAdmin, isOwner]);
 
   const activeJobCount = jobs.filter((j) =>
     ['New', 'Quoting', 'Submitted', 'Awaiting Approval', 'Works Approved', 'Ready to Start', 'Works in Progress'].includes(j.status)
@@ -464,6 +488,32 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* ── Invoice summary card (invoice + seeDollars permission only) ── */}
+          {invoiceSummary && (invoiceSummary.unpaid > 0 || invoiceSummary.overdue > 0) && (
+            <motion.div variants={itemVariants} initial="hidden" animate="visible">
+              <Link
+                to="/invoices"
+                className="flex items-center gap-4 bg-white border border-border rounded-xl px-5 py-4 hover:border-primary/40 hover:shadow-sm transition-all group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                  <Receipt size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">
+                    {invoiceSummary.unpaid} unpaid invoice{invoiceSummary.unpaid !== 1 ? 's' : ''}
+                    {invoiceSummary.overdue > 0 && (
+                      <span className="ml-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">
+                        {invoiceSummary.overdue} overdue
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Balance due: {fmtMoney(invoiceSummary.balanceDue)}</p>
+                </div>
+                <ChevronRight size={15} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              </Link>
             </motion.div>
           )}
 

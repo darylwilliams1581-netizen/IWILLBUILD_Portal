@@ -211,6 +211,15 @@ import customers_post from "./api/customers/POST";
 import customers_id_get from "./api/customers/[id]/GET";
 import customers_id_put from "./api/customers/[id]/PUT";
 import customers_id_delete from "./api/customers/[id]/DELETE";
+import invoices_get from "./api/invoices/GET";
+import invoices_post from "./api/invoices/POST";
+import invoices_id_get from "./api/invoices/[id]/GET";
+import invoices_id_put from "./api/invoices/[id]/PUT";
+import invoices_id_delete from "./api/invoices/[id]/DELETE";
+import invoices_id_duplicate from "./api/invoices/[id]/duplicate/POST";
+import invoices_id_mark_sent from "./api/invoices/[id]/mark-sent/POST";
+import invoices_id_record_payment from "./api/invoices/[id]/record-payment/POST";
+import invoices_id_void from "./api/invoices/[id]/void/POST";
 import safety_plans_get from "./api/safety/plans/GET";
 import safety_plans_post from "./api/safety/plans/POST";
 import safety_plans_seed_post from "./api/safety/plans/seed/POST";
@@ -465,6 +474,8 @@ async function runStartupMigrations() {
     { table: 'job_swms', column: 'approved_at',            definition: 'DATETIME NULL' },
     // ── jobs: customer link (v2) ──────────────────────────────────────────────
     { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
+    // ── profiles: invoices permission ────────────────────────────────────────
+    { table: 'profiles', column: 'perm_invoices', definition: "TINYINT(1) NOT NULL DEFAULT 1" },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -515,6 +526,10 @@ async function runStartupMigrations() {
     { name: 'onedrive_connections', ddl: "CREATE TABLE IF NOT EXISTS onedrive_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, display_name VARCHAR(255) NOT NULL DEFAULT 'OneDrive User', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     // ── Customers ─────────────────────────────────────────────────────────────
     { name: 'customers', ddl: "CREATE TABLE IF NOT EXISTS customers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, contact_person VARCHAR(255) NULL, email VARCHAR(255) NULL, phone VARCHAR(50) NULL, mobile VARCHAR(50) NULL, address TEXT NULL, billing_address TEXT NULL, abn VARCHAR(20) NULL, notes TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'active', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_status (company_id, status))" },
+    // ── Invoices ──────────────────────────────────────────────────────────────
+    { name: 'invoices', ddl: "CREATE TABLE IF NOT EXISTS invoices (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NULL, customer_id INT NULL, invoice_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', issue_date DATE NULL, due_date DATE NULL, subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst_amount DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0, balance_due DECIMAL(12,2) NOT NULL DEFAULT 0, notes TEXT NULL, terms TEXT NULL, accounting_provider VARCHAR(30) NULL, accounting_invoice_id VARCHAR(255) NULL, accounting_sync_status VARCHAR(30) NULL DEFAULT 'not_synced', accounting_sync_error TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
+    { name: 'invoice_lines', ddl: "CREATE TABLE IF NOT EXISTS invoice_lines (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT NOT NULL, quantity DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
+    { name: 'invoice_payments', ddl: "CREATE TABLE IF NOT EXISTS invoice_payments (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 0, method VARCHAR(50) NULL, reference VARCHAR(255) NULL, notes TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -870,6 +885,16 @@ app.post("/api/customers", customers_post);
 app.get("/api/customers/:id", customers_id_get);
 app.put("/api/customers/:id", customers_id_put);
 app.delete("/api/customers/:id", customers_id_delete);
+// ── Invoices ──────────────────────────────────────────────────────────────────
+app.get("/api/invoices", invoices_get);
+app.post("/api/invoices", invoices_post);
+app.get("/api/invoices/:id", invoices_id_get);
+app.put("/api/invoices/:id", invoices_id_put);
+app.delete("/api/invoices/:id", invoices_id_delete);
+app.post("/api/invoices/:id/duplicate", invoices_id_duplicate);
+app.post("/api/invoices/:id/mark-sent", invoices_id_mark_sent);
+app.post("/api/invoices/:id/record-payment", invoices_id_record_payment);
+app.post("/api/invoices/:id/void", invoices_id_void);
 app.get("/api/safety/plans", safety_plans_get);
 app.post("/api/safety/plans", safety_plans_post);
 app.post("/api/safety/plans/seed", safety_plans_seed_post);

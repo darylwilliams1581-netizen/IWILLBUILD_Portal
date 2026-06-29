@@ -126,6 +126,7 @@ export const profiles = mysqlTable('profiles', {
   permSeeDollars:  boolean('perm_see_dollars').notNull().default(true),
   permInviteUsers: boolean('perm_invite_users').notNull().default(false),
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
+  permInvoices: boolean('perm_invoices').notNull().default(true),
   // Notification preferences stored as JSON blob (user-scoped)
   notificationPrefs: text('notification_prefs'),
   // Activity tracking

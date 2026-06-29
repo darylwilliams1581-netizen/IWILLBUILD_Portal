@@ -31,6 +31,7 @@ import {
   Phone,
   Mail,
   ExternalLink,
+  DollarSign,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -43,12 +44,13 @@ import JobForms from '@/components/job/JobForms';
 import JobSafety from '@/components/job/JobSafety';
 import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
+import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,7 +72,7 @@ export default function JobDetailPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
     return 'details';
   });
 
@@ -354,6 +356,7 @@ export default function JobDetailPage() {
                   { key: 'details',   label: 'Details',   icon: FileText },
                   { key: 'estimates', label: 'Estimates', icon: Calculator },
                   { key: 'costs',     label: 'Costs',     icon: Receipt },
+                  { key: 'invoices',  label: 'Invoices',  icon: DollarSign },
                   { key: 'progress',  label: 'Progress',  icon: TrendingUp },
                   { key: 'todos',     label: 'To-do',     icon: CheckSquare },
                   { key: 'delays',    label: 'Delays',    icon: Clock },
@@ -592,6 +595,11 @@ export default function JobDetailPage() {
               {/* ── Safety tab ── */}
               {activeTab === 'safety' && (
                 <JobSafety jobId={job.id} />
+              )}
+
+              {/* ── Invoices tab ── */}
+              {activeTab === 'invoices' && (
+                <JobInvoices jobId={job.id} job={job} />
               )}
 
             </motion.div>

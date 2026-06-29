@@ -18,6 +18,7 @@ export interface UserProfile {
     seeDollars: boolean;
     inviteUsers: boolean;
     deleteRecords: boolean;
+    invoices: boolean;
   };
 }
 

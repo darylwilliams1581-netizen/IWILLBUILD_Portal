@@ -47,13 +47,13 @@ export default async function handler(req: Request, res: Response) {
     // Non-owners cannot promote someone to owner
     const { role, status, phone,
       permJobs, permFleet, permForms, permFiles, permEstimating,
-      permDazzaAi, permAdmin, permSeeDollars, permInviteUsers, permDeleteRecords,
+      permDazzaAi, permAdmin, permSeeDollars, permInviteUsers, permDeleteRecords, permInvoices,
     } = req.body as {
       role?: string; status?: string; phone?: string;
       permJobs?: boolean; permFleet?: boolean; permForms?: boolean;
       permFiles?: boolean; permEstimating?: boolean; permDazzaAi?: boolean;
       permAdmin?: boolean; permSeeDollars?: boolean; permInviteUsers?: boolean;
-      permDeleteRecords?: boolean;
+      permDeleteRecords?: boolean; permInvoices?: boolean;
     };
 
     if (role === 'owner' && !callerIsOwner) {
@@ -79,6 +79,7 @@ export default async function handler(req: Request, res: Response) {
     if (permSeeDollars !== undefined) updates.permSeeDollars = permSeeDollars;
     if (permInviteUsers !== undefined) updates.permInviteUsers = permInviteUsers;
     if (permDeleteRecords !== undefined) updates.permDeleteRecords = permDeleteRecords;
+    if (permInvoices !== undefined) updates.permInvoices = permInvoices;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
@@ -96,6 +97,7 @@ export default async function handler(req: Request, res: Response) {
       updates.permEstimating = true;
       updates.permDazzaAi = true;
       updates.permSeeDollars = true;
+      updates.permInvoices = true;
       updates.status = 'active';
     }
 
