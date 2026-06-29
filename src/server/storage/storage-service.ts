@@ -39,12 +39,26 @@
 import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
 import { localProvider } from './providers/localProvider.js';
+import { r2Provider } from './providers/r2Provider.js';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult, StorageUsageResult } from './providers/types.js';
 
 // ── Active provider ───────────────────────────────────────────────────────────
-// To switch: import a different provider and assign it here.
+// Driven by the STORAGE_PROVIDER environment variable:
+//   STORAGE_PROVIDER=local   → local disk (default, Airo-managed storage)
+//   STORAGE_PROVIDER=r2      → Cloudflare R2 (requires R2_* secrets)
+//
+// Set STORAGE_PROVIDER=r2 in Settings → Secrets once R2 credentials are added.
 
-const activeProvider: StorageProvider = localProvider;
+function resolveProvider(): StorageProvider {
+  const name = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase().trim();
+  switch (name) {
+    case 'r2':    return r2Provider;
+    case 'local':
+    default:      return localProvider;
+  }
+}
+
+const activeProvider: StorageProvider = resolveProvider();
 
 // ── Bucket constants ──────────────────────────────────────────────────────────
 

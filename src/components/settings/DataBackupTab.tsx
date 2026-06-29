@@ -32,6 +32,7 @@ import {
   Link2,
 } from 'lucide-react';
 import UsageCards from './UsageCards';
+import StorageProviderCard from './StorageProviderCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -409,6 +410,9 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
           IWILLBUILD live data remains securely stored in the portal. Each company's backup settings and exported files are completely isolated — no other company can access your data.
         </p>
       </div>
+
+      {/* ── Storage Provider ── */}
+      {isAdmin && <StorageProviderCard />}
 
       {/* ── Plan Usage ── */}
       <SectionCard icon={BarChart3} title="Plan Usage">
