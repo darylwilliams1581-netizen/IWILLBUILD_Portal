@@ -231,15 +231,28 @@ export async function buildDazzaContext(
   if (canJobs) {
     ctx.jobs = await safeQuery('jobs', async () => {
       const [rows] = await db.execute(
-        sql`SELECT id, job_number, name, client, address, status, notes, created_at
-            FROM jobs WHERE company_id = ${effectiveCompanyId}
-            ORDER BY created_at DESC LIMIT 50`
+        sql`SELECT j.id, j.job_number, j.name, j.client, j.address, j.status, j.notes, j.created_at,
+                   c.name as customer_name, c.contact_person as customer_contact
+            FROM jobs j
+            LEFT JOIN customers c ON c.id = j.customer_id AND c.company_id = j.company_id
+            WHERE j.company_id = ${effectiveCompanyId}
+            ORDER BY j.created_at DESC LIMIT 50`
       ) as unknown as [Array<Record<string, unknown>>, unknown];
       return rows ?? [];
     });
 
-    ctx.openTodos = await safeQuery('todos', async () => {
+    ctx.customers = await safeQuery('customers', async () => {
       const [rows] = await db.execute(
+        sql`SELECT id, name, contact_person, email, phone, mobile, address, abn, status,
+                   (SELECT COUNT(*) FROM jobs j WHERE j.customer_id = customers.id AND j.company_id = customers.company_id) as job_count
+            FROM customers
+            WHERE company_id = ${effectiveCompanyId} AND status = 'active'
+            ORDER BY name ASC LIMIT 100`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return rows ?? [];
+    });
+
+    ctx.openTodos = await safeQuery('todos', async () => {      const [rows] = await db.execute(
         sql`SELECT t.id, t.job_id, t.title, t.status, t.due_date, t.notes, j.name as job_name
             FROM job_todos t
             JOIN jobs j ON j.id = t.job_id

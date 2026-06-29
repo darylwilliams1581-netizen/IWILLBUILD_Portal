@@ -206,6 +206,11 @@ import safety_job_swms_post from "./api/safety/job-swms/POST";
 import safety_job_swms_id_get from "./api/safety/job-swms/[id]/GET";
 import safety_job_swms_id_put from "./api/safety/job-swms/[id]/PUT";
 import safety_job_swms_id_delete from "./api/safety/job-swms/[id]/DELETE";
+import customers_get from "./api/customers/GET";
+import customers_post from "./api/customers/POST";
+import customers_id_get from "./api/customers/[id]/GET";
+import customers_id_put from "./api/customers/[id]/PUT";
+import customers_id_delete from "./api/customers/[id]/DELETE";
 import safety_plans_get from "./api/safety/plans/GET";
 import safety_plans_post from "./api/safety/plans/POST";
 import safety_plans_seed_post from "./api/safety/plans/seed/POST";
@@ -458,6 +463,8 @@ async function runStartupMigrations() {
     { table: 'job_swms', column: 'reviewed_at',            definition: 'DATETIME NULL' },
     { table: 'job_swms', column: 'approved_by_user_id',    definition: 'VARCHAR(36) NULL' },
     { table: 'job_swms', column: 'approved_at',            definition: 'DATETIME NULL' },
+    // ── jobs: customer link (v2) ──────────────────────────────────────────────
+    { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -506,6 +513,8 @@ async function runStartupMigrations() {
     { name: 'dazza_audit_log', ddl: "CREATE TABLE IF NOT EXISTS dazza_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, question_summary VARCHAR(500) NOT NULL, modules_used VARCHAR(255) NULL, dollars_included TINYINT(1) NOT NULL DEFAULT 0, support_mode TINYINT(1) NOT NULL DEFAULT 0, support_company_id INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_user (user_id))" },
     // OneDrive / SharePoint OAuth connections
     { name: 'onedrive_connections', ddl: "CREATE TABLE IF NOT EXISTS onedrive_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, display_name VARCHAR(255) NOT NULL DEFAULT 'OneDrive User', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    // ── Customers ─────────────────────────────────────────────────────────────
+    { name: 'customers', ddl: "CREATE TABLE IF NOT EXISTS customers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, contact_person VARCHAR(255) NULL, email VARCHAR(255) NULL, phone VARCHAR(50) NULL, mobile VARCHAR(50) NULL, address TEXT NULL, billing_address TEXT NULL, abn VARCHAR(20) NULL, notes TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'active', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_status (company_id, status))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -856,6 +865,11 @@ app.post("/api/safety/job-swms", safety_job_swms_post);
 app.get("/api/safety/job-swms/:id", safety_job_swms_id_get);
 app.put("/api/safety/job-swms/:id", safety_job_swms_id_put);
 app.delete("/api/safety/job-swms/:id", safety_job_swms_id_delete);
+app.get("/api/customers", customers_get);
+app.post("/api/customers", customers_post);
+app.get("/api/customers/:id", customers_id_get);
+app.put("/api/customers/:id", customers_id_put);
+app.delete("/api/customers/:id", customers_id_delete);
 app.get("/api/safety/plans", safety_plans_get);
 app.post("/api/safety/plans", safety_plans_post);
 app.post("/api/safety/plans/seed", safety_plans_seed_post);

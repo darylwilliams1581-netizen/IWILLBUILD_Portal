@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { jobs, profiles } from '../../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -18,6 +18,16 @@ export default async function handler(req: Request, res: Response) {
       where: eq(profiles.userId, session.user.id),
     });
     if (!profile?.companyId) return res.json({ jobs: [] });
+
+    const customerId = req.query.customerId ? Number(req.query.customerId) : null;
+
+    if (customerId) {
+      // Filter by customer_id via raw SQL (column added via migration)
+      const [rows] = await db.execute(
+        sql`SELECT * FROM jobs WHERE company_id = ${profile.companyId} AND customer_id = ${customerId} ORDER BY created_at DESC`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return res.json({ jobs: rows ?? [] });
+    }
 
     const result = await db
       .select()

@@ -25,6 +25,7 @@ export interface Job {
   address: string | null;
   status: string;
   notes: string | null;
+  customerId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +71,7 @@ export async function createJob(payload: {
   status?: string;
   notes?: string;
   jobNumber?: string;
+  customerId?: number | null;
 }): Promise<Job> {
   const res = await fetch('/api/jobs', {
     method: 'POST',
@@ -92,6 +94,7 @@ export async function updateJob(id: number, payload: Partial<{
   status: string;
   notes: string;
   jobNumber: string;
+  customerId: number | null;
 }>): Promise<Job> {
   const res = await fetch(`/api/jobs/${id}`, {
     method: 'PUT',

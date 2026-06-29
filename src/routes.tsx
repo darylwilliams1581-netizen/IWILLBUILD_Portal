@@ -31,6 +31,8 @@ const FilesPage          = lazy(() => import('./pages/files'));
 const EstimatingPage     = lazy(() => import('./pages/estimating'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
 const SafetyPage         = lazy(() => import('./pages/safety'));
+const CustomersPage      = lazy(() => import('./pages/customers'));
+const CustomerDetailPage = lazy(() => import('./pages/customer-detail'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 
@@ -76,6 +78,8 @@ export const routes: RouteObject[] = [
   { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
   { path: '/safety',        element: protect(<SafetyPage />),          errorElement: routeError },
+  { path: '/customers',     element: protect(<CustomersPage />),       errorElement: routeError },
+  { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
   { path: '/dazza-ai',      element: protect(<DazzaAIPage />),         errorElement: routeError },
   { path: '/annette',       element: protect(<AnnettePage />),         errorElement: routeError },

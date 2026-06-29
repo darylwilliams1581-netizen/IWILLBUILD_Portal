@@ -3,6 +3,8 @@ import { X, HardHat, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { JOB_STATUSES, createJob, type Job } from '@/lib/jobs-api';
 import { useTerminology } from '@/lib/useTerminology';
+import CustomerSelector from '@/components/CustomerSelector';
+import type { Customer } from '@/lib/customers-api';
 
 interface Props {
   open: boolean;
@@ -21,6 +23,7 @@ const INITIAL = {
 
 export default function NewJobModal({ open, onClose, onCreated }: Props) {
   const [form, setForm] = useState(INITIAL);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const { workSingular } = useTerminology();
@@ -28,6 +31,18 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
   function set(field: keyof typeof INITIAL, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
     setError('');
+  }
+
+  function handleCustomerSelect(c: Customer | null) {
+    setSelectedCustomer(c);
+    if (c) {
+      // Auto-fill client name and address if not already set
+      setForm((f) => ({
+        ...f,
+        client: f.client || c.name,
+        address: f.address || (c.address ?? ''),
+      }));
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -43,8 +58,10 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
         address: form.address.trim() || undefined,
         status: form.status,
         notes: form.notes.trim() || undefined,
+        customerId: selectedCustomer?.id ?? null,
       });
       setForm(INITIAL);
+      setSelectedCustomer(null);
       onCreated(job);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create job');
@@ -56,6 +73,7 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
   function handleClose() {
     if (saving) return;
     setForm(INITIAL);
+    setSelectedCustomer(null);
     setError('');
     onClose();
   }
@@ -146,6 +164,18 @@ export default function NewJobModal({ open, onClose, onCreated }: Props) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Customer selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5">
+                    Link Customer
+                    <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                  </label>
+                  <CustomerSelector
+                    value={selectedCustomer}
+                    onChange={handleCustomerSelect}
+                  />
                 </div>
 
                 {/* Client */}

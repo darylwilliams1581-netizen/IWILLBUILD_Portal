@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { jobs, profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -26,13 +26,14 @@ export default async function handler(req: Request, res: Response) {
     if (!existing) return res.status(404).json({ error: 'Job not found' });
     if (existing.companyId !== profile.companyId) return res.status(403).json({ error: 'Forbidden' });
 
-    const { name, client, address, status, notes, jobNumber } = req.body as {
+    const { name, client, address, status, notes, jobNumber, customerId } = req.body as {
       name?: string;
       client?: string;
       address?: string;
       status?: string;
       notes?: string;
       jobNumber?: string;
+      customerId?: number | null;
     };
 
     await db.update(jobs).set({
@@ -43,6 +44,13 @@ export default async function handler(req: Request, res: Response) {
       ...(notes !== undefined && { notes: notes.trim() || null }),
       ...(jobNumber !== undefined && { jobNumber: jobNumber.trim() || null }),
     }).where(eq(jobs.id, jobId));
+
+    // customer_id via raw SQL (not in Drizzle schema)
+    if (customerId !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET customer_id = ${customerId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
 
     const updated = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
     res.json({ job: updated });

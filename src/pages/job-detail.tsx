@@ -27,6 +27,10 @@ import {
   ShieldAlert,
   Receipt,
   Clock,
+  UserCheck,
+  Phone,
+  Mail,
+  ExternalLink,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -39,7 +43,9 @@ import JobForms from '@/components/job/JobForms';
 import JobSafety from '@/components/job/JobSafety';
 import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
+import CustomerSelector from '@/components/CustomerSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
+import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
@@ -60,6 +66,8 @@ export default function JobDetailPage() {
   const [userRole, setUserRole] = useState<string>('');
   const [formRunnerActive, setFormRunnerActive] = useState(false);
   const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
+  const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
@@ -75,7 +83,6 @@ export default function JobDetailPage() {
     status: '',
     notes: '',
   });
-
   useEffect(() => {
     if (id) loadJob(parseInt(id, 10));
     // Fetch user role for permission checks
@@ -109,6 +116,15 @@ export default function JobDetailPage() {
         status: data.status,
         notes: data.notes ?? '',
       });
+      // Load linked customer if present
+      if (data.customerId) {
+        fetchCustomer(data.customerId)
+          .then(({ customer }) => { setLinkedCustomer(customer); setEditingCustomer(customer); })
+          .catch(() => {});
+      } else {
+        setLinkedCustomer(null);
+        setEditingCustomer(null);
+      }
     } catch {
       setError('Job not found or failed to load.');
     } finally {
@@ -129,8 +145,10 @@ export default function JobDetailPage() {
         address: form.address.trim() || undefined,
         status: form.status,
         notes: form.notes.trim() || undefined,
+        customerId: editingCustomer?.id ?? null,
       });
       setJob(updated);
+      setLinkedCustomer(editingCustomer);
       setEditing(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
@@ -149,6 +167,7 @@ export default function JobDetailPage() {
       status: job.status,
       notes: job.notes ?? '',
     });
+    setEditingCustomer(linkedCustomer);
     setSaveError('');
     setEditing(false);
   }
@@ -410,6 +429,16 @@ export default function JobDetailPage() {
                         </div>
                       </div>
                       <div>
+                        <label className="block text-xs font-semibold mb-1.5">Link Customer <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <CustomerSelector
+                          value={editingCustomer}
+                          onChange={(c) => {
+                            setEditingCustomer(c);
+                            if (c && !form.client) setForm((f) => ({ ...f, client: c.name }));
+                          }}
+                        />
+                      </div>
+                      <div>
                         <label className="block text-xs font-semibold mb-1.5">Client Name</label>
                         <input
                           type="text"
@@ -417,8 +446,7 @@ export default function JobDetailPage() {
                           onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
                           className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                         />
-                      </div>
-                      <div>
+                      </div>                      <div>
                         <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
                         <input
                           type="text"
@@ -470,6 +498,43 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── Linked customer card (view mode only) ── */}
+              {activeTab === 'details' && !editing && linkedCustomer && (
+                <div className="bg-white rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Linked Customer</h2>
+                    <Link
+                      to={`/customers/${linkedCustomer.id}`}
+                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Open Customer <ExternalLink size={11} />
+                    </Link>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-primary font-black text-sm">{linkedCustomer.name[0].toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground">{linkedCustomer.name}</p>
+                      {linkedCustomer.contact_person && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><User size={10} />{linkedCustomer.contact_person}</p>
+                      )}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                        {linkedCustomer.phone && (
+                          <a href={`tel:${linkedCustomer.phone}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.phone}</a>
+                        )}
+                        {linkedCustomer.mobile && (
+                          <a href={`tel:${linkedCustomer.mobile}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.mobile}</a>
+                        )}
+                        {linkedCustomer.email && (
+                          <a href={`mailto:${linkedCustomer.email}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Mail size={10} />{linkedCustomer.email}</a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

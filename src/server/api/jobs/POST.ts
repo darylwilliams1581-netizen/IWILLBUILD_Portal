@@ -34,13 +34,14 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
     }
 
-    const { name, client, address, status, notes, jobNumber } = req.body as {
+    const { name, client, address, status, notes, jobNumber, customerId } = req.body as {
       name: string;
       client?: string;
       address?: string;
       status?: string;
       notes?: string;
       jobNumber?: string;
+      customerId?: number | null;
     };
 
     if (!name?.trim()) return res.status(400).json({ error: 'Job title is required' });
@@ -65,6 +66,12 @@ export default async function handler(req: Request, res: Response) {
       status: status || 'New',
       notes: notes?.trim() || null,
     });
+
+    // If customerId provided, update via raw SQL (not in Drizzle schema yet)
+    if (customerId) {
+      const { sql: rawSql } = await import('drizzle-orm');
+      await db.execute(rawSql`UPDATE jobs SET customer_id = ${customerId} WHERE id = ${result.insertId}`);
+    }
 
     const newJob = await db.query.jobs.findFirst({
       where: eq(jobs.id, result.insertId),

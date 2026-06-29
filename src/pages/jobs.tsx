@@ -11,11 +11,13 @@ import {
   Menu,
   Loader2,
   AlertCircle,
+  UserCheck,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
+import { fetchCustomers, type Customer } from '@/lib/customers-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { useTerminology } from '@/lib/useTerminology';
 
@@ -37,11 +39,15 @@ export default function JobsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [customerFilter, setCustomerFilter] = useState<number | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [showNewJob, setShowNewJob] = useState(false);
   const { isViewOnly } = useViewOnly();
 
   useEffect(() => {
     loadJobs();
+    // Load customers for filter dropdown (non-blocking)
+    fetchCustomers('active').then(setCustomers).catch(() => {});
   }, []);
 
   async function loadJobs() {
@@ -65,6 +71,7 @@ export default function JobsPage() {
 
   const filtered = jobs.filter((j) => {
     const matchesFilter = activeFilter === 'All' || j.status === activeFilter;
+    const matchesCustomer = !customerFilter || j.customerId === customerFilter;
     const q = search.toLowerCase();
     const matchesSearch =
       !q ||
@@ -72,7 +79,7 @@ export default function JobsPage() {
       (j.client ?? '').toLowerCase().includes(q) ||
       (j.address ?? '').toLowerCase().includes(q) ||
       (j.jobNumber ?? '').toLowerCase().includes(q);
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesSearch && matchesCustomer;
   });
 
   // Summary counts
@@ -159,6 +166,21 @@ export default function JobsPage() {
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
               />
             </div>
+            {customers.length > 0 && (
+              <div className="relative">
+                <UserCheck size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <select
+                  value={customerFilter ?? ''}
+                  onChange={(e) => setCustomerFilter(e.target.value ? Number(e.target.value) : null)}
+                  className="pl-8 pr-8 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="">All customers</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="scroll-x-hide flex gap-1.5 pb-0.5">
               {['All', 'Works in Progress', 'Quoting', 'On Hold', 'Completed'].map((f) => (
                 <button
