@@ -792,6 +792,19 @@
       "summary": "Screenshot of a Xero integration interface showing the current (broken) connection state and setup requirements. The user's prompt explains the correct OAuth flow and identifies this as a reference point for understanding what needs to be fixed.",
       "fileName": "screenshot-2026-06-29T14-19-32.jpg",
       "storedUploadFilename": "f38wenbvln_1782742774322_file_JMWGANfNwR.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of the Invoices tab in IWillBuild showing a UI issue where the bottom scroll bar on the far side is inaccessible, provided as a bug report or usability reference for the site builder.",
+      "fileName": "screenshot-2026-06-29T14-30-44.jpg",
+      "storedUploadFilename": "f38wenbvln_1782743446116_file_6QbD1_jHAO.jpg"
     }
   ]
 }

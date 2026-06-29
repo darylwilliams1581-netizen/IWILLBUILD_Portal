@@ -330,7 +330,7 @@ export default function Dashboard({
 
         {/* Page Content */}
         <main className={cn(
-          "flex-1 overflow-y-auto",
+          "flex-1 overflow-y-auto overflow-x-auto",
           padding && "p-4 lg:p-6",
           mainClassName
         )}>
