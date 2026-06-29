@@ -727,6 +727,19 @@
       "summary": "Screenshot of a Safety Plans dashboard interface showing a list of draft safety management plans. User is referencing this to report a missing delete functionality.",
       "fileName": "screenshot-2026-06-29T07-21-52.jpg",
       "storedUploadFilename": "f38wenbvln_1782717715064_file_qDvEkO6xFy.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "design_spec",
+      "designDirection": "none",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "A safety work method statement (SWMS) form showing hazards, risks, controls, PPE, and emergency procedures for portable power tool operation. This is a reference document for reviewing and understanding safety requirements, not a visual asset for the website.",
+      "fileName": "screenshot-2026-06-29T07-23-56.jpg",
+      "storedUploadFilename": "f38wenbvln_1782717838581_file_xhp0RupbF9.jpg"
     }
   ]
 }
