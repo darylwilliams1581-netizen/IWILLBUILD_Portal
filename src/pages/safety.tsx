@@ -2418,7 +2418,6 @@ function JobSwmsTab() {
 const TABS = [
   { id: 'dashboard', label: 'Dashboard',    icon: ShieldCheck },
   { id: 'swms',      label: 'SWMS Library', icon: ShieldAlert },
-  { id: 'jobswms',   label: 'Job SWMS',     icon: HardHat },
   { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
   { id: 'policies',  label: 'Policies',     icon: BookOpen },
   { id: 'posters',   label: 'Posters',      icon: Image },
@@ -2501,7 +2500,6 @@ export default function SafetyPage() {
           >
             {activeTab === 'dashboard' && <SafetyDashboardTab />}
             {activeTab === 'swms'      && <SwmsLibraryTab />}
-            {activeTab === 'jobswms'   && <JobSwmsTab />}
             {activeTab === 'plans'     && <SafetyPlansTab />}
             {activeTab === 'policies'  && <PoliciesTab />}
             {activeTab === 'posters'   && <PostersTab />}

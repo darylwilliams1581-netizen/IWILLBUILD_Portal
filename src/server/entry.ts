@@ -244,6 +244,13 @@ import safety_job_swms_post_234 from "./api/safety/job-swms/POST";
 import safety_job_swms_id_delete_235 from "./api/safety/job-swms/[id]/DELETE";
 import safety_job_swms_id_get_236 from "./api/safety/job-swms/[id]/GET";
 import safety_job_swms_id_put_237 from "./api/safety/job-swms/[id]/PUT";
+import safety_job_swms_id_signoffs_get from "./api/safety/job-swms/[id]/signoffs/GET";
+import safety_job_swms_id_signoffs_post from "./api/safety/job-swms/[id]/signoffs/POST";
+import safety_job_swms_id_signoffs_signoffid_delete from "./api/safety/job-swms/[id]/signoffs/[signoffId]/DELETE";
+import safety_job_safety_plans_get from "./api/safety/job-safety-plans/GET";
+import safety_job_safety_plans_post from "./api/safety/job-safety-plans/POST";
+import safety_job_safety_plans_id_put from "./api/safety/job-safety-plans/[id]/PUT";
+import safety_job_safety_plans_id_delete from "./api/safety/job-safety-plans/[id]/DELETE";
 import safety_plans_get_238 from "./api/safety/plans/GET";
 import safety_plans_post_239 from "./api/safety/plans/POST";
 import safety_plans_seed_post_240 from "./api/safety/plans/seed/POST";
@@ -668,6 +675,9 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions', column: 'external_submitter_email',  definition: 'VARCHAR(255) NULL' },
     // notifications table: link column
     { table: 'notifications', column: 'link', definition: 'VARCHAR(500) NULL' },
+    // ── swms_signoffs: extended sign-on fields ────────────────────────────────
+    { table: 'swms_signoffs', column: 'company_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'swms_signoffs', column: 'role',         definition: 'VARCHAR(100) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1123,6 +1133,13 @@ app.post("/api/safety/job-swms", safety_job_swms_post_234);
 app.delete("/api/safety/job-swms/:id", safety_job_swms_id_delete_235);
 app.get("/api/safety/job-swms/:id", safety_job_swms_id_get_236);
 app.put("/api/safety/job-swms/:id", safety_job_swms_id_put_237);
+app.get("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_get);
+app.post("/api/safety/job-swms/:id/signoffs", safety_job_swms_id_signoffs_post);
+app.delete("/api/safety/job-swms/:id/signoffs/:signoffId", safety_job_swms_id_signoffs_signoffid_delete);
+app.get("/api/safety/job-safety-plans", safety_job_safety_plans_get);
+app.post("/api/safety/job-safety-plans", safety_job_safety_plans_post);
+app.put("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_put);
+app.delete("/api/safety/job-safety-plans/:id", safety_job_safety_plans_id_delete);
 app.get("/api/safety/plans", safety_plans_get_238);
 app.post("/api/safety/plans", safety_plans_post_239);
 app.post("/api/safety/plans/seed", safety_plans_seed_post_240);
