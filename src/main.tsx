@@ -65,3 +65,17 @@ if (rootElement.firstElementChild) {
 } else {
   createRoot(rootElement).render(tree);
 }
+
+// ── Service Worker registration ───────────────────────────────────────────────
+// Only register in production (not dev) to avoid stale-cache confusion during
+// development. The SW caches only static shell assets — never API or user data.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .catch((err) => {
+        // Non-fatal — app works fine without SW
+        console.warn('[SW] Registration failed:', err);
+      });
+  });
+}

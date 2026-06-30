@@ -5,6 +5,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
 import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 import { Toaster } from '@/components/ui/sonner';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
 /**
  * Root layout for IWILLBUILD Portal — fullscreen dashboard app.
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <ScrollRestoration />
       <ActivePing />
       <Toaster position="top-right" richColors />
+      <PwaInstallPrompt />
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
       </div>
