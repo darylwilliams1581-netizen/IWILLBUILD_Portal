@@ -312,6 +312,14 @@ import team_verify_user_post_302 from "./api/team/verify-user/POST";
 import team_id_delete_303 from "./api/team/[id]/DELETE";
 import team_id_put_304 from "./api/team/[id]/PUT";
 import usage_get_305 from "./api/usage/GET";
+import share_links_get from "./api/share-links/GET";
+import share_links_post from "./api/share-links/POST";
+import share_links_id_delete from "./api/share-links/[id]/DELETE";
+import share_links_id_events_get from "./api/share-links/[id]/events/GET";
+import secure_share_token_get from "./api/secure-share/[token]/GET";
+import secure_share_token_verify_post from "./api/secure-share/[token]/verify/POST";
+import secure_share_token_upload_post from "./api/secure-share/[token]/upload/POST";
+import secure_share_token_download_fileid_get from "./api/secure-share/[token]/download/[fileId]/GET";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -755,6 +763,9 @@ async function runStartupMigrations() {
     { name: 'document_events', ddl: "CREATE TABLE IF NOT EXISTS document_events (id INT AUTO_INCREMENT PRIMARY KEY, document_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, event_note TEXT NULL, user_id VARCHAR(36) NULL, external_name VARCHAR(255) NULL, ip_address VARCHAR(100) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_document (document_id), INDEX idx_company (company_id, created_at))" },
     // ── Drawing Register ──────────────────────────────────────────────────────
     { name: 'drawing_records', ddl: "CREATE TABLE IF NOT EXISTS drawing_records (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, file_id INT NOT NULL, drawing_number VARCHAR(100) NULL, title VARCHAR(500) NOT NULL, revision VARCHAR(20) NOT NULL DEFAULT 'A', discipline VARCHAR(100) NOT NULL DEFAULT 'Other', status VARCHAR(50) NOT NULL DEFAULT 'For Construction', original_file_id INT NOT NULL, marked_up_file_id INT NULL, uploaded_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_discipline (company_id, discipline))" },
+    // ── Secure Share Link Layer ───────────────────────────────────────────────
+    { name: 'secure_share_links', ddl: "CREATE TABLE IF NOT EXISTS secure_share_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, link_type VARCHAR(50) NOT NULL DEFAULT 'file_transfer', target_type VARCHAR(50) NOT NULL, target_id VARCHAR(100) NOT NULL, title VARCHAR(500) NOT NULL, permissions_json TEXT NOT NULL DEFAULT '[]', metadata_json LONGTEXT NULL, expires_at DATETIME NULL, password_hash VARCHAR(255) NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id), INDEX idx_revoked (company_id, revoked))" },
+    { name: 'secure_share_events', ddl: "CREATE TABLE IF NOT EXISTS secure_share_events (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, file_id INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_company (company_id, created_at), INDEX idx_event_type (company_id, event_type))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1179,6 +1190,16 @@ app.post("/api/settings/terminology", settings_terminology_post_280);
 app.get("/api/settings/xero-credentials", settings_xero_credentials_get_281);
 app.post("/api/settings/xero-credentials", settings_xero_credentials_post_282);
 app.get("/api/share/:token", share_token_get_283);
+// ── Secure Share Link Layer ────────────────────────────────────────────────────
+app.get("/api/share-links", share_links_get);
+app.post("/api/share-links", share_links_post);
+app.delete("/api/share-links/:id", share_links_id_delete);
+app.get("/api/share-links/:id/events", share_links_id_events_get);
+// Public secure-share routes (no auth required)
+app.get("/api/secure-share/:token", secure_share_token_get);
+app.post("/api/secure-share/:token/verify", secure_share_token_verify_post);
+app.post("/api/secure-share/:token/upload", secure_share_token_upload_post);
+app.get("/api/secure-share/:token/download/:fileId", secure_share_token_download_fileid_get);
 app.post("/api/signup", signup_post_284);
 app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_285);
 app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_286);

@@ -7,18 +7,23 @@
  * - Purchase Order / Work Order
  * - SWMS
  * - Invoice
+ * - Secure Share Link (file upload / download / form / SWMS sign-on)
  *
- * Uses the Document Engine share token system.
- * Falls back to legacy form-only viewer for old shared_links tokens.
+ * Resolution order:
+ *  1. Document Engine share (/api/documents/share/:token)
+ *  2. Secure Share Link (/api/secure-share/:token)
+ *  3. Legacy form share (/api/share/:token)
  */
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink, MapPin,
+  Download, ExternalLink, MapPin, Upload, ShieldOff, Link2,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 // ── GPS type (mirrors FormRunner) ─────────────────────────────────────────────
 interface GpsAnswer {
@@ -362,11 +367,213 @@ function InvoiceViewer({ content }: { content: Record<string, unknown> }) {
   );
 }
 
+// ── Secure Share Link viewer ──────────────────────────────────────────────────
+
+interface SecureShareLink {
+  id: number;
+  link_type: string;
+  target_type: string;
+  target_id: string;
+  title: string;
+  permissions: string[];
+  metadata: Record<string, unknown>;
+  expires_at: string | null;
+  requires_password: boolean;
+  created_at: string;
+}
+
+function SecureShareViewer({ link, token }: { link: SecureShareLink; token: string }) {
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordVerified, setPasswordVerified] = useState(!link.requires_password);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: number }>>([]);
+
+  const canUpload = link.permissions.includes('upload');
+  const canDownload = link.permissions.includes('download') || link.permissions.includes('view');
+  const meta = link.metadata;
+  const allowedTypes = (meta.allowed_file_types as string[] | null) ?? null;
+  const maxSizeMb = (meta.max_file_size_mb as number | null) ?? 50;
+
+  async function handleVerifyPassword() {
+    setVerifying(true);
+    setPasswordError(null);
+    try {
+      const res = await fetch(`/api/secure-share/${token}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string; code?: string };
+      if (data.ok) {
+        setPasswordVerified(true);
+      } else {
+        setPasswordError(data.error ?? 'Incorrect password');
+      }
+    } catch {
+      setPasswordError('Verification failed. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+
+    const results: Array<{ name: string; size: number }> = [];
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch(`/api/secure-share/${token}/upload`, {
+          method: 'POST',
+          body: fd,
+        });
+        const data = await res.json() as { ok?: boolean; error?: string; originalName?: string; sizeBytes?: number };
+        if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+        results.push({ name: data.originalName ?? file.name, size: data.sizeBytes ?? file.size });
+      } catch (err) {
+        setUploadError(String((err as Error).message));
+        setUploading(false);
+        return;
+      }
+    }
+    setUploadedFiles((prev) => [...prev, ...results]);
+    setUploadDone(true);
+    setUploading(false);
+    e.target.value = '';
+  }
+
+  if (!passwordVerified) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-sm mx-auto text-center">
+        <Lock size={32} className="text-orange-400 mx-auto mb-4" />
+        <h2 className="text-base font-bold text-slate-800 mb-1">Password Required</h2>
+        <p className="text-sm text-slate-500 mb-4">Enter the password to access this link.</p>
+        <div className="flex gap-2">
+          <Input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            placeholder="Password / PIN"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyPassword(); }}
+          />
+          <Button onClick={handleVerifyPassword} disabled={verifying} className="bg-orange-500 hover:bg-orange-600 text-white shrink-0">
+            {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Unlock'}
+          </Button>
+        </div>
+        {passwordError && <p className="text-sm text-red-500 mt-2">{passwordError}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Link info */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+            <Link2 size={18} className="text-orange-500" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">{link.title}</h1>
+            <p className="text-xs text-slate-400 mt-0.5 capitalize">{link.link_type.replace(/_/g, ' ')}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+          {link.expires_at && (
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              Expires {new Date(link.expires_at).toLocaleDateString('en-AU')}
+            </span>
+          )}
+          {link.permissions.map((p) => (
+            <span key={p} className="bg-slate-100 rounded px-2 py-0.5 capitalize">{p}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Upload panel */}
+      {canUpload && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6">
+          <h2 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+            <Upload size={15} className="text-orange-500" /> Upload Files
+          </h2>
+          {allowedTypes && allowedTypes.length > 0 && (
+            <p className="text-xs text-slate-500 mb-3">
+              Accepted: {allowedTypes.map((t) => t.toUpperCase()).join(', ')} · Max {maxSizeMb} MB per file
+            </p>
+          )}
+
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
+            <Upload size={24} className="text-slate-400 mb-2" />
+            <span className="text-sm text-slate-600 font-medium">Click to select files</span>
+            <span className="text-xs text-slate-400 mt-1">or drag and drop</span>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleUpload}
+              accept={allowedTypes ? allowedTypes.map((t) => `.${t}`).join(',') : undefined}
+            />
+          </label>
+
+          {uploading && (
+            <div className="flex items-center gap-2 mt-3 text-sm text-slate-500">
+              <Loader2 size={14} className="animate-spin" /> Uploading…
+            </div>
+          )}
+
+          {uploadError && (
+            <p className="text-sm text-red-500 mt-2">{uploadError}</p>
+          )}
+
+          {uploadedFiles.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1">
+              {uploadedFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-slate-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="text-xs text-slate-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {uploadDone && !uploading && (
+            <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
+              <CheckCircle2 size={14} /> Files uploaded successfully.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Download-only message */}
+      {!canUpload && canDownload && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center">
+          <Download size={32} className="text-slate-400 mx-auto mb-3" />
+          <p className="text-sm text-slate-600">
+            This link provides view/download access. Use the link to access the shared content.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SharePage() {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<SharedDocument | null>(null);
+  const [secureLink, setSecureLink] = useState<SecureShareLink | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLegacy, setIsLegacy] = useState(false);
@@ -374,11 +581,27 @@ export default function SharePage() {
   useEffect(() => {
     if (!token) { setError('Invalid link.'); setLoading(false); return; }
 
-    // Try Document Engine first
+    // 1. Try Document Engine first
     fetch(`/api/documents/share/${token}`)
       .then(async (r) => {
         if (r.status === 404) {
-          // Fall back to legacy share endpoint
+          // 2. Try Secure Share Link
+          const secureR = await fetch(`/api/secure-share/${token}`);
+          if (secureR.ok) {
+            const secureData = await secureR.json() as SecureShareLink;
+            setSecureLink(secureData);
+            setLoading(false);
+            return;
+          }
+          if (secureR.status !== 404) {
+            const secureBody = await secureR.json() as { error?: string; code?: string };
+            const code = secureBody.code;
+            if (code === 'REVOKED') throw new Error('This link has been revoked.');
+            if (code === 'EXPIRED') throw new Error('This link has expired.');
+            if (code === 'MAX_USES') throw new Error('This link has reached its maximum number of uses.');
+            throw new Error(secureBody.error ?? 'Link unavailable.');
+          }
+          // 3. Fall back to legacy share endpoint
           const legacyR = await fetch(`/api/share/${token}`);
           if (legacyR.ok) {
             setIsLegacy(true);
@@ -407,6 +630,9 @@ export default function SharePage() {
   }
 
   const doc = data?.document;
+
+  // Secure Share Link mode
+  const isSecureShare = !!secureLink && !data;
 
   const DOC_TYPE_LABELS: Record<string, string> = {
     job_form: 'Job Form',
@@ -463,6 +689,11 @@ export default function SharePage() {
               <h1 className="text-lg font-bold text-slate-800 mb-2">Document Unavailable</h1>
               <p className="text-sm text-slate-500">{error}</p>
             </div>
+          )}
+
+          {/* Secure Share Link */}
+          {!loading && isSecureShare && secureLink && token && (
+            <SecureShareViewer link={secureLink} token={token} />
           )}
 
           {!loading && data && doc && (
