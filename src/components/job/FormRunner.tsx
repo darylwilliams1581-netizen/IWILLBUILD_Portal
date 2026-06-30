@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { escapeHtml, safeUrl } from '@/lib/html-escape';
 import {
   ChevronLeft,
   ChevronRight,
@@ -809,14 +810,14 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
     const showFooter = pdfStyle.showFooterOnForms !== false;
 
-    const companyName = (window as unknown as Record<string, string>).__iwb_company_name ?? '';
-    const jobNum = jobData?.jobNumber ?? '';
-    const jobName = jobData?.name ?? '';
-    const jobAddress = jobData?.address ?? '';
-    const completedBy = sub.completedByName ?? 'Unknown';
-    const completedAt = new Date(sub.updatedAt ?? sub.createdAt ?? Date.now()).toLocaleString('en-AU', {
+    const companyName = escapeHtml((window as unknown as Record<string, string>).__iwb_company_name ?? '');
+    const jobNum = escapeHtml(jobData?.jobNumber ?? '');
+    const jobName = escapeHtml(jobData?.name ?? '');
+    const jobAddress = escapeHtml(jobData?.address ?? '');
+    const completedBy = escapeHtml(sub.completedByName ?? 'Unknown');
+    const completedAt = escapeHtml(new Date(sub.updatedAt ?? sub.createdAt ?? Date.now()).toLocaleString('en-AU', {
       day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
+    }));
     const statusLabel = isDraft ? 'DRAFT' : 'COMPLETED';
     const statusColor = isDraft ? '#d97706' : '#059669';
 
@@ -825,12 +826,13 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       if (!printVisible.has(field.id)) return '';
 
       if (field.fieldType === 'section') {
-        return `<div class="section-heading">${field.label}</div>`;
+        return `<div class="section-heading">${escapeHtml(field.label)}</div>`;
       }
       if (field.fieldType === 'instruction' || field.fieldType === 'instruction_image') {
         const s = parseSettings(field.settingsJson);
         const thumb = typeof s.thumbnailUrl === 'string' ? s.thumbnailUrl : null;
-        return `<div class="instruction">${thumb ? `<img src="${thumb}" class="thumb" alt="" />` : ''}<span>${field.label}</span></div>`;
+        const safeSrc = thumb ? safeUrl(thumb) : '';
+        return `<div class="instruction">${safeSrc ? `<img src="${safeSrc}" class="thumb" alt="" />` : ''}<span>${escapeHtml(field.label)}</span></div>`;
       }
       if (field.fieldType === 'page_break') {
         return `<div class="page-break-print"></div>`;
@@ -847,7 +849,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         } else if (field.fieldType === 'checkbox') {
           answerHtml = `<span class="badge ${val === true ? 'badge-yes' : 'badge-no'}">${val === true ? '✓ Checked' : '✗ Unchecked'}</span>`;
         } else if (field.fieldType === 'multi_select' && Array.isArray(val)) {
-          answerHtml = val.map((v) => `<span class="chip">${v}</span>`).join('');
+          answerHtml = val.map((v) => `<span class="chip">${escapeHtml(v)}</span>`).join('');
         } else if (field.fieldType === 'rating') {
           const s = parseSettings(field.settingsJson);
           const max = typeof s.max === 'number' ? s.max : 5;
@@ -856,21 +858,22 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
             `<span style="color:${i < num ? '#f59e0b' : '#d1d5db'};font-size:18px">★</span>`
           ).join('');
         } else if (field.fieldType === 'url') {
-          answerHtml = `<a href="${String(val)}">${String(val)}</a>`;
+          const safeHref = safeUrl(val);
+          answerHtml = safeHref ? `<a href="${safeHref}">${escapeHtml(String(val))}</a>` : escapeHtml(String(val));
         } else if (field.fieldType === 'long_text') {
-          answerHtml = `<p class="long-text">${String(val).replace(/\n/g, '<br/>')}</p>`;
+          answerHtml = `<p class="long-text">${escapeHtml(String(val)).replace(/\n/g, '<br/>')}</p>`;
         } else if (field.fieldType === 'location') {
           const gps = isGpsAnswer(val) ? val : null;
           if (gps) {
-            const mapsUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
+            const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(gps.lat)},${encodeURIComponent(gps.lng)}`;
             answerHtml = `<div class="gps-block">
-              ${gps.address ? `<div class="gps-address">${gps.address}</div>` : ''}
-              <div class="gps-coords">${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)} <span class="gps-acc">±${gps.accuracy}m</span></div>
-              <div class="gps-time">Captured ${new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+              ${gps.address ? `<div class="gps-address">${escapeHtml(gps.address)}</div>` : ''}
+              <div class="gps-coords">${escapeHtml(gps.lat.toFixed(6))}, ${escapeHtml(gps.lng.toFixed(6))} <span class="gps-acc">±${escapeHtml(gps.accuracy)}m</span></div>
+              <div class="gps-time">Captured ${escapeHtml(new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</div>
               <a href="${mapsUrl}" class="gps-link">View on Google Maps ↗</a>
             </div>`;
           } else {
-            answerHtml = `<span class="mono">${String(val)}</span>`;
+            answerHtml = `<span class="mono">${escapeHtml(String(val))}</span>`;
           }
         } else if (field.fieldType === 'signature') {
           const s = parseSettings(field.settingsJson);
@@ -902,12 +905,12 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       }
 
       return `<div class="field-row">
-        <div class="field-label">${field.label}${field.required ? ' <span class="req">*</span>' : ''}</div>
+        <div class="field-label">${escapeHtml(field.label)}${field.required ? ' <span class="req">*</span>' : ''}</div>
         <div class="field-answer">${answerHtml}</div>
       </div>`;
     }).join('');
 
-    const docTitle = `${jobNum ? jobNum + ' - ' : ''}${formTitle}`;
+    const docTitle = `${jobNum ? jobNum + ' - ' : ''}${escapeHtml(formTitle)}`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -966,9 +969,9 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 <body>
   <div class="report-header">
     <div>
-      ${pdfStyle.headerText ? `<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:2px">${pdfStyle.headerText}</div>` : ''}
+      ${pdfStyle.headerText ? `<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:2px">${escapeHtml(pdfStyle.headerText)}</div>` : ''}
       ${companyName ? `<div class="company-name">${companyName}</div>` : ''}
-      <div class="form-title">${formTitle}</div>
+      <div class="form-title">${escapeHtml(formTitle)}</div>
     </div>
     <div><span class="status-badge">${statusLabel}</span></div>
   </div>
@@ -984,11 +987,11 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   ${fieldRows}
 
-  ${pdfStyle.formDisclaimer ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${pdfStyle.formDisclaimer}</div>` : ''}
+  ${pdfStyle.formDisclaimer ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${escapeHtml(pdfStyle.formDisclaimer)}</div>` : ''}
 
   ${showFooter ? `<div class="footer">
-    <span>${pdfStyle.footerText || (companyName ? companyName + ' — ' : '') + formTitle}</span>
-    <span>Printed ${new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+    <span>${escapeHtml(pdfStyle.footerText || (companyName ? companyName + ' — ' : '') + formTitle)}</span>
+    <span>Printed ${escapeHtml(new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span>
   </div>` : ''}
 </body>
 </html>`;

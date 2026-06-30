@@ -79,7 +79,9 @@ export function withSource(answer: string, module: string): string {
  * Replaces $X,XXX.XX patterns with [amount hidden].
  */
 export function stripDollars(text: string): string {
-  return text.replace(/\$[\d,]+(\.\d{1,2})?/g, '[amount hidden]');
+  // Cap length before regex to prevent catastrophic backtracking on adversarial input.
+  const safe = text.length > 10_000 ? text.slice(0, 10_000) : text;
+  return safe.replace(/\$[\d,]+(\.\d{1,2})?/g, '[amount hidden]');
 }
 
 /**

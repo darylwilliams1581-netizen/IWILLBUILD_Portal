@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fmtMoney, STATUS_LABELS, type Invoice } from '@/lib/invoices-api';
+import { escapeHtml, safeUrl } from '@/lib/html-escape';
 
 interface CompanySettings {
   name?: string;
@@ -44,8 +45,8 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
 
     const lines = (invoice.lines ?? []).map((l) => `
       <tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#1e293b;">${l.description.replace(/\n/g, '<br/>')}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:center;color:#475569;">${l.quantity}${l.unit ? ' ' + l.unit : ''}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#1e293b;">${escapeHtml(l.description).replace(/\n/g, '<br/>')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:center;color:#475569;">${escapeHtml(l.quantity)}${l.unit ? ' ' + escapeHtml(l.unit) : ''}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;color:#475569;">${fmtMoney(l.rate)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;font-weight:600;color:#1e293b;">${fmtMoney(l.amount)}</td>
       </tr>
@@ -55,7 +56,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Invoice ${invoice.invoice_number}</title>
+  <title>Invoice ${escapeHtml(invoice.invoice_number)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; }
@@ -93,19 +94,19 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
 
   <div class="header">
     <div>
-      ${settings.logo_url ? `<img src="${settings.logo_url}" alt="Logo" style="height:48px;width:auto;object-fit:contain;margin-bottom:12px;display:block;"/>` : ''}
-      <div class="company-name">${settings.name ?? 'Your Company'}</div>
+      ${settings.logo_url ? `<img src="${safeUrl(settings.logo_url)}" alt="Logo" style="height:48px;width:auto;object-fit:contain;margin-bottom:12px;display:block;"/>` : ''}
+      <div class="company-name">${escapeHtml(settings.name ?? 'Your Company')}</div>
       <div class="company-info">
-        ${settings.abn ? `ABN ${settings.abn}<br/>` : ''}
-        ${settings.address ? `${settings.address}<br/>` : ''}
-        ${settings.phone ? `${settings.phone}<br/>` : ''}
-        ${settings.email ? `${settings.email}` : ''}
+        ${settings.abn ? `ABN ${escapeHtml(settings.abn)}<br/>` : ''}
+        ${settings.address ? `${escapeHtml(settings.address)}<br/>` : ''}
+        ${settings.phone ? `${escapeHtml(settings.phone)}<br/>` : ''}
+        ${settings.email ? `${escapeHtml(settings.email)}` : ''}
       </div>
     </div>
     <div class="invoice-meta">
       <div class="invoice-number">INVOICE</div>
-      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-top:4px;">${invoice.invoice_number}</div>
-      <div class="status-badge">${STATUS_LABELS[invoice.status as keyof typeof STATUS_LABELS] ?? invoice.status}</div>
+      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-top:4px;">${escapeHtml(invoice.invoice_number)}</div>
+      <div class="status-badge">${escapeHtml(STATUS_LABELS[invoice.status as keyof typeof STATUS_LABELS] ?? invoice.status)}</div>
     </div>
   </div>
 
@@ -113,21 +114,21 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
     <div class="meta-block">
       <div class="meta-label">Bill To</div>
       <div class="meta-value">
-        ${invoice.customer_name ? `<strong>${invoice.customer_name}</strong><br/>` : ''}
-        ${(invoice as Record<string, unknown>).customer_contact ? `${(invoice as Record<string, unknown>).customer_contact}<br/>` : ''}
-        ${(invoice as Record<string, unknown>).customer_email ? `${(invoice as Record<string, unknown>).customer_email}<br/>` : ''}
-        ${(invoice as Record<string, unknown>).customer_phone ? `${(invoice as Record<string, unknown>).customer_phone}<br/>` : ''}
-        ${(invoice as Record<string, unknown>).customer_address ? `${(invoice as Record<string, unknown>).customer_address}` : ''}
+        ${invoice.customer_name ? `<strong>${escapeHtml(invoice.customer_name)}</strong><br/>` : ''}
+        ${(invoice as Record<string, unknown>).customer_contact ? `${escapeHtml((invoice as Record<string, unknown>).customer_contact)}<br/>` : ''}
+        ${(invoice as Record<string, unknown>).customer_email ? `${escapeHtml((invoice as Record<string, unknown>).customer_email)}<br/>` : ''}
+        ${(invoice as Record<string, unknown>).customer_phone ? `${escapeHtml((invoice as Record<string, unknown>).customer_phone)}<br/>` : ''}
+        ${(invoice as Record<string, unknown>).customer_address ? `${escapeHtml((invoice as Record<string, unknown>).customer_address)}` : ''}
         ${!invoice.customer_name && !invoice.customer_id ? '<em style="color:#94a3b8">No customer linked</em>' : ''}
       </div>
     </div>
     <div class="meta-block">
       <div class="meta-label">Invoice Details</div>
       <div class="meta-value">
-        <strong>${invoice.title}</strong><br/>
-        ${invoice.job_name ? `Job: ${invoice.job_number ? invoice.job_number + ' — ' : ''}${invoice.job_name}<br/>` : ''}
-        ${invoice.issue_date ? `Issue Date: ${new Date(invoice.issue_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>` : ''}
-        ${invoice.due_date ? `Due Date: ${new Date(invoice.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+        <strong>${escapeHtml(invoice.title)}</strong><br/>
+        ${invoice.job_name ? `Job: ${invoice.job_number ? escapeHtml(invoice.job_number) + ' — ' : ''}${escapeHtml(invoice.job_name)}<br/>` : ''}
+        ${invoice.issue_date ? `Issue Date: ${escapeHtml(new Date(invoice.issue_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }))}<br/>` : ''}
+        ${invoice.due_date ? `Due Date: ${escapeHtml(new Date(invoice.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }))}` : ''}
       </div>
     </div>
   </div>
@@ -152,8 +153,8 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
     <div class="total-row balance"><span class="total-label">Balance Due</span><span class="total-value">${fmtMoney(balance)}</span></div>` : ''}
   </div>
 
-  ${invoice.terms ? `<div class="terms"><strong>Payment Terms:</strong> ${invoice.terms}</div>` : ''}
-  ${settings.invoice_footer ? `<div class="footer">${settings.invoice_footer}</div>` : ''}
+  ${invoice.terms ? `<div class="terms"><strong>Payment Terms:</strong> ${escapeHtml(invoice.terms)}</div>` : ''}
+  ${settings.invoice_footer ? `<div class="footer">${escapeHtml(settings.invoice_footer)}</div>` : ''}
 </body>
 </html>`;
 

@@ -359,8 +359,12 @@ export function renderSsrDocument(
 	adSenseConfig: Pick<AdSenseRuntimeConfig, "scriptHtml">,
 ): string {
 	const head = [result.head, adSenseConfig.scriptHtml].filter(Boolean).join("\n");
+	// result.html and result.head come from React's renderToString — trusted
+	// server-rendered markup, not user-supplied input.
+	// eslint-disable-next-line no-unsanitized/method
 	return template
 		.replace("<!--app-head-->", () => head)
+		// eslint-disable-next-line no-unsanitized/method
 		.replace("<!--app-html-->", () => result.html);
 }
 

@@ -33,7 +33,7 @@ function renderReport(text: string): React.ReactNode[] {
     // H2 heading
     if (line.startsWith('## ')) {
       const content = line.slice(3);
-      const emoji = content.match(/^([\u{1F300}-\u{1FFFF}]|[\u2600-\u27BF]|\u{1F004}|\u{1F0CF})/u)?.[0] ?? '';
+      const emoji = content.slice(0, 8).match(/^([\u{1F300}-\u{1FFFF}]|[\u2600-\u27BF]|\u{1F004}|\u{1F0CF})/u)?.[0] ?? '';
       const rest = emoji ? content.slice(emoji.length).trim() : content;
       nodes.push(
         <div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">
@@ -92,9 +92,10 @@ function renderReport(text: string): React.ReactNode[] {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Bold **text**
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  if (parts.length === 1) return text;
+  // Bold **text** — cap length before splitting to prevent regex DoS.
+  const safe = text.length > 5_000 ? text.slice(0, 5_000) : text;
+  const parts = safe.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return safe;
   return (
     <>
       {parts.map((part, i) => {

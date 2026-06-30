@@ -50,22 +50,84 @@ interface ChatMessage {
 // ── Local tool intercept ──────────────────────────────────────────────────────
 // Handles simple questions that don't need OpenAI at all.
 
+/**
+ * Safe arithmetic evaluator — no eval / new Function.
+ * Supports: integers, decimals, +, -, *, /, %, parentheses, whitespace.
+ * Returns null if the expression is invalid or unsafe.
+ */
+function safeEval(expr: string): number | null {
+  // Strict whitelist: only digits, operators, parens, dots, spaces.
+  if (!/^[0-9\s+\-*/.()%]+$/.test(expr)) return null;
+  if (expr.length > 200) return null;
+  // Recursive-descent parser — no eval, no Function constructor.
+  let pos = 0;
+  const peek = () => expr[pos];
+  const consume = () => expr[pos++];
+  const skipWs = () => { while (pos < expr.length && expr[pos] === ' ') pos++; };
+
+  function parseExpr(): number {
+    let left = parseTerm();
+    skipWs();
+    while (pos < expr.length && (peek() === '+' || peek() === '-')) {
+      const op = consume(); skipWs();
+      const right = parseTerm();
+      left = op === '+' ? left + right : left - right;
+      skipWs();
+    }
+    return left;
+  }
+
+  function parseTerm(): number {
+    let left = parseFactor();
+    skipWs();
+    while (pos < expr.length && (peek() === '*' || peek() === '/' || peek() === '%')) {
+      const op = consume(); skipWs();
+      const right = parseFactor();
+      if (op === '*') left *= right;
+      else if (op === '/') left = right !== 0 ? left / right : NaN;
+      else left = left % right;
+      skipWs();
+    }
+    return left;
+  }
+
+  function parseFactor(): number {
+    skipWs();
+    if (peek() === '(') {
+      consume(); // '('
+      const val = parseExpr();
+      skipWs();
+      if (peek() === ')') consume();
+      return val;
+    }
+    if (peek() === '-') { consume(); return -parseFactor(); }
+    if (peek() === '+') { consume(); return parseFactor(); }
+    // Number
+    let num = '';
+    while (pos < expr.length && /[0-9.]/.test(expr[pos])) num += consume();
+    return num ? parseFloat(num) : NaN;
+  }
+
+  try {
+    const result = parseExpr();
+    return isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 function tryLocalTool(question: string): string | null {
-  const q = question.trim();
+  // Cap input length before any regex to prevent catastrophic backtracking.
+  const q = question.trim().slice(0, 500);
 
   // ── Simple arithmetic ─────────────────────────────────────────────────────
-  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s\+\-\*\/\.\(\)%]+)=?$/i);
+  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i);
   if (mathMatch) {
     const expr = mathMatch[1].trim();
-    try {
-      if (/^[0-9\s\+\-\*\/\.\(\)%]+$/.test(expr)) {
-        // eslint-disable-next-line no-new-func
-        const result = Function(`"use strict"; return (${expr})`)() as number;
-        if (typeof result === 'number' && isFinite(result)) {
-          return `${result}`;
-        }
-      }
-    } catch { /* fall through */ }
+    const result = safeEval(expr);
+    if (result !== null) {
+      return `${result}`;
+    }
   }
 
   // ── GST add ───────────────────────────────────────────────────────────────

@@ -1688,8 +1688,10 @@ function SwmsPrintModal({ swms, onClose }: { swms: SwmsPrintData; onClose: () =>
     if (!content) return;
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) return;
+    // content.innerHTML is from a React-rendered DOM ref — trusted, not user-injected.
+    // Only swms.title goes into the <title> tag and is escaped below.
     win.document.write(`<!DOCTYPE html><html><head>
-      <title>SWMS — ${swms.title}</title>
+      <title>SWMS — ${swms.title.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c))}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 20mm 18mm; }

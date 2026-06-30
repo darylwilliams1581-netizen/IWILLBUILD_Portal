@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { escapeHtml, safeUrl } from '@/lib/html-escape';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
@@ -113,21 +114,21 @@ function PrintModal({
 
     // ── Company contact lines (used in header) ────────────────────────────────
     const companyLines: string[] = [];
-    if (company.abn) companyLines.push(`ABN: ${company.abn}`);
-    if (company.phone) companyLines.push(company.phone);
-    if (company.email) companyLines.push(company.email);
-    if (company.website) companyLines.push(company.website);
-    if (company.address) companyLines.push(company.address);
+    if (company.abn) companyLines.push(`ABN: ${escapeHtml(company.abn)}`);
+    if (company.phone) companyLines.push(escapeHtml(company.phone));
+    if (company.email) companyLines.push(escapeHtml(company.email));
+    if (company.website) companyLines.push(escapeHtml(company.website));
+    if (company.address) companyLines.push(escapeHtml(company.address));
 
     // ── Job / quote meta block ────────────────────────────────────────────────
     const metaRows: Array<[string, string]> = [];
-    if (estimate.title) metaRows.push(['Quote Title', estimate.title]);
-    if (job?.jobNumber) metaRows.push(['Job Number', job.jobNumber]);
-    if (job?.name) metaRows.push(['Job Name', job.name]);
-    if (job?.client) metaRows.push(['Client', job.client]);
-    if (job?.address) metaRows.push(['Site Address', job.address]);
+    if (estimate.title) metaRows.push(['Quote Title', escapeHtml(estimate.title)]);
+    if (job?.jobNumber) metaRows.push(['Job Number', escapeHtml(job.jobNumber)]);
+    if (job?.name) metaRows.push(['Job Name', escapeHtml(job.name)]);
+    if (job?.client) metaRows.push(['Client', escapeHtml(job.client)]);
+    if (job?.address) metaRows.push(['Site Address', escapeHtml(job.address)]);
     metaRows.push(['Date', date]);
-    if (estimate.status && estimate.status !== 'Draft') metaRows.push(['Status', estimate.status]);
+    if (estimate.status && estimate.status !== 'Draft') metaRows.push(['Status', escapeHtml(estimate.status)]);
 
     const metaHtml = `
       <table class="meta-table">
@@ -141,9 +142,9 @@ function PrintModal({
       const rows = printLines.map((l) => {
         const amt = lineCalc(l);
         return `<tr class="line-row">
-          <td class="td-desc">${l.description || '—'}</td>
-          <td class="td-num">${l.quantity}</td>
-          <td class="td-unit">${l.unit}</td>
+          <td class="td-desc">${escapeHtml(l.description) || '—'}</td>
+          <td class="td-num">${escapeHtml(l.quantity)}</td>
+          <td class="td-unit">${escapeHtml(l.unit)}</td>
           <td class="td-num">$${parseFloat(l.rate).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           <td class="td-num td-amount">${fmt(amt)}</td>
         </tr>`;
@@ -165,9 +166,9 @@ function PrintModal({
       // scope-total or unpriced — description + qty + unit table
       const rows = printLines.map((l) => `
         <tr class="line-row">
-          <td class="td-desc">${l.description || '—'}</td>
-          <td class="td-num">${l.quantity}</td>
-          <td class="td-unit">${l.unit}</td>
+          <td class="td-desc">${escapeHtml(l.description) || '—'}</td>
+          <td class="td-num">${escapeHtml(l.quantity)}</td>
+          <td class="td-unit">${escapeHtml(l.unit)}</td>
         </tr>`).join('');
       tableHtml = `
         <table class="lines-table">
@@ -202,25 +203,25 @@ function PrintModal({
     // ── PDF style extras ──────────────────────────────────────────────────────
     const showFooter = pdfStyle.showFooterOnEstimates;
     const headerSubHtml = pdfStyle.headerText
-      ? `<div class="company-header-sub">${pdfStyle.headerText}</div>` : '';
+      ? `<div class="company-header-sub">${escapeHtml(pdfStyle.headerText)}</div>` : '';
 
     const disclaimerHtml = pdfStyle.estimateDisclaimer
-      ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${pdfStyle.estimateDisclaimer}</div>` : '';
+      ? `<div class="disclaimer"><strong>Disclaimer:</strong> ${escapeHtml(pdfStyle.estimateDisclaimer)}</div>` : '';
 
     const paymentHtml = pdfStyle.paymentTerms
-      ? `<div class="disclaimer"><strong>Payment Terms:</strong> ${pdfStyle.paymentTerms}</div>` : '';
+      ? `<div class="disclaimer"><strong>Payment Terms:</strong> ${escapeHtml(pdfStyle.paymentTerms)}</div>` : '';
 
     const acceptanceHtml = pdfStyle.acceptanceNote
       ? `<div class="acceptance">
           <p class="acceptance-label">Acceptance</p>
-          <p class="acceptance-text">${pdfStyle.acceptanceNote}</p>
+          <p class="acceptance-text">${escapeHtml(pdfStyle.acceptanceNote)}</p>
           <div class="acceptance-line"></div>
           <p class="acceptance-sig">Signature &amp; Date</p>
         </div>` : '';
 
     const footerHtml = showFooter
       ? `<div class="doc-footer">
-          <span>${pdfStyle.footerText || (company.name ?? 'IWILLBUILD') + ' — ' + estimate.title}</span>
+          <span>${escapeHtml(pdfStyle.footerText || (company.name ?? 'IWILLBUILD') + ' — ' + estimate.title)}</span>
           <span>Printed ${date}</span>
         </div>` : '';
 
@@ -231,7 +232,7 @@ function PrintModal({
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>${docTitle}</title>
+<title>${escapeHtml(docTitle)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @page { size: A4; margin: 14mm 14mm 16mm 14mm; }
@@ -309,7 +310,7 @@ function PrintModal({
 <body>
   <div class="doc-header">
     <div class="company-block">
-      <div class="company-name">${company.name ?? 'IWILLBUILD'}</div>
+      <div class="company-name">${escapeHtml(company.name ?? 'IWILLBUILD')}</div>
       ${headerSubHtml}
       ${companyLines.map((l) => `<div class="company-detail">${l}</div>`).join('')}
     </div>
