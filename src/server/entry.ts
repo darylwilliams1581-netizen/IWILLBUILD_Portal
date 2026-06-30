@@ -140,6 +140,12 @@ import jobs_id_photos_photoId_replace_post_130 from "./api/jobs/[id]/photos/[pho
 import jobs_id_progress_get_131 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_132 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_sync_post_133 from "./api/jobs/[id]/progress/sync/POST";
+import jobs_id_purchase_orders_get from "./api/jobs/[id]/purchase-orders/GET";
+import jobs_id_purchase_orders_post from "./api/jobs/[id]/purchase-orders/POST";
+import jobs_id_purchase_orders_poId_get from "./api/jobs/[id]/purchase-orders/[poId]/GET";
+import jobs_id_purchase_orders_poId_put from "./api/jobs/[id]/purchase-orders/[poId]/PUT";
+import jobs_id_purchase_orders_poId_delete from "./api/jobs/[id]/purchase-orders/[poId]/DELETE";
+import jobs_id_purchase_orders_poId_pdf_get from "./api/jobs/[id]/purchase-orders/[poId]/pdf/GET";
 import jobs_id_swms_get_134 from "./api/jobs/[id]/swms/GET";
 import jobs_id_swms_post_135 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_136 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
@@ -590,6 +596,15 @@ async function runStartupMigrations() {
     { table: 'company_settings', column: 'xero_client_id',      definition: 'TEXT NULL' },
     { table: 'company_settings', column: 'xero_client_secret',  definition: 'TEXT NULL' },
     { table: 'company_settings', column: 'xero_redirect_uri',   definition: 'TEXT NULL' },
+    // ── Customers: contractor fields ─────────────────────────────────────────
+    { table: 'customers', column: 'record_type',    definition: "VARCHAR(20) NOT NULL DEFAULT 'customer'" },
+    { table: 'customers', column: 'trade_type',     definition: 'VARCHAR(100) NULL' },
+    { table: 'customers', column: 'licence_number', definition: 'VARCHAR(100) NULL' },
+    // ── job_progress_lines: assignment fields ─────────────────────────────────
+    { table: 'job_progress_lines', column: 'assignment_type',  definition: "VARCHAR(20) NULL" },
+    { table: 'job_progress_lines', column: 'assigned_to_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'job_progress_lines', column: 'contractor_id',    definition: 'INT NULL' },
+    { table: 'job_progress_lines', column: 'trade_type',       definition: 'VARCHAR(100) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -646,6 +661,9 @@ async function runStartupMigrations() {
     { name: 'invoice_payments', ddl: "CREATE TABLE IF NOT EXISTS invoice_payments (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 0, method VARCHAR(50) NULL, reference VARCHAR(255) NULL, notes TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
     // ── Xero OAuth connections ─────────────────────────────────────────────────
     { name: 'xero_connections', ddl: "CREATE TABLE IF NOT EXISTS xero_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, tenant_id VARCHAR(100) NOT NULL DEFAULT '', tenant_name VARCHAR(255) NOT NULL DEFAULT '', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    // ── Purchase Orders ────────────────────────────────────────────────────────
+    { name: 'job_purchase_orders', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_orders (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, contractor_id INT NULL, assigned_to_type VARCHAR(20) NOT NULL DEFAULT 'internal', assigned_to_name VARCHAR(255) NULL, trade_type VARCHAR(100) NULL, po_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL DEFAULT '', instructions TEXT NULL, start_date DATE NULL, finish_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, cancelled_note TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
+    { name: 'job_purchase_order_lines', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_order_lines (id INT AUTO_INCREMENT PRIMARY KEY, purchase_order_id INT NOT NULL, progress_line_id INT NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_po (purchase_order_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -916,6 +934,13 @@ app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_131);
 app.put("/api/jobs/:id/progress", jobs_id_progress_put_132);
 app.post("/api/jobs/:id/progress/sync", jobs_id_progress_sync_post_133);
+// Purchase Orders — specific routes BEFORE wildcard :poId
+app.get("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_get);
+app.post("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_post);
+app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get);
+app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get);
+app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put);
+app.delete("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_delete);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_134);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_135);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_136);

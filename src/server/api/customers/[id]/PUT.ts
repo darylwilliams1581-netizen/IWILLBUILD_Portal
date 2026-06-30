@@ -1,6 +1,6 @@
 /**
  * PUT /api/customers/:id
- * Updates a customer. Also handles archive/unarchive via status field.
+ * Updates a customer or contractor. Also handles archive/unarchive via status field.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
@@ -31,9 +31,12 @@ export default async function handler(req: Request, res: Response) {
     const {
       name, contactPerson, email, phone, mobile,
       address, billingAddress, abn, notes, status,
+      recordType, tradeType, licenceNumber,
     } = req.body as Record<string, string>;
 
-    if (!name?.trim()) return res.status(400).json({ error: 'Customer name is required' });
+    if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+
+    const rType = recordType === 'contractor' ? 'contractor' : 'customer';
 
     await db.execute(sql`
       UPDATE customers SET
@@ -46,7 +49,10 @@ export default async function handler(req: Request, res: Response) {
         billing_address  = ${billingAddress?.trim() || null},
         abn              = ${abn?.trim() || null},
         notes            = ${notes?.trim() || null},
-        status           = ${status ?? 'active'}
+        status           = ${status ?? 'active'},
+        record_type      = ${rType},
+        trade_type       = ${tradeType?.trim() || null},
+        licence_number   = ${licenceNumber?.trim() || null}
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 

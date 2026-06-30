@@ -1,6 +1,6 @@
 /**
- * GET /api/customers?status=active|archived|all
- * Returns all customers for the authenticated user's company.
+ * GET /api/customers?status=active|archived|all&type=customer|contractor|all
+ * Returns customers and/or contractors for the authenticated user's company.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
@@ -23,6 +23,7 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.json({ customers: [] });
 
     const statusFilter = (req.query.status as string) || 'active';
+    const typeFilter = (req.query.type as string) || 'all';
 
     let query = sql`
       SELECT c.*,
@@ -33,6 +34,9 @@ export default async function handler(req: Request, res: Response) {
 
     if (statusFilter !== 'all') {
       query = sql`${query} AND c.status = ${statusFilter}`;
+    }
+    if (typeFilter !== 'all') {
+      query = sql`${query} AND COALESCE(c.record_type, 'customer') = ${typeFilter}`;
     }
 
     query = sql`${query} ORDER BY c.name ASC`;
