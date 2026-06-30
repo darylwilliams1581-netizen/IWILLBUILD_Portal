@@ -241,18 +241,18 @@ export function FormSharePanel({
 
             {/* Copy existing */}
             {activeLink && !newToken && (
-              <button
-                type="button"
-                onClick={() => {
-                  // We don't have the raw token for existing links (stored hashed)
-                  // Show a message to regenerate
-                  setError('Raw token not available — regenerate the link to get a new copyable URL.');
-                }}
-                className="flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg font-medium transition-colors w-full justify-center"
-              >
-                <Copy size={11} />
-                Copy Link (regenerate to get URL)
-              </button>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex flex-col gap-1.5">
+                <p className="text-[11px] text-slate-500 font-medium">Active link — regenerate to get a new copyable URL</p>
+                <button
+                  type="button"
+                  onClick={() => void handleCreate()}
+                  disabled={creating}
+                  className="flex items-center gap-1.5 text-xs text-slate-600 border border-slate-200 hover:bg-white px-3 py-1.5 rounded-lg font-medium transition-colors w-full justify-center"
+                >
+                  {creating ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                  Regenerate to copy
+                </button>
+              </div>
             )}
 
             {/* Revoke */}

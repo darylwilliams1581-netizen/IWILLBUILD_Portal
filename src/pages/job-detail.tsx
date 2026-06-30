@@ -56,7 +56,7 @@ import { useTerminology } from '@/lib/useTerminology';
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
 
 export default function JobDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, formInstanceId } = useParams<{ id: string; formInstanceId?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { workSingular, workPlural } = useTerminology();
@@ -75,6 +75,8 @@ export default function JobDetailPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [teamMembers, setTeamMembers] = useState<Array<{ userId: string; name: string; role: string }>>([]);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
+    // Deep-link: /jobs/:id/forms/:formInstanceId → open forms tab
+    if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
     return 'details';
@@ -728,7 +730,13 @@ export default function JobDetailPage() {
               {/* ── Forms tab ── */}
               {activeTab === 'forms' && (
                 <div>
-                  <JobForms jobId={job.id} userRole={userRole} job={job} onRunnerActive={setFormRunnerActive} />
+                  <JobForms
+                    jobId={job.id}
+                    userRole={userRole}
+                    job={job}
+                    onRunnerActive={setFormRunnerActive}
+                    initialFormInstanceId={formInstanceId ? parseInt(formInstanceId, 10) : undefined}
+                  />
                 </div>
               )}
 

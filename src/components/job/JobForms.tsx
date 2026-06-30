@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileText,
   Plus,
@@ -255,14 +255,18 @@ interface JobFormsProps {
   job?: Job | null;
   userRole?: string;
   onRunnerActive?: (active: boolean) => void;
+  /** Deep-link: auto-open this form instance when the tab loads */
+  initialFormInstanceId?: number;
 }
 
-export default function JobForms({ jobId, job, userRole, onRunnerActive }: JobFormsProps) {
+export default function JobForms({ jobId, job, userRole, onRunnerActive, initialFormInstanceId }: JobFormsProps) {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [starting, setStarting] = useState<number | null>(null);
+  // Track whether we've already auto-opened the deep-linked instance
+  const autoOpenedRef = useRef<number | null>(null);
 
   // Runner state: submission + mode
   const [runnerState, setRunnerState] = useState<{
@@ -299,6 +303,23 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive }: JobFo
   }, [jobId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Auto-open a specific form instance when deep-linked (/jobs/:id/forms/:formInstanceId)
+  useEffect(() => {
+    if (!initialFormInstanceId || loading || autoOpenedRef.current === initialFormInstanceId) return;
+    const target = submissions.find((s) => s.id === initialFormInstanceId);
+    if (target) {
+      autoOpenedRef.current = initialFormInstanceId;
+      const template = templates.find((t) => t.id === target.templateId);
+      const isCompleted = target.status === 'completed' || target.status === 'submitted';
+      onRunnerActive?.(true);
+      setRunnerState({
+        submission: target,
+        templateName: template?.name ?? 'Form',
+        readOnly: isCompleted,
+      });
+    }
+  }, [initialFormInstanceId, loading, submissions, templates, onRunnerActive]);
 
   // Fetch company name once for print header
   useEffect(() => {

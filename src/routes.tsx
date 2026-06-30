@@ -82,6 +82,8 @@ export const routes: RouteObject[] = [
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
+  // Deep-link: open a specific form instance directly in the job forms tab
+  { path: '/jobs/:id/forms/:formInstanceId', element: protect(<JobDetailPage />), errorElement: routeError },
   { path: '/scheduler',     element: protect(<SchedulerPage />),       errorElement: routeError },
   { path: '/fleet',         element: protect(<FleetPage />),           errorElement: routeError },
   { path: '/fleet/:id',     element: protect(<FleetDetailPage />),     errorElement: routeError },

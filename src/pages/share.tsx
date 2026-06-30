@@ -16,9 +16,21 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink,
+  Download, ExternalLink, MapPin,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
+
+// ── GPS type (mirrors FormRunner) ─────────────────────────────────────────────
+interface GpsAnswer {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  timestamp: string;
+  address?: string;
+}
+function isGpsAnswer(v: unknown): v is GpsAnswer {
+  return typeof v === 'object' && v !== null && 'lat' in v && 'lng' in v;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -95,8 +107,54 @@ function FormViewer({ content }: { content: Record<string, unknown> }) {
             if (value === undefined || value === null || value === '') return '—';
             if (ft === 'yes_no') return value ? 'Yes' : 'No';
             if (ft === 'checkbox') return value ? '✓ Checked' : '✗ Unchecked';
-            if (ft === 'signature') return value ? `✓ Signed: ${String(value)}` : '—';
-            if (ft === 'photo') return value ? '📷 Photo attached' : '—';
+            if (ft === 'signature') {
+              // Signature may be a JSON object with signatureDataUrl
+              if (typeof value === 'object' && value !== null && 'signatureDataUrl' in value) {
+                const sig = value as { signatureDataUrl?: string; name?: string; signedAt?: string };
+                return (
+                  <div className="flex flex-col gap-1">
+                    {sig.name && <span className="text-xs font-semibold text-slate-600">{sig.name}</span>}
+                    {sig.signatureDataUrl && (
+                      <img src={sig.signatureDataUrl} alt="Signature" className="max-h-16 border border-slate-200 rounded-lg bg-white" />
+                    )}
+                    {sig.signedAt && <span className="text-[11px] text-slate-400">Signed {new Date(sig.signedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                  </div>
+                );
+              }
+              return `✓ Signed: ${String(value)}`;
+            }
+            if (ft === 'photo') {
+              // Photo may be a data URL or a storage URL
+              if (typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('http') || value.startsWith('/'))) {
+                return <img src={value} alt="Photo" className="max-h-48 rounded-xl border border-slate-200 object-contain bg-slate-50" />;
+              }
+              return value ? '📷 Photo attached' : '—';
+            }
+            if (ft === 'location' || ft === 'location_gps') {
+              if (isGpsAnswer(value)) {
+                const mapsUrl = `https://www.google.com/maps?q=${value.lat},${value.lng}`;
+                return (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+                    <MapPin size={13} className="text-emerald-600 mt-0.5 shrink-0" />
+                    <div className="flex flex-col gap-0.5">
+                      {value.address && <p className="text-sm font-medium text-emerald-800">{value.address}</p>}
+                      <p className="text-xs font-mono text-emerald-700">
+                        {value.lat.toFixed(6)}, {value.lng.toFixed(6)}
+                        <span className="text-emerald-500 ml-1.5">±{value.accuracy}m</span>
+                      </p>
+                      <p className="text-[11px] text-emerald-500">
+                        {new Date(value.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] text-emerald-600 hover:underline w-fit mt-0.5">
+                        <ExternalLink size={10} /> View on map
+                      </a>
+                    </div>
+                  </div>
+                );
+              }
+              return <span className="text-sm text-slate-700 font-mono">{String(value)}</span>;
+            }
             if (Array.isArray(value)) return value.join(', ');
             return String(value);
           })();
@@ -104,9 +162,15 @@ function FormViewer({ content }: { content: Record<string, unknown> }) {
           return (
             <div key={fid} className="flex flex-col gap-1">
               <span className="text-xs font-medium text-slate-500">{field.label as string}</span>
-              <span className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 min-h-[36px]">
-                {display}
-              </span>
+              {typeof display === 'string' ? (
+                <span className="text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 min-h-[36px]">
+                  {display}
+                </span>
+              ) : (
+                <div className="text-sm text-slate-800">
+                  {display}
+                </div>
+              )}
             </div>
           );
         })}
