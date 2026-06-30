@@ -161,13 +161,13 @@ function SidebarContent({
 
 
 
+
       // Even if signOut fails, navigate away — the session will expire naturally
     } finally {// Use window.location for a hard navigation so the entire React tree
       // is unmounted cleanly. navigate() can trigger a re-render of the
       // still-mounted sidebar before the router has fully transitioned,
       // which is the primary cause of the #310 crash on mobile.
       window.location.replace('/login');}}
-
   const linkClass = (active: boolean) =>
   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
   active ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'}`;
@@ -371,7 +371,7 @@ function SidebarContent({
             subInfo.status === 'cancelled' ?
             <p className="text-xs font-bold text-red-300">Subscription cancelled</p> :
             subInfo.status === 'past_due' ?
-            <p className="text-xs text-red-300">Payment past due</p> :
+            <p className="text-xs text-red-300 font-bold">Payment past due</p> :
 
             <>
                     <p className="text-xs font-bold text-amber-300">Free trial</p>
