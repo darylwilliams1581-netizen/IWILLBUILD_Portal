@@ -857,6 +857,36 @@
       "extractedPages": null,
       "summary": "",
       "storedUploadFilename": "f38wenbvln_1782811169106_file_gZBziP86Ug.ts"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "logo",
+      "designDirection": "full",
+      "contentStructure": "none",
+      "assetRole": "logo",
+      "placementIntent": "unclear",
+      "extractedColors": [
+        "#D4860D",
+        "#2B2B2B",
+        "#8B6914"
+      ],
+      "extractedPages": null,
+      "summary": "A professional construction/building company logo featuring an orange hard hat icon and bold industrial-style wordmark 'IWILLBUILD' with metallic texturing. The user is requesting watermark removal and logo refinement.",
+      "fileName": "grok-image-8b61a479-94e0-4a42-929f-7f42ea48d098.jpg",
+      "storedUploadFilename": "f38wenbvln_1782817452098_file_Zj8LmIIYFQ.jpg"
+    },
+    {
+      "fileName": "grok-video-6a14273c-e9b4-41cf-9120-cbf39ed65a39.mp4",
+      "variant": "adaptive",
+      "classification": "video",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "",
+      "storedUploadFilename": "f38wenbvln_1782814040614_file_6bRFCz6oOK.mp4"
     }
   ]
 }
