@@ -90,6 +90,9 @@ export default async function handler(req: Request, res: Response) {
           ? new Date(subscription.current_period_end * 1000)
           : null;
 
+        // Extract plan from subscription metadata (set by upgrade-subscription endpoint)
+        const planFromMeta = subscription.metadata?.plan ?? null;
+
         // Determine the DB status to store
         let status: string;
         if (subscription.status === 'canceled') {
@@ -97,17 +100,13 @@ export default async function handler(req: Request, res: Response) {
         } else if (subscription.status === 'past_due') {
           status = 'past_due';
         } else if (cancelAtEnd) {
-          // Cancellation scheduled — store as cancel_at_period_end so the gate
-          // can check current_period_end directly
           status = 'cancel_at_period_end';
         } else {
           status = 'active';
         }
 
-        // Build the raw SQL update — we need to conditionally set past_due_since
-        // only when transitioning INTO past_due (not on every update)
+        // Build the raw SQL update — conditionally set past_due_since
         if (status === 'past_due') {
-          // Only set past_due_since if it's not already set (first failure)
           await db.execute(sql`
             UPDATE companies
             SET
@@ -115,10 +114,10 @@ export default async function handler(req: Request, res: Response) {
               cancel_at_period_end = ${cancelAtEnd ? 1 : 0},
               current_period_end = ${periodEnd ? toMysqlDatetime(periodEnd) : null},
               past_due_since = COALESCE(past_due_since, NOW())
+              ${planFromMeta ? sql`, subscription_plan = ${planFromMeta}` : sql``}
             WHERE stripe_subscription_id = ${subscription.id}
           `);
         } else if (status === 'active') {
-          // Reactivation or renewal — clear past_due_since and cancelled_at
           await db.execute(sql`
             UPDATE companies
             SET
@@ -127,6 +126,7 @@ export default async function handler(req: Request, res: Response) {
               current_period_end = ${periodEnd ? toMysqlDatetime(periodEnd) : null},
               past_due_since = NULL,
               cancelled_at = NULL
+              ${planFromMeta ? sql`, subscription_plan = ${planFromMeta}` : sql``}
             WHERE stripe_subscription_id = ${subscription.id}
           `);
         } else {
@@ -136,6 +136,7 @@ export default async function handler(req: Request, res: Response) {
               subscription_status = ${status},
               cancel_at_period_end = ${cancelAtEnd ? 1 : 0},
               current_period_end = ${periodEnd ? toMysqlDatetime(periodEnd) : null}
+              ${planFromMeta ? sql`, subscription_plan = ${planFromMeta}` : sql``}
             WHERE stripe_subscription_id = ${subscription.id}
           `);
         }

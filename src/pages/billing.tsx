@@ -290,6 +290,90 @@ function CancelConfirmModal({
   );
 }
 
+// ── Upgrade confirmation modal ────────────────────────────────────────────────
+
+function UpgradeConfirmModal({
+  fromPlan,
+  toPlan,
+  onConfirm,
+  onClose,
+  loading,
+}: {
+  fromPlan: string;
+  toPlan: typeof PLANS[number];
+  onConfirm: () => void;
+  onClose: () => void;
+  loading: boolean;
+}) {
+  const isUpgrade = (() => {
+    const order: Record<string, number> = { solo: 1, team: 2, business: 3, enterprise: 4 };
+    return (order[toPlan.id] ?? 0) > (order[fromPlan] ?? 0);
+  })();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`p-2.5 rounded-xl ${isUpgrade ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+            <ArrowRight size={18} className={isUpgrade ? 'text-emerald-600' : 'text-amber-600'} />
+          </div>
+          <div>
+            <h2 className="font-heading font-bold text-slate-900 text-base">
+              {isUpgrade ? 'Upgrade' : 'Downgrade'} to {toPlan.name}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {planLabel(fromPlan)} → {toPlan.name}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">New plan</span>
+            <span className="text-sm font-bold text-slate-900">{toPlan.name} — ${toPlan.price}/mo +GST</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Users included</span>
+            <span className="text-sm font-semibold text-slate-700">Up to {toPlan.maxUsers === 999 ? 'unlimited' : toPlan.maxUsers}</span>
+          </div>
+          <div className="border-t border-slate-200 pt-2 mt-1">
+            <p className="text-xs text-slate-500">
+              {isUpgrade
+                ? 'You\'ll be charged a prorated amount for the remainder of your current billing period. Your full new rate applies from the next billing cycle.'
+                : 'A prorated credit will be applied to your next invoice for the unused portion of your current plan.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
+              isUpgrade ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600'
+            }`}
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+            Confirm {isUpgrade ? 'Upgrade' : 'Downgrade'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
@@ -302,7 +386,9 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [reactivateLoading, setReactivateLoading] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [upgradePending, setUpgradePending] = useState<typeof PLANS[number] | null>(null);
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
 
@@ -375,6 +461,34 @@ export default function BillingPage() {
       setError('Something went wrong opening the billing portal.');
     } finally {
       setPortalLoading(false);
+    }
+  }
+
+  async function handleUpgradeConfirm() {
+    if (!upgradePending) return;
+    setUpgradeLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/billing/upgrade-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ plan: upgradePending.id }),
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not change plan. Please try again.');
+        setUpgradePending(null);
+        return;
+      }
+      setActionMsg(data.message ?? `Switched to ${upgradePending.name} plan.`);
+      setUpgradePending(null);
+      void fetchStatus();
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setUpgradePending(null);
+    } finally {
+      setUpgradeLoading(false);
     }
   }
 
@@ -702,16 +816,6 @@ export default function BillingPage() {
                   <ExternalLink size={12} className="opacity-60" />
                 </button>
 
-                {/* Change Plan — opens Stripe Customer Portal */}
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-                  Change Plan
-                </button>
-
                 {/* Cancel — only show if active and not already cancelling */}
                 {isActive && !isCancelPending && (
                   <button
@@ -753,17 +857,20 @@ export default function BillingPage() {
             )}
           </div>
 
-          {/* ── Plan cards — show when no active paid sub, or cancelled, or owner ── */}
-          {(!hasPaidSub || isCancelled || isOwner) && (
+          {/* ── Plan cards — always show for owner/admin; show for all when no active sub ── */}
+          {(canManage || !hasPaidSub || isCancelled) && (
             <>
               <h2 className="font-heading font-bold text-base text-slate-800 mb-4">
-                {hasPaidSub ? 'Change Plan' : isCancelled ? 'Reactivate — Choose a Plan' : 'Choose a Plan'}
+                {hasPaidSub && !isCancelled ? 'Change Plan' : isCancelled ? 'Reactivate — Choose a Plan' : 'Choose a Plan'}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {PLANS.map((plan) => {
                   const Icon = plan.icon;
                   const isCurrent = hasPaidSub && currentPlanId === plan.id;
                   const isLoading = checkoutLoading === plan.id;
+                  const planOrder: Record<string, number> = { solo: 1, team: 2, business: 3, enterprise: 4 };
+                  const isUpgradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) > (planOrder[currentPlanId] ?? 0);
+                  const isDowngradeAction = hasPaidSub && !isCancelled && !isCurrent && (planOrder[plan.id] ?? 0) < (planOrder[currentPlanId] ?? 0);
 
                   return (
                     <motion.div
@@ -772,7 +879,7 @@ export default function BillingPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                       className={`relative flex flex-col bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-150 ${
-                        plan.highlight
+                        plan.highlight && !isCurrent
                           ? 'border-primary shadow-orange-100'
                           : isCurrent
                           ? 'border-emerald-400'
@@ -795,8 +902,8 @@ export default function BillingPage() {
                       )}
 
                       <div className="flex items-center gap-2 mb-3">
-                        <div className={`p-1.5 rounded-lg ${plan.highlight ? 'bg-primary/10' : 'bg-slate-100'}`}>
-                          <Icon size={14} className={plan.highlight ? 'text-primary' : 'text-slate-500'} />
+                        <div className={`p-1.5 rounded-lg ${plan.highlight && !isCurrent ? 'bg-primary/10' : 'bg-slate-100'}`}>
+                          <Icon size={14} className={plan.highlight && !isCurrent ? 'text-primary' : 'text-slate-500'} />
                         </div>
                         <span className="font-heading font-black text-sm text-slate-900">{plan.name}</span>
                       </div>
@@ -827,10 +934,22 @@ export default function BillingPage() {
                         </div>
                       ) : canManage ? (
                         <button
-                          onClick={() => void handleSubscribe(plan.id)}
-                          disabled={isLoading || !!checkoutLoading}
+                          onClick={() => {
+                            if (hasPaidSub && !isCancelled && plan.id !== 'enterprise') {
+                              // In-app upgrade/downgrade via proration
+                              setUpgradePending(plan);
+                            } else {
+                              // New subscription or enterprise enquiry
+                              void handleSubscribe(plan.id);
+                            }
+                          }}
+                          disabled={isLoading || !!checkoutLoading || upgradeLoading}
                           className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 ${
-                            plan.highlight
+                            isUpgradeAction
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              : isDowngradeAction
+                              ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                              : plan.highlight
                               ? 'bg-primary hover:bg-orange-600 text-white'
                               : 'bg-slate-900 hover:bg-slate-700 text-white'
                           }`}
@@ -839,11 +958,12 @@ export default function BillingPage() {
                             <Loader2 size={14} className="animate-spin" />
                           ) : plan.price === null ? (
                             <>Contact Us <ArrowRight size={13} /></>
+                          ) : isUpgradeAction ? (
+                            <><ArrowRight size={13} /> Upgrade</>
+                          ) : isDowngradeAction ? (
+                            <><ArrowRight size={13} className="rotate-180" /> Downgrade</>
                           ) : (
-                            <>
-                              <CreditCard size={13} />
-                              {hasPaidSub ? 'Switch Plan' : 'Subscribe'}
-                            </>
+                            <><CreditCard size={13} /> Subscribe</>
                           )}
                         </button>
                       ) : null}
@@ -884,6 +1004,19 @@ export default function BillingPage() {
             onConfirm={handleCancelConfirm}
             onClose={() => setShowCancelModal(false)}
             loading={cancelLoading}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade / downgrade confirmation modal */}
+      <AnimatePresence>
+        {upgradePending && (
+          <UpgradeConfirmModal
+            fromPlan={currentPlanId}
+            toPlan={upgradePending}
+            onConfirm={() => void handleUpgradeConfirm()}
+            onClose={() => setUpgradePending(null)}
+            loading={upgradeLoading}
           />
         )}
       </AnimatePresence>

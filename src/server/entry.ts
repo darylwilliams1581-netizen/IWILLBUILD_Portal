@@ -29,6 +29,7 @@ import billing_cancel_subscription_post_19 from "./api/billing/cancel-subscripti
 import billing_cancellation_feedback_post_20 from "./api/billing/cancellation-feedback/POST";
 import billing_customer_portal_post_21 from "./api/billing/customer-portal/POST";
 import billing_reactivate_subscription_post_22 from "./api/billing/reactivate-subscription/POST";
+import billing_upgrade_subscription_post from "./api/billing/upgrade-subscription/POST";
 import company_get_23 from "./api/company/GET";
 import company_put_24 from "./api/company/PUT";
 import company_settings_get_25 from "./api/company-settings/GET";
@@ -861,6 +862,7 @@ app.post("/api/billing/cancel-subscription", billing_cancel_subscription_post_19
 app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_post_20);
 app.post("/api/billing/customer-portal", billing_customer_portal_post_21);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post_22);
+app.post("/api/billing/upgrade-subscription", billing_upgrade_subscription_post);
 app.get("/api/company", company_get_23);
 app.put("/api/company", company_put_24);
 app.get("/api/company-settings", company_settings_get_25);
