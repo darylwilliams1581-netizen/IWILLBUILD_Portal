@@ -159,11 +159,6 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Document Engine share — public, token-validated
   { method: 'GET',  pattern: /^\/api\/documents\/share\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/documents\/share\/[^/]+$/ },
-  // Secure Share Link Layer — public, token-validated
-  { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+$/ },
-  { method: 'POST', pattern: /^\/api\/secure-share\/[^/]+\/verify$/ },
-  { method: 'POST', pattern: /^\/api\/secure-share\/[^/]+\/upload$/ },
-  { method: 'GET',  pattern: /^\/api\/secure-share\/[^/]+\/download\/[^/]+$/ },
 ];
 
 /**

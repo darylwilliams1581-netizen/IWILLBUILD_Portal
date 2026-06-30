@@ -11,9 +11,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Share2, Clock, CheckCircle2, Lock, Unlock, Copy, XCircle,
   Loader2, AlertTriangle, ChevronLeft, Eye, Download, ClipboardList,
-  History, Activity, ExternalLink, RotateCcw, Link2,
+  History, Activity, ExternalLink, RotateCcw,
 } from 'lucide-react';
-import ShareLinkModal from '@/components/ShareLinkModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -340,7 +339,6 @@ export default function DocumentViewerPage() {
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showSecureShare, setShowSecureShare] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -497,12 +495,6 @@ export default function DocumentViewerPage() {
                   >
                     <Download size={12} /> Print / PDF
                   </button>
-                  <button
-                    onClick={() => setShowSecureShare(true)}
-                    className="flex items-center gap-1.5 text-xs border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                  >
-                    <Link2 size={12} /> Secure Share / QR
-                  </button>
                 </div>
               </div>
 
@@ -558,20 +550,6 @@ export default function DocumentViewerPage() {
           </div>
         )}
       </div>
-
-      {showSecureShare && doc && (
-        <ShareLinkModal
-          open={showSecureShare}
-          onClose={() => setShowSecureShare(false)}
-          target={{
-            type: 'document',
-            id: String(doc.id),
-            title: doc.title,
-            linkType: 'document_view',
-            defaultPermissions: ['view', 'download'],
-          }}
-        />
-      )}
     </>
   );
 }

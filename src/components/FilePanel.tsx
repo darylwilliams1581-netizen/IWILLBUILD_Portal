@@ -15,10 +15,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, Download, Trash2, FolderOpen, FileText, FileImage,
   File, AlertCircle, X, Loader2, Search, Filter,
-  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2, Link2,
+  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ShareLinkModal from '@/components/ShareLinkModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -538,7 +537,6 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
   const [transferringId, setTransferringId] = useState<number | null>(null);
   const [transferSuccess, setTransferSuccess] = useState<{ id: number; url: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompanyFile | null>(null);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -669,18 +667,6 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
           <Upload size={14} />
           Upload
         </Button>
-        {(jobId || fleetAssetId) && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 text-sm gap-1.5 shrink-0"
-            onClick={() => setShowShareModal(true)}
-            title="Create a secure share / upload link"
-          >
-            <Link2 size={14} />
-            Share
-          </Button>
-        )}
       </div>
 
       {/* Active filter summary */}
@@ -847,20 +833,6 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
           file={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onDeleted={handleDeleted}
-        />
-      )}
-
-      {showShareModal && (jobId || fleetAssetId) && (
-        <ShareLinkModal
-          open={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          target={{
-            type: jobId ? 'job' : 'fleet',
-            id: String(jobId ?? fleetAssetId),
-            title: jobId ? `Job ${jobId} — File Upload` : `Fleet Asset ${fleetAssetId} — File Upload`,
-            linkType: 'file_transfer',
-            defaultPermissions: ['upload'],
-          }}
         />
       )}
     </div>

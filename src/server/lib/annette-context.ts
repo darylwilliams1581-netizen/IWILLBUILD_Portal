@@ -61,15 +61,6 @@ export interface AnnetteData {
     incompleteSubmissions: Array<{ form_name: string; job_name: string; submitted_at: string }>;
     jobsWithNoForms:       number; // redundant with jobs.noForms.length but kept for clarity
   };
-
-  // Secure Share Links hygiene
-  shareLinks: {
-    total: number;
-    noExpiry: Array<{ id: number; title: string; link_type: string; created_at: string }>;
-    highPermissions: Array<{ id: number; title: string; permissions_json: string }>;
-    highUsage: Array<{ id: number; title: string; use_count: number }>;
-    failedPasswordLinks: Array<{ id: number; title: string; fail_count: number }>;
-  };
 }
 
 async function safeQuery<T>(
@@ -128,7 +119,6 @@ export async function buildAnnetteContext(
     },
     estimates: { draftTooLong: [], pendingApproval: [] },
     forms:     { incompleteSubmissions: [], jobsWithNoForms: 0 },
-    shareLinks: { total: 0, noExpiry: [], highPermissions: [], highUsage: [], failedPasswordLinks: [] },
   };
 
   // ── Jobs ──────────────────────────────────────────────────────────────────
@@ -425,65 +415,6 @@ export async function buildAnnetteContext(
     }, [], warnings, moduleCounts);
   }
 
-  // ── Secure Share Links hygiene ────────────────────────────────────────────
-  await safeQuery('share_links_hygiene', async () => {
-    const [rows] = await db.execute(
-      sql`SELECT id, link_type, target_type, target_id, title, permissions_json,
-               expires_at, max_uses, use_count, created_at
-          FROM secure_share_links
-          WHERE company_id = ${companyId} AND revoked = 0
-          ORDER BY created_at DESC LIMIT 100`
-    ) as unknown as [Array<{
-      id: number;
-      link_type: string;
-      target_type: string;
-      target_id: string;
-      title: string;
-      permissions_json: string;
-      expires_at: string | null;
-      max_uses: number | null;
-      use_count: number;
-      created_at: string;
-    }>, unknown];
-
-    const links = rows ?? [];
-    const now = new Date();
-
-    // No expiry
-    data.shareLinks = {
-      total: links.length,
-      noExpiry: links.filter((l) => !l.expires_at),
-      highPermissions: links.filter((l) => {
-        try {
-          const perms: string[] = JSON.parse(l.permissions_json || '[]');
-          return perms.length >= 3 || (perms.includes('upload') && perms.includes('download'));
-        } catch { return false; }
-      }),
-      highUsage: links.filter((l) => l.use_count > 20),
-      failedPasswordLinks: [],
-    };
-
-    // Check for failed password attempts
-    const [failRows] = await db.execute(
-      sql`SELECT sl.id, sl.title, COUNT(e.id) as fail_count
-          FROM secure_share_links sl
-          JOIN secure_share_events e ON e.share_link_id = sl.id
-          WHERE sl.company_id = ${companyId}
-            AND sl.revoked = 0
-            AND e.event_type = 'failed_password'
-            AND e.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
-          GROUP BY sl.id, sl.title
-          HAVING fail_count >= 3
-          ORDER BY fail_count DESC LIMIT 10`
-    ) as unknown as [Array<{ id: number; title: string; fail_count: number }>, unknown];
-    data.shareLinks.failedPasswordLinks = (failRows ?? []).map((r) => ({
-      ...r,
-      fail_count: Number(r.fail_count),
-    }));
-
-    return rows;
-  }, [], warnings, moduleCounts);
-
   return data;
 }
 
@@ -690,41 +621,6 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
   lines.push(`---`);
   lines.push(`Be direct and practical. No waffle. If a section has nothing to report, say so clearly — don't skip it.`);
   lines.push(`Aussie plain English throughout. The business owner is reading this on their phone on a job site.`);
-
-  // Share Links hygiene
-  lines.push('');
-  lines.push(`## SECURE SHARE LINKS (Source: Share Links)`);
-  lines.push(`Total active (non-revoked) share links: ${d.shareLinks.total}`);
-  if (d.shareLinks.noExpiry.length > 0) {
-    lines.push(`⚠️ Links with NO expiry (${d.shareLinks.noExpiry.length}):`);
-    for (const l of d.shareLinks.noExpiry.slice(0, 10)) {
-      lines.push(`  - "${l.title}" [${l.link_type}] — created ${new Date(l.created_at).toLocaleDateString('en-AU')}`);
-    }
-  }
-  if (d.shareLinks.highPermissions.length > 0) {
-    lines.push(`⚠️ Links with broad permissions (${d.shareLinks.highPermissions.length}):`);
-    for (const l of d.shareLinks.highPermissions.slice(0, 10)) {
-      try {
-        const perms: string[] = JSON.parse(l.permissions_json || '[]');
-        lines.push(`  - "${l.title}" — permissions: ${perms.join(', ')}`);
-      } catch { lines.push(`  - "${l.title}"`); }
-    }
-  }
-  if (d.shareLinks.highUsage.length > 0) {
-    lines.push(`⚠️ Links with unusually high usage (${d.shareLinks.highUsage.length}):`);
-    for (const l of d.shareLinks.highUsage.slice(0, 10)) {
-      lines.push(`  - "${l.title}" — ${l.use_count} uses`);
-    }
-  }
-  if (d.shareLinks.failedPasswordLinks.length > 0) {
-    lines.push(`🚨 Links with failed password attempts in last 7 days (${d.shareLinks.failedPasswordLinks.length}):`);
-    for (const l of d.shareLinks.failedPasswordLinks.slice(0, 10)) {
-      lines.push(`  - "${l.title}" — ${l.fail_count} failed attempts`);
-    }
-  }
-  if (d.shareLinks.total === 0) {
-    lines.push(`No active share links.`);
-  }
 
   return lines.join('\n');
 }

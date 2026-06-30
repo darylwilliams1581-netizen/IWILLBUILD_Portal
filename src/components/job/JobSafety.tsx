@@ -3,11 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, X, AlertCircle, Users, UserCheck,
   Printer, Wand2, Trash2, CheckSquare, Square, Search, ClipboardList,
-  Check, Link2,
+  Check,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
-import ShareLinkModal from '@/components/ShareLinkModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -980,7 +979,6 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
   const [printing, setPrinting] = useState<{ swms: JobSwmsRecord; signoffs: Signoff[] } | null>(null);
   const [signonTarget, setSignonTarget] = useState<JobSwmsRecord | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
-  const [shareTarget, setShareTarget] = useState<JobSwmsRecord | null>(null);
   const [loadingSignoffs, setLoadingSignoffs] = useState<number | null>(null);
 
   const load = useCallback(() => {
@@ -1114,14 +1112,6 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
                     >
                       {loadingSignoffs === j.id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                     </button>
-                    {/* Secure Share / QR */}
-                    <button
-                      onClick={() => setShareTarget(j)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
-                      title="Secure Share / QR Sign-on Link"
-                    >
-                      <Link2 size={14} />
-                    </button>
                     {/* Edit */}
                     <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
                       <Wand2 size={14} />
@@ -1172,19 +1162,6 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
             onSigned={(signoff) => {
               setList((prev) => prev.map((j) => j.id === signonTarget.id ? { ...j, signoffs: [signoff, ...(j.signoffs ?? [])] } : j));
               setSignonTarget(null);
-            }}
-          />
-        )}
-        {shareTarget && (
-          <ShareLinkModal
-            open={!!shareTarget}
-            onClose={() => setShareTarget(null)}
-            target={{
-              type: 'swms',
-              id: String(shareTarget.id),
-              title: `Sign On — ${shareTarget.title}`,
-              linkType: 'swms_signon',
-              defaultPermissions: ['sign'],
             }}
           />
         )}
