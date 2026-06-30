@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Eye, EyeOff, ArrowRight, Lock, Mail, User, AlertCircle,
-  CheckCircle2, Building2, ChevronRight, Users, Zap, Crown,
+  Eye, EyeOff, Lock, Mail, User, AlertCircle,
+  CheckCircle2, Building2, ChevronRight, Users, Zap, Crown, Gift,
 } from 'lucide-react';
 import { signIn } from '@/lib/auth/auth-client';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
@@ -138,6 +138,7 @@ export default function SignupPage() {
 
   // Step 2 — plan
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('team');
+  const [trialOnly, setTrialOnly] = useState(false);
 
   // Step 3 — account
   const [name, setName] = useState('');
@@ -167,6 +168,13 @@ export default function SignupPage() {
     setStep(3);
   }
 
+  function goTrialStep3() {
+    setSelectedPlan('solo');
+    setTrialOnly(true);
+    setError('');
+    setStep(3);
+  }
+
   // ── Final submit ────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -187,6 +195,7 @@ export default function SignupPage() {
           password,
           companyName: companyName.trim(),
           plan: selectedPlan,
+          trialOnly,
           industry,
           // Anti-spam fields
           _hp: '',                          // honeypot — always empty for real users
@@ -267,7 +276,12 @@ export default function SignupPage() {
               {step === 3 && (
                 <motion.div key="h3" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2 }}>
                   <h1 className="font-heading font-bold text-xl text-white text-center">Create your account</h1>
-                  <p className="text-sm text-white/40 text-center mt-1">You'll be the Admin for <span className="text-white/70 font-medium">{companyName}</span></p>
+                  <p className="text-sm text-white/40 text-center mt-1">
+                    {trialOnly
+                      ? <span>1-month free trial · <span className="text-emerald-400 font-medium">Solo plan</span> · Upgrade anytime</span>
+                      : <span>You'll be the Admin for <span className="text-white/70 font-medium">{companyName}</span></span>
+                    }
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -384,6 +398,24 @@ export default function SignupPage() {
                       All plans include a 30-day free trial. Billing starts after trial ends.
                     </p>
 
+                    {/* ── Free trial shortcut ─────────────────────────────── */}
+                    <button
+                      type="button"
+                      onClick={goTrialStep3}
+                      className="group flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/70 hover:bg-emerald-500/10 transition-all duration-150"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/15 shrink-0">
+                          <Gift size={15} className="text-emerald-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-emerald-400">Try free for 1 month</p>
+                          <p className="text-[11px] text-white/35 leading-tight">Start as Solo · No credit card · Upgrade anytime</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={15} className="text-emerald-400/60 group-hover:text-emerald-400 transition-colors duration-150 shrink-0" />
+                    </button>
+
                     <div className="flex gap-2 mt-1">
                       <button
                         onClick={() => { setError(''); setStep(1); }}
@@ -487,7 +519,7 @@ export default function SignupPage() {
                       <div className="flex gap-2 mt-1">
                         <button
                           type="button"
-                          onClick={() => { setError(''); setStep(2); }}
+                          onClick={() => { setError(''); setTrialOnly(false); setStep(2); }}
                           className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150"
                         >
                           Back
@@ -503,7 +535,7 @@ export default function SignupPage() {
                               Creating…
                             </span>
                           ) : (
-                            <>Start Free Trial <ArrowRight size={15} /></>
+                            <>Start Free Trial <ChevronRight size={15} /></>
                           )}
                         </button>
                       </div>

@@ -887,6 +887,23 @@
       "extractedPages": null,
       "summary": "",
       "storedUploadFilename": "f38wenbvln_1782814040614_file_6bRFCz6oOK.mp4"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF8C00",
+        "#1A1F2E",
+        "#FFFFFF"
+      ],
+      "extractedPages": null,
+      "summary": "A pricing/plan selection screen showing four tiers (Solo, Team, Business, Enterprise) with a dark theme and orange accent color. The user is requesting this as a reference to test sign-up friction and add a new option for a 1-month free trial with deferred upgrade path.",
+      "fileName": "screenshot-2026-06-30T20-43-38.jpg",
+      "storedUploadFilename": "f38wenbvln_1782852219147_file_xUr4sWKSoD.jpg"
     }
   ]
 }
