@@ -13,6 +13,7 @@ import {
   Printer,
   RotateCcw,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormRunner from './FormRunner';
@@ -193,6 +194,13 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
             >
               <Eye size={12} /> View
+            </button>
+            {/* Open in new tab */}
+            <button
+              onClick={(e) => { e.stopPropagation(); window.open(`/jobs/${submission.jobId}/forms/${submission.id}`, '_blank', 'noopener,noreferrer'); }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 transition-colors"
+            >
+              <ExternalLink size={12} /> New tab
             </button>
             {/* Print/PDF */}
             <button

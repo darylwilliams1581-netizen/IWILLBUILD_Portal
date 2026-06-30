@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, Loader2, AlertCircle, Copy, Trash2, ChevronRight,
-  ChevronDown, Check, Lock,
+  ChevronDown, Check, Lock, ExternalLink,
 } from 'lucide-react';
 import {
   fetchEstimates, createEstimate, deleteEstimate, patchEstimateStatus,
@@ -314,6 +314,13 @@ export default function JobEstimates({ jobId }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
+                      title="Open in new tab"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                    </button>
                     <button
                       onClick={() => handleDuplicate(est)}
                       title="Duplicate"

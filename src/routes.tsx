@@ -42,6 +42,10 @@ const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
+// ── New-tab viewer pages ──────────────────────────────────────────────────────
+const ViewFilePage       = lazy(() => import('./pages/view-file'));
+const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
+const ViewInvoicePage    = lazy(() => import('./pages/view-invoice'));
 
 const NotFoundPage = import.meta.env.DEV
   ? lazy(() => import('../dev-tools/src/PageNotFound'))
@@ -104,6 +108,10 @@ export const routes: RouteObject[] = [
   { path: '/owner-console', element: protect(<OwnerConsolePage />),    errorElement: routeError },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
+  // New-tab viewer routes (authenticated, no sidebar)
+  { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },
+  { path: '/view/estimate/:id', element: protect(<ViewEstimatePage />), errorElement: routeError },
+  { path: '/view/invoice/:id',  element: protect(<ViewInvoicePage />),  errorElement: routeError },
   { path: '*',              element: <NotFoundPage /> },
 ];
 

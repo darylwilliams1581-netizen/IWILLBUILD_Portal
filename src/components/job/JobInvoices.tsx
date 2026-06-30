@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Receipt, Plus, Loader2, AlertCircle, ChevronRight,
   FileText, Send, Clock, CheckCircle2, AlertTriangle, XCircle,
-  DollarSign, Copy,
+  DollarSign, Copy, ExternalLink,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import {
@@ -221,6 +221,13 @@ export default function JobInvoices({ jobId, job }: Props) {
                     )}
                   </div>
                 )}
+                <button
+                  onClick={(e) => { e.preventDefault(); window.open(`/view/invoice/${inv.id}`, '_blank', 'noopener,noreferrer'); }}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                  title="Open in new tab"
+                >
+                  <ExternalLink size={13} />
+                </button>
                 <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </Link>
             );

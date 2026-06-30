@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, Download, Trash2, FolderOpen, FileText, FileImage,
   File, AlertCircle, X, Loader2, Search, Filter,
-  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2,
+  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -271,6 +271,15 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
             <p className="text-xs text-slate-500 mb-4 bg-slate-50 rounded-lg px-3 py-2">{file.notes}</p>
           )}
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-9 text-sm"
+              onClick={() => window.open(`/view/file/${file.id}`, '_blank', 'noopener,noreferrer')}
+            >
+              <ExternalLink size={13} />
+              Open in new tab
+            </Button>
             <Button
               size="sm"
               className="gap-1.5 h-9 text-sm"
@@ -761,6 +770,13 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => window.open(`/view/file/${f.id}`, '_blank', 'noopener,noreferrer')}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink size={15} />
+                  </button>
                   {oneDriveConnected && (
                     transferSuccess?.id === f.id ? (
                       <a

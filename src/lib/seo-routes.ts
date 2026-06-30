@@ -27,42 +27,34 @@ export interface SeoRoute {
     | "never";
   priority?: number;
   lastmod?: string;
-  /** When false, the route is registered for SEO tracking but excluded from sitemap.xml */
-  sitemap?: boolean;
 }
 
 export const seoRoutes: SeoRoute[] = [
-  // ── Public marketing pages (included in sitemap.xml) ─────────────────────
-  { path: "/",        changefreq: "weekly",  priority: 1.0 },
-  { path: "/signup",  changefreq: "monthly", priority: 0.8 },
-  { path: "/login",   changefreq: "monthly", priority: 0.6 },
-  { path: "/privacy", changefreq: "yearly",  priority: 0.4 },
-  { path: "/terms",   changefreq: "yearly",  priority: 0.4 },
-
-  // ── Auth flow pages — noindex, excluded from sitemap ─────────────────────
-  { path: "/forgot-password",  sitemap: false },
-  { path: "/reset-password",   sitemap: false },
-  { path: "/check-email",      sitemap: false },
-  { path: "/verify-email",     sitemap: false },
-  { path: "/verify-required",  sitemap: false },
-
-  // ── Authenticated portal pages — noindex, excluded from sitemap ──────────
-  // Registered here so the SEO checker knows they are intentionally tracked.
-  { path: "/dashboard",     sitemap: false },
-  { path: "/jobs",          sitemap: false },
-  { path: "/scheduler",     sitemap: false },
-  { path: "/fleet",         sitemap: false },
-  { path: "/forms",         sitemap: false },
-  { path: "/files",         sitemap: false },
-  { path: "/estimating",    sitemap: false },
-  { path: "/safety",        sitemap: false },
-  { path: "/customers",     sitemap: false },
-  { path: "/invoices",      sitemap: false },
-  { path: "/downloads",     sitemap: false },
-  { path: "/dazza-ai",      sitemap: false },
-  { path: "/annette",       sitemap: false },
-  { path: "/team",          sitemap: false },
-  { path: "/settings",      sitemap: false },
-  { path: "/owner-console", sitemap: false },
-  { path: "/billing",       sitemap: false },
+  { path: "/", changefreq: "weekly", priority: 1.0 },
+  { path: "/login", changefreq: "monthly", priority: 0.6 },
+  { path: "/signup", changefreq: "monthly", priority: 0.8 },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
+  { path: "/terms", changefreq: "yearly", priority: 0.4 },
+  { path: "/check-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-required", changefreq: "monthly", priority: 0.8 },
+  { path: "/forgot-password", changefreq: "monthly", priority: 0.8 },
+  { path: "/reset-password", changefreq: "monthly", priority: 0.8 },
+  { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
+  { path: "/jobs", changefreq: "monthly", priority: 0.8 },
+  { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
+  { path: "/fleet", changefreq: "monthly", priority: 0.8 },
+  { path: "/forms", changefreq: "monthly", priority: 0.8 },
+  { path: "/files", changefreq: "monthly", priority: 0.8 },
+  { path: "/estimating", changefreq: "monthly", priority: 0.8 },
+  { path: "/safety", changefreq: "monthly", priority: 0.8 },
+  { path: "/customers", changefreq: "monthly", priority: 0.8 },
+  { path: "/invoices", changefreq: "monthly", priority: 0.8 },
+  { path: "/downloads", changefreq: "monthly", priority: 0.8 },
+  { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
+  { path: "/annette", changefreq: "monthly", priority: 0.8 },
+  { path: "/team", changefreq: "monthly", priority: 0.8 },
+  { path: "/settings", changefreq: "monthly", priority: 0.8 },
+  { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/billing", changefreq: "monthly", priority: 0.8 },
 ];

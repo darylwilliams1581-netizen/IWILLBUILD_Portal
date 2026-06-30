@@ -755,6 +755,9 @@ async function runStartupMigrations() {
     { name: 'document_events', ddl: "CREATE TABLE IF NOT EXISTS document_events (id INT AUTO_INCREMENT PRIMARY KEY, document_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, event_note TEXT NULL, user_id VARCHAR(36) NULL, external_name VARCHAR(255) NULL, ip_address VARCHAR(100) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_document (document_id), INDEX idx_company (company_id, created_at))" },
     // ── Drawing Register ──────────────────────────────────────────────────────
     { name: 'drawing_records', ddl: "CREATE TABLE IF NOT EXISTS drawing_records (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, file_id INT NOT NULL, drawing_number VARCHAR(100) NULL, title VARCHAR(500) NOT NULL, revision VARCHAR(20) NOT NULL DEFAULT 'A', discipline VARCHAR(100) NOT NULL DEFAULT 'Other', status VARCHAR(50) NOT NULL DEFAULT 'For Construction', original_file_id INT NOT NULL, marked_up_file_id INT NULL, uploaded_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_discipline (company_id, discipline))" },
+    // ── Secure Share Links (QR / token-based sharing) ─────────────────────────
+    { name: 'secure_share_links', ddl: "CREATE TABLE IF NOT EXISTS secure_share_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, link_type VARCHAR(30) NOT NULL DEFAULT 'file_transfer', target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, title VARCHAR(500) NOT NULL DEFAULT '', permissions_json TEXT NOT NULL DEFAULT '[]', metadata_json TEXT NULL, expires_at DATETIME NULL, password_hash VARCHAR(255) NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id), INDEX idx_revoked (company_id, revoked))" },
+    { name: 'secure_share_events', ddl: "CREATE TABLE IF NOT EXISTS secure_share_events (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, file_id INT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_company (company_id, created_at))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1201,6 +1204,252 @@ app.post("/api/team/verify-user", team_verify_user_post_295);
 app.delete("/api/team/:id", team_id_delete_296);
 app.put("/api/team/:id", team_id_put_297);
 app.get("/api/usage", usage_get_298);
+
+// ── Secure Share Links API ────────────────────────────────────────────────────
+// Inline handlers to avoid [id] path tool restrictions.
+// Tables: secure_share_links, secure_share_events
+
+/** POST /api/secure-share — create a new secure share link (auth required) */
+app.post("/api/secure-share", async (req: Request, res: Response) => {
+  try {
+    const { getSessionAndProfile: _gsp } = await import('./lib/auth-middleware.js');
+    const auth = await _gsp(req, res);
+    if (!auth) return;
+    const { generateShareToken: _gst, hashToken: _ht } = await import('./lib/share-tokens.js');
+    const { bcrypt: _bc } = await import('bcryptjs').catch(() => ({ bcrypt: null })) as { bcrypt: null };
+    const bcryptjs = await import('bcryptjs');
+
+    const {
+      title, linkType = 'file_transfer', targetType, targetId,
+      permissions = ['upload'], expiryDays, password, maxUses, metadata,
+    } = req.body as {
+      title?: string; linkType?: string; targetType: string; targetId: string;
+      permissions?: string[]; expiryDays?: number; password?: string;
+      maxUses?: number; metadata?: Record<string, unknown>;
+    };
+
+    if (!targetType || !targetId) {
+      return res.status(400).json({ error: 'targetType and targetId are required' });
+    }
+
+    const rawToken = _gst();
+    const tokenHash = _ht(rawToken);
+    const expiresAt = expiryDays
+      ? new Date(Date.now() + expiryDays * 86400000)
+      : null;
+    const passwordHash = password
+      ? await bcryptjs.hash(password, 10)
+      : null;
+
+    await db.execute(
+      sql`INSERT INTO secure_share_links
+          (company_id, created_by_user_id, token_hash, link_type, target_type, target_id,
+           title, permissions_json, metadata_json, expires_at, password_hash, max_uses, use_count, revoked, created_at, updated_at)
+          VALUES
+          (${auth.profile.companyId}, ${auth.session.user.id}, ${tokenHash}, ${linkType},
+           ${targetType}, ${String(targetId)}, ${title ?? `${targetType} share`},
+           ${JSON.stringify(permissions)}, ${metadata ? JSON.stringify(metadata) : null},
+           ${expiresAt}, ${passwordHash}, ${maxUses ?? null}, 0, 0, NOW(), NOW())`
+    );
+
+    const [rows] = await db.execute(
+      sql`SELECT id FROM secure_share_links WHERE token_hash = ${tokenHash} LIMIT 1`
+    ) as unknown as [Array<{ id: number }>, unknown];
+
+    const shareUrl = `${req.protocol}://${req.hostname}/share/${rawToken}`;
+
+    res.status(201).json({
+      ok: true,
+      token: rawToken,
+      shareUrl,
+      id: rows?.[0]?.id,
+      expiresAt,
+    });
+  } catch (err) {
+    console.error('POST /api/secure-share error:', err);
+    res.status(500).json({ error: 'Failed to create share link' });
+  }
+});
+
+/** GET /api/secure-share — list company's active share links (auth required) */
+app.get("/api/secure-share", async (req: Request, res: Response) => {
+  try {
+    const { getSessionAndProfile: _gsp } = await import('./lib/auth-middleware.js');
+    const auth = await _gsp(req, res);
+    if (!auth) return;
+
+    const targetType = req.query['targetType'] as string | undefined;
+    const targetId = req.query['targetId'] as string | undefined;
+
+    const [rows] = await db.execute(
+      sql`SELECT id, link_type, target_type, target_id, title, permissions_json,
+                 metadata_json, expires_at, max_uses, use_count, revoked, created_at,
+                 (password_hash IS NOT NULL) as has_password
+          FROM secure_share_links
+          WHERE company_id = ${auth.profile.companyId}
+            AND revoked = 0
+            ${targetType ? sql`AND target_type = ${targetType}` : sql``}
+            ${targetId ? sql`AND target_id = ${targetId}` : sql``}
+          ORDER BY created_at DESC
+          LIMIT 100`
+    ) as unknown as [Array<Record<string, unknown>>, unknown];
+
+    res.json({ links: rows ?? [] });
+  } catch (err) {
+    console.error('GET /api/secure-share error:', err);
+    res.status(500).json({ error: 'Failed to fetch share links' });
+  }
+});
+
+/** DELETE /api/secure-share/:id — revoke a share link (auth required) */
+app.delete("/api/secure-share/:id", async (req: Request, res: Response) => {
+  try {
+    const { getSessionAndProfile: _gsp } = await import('./lib/auth-middleware.js');
+    const auth = await _gsp(req, res);
+    if (!auth) return;
+
+    const linkId = parseInt(req.params['id'] as string, 10);
+    if (isNaN(linkId)) return res.status(400).json({ error: 'Invalid ID' });
+
+    await db.execute(
+      sql`UPDATE secure_share_links
+          SET revoked = 1, updated_at = NOW()
+          WHERE id = ${linkId} AND company_id = ${auth.profile.companyId}`
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/secure-share/:id error:', err);
+    res.status(500).json({ error: 'Failed to revoke share link' });
+  }
+});
+
+/** GET /api/secure-share/:token — public: resolve a secure share token */
+app.get("/api/secure-share/:token", async (req: Request, res: Response) => {
+  try {
+    const { hashToken: _ht } = await import('./lib/share-tokens.js');
+    const rawToken = req.params['token'] as string;
+    if (!rawToken || rawToken.length < 20) {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
+
+    const tokenHash = _ht(rawToken);
+
+    const [rows] = await db.execute(
+      sql`SELECT id, company_id, link_type, target_type, target_id, title,
+                 permissions_json, metadata_json, expires_at, max_uses, use_count,
+                 revoked, (password_hash IS NOT NULL) as requires_password, created_at
+          FROM secure_share_links
+          WHERE token_hash = ${tokenHash}
+          LIMIT 1`
+    ) as unknown as [Array<{
+      id: number; company_id: number; link_type: string; target_type: string;
+      target_id: string; title: string; permissions_json: string;
+      metadata_json: string | null; expires_at: string | null;
+      max_uses: number | null; use_count: number; revoked: number;
+      requires_password: number; created_at: string;
+    }>, unknown];
+
+    const link = rows?.[0];
+    if (!link) return res.status(404).json({ error: 'Link not found', code: 'NOT_FOUND' });
+    if (link.revoked) return res.status(410).json({ error: 'This link has been revoked.', code: 'REVOKED' });
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'This link has expired.', code: 'EXPIRED' });
+    }
+    if (link.max_uses !== null && link.use_count >= link.max_uses) {
+      return res.status(410).json({ error: 'This link has reached its maximum number of uses.', code: 'MAX_USES' });
+    }
+
+    // Log view event
+    await db.execute(
+      sql`INSERT INTO secure_share_events (share_link_id, company_id, event_type, ip_address, user_agent, created_at)
+          VALUES (${link.id}, ${link.company_id}, 'viewed',
+                  ${req.ip ?? null}, ${(req.headers['user-agent'] ?? '').slice(0, 500)}, NOW())`
+    );
+
+    res.json({
+      id: link.id,
+      linkType: link.link_type,
+      targetType: link.target_type,
+      targetId: link.target_id,
+      title: link.title,
+      permissions: (() => { try { return JSON.parse(link.permissions_json); } catch { return []; } })(),
+      metadata: (() => { try { return link.metadata_json ? JSON.parse(link.metadata_json) : null; } catch { return null; } })(),
+      expiresAt: link.expires_at,
+      maxUses: link.max_uses,
+      useCount: link.use_count,
+      requiresPassword: link.requires_password === 1,
+      createdAt: link.created_at,
+    });
+  } catch (err) {
+    console.error('GET /api/secure-share/:token error:', err);
+    res.status(500).json({ error: 'Failed to resolve share link' });
+  }
+});
+
+/** POST /api/secure-share/:token — public: validate password or log upload event */
+app.post("/api/secure-share/:token", async (req: Request, res: Response) => {
+  try {
+    const { hashToken: _ht } = await import('./lib/share-tokens.js');
+    const bcryptjs = await import('bcryptjs');
+    const rawToken = req.params['token'] as string;
+    if (!rawToken || rawToken.length < 20) {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
+
+    const tokenHash = _ht(rawToken);
+    const { action = 'validate_password', password, fileId } = req.body as {
+      action?: string; password?: string; fileId?: number;
+    };
+
+    const [rows] = await db.execute(
+      sql`SELECT id, company_id, revoked, expires_at, max_uses, use_count, password_hash
+          FROM secure_share_links WHERE token_hash = ${tokenHash} LIMIT 1`
+    ) as unknown as [Array<{
+      id: number; company_id: number; revoked: number;
+      expires_at: string | null; max_uses: number | null;
+      use_count: number; password_hash: string | null;
+    }>, unknown];
+
+    const link = rows?.[0];
+    if (!link) return res.status(404).json({ error: 'Link not found' });
+    if (link.revoked) return res.status(410).json({ error: 'Revoked' });
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Expired' });
+    }
+
+    if (action === 'validate_password') {
+      if (!link.password_hash) return res.json({ ok: true });
+      if (!password) return res.status(401).json({ error: 'Password required' });
+      const match = await bcryptjs.compare(password, link.password_hash);
+      if (!match) {
+        await db.execute(
+          sql`INSERT INTO secure_share_events (share_link_id, company_id, event_type, ip_address, created_at)
+              VALUES (${link.id}, ${link.company_id}, 'failed_password', ${req.ip ?? null}, NOW())`
+        );
+        return res.status(401).json({ error: 'Incorrect password' });
+      }
+      return res.json({ ok: true });
+    }
+
+    if (action === 'file_uploaded') {
+      await db.execute(
+        sql`UPDATE secure_share_links SET use_count = use_count + 1, updated_at = NOW() WHERE id = ${link.id}`
+      );
+      await db.execute(
+        sql`INSERT INTO secure_share_events (share_link_id, company_id, event_type, ip_address, file_id, created_at)
+            VALUES (${link.id}, ${link.company_id}, 'file_uploaded', ${req.ip ?? null}, ${fileId ?? null}, NOW())`
+      );
+      return res.json({ ok: true });
+    }
+
+    res.status(400).json({ error: 'Unknown action' });
+  } catch (err) {
+    console.error('POST /api/secure-share/:token error:', err);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

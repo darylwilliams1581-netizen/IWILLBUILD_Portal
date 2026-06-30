@@ -474,20 +474,24 @@ export default function DocumentViewerPage() {
                     </Link>
                   )}
                   {doc.sourceModule === 'estimate' && (
-                    <Link
-                      to={`/estimates/${doc.sourceId}`}
+                    <a
+                      href={`/view/estimate/${doc.sourceId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition-colors"
                     >
                       <ExternalLink size={12} /> Open Estimate
-                    </Link>
+                    </a>
                   )}
                   {doc.sourceModule === 'invoice' && (
-                    <Link
-                      to={`/invoices/${doc.sourceId}`}
+                    <a
+                      href={`/view/invoice/${doc.sourceId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg font-medium transition-colors"
                     >
                       <ExternalLink size={12} /> Open Invoice
-                    </Link>
+                    </a>
                   )}
                   <button
                     onClick={() => window.print()}

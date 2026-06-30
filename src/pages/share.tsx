@@ -16,7 +16,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink, MapPin,
+  Download, ExternalLink, MapPin, Upload, Shield, Key,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
 
