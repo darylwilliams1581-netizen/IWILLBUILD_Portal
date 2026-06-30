@@ -190,28 +190,17 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
+          // Only split truly leaf packages that have no cross-chunk deps.
+          // Do NOT use a catch-all 'vendor' bucket — it creates circular
+          // references when packages in different named chunks depend on each other.
           if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
             return 'react-vendor';
-          }
-          if (id.includes('@tanstack') || id.includes('react-router')) {
-            return 'routing-vendor';
-          }
-          if (id.includes('lucide-react') || id.includes('recharts') || id.includes('date-fns')) {
-            return 'ui-vendor';
           }
           if (id.includes('pdfjs-dist') || id.includes('react-pdf')) {
             return 'document-vendor';
           }
-          if (id.includes('@radix-ui/')) {
-            return 'radix-ui';
-          }
-          if (id.includes('motion') || id.includes('framer-motion')) {
-            return 'motion';
-          }
-          if (id.includes('drizzle-orm') || id.includes('mysql2')) {
-            return 'db-vendor';
-          }
-          return 'vendor';
+          // Let Rollup auto-chunk everything else to avoid circular deps.
+          return undefined;
         }
       }
     }
