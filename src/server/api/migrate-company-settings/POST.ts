@@ -19,13 +19,14 @@ export default async function handler(req: Request, res: Response) {
     if (!['owner', 'admin'].includes(profile.role)) return res.status(403).json({ error: 'Owner/Admin only' });
 
     // Create company_settings table if not exists
+    // NOTE: MySQL strict mode forbids DEFAULT on LONGTEXT — use NULL, handle in app layer
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS company_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_id INT NOT NULL UNIQUE,
-        structure_json LONGTEXT NOT NULL DEFAULT '{}',
-        dazza_json LONGTEXT NOT NULL DEFAULT '{}',
-        banner_json LONGTEXT NOT NULL DEFAULT '{}',
+        structure_json LONGTEXT NULL,
+        dazza_json LONGTEXT NULL,
+        banner_json LONGTEXT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -43,8 +44,8 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    await ensureCol('banner_json', "LONGTEXT NOT NULL DEFAULT '{}'");
-    await ensureCol('pdf_json',    "LONGTEXT NOT NULL DEFAULT '{}'");
+    await ensureCol('banner_json', 'LONGTEXT NULL');
+    await ensureCol('pdf_json',    'LONGTEXT NULL');
 
     res.json({ ok: true, message: 'company_settings table ready' });
   } catch (error) {

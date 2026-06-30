@@ -44,7 +44,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Step 1: ensure column exists ─────────────────────────────────────────
     try {
-      await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NOT NULL DEFAULT '{}'`));
+      await db.execute(sql.raw(`ALTER TABLE \`company_settings\` ADD COLUMN \`${col}\` LONGTEXT NULL`));
       console.log(`[PUT company-settings] Added column ${col}`);
     } catch (e: unknown) {
       if (!isDupFieldError(e)) {
