@@ -57,4 +57,6 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/settings", changefreq: "monthly", priority: 0.8 },
   { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
   { path: "/billing", changefreq: "monthly", priority: 0.8 },
+  // Authenticated internal pages — noindex, low priority
+  { path: "/document-viewer", changefreq: "never", priority: 0.1 },
 ];
