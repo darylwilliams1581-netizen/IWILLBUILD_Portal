@@ -524,6 +524,31 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1b. Ensure notifications table exists (must be before column migrations below)
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS notifications (" +
+      "  id          INT AUTO_INCREMENT PRIMARY KEY," +
+      "  company_id  INT NOT NULL," +
+      "  user_id     VARCHAR(36) NOT NULL," +
+      "  type        VARCHAR(60) NOT NULL," +
+      "  title       VARCHAR(255) NOT NULL," +
+      "  body        TEXT NULL," +
+      "  link        VARCHAR(500) NULL," +
+      "  is_read     TINYINT(1) NOT NULL DEFAULT 0," +
+      "  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  INDEX idx_company_user (company_id, user_id)," +
+      "  INDEX idx_user_read (user_id, is_read)" +
+      ")"
+    ));
+    console.log('[startup-migration] notifications table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] notifications CREATE failed:', msg);
+    }
+  }
+
   // 2. Ensure individual columns exist — check INFORMATION_SCHEMA first, then ALTER
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
     { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },
