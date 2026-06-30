@@ -15,6 +15,8 @@ import ResetPasswordPage from './pages/reset-password';
 import PrivacyPage from './pages/privacy';
 import TermsPage from './pages/terms';
 import ProdNotFoundPage from './pages/_404';
+import SharePage from './pages/share';
+import ExternalFormPage from './pages/external-form';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
 const DashboardPage      = lazy(() => import('./pages/dashboard'));
@@ -73,6 +75,9 @@ export const routes: RouteObject[] = [
   { path: '/verify-required', element: <VerifyRequiredPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password',  element: <ResetPasswordPage /> },
+  // Public share pages — no login required
+  { path: '/share/:token',          element: <SharePage /> },
+  { path: '/external/form/:token',  element: <ExternalFormPage /> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },

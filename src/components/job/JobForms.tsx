@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import FormRunner from './FormRunner';
 import type { Job } from '@/lib/jobs-api';
+import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,10 +55,17 @@ function fmtTime(iso: string) {
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'completed') {
+  if (status === 'completed' || status === 'submitted') {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-        <CheckCircle2 size={10} /> Completed
+        <CheckCircle2 size={10} /> {status === 'submitted' ? 'Submitted' : 'Completed'}
+      </span>
+    );
+  }
+  if (status === 'sent') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+        <Eye size={10} /> Sent
       </span>
     );
   }
@@ -136,10 +144,14 @@ interface SubmissionRowProps {
   onPrint: () => void;
   onDelete: () => void;
   canDelete: boolean;
+  canShare: boolean;
+  canReset: boolean;
+  onStatusChange: () => void;
 }
 
-function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, canDelete }: SubmissionRowProps) {
-  const isCompleted = submission.status === 'completed';
+function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, canDelete, canShare, canReset, onStatusChange }: SubmissionRowProps) {
+  const isCompleted = submission.status === 'completed' || submission.status === 'submitted';
+  const isSubmitted = submission.status === 'submitted';
 
   return (
     <motion.div
@@ -172,7 +184,7 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 mt-0 bg-slate-50/60">
+      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 mt-0 bg-slate-50/60 flex-wrap">
         {isCompleted ? (
           <>
             {/* View */}
@@ -189,13 +201,15 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
             >
               <Printer size={12} /> Print / PDF
             </button>
-            {/* Reopen */}
-            <button
-              onClick={onOpen}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
-            >
-              <RotateCcw size={12} /> Reopen
-            </button>
+            {/* Reopen (internal) — only if not externally submitted */}
+            {!isSubmitted && (
+              <button
+                onClick={onOpen}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-600 text-slate-600 transition-colors"
+              >
+                <RotateCcw size={12} /> Reopen
+              </button>
+            )}
           </>
         ) : (
           /* Continue */
@@ -209,6 +223,16 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Share panel */}
+        {canShare && (
+          <FormSharePanel
+            submissionId={submission.id}
+            submissionStatus={submission.status}
+            canReset={canReset}
+            onStatusChange={onStatusChange}
+          />
+        )}
 
         {/* Delete */}
         {canDelete && (
@@ -490,7 +514,7 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive }: JobFo
                 {submissions.map((s) => {
                   const template = templates.find((t) => t.id === s.templateId);
                   const templateName = template?.name ?? `Form #${s.templateId}`;
-                  const isCompleted = s.status === 'completed';
+                  const isCompleted = s.status === 'completed' || s.status === 'submitted';
 
                   return (
                     <SubmissionRow
@@ -501,6 +525,9 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive }: JobFo
                       onPrint={() => openSubmission(s, true)}
                       onDelete={() => setDeleteTarget(s)}
                       canDelete={canDelete}
+                      canShare={true}
+                      canReset={['owner', 'admin'].includes(userRole ?? '')}
+                      onStatusChange={load}
                     />
                   );
                 })}

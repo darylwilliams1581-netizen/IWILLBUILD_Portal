@@ -283,6 +283,13 @@ import team_verify_user_post_267 from "./api/team/verify-user/POST";
 import team_id_delete_268 from "./api/team/[id]/DELETE";
 import team_id_put_269 from "./api/team/[id]/PUT";
 import usage_get_270 from "./api/usage/GET";
+import share_token_get from "./api/share/[token]/GET";
+import external_form_token_get from "./api/external/form/[token]/GET";
+import external_form_token_post from "./api/external/form/[token]/POST";
+import job_forms_id_share_get from "./api/job-forms/[id]/share/GET";
+import job_forms_id_share_post from "./api/job-forms/[id]/share/POST";
+import job_forms_id_share_delete from "./api/job-forms/[id]/share/DELETE";
+import job_forms_id_reset_post from "./api/job-forms/[id]/reset/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -611,6 +618,12 @@ async function runStartupMigrations() {
     { table: 'job_progress_lines', column: 'assigned_to_name', definition: 'VARCHAR(255) NULL' },
     { table: 'job_progress_lines', column: 'contractor_id',    definition: 'INT NULL' },
     { table: 'job_progress_lines', column: 'trade_type',       definition: 'VARCHAR(100) NULL' },
+    // ── job_form_submissions: external share fields ───────────────────────────
+    { table: 'job_form_submissions', column: 'submitted_at',              definition: 'DATETIME NULL' },
+    { table: 'job_form_submissions', column: 'external_submitter_name',   definition: 'VARCHAR(255) NULL' },
+    { table: 'job_form_submissions', column: 'external_submitter_email',  definition: 'VARCHAR(255) NULL' },
+    // notifications table: link column
+    { table: 'notifications', column: 'link', definition: 'VARCHAR(500) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -672,6 +685,9 @@ async function runStartupMigrations() {
     { name: 'job_purchase_order_lines', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_order_lines (id INT AUTO_INCREMENT PRIMARY KEY, purchase_order_id INT NOT NULL, progress_line_id INT NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_po (purchase_order_id))" },
     // ── Job Cost Ledger — single source of truth for all job financial events ──
     { name: 'job_cost_ledger', ddl: "CREATE TABLE IF NOT EXISTS job_cost_ledger (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, job_number VARCHAR(50) NULL, job_title VARCHAR(255) NULL, entry_date DATE NOT NULL, event_type VARCHAR(30) NOT NULL DEFAULT 'MATERIAL', source_module VARCHAR(30) NOT NULL DEFAULT 'manual', source_id VARCHAR(100) NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, gst_inclusive TINYINT(1) NOT NULL DEFAULT 0, account_code VARCHAR(30) NULL, tax_code VARCHAR(20) NULL DEFAULT 'GST', contact_name VARCHAR(255) NULL, contact_type VARCHAR(30) NULL, reference VARCHAR(100) NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', approved_by VARCHAR(255) NULL, approved_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_by_name VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status), INDEX idx_event_type (company_id, event_type), INDEX idx_date (company_id, entry_date))" },
+    // ── Secure share links ────────────────────────────────────────────────────
+    { name: 'shared_links', ddl: "CREATE TABLE IF NOT EXISTS shared_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, max_views INT NULL, view_count INT NOT NULL DEFAULT 0, revoked_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id))" },
+    { name: 'share_audit_log', ddl: "CREATE TABLE IF NOT EXISTS share_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, shared_link_id INT NOT NULL DEFAULT 0, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (shared_link_id), INDEX idx_company (company_id, created_at))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -915,6 +931,16 @@ app.post("/api/invoices/:id/void", invoices_id_void_post_103);
 app.delete("/api/job-forms/:id", job_forms_id_delete_104);
 app.get("/api/job-forms/:id", job_forms_id_get_105);
 app.put("/api/job-forms/:id", job_forms_id_put_106);
+// Share link management (internal — auth required)
+app.get("/api/job-forms/:id/share", job_forms_id_share_get);
+app.post("/api/job-forms/:id/share", job_forms_id_share_post);
+app.delete("/api/job-forms/:id/share", job_forms_id_share_delete);
+app.post("/api/job-forms/:id/reset", job_forms_id_reset_post);
+// Public share viewer (no auth — token-validated)
+app.get("/api/share/:token", share_token_get);
+// Public external form (no auth — token-validated)
+app.get("/api/external/form/:token", external_form_token_get);
+app.post("/api/external/form/:token", external_form_token_post);
 app.get("/api/jobs", jobs_get_107);
 app.post("/api/jobs", jobs_post_108);
 app.get("/api/jobs/:id", jobs_id_get_109);
