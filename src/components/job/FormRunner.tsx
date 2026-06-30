@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ChevronLeft,
+  ChevronRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -12,6 +13,8 @@ import {
   SplitSquareHorizontal,
   Pencil,
   Printer,
+  Navigation,
+  ExternalLink,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,8 +40,46 @@ export interface FormSubmission {
   updatedAt?: string;
 }
 
-type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | null;
+type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 type Answers = Record<number, AnswerValue>; // fieldId -> value
+
+// ── GPS structured answer ─────────────────────────────────────────────────────
+
+export interface GpsAnswer {
+  lat: number;
+  lng: number;
+  accuracy: number; // metres
+  timestamp: string; // ISO
+  address?: string;  // manual override
+}
+
+export function isGpsAnswer(v: unknown): v is GpsAnswer {
+  return typeof v === 'object' && v !== null && 'lat' in v && 'lng' in v;
+}
+
+export function formatGps(g: GpsAnswer): string {
+  if (g.address) return `${g.address} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})`;
+  return `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)} ±${Math.round(g.accuracy)}m`;
+}
+
+// ── Page-splitting utility ────────────────────────────────────────────────────
+// Splits a flat field list into pages at every page_break field.
+// Page 0 = fields before the first page_break.
+// Each page_break starts a new page (the page_break field itself is NOT included).
+
+export function splitIntoPages(fields: FormField[]): FormField[][] {
+  const pages: FormField[][] = [[]];
+  for (const field of fields) {
+    if (field.fieldType === 'page_break') {
+      pages.push([]);
+    } else {
+      pages[pages.length - 1].push(field);
+    }
+  }
+  // Drop trailing empty pages
+  while (pages.length > 1 && pages[pages.length - 1].length === 0) pages.pop();
+  return pages;
+}
 
 // ── Logic evaluator ───────────────────────────────────────────────────────────
 
@@ -169,6 +210,32 @@ function ReadOnlyAnswer({ field, value }: { field: FormField; value: AnswerValue
       );
     } else if (field.fieldType === 'long_text') {
       display = <p className="text-sm text-slate-700 whitespace-pre-wrap">{String(value)}</p>;
+    } else if (field.fieldType === 'location') {
+      const gps = isGpsAnswer(value) ? value : null;
+      if (gps) {
+        const mapsUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
+        display = (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+            <MapPin size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+            <div className="flex flex-col gap-0.5">
+              {gps.address && <p className="text-sm font-medium text-emerald-800">{gps.address}</p>}
+              <p className="text-xs font-mono text-emerald-700">
+                {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)}
+                <span className="text-emerald-500 ml-1.5">±{gps.accuracy}m</span>
+              </p>
+              <p className="text-[11px] text-emerald-500">
+                {new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+              <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] text-emerald-600 hover:underline w-fit mt-0.5">
+                <ExternalLink size={10} /> View on map
+              </a>
+            </div>
+          </div>
+        );
+      } else {
+        display = <span className="text-sm text-slate-700 font-mono">{String(value)}</span>;
+      }
     } else {
       display = <span className="text-sm text-slate-700">{String(value)}</span>;
     }
@@ -403,30 +470,108 @@ function FieldInput({ field, value, onChange, error }: FieldInputProps) {
         );
       })()}
 
-      {field.fieldType === 'location' && (
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={() => {
-              if (!navigator.geolocation) { onChange('GPS not available'); return; }
-              navigator.geolocation.getCurrentPosition(
-                (pos) => onChange(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)} (±${Math.round(pos.coords.accuracy)}m)`),
-                () => onChange(''),
-              );
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 w-fit transition-colors"
-          >
-            <MapPin size={14} className="text-primary" />
-            {value ? 'Re-capture location' : 'Capture current location'}
-          </button>
-          {value && typeof value === 'string' && (
-            <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 font-mono">{value}</p>
-          )}
-          <input type="text" value={typeof value === 'string' && !value.includes('±') ? value : ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Or enter address manually…"
-            className={`${baseInput} ${errorBorder}`} />
-        </div>
-      )}
+      {field.fieldType === 'location' && (() => {
+        const gps = isGpsAnswer(value) ? value : null;
+        const [capturing, setCapturing] = useState(false);
+        const [gpsError, setGpsError] = useState<string | null>(null);
+
+        const captureGps = () => {
+          if (!navigator.geolocation) { setGpsError('GPS not available on this device.'); return; }
+          setCapturing(true);
+          setGpsError(null);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const answer: GpsAnswer = {
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: Math.round(pos.coords.accuracy),
+                timestamp: new Date().toISOString(),
+              };
+              onChange(answer);
+              setCapturing(false);
+            },
+            (err) => {
+              setGpsError(err.code === 1 ? 'Location permission denied.' : 'Could not get location. Try again.');
+              setCapturing(false);
+            },
+            { enableHighAccuracy: true, timeout: 15000 },
+          );
+        };
+
+        const mapsUrl = gps
+          ? `https://www.google.com/maps?q=${gps.lat},${gps.lng}`
+          : null;
+
+        return (
+          <div className="flex flex-col gap-2">
+            {/* Capture button */}
+            <button
+              type="button"
+              onClick={captureGps}
+              disabled={capturing || disabled}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 w-fit transition-colors disabled:opacity-60"
+            >
+              {capturing
+                ? <Loader2 size={14} className="animate-spin text-primary" />
+                : <Navigation size={14} className="text-primary" />}
+              {capturing ? 'Getting location…' : gps ? 'Re-capture GPS' : 'Capture GPS location'}
+            </button>
+
+            {/* GPS result card */}
+            {gps && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+                <MapPin size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-emerald-700">
+                    {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)}
+                    <span className="font-normal text-emerald-500 ml-1.5">±{gps.accuracy}m</span>
+                  </p>
+                  <p className="text-[11px] text-emerald-500">
+                    Captured {new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  {mapsUrl && (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[11px] text-emerald-600 hover:underline w-fit mt-0.5"
+                    >
+                      <ExternalLink size={10} /> View on map
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GPS error */}
+            {gpsError && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle size={11} /> {gpsError}
+              </p>
+            )}
+
+            {/* Manual address override */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-medium text-slate-400">Manual address (optional override)</label>
+              <input
+                type="text"
+                value={gps?.address ?? (typeof value === 'string' ? value : '')}
+                onChange={(e) => {
+                  if (gps) {
+                    onChange({ ...gps, address: e.target.value });
+                  } else {
+                    // No GPS yet — store as plain string until GPS is captured
+                    onChange(e.target.value);
+                  }
+                }}
+                placeholder="e.g. 123 Main St, Brisbane QLD 4000"
+                disabled={disabled}
+                className={`${baseInput} ${errorBorder}`}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {field.fieldType === 'photo' && (
         <div className="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50">
@@ -497,7 +642,17 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   // readOnly can be toggled to "reopen" a completed form
   const [readOnly, setReadOnly] = useState(initialReadOnly && submission.status === 'completed');
 
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(0);
+  const formTopRef = useRef<HTMLDivElement>(null);
+
   const visibleFields = useFormLogic(fields, answers);
+
+  // Split fields into pages at page_break boundaries
+  const pages = useMemo(() => splitIntoPages(fields), [fields]);
+  const totalPages = pages.length;
+  const isMultiPage = totalPages > 1;
+  const currentPageFields = pages[currentPage] ?? [];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -550,9 +705,10 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     }
   }
 
-  function validate(): boolean {
+  function validate(fieldsToCheck?: FormField[]): boolean {
+    const checkFields = fieldsToCheck ?? fields;
     const newErrors: Record<number, string> = {};
-    for (const field of fields) {
+    for (const field of checkFields) {
       if (!visibleFields.has(field.id)) continue;
       if (['section', 'instruction', 'instruction_image', 'page_break'].includes(field.fieldType)) continue;
       if (!field.required) continue;
@@ -562,22 +718,27 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       if (field.fieldType === 'signature') {
         const settings = parseSettings(field.settingsJson);
         if (settings.multiple) {
-          // Multi: at least one completed signer block (name + dataUrl)
           const multi = parseMultiSignatureAnswer(val);
           empty = !multi?.signers.some((s) => s.name && s.signatureDataUrl);
         } else {
-          // Single: must have a drawn dataUrl
           const sig = parseSignatureAnswer(val);
           empty = !sig?.signatureDataUrl;
         }
+      } else if (field.fieldType === 'location') {
+        // GPS: accept either a GpsAnswer object or a non-empty string (manual address)
+        empty = !val || (typeof val === 'string' && val.trim() === '');
       } else {
         empty = val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
       }
 
       if (empty) newErrors[field.id] = 'This field is required';
     }
-    setErrors(newErrors);
+    setErrors((prev) => ({ ...prev, ...newErrors }));
     return Object.keys(newErrors).length === 0;
+  }
+
+  function validateCurrentPage(): boolean {
+    return validate(currentPageFields);
   }
 
   async function completeForm() {
@@ -672,7 +833,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         return `<div class="instruction">${thumb ? `<img src="${thumb}" class="thumb" alt="" />` : ''}<span>${field.label}</span></div>`;
       }
       if (field.fieldType === 'page_break') {
-        return `<div class="page-break-line"></div>`;
+        return `<div class="page-break-print"></div>`;
       }
 
       const val = printAnswers[field.id];
@@ -699,7 +860,18 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         } else if (field.fieldType === 'long_text') {
           answerHtml = `<p class="long-text">${String(val).replace(/\n/g, '<br/>')}</p>`;
         } else if (field.fieldType === 'location') {
-          answerHtml = `<span class="mono">${String(val)}</span>`;
+          const gps = isGpsAnswer(val) ? val : null;
+          if (gps) {
+            const mapsUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
+            answerHtml = `<div class="gps-block">
+              ${gps.address ? `<div class="gps-address">${gps.address}</div>` : ''}
+              <div class="gps-coords">${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)} <span class="gps-acc">±${gps.accuracy}m</span></div>
+              <div class="gps-time">Captured ${new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+              <a href="${mapsUrl}" class="gps-link">View on Google Maps ↗</a>
+            </div>`;
+          } else {
+            answerHtml = `<span class="mono">${String(val)}</span>`;
+          }
         } else if (field.fieldType === 'signature') {
           const s = parseSettings(field.settingsJson);
           if (s.multiple) {
@@ -761,6 +933,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   .instruction { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 12px; color: #1e40af; display: flex; gap: 10px; align-items: flex-start; }
   .instruction .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
   .page-break-line { border-top: 2px dashed #cbd5e1; margin: 16px 0; }
+  .page-break-print { page-break-after: always; height: 0; margin: 0; padding: 0; }
 
   .field-row { margin-bottom: 14px; page-break-inside: avoid; }
   .field-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
@@ -777,6 +950,13 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   .sig-block { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin: 4px 0; background: #fafafa; page-break-inside: avoid; }
   .sig-name { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; }
   .sig-img { max-width: 260px; max-height: 100px; border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; display: block; }
+
+  .gps-block { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; margin: 4px 0; }
+  .gps-address { font-size: 13px; font-weight: 600; color: #166534; margin-bottom: 3px; }
+  .gps-coords { font-family: monospace; font-size: 12px; color: #15803d; }
+  .gps-acc { color: #86efac; }
+  .gps-time { font-size: 11px; color: #4ade80; margin-top: 2px; }
+  .gps-link { font-size: 11px; color: #16a34a; text-decoration: underline; display: inline-block; margin-top: 4px; }
   .sig-date { font-size: 10px; color: #94a3b8; margin-top: 4px; }
 
   .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
@@ -821,7 +1001,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     win.onload = () => { win.focus(); win.print(); };
   }
 
-  // Progress stats
+  // Progress stats — across ALL pages
   const inputFields = fields.filter(
     (f) => !['section', 'instruction', 'instruction_image', 'page_break'].includes(f.fieldType),
   );
@@ -835,8 +1015,42 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       }
       return !!parseSignatureAnswer(v)?.signatureDataUrl;
     }
+    if (f.fieldType === 'location') {
+      return !!v && (isGpsAnswer(v) || (typeof v === 'string' && v.trim() !== ''));
+    }
     return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
   }).length;
+
+  // Per-page progress
+  const currentPageInputFields = currentPageFields.filter(
+    (f) => !['section', 'instruction', 'instruction_image'].includes(f.fieldType) && visibleFields.has(f.id),
+  );
+  const currentPageAnswered = currentPageInputFields.filter((f) => {
+    const v = answers[f.id];
+    if (f.fieldType === 'signature') {
+      const settings = parseSettings(f.settingsJson);
+      if (settings.multiple) return !!parseMultiSignatureAnswer(v)?.signers.some((s) => s.signatureDataUrl);
+      return !!parseSignatureAnswer(v)?.signatureDataUrl;
+    }
+    if (f.fieldType === 'location') return !!v && (isGpsAnswer(v) || (typeof v === 'string' && v.trim() !== ''));
+    return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
+  }).length;
+
+  function scrollToTop() {
+    formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function goToNextPage() {
+    if (!validateCurrentPage()) return;
+    void saveProgress();
+    setCurrentPage((p) => Math.min(p + 1, totalPages - 1));
+    scrollToTop();
+  }
+
+  function goToPrevPage() {
+    setCurrentPage((p) => Math.max(p - 1, 0));
+    scrollToTop();
+  }
 
   if (loading) {
     return (
@@ -970,7 +1184,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   // ── Editable form ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" ref={formTopRef}>
       {/* Header card */}
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
@@ -1001,7 +1215,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Overall progress bar */}
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden -mt-2">
         <motion.div
           className="h-full bg-primary rounded-full"
@@ -1010,16 +1224,50 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         />
       </div>
 
+      {/* Page indicator — only shown for multi-page forms */}
+      {isMultiPage && (
+        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <SplitSquareHorizontal size={13} className="text-slate-400" />
+            <span className="text-xs font-semibold text-slate-600">
+              Page {currentPage + 1} of {totalPages}
+            </span>
+          </div>
+          {/* Page dots */}
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setCurrentPage(i); scrollToTop(); }}
+                className={`rounded-full transition-all ${
+                  i === currentPage
+                    ? 'w-5 h-2 bg-primary'
+                    : i < currentPage
+                    ? 'w-2 h-2 bg-emerald-400'
+                    : 'w-2 h-2 bg-slate-200 hover:bg-slate-300'
+                }`}
+                title={`Page ${i + 1}`}
+              />
+            ))}
+          </div>
+          {/* Per-page progress */}
+          <span className="text-xs text-slate-400">
+            {currentPageAnswered}/{currentPageInputFields.length} on this page
+          </span>
+        </div>
+      )}
+
       {apiError && (
         <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
           <AlertCircle size={13} /> {apiError}
         </div>
       )}
 
-      {/* Fields */}
+      {/* Fields — current page only */}
       <div className="max-w-2xl w-full flex flex-col gap-5">
         <AnimatePresence mode="popLayout">
-          {fields.map((field) => {
+          {currentPageFields.map((field) => {
             if (!visibleFields.has(field.id)) return null;
             return (
               <motion.div key={field.id} layout
@@ -1040,28 +1288,81 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
       {/* Footer action bar — sticky on mobile */}
       <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6 sm:mb-6 sticky bottom-0 sm:static z-20">
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
-          <button
-            onClick={saveProgress}
-            disabled={saving || completing}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors sm:w-auto"
-          >
-            {saving
-              ? <Loader2 size={14} className="animate-spin" />
-              : savedAt
-              ? <CheckCircle2 size={14} className="text-emerald-500" />
-              : <Save size={14} />}
-            Save Draft
-          </button>
-          <button
-            onClick={completeForm}
-            disabled={saving || completing}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
-          >
-            {completing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            Complete Form
-          </button>
-        </div>
+        {isMultiPage ? (
+          /* Multi-page nav */
+          <div className="flex items-center gap-2.5">
+            {/* Prev */}
+            <button
+              type="button"
+              onClick={goToPrevPage}
+              disabled={currentPage === 0 || saving}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-40 transition-colors"
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+
+            {/* Save draft */}
+            <button
+              onClick={saveProgress}
+              disabled={saving || completing}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors"
+            >
+              {saving
+                ? <Loader2 size={14} className="animate-spin" />
+                : savedAt
+                ? <CheckCircle2 size={14} className="text-emerald-500" />
+                : <Save size={14} />}
+              Save
+            </button>
+
+            <div className="flex-1" />
+
+            {/* Next or Complete */}
+            {currentPage < totalPages - 1 ? (
+              <button
+                type="button"
+                onClick={goToNextPage}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={completeForm}
+                disabled={saving || completing}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {completing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Complete Form
+              </button>
+            )}
+          </div>
+        ) : (
+          /* Single-page layout */
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5">
+            <button
+              onClick={saveProgress}
+              disabled={saving || completing}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors sm:w-auto"
+            >
+              {saving
+                ? <Loader2 size={14} className="animate-spin" />
+                : savedAt
+                ? <CheckCircle2 size={14} className="text-emerald-500" />
+                : <Save size={14} />}
+              Save Draft
+            </button>
+            <button
+              onClick={completeForm}
+              disabled={saving || completing}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm"
+            >
+              {completing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Complete Form
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

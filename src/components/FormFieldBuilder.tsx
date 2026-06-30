@@ -819,7 +819,7 @@ function AddFieldPanel({ onAdd, adding }: { onAdd: (type: string) => Promise<voi
 
 // ── Field preview ─────────────────────────────────────────────────────────────
 
-function FieldPreview({ field }: { field: FormField }) {
+function FieldPreview({ field, pageBreakNumber }: { field: FormField; pageBreakNumber?: number }) {
   const options = parseOptions(field.optionsJson);
   const settings = parseSettings(field.settingsJson);
 
@@ -843,9 +843,14 @@ function FieldPreview({ field }: { field: FormField }) {
   if (field.fieldType === 'page_break') {
     return (
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 border-t border-dashed border-slate-200" />
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Page Break</span>
-        <div className="flex-1 border-t border-dashed border-slate-200" />
+        <div className="flex-1 border-t border-dashed border-slate-300" />
+        <div className="flex items-center gap-1.5 shrink-0 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5">
+          <SplitSquareHorizontal size={10} className="text-slate-400" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Page {pageBreakNumber ?? '?'} → {(pageBreakNumber ?? 0) + 1}
+          </span>
+        </div>
+        <div className="flex-1 border-t border-dashed border-slate-300" />
       </div>
     );
   }
@@ -1147,7 +1152,17 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
                 <p className="text-sm text-slate-300 italic text-center py-8">No fields added yet</p>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {fields.map((field) => <FieldPreview key={field.id} field={field} />)}
+                  {(() => {
+                    let pageNum = 1;
+                    return fields.map((field) => {
+                      if (field.fieldType === 'page_break') {
+                        const pn = pageNum;
+                        pageNum++;
+                        return <FieldPreview key={field.id} field={field} pageBreakNumber={pn} />;
+                      }
+                      return <FieldPreview key={field.id} field={field} />;
+                    });
+                  })()}
                 </div>
               )}
             </div>

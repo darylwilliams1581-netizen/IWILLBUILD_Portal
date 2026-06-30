@@ -4,12 +4,22 @@
  * No login required. External party fills in and submits a job form.
  * No portal sidebar, no financial data, mobile-friendly.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, CheckCircle2, AlertTriangle, Loader2, ChevronRight, ChevronLeft, Send,
+  Navigation, MapPin, ExternalLink, AlertCircle,
 } from 'lucide-react';
+
+// ── GPS structured answer (mirrors FormRunner) ────────────────────────────────
+interface GpsAnswer {
+  lat: number;
+  lng: number;
+  accuracy: number;
+  timestamp: string;
+  address?: string;
+}
 
 interface FormField {
   id: number;
@@ -253,30 +263,88 @@ function FieldInput({
     );
   }
 
-  if (field.field_type === 'location_gps') {
+  if (field.field_type === 'location_gps' || field.field_type === 'location') {
+    const gps = (value && typeof value === 'object' && 'lat' in (value as object)) ? value as GpsAnswer : null;
+    const [capturing, setCapturing] = useState(false);
+    const [gpsError, setGpsError] = useState<string | null>(null);
+
+    const captureGps = () => {
+      if (!navigator.geolocation) { setGpsError('GPS not available on this device.'); return; }
+      setCapturing(true);
+      setGpsError(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const answer: GpsAnswer = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy),
+            timestamp: new Date().toISOString(),
+          };
+          onChange(answer);
+          setCapturing(false);
+        },
+        (err) => {
+          setGpsError(err.code === 1 ? 'Location permission denied.' : 'Could not get location. Try again.');
+          setCapturing(false);
+        },
+        { enableHighAccuracy: true, timeout: 15000 },
+      );
+    };
+
+    const mapsUrl = gps ? `https://www.google.com/maps?q=${gps.lat},${gps.lng}` : null;
+
     return (
       <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={captureGps}
+          disabled={capturing || disabled}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 w-fit transition-colors disabled:opacity-60"
+        >
+          {capturing
+            ? <Loader2 size={14} className="animate-spin text-primary" />
+            : <Navigation size={14} className="text-primary" />}
+          {capturing ? 'Getting location…' : gps ? 'Re-capture GPS' : 'Capture GPS location'}
+        </button>
+
+        {gps && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+            <MapPin size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <p className="text-xs font-semibold text-emerald-700">
+                {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)}
+                <span className="font-normal text-emerald-500 ml-1.5">±{gps.accuracy}m</span>
+              </p>
+              <p className="text-[11px] text-emerald-500">
+                Captured {new Date(gps.timestamp).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </p>
+              {mapsUrl && (
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-emerald-600 hover:underline w-fit mt-0.5">
+                  <ExternalLink size={10} /> View on map
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {gpsError && (
+          <p className="text-xs text-red-600 flex items-center gap-1">
+            <AlertCircle size={11} /> {gpsError}
+          </p>
+        )}
+
         <input
           type="text"
           className={base}
-          value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          placeholder="Enter location or coordinates"
-        />
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => {
-            if (!navigator.geolocation) return;
-            navigator.geolocation.getCurrentPosition((pos) => {
-              onChange(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
-            });
+          value={gps?.address ?? (typeof value === 'string' ? value : '')}
+          onChange={(e) => {
+            if (gps) onChange({ ...gps, address: e.target.value });
+            else onChange(e.target.value);
           }}
-          className="text-xs text-primary hover:underline text-left disabled:opacity-50"
-        >
-          Use my current location
-        </button>
+          disabled={disabled}
+          placeholder="Or enter address manually…"
+        />
       </div>
     );
   }
@@ -514,15 +582,30 @@ export default function ExternalFormPage() {
                   {data.submission.job_number} — {data.submission.job_name} · {data.submission.company_name}
                 </p>
                 {totalPages > 1 && (
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex items-center gap-3">
                     <div className="flex-1 bg-slate-100 rounded-full h-1.5">
                       <div
                         className="bg-primary h-1.5 rounded-full transition-all"
                         style={{ width: `${(currentPage / totalPages) * 100}%` }}
                       />
                     </div>
+                    {/* Page dots */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <div
+                          key={i}
+                          className={`rounded-full transition-all ${
+                            i + 1 === currentPage
+                              ? 'w-5 h-2 bg-primary'
+                              : i + 1 < currentPage
+                              ? 'w-2 h-2 bg-emerald-400'
+                              : 'w-2 h-2 bg-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
                     <span className="text-xs text-slate-400 shrink-0">
-                      Page {currentPage} of {totalPages}
+                      {currentPage}/{totalPages}
                     </span>
                   </div>
                 )}
