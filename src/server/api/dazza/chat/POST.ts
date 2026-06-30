@@ -32,6 +32,16 @@ import {
   processDazzaQuestion,
   detectModulesUsed as brainDetectModules,
 } from '../../../lib/annette-brain.js';
+import {
+  runAllWalls,
+  wall3_redactDollarsFromContext,
+  wall5_enforceSourceCitation,
+  wall6_scrubSecrets,
+  wall7_injectDisclaimer,
+  wall10_auditLog,
+  wall11_getSubscriptionStatus,
+  wall12_isLocalQuestion,
+} from '../../../lib/dazza-walls.js';
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -645,15 +655,34 @@ export default async function handler(req: Request, res: Response) {
 
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
 
+    // ── WALL 11: Subscription status (needed for Wall 4 / action safety) ─────
+    const subscriptionStatus = await wall11_getSubscriptionStatus(profile.companyId);
+    const isViewOnly = !permissions.isOwner && (
+      subscriptionStatus === 'trial_expired' ||
+      subscriptionStatus === 'cancelled' ||
+      subscriptionStatus === 'suspended'
+    );
+
     // ── STEP 1: Local tool intercept (maths/GST) — no DB, no OpenAI ──────────
     const localAnswer = tryLocalTool(lastUserMsg);
     if (localAnswer) {
-      // Wrap in structured format
-      const { processDazzaQuestion: proc } = await import('../../../lib/annette-brain.js');
-      // For pure local tools, build a minimal context-free answer directly
       const structuredReply = buildLocalToolAnswer(localAnswer, lastUserMsg);
+      // Wall 7: inject disclaimer if needed
+      const finalReply = wall7_injectDisclaimer(structuredReply, lastUserMsg);
+      // Wall 10: audit local tool
+      void wall10_auditLog({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        userName: session.user.name ?? session.user.email ?? 'Unknown',
+        eventType: 'dazza_chat',
+        modulesAccessed: [],
+        dollarsIncluded: false,
+        supportMode: false,
+        questionSummary: lastUserMsg,
+        metadata: { source: 'local_tool' },
+      });
       return res.json({
-        reply: structuredReply,
+        reply: finalReply,
         localTool: true,
         source: 'local_tool',
         tokens: 0,
@@ -668,7 +697,7 @@ export default async function handler(req: Request, res: Response) {
     );
 
     // ── STEP 3: Build context ENTIRELY server-side — never trust client ───────
-    const ctx = await buildDazzaContext(
+    let ctx = await buildDazzaContext(
       session.user.id,
       session.user.email,
       session.user.name,
@@ -678,10 +707,73 @@ export default async function handler(req: Request, res: Response) {
       supportCompanyId,
     );
 
+    // ── WALL 3: Dollar redaction — strip financial data if no seeDollars ──────
+    ctx = wall3_redactDollarsFromContext(ctx);
+
+    // ── WALLS 1,2,3,4,6,9,11: Run all walls against the question ─────────────
+    const wallResult = runAllWalls({
+      question: lastUserMsg,
+      permissions,
+      companyName: ctx.companyName,
+      isViewOnly,
+      isOwner: permissions.isOwner,
+      subscriptionStatus,
+    });
+
+    if (wallResult.blocked && wallResult.refusal) {
+      // Wall 10: audit refusal
+      void wall10_auditLog({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        userName: session.user.name ?? session.user.email ?? 'Unknown',
+        eventType: 'dazza_refusal',
+        modulesAccessed: [],
+        dollarsIncluded: false,
+        supportMode: ctx.supportMode,
+        supportCompanyId: ctx.supportCompanyId,
+        questionSummary: lastUserMsg,
+        refusalReason: wallResult.refusal.reason,
+      });
+      return res.json({
+        reply: wallResult.refusal.message,
+        localTool: true,
+        source: 'portal_data',
+        tokens: 0,
+        wallRefusal: wallResult.refusal.reason,
+      });
+    }
+
+    // Mutation detected — surface for confirmation (not blocked, but flagged)
+    if (wallResult.mutationDetected?.requiresConfirmation) {
+      const action = wallResult.mutationDetected.action ?? 'unknown';
+      const confirmReply = buildMutationConfirmationReply(action, ctx.companyName);
+      // Wall 10: audit action request
+      void wall10_auditLog({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        userName: session.user.name ?? session.user.email ?? 'Unknown',
+        eventType: 'dazza_action_request',
+        modulesAccessed: [],
+        dollarsIncluded: false,
+        supportMode: ctx.supportMode,
+        supportCompanyId: ctx.supportCompanyId,
+        questionSummary: lastUserMsg,
+        actionType: action,
+      });
+      return res.json({
+        reply: confirmReply,
+        localTool: true,
+        source: 'portal_data',
+        tokens: 0,
+        mutationDetected: action,
+        requiresConfirmation: true,
+      });
+    }
+
     // ── STEP 4: Context-aware portal lookup — no OpenAI needed ───────────────
     const contextAnswer = tryContextHandler(lastUserMsg, ctx);
 
-    // ── STEP 5: Cross-company guard ───────────────────────────────────────────
+    // ── STEP 5: Cross-company guard (also handled by Wall 1 above) ───────────
     if (
       /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lastUserMsg)
     ) {
@@ -705,17 +797,40 @@ export default async function handler(req: Request, res: Response) {
       contextAnswer !== null ? 'portal_data' : null,
     );
 
+    // ── WALL 5: Source discipline — ensure source citation is present ─────────
+    const modulesUsed = answer.modulesUsed ?? [];
+    let finalReply = wall5_enforceSourceCitation(answer.reply, modulesUsed);
+
+    // ── WALL 6: Secret scrubber — strip any leaked secrets from output ────────
+    finalReply = wall6_scrubSecrets(finalReply);
+
+    // ── WALL 7: Disclaimer injection ──────────────────────────────────────────
+    finalReply = wall7_injectDisclaimer(finalReply, lastUserMsg);
+
+    // ── WALL 10: Audit successful chat ────────────────────────────────────────
+    void wall10_auditLog({
+      companyId: profile.companyId,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? 'Unknown',
+      eventType: 'dazza_chat',
+      modulesAccessed: modulesUsed,
+      dollarsIncluded: permissions.seeDollars && /\$|dollar|cost|total|rate|margin/i.test(lastUserMsg),
+      supportMode: ctx.supportMode,
+      supportCompanyId: ctx.supportCompanyId,
+      questionSummary: lastUserMsg,
+      metadata: { source: answer.source, tokens: answer.tokens ?? 0 },
+    });
+
     // ── Context debug line (admin/owner only) ─────────────────────────────────
     const contextDebug = permissions.isAdmin ? buildContextDebugLine(ctx) : undefined;
 
     res.json({
-      reply: answer.reply,
+      reply: finalReply,
       tokens: answer.tokens ?? 0,
       source: answer.source,
-      // noApiKey: true tells the frontend to show the "no OpenAI key" banner
       noApiKey: answer.source === 'no_key',
       confidence: answer.confidence,
-      modulesUsed: answer.modulesUsed,
+      modulesUsed,
       conflictDetected: answer.conflictDetected,
       hiveCandidate: answer.hiveCandidate,
       localTool: answer.localTool,
@@ -751,5 +866,16 @@ function buildGuardAnswer(companyName: string): string {
     `📋 From IWILLBUILD data:\nI can only access data for **${companyName}**. I cannot access, compare, or reveal data from any other company.`,
     `📦 Source modules:\nNo portal data used — security guard triggered.`,
     `📊 Confidence:\nHigh — this is a security boundary, not a data question.`,
+  ].join('\n\n');
+}
+
+function buildMutationConfirmationReply(action: string, companyName: string): string {
+  const actionLabel = action.replace(/_/g, ' ');
+  return [
+    `🧠 AI reasoning:\nI can help you **${actionLabel}** for **${companyName}**, but I need your explicit confirmation before making any changes.`,
+    `To proceed, please go to the relevant module in IWILLBUILD and confirm the action there. Dazza is a read-only assistant — all changes must be confirmed through the portal interface.`,
+    `📦 Source modules:\nNo portal data used — action safety boundary.`,
+    `📊 Confidence:\nHigh — this is a safety boundary to prevent unintended changes.`,
+    `💡 Suggested next action:\nNavigate to the relevant module in IWILLBUILD to complete this action with full confirmation.`,
   ].join('\n\n');
 }

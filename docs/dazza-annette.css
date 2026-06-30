@@ -1,0 +1,53 @@
+import React from "react";
+
+export interface AnnetteFindingCard {
+  id: string;
+  severity: "info" | "warning" | "critical";
+  module: string;
+  title: string;
+  detail: string;
+  recommendedAction: string;
+  sourceIds?: string[];
+}
+
+export function DazzaHealthCards({ findings }: { findings: AnnetteFindingCard[] }) {
+  if (!findings.length) return null;
+
+  const getSeverityIcon = (severity: string) => {
+    if (severity === "critical") return "🔴";
+    if (severity === "warning") return "🟠";
+    return "🔵";
+  };
+
+  return (
+    <div className="annette-health-cards" aria-label="Annette health check results">
+      {findings.map((finding) => (
+        <article 
+          key={finding.id} 
+          className={`annette-card annette-${finding.severity}`}
+        >
+          <div className="annette-card-header">
+            <span className="annette-severity">
+              {getSeverityIcon(finding.severity)} {finding.severity.toUpperCase()}
+            </span>
+            <span className="annette-module">Source: {finding.module}</span>
+          </div>
+          
+          <h4 className="annette-title">{finding.title}</h4>
+          <p className="annette-detail">{finding.detail}</p>
+          
+          <div className="annette-action">
+            <strong>Next action:</strong>
+            <p>{finding.recommendedAction}</p>
+          </div>
+
+          {finding.sourceIds && finding.sourceIds.length > 0 && (
+            <div className="annette-ids">
+              <small>Affects: {finding.sourceIds.slice(0, 3).join(", ")}{finding.sourceIds.length > 3 ? "..." : ""}</small>
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  );
+}

@@ -24,6 +24,13 @@ import {
   buildAnnetteContext,
   buildAnnetteSystemPrompt,
 } from '../../../lib/annette-context.js';
+import {
+  wall9_annetteScope,
+  wall6_scrubSecrets,
+  wall7_injectDisclaimer,
+  wall10_auditLog,
+  wall11_getSubscriptionStatus,
+} from '../../../lib/dazza-walls.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -41,6 +48,43 @@ export default async function handler(req: Request, res: Response) {
 
     const permissions = derivePermissions(profile);
     if (!permissions.canDazzaAi) return res.status(403).json({ error: 'Dazza AI not enabled for your account' });
+
+    // ── Wall 11: Subscription wall ───────────────────────────────────────────
+    const subscriptionStatus = await wall11_getSubscriptionStatus(profile.companyId);
+    const isViewOnly = !permissions.isOwner && (
+      subscriptionStatus === 'trial_expired' ||
+      subscriptionStatus === 'cancelled' ||
+      subscriptionStatus === 'suspended'
+    );
+    if (isViewOnly) {
+      return res.status(403).json({
+        error: `Your account is in view-only mode (${subscriptionStatus ?? 'unknown'}). Annette health checks require an active subscription.`,
+      });
+    }
+
+    // ── Wall 9: Annette scope — check for mutation requests in body ──────────
+    const { supportCompanyId: reqSupportId, question: reqQuestion } = req.body as {
+      supportCompanyId?: number;
+      question?: string;
+    };
+    if (reqQuestion) {
+      const w9 = wall9_annetteScope(reqQuestion);
+      if (w9.blocked) {
+        return res.status(400).json({ error: w9.message });
+      }
+    }
+
+    // ── Wall 10: Audit Annette run ────────────────────────────────────────────
+    void wall10_auditLog({
+      companyId: profile.companyId,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? 'Unknown',
+      eventType: 'annette_run',
+      modulesAccessed: [],
+      dollarsIncluded: permissions.seeDollars,
+      supportMode: false,
+      questionSummary: 'Annette Protocol health check',
+    });
 
     // ── Support Mode ────────────────────────────────────────────────────────
     const { supportCompanyId } = req.body as { supportCompanyId?: number };
@@ -88,7 +132,9 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const sendEvent = (data: string) => {
-      res.write(`data: ${JSON.stringify({ text: data })}\n\n`);
+      // Wall 6: scrub secrets from every streamed chunk
+      const safe = wall6_scrubSecrets(data);
+      res.write(`data: ${JSON.stringify({ text: safe })}\n\n`);
     };
 
     const sendDone = (meta?: Record<string, unknown>) => {

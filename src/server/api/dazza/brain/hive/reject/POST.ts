@@ -9,6 +9,7 @@ import { profiles } from '../../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { derivePermissions } from '../../../../../lib/dazza-context.js';
+import { wall10_auditLog } from '../../../../../lib/dazza-walls.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -40,6 +41,16 @@ export default async function handler(req: Request, res: Response) {
           SET status = 'rejected', reviewed_by_user_id = ${session.user.id}, reviewed_at = NOW()
           WHERE id = ${id}`
     );
+
+    // Wall 10: Audit hive rejection
+    void wall10_auditLog({
+      companyId: profile.companyId,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? 'Unknown',
+      eventType: 'brain_hive_reject',
+      questionSummary: `Hive entry rejected: id=${id}`,
+      metadata: { hiveId: id },
+    });
 
     res.json({ ok: true, message: 'Entry rejected' });
   } catch (error) {

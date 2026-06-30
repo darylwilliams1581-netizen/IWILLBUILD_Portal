@@ -1,13 +1,17 @@
 /**
  * POST /api/dazza/knowledge
  * Creates a new knowledge entry for the authenticated user's company.
- * Admin/owner only.
+ * Admin/owner only. Wall 8 (Learn Gate) enforced.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { profiles } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import {
+  wall8_learnGate,
+  wall10_auditLog,
+} from '../../../lib/dazza-walls.js';
 
 const VALID_CATEGORIES = [
   'Company procedure',
@@ -33,8 +37,21 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const role = profile.role ?? 'worker';
-    const isAdmin = role === 'owner' || role === 'admin' || profile.permAdmin === true;
-    if (!isAdmin) return res.status(403).json({ error: 'Admin/owner only' });
+    const isOwner = role === 'owner';
+    const isAdmin = isOwner || role === 'admin' || profile.permAdmin === true;
+
+    // ── Wall 8: Learn Gate — owner/admin only ─────────────────────────────────
+    if (!isAdmin) {
+      void wall10_auditLog({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        userName: session.user.name ?? session.user.email ?? 'Unknown',
+        eventType: 'learn_upload_blocked',
+        refusalReason: 'learn_no_permission',
+        questionSummary: 'Learn upload attempt by non-admin',
+      });
+      return res.status(403).json({ error: 'Only Owner or Admin users can add knowledge to the Learn system.' });
+    }
 
     const { title, category, content, source_name, active } = req.body as {
       title?: string;
@@ -46,17 +63,56 @@ export default async function handler(req: Request, res: Response) {
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
     if (!content?.trim()) return res.status(400).json({ error: 'Content is required' });
+
+    // ── Wall 8: Code execution check + sanitise ───────────────────────────────
+    const gateResult = wall8_learnGate(content.trim(), isAdmin, isOwner);
+    if (!gateResult.allowed) {
+      void wall10_auditLog({
+        companyId: profile.companyId,
+        userId: session.user.id,
+        userName: session.user.name ?? session.user.email ?? 'Unknown',
+        eventType: 'learn_upload_blocked',
+        refusalReason: 'learn_code_blocked',
+        questionSummary: `Learn upload blocked: ${title.trim().slice(0, 100)}`,
+        metadata: { reason: gateResult.reason },
+      });
+      return res.status(400).json({ error: gateResult.reason });
+    }
+
+    const sanitisedContent = gateResult.sanitisedContent ?? content.trim();
     const cat = VALID_CATEGORIES.includes(category ?? '') ? (category ?? 'Company procedure') : 'Company procedure';
     const activeVal = active !== false ? 1 : 0;
     const createdBy = session.user.name ?? session.user.email ?? 'Unknown';
     const sourceName = source_name?.trim() ?? null;
+    const uploadedBy = session.user.id;
+    const version = 1;
 
     const [result] = await db.execute(
-      sql`INSERT INTO dazza_knowledge (company_id, title, category, content, source_name, active, created_by)
-          VALUES (${profile.companyId}, ${title.trim()}, ${cat}, ${content.trim()}, ${sourceName}, ${activeVal}, ${createdBy})`
+      sql`INSERT INTO dazza_knowledge
+            (company_id, title, category, content, source_name, active, created_by)
+          VALUES
+            (${profile.companyId}, ${title.trim()}, ${cat}, ${sanitisedContent}, ${sourceName}, ${activeVal}, ${createdBy})`
     ) as unknown as [{ insertId: number }, unknown];
 
     const insertId = (result as unknown as { insertId: number }).insertId;
+
+    // ── Wall 10: Audit successful Learn upload ────────────────────────────────
+    void wall10_auditLog({
+      companyId: profile.companyId,
+      userId: session.user.id,
+      userName: session.user.name ?? session.user.email ?? 'Unknown',
+      eventType: 'learn_upload',
+      questionSummary: `Learn upload: "${title.trim().slice(0, 100)}" (${cat})`,
+      metadata: {
+        entryId: insertId,
+        title: title.trim(),
+        category: cat,
+        sourceName,
+        uploadedBy,
+        version,
+        status: activeVal === 1 ? 'active' : 'disabled',
+      },
+    });
 
     const [rows] = await db.execute(
       sql`SELECT id, title, category, content, source_name, active, created_by, created_at, updated_at
