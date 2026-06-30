@@ -101,28 +101,23 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    // Bundle everything into the single server.bundle.mjs for production,
-    // EXCEPT packages that are client-only or have native binaries — these
-    // would bloat the SSR bundle by 100MB+ and OOM-kill the publish build.
-    noExternal: isSsrBuild ? true : undefined,
-    external: isSsrBuild ? [
-      // PDF rendering — client-only, lazy-loaded, never needed server-side
-      'react-pdf',
+    // Do NOT use noExternal: true — it forces all deps into the SSR bundle
+    // and is the primary cause of OOM kills during publish builds.
+    noExternal: [],
+    external: [
       'pdfjs-dist',
-      // Native addons — can't run in Alpine/musl anyway
+      'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
-      // Unused icon library (project uses lucide-react)
       '@heroicons/react',
-      // Persian calendar — not used in this project
       'date-fns-jalali',
-      // Babel — dev tooling only
       '@babel/core',
       '@babel/parser',
       '@babel/generator',
       '@babel/traverse',
       '@babel/types',
-    ] : [],
+      '@aws-sdk/client-s3',
+    ],
   },
 
   server: {
@@ -170,6 +165,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     outDir: "dist",
     emptyOutDir: false,
     copyPublicDir: false,
+    sourcemap: false,
+    reportCompressedSize: false,
+    minify: false,
     ssr: "src/server/entry.ts",
     rollupOptions: {
       output: {
@@ -184,28 +182,36 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     outDir: "dist/client",
     emptyOutDir: true,
     copyPublicDir: true,
+    sourcemap: false,
+    reportCompressedSize: false,
+    minify: 'esbuild',
     chunkSizeWarningLimit: 3000,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router')) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
             return 'react-vendor';
           }
-          if (id.includes('node_modules/@radix-ui/')) {
+          if (id.includes('@tanstack') || id.includes('react-router')) {
+            return 'routing-vendor';
+          }
+          if (id.includes('lucide-react') || id.includes('recharts') || id.includes('date-fns')) {
+            return 'ui-vendor';
+          }
+          if (id.includes('pdfjs-dist') || id.includes('react-pdf')) {
+            return 'document-vendor';
+          }
+          if (id.includes('@radix-ui/')) {
             return 'radix-ui';
           }
-          if (id.includes('node_modules/@tanstack/')) {
-            return 'query';
-          }
-          if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion')) {
+          if (id.includes('motion') || id.includes('framer-motion')) {
             return 'motion';
           }
-          if (id.includes('node_modules/lucide-react')) {
-            return 'lucide';
-          }
-          if (id.includes('node_modules/drizzle-orm') || id.includes('node_modules/mysql2')) {
+          if (id.includes('drizzle-orm') || id.includes('mysql2')) {
             return 'db-vendor';
           }
+          return 'vendor';
         }
       }
     }

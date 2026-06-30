@@ -7,7 +7,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node --max-old-space-size=4096 node_modules/.bin/vite build --ssr src/server/entry.ts",
+    "build": "npm run build:client && npm run build:ssr",
+    "build:client": "NODE_OPTIONS=--max-old-space-size=1024 vite build",
+    "build:ssr": "NODE_OPTIONS=--max-old-space-size=1024 vite build --ssr src/server/entry.ts --emptyOutDir=false",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
