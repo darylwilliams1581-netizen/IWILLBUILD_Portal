@@ -30,6 +30,12 @@ import billing_cancellation_feedback_post_20 from "./api/billing/cancellation-fe
 import billing_customer_portal_post_21 from "./api/billing/customer-portal/POST";
 import billing_reactivate_subscription_post_22 from "./api/billing/reactivate-subscription/POST";
 import billing_upgrade_subscription_post from "./api/billing/upgrade-subscription/POST";
+import drawings_get from "./api/drawings/GET";
+import drawings_post from "./api/drawings/POST";
+import drawings_upload_post from "./api/drawings/upload/POST";
+import drawings_id_patch from "./api/drawings/[id]/PATCH";
+import drawings_id_delete from "./api/drawings/[id]/DELETE";
+import drawings_id_markup_post from "./api/drawings/[id]/markup/POST";
 import company_get_23 from "./api/company/GET";
 import company_put_24 from "./api/company/PUT";
 import company_settings_get_25 from "./api/company-settings/GET";
@@ -703,6 +709,8 @@ async function runStartupMigrations() {
     { name: 'document_versions', ddl: "CREATE TABLE IF NOT EXISTS document_versions (id INT AUTO_INCREMENT PRIMARY KEY, document_id INT NOT NULL, version_number INT NOT NULL DEFAULT 1, snapshot_json LONGTEXT NOT NULL, pdf_file_id INT NULL, created_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_document (document_id))" },
     { name: 'document_shares', ddl: "CREATE TABLE IF NOT EXISTS document_shares (id INT AUTO_INCREMENT PRIMARY KEY, document_id INT NOT NULL, company_id INT NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, share_mode VARCHAR(20) NOT NULL DEFAULT 'view', expires_at DATETIME NULL, revoked_at DATETIME NULL, submitted_at DATETIME NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, passcode_hash VARCHAR(255) NULL, created_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_document (document_id), INDEX idx_token (token_hash), INDEX idx_company (company_id))" },
     { name: 'document_events', ddl: "CREATE TABLE IF NOT EXISTS document_events (id INT AUTO_INCREMENT PRIMARY KEY, document_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, event_note TEXT NULL, user_id VARCHAR(36) NULL, external_name VARCHAR(255) NULL, ip_address VARCHAR(100) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_document (document_id), INDEX idx_company (company_id, created_at))" },
+    // ── Drawing Register ──────────────────────────────────────────────────────
+    { name: 'drawing_records', ddl: "CREATE TABLE IF NOT EXISTS drawing_records (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, file_id INT NOT NULL, drawing_number VARCHAR(100) NULL, title VARCHAR(500) NOT NULL, revision VARCHAR(20) NOT NULL DEFAULT 'A', discipline VARCHAR(100) NOT NULL DEFAULT 'Other', status VARCHAR(50) NOT NULL DEFAULT 'For Construction', original_file_id INT NOT NULL, marked_up_file_id INT NULL, uploaded_by_user_id VARCHAR(36) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_discipline (company_id, discipline))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -863,6 +871,13 @@ app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_pos
 app.post("/api/billing/customer-portal", billing_customer_portal_post_21);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post_22);
 app.post("/api/billing/upgrade-subscription", billing_upgrade_subscription_post);
+// ── Drawings / Plans ──────────────────────────────────────────────────────────
+app.get("/api/drawings", drawings_get);
+app.post("/api/drawings", drawings_post);
+app.post("/api/drawings/upload", drawings_upload_post);
+app.patch("/api/drawings/:id", drawings_id_patch);
+app.delete("/api/drawings/:id", drawings_id_delete);
+app.post("/api/drawings/:id/markup", drawings_id_markup_post);
 app.get("/api/company", company_get_23);
 app.put("/api/company", company_put_24);
 app.get("/api/company-settings", company_settings_get_25);

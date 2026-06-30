@@ -35,6 +35,7 @@ import {
   Users,
   CalendarCheck,
   CalendarClock,
+  Layers,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -49,11 +50,12 @@ import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
+import DrawingsTab from '@/components/drawings/DrawingsTab';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings';
 
 export default function JobDetailPage() {
   const { id, formInstanceId } = useParams<{ id: string; formInstanceId?: string }>();
@@ -78,7 +80,7 @@ export default function JobDetailPage() {
     // Deep-link: /jobs/:id/forms/:formInstanceId → open forms tab
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings') return t as Tab;
     return 'details';
   });
 
@@ -395,6 +397,7 @@ export default function JobDetailPage() {
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
                   { key: 'forms',     label: 'Forms',     icon: ClipboardList },
                   { key: 'safety',    label: 'Safety',    icon: ShieldAlert },
+                  { key: 'drawings',  label: 'Drawings',  icon: Layers },
                   { key: 'notes',     label: 'Notes',     icon: StickyNote },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
@@ -743,6 +746,11 @@ export default function JobDetailPage() {
               {/* ── Safety tab ── */}
               {activeTab === 'safety' && (
                 <JobSafety jobId={job.id} />
+              )}
+
+              {/* ── Drawings tab ── */}
+              {activeTab === 'drawings' && (
+                <DrawingsTab jobId={job.id} />
               )}
 
               {/* ── Invoices tab ── */}
