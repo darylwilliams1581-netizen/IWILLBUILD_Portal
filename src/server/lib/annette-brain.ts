@@ -122,7 +122,27 @@ export function detectModulesUsed(ctx: DazzaContext): string[] {
   return used;
 }
 
-// ── Format a DazzaAnswer into the structured reply string ─────────────────────
+// ── Detect if a string is already a fully-formatted Dazza response ────────────
+// tryContextHandler returns pre-formatted strings with section headers already
+// embedded. We must NOT re-wrap them through formatDazzaAnswer.
+
+function isPreFormattedAnswer(s: string): boolean {
+  return (
+    s.includes('📦 Source modules:') &&
+    s.includes('📊 Confidence:')
+  );
+}
+
+// ── Strip section headers from a pre-formatted answer to get raw portal data ──
+// Used when we need to pass the data content (not the headers) to formatDazzaAnswer.
+
+function extractPortalDataContent(s: string): string {
+  // Remove the "📋 From IWILLBUILD data:\n" prefix if present
+  const withoutHeader = s.replace(/^📋 From IWILLBUILD data:\n/, '');
+  // Take only the content before the first section separator (📦 or 📊 or 💡 or ⚠️)
+  const sectionBreak = withoutHeader.search(/\n\n(?:📦|📊|💡|⚠️)/);
+  return sectionBreak >= 0 ? withoutHeader.slice(0, sectionBreak).trim() : withoutHeader.trim();
+}
 
 export function formatDazzaAnswer(answer: DazzaAnswer): string {
   const sections: string[] = [];
@@ -484,6 +504,24 @@ export async function processDazzaQuestion(
   if (!apiKey) {
     if (internalAnswer) {
       const isLocalTool = internalSource === 'local_tool';
+      // If the context handler already returned a fully-formatted answer, use it directly
+      if (isPreFormattedAnswer(internalAnswer)) {
+        const answer: InternalDazzaAnswer = {
+          reply: internalAnswer,
+          source: 'portal_data',
+          modulesUsed,
+          confidence: 'High',
+          conflictDetected: false,
+          hasVerificationReminder: needsVerificationReminder(question),
+          hiveCandidate: false,
+          localTool: false,
+          tokens: 0,
+          portalDataSection: extractPortalDataContent(internalAnswer),
+        };
+        void logInteraction(companyId, userId, question, answer.source, modulesUsed,
+          answer.confidence, false, false, ctx.supportMode, ctx.supportCompanyId, 0);
+        return answer;
+      }
       const answer: InternalDazzaAnswer = {
         reply: '',
         source: internalSource ?? 'portal_data',
@@ -609,6 +647,21 @@ export async function processDazzaQuestion(
       if (openaiRes.status === 429) {
         // If we have portal data, return it with a note that AI reasoning is unavailable
         if (internalAnswer) {
+          if (isPreFormattedAnswer(internalAnswer)) {
+            const fallback: InternalDazzaAnswer = {
+              reply: internalAnswer,
+              source: 'portal_data',
+              modulesUsed,
+              confidence: 'High',
+              conflictDetected: false,
+              hasVerificationReminder: needsVerificationReminder(question),
+              hiveCandidate: false,
+              localTool: false,
+              tokens: 0,
+              portalDataSection: extractPortalDataContent(internalAnswer),
+            };
+            return fallback;
+          }
           const fallback: InternalDazzaAnswer = {
             reply: '',
             source: internalSource ?? 'portal_data',
@@ -647,6 +700,21 @@ export async function processDazzaQuestion(
 
       // ── Other OpenAI errors — fall back to internal answer if available ──
       if (internalAnswer) {
+        if (isPreFormattedAnswer(internalAnswer)) {
+          const fallback: InternalDazzaAnswer = {
+            reply: internalAnswer,
+            source: 'portal_data',
+            modulesUsed,
+            confidence: 'High',
+            conflictDetected: false,
+            hasVerificationReminder: needsVerificationReminder(question),
+            hiveCandidate: false,
+            localTool: false,
+            tokens: 0,
+            portalDataSection: extractPortalDataContent(internalAnswer),
+          };
+          return fallback;
+        }
         const fallback: InternalDazzaAnswer = {
           reply: '',
           source: internalSource ?? 'portal_data',
@@ -695,6 +763,21 @@ export async function processDazzaQuestion(
       return rateLimitAnswer;
     }
     if (internalAnswer) {
+      if (isPreFormattedAnswer(internalAnswer)) {
+        const fallback: InternalDazzaAnswer = {
+          reply: internalAnswer,
+          source: 'portal_data',
+          modulesUsed,
+          confidence: 'High',
+          conflictDetected: false,
+          hasVerificationReminder: needsVerificationReminder(question),
+          hiveCandidate: false,
+          localTool: false,
+          tokens: 0,
+          portalDataSection: extractPortalDataContent(internalAnswer),
+        };
+        return fallback;
+      }
       const fallback: InternalDazzaAnswer = {
         reply: '',
         source: internalSource ?? 'portal_data',
@@ -766,7 +849,10 @@ export async function processDazzaQuestion(
   // Portal data from our internal check takes precedence over OpenAI's version
   let finalPortalSection: string | undefined;
   if (internalSource === 'portal_data' && internalAnswer) {
-    finalPortalSection = internalAnswer;
+    // If pre-formatted, extract just the data content (strip section headers)
+    finalPortalSection = isPreFormattedAnswer(internalAnswer)
+      ? extractPortalDataContent(internalAnswer)
+      : internalAnswer;
   } else if (parsed.portalDataSection) {
     finalPortalSection = parsed.portalDataSection;
   }
@@ -816,10 +902,13 @@ export async function processDazzaQuestion(
   if (openaiHasStructure && !conflictDetected) {
     // Use OpenAI's formatted reply but override portal data section with our authoritative version
     if (internalSource === 'portal_data' && internalAnswer && parsed.portalDataSection) {
-      // Replace OpenAI's portal section with our authoritative one
+      // Replace OpenAI's portal section with our authoritative one (stripped of headers)
+      const authoritativeContent = isPreFormattedAnswer(internalAnswer)
+        ? extractPortalDataContent(internalAnswer)
+        : internalAnswer;
       answer.reply = openaiReply.replace(
         parsed.portalDataSection,
-        internalAnswer,
+        authoritativeContent,
       );
     } else {
       answer.reply = openaiReply;

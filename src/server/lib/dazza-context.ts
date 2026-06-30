@@ -294,22 +294,28 @@ export async function buildDazzaContext(
     });
 
     // ── Job Costs ──────────────────────────────────────────────────────────
+    // Uses job_cost_ledger (the live ledger) — job_costs is a legacy receipts table.
+    // Approved estimate total is derived from estimate_lines subtotals since the
+    // estimates table has no pre-computed total_amount column.
     if (seeDollars) {
       ctx.jobCosts = await safeQuery('job_costs', async () => {
         const [rows] = await db.execute(
-          sql`SELECT jc.job_id, j.name as job_name, j.job_number,
-                     SUM(jc.amount) as total_actual,
-                     SUM(jc.gst_amount) as total_gst,
-                     SUM(jc.amount_ex_gst) as total_ex_gst,
-                     COUNT(*) as entry_count,
+          sql`SELECT jcl.job_id, j.name as job_name, j.job_number,
+                     SUM(jcl.total) as total_actual,
+                     SUM(jcl.gst)   as total_gst,
+                     COUNT(*)        as entry_count,
                      COALESCE((
-                       SELECT SUM(e.total_amount) FROM estimates e
-                       WHERE e.job_id = jc.job_id AND e.company_id = ${effectiveCompanyId} AND e.status = 'approved'
+                       SELECT SUM(el.quantity * el.rate)
+                       FROM estimates e
+                       JOIN estimate_lines el ON el.estimate_id = e.id
+                       WHERE e.job_id = jcl.job_id
+                         AND e.company_id = ${effectiveCompanyId}
+                         AND LOWER(e.status) = 'approved'
                      ), 0) as approved_estimate
-              FROM job_costs jc
-              JOIN jobs j ON j.id = jc.job_id
-              WHERE jc.company_id = ${effectiveCompanyId}
-              GROUP BY jc.job_id, j.name, j.job_number
+              FROM job_cost_ledger jcl
+              JOIN jobs j ON j.id = jcl.job_id
+              WHERE jcl.company_id = ${effectiveCompanyId}
+              GROUP BY jcl.job_id, j.name, j.job_number
               ORDER BY total_actual DESC LIMIT 50`
         ) as unknown as [Array<Record<string, unknown>>, unknown];
         return rows ?? [];

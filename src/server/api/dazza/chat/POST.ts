@@ -461,7 +461,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   // ══════════════════════════════════════════════════════════════════════════
 
   // ── Estimate totals ───────────────────────────────────────────────────────
-  if (/estimate total|quote total|how much.*quoted|total.*estimate|approved.*work|estimate.*dollar|dollar.*estimate/i.test(lq)) {
+  if (/estimate total|quote total|how much.*quoted|total.*estimate|approved.*work|estimate.*dollar|dollar.*estimate|estimate.*total.*see|what.*total.*estimate|estimate.*value/i.test(lq)) {
     if (!p.canEstimating) return "You don't have Estimating access.";
     if (!p.seeDollars) return "I can't show cost values with your current permissions.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
@@ -484,6 +484,47 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     const draft = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'draft').length;
     const sent = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'sent').length;
     return `📋 From IWILLBUILD data:\n**${count}** estimate${count === 1 ? '' : 's'} for ${cn}:\n• Draft: ${draft} | Sent: ${sent} | Approved: ${approved}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── List / show estimates ─────────────────────────────────────────────────
+  if (/what estimates|list.*estimate|show.*estimate|estimates.*exist|which estimates|all.*estimate|estimate.*list/i.test(lq)) {
+    if (!p.canEstimating) return "You don't have Estimating access.";
+    const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
+    if (estimates.length === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    const list = estimates.slice(0, 15).map((e) => {
+      const status = String(e.status ?? 'Draft');
+      const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
+      const total = p.seeDollars && e.subtotal ? ` | $${parseFloat(String(e.subtotal)).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '';
+      return `• **${String(e.title ?? 'Unnamed')}** — ${status}${jobName}${total}`;
+    }).join('\n');
+    return `📋 From IWILLBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} for ${cn}:\n${list}${estimates.length > 15 ? `\n…and ${estimates.length - 15} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Approved estimates ────────────────────────────────────────────────────
+  if (/approved estimate|approved quote|estimates.*approved/i.test(lq)) {
+    if (!p.canEstimating) return "You don't have Estimating access.";
+    const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
+    const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved');
+    if (approved.length === 0) return `📋 From IWILLBUILD data:\nNo approved estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    const list = approved.slice(0, 12).map((e) => {
+      const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
+      const total = p.seeDollars && e.subtotal ? ` | $${parseFloat(String(e.subtotal)).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '';
+      return `• **${String(e.title ?? 'Unnamed')}**${jobName}${total}`;
+    }).join('\n');
+    return `📋 From IWILLBUILD data:\n**${approved.length}** approved estimate${approved.length === 1 ? '' : 's'} for ${cn}:\n${list}${approved.length > 12 ? `\n…and ${approved.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Draft estimates ───────────────────────────────────────────────────────
+  if (/draft estimate|draft quote|estimates.*draft/i.test(lq)) {
+    if (!p.canEstimating) return "You don't have Estimating access.";
+    const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
+    const drafts = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'draft');
+    if (drafts.length === 0) return `📋 From IWILLBUILD data:\nNo draft estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    const list = drafts.slice(0, 12).map((e) => {
+      const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
+      return `• **${String(e.title ?? 'Unnamed')}**${jobName}`;
+    }).join('\n');
+    return `📋 From IWILLBUILD data:\n**${drafts.length}** draft estimate${drafts.length === 1 ? '' : 's'} for ${cn}:\n${list}${drafts.length > 12 ? `\n…and ${drafts.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Job costs / over budget ───────────────────────────────────────────────
