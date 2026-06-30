@@ -30,33 +30,12 @@ export interface SeoRoute {
 }
 
 export const seoRoutes: SeoRoute[] = [
-  { path: "/", changefreq: "weekly", priority: 1.0 },
-  { path: "/login", changefreq: "monthly", priority: 0.6 },
-  { path: "/signup", changefreq: "monthly", priority: 0.8 },
-  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
-  { path: "/terms", changefreq: "yearly", priority: 0.4 },
-  { path: "/check-email", changefreq: "monthly", priority: 0.1 },
-  { path: "/verify-email", changefreq: "monthly", priority: 0.1 },
-  { path: "/verify-required", changefreq: "monthly", priority: 0.1 },
-  { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
-  { path: "/reset-password", changefreq: "monthly", priority: 0.1 },
-  { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
-  { path: "/jobs", changefreq: "monthly", priority: 0.8 },
-  { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
-  { path: "/fleet", changefreq: "monthly", priority: 0.8 },
-  { path: "/forms", changefreq: "monthly", priority: 0.8 },
-  { path: "/files", changefreq: "monthly", priority: 0.8 },
-  { path: "/estimating", changefreq: "monthly", priority: 0.8 },
-  { path: "/safety", changefreq: "monthly", priority: 0.8 },
-  { path: "/customers", changefreq: "monthly", priority: 0.8 },
-  { path: "/invoices", changefreq: "monthly", priority: 0.8 },
-  { path: "/downloads", changefreq: "monthly", priority: 0.8 },
-  { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
-  { path: "/annette", changefreq: "monthly", priority: 0.8 },
-  { path: "/team", changefreq: "monthly", priority: 0.8 },
-  { path: "/settings", changefreq: "monthly", priority: 0.8 },
-  { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
-  { path: "/billing", changefreq: "monthly", priority: 0.8 },
-  // Authenticated internal pages — noindex, low priority
-  { path: "/document-viewer", changefreq: "never", priority: 0.1 },
+  // ── Public marketing pages ────────────────────────────────────────────────
+  { path: "/",               changefreq: "weekly",  priority: 1.0 },
+  { path: "/signup",         changefreq: "monthly", priority: 0.8 },
+  { path: "/login",          changefreq: "monthly", priority: 0.6 },
+  { path: "/privacy",        changefreq: "yearly",  priority: 0.4 },
+  { path: "/terms",          changefreq: "yearly",  priority: 0.4 },
+  // ── Authenticated portal routes are intentionally excluded ────────────────
+  // They are all noindex and inaccessible to crawlers without a session.
 ];

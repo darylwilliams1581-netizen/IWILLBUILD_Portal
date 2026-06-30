@@ -262,7 +262,7 @@ export default function HomePage() {
         isPartOf: { '@id': `${site}/#website` },
         about: { '@id': `${site}/#app` },
         datePublished: '2026-06-25',
-        dateModified: '2026-06-29',
+        dateModified: '2026-06-30',
       },
     ],
   };
@@ -278,7 +278,7 @@ export default function HomePage() {
         <meta property="og:description" content={ogDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${site}/`} />
-        <meta property="og:image" content={`${site}/og-image.png`} />
+        <meta property="og:image" content={`${site}/airo-assets/images/pages/home/og-image`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="IWILLBUILD" />
@@ -286,7 +286,7 @@ export default function HomePage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={ogDescription} />
-        <meta name="twitter:image" content={`${site}/og-image.png`} />
+        <meta name="twitter:image" content={`${site}/airo-assets/images/pages/home/og-image`} />
         {/* Structured data */}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
@@ -717,7 +717,7 @@ export default function HomePage() {
               </div>
             </div>
             {[
-              { user: false, text: 'G&apos;day. I can check your jobs, fleet, forms and estimates. What do you need?' },
+              { user: false, text: "G'day. I can check your jobs, fleet, forms and estimates. What do you need?" },
               { user: true,  text: 'What jobs need attention this week?' },
               { user: false, text: 'Job #1042 has 2 incomplete forms. Job #1038 has a fleet prestart overdue. Job #1035 estimate is not yet approved.' },
               { user: true,  text: 'What fleet service is coming up?' },

@@ -262,7 +262,6 @@ import settings_file_transfer_backup_post_239 from "./api/settings/file-transfer
 import settings_retention_get_240 from "./api/settings/retention/GET";
 import settings_retention_post_241 from "./api/settings/retention/POST";
 import settings_storage_provider_get_242 from "./api/settings/storage-provider/GET";
-import settings_storage_provider_debug_get_243 from "./api/settings/storage-provider/debug/GET";
 import settings_storage_provider_test_post_244 from "./api/settings/storage-provider/test/POST";
 import settings_terminology_get_245 from "./api/settings/terminology/GET";
 import settings_terminology_post_246 from "./api/settings/terminology/POST";
@@ -1159,7 +1158,6 @@ app.post("/api/settings/file-transfer-backup", settings_file_transfer_backup_pos
 app.get("/api/settings/retention", settings_retention_get_240);
 app.post("/api/settings/retention", settings_retention_post_241);
 app.get("/api/settings/storage-provider", settings_storage_provider_get_242);
-app.get("/api/settings/storage-provider/debug", settings_storage_provider_debug_get_243);
 app.post("/api/settings/storage-provider/test", settings_storage_provider_test_post_244);
 app.get("/api/settings/terminology", settings_terminology_get_245);
 app.post("/api/settings/terminology", settings_terminology_post_246);
