@@ -831,6 +831,32 @@
       "summary": "Screenshot of a chat interface showing a conversation with an AI assistant and an HTTP 500 error message. User is inspecting an OpenAI API issue for reference/troubleshooting purposes.",
       "fileName": "screenshot-2026-06-29T14-47-18.jpg",
       "storedUploadFilename": "f38wenbvln_1782744440200_file_jBcVEPFRC_.jpg"
+    },
+    {
+      "fileName": "persona.ts",
+      "variant": "adaptive",
+      "classification": "video",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "",
+      "storedUploadFilename": "f38wenbvln_1782811169105_file_yTiEzVoqd9.ts"
+    },
+    {
+      "fileName": "drayl.ts",
+      "variant": "adaptive",
+      "classification": "video",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "",
+      "storedUploadFilename": "f38wenbvln_1782811169106_file_gZBziP86Ug.ts"
     }
   ]
 }

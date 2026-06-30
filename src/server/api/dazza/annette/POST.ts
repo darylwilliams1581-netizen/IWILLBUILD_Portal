@@ -142,8 +142,8 @@ export default async function handler(req: Request, res: Response) {
       res.end();
     };
 
-    // Fire OpenAI
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Fire OpenAI — gpt-4o preferred, gpt-4o-mini fallback
+    let openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -152,14 +152,48 @@ export default async function handler(req: Request, res: Response) {
       body: JSON.stringify({
         model: 'gpt-4o',
         stream: true,
-        max_tokens: 2500,
-        temperature: 0.3,
+        max_tokens: 3000,
+        temperature: 0.25,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Run the Annette Protocol health check now and produce the full report.' },
+          {
+            role: 'user',
+            content:
+              'Run the Annette Protocol health check now. ' +
+              'Sort findings Critical/Urgent first, then Needs Attention, then Info. ' +
+              'Produce the full report in the exact format specified.',
+          },
         ],
       }),
     });
+
+    // Fallback to gpt-4o-mini if gpt-4o not available on this key
+    if (!openaiRes.ok && openaiRes.status === 404) {
+      console.warn('[annette] gpt-4o not available, falling back to gpt-4o-mini');
+      openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          stream: true,
+          max_tokens: 2500,
+          temperature: 0.25,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content:
+                'Run the Annette Protocol health check now. ' +
+                'Sort findings Critical/Urgent first, then Needs Attention, then Info. ' +
+                'Produce the full report in the exact format specified.',
+            },
+          ],
+        }),
+      });
+    }
 
     if (!openaiRes.ok || !openaiRes.body) {
       const errText = await openaiRes.text();

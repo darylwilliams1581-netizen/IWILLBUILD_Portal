@@ -16,6 +16,8 @@ import {
   Settings2,
   Key,
   XCircle,
+  Zap,
+  Activity,
 } from 'lucide-react';
 import { DAZZA_DEFAULT_DISCLAIMER } from '@/lib/dazza-guardrails';
 import DazzaKnowledgePanel from './DazzaKnowledgePanel';
@@ -325,6 +327,72 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
               disabled={!isAdmin}
               placeholder="e.g. Concise and direct. Use plain language. Avoid jargon. Bullet points where possible."
             />
+          </div>
+
+          {/* Quick chips — context-aware Dazza prompts */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap size={14} className="text-primary" />
+              <p className="text-xs font-semibold text-slate-700">Quick Dazza Prompts</p>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Common questions to ask Dazza — click to copy to clipboard.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'What needs attention today?',
+                'How many active jobs do we have?',
+                'Any fleet service overdue?',
+                'Show me overdue to-dos',
+                'What jobs are stalled?',
+                'Add GST to $5,000',
+                'Concrete volume for 8x6x0.1 slab',
+                'What forms are incomplete?',
+                'Jobs with no progress recorded',
+                'Rego expiring soon?',
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(chip);
+                  }}
+                  className="text-xs bg-slate-100 hover:bg-orange-50 hover:text-primary hover:border-primary/30 border border-slate-200 text-slate-600 rounded-full px-3 py-1.5 transition-colors font-medium"
+                  title={`Copy: "${chip}"`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-2.5">
+              Tip: Open Dazza AI from the main menu, then paste any of these prompts.
+            </p>
+          </div>
+
+          {/* Full Brain Check shortcut */}
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5 flex items-start gap-4">
+            <div className="p-2 rounded-xl bg-orange-100 shrink-0">
+              <Activity size={16} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-orange-900 mb-1">
+                Annette Full Brain Check
+              </p>
+              <p className="text-xs text-orange-700 leading-relaxed mb-3">
+                Run a full health check across all your portal data — jobs, fleet, forms, estimates, and to-dos.
+                Annette will surface urgent issues, things needing attention, and missing information.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText('Run Annette health check');
+                }}
+                className="text-xs bg-primary hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Activity size={12} />
+                Copy "Run Annette health check" prompt
+              </button>
+            </div>
           </div>
 
           {/* Guardrails info */}
