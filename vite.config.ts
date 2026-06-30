@@ -101,22 +101,22 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    // Do NOT use noExternal: true — it forces all deps into the SSR bundle
-    // and is the primary cause of OOM kills during publish builds.
-    noExternal: [],
+    // During `vite build --ssr` (publish): bundle ALL npm deps into
+    // server.bundle.mjs — the publish environment has no node_modules.
+    // OOM risk is managed by --max-old-space-size=4096 on the SSR build step.
+    //
+    // During dev (`vite` / ssrLoadModule): leave noExternal as [] so Vite's
+    // CJS-interop layer can handle packages like express normally. Setting
+    // noExternal:true in dev causes "module is not defined" for CJS packages.
+    noExternal: isSsrBuild ? true : [],
     external: [
+      // Always exclude — browser-only or native packages that must never
+      // be traversed by Rollup/Node in any context.
       'pdfjs-dist',
       'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
-      '@heroicons/react',
-      'date-fns-jalali',
-      '@babel/core',
-      '@babel/parser',
-      '@babel/generator',
-      '@babel/traverse',
-      '@babel/types',
-      '@aws-sdk/client-s3',
+      'canvas',
     ],
   },
 
