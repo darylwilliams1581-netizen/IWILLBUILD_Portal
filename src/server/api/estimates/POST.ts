@@ -3,6 +3,7 @@ import { db } from '../../db/client.js';
 import { estimates, estimateLines, profiles, jobs } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { ensureDocument, logEvent } from '../../lib/document-engine.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -64,6 +65,26 @@ export default async function handler(req: Request, res: Response) {
     const estimate = await db.query.estimates.findFirst({
       where: eq(estimates.id, inserted.id),
     });
+
+    // ── Document Engine: create a document record for this estimate ──
+    try {
+      const docId = await ensureDocument({
+        companyId: profile.companyId,
+        jobId,
+        sourceModule: 'estimate',
+        sourceId: String(inserted.id),
+        documentType: 'estimate',
+        title: `${title.trim()} — ${job.jobNumber ?? `Job #${jobId}`}`,
+        status: (status ?? 'Draft').toLowerCase(),
+        createdByUserId: session.user.id,
+      });
+      await logEvent(docId, profile.companyId, 'created', {
+        eventNote: `Estimate created: ${title.trim()}`,
+        userId: session.user.id,
+      });
+    } catch (docErr) {
+      console.warn('[document-engine] Failed to create document for estimate:', docErr);
+    }
 
     res.status(201).json({ estimate });
   } catch (error) {

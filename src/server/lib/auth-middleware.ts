@@ -151,11 +151,14 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/integrations\/onedrive\/callback$/ },
   // Public contact form — no auth required, spam-protected by honeypot + timing
   { method: 'POST', pattern: /^\/api\/contact$/ },
-  // Share link viewer — token-validated, no session required
+  // Legacy share link viewer — token-validated, no session required
   { method: 'GET',  pattern: /^\/api\/share\/[^/]+$/ },
-  // External form completion — token-validated, no session required
+  // Legacy external form completion — token-validated, no session required
   { method: 'GET',  pattern: /^\/api\/external\/form\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/external\/form\/[^/]+$/ },
+  // Document Engine share — public, token-validated
+  { method: 'GET',  pattern: /^\/api\/documents\/share\/[^/]+$/ },
+  { method: 'POST', pattern: /^\/api\/documents\/share\/[^/]+$/ },
 ];
 
 /**

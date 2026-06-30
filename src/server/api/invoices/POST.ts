@@ -5,6 +5,7 @@ import { getAuth } from '../../../lib/auth/auth.js';
 import { profiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { ResultSetHeader } from 'mysql2';
+import { ensureDocument, logEvent } from '../../lib/document-engine.js';
 
 async function getNextInvoiceNumber(companyId: number): Promise<string> {
   const [rows] = await db.execute(
@@ -96,6 +97,28 @@ export default async function handler(req: Request, res: Response) {
     const [lineRows] = await db.execute(
       sql`SELECT * FROM invoice_lines WHERE invoice_id = ${invoiceId} ORDER BY sort_order ASC`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
+
+    // ── Document Engine: create a document record for this invoice ──
+    try {
+      const inv = rows?.[0] as Record<string, unknown> | undefined;
+      const docId = await ensureDocument({
+        companyId: profile.companyId,
+        jobId: inv?.job_id ? Number(inv.job_id) : null,
+        customerId: inv?.customer_id ? Number(inv.customer_id) : null,
+        sourceModule: 'invoice',
+        sourceId: String(invoiceId),
+        documentType: 'invoice',
+        title: `${inv?.invoice_number ?? 'INV'} — ${inv?.title ?? 'Invoice'}`,
+        status: 'draft',
+        createdByUserId: session.user.id,
+      });
+      await logEvent(docId, profile.companyId, 'created', {
+        eventNote: `Invoice created: ${inv?.invoice_number ?? invoiceId}`,
+        userId: session.user.id,
+      });
+    } catch (docErr) {
+      console.warn('[document-engine] Failed to create document for invoice:', docErr);
+    }
 
     res.status(201).json({ invoice: { ...(rows?.[0] ?? {}), lines: lineRows ?? [] } });
   } catch (err) {

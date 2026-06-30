@@ -3,6 +3,7 @@ import { db } from '../../../../db/client.js';
 import { formTemplates, jobFormSubmissions, jobs, profiles } from '../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
+import { ensureDocument, logEvent } from '../../../../lib/document-engine.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -53,6 +54,27 @@ export default async function handler(req: Request, res: Response) {
     const submission = await db.query.jobFormSubmissions.findFirst({
       where: eq(jobFormSubmissions.id, result.insertId),
     });
+
+    // ── Document Engine: create a document record for this form submission ──
+    try {
+      const docId = await ensureDocument({
+        companyId: profile.companyId,
+        jobId,
+        sourceModule: 'job_form_submission',
+        sourceId: String(result.insertId),
+        documentType: 'job_form',
+        title: `${template.name} — ${job.jobNumber ?? `Job #${jobId}`}`,
+        status: 'in_progress',
+        createdByUserId: session.user.id,
+      });
+      await logEvent(docId, profile.companyId, 'created', {
+        eventNote: `Form started: ${template.name}`,
+        userId: session.user.id,
+      });
+    } catch (docErr) {
+      // Non-fatal — document engine failure must not block form creation
+      console.warn('[document-engine] Failed to create document for form submission:', docErr);
+    }
 
     res.status(201).json({ ok: true, submission });
   } catch (error) {

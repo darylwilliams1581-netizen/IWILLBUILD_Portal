@@ -9,6 +9,7 @@ import { eq, and } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import type { ResultSetHeader } from 'mysql2';
+import { ensureDocument, logEvent } from '../../../../lib/document-engine.js';
 
 interface POLine {
   progressLineId?: number | null;
@@ -132,6 +133,27 @@ export default async function handler(req: Request, res: Response) {
     res.status(201).json({
       purchaseOrder: { ...(poRows?.[0] ?? {}), lines: lineRows ?? [] },
     });
+
+    // ── Document Engine: create a document record for this PO (best-effort) ──
+    try {
+      const po = poRows?.[0] as Record<string, unknown> | undefined;
+      const docId = await ensureDocument({
+        companyId: profile.companyId,
+        jobId,
+        sourceModule: 'purchase_order',
+        sourceId: String(poId),
+        documentType: 'purchase_order',
+        title: `${po?.po_number ?? 'PO'} — ${po?.title ?? 'Purchase Order'}`,
+        status: 'draft',
+        createdByUserId: session.user.id,
+      });
+      await logEvent(docId, profile.companyId, 'created', {
+        eventNote: `Purchase order created: ${po?.po_number ?? poId}`,
+        userId: session.user.id,
+      });
+    } catch (docErr) {
+      console.warn('[document-engine] Failed to create document for PO:', docErr);
+    }
   } catch (err) {
     console.error('POST /api/jobs/:id/purchase-orders error:', err);
     res.status(500).json({ error: 'Failed to create purchase order' });

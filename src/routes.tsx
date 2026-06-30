@@ -41,6 +41,7 @@ const InvoicesPage       = lazy(() => import('./pages/invoices'));
 const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
+const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 
 const NotFoundPage = import.meta.env.DEV
   ? lazy(() => import('../dev-tools/src/PageNotFound'))
@@ -100,6 +101,7 @@ export const routes: RouteObject[] = [
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console', element: protect(<OwnerConsolePage />),    errorElement: routeError },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
+  { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   { path: '*',              element: <NotFoundPage /> },
 ];
 
