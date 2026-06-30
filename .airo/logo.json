@@ -1,6 +1,6 @@
 {
   "jobId": "c35bbb65-b81f-47c2-9e8f-d29d51dc0cf9",
-  "status": "generating",
+  "status": "completed",
   "prompt": "A bold 3D industrial construction logo for IWILLBUILD. Left side: a chunky 3D metallic icon combining an orange hard hat sitting above a stylised building/skyscraper silhouette made of stacked rectangular blocks in dark gunmetal steel. Right side: the wordmark \"IWILLBUILD\" in massive 3D extruded block letters — alternating letters in brushed orange-copper metallic and dark gunmetal steel, with deep bevelled edges and subtle embossed \"IWILLBUILD\" text engraved into each letter face. Overall feel: heavy industrial, premium construction, bold and powerful. White background. No watermark, no tagline, no extra text. Brand colors: primary #F97316, secondary #374151, accent #F97316, background #FFFFFF, foreground #0A0A0A.",
   "layouts": [
     "horizontal"
@@ -50,5 +50,7 @@
   },
   "attempt": 0,
   "createdAt": "2026-06-30T11:04:31.387Z",
-  "updatedAt": "2026-06-30T11:04:31.481Z"
+  "updatedAt": "2026-06-30T11:05:15.220Z",
+  "sessionId": "3c28765c-b495-4a09-be17-af7a99a49647",
+  "logoId": "a61a32f7-bd54-4bd5-ba04-daff124aaff3"
 }
