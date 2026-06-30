@@ -1231,7 +1231,7 @@ app.get("/sitemap.xml", (req, res) => {
 	}
 	const base = baseUrl(req);
 	const urls = seoRoutes
-		.filter((r) => typeof r.path === "string" && r.path.startsWith("/"))
+		.filter((r) => typeof r.path === "string" && r.path.startsWith("/") && r.sitemap !== false)
 		.map((r) => {
 			const loc = `${base}${r.path}`;
 			const parts = [`    <loc>${escapeXml(loc)}</loc>`];
