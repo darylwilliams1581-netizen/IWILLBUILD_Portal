@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/server/entry.ts",
+    "build": "vite build && node --max-old-space-size=4096 node_modules/.bin/vite build --ssr src/server/entry.ts",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",

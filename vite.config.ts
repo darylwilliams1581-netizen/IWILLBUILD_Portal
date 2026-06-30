@@ -101,7 +101,28 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    noExternal: isSsrBuild ? true : undefined
+    // Bundle everything into the single server.bundle.mjs for production,
+    // EXCEPT packages that are client-only or have native binaries — these
+    // would bloat the SSR bundle by 100MB+ and OOM-kill the publish build.
+    noExternal: isSsrBuild ? true : undefined,
+    external: isSsrBuild ? [
+      // PDF rendering — client-only, lazy-loaded, never needed server-side
+      'react-pdf',
+      'pdfjs-dist',
+      // Native addons — can't run in Alpine/musl anyway
+      '@napi-rs',
+      '@napi-rs/canvas',
+      // Unused icon library (project uses lucide-react)
+      '@heroicons/react',
+      // Persian calendar — not used in this project
+      'date-fns-jalali',
+      // Babel — dev tooling only
+      '@babel/core',
+      '@babel/parser',
+      '@babel/generator',
+      '@babel/traverse',
+      '@babel/types',
+    ] : [],
   },
 
   server: {

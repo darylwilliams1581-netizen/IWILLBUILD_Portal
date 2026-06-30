@@ -3,13 +3,15 @@
  * Phase 1: PDF viewer with markup tools.
  * Phase 2: DWG upload + download (no preview).
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import {
   FileText, Upload, Download, Eye, Pencil, Trash2, Loader2,
   Plus, ChevronDown, ChevronUp, AlertCircle, FolderOpen,
   Check, X, FileX,
 } from 'lucide-react';
-import DrawingPdfViewer from './DrawingPdfViewer';
+// Lazy-load the PDF viewer so react-pdf / pdfjs-dist are excluded from the
+// SSR bundle (they are client-only and would OOM-kill the publish build).
+const DrawingPdfViewer = lazy(() => import('./DrawingPdfViewer'));
 import {
   fileServePath, fileIsPdf, fileIsDwg,
   DRAWING_DISCIPLINES, DRAWING_STATUSES, STATUS_BADGE,
@@ -448,13 +450,15 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
       )}
 
       {viewerDrawing && (
-        <DrawingPdfViewer
-          drawingId={viewerDrawing.id}
-          fileUrl={fileServePath(viewerDrawing.original_file_id)}
-          title={`${viewerDrawing.drawing_number ? viewerDrawing.drawing_number + ' — ' : ''}${viewerDrawing.title} Rev ${viewerDrawing.revision}`}
-          onClose={() => setViewerDrawing(null)}
-          onMarkupSaved={() => void load()}
-        />
+        <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}>
+          <DrawingPdfViewer
+            drawingId={viewerDrawing.id}
+            fileUrl={fileServePath(viewerDrawing.original_file_id)}
+            title={`${viewerDrawing.drawing_number ? viewerDrawing.drawing_number + ' — ' : ''}${viewerDrawing.title} Rev ${viewerDrawing.revision}`}
+            onClose={() => setViewerDrawing(null)}
+            onMarkupSaved={() => void load()}
+          />
+        </Suspense>
       )}
     </div>
   );
