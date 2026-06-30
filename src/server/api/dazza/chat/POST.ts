@@ -53,12 +53,11 @@ interface ChatMessage {
 function tryLocalTool(question: string): string | null {
   const q = question.trim();
 
-  // Simple arithmetic: "2+2", "2+2=", "what is 3*4", "calculate 100/5"
-  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+)?([0-9\s\+\-\*\/\.\(\)%]+)=?$/i);
+  // ── Simple arithmetic ─────────────────────────────────────────────────────
+  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s\+\-\*\/\.\(\)%]+)=?$/i);
   if (mathMatch) {
     const expr = mathMatch[1].trim();
     try {
-      // Safe eval — only digits and math operators
       if (/^[0-9\s\+\-\*\/\.\(\)%]+$/.test(expr)) {
         // eslint-disable-next-line no-new-func
         const result = Function(`"use strict"; return (${expr})`)() as number;
@@ -69,7 +68,7 @@ function tryLocalTool(question: string): string | null {
     } catch { /* fall through */ }
   }
 
-  // GST add: "add gst to 1000", "1000 + gst", "gst on 500"
+  // ── GST add ───────────────────────────────────────────────────────────────
   const gstAddMatch = q.match(/(?:add\s+gst\s+to|gst\s+on|plus\s+gst|add\s+10%\s+to)\s*\$?([\d,]+(?:\.\d+)?)/i)
     ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s*\+\s*gst/i);
   if (gstAddMatch) {
@@ -81,7 +80,7 @@ function tryLocalTool(question: string): string | null {
     }
   }
 
-  // GST remove: "remove gst from 1100", "ex gst 1100", "1100 ex gst"
+  // ── GST remove ────────────────────────────────────────────────────────────
   const gstRemoveMatch = q.match(/(?:remove\s+gst\s+from|ex\s+gst\s+|excluding\s+gst\s+|gst\s+exclusive\s+of)\s*\$?([\d,]+(?:\.\d+)?)/i)
     ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s+ex\.?\s+gst/i);
   if (gstRemoveMatch) {
@@ -90,6 +89,97 @@ function tryLocalTool(question: string): string | null {
       const base = +(total / 1.1).toFixed(2);
       const gst = +(total - base).toFixed(2);
       return `GST removal:\n• Total inc. GST: $${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• GST (10%): $${gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• Base ex. GST: $${base.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    }
+  }
+
+  // ── Markup / margin calculator ────────────────────────────────────────────
+  // "add 20% markup to 5000" / "what is 15% margin on 8000"
+  const markupMatch = q.match(/add\s+([\d.]+)%\s+markup\s+(?:to\s+)?\$?([\d,]+(?:\.\d+)?)/i);
+  if (markupMatch) {
+    const pct = parseFloat(markupMatch[1]);
+    const base = parseFloat(markupMatch[2].replace(/,/g, ''));
+    if (!isNaN(pct) && !isNaN(base)) {
+      const markup = +(base * pct / 100).toFixed(2);
+      const total = +(base + markup).toFixed(2);
+      return `Markup calculation (${pct}%):\n• Cost: $${base.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• Markup (${pct}%): $${markup.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• Sell price: $${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    }
+  }
+
+  const marginMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+margin\s+on\s+\$?([\d,]+(?:\.\d+)?)/i);
+  if (marginMatch) {
+    const pct = parseFloat(marginMatch[1]);
+    const cost = parseFloat(marginMatch[2].replace(/,/g, ''));
+    if (!isNaN(pct) && !isNaN(cost) && pct < 100) {
+      const sell = +(cost / (1 - pct / 100)).toFixed(2);
+      const margin = +(sell - cost).toFixed(2);
+      return `Margin calculation (${pct}%):\n• Cost: $${cost.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• Margin (${pct}%): $${margin.toLocaleString('en-AU', { minimumFractionDigits: 2 })}\n• Sell price: $${sell.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    }
+  }
+
+  // ── Concrete volume ───────────────────────────────────────────────────────
+  // "concrete for 6x4x0.1 slab" / "how much concrete for 6m x 4m x 100mm"
+  const concreteMatch = q.match(
+    /concrete.*?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i
+  );
+  if (concreteMatch) {
+    const l = parseFloat(concreteMatch[1]);
+    const w = parseFloat(concreteMatch[2]);
+    let d = parseFloat(concreteMatch[3]);
+    const unit = (concreteMatch[4] ?? 'm').toLowerCase();
+    if (unit.startsWith('mm')) d = d / 1000; // convert mm to m
+    if (!isNaN(l) && !isNaN(w) && !isNaN(d) && d > 0) {
+      const vol = +(l * w * d).toFixed(3);
+      const withWaste = +(vol * 1.1).toFixed(3); // 10% waste
+      return `Concrete volume:\n• Slab: ${l}m × ${w}m × ${d < 1 ? (d * 1000).toFixed(0) + 'mm' : d + 'm'}\n• Volume: **${vol} m³**\n• With 10% waste: **${withWaste} m³**\n\n_Order at least ${withWaste} m³. Verify with your concrete supplier._`;
+    }
+  }
+
+  // ── Area calculator ───────────────────────────────────────────────────────
+  // "area of 12x8" / "what is the area of 15m by 6m"
+  const areaMatch = q.match(/(?:area\s+of|what\s+is\s+the\s+area)\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+  if (areaMatch) {
+    const l = parseFloat(areaMatch[1]);
+    const w = parseFloat(areaMatch[2]);
+    if (!isNaN(l) && !isNaN(w)) {
+      const area = +(l * w).toFixed(2);
+      return `Area calculation:\n• ${l}m × ${w}m = **${area} m²**`;
+    }
+  }
+
+  // ── Pipe / drain fall ─────────────────────────────────────────────────────
+  // "fall for 10m pipe at 1:100" / "what is the fall for 15m at 1 in 80"
+  const fallMatch = q.match(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m.*?(?:at\s+)?1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i);
+  if (fallMatch) {
+    const length = parseFloat(fallMatch[1]);
+    const ratio = parseFloat(fallMatch[2]);
+    if (!isNaN(length) && !isNaN(ratio) && ratio > 0) {
+      const fall = +(length / ratio * 1000).toFixed(0); // mm
+      const fallM = +(length / ratio).toFixed(3);
+      return `Pipe fall calculation:\n• Length: ${length}m at 1:${ratio}\n• Fall: **${fall}mm** (${fallM}m)\n• Invert drop: ${fall}mm over ${length}m`;
+    }
+  }
+
+  // ── Percentage of ─────────────────────────────────────────────────────────
+  // "what is 15% of 24000"
+  const pctOfMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+of\s+\$?([\d,]+(?:\.\d+)?)/i);
+  if (pctOfMatch) {
+    const pct = parseFloat(pctOfMatch[1]);
+    const base = parseFloat(pctOfMatch[2].replace(/,/g, ''));
+    if (!isNaN(pct) && !isNaN(base)) {
+      const result = +(base * pct / 100).toFixed(2);
+      return `${pct}% of $${base.toLocaleString('en-AU', { minimumFractionDigits: 2 })} = **$${result.toLocaleString('en-AU', { minimumFractionDigits: 2 })}**`;
+    }
+  }
+
+  // ── Lineal metres / perimeter ─────────────────────────────────────────────
+  // "perimeter of 12x8"
+  const perimMatch = q.match(/perimeter\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+  if (perimMatch) {
+    const l = parseFloat(perimMatch[1]);
+    const w = parseFloat(perimMatch[2]);
+    if (!isNaN(l) && !isNaN(w)) {
+      const perim = +(2 * (l + w)).toFixed(2);
+      return `Perimeter:\n• ${l}m × ${w}m rectangle = **${perim} lineal metres**`;
     }
   }
 
@@ -103,74 +193,152 @@ function tryLocalTool(question: string): string | null {
 function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   const lq = q.toLowerCase().trim();
   const p  = ctx.permissions;
+  const cn = ctx.companyName;
 
   // ── Cross-company guard ───────────────────────────────────────────────────
   if (
     /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lq)
   ) {
-    return `I can't access another company's private IWILLBUILD data. I only have access to ${ctx.companyName}'s data.`;
+    return `I can't access another company's private IWILLBUILD data. I only have access to ${cn}'s data.`;
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // JOBS
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Job count ─────────────────────────────────────────────────────────────
   if (/how many jobs|job count|number of jobs|total jobs/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const count = ctx.jobs?.length ?? 0;
-    if (count === 0) return `From IWILLBUILD data: No jobs found for ${ctx.companyName} yet. Source: Jobs.`;
-    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWILLBUILD for ${ctx.companyName}. Source: Jobs.`;
+    if (count === 0) return `📋 From IWILLBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Active / open jobs ────────────────────────────────────────────────────
-  if (/active jobs|open jobs|current jobs|list.*jobs|jobs.*list/i.test(lq)) {
+  if (/active jobs|open jobs|current jobs|list.*jobs|jobs.*list|show.*jobs/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
-    const active = jobs.filter((j) => String(j.status ?? '').toLowerCase() !== 'completed' && String(j.status ?? '').toLowerCase() !== 'cancelled');
-    if (active.length === 0) return `From IWILLBUILD data: No active jobs found for ${ctx.companyName}. Source: Jobs.`;
-    const list = active.slice(0, 10).map((j) => `• **${String(j.name ?? 'Unnamed')}** (${String(j.status ?? 'Unknown')})${j.client ? ` — ${String(j.client)}` : ''}`).join('\n');
-    return `From IWILLBUILD data: **${active.length}** active job${active.length === 1 ? '' : 's'} for ${ctx.companyName}:\n${list}${active.length > 10 ? `\n…and ${active.length - 10} more.` : ''}\nSource: Jobs.`;
+    const active = jobs.filter((j) => !['completed','cancelled'].includes(String(j.status ?? '').toLowerCase()));
+    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo active jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    const list = active.slice(0, 12).map((j) =>
+      `• **${String(j.name ?? 'Unnamed')}** — ${String(j.status ?? 'Unknown')}${j.client ? ` | Client: ${String(j.client)}` : ''}${j.address ? ` | ${String(j.address)}` : ''}`
+    ).join('\n');
+    return `📋 From IWILLBUILD data:\n**${active.length}** active job${active.length === 1 ? '' : 's'} for ${cn}:\n${list}${active.length > 12 ? `\n…and ${active.length - 12} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Latest / newest job ───────────────────────────────────────────────────
   if (/latest job|newest job|most recent job|last job added|last job created/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
-    if (jobs.length === 0) return `From IWILLBUILD data: No jobs found for ${ctx.companyName} yet. Source: Jobs.`;
+    if (jobs.length === 0) return `📋 From IWILLBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const latest = jobs[0];
-    return `From IWILLBUILD data: The latest job is **${String(latest.name ?? 'Unnamed')}**` +
+    return `📋 From IWILLBUILD data:\nThe latest job is **${String(latest.name ?? 'Unnamed')}**` +
       `${latest.client ? ` for ${String(latest.client)}` : ''}` +
       `${latest.status ? ` — Status: ${String(latest.status)}` : ''}` +
+      `${latest.address ? ` | Address: ${String(latest.address)}` : ''}` +
       `${latest.created_at ? ` (created ${String(latest.created_at).slice(0, 10)})` : ''}.` +
-      ` Source: Jobs.`;
+      `\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
-  // ── Jobs needing attention ────────────────────────────────────────────────
-  if (/jobs.*attention|attention.*jobs|jobs.*issue|problem.*jobs/i.test(lq)) {
+  // ── Completed jobs ────────────────────────────────────────────────────────
+  if (/completed jobs|finished jobs|done jobs|jobs.*completed/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
+    const completed = jobs.filter((j) => String(j.status ?? '').toLowerCase() === 'completed');
+    if (completed.length === 0) return `📋 From IWILLBUILD data:\nNo completed jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    const list = completed.slice(0, 10).map((j) => `• **${String(j.name ?? 'Unnamed')}**${j.client ? ` — ${String(j.client)}` : ''}`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${completed.length}** completed job${completed.length === 1 ? '' : 's'} for ${cn}:\n${list}${completed.length > 10 ? `\n…and ${completed.length - 10} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Jobs by supervisor ────────────────────────────────────────────────────
+  if (/jobs.*supervisor|supervisor.*jobs|who.*supervising|supervisor.*assigned/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
+    const withSup = jobs.filter((j) => j.supervisor_name || j.assigned_supervisor_user_id);
+    if (withSup.length === 0) return `📋 From IWILLBUILD data:\nNo jobs with assigned supervisors found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    const grouped: Record<string, string[]> = {};
+    for (const j of withSup) {
+      const sup = String(j.supervisor_name ?? j.assigned_supervisor_user_id ?? 'Unknown');
+      if (!grouped[sup]) grouped[sup] = [];
+      grouped[sup].push(String(j.name ?? 'Unnamed'));
+    }
+    const list = Object.entries(grouped).map(([sup, jbs]) => `• **${sup}**: ${jbs.join(', ')}`).join('\n');
+    return `📋 From IWILLBUILD data:\nJobs by supervisor for ${cn}:\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Jobs needing attention / overdue to-dos ───────────────────────────────
+  if (/jobs.*attention|attention.*jobs|jobs.*issue|problem.*jobs|overdue.*job|job.*overdue/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const overdue = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
     const today = new Date().toISOString().slice(0, 10);
     const overdueItems = overdue.filter((t) => t.due_date && String(t.due_date).slice(0, 10) < today);
-    if (overdueItems.length === 0) return `From IWILLBUILD data: No jobs with overdue to-dos found. Source: Jobs.`;
+    if (overdueItems.length === 0) return `📋 From IWILLBUILD data:\nNo jobs with overdue to-dos found for ${cn}.\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
     const list = overdueItems.slice(0, 8).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}" overdue since ${String(t.due_date ?? '').slice(0, 10)}`).join('\n');
-    return `From IWILLBUILD data: **${overdueItems.length}** overdue to-do${overdueItems.length === 1 ? '' : 's'} across jobs:\n${list}\nSource: Jobs.`;
+    return `📋 From IWILLBUILD data:\n**${overdueItems.length}** overdue to-do${overdueItems.length === 1 ? '' : 's'} across jobs:\n${list}\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
   }
+
+  // ── Job delays ────────────────────────────────────────────────────────────
+  if (/job.*delay|delay.*job|which jobs.*delayed|most delayed/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const delays = (ctx.jobDelays ?? []) as Array<Record<string, unknown>>;
+    if (delays.length === 0) return `📋 From IWILLBUILD data:\nNo job delays recorded for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    const sorted = [...delays].sort((a, b) => (Number(b.total_delay_days ?? 0)) - (Number(a.total_delay_days ?? 0)));
+    const list = sorted.slice(0, 8).map((d) => `• **${String(d.job_name ?? 'Unknown')}** — ${String(d.total_delay_days ?? 0)} day${Number(d.total_delay_days ?? 0) === 1 ? '' : 's'} delay (${String(d.delay_count ?? 0)} event${Number(d.delay_count ?? 0) === 1 ? '' : 's'})`).join('\n');
+    const totalDays = delays.reduce((s, d) => s + Number(d.total_delay_days ?? 0), 0);
+    return `📋 From IWILLBUILD data:\n**${delays.length}** job${delays.length === 1 ? '' : 's'} with delays (${totalDays} total delay days):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Job progress ──────────────────────────────────────────────────────────
+  if (/jobs.*progress|progress.*jobs|which jobs.*progress|progress recorded|job.*percent|percent.*complete/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const progress = (ctx.jobProgress ?? []) as Array<Record<string, unknown>>;
+    if (progress.length === 0) return `📋 From IWILLBUILD data:\nNo job progress recorded for ${cn} yet.\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
+    const sorted = [...progress].sort((a, b) => Number(b.avg_percent ?? 0) - Number(a.avg_percent ?? 0));
+    const list = sorted.slice(0, 10).map((p) => `• **${String(p.job_name ?? 'Unknown')}** — ${String(p.avg_percent ?? 0)}% complete`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${progress.length}** job${progress.length === 1 ? '' : 's'} with progress recorded:\n${list}\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Open to-dos ───────────────────────────────────────────────────────────
+  if (/open to.?do|outstanding to.?do|my to.?do|to.?do list|pending task/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    const todos = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
+    if (todos.length === 0) return `📋 From IWILLBUILD data:\nNo open to-dos found for ${cn}.\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
+    const list = todos.slice(0, 10).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}"${t.due_date ? ` (due ${String(t.due_date).slice(0, 10)})` : ''}`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${todos.length}** open to-do${todos.length === 1 ? '' : 's'}:\n${list}${todos.length > 10 ? `\n…and ${todos.length - 10} more.` : ''}\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FLEET
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Fleet count ───────────────────────────────────────────────────────────
   if (/how many fleet|fleet count|number of fleet|total fleet|how many.*asset|fleet.*asset.*count/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const count = ctx.fleet?.length ?? 0;
-    if (count === 0) return `From IWILLBUILD data: No fleet assets found for ${ctx.companyName} yet. Source: Fleet.`;
-    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWILLBUILD for ${ctx.companyName}. Source: Fleet.`;
+    if (count === 0) return `📋 From IWILLBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── List all fleet ────────────────────────────────────────────────────────
+  if (/list.*fleet|show.*fleet|all.*fleet|fleet.*list/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
+    if (fleet.length === 0) return `📋 From IWILLBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    const list = fleet.slice(0, 15).map((f) => `• **${String(f.name ?? 'Unnamed')}** — ${String(f.asset_type ?? f.type ?? 'Asset')}${f.rego ? ` | Rego: ${String(f.rego)}` : ''}`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${fleet.length}** fleet asset${fleet.length === 1 ? '' : 's'} for ${cn}:\n${list}${fleet.length > 15 ? `\n…and ${fleet.length - 15} more.` : ''}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Last / latest prestart ────────────────────────────────────────────────
   if (/last prestart|latest prestart|most recent prestart|last.*daily check|recent.*prestart/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const prestarts = (ctx.prestarts ?? []) as Array<Record<string, unknown>>;
-    if (prestarts.length === 0) return `From IWILLBUILD data: No prestarts found for ${ctx.companyName} yet. Source: Fleet.`;
+    if (prestarts.length === 0) return `📋 From IWILLBUILD data:\nNo prestarts found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const last = prestarts[0];
     const flagged = last.issue_needs_attention ? ` ⚠️ Issue flagged: "${String(last.issue_comment ?? '')}"` : ' No issues flagged.';
-    return `From IWILLBUILD data: The last prestart was for **${String(last.asset_name ?? 'Unknown asset')}**` +
+    return `📋 From IWILLBUILD data:\nThe last prestart was for **${String(last.asset_name ?? 'Unknown asset')}**` +
       `${last.submitted_by_name ? ` submitted by ${String(last.submitted_by_name)}` : ''}` +
-      `${last.created_at ? ` on ${String(last.created_at).slice(0, 10)}` : ''}.${flagged} Source: Fleet.`;
+      `${last.created_at ? ` on ${String(last.created_at).slice(0, 10)}` : ''}.${flagged}` +
+      `\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Next service due ──────────────────────────────────────────────────────
@@ -180,61 +348,136 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     const withDates = fleet
       .filter((f) => f.service_date)
       .sort((a, b) => String(a.service_date).localeCompare(String(b.service_date)));
-    if (withDates.length === 0) return `From IWILLBUILD data: No service dates recorded for any fleet assets. Source: Fleet.`;
+    if (withDates.length === 0) return `📋 From IWILLBUILD data:\nNo service dates recorded for any fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const next = withDates[0];
     const today = new Date().toISOString().slice(0, 10);
     const isOverdue = String(next.service_date).slice(0, 10) < today;
-    return `From IWILLBUILD data: The next service due is **${String(next.name ?? 'Unknown')}** — service date **${String(next.service_date).slice(0, 10)}**${isOverdue ? ' ⚠️ (overdue)' : ''}. Source: Fleet.`;
+    return `📋 From IWILLBUILD data:\nThe next service due is **${String(next.name ?? 'Unknown')}** — service date **${String(next.service_date).slice(0, 10)}**${isOverdue ? ' ⚠️ (overdue)' : ''}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Rego expiry ───────────────────────────────────────────────────────────
+  if (/rego.*expir|expir.*rego|registration.*due|rego.*due|upcoming.*rego/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
+    const today = new Date().toISOString().slice(0, 10);
+    const withRego = fleet
+      .filter((f) => f.rego_expiry && !f.rego_not_applicable)
+      .sort((a, b) => String(a.rego_expiry).localeCompare(String(b.rego_expiry)));
+    const overdue = withRego.filter((f) => String(f.rego_expiry).slice(0, 10) < today);
+    const upcoming = withRego.filter((f) => String(f.rego_expiry).slice(0, 10) >= today).slice(0, 5);
+    const lines: string[] = [];
+    if (overdue.length > 0) {
+      lines.push(`⚠️ **${overdue.length}** asset${overdue.length === 1 ? '' : 's'} with expired rego:`);
+      overdue.slice(0, 5).forEach((f) => lines.push(`  • **${String(f.name ?? 'Unknown')}** — expired ${String(f.rego_expiry).slice(0, 10)}`));
+    }
+    if (upcoming.length > 0) {
+      lines.push(`\nUpcoming rego renewals:`);
+      upcoming.forEach((f) => lines.push(`  • **${String(f.name ?? 'Unknown')}** — due ${String(f.rego_expiry).slice(0, 10)}`));
+    }
+    if (lines.length === 0) return `📋 From IWILLBUILD data:\nNo rego expiry dates recorded for fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWILLBUILD data:\n${lines.join('\n')}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Fleet issues / flags ──────────────────────────────────────────────────
   if (/fleet issue|fleet flag|fleet problem|fleet.*attention|attention.*fleet/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const flags = (ctx.fleetFlags ?? []) as Array<Record<string, unknown>>;
-    if (flags.length === 0) return `From IWILLBUILD data: No fleet issues flagged for ${ctx.companyName}. Source: Fleet.`;
+    if (flags.length === 0) return `📋 From IWILLBUILD data:\nNo fleet issues flagged for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const list = flags.slice(0, 8).map((f) => `• **${String(f.asset_name ?? 'Unknown')}** — "${String(f.issue_comment ?? '')}" (${String(f.created_at ?? '').slice(0, 10)})`).join('\n');
-    return `From IWILLBUILD data: **${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\nSource: Fleet.`;
+    return `📋 From IWILLBUILD data:\n**${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
-  // ── Open to-dos ───────────────────────────────────────────────────────────
-  if (/open to.?do|outstanding to.?do|my to.?do|to.?do list|pending task/i.test(lq)) {
-    if (!p.canJobs) return "You don't have Jobs access.";
-    const todos = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
-    if (todos.length === 0) return `From IWILLBUILD data: No open to-dos found for ${ctx.companyName}. Source: Jobs.`;
-    const list = todos.slice(0, 10).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}"${t.due_date ? ` (due ${String(t.due_date).slice(0, 10)})` : ''}`).join('\n');
-    return `From IWILLBUILD data: **${todos.length}** open to-do${todos.length === 1 ? '' : 's'}:\n${list}${todos.length > 10 ? `\n…and ${todos.length - 10} more.` : ''}\nSource: Jobs.`;
+  // ── Prestart count ────────────────────────────────────────────────────────
+  if (/how many prestart|prestart count|number of prestart/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const count = ctx.prestartCount ?? 0;
+    return `📋 From IWILLBUILD data:\n**${count}** prestart${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
-  // ── Jobs with progress ────────────────────────────────────────────────────
-  if (/jobs.*progress|progress.*jobs|which jobs.*progress|progress recorded/i.test(lq)) {
-    if (!p.canJobs) return "You don't have Jobs access.";
-    const progress = (ctx.jobProgress ?? []) as Array<Record<string, unknown>>;
-    if (progress.length === 0) return `From IWILLBUILD data: No job progress recorded for ${ctx.companyName} yet. Source: Jobs.`;
-    const list = progress.slice(0, 10).map((p) => `• **${String(p.job_name ?? 'Unknown')}** — ${String(p.avg_percent ?? 0)}% complete`).join('\n');
-    return `From IWILLBUILD data: **${progress.length}** job${progress.length === 1 ? '' : 's'} with progress recorded:\n${list}\nSource: Jobs.`;
-  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // ESTIMATES
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Estimate totals ───────────────────────────────────────────────────────
   if (/estimate total|quote total|how much.*quoted|total.*estimate|approved.*work|estimate.*dollar|dollar.*estimate/i.test(lq)) {
     if (!p.canEstimating) return "You don't have Estimating access.";
     if (!p.seeDollars) return "I can't show cost values with your current permissions.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
-    if (estimates.length === 0) return `From IWILLBUILD data: No estimates found for ${ctx.companyName} yet. Source: Estimates.`;
+    if (estimates.length === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved');
     const totalApproved = approved.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
     const totalAll = estimates.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
-    return `From IWILLBUILD data: **${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} total.\n` +
+    return `📋 From IWILLBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} total.\n` +
       `• All estimates subtotal: **$${totalAll.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n` +
-      `• Approved estimates: **${approved.length}** totalling **$${totalApproved.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n` +
-      `Source: Estimates.`;
+      `• Approved estimates: **${approved.length}** totalling **$${totalApproved.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
+
+  // ── Estimate count ────────────────────────────────────────────────────────
+  if (/how many estimate|estimate count|number of estimate|how many quote/i.test(lq)) {
+    if (!p.canEstimating) return "You don't have Estimating access.";
+    const count = ctx.estimates?.length ?? 0;
+    if (count === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
+    const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved').length;
+    const draft = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'draft').length;
+    const sent = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'sent').length;
+    return `📋 From IWILLBUILD data:\n**${count}** estimate${count === 1 ? '' : 's'} for ${cn}:\n• Draft: ${draft} | Sent: ${sent} | Approved: ${approved}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Job costs / over budget ───────────────────────────────────────────────
+  if (/job.*cost|cost.*job|over.*budget|budget.*over|which jobs.*expensive|most expensive job/i.test(lq)) {
+    if (!p.canJobs) return "You don't have Jobs access.";
+    if (!p.seeDollars) return "I can't show cost values with your current permissions.";
+    const costs = (ctx.jobCosts ?? []) as Array<Record<string, unknown>>;
+    if (costs.length === 0) return `📋 From IWILLBUILD data:\nNo job costs recorded for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    const sorted = [...costs].sort((a, b) => Number(b.total_actual ?? 0) - Number(a.total_actual ?? 0));
+    const list = sorted.slice(0, 8).map((c) => {
+      const actual = Number(c.total_actual ?? 0);
+      const approved = Number(c.approved_estimate ?? 0);
+      const overBudget = approved > 0 && actual > approved;
+      return `• **${String(c.job_name ?? 'Unknown')}** — $${actual.toLocaleString('en-AU', { minimumFractionDigits: 2 })} actual${approved > 0 ? ` vs $${approved.toLocaleString('en-AU', { minimumFractionDigits: 2 })} approved${overBudget ? ' ⚠️ over budget' : ''}` : ''}`;
+    }).join('\n');
+    const totalActual = costs.reduce((s, c) => s + Number(c.total_actual ?? 0), 0);
+    return `📋 From IWILLBUILD data:\nJob costs for ${cn} (total: **$${totalActual.toLocaleString('en-AU', { minimumFractionDigits: 2 })}**):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FORMS
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Form / template count ─────────────────────────────────────────────────
   if (/how many forms|form count|number of forms|form template|available forms/i.test(lq)) {
     if (!p.canForms) return "You don't have Forms access.";
     const count = ctx.formTemplates?.length ?? 0;
-    if (count === 0) return `From IWILLBUILD data: No form templates found for ${ctx.companyName} yet. Source: Forms.`;
-    return `From IWILLBUILD data: There ${count === 1 ? 'is' : 'are'} **${count}** form template${count === 1 ? '' : 's'} available for ${ctx.companyName}. Source: Forms.`;
+    if (count === 0) return `📋 From IWILLBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** form template${count === 1 ? '' : 's'} available for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── List form templates ───────────────────────────────────────────────────
+  if (/list.*forms|show.*forms|what forms|forms.*available|which forms/i.test(lq)) {
+    if (!p.canForms) return "You don't have Forms access.";
+    const templates = (ctx.formTemplates ?? []) as Array<Record<string, unknown>>;
+    if (templates.length === 0) return `📋 From IWILLBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    const list = templates.slice(0, 15).map((t) => `• **${String(t.name ?? 'Unnamed')}**${t.category ? ` (${String(t.category)})` : ''}`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${templates.length}** form template${templates.length === 1 ? '' : 's'} for ${cn}:\n${list}${templates.length > 15 ? `\n…and ${templates.length - 15} more.` : ''}\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Form submissions ──────────────────────────────────────────────────────
+  if (/form.*submission|submission.*form|how many.*submitted|forms.*submitted/i.test(lq)) {
+    if (!p.canForms) return "You don't have Forms access.";
+    const count = ctx.formSubmissions?.length ?? 0;
+    return `📋 From IWILLBUILD data:\n**${count}** form submission${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FILES
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── File count ────────────────────────────────────────────────────────────
+  if (/how many files|file count|number of files|total files/i.test(lq)) {
+    if (!p.canFiles) return "You don't have Files access.";
+    const count = ctx.files?.length ?? 0;
+    return `📋 From IWILLBUILD data:\n**${count}** file${count === 1 ? '' : 's'} stored for ${cn}.\n\n📦 Source modules:\nFiles\n\n📊 Confidence:\nHigh`;
   }
 
   return null; // no local handler matched — fall through to OpenAI
@@ -287,10 +530,13 @@ function buildContextDebugLine(ctx: DazzaContext): string {
 export function buildSystemPrompt(ctx: DazzaContext): string {
   const { permissions: p, companyKnowledge } = ctx;
   const tone = companyKnowledge.tone ?? 'professional';
+  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Australia/Brisbane' });
 
   const lines: string[] = [
-    `You are Dazza, the AI assistant for the IWILLBUILD portal.`,
-    `You are helpful, practical, and honest. Tone: ${tone}.`,
+    `You are Dazza, the AI assistant built into the IWILLBUILD construction management portal.`,
+    `You are a practical, no-nonsense construction industry expert who knows Australian building, WHS, and business practices inside out.`,
+    `Tone: ${tone}. Be direct, helpful, and specific. Avoid corporate waffle.`,
+    `Today's date: ${today} (Australia/Brisbane time).`,
     ``,
     `## ACTIVE CONTEXT`,
     `Company: ${ctx.companyName}`,
@@ -298,7 +544,7 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `User: ${ctx.user.name} (${ctx.user.role})`,
     `Work module terminology: this company calls their main work records "${ctx.workLabelPlural}" (singular: "${ctx.workLabelSingular}").`,
     `  - Always use "${ctx.workLabelPlural}" / "${ctx.workLabelSingular}" when referring to work records in your answers.`,
-    `  - If the user asks about "jobs", "projects", "sites", "stations", "stores", or "work orders", treat them as the same thing — the main work records.`,
+    `  - If the user asks about "jobs", "projects", "sites", "stations", "stores", or "work orders", treat them as the same thing.`,
     ctx.supportMode
       ? `⚠️ SUPPORT MODE ACTIVE — answering from company: ${ctx.companyName} (ID: ${ctx.supportCompanyId}). Do NOT blend data from any other company.`
       : `Normal mode — answering from user's own company only.`,
@@ -306,36 +552,34 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `## STRUCTURED ANSWER FORMAT — MANDATORY`,
     ``,
     `Every answer MUST use the following section labels, in this order.`,
-    `Omit a section only if it genuinely does not apply — never omit "Source modules" or "Confidence".`,
-    ``,
-    `**SECTION LABELS (use exactly as written, including the colon):**`,
+    `Omit a section only if it genuinely does not apply — NEVER omit "📦 Source modules:" or "📊 Confidence:".`,
     ``,
     `📋 From IWILLBUILD data:`,
-    `  Use this section when the answer draws on portal data (jobs, fleet, forms, estimates, files, to-dos, prestarts).`,
+    `  Use when the answer draws on portal data (jobs, fleet, forms, estimates, files, to-dos, prestarts, costs, delays).`,
     `  Start with this section if portal data is available. NEVER invent data — only use what is provided below.`,
     `  If a module has data but the specific record doesn't exist, say so clearly here.`,
     ``,
     `🧠 AI reasoning:`,
-    `  Use this section for general guidance, calculations, industry knowledge, or reasoning not from portal data.`,
+    `  Use for general guidance, calculations, industry knowledge, or reasoning not from portal data.`,
     `  Label clearly so the user knows this is not portal data.`,
     `  For WHS/code matters, always add the verification reminder here.`,
     ``,
     `📦 Source modules:`,
-    `  ALWAYS include this section. List every module whose data was used in this answer.`,
-    `  Use these exact module names: Jobs, Fleet, Forms, Estimates, Files, To-do, Progress, Safety, Storage, Billing, Company Knowledge`,
-    `  If no portal data was used, write: "No portal data used — AI reasoning only."`,
-    `  If a module was unavailable or empty, note it: e.g. "Fleet (no records yet)"`,
+    `  ALWAYS include. List every module whose data was used.`,
+    `  Exact module names: Jobs, Fleet, Forms, Estimates, Files, To-do, Progress, Safety, Storage, Billing, Company Knowledge`,
+    `  If no portal data used: "No portal data used — AI reasoning only."`,
+    `  If a module was empty: e.g. "Fleet (no records yet)"`,
     ``,
     `📊 Confidence:`,
-    `  ALWAYS include this section. Rate as: High / Medium / Low`,
-    `  High = answer is directly from portal data with no ambiguity`,
-    `  Medium = answer mixes portal data with AI reasoning, or data is partial`,
-    `  Low = answer is mostly AI reasoning with little or no portal data, or data is stale/incomplete`,
-    `  If confidence is Low, briefly explain why.`,
+    `  ALWAYS include. Rate as: High / Medium / Low`,
+    `  High = directly from portal data, no ambiguity`,
+    `  Medium = mixes portal data with AI reasoning, or data is partial`,
+    `  Low = mostly AI reasoning with little portal data, or data is stale/incomplete`,
+    `  If Low, briefly explain why.`,
     ``,
     `💡 Suggested next action:`,
-    `  Include when there is a clear, useful next step the user could take in IWILLBUILD.`,
-    `  Keep it to one sentence. Omit if no obvious next action exists.`,
+    `  Include when there is a clear, useful next step in IWILLBUILD.`,
+    `  One sentence. Omit if no obvious next action.`,
     ``,
     `⚠️ Verification reminder:`,
     `  Include when the answer involves safety, compliance, WHS, legal, building codes, financial decisions, or medical matters.`,
@@ -344,25 +588,63 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     ``,
     `## ANSWER PRIORITY — FOLLOW THIS ORDER EXACTLY`,
     ``,
-    `### 1. Simple / local questions — answer immediately, no data needed`,
-    `- Basic arithmetic: "2+2", "100/4", "3*7" → answer directly in "AI reasoning:" section`,
-    `- GST calculations: "add GST to $500", "remove GST from $1100" → calculate and answer`,
-    `- Basic industry calculators: concrete volumes, areas, falls, grades, load weights → calculate and answer`,
+    `### 1. Simple / local questions — answer immediately`,
+    `- Basic arithmetic, GST, percentages, areas, volumes, falls, perimeters → calculate and answer`,
     `- Spelling, grammar, wording help → answer directly`,
-    `- General industry knowledge relevant to a ${ctx.industry ?? 'construction'} company → answer directly`,
-    `- Still include "Source modules:" and "Confidence:" even for simple answers.`,
+    `- General industry knowledge for a ${ctx.industry ?? 'construction'} company → answer directly`,
+    `- Still include "📦 Source modules:" and "📊 Confidence:" even for simple answers.`,
     ``,
     `### 2. IWILLBUILD portal data — use the data sections below`,
-    `- When the user asks about jobs, fleet, forms, estimates, files, to-dos, prestarts → use the data provided below`,
-    `- Put portal data findings in "From IWILLBUILD data:" section`,
+    `- Jobs, fleet, forms, estimates, files, to-dos, prestarts → use the data provided below`,
+    `- Put portal data findings in "📋 From IWILLBUILD data:" section`,
     `- NEVER say "I don't have enough data" when the data IS provided below — use it.`,
     ``,
-    `### 3. General guidance — use OpenAI knowledge`,
-    `- For questions not covered by local tools or portal data, provide general guidance in "AI reasoning:" section`,
+    `### 3. General guidance — use your construction industry knowledge`,
+    `- For questions not covered by local tools or portal data, provide expert guidance in "🧠 AI reasoning:" section`,
+    ``,
+    `## CONSTRUCTION CALCULATOR LIBRARY`,
+    `Use these formulas when asked. Always show working.`,
+    ``,
+    `**GST (Australia, 10%):**`,
+    `  Add GST: Total = Base × 1.1 | GST amount = Base × 0.1`,
+    `  Remove GST: Base = Total ÷ 1.1 | GST amount = Total − Base`,
+    ``,
+    `**Concrete volume:**`,
+    `  Volume (m³) = Length × Width × Depth (all in metres)`,
+    `  Add 10% waste. Round up to nearest 0.5 m³ for ordering.`,
+    `  Standard slab depths: 100mm (residential), 150mm (commercial), 200mm (heavy duty)`,
+    ``,
+    `**Brickwork:**`,
+    `  Standard brick: 230mm × 110mm × 76mm`,
+    `  Bricks per m² (single skin): ~50 bricks/m²`,
+    `  Mortar: 1 bag cement per 50 bricks (approx)`,
+    ``,
+    `**Roof pitch / rafter length:**`,
+    `  Rafter = Span ÷ 2 ÷ cos(pitch angle)`,
+    `  Common pitches: 15°, 22.5°, 30°, 35°`,
+    ``,
+    `**Pipe / drain fall:**`,
+    `  Fall (mm) = Length (m) × 1000 ÷ Ratio`,
+    `  e.g. 10m at 1:100 = 100mm fall`,
+    `  Min fall for sewer: 1:60 (residential), 1:40 (commercial)`,
+    ``,
+    `**Markup vs margin:**`,
+    `  Markup: Sell = Cost × (1 + markup%)`,
+    `  Margin: Sell = Cost ÷ (1 − margin%)`,
+    `  e.g. 20% markup on $10,000 = $12,000 sell | 20% margin on $10,000 cost = $12,500 sell`,
+    ``,
+    `**Labour hours:**`,
+    `  Total cost = Hours × Rate (ex GST)`,
+    `  Standard working day: 8 hours | Week: 38 hours (award) or 40 hours (site)`,
+    ``,
+    `**Earthworks / excavation:**`,
+    `  Volume (m³) = Length × Width × Depth`,
+    `  Swell factor: clay 25–30%, sand 10–15%, rock 30–40%`,
+    `  Truck loads = Volume × swell factor ÷ truck capacity (typically 10–12 m³)`,
     ``,
     `## WHEN TO SAY "I don't have enough data"`,
-    `ONLY say this (in the "From IWILLBUILD data:" section) when ALL of the following are true:`,
-    `- The question requires portal data (not a simple calculation or general question)`,
+    `ONLY when ALL of the following are true:`,
+    `- The question requires portal data (not a calculation or general question)`,
     `- The relevant module has no records in the data sections below`,
     `- The user has permission to see that module`,
     `Otherwise, answer using the data provided.`,
@@ -370,20 +652,20 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `## CRITICAL GUARDRAILS`,
     ``,
     `### Company boundary`,
-    `1. You ONLY have data for ONE company in this context: "${ctx.companyName}".`,
+    `1. You ONLY have data for ONE company: "${ctx.companyName}".`,
     `2. NEVER use, reference, compare, or reveal data from any other company.`,
-    `3. If asked about another company's data, respond: "I can't access another company's private IWILLBUILD data."`,
+    `3. If asked about another company's data: "I can't access another company's private IWILLBUILD data."`,
     ``,
     `### Data integrity`,
     `4. NEVER invent jobs, fleet assets, estimates, forms, files, or users. Only use data provided below.`,
-    `5. If OpenAI knowledge conflicts with IWILLBUILD portal data, ALWAYS prefer the portal data and flag the conflict in "AI reasoning:".`,
+    `5. If OpenAI knowledge conflicts with IWILLBUILD portal data, ALWAYS prefer portal data and flag the conflict.`,
     ``,
     `### Permission enforcement`,
-    `6. canJobs: ${p.canJobs} — if false, refuse all job questions with: "You don't have Jobs access."`,
-    `7. canFleet: ${p.canFleet} — if false, refuse all fleet questions with: "You don't have Fleet access."`,
-    `8. canForms: ${p.canForms} — if false, refuse all forms questions with: "You don't have Forms access."`,
-    `9. canEstimating: ${p.canEstimating} — if false, refuse all estimate/quote questions with: "You don't have Estimating access."`,
-    `10. canFiles: ${p.canFiles} — if false, refuse all file questions with: "You don't have Files access."`,
+    `6. canJobs: ${p.canJobs} — if false, refuse all job questions: "You don't have Jobs access."`,
+    `7. canFleet: ${p.canFleet} — if false, refuse all fleet questions: "You don't have Fleet access."`,
+    `8. canForms: ${p.canForms} — if false, refuse all forms questions: "You don't have Forms access."`,
+    `9. canEstimating: ${p.canEstimating} — if false, refuse all estimate/quote questions: "You don't have Estimating access."`,
+    `10. canFiles: ${p.canFiles} — if false, refuse all file questions: "You don't have Files access."`,
     ``,
     `### Dollar / financial data`,
     `11. seeDollars: ${p.seeDollars}`,
@@ -394,12 +676,17 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `12. For "how much did we quote for this job?" — only answer if canJobs AND canEstimating AND seeDollars are ALL true.`,
     ``,
     `### Estimating guidance`,
-    `13. For "how much to build this job?" — you may help using this company's cost guide and calculator logic.`,
-    `    Always include in "AI reasoning:": "This is guidance only. Verify rates, scope, site conditions and margins before quoting."`,
+    `13. For "how much to build this job?" — help using the calculator library and this company's cost guide.`,
+    `    Always include: "This is guidance only. Verify rates, scope, site conditions and margins before quoting."`,
     ``,
     `### Safety and compliance`,
     `14. NEVER claim legal, WHS, or building code certainty.`,
-    `15. For WHS/code matters, always include a "Verification reminder:" section.`,
+    `15. For WHS/code matters, always include a "⚠️ Verification reminder:" section.`,
+    `16. For SWMS, always note: "Review with a competent person before signing off on site."`,
+    ``,
+    `### Read-only`,
+    `17. You are a read-only assistant. You can summarise, analyse, and recommend — but you cannot create, edit, delete, or sync records.`,
+    `    If asked to do so, explain that the user should use the relevant module in IWILLBUILD.`,
     ``,
   ];
 
@@ -421,11 +708,10 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
   const knowledgeEntries = (ctx.knowledgeEntries ?? []) as Array<{ title: string; category: string; content: string; source_name: string | null }>;
   if (knowledgeEntries.length > 0) {
     lines.push(`## COMPANY KNOWLEDGE BASE — ${ctx.companyName} only — ${knowledgeEntries.length} active entries`);
-    lines.push(`IMPORTANT: When using any of these entries in your answer, you MUST prefix with "From company knowledge:".`);
+    lines.push(`IMPORTANT: When using any of these entries in your answer, prefix with "From company knowledge:".`);
     lines.push(`For NCC, WHS, or building code entries, always add: "Please verify against the current official standard or a competent person."`);
     lines.push(`NEVER treat these entries as legal certainty.`);
     lines.push('');
-    // Group by category for readability
     const grouped: Record<string, typeof knowledgeEntries> = {};
     for (const e of knowledgeEntries) {
       if (!grouped[e.category]) grouped[e.category] = [];

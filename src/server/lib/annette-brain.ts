@@ -179,7 +179,29 @@ interface InternalDazzaAnswer extends DazzaAnswer {
   aiReasoningSection?: string;
 }
 
-// ── Brain lookup — search approved brain entries for this company ──────────────
+// ── Brain lookup — TF-IDF style scoring + category boost ─────────────────────
+
+/** Stop words to exclude from scoring */
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','but','in','on','at','to','for','of','with','by',
+  'from','is','are','was','were','be','been','being','have','has','had','do',
+  'does','did','will','would','could','should','may','might','can','this','that',
+  'these','those','it','its','we','our','you','your','they','their','what','how',
+  'when','where','who','which','why','not','no','yes','all','any','some','more',
+  'most','also','just','about','up','out','if','so','as','into','than','then',
+  'there','here','my','me','him','her','us','them','i','he','she','his','hers',
+]);
+
+/** Category keywords for boosting brain entries that match the question topic */
+const CATEGORY_KEYWORDS: Record<string, RegExp> = {
+  'Safety & WHS':  /whs|safety|hazard|risk|incident|swms|ppe|scaffold|height|confined|asbestos|silica|chemical|dangerous/i,
+  'Estimating':    /estimate|quote|cost|price|rate|margin|markup|gst|labour|material|subcontract/i,
+  'Fleet':         /fleet|vehicle|plant|prestart|service|rego|truck|excavator|asset/i,
+  'Forms':         /form|checklist|induction|inspection|sign.?off|template/i,
+  'Jobs':          /job|project|site|client|work.?order|schedule|supervisor|crew/i,
+  'Compliance':    /legal|compliance|code|regulation|permit|licence|license|ncc|bca|standard/i,
+  'General':       /.*/,
+};
 
 async function tryBrainLookup(
   question: string,
@@ -194,34 +216,66 @@ async function tryBrainLookup(
             AND approved = 1
             AND active = 1
           ORDER BY usage_count DESC, created_at DESC
-          LIMIT 50`
+          LIMIT 100`
     ) as unknown as [BrainEntry[], unknown];
 
     if (!rows?.length) return null;
 
-    // Simple keyword match — find the best matching entry
+    // Tokenise question — remove stop words, keep meaningful terms
+    const qTokens = lq
+      .split(/\W+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+
+    if (qTokens.length === 0) return null;
+
+    // Detect question category for boosting
+    const qCategory = Object.entries(CATEGORY_KEYWORDS).find(([, re]) => re.test(question))?.[0] ?? 'General';
+
     let best: BrainEntry | null = null;
     let bestScore = 0;
 
     for (const entry of rows) {
-      const titleWords = entry.title.toLowerCase().split(/\s+/);
-      const contentWords = entry.content.toLowerCase().split(/\s+/).slice(0, 30);
-      const allWords = [...titleWords, ...contentWords];
-      const score = allWords.filter((w) => w.length > 3 && lq.includes(w)).length;
+      const titleTokens = entry.title.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+      const contentTokens = entry.content.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w)).slice(0, 80);
+
+      // TF-IDF style: title matches worth 3x, content matches worth 1x
+      let score = 0;
+      for (const qt of qTokens) {
+        const inTitle   = titleTokens.filter((t) => t === qt || t.startsWith(qt) || qt.startsWith(t)).length;
+        const inContent = contentTokens.filter((t) => t === qt || t.startsWith(qt) || qt.startsWith(t)).length;
+        score += inTitle * 3 + Math.min(inContent, 3); // cap content contribution
+      }
+
+      // Category boost: +4 if entry category matches question category
+      if (entry.category === qCategory) score += 4;
+
+      // Usage boost: popular entries get a small lift
+      score += Math.min(entry.usage_count * 0.2, 2);
+
       if (score > bestScore) {
         bestScore = score;
         best = entry;
       }
     }
 
-    // Only return if we have a meaningful match (at least 2 keyword hits)
-    return bestScore >= 2 ? best : null;
+    // Require a meaningful match — at least 3 points (1 strong title hit or 3 content hits)
+    return bestScore >= 3 ? best : null;
   } catch {
     return null;
   }
 }
 
 // ── Queue a hive pending entry (non-blocking) ─────────────────────────────────
+
+/** Compute a simple Jaccard similarity between two strings (0–1) */
+function jaccardSimilarity(a: string, b: string): number {
+  const tokA = new Set(a.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w)));
+  const tokB = new Set(b.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w)));
+  if (tokA.size === 0 || tokB.size === 0) return 0;
+  let intersection = 0;
+  for (const t of tokA) { if (tokB.has(t)) intersection++; }
+  return intersection / (tokA.size + tokB.size - intersection);
+}
 
 async function queueHivePending(
   companyId: number,
@@ -233,16 +287,25 @@ async function queueHivePending(
   sourceType: string,
 ): Promise<void> {
   try {
-    // Don't queue if a very similar pending entry already exists
+    // Semantic dedup: check recent pending entries for similarity
     const [existing] = await db.execute(
-      sql`SELECT id FROM dazza_hive_pending
+      sql`SELECT id, suggested_title, question FROM dazza_hive_pending
           WHERE company_id = ${companyId}
-            AND suggested_title = ${suggestedTitle}
             AND status = 'pending'
-          LIMIT 1`
-    ) as unknown as [Array<{ id: number }>, unknown];
+          ORDER BY created_at DESC
+          LIMIT 30`
+    ) as unknown as [Array<{ id: number; suggested_title: string; question: string }>, unknown];
 
-    if (existing?.length) return; // already queued
+    if (existing?.length) {
+      for (const row of existing) {
+        // Exact title match
+        if (row.suggested_title.toLowerCase() === suggestedTitle.toLowerCase()) return;
+        // Semantic similarity > 0.6 — too similar, skip
+        const titleSim = jaccardSimilarity(row.suggested_title, suggestedTitle);
+        const questionSim = jaccardSimilarity(row.question, question);
+        if (titleSim > 0.6 || questionSim > 0.7) return;
+      }
+    }
 
     await db.execute(
       sql`INSERT INTO dazza_hive_pending
@@ -483,27 +546,39 @@ export async function processDazzaQuestion(
 
   // ── STEP 4: Call OpenAI ───────────────────────────────────────────────────
   // Import buildSystemPrompt — lazy to avoid circular dep at module load time
-  // (chat/POST.ts imports annette-brain.ts; annette-brain.ts imports chat/POST.ts)
-  // Dynamic import is safe here because this function is always called at runtime.
   const chatModule = await import('../api/dazza/chat/POST.js') as { buildSystemPrompt: (ctx: DazzaContext) => string };
   const systemPrompt = chatModule.buildSystemPrompt(ctx);
 
-  const recentMessages = messages.slice(-10);
+  // Build conversation history — last 12 turns for better multi-turn memory
+  const recentMessages = messages.slice(-12);
+
+  // ── Model selection: gpt-4o preferred, gpt-4o-mini as fallback ───────────
+  // Use gpt-4o for complex questions (safety, estimates, multi-module)
+  // Use gpt-4o-mini for simple portal lookups and short questions
+  const isComplexQuestion = (
+    /whs|safety|swms|ncc|compliance|legal|estimate|quote|cost|margin|markup|budget|profit|revenue/i.test(question) ||
+    question.length > 120 ||
+    modulesUsed.length >= 3 ||
+    (internalSource === 'portal_data' && internalAnswer !== null && internalAnswer.length > 300)
+  );
+  const preferredModel = isComplexQuestion ? 'gpt-4o' : 'gpt-4o-mini';
+
   const payload = {
-    model: 'gpt-4o-mini',
+    model: preferredModel,
     messages: [
       { role: 'system', content: systemPrompt },
       ...recentMessages,
     ],
-    max_tokens: 1400,
-    temperature: 0.25,
+    max_tokens: isComplexQuestion ? 2000 : 1200,
+    temperature: 0.2,
   };
 
   let openaiReply = '';
   let tokens = 0;
+  let modelUsed = preferredModel;
 
   try {
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    let openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -511,6 +586,20 @@ export async function processDazzaQuestion(
       },
       body: JSON.stringify(payload),
     });
+
+    // ── gpt-4o model not available → fall back to gpt-4o-mini ────────────
+    if (!openaiRes.ok && openaiRes.status === 404 && preferredModel === 'gpt-4o') {
+      console.warn('[annette-brain] gpt-4o not available, falling back to gpt-4o-mini');
+      modelUsed = 'gpt-4o-mini';
+      openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ ...payload, model: 'gpt-4o-mini', max_tokens: 1400 }),
+      });
+    }
 
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
@@ -764,6 +853,16 @@ export async function processDazzaQuestion(
     confidence, conflictDetected, dollarsIncluded,
     ctx.supportMode, ctx.supportCompanyId, tokens,
   );
+
+  // Attach model used for debug/audit (non-blocking, best-effort)
+  try {
+    void db.execute(
+      sql`UPDATE dazza_brain_interactions
+          SET answer_source = CONCAT(${source}, ' [', ${modelUsed}, ']')
+          WHERE company_id = ${companyId} AND user_id = ${userId}
+          ORDER BY created_at DESC LIMIT 1`
+    );
+  } catch { /* non-blocking */ }
 
   return answer;
 }
