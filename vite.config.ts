@@ -112,33 +112,13 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     external: [
       // Always exclude — browser-only or native packages that must never
       // be traversed by Rollup/Node in any context.
+      // The publish container has NO node_modules — do NOT add runtime
+      // dependencies here or the deployed app will crash on startup.
       'pdfjs-dist',
       'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
       'canvas',
-      // Heavy server-only packages — externalized to keep server.bundle.mjs
-      // under the publish upload size limit. The publish container has
-      // node_modules available at runtime so require() works fine.
-      'stripe',
-      'drizzle-orm',
-      'mysql2',
-      'better-auth',
-      'pdf-lib',
-      'docx',
-      'jimp',
-      '@jimp',
-      'qrcode',
-      'bcryptjs',
-      'otplib',
-      'nodemailer',
-      '@aws-sdk',
-      'openai',
-      'twilio',
-      '@opentelemetry',
-      'kysely',
-      'date-fns',
-      'date-fns-jalali',
     ],
   },
 
