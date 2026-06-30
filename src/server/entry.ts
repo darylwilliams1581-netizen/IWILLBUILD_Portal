@@ -146,6 +146,12 @@ import jobs_id_purchase_orders_poId_delete_136 from "./api/jobs/[id]/purchase-or
 import jobs_id_purchase_orders_poId_get_137 from "./api/jobs/[id]/purchase-orders/[poId]/GET";
 import jobs_id_purchase_orders_poId_put_138 from "./api/jobs/[id]/purchase-orders/[poId]/PUT";
 import jobs_id_purchase_orders_poId_pdf_get_139 from "./api/jobs/[id]/purchase-orders/[poId]/pdf/GET";
+import jobs_id_ledger_get from "./api/jobs/[id]/ledger/GET";
+import jobs_id_ledger_post from "./api/jobs/[id]/ledger/POST";
+import jobs_id_ledger_sync_post from "./api/jobs/[id]/ledger/sync/POST";
+import jobs_id_ledger_export_get from "./api/jobs/[id]/ledger/export/GET";
+import jobs_id_ledger_entryId_put from "./api/jobs/[id]/ledger/[entryId]/PUT";
+import jobs_id_ledger_entryId_delete from "./api/jobs/[id]/ledger/[entryId]/DELETE";
 import jobs_id_swms_get_140 from "./api/jobs/[id]/swms/GET";
 import jobs_id_swms_post_141 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_142 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
@@ -664,6 +670,8 @@ async function runStartupMigrations() {
     // ── Purchase Orders ────────────────────────────────────────────────────────
     { name: 'job_purchase_orders', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_orders (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, contractor_id INT NULL, assigned_to_type VARCHAR(20) NOT NULL DEFAULT 'internal', assigned_to_name VARCHAR(255) NULL, trade_type VARCHAR(100) NULL, po_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL DEFAULT '', instructions TEXT NULL, start_date DATE NULL, finish_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, cancelled_note TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
     { name: 'job_purchase_order_lines', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_order_lines (id INT AUTO_INCREMENT PRIMARY KEY, purchase_order_id INT NOT NULL, progress_line_id INT NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_po (purchase_order_id))" },
+    // ── Job Cost Ledger — single source of truth for all job financial events ──
+    { name: 'job_cost_ledger', ddl: "CREATE TABLE IF NOT EXISTS job_cost_ledger (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, job_number VARCHAR(50) NULL, job_title VARCHAR(255) NULL, entry_date DATE NOT NULL, event_type VARCHAR(30) NOT NULL DEFAULT 'MATERIAL', source_module VARCHAR(30) NOT NULL DEFAULT 'manual', source_id VARCHAR(100) NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, gst_inclusive TINYINT(1) NOT NULL DEFAULT 0, account_code VARCHAR(30) NULL, tax_code VARCHAR(20) NULL DEFAULT 'GST', contact_name VARCHAR(255) NULL, contact_type VARCHAR(30) NULL, reference VARCHAR(100) NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', approved_by VARCHAR(255) NULL, approved_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_by_name VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status), INDEX idx_event_type (company_id, event_type), INDEX idx_date (company_id, entry_date))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -941,6 +949,13 @@ app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get_
 app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put_138);
 app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get_139);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_140);
+// Job Cost Ledger — specific routes BEFORE wildcard :entryId
+app.get("/api/jobs/:id/ledger/export", jobs_id_ledger_export_get);
+app.post("/api/jobs/:id/ledger/sync", jobs_id_ledger_sync_post);
+app.get("/api/jobs/:id/ledger", jobs_id_ledger_get);
+app.post("/api/jobs/:id/ledger", jobs_id_ledger_post);
+app.put("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_put);
+app.delete("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_delete);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_141);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_142);
 app.get("/api/jobs/:id/todos", jobs_id_todos_get_143);
