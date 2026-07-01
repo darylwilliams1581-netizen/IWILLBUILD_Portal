@@ -441,6 +441,8 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   // Prevent cross-origin resource embedding
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Complete the COOP/COEP pair — required for SharedArrayBuffer and high-res timers
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
   // CSP — same-origin + trusted third parties only
   // connect-src includes R2 public URL if configured
   const r2PublicUrl = process.env.R2_PUBLIC_URL ? process.env.R2_PUBLIC_URL.replace(/\/$/, '') : null;
@@ -451,11 +453,16 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
     'https://api.xero.com',
     ...(r2PublicUrl ? [r2PublicUrl] : []),
   ].join(' ');
+  // In production: drop unsafe-eval (only needed by Vite HMR in dev).
+  // In dev: keep it so the Vite client and React refresh work correctly.
+  const scriptSrc = import.meta.env.PROD
+    ? `script-src 'self' 'unsafe-inline' https://js.stripe.com`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`;
   res.setHeader(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`,
+      scriptSrc,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
@@ -1269,9 +1276,47 @@ app.get("/robots.txt", (req, res) => {
 		return;
 	}
 	const base = baseUrl(req);
+	// Allow only the public marketing pages; block all authenticated portal routes.
 	const body = [
 		"User-agent: *",
-		"Allow: /",
+		"# Public pages",
+		"Allow: /$",
+		"Allow: /login$",
+		"Allow: /signup$",
+		"Allow: /privacy$",
+		"Allow: /terms$",
+		"Allow: /forgot-password$",
+		"",
+		"# Block authenticated portal routes",
+		"Disallow: /dashboard",
+		"Disallow: /jobs",
+		"Disallow: /projects",
+		"Disallow: /scheduler",
+		"Disallow: /fleet",
+		"Disallow: /forms",
+		"Disallow: /files",
+		"Disallow: /estimating",
+		"Disallow: /safety",
+		"Disallow: /customers",
+		"Disallow: /stakeholders",
+		"Disallow: /invoices",
+		"Disallow: /downloads",
+		"Disallow: /dazza-ai",
+		"Disallow: /annette",
+		"Disallow: /team",
+		"Disallow: /settings",
+		"Disallow: /owner-console",
+		"Disallow: /billing",
+		"Disallow: /subscription",
+		"Disallow: /tools",
+		"Disallow: /check-email",
+		"Disallow: /verify-email",
+		"Disallow: /verify-required",
+		"Disallow: /reset-password",
+		"Disallow: /api/",
+		"Disallow: /share/",
+		"Disallow: /external/",
+		"Disallow: /documents/",
 		"",
 		`Sitemap: ${base}/sitemap.xml`,
 		"",

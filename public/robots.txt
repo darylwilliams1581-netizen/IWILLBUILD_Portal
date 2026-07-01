@@ -1,21 +1,25 @@
 User-agent: *
-# Allow the public marketing site
+# Public pages — allow crawling
 Allow: /$
-Allow: /privacy
-Allow: /terms
+Allow: /login$
+Allow: /signup$
+Allow: /privacy$
+Allow: /terms$
+Allow: /forgot-password$
 
 # Block all authenticated portal routes and API
 Disallow: /api/
 Disallow: /dashboard
 Disallow: /jobs
+Disallow: /projects
 Disallow: /scheduler
 Disallow: /fleet
 Disallow: /forms
 Disallow: /files
 Disallow: /estimating
-Disallow: /estimates/
 Disallow: /safety
 Disallow: /customers
+Disallow: /stakeholders
 Disallow: /invoices
 Disallow: /downloads
 Disallow: /dazza-ai
@@ -24,11 +28,14 @@ Disallow: /team
 Disallow: /settings
 Disallow: /owner-console
 Disallow: /billing
+Disallow: /subscription
+Disallow: /tools
 Disallow: /documents/
 Disallow: /share/
 Disallow: /external/
 Disallow: /check-email
 Disallow: /verify-email
 Disallow: /verify-required
+Disallow: /reset-password
 
 Sitemap: https://iwillbuild.com/sitemap.xml

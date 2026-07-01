@@ -11,7 +11,7 @@
 
 export const SITE = 'https://iwillbuild.com';
 export const SITE_NAME = 'IWILLBUILD';
-export const OG_IMAGE = `${SITE}/og-image.png`;
+export const OG_IMAGE = `${SITE}/og-image.svg`;
 
 // ── Meta builder ──────────────────────────────────────────────────────────────
 
