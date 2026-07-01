@@ -13,6 +13,7 @@ import { toWebRequest, sendWebResponse } from '@/lib/auth/express-adapter';
 import { tryClearStaleSession } from '@/lib/auth/session-cookies';
 import { recordLoginEvent } from '@/server/activity-tracker';
 import { logActivity, getIp, getUserAgent } from '@/server/lib/activity-log';
+import { checkLoginRate } from '@/server/lib/signup-rate-limiter';
 
 export async function authHandler(req: Request, res: Response) {
   // Stale-session recovery escape hatch (`?clearCookies=1`). A stale
@@ -32,6 +33,24 @@ export async function authHandler(req: Request, res: Response) {
   const isSignOut =
     req.method === 'POST' &&
     (req.path.includes('sign-out') || req.path.includes('signout'));
+
+  const ip = getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } });
+  const ua = getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> });
+
+  // Rate-limit login attempts before hitting BetterAuth
+  if (isSignIn && !checkLoginRate(ip)) {
+    const emailAttempted = (req.body as Record<string, unknown>)?.email as string | undefined;
+    void logActivity({
+      eventType: 'rate_limited_login',
+      success: false,
+      email: emailAttempted ?? null,
+      ipAddress: ip,
+      userAgent: ua,
+      reason: 'Too many login attempts from this IP',
+    });
+    res.status(429).json({ error: 'Too many login attempts. Please wait a few minutes before trying again.' });
+    return;
+  }
 
   // Log the auth action (safe — no passwords or tokens)
   console.info(JSON.stringify({
@@ -71,8 +90,8 @@ export async function authHandler(req: Request, res: Response) {
             success: true,
             userId,
             email: email ?? null,
-            ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
-            userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+            ipAddress: ip,
+            userAgent: ua,
           });
         }
       } catch {
@@ -80,19 +99,28 @@ export async function authHandler(req: Request, res: Response) {
       }
     }
 
-    // If sign-in failed (4xx), log the failed attempt
+    // If sign-in failed (4xx), classify and log the failed attempt
     if (isSignIn && webResponse.status >= 400 && webResponse.status < 500) {
       try {
         const emailAttempted = (req.body as Record<string, unknown>)?.email as string | undefined;
         const clone = webResponse.clone();
         const body = await clone.json().catch(() => null) as Record<string, unknown> | null;
-        const reason = (body?.message as string) || (body?.error as string) || `HTTP ${webResponse.status}`;
+        const reason = ((body?.message as string) || (body?.error as string) || `HTTP ${webResponse.status}`).toLowerCase();
+
+        // Classify the failure type based on BetterAuth error messages
+        let eventType = 'login_failed';
+        if (reason.includes('not verified') || reason.includes('email not verified') || reason.includes('verify your email')) {
+          eventType = 'login_blocked_unverified';
+        } else if (reason.includes('inactive') || reason.includes('deactivated') || reason.includes('disabled') || reason.includes('banned')) {
+          eventType = 'login_blocked_inactive';
+        }
+
         void logActivity({
-          eventType: 'login_failed',
+          eventType,
           success: false,
           email: emailAttempted ?? null,
-          ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
-          userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+          ipAddress: ip,
+          userAgent: ua,
           reason: reason.slice(0, 500),
         });
       } catch {
@@ -114,8 +142,8 @@ export async function authHandler(req: Request, res: Response) {
           success: true,
           userId: session?.user?.id ?? null,
           email: session?.user?.email ?? null,
-          ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
-          userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+          ipAddress: ip,
+          userAgent: ua,
         });
       } catch {
         // Non-critical

@@ -5,8 +5,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Loader2, RefreshCw, Activity, LogIn, LogOut, ShieldCheck, ShieldX,
-  KeyRound, Mail, MailCheck, UserCheck, UserX, UserCog, ChevronLeft,
+  Loader2, RefreshCw, Activity, LogIn, LogOut, ShieldX,
+  KeyRound, Mail, MailCheck, ChevronLeft,
   ChevronRight, Search, Filter, AlertTriangle, CheckCircle2, XCircle,
   Eye, Globe,
 } from 'lucide-react';
@@ -61,15 +61,12 @@ function eventLabel(type: string): string {
     login_failed:               'Login failed',
     login_blocked_unverified:   'Blocked — unverified',
     login_blocked_inactive:     'Blocked — inactive',
+    rate_limited_login:         'Rate limited',
     logout:                     'Logout',
     password_reset_requested:   'Password reset requested',
     password_changed:           'Password changed',
     email_verification_sent:    'Verification email sent',
     email_verified:             'Email verified',
-    manual_verified:            'Manually verified',
-    account_deactivated:        'Account deactivated',
-    account_reactivated:        'Account reactivated',
-    role_changed:               'Role changed',
     pin_login_success:          'PIN login success',
     pin_login_failed:           'PIN login failed',
   };
@@ -82,21 +79,18 @@ function EventIcon({ type, success }: { type: string; success: boolean }) {
   if (!success) return <XCircle size={sz} className={`${cls} text-red-500`} />;
   switch (type) {
     case 'login_success':
-    case 'pin_login_success':    return <LogIn size={sz} className={`${cls} text-emerald-600`} />;
+    case 'pin_login_success':      return <LogIn size={sz} className={`${cls} text-emerald-600`} />;
     case 'login_failed':
-    case 'pin_login_failed':     return <ShieldX size={sz} className={`${cls} text-red-500`} />;
+    case 'pin_login_failed':       return <ShieldX size={sz} className={`${cls} text-red-500`} />;
     case 'login_blocked_unverified':
     case 'login_blocked_inactive': return <AlertTriangle size={sz} className={`${cls} text-amber-500`} />;
-    case 'logout':               return <LogOut size={sz} className={`${cls} text-slate-400`} />;
+    case 'rate_limited_login':     return <AlertTriangle size={sz} className={`${cls} text-orange-500`} />;
+    case 'logout':                 return <LogOut size={sz} className={`${cls} text-slate-400`} />;
     case 'password_reset_requested': return <KeyRound size={sz} className={`${cls} text-amber-500`} />;
-    case 'password_changed':     return <KeyRound size={sz} className={`${cls} text-blue-600`} />;
+    case 'password_changed':       return <KeyRound size={sz} className={`${cls} text-blue-600`} />;
     case 'email_verification_sent': return <Mail size={sz} className={`${cls} text-sky-500`} />;
-    case 'email_verified':       return <MailCheck size={sz} className={`${cls} text-emerald-600`} />;
-    case 'manual_verified':      return <UserCheck size={sz} className={`${cls} text-emerald-700`} />;
-    case 'account_deactivated':  return <UserX size={sz} className={`${cls} text-red-500`} />;
-    case 'account_reactivated':  return <UserCheck size={sz} className={`${cls} text-green-600`} />;
-    case 'role_changed':         return <UserCog size={sz} className={`${cls} text-blue-600`} />;
-    default:                     return <Activity size={sz} className={`${cls} text-slate-400`} />;
+    case 'email_verified':         return <MailCheck size={sz} className={`${cls} text-emerald-600`} />;
+    default:                       return <Activity size={sz} className={`${cls} text-slate-400`} />;
   }
 }
 
@@ -104,21 +98,18 @@ function eventBadgeClass(type: string, success: boolean): string {
   if (!success) return 'bg-red-50 text-red-700 border-red-200';
   switch (type) {
     case 'login_success':
-    case 'pin_login_success':    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'pin_login_success':      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     case 'login_failed':
-    case 'pin_login_failed':     return 'bg-red-50 text-red-700 border-red-200';
+    case 'pin_login_failed':       return 'bg-red-50 text-red-700 border-red-200';
     case 'login_blocked_unverified':
     case 'login_blocked_inactive': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'logout':               return 'bg-slate-50 text-slate-500 border-slate-200';
+    case 'rate_limited_login':     return 'bg-orange-50 text-orange-700 border-orange-200';
+    case 'logout':                 return 'bg-slate-50 text-slate-500 border-slate-200';
     case 'password_reset_requested': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'password_changed':     return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'password_changed':       return 'bg-blue-50 text-blue-700 border-blue-200';
     case 'email_verification_sent': return 'bg-sky-50 text-sky-700 border-sky-200';
-    case 'email_verified':       return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'manual_verified':      return 'bg-emerald-50 text-emerald-800 border-emerald-300';
-    case 'account_deactivated':  return 'bg-red-50 text-red-700 border-red-200';
-    case 'account_reactivated':  return 'bg-green-50 text-green-700 border-green-200';
-    case 'role_changed':         return 'bg-blue-50 text-blue-700 border-blue-200';
-    default:                     return 'bg-slate-50 text-slate-600 border-slate-200';
+    case 'email_verified':         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    default:                       return 'bg-slate-50 text-slate-600 border-slate-200';
   }
 }
 
@@ -137,21 +128,21 @@ function parseUserAgent(ua: string | null): string {
 
 // ── Filter options ────────────────────────────────────────────────────────────
 
+// Activity Log only shows auth/account events — developer actions go in Audit Log
 const EVENT_TYPE_OPTIONS = [
   { value: '', label: 'All events' },
-  { value: 'login_success', label: 'Login success' },
-  { value: 'login_failed', label: 'Login failed' },
-  { value: 'login_blocked_unverified', label: 'Blocked — unverified' },
-  { value: 'login_blocked_inactive', label: 'Blocked — inactive' },
-  { value: 'logout', label: 'Logout' },
-  { value: 'password_reset_requested', label: 'Password reset requested' },
-  { value: 'password_changed', label: 'Password changed' },
-  { value: 'email_verification_sent', label: 'Verification email sent' },
-  { value: 'email_verified', label: 'Email verified' },
-  { value: 'manual_verified', label: 'Manually verified' },
-  { value: 'account_deactivated', label: 'Account deactivated' },
-  { value: 'account_reactivated', label: 'Account reactivated' },
-  { value: 'role_changed', label: 'Role changed' },
+  { value: 'login_success',              label: 'Login success' },
+  { value: 'login_failed',               label: 'Login failed' },
+  { value: 'login_blocked_unverified',   label: 'Blocked — unverified' },
+  { value: 'login_blocked_inactive',     label: 'Blocked — inactive' },
+  { value: 'rate_limited_login',         label: 'Rate limited' },
+  { value: 'logout',                     label: 'Logout' },
+  { value: 'password_reset_requested',   label: 'Password reset requested' },
+  { value: 'password_changed',           label: 'Password changed' },
+  { value: 'email_verification_sent',    label: 'Verification email sent' },
+  { value: 'email_verified',             label: 'Email verified' },
+  { value: 'pin_login_success',          label: 'PIN login success' },
+  { value: 'pin_login_failed',           label: 'PIN login failed' },
 ];
 
 const SUCCESS_OPTIONS = [
@@ -232,10 +223,10 @@ export default function ActivityLogTab() {
             <div>
               <h2 className="font-bold text-slate-800 flex items-center gap-2">
                 <Activity size={16} className="text-primary" />
-                Login &amp; Account Activity Log
+                Activity Log
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {total.toLocaleString()} events · cross-company · developer only
+                {total.toLocaleString()} events · login, auth &amp; account events · developer only
               </p>
             </div>
             <button
@@ -387,11 +378,6 @@ export default function ActivityLogTab() {
                               : <XCircle size={11} className="text-red-400 shrink-0" />
                             }
                           </div>
-                          {e.performed_by_user_id && e.performed_by_user_id !== e.user_id && (
-                            <p className="text-[10px] text-slate-400 mt-0.5 ml-6">
-                              by dev: {e.performed_by_user_id.slice(0, 8)}…
-                            </p>
-                          )}
                         </td>
 
                         {/* Email */}

@@ -1,7 +1,12 @@
 /**
  * GET /api/developer/audit-log
  * Platform developer only — returns the developer action audit log.
- * Query params: limit (default 100), offset (default 0), targetUserId, actionType
+ *
+ * Query params:
+ *   limit        (default 100, max 500)
+ *   offset       (default 0)
+ *   targetUserId filter by target_user_id
+ *   actionType   filter by action_type
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
@@ -36,21 +41,32 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'Platform developer access required.' });
     }
 
-    const limit = Math.min(Number(req.query.limit ?? 100), 500);
+    const limit  = Math.min(Number(req.query.limit  ?? 100), 500);
     const offset = Number(req.query.offset ?? 0);
-    const targetUserId = req.query.targetUserId as string | undefined;
-    const actionType = req.query.actionType as string | undefined;
+    const targetUserId = (req.query.targetUserId as string | undefined)?.trim() || null;
+    const actionType   = (req.query.actionType   as string | undefined)?.trim() || null;
 
-    let whereClause = 'WHERE 1=1';
-    const params: unknown[] = [];
-    if (targetUserId) { whereClause += ' AND target_user_id = ?'; params.push(targetUserId); }
-    if (actionType) { whereClause += ' AND action_type = ?'; params.push(actionType); }
+    // Build query using Drizzle sql template tag for safe parameterisation
+    let countQuery = sql`SELECT COUNT(*) as total FROM developer_audit_log WHERE 1=1`;
+    let dataQuery  = sql`SELECT * FROM developer_audit_log WHERE 1=1`;
 
-    const [rows] = await db.execute(
-      sql.raw(`SELECT * FROM developer_audit_log ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`)
-    ) as unknown as [Array<Record<string, unknown>>, unknown];
+    if (targetUserId) {
+      countQuery = sql`${countQuery} AND target_user_id = ${targetUserId}`;
+      dataQuery  = sql`${dataQuery}  AND target_user_id = ${targetUserId}`;
+    }
+    if (actionType) {
+      countQuery = sql`${countQuery} AND action_type = ${actionType}`;
+      dataQuery  = sql`${dataQuery}  AND action_type = ${actionType}`;
+    }
 
-    return res.json({ events: rows ?? [] });
+    dataQuery = sql`${dataQuery} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+
+    const [countRows] = await db.execute(countQuery) as unknown as [Array<{ total: number }>, unknown];
+    const [rows]      = await db.execute(dataQuery)  as unknown as [Array<Record<string, unknown>>, unknown];
+
+    const total = Number(countRows?.[0]?.total ?? 0);
+
+    return res.json({ events: rows ?? [], total, limit, offset });
   } catch (err) {
     console.error('developer/audit-log error:', err);
     return res.status(500).json({ error: 'Failed to fetch audit log.' });
