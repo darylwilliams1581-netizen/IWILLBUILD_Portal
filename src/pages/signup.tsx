@@ -150,6 +150,9 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Incomplete signup state — shown when server returns error: 'incomplete_signup'
+  const [incompleteSignup, setIncompleteSignup] = useState<{ userId: string; email: string } | null>(null);
+
   // Anti-spam: record when the page was first rendered
   const formLoadTime = useRef<number>(Date.now());
 
@@ -204,9 +207,15 @@ export default function SignupPage() {
         credentials: 'include',
       });
 
-      const data = await res.json() as { ok?: boolean; error?: string };
+      const data = await res.json() as { ok?: boolean; error?: string; userId?: string; message?: string };
 
       if (!res.ok) {
+        // Incomplete signup — auth user exists but no profile/company
+        if (data.error === 'incomplete_signup' && data.userId) {
+          setIncompleteSignup({ userId: data.userId, email: email.trim().toLowerCase() });
+          setLoading(false);
+          return;
+        }
         setError(data.error || 'Signup failed. Please try again.');
         setLoading(false);
         return;
@@ -229,6 +238,73 @@ export default function SignupPage() {
   }
 
   const inputCls = 'w-full bg-white/5 border border-white/10 rounded-md pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors duration-150';
+
+  // ── Incomplete signup screen ─────────────────────────────────────────────────
+  if (incompleteSignup) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
+        <Helmet>
+          <title>Complete Your Setup — IWILLBUILD Portal</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+        <BlueprintBg />
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' as const }}
+          className="relative z-10 w-full max-w-md mx-4"
+        >
+          <div className="flex justify-center mb-6">
+            <img src="/airo-assets/images/logo/horizontal" alt="IWILLBUILD Portal" className="h-8 w-auto" />
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={22} className="text-amber-400" />
+            </div>
+            <h1 className="text-xl font-black text-white text-center mb-2">Account setup incomplete</h1>
+            <p className="text-sm text-white/50 text-center mb-1">
+              An account for <span className="text-white/80 font-semibold">{incompleteSignup.email}</span> was started but setup didn't finish.
+            </p>
+            <p className="text-sm text-white/40 text-center mb-6">
+              You can continue setup, sign in to try again, or reset your password.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  // Go back to step 1 with email pre-filled — user will re-enter company details
+                  // and we'll call resume-signup instead of signup
+                  setIncompleteSignup(null);
+                  setStep(1);
+                  setError('');
+                }}
+                className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-orange-600 transition-colors"
+              >
+                Continue setup
+              </button>
+              <Link
+                to="/login"
+                className="w-full py-3 rounded-xl border border-white/10 text-white/70 font-semibold text-sm text-center hover:bg-white/5 transition-colors"
+              >
+                Sign in instead
+              </Link>
+              <Link
+                to="/forgot-password"
+                className="w-full py-3 rounded-xl border border-white/10 text-white/50 font-semibold text-sm text-center hover:bg-white/5 transition-colors"
+              >
+                Reset password
+              </Link>
+            </div>
+            <p className="text-xs text-white/25 text-center mt-5">
+              If you need help, contact{' '}
+              <a href="mailto:support@iwillbuild.com" className="text-white/40 hover:text-white/60 underline">
+                support@iwillbuild.com
+              </a>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">

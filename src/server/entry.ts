@@ -247,6 +247,10 @@ import developer_users_deactivate_post from "./api/developer/users/[id]/deactiva
 import developer_users_reactivate_post from "./api/developer/users/[id]/reactivate/POST";
 import developer_users_role_put from "./api/developer/users/[id]/role/PUT";
 import developer_users_resend_verification_post from "./api/developer/users/[id]/resend-verification/POST";
+import developer_users_delete_orphan_post from "./api/developer/users/[id]/delete-orphan/POST";
+import developer_users_assign_company_post from "./api/developer/users/[id]/assign-company/POST";
+import auth_check_signup_status_post from "./api/auth/check-signup-status/POST";
+import auth_resume_signup_post from "./api/auth/resume-signup/POST";
 import developer_audit_log_get from "./api/developer/audit-log/GET";
 import developer_activity_log_get from "./api/developer/activity-log/GET";
 import recipes_get_236 from "./api/recipes/GET";
@@ -1099,6 +1103,8 @@ app.delete("/api/auth/trusted-devices/:deviceId", auth_trusted_devices_deviceId_
 app.get("/api/auth/validate-reset-token", auth_validate_reset_token_get_13);
 app.post("/api/auth/verify-email", auth_verify_email_post_14);
 app.post("/api/auth/verify-sms-code", auth_verify_sms_code_post_15);
+app.post("/api/auth/check-signup-status", auth_check_signup_status_post);
+app.post("/api/auth/resume-signup", auth_resume_signup_post);
 app.get("/api/auth/:action", auth_action_get_16);
 app.post("/api/auth/:action", auth_action_post_17);
 app.get("/api/auth/:action/:detail", auth_action_detail_get_18);
@@ -1323,6 +1329,8 @@ app.post("/api/developer/users/:id/deactivate", developer_users_deactivate_post)
 app.post("/api/developer/users/:id/reactivate", developer_users_reactivate_post);
 app.put("/api/developer/users/:id/role", developer_users_role_put);
 app.post("/api/developer/users/:id/resend-verification", developer_users_resend_verification_post);
+app.post("/api/developer/users/:id/delete-orphan", developer_users_delete_orphan_post);
+app.post("/api/developer/users/:id/assign-company", developer_users_assign_company_post);
 app.get("/api/developer/audit-log", developer_audit_log_get);
 app.get("/api/developer/activity-log", developer_activity_log_get);
 app.get("/api/recipes", recipes_get_236);

@@ -89,6 +89,20 @@ export default async function handler(req: Request, res: Response) {
       .limit(1);
 
     if (existingUser) {
+      // Check if signup was incomplete (auth user exists but no profile)
+      const existingProfile = await db.query.profiles.findFirst({
+        where: eq(profiles.userId, existingUser.id),
+      });
+
+      if (!existingProfile) {
+        // Orphaned account — signup was interrupted. Let the user resume.
+        return res.status(409).json({
+          error: 'incomplete_signup',
+          userId: existingUser.id,
+          message: 'This account exists but setup is incomplete.',
+        });
+      }
+
       return res.status(409).json({ error: 'An account with that email already exists.' });
     }
 

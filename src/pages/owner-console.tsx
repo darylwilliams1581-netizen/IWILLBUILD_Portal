@@ -22,7 +22,10 @@ import UserActionsMenu from '@/components/owner-console/UserActionsMenu';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
 import ActivityLogTab from '@/components/owner-console/ActivityLogTab';
+import OrphanActionsMenu from '@/components/owner-console/OrphanActionsMenu';
+import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
+import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +63,8 @@ interface OcUser {
   onlineNow: boolean;
   createdAt: string;
   emailVerified?: boolean;
+  isOrphan?: boolean;
+  orphanReason?: string | null;
 }
 
 interface ActivityEvent {
@@ -446,6 +451,9 @@ export default function OwnerConsolePage() {
   // User action modal state
   const [pendingAction, setPendingAction] = useState<{ action: UserAction; user: OcUserForActions } | null>(null);
   const [actionToast, setActionToast] = useState<string | null>(null);
+
+  // Orphan action modal state
+  const [pendingOrphanAction, setPendingOrphanAction] = useState<{ action: OrphanAction; user: OrphanUser } | null>(null);
 
   // Create company modal state
   const [showCreateCompany, setShowCreateCompany] = useState(false);
@@ -917,7 +925,16 @@ export default function OwnerConsolePage() {
                           <p className="text-xs text-slate-400 mt-0.5">
                             {filterCompanyName ? (
                               <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
-                            ) : `${filteredUsers.length} of ${users.length} users`}
+                            ) : (
+                              <>
+                                {filteredUsers.length} of {users.length} users
+                                {users.filter(u => u.isOrphan).length > 0 && (
+                                  <span className="ml-2 text-amber-600 font-semibold">
+                                    · {users.filter(u => u.isOrphan).length} incomplete signup{users.filter(u => u.isOrphan).length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </>
+                            )}
                           </p>
                         </div>
                         <input
@@ -940,6 +957,7 @@ export default function OwnerConsolePage() {
                           <option value="active">Active</option>
                           <option value="invited">Invited</option>
                           <option value="inactive">Inactive</option>
+                          <option value="orphan">Incomplete signup</option>
                         </select>
                         <select
                           value={filterRole}
@@ -1002,16 +1020,20 @@ export default function OwnerConsolePage() {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredUsers.map((u) => (
-                              <tr key={u.id} className={`hover:bg-slate-50 transition-colors ${u.status === 'inactive' ? 'opacity-60' : ''}`}>
+                              <tr key={u.userId} className={`hover:bg-slate-50 transition-colors ${u.status === 'inactive' ? 'opacity-60' : ''} ${u.isOrphan ? 'bg-amber-50/40' : ''}`}>
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 ${u.status === 'inactive' ? 'bg-slate-400' : 'bg-primary'}`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 ${u.isOrphan ? 'bg-amber-400' : u.status === 'inactive' ? 'bg-slate-400' : 'bg-primary'}`}>
                                       {(u.name || u.email || '?')[0].toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap">
                                         <p className="font-semibold text-slate-800 truncate">{u.name}</p>
-                                        {u.emailVerified === false ? (
+                                        {u.isOrphan ? (
+                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-300">
+                                            Incomplete signup
+                                          </span>
+                                        ) : u.emailVerified === false ? (
                                           <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
                                             Unverified
                                           </span>
@@ -1022,15 +1044,28 @@ export default function OwnerConsolePage() {
                                         )}
                                       </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
+                                      {u.isOrphan && (
+                                        <p className="text-[10px] text-amber-600 mt-0.5">No profile · No company</p>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-5 py-3.5 text-slate-600 truncate max-w-[140px]">{u.company}</td>
-                                <td className="px-4 py-3.5">
-                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${roleBadge(u.role)}`}>{u.role}</span>
+                                <td className="px-5 py-3.5 text-slate-600 truncate max-w-[140px]">
+                                  {u.isOrphan ? <span className="text-amber-500 text-xs font-semibold">—</span> : u.company}
                                 </td>
                                 <td className="px-4 py-3.5">
-                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${statusBadge(u.status)}`}>{u.status}</span>
+                                  {u.isOrphan ? (
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-600 border-amber-200">—</span>
+                                  ) : (
+                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${roleBadge(u.role)}`}>{u.role}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  {u.isOrphan ? (
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200">Orphan</span>
+                                  ) : (
+                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${statusBadge(u.status)}`}>{u.status}</span>
+                                  )}
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastLoginAt)}</td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastActiveAt)}</td>
@@ -1039,19 +1074,31 @@ export default function OwnerConsolePage() {
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{fmtDate(u.createdAt)}</td>
                                 <td className="px-4 py-3.5 text-right">
-                                  <UserActionsMenu
-                                    user={{
-                                      id: u.id,
-                                      userId: u.userId,
-                                      name: u.name,
-                                      email: u.email,
-                                      role: u.role,
-                                      status: u.status,
-                                      emailVerified: u.emailVerified,
-                                      companyId: u.companyId,
-                                    }}
-                                    onAction={(action, target) => setPendingAction({ action, user: target })}
-                                  />
+                                  {u.isOrphan ? (
+                                    <OrphanActionsMenu
+                                      user={{
+                                        userId: u.userId,
+                                        name: u.name,
+                                        email: u.email,
+                                        emailVerified: u.emailVerified ?? false,
+                                      }}
+                                      onAction={(action, target) => setPendingOrphanAction({ action, user: target })}
+                                    />
+                                  ) : (
+                                    <UserActionsMenu
+                                      user={{
+                                        id: u.id,
+                                        userId: u.userId,
+                                        name: u.name,
+                                        email: u.email,
+                                        role: u.role,
+                                        status: u.status,
+                                        emailVerified: u.emailVerified,
+                                        companyId: u.companyId,
+                                      }}
+                                      onAction={(action, target) => setPendingAction({ action, user: target })}
+                                    />
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -1186,6 +1233,32 @@ export default function OwnerConsolePage() {
               'change-role': `Role changed to ${extra?.role ?? 'new role'}.`,
             };
             setActionToast(msgs[action]);
+            setTimeout(() => setActionToast(null), 4000);
+          }}
+        />
+      )}
+
+      {/* ── Orphan Action Modal ───────────────────────────────────────────────── */}
+      {pendingOrphanAction && (
+        <OrphanActionModal
+          action={pendingOrphanAction.action}
+          user={pendingOrphanAction.user}
+          onClose={() => setPendingOrphanAction(null)}
+          onSuccess={(action, userId) => {
+            setPendingOrphanAction(null);
+            if (action === 'delete-orphan') {
+              setUsers(prev => prev.filter(u => u.userId !== userId));
+              setActionToast('Orphaned account deleted.');
+            } else if (action === 'assign-company') {
+              // Reload data to get the new profile
+              void loadData(true);
+              setActionToast('User assigned to company. Profile created.');
+            } else if (action === 'verify-orphan') {
+              setUsers(prev => prev.map(u => u.userId === userId ? { ...u, emailVerified: true } : u));
+              setActionToast('Email verified.');
+            } else if (action === 'send-reset' || action === 'resume-setup') {
+              setActionToast('Password reset email sent.');
+            }
             setTimeout(() => setActionToast(null), 4000);
           }}
         />
