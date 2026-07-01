@@ -42,6 +42,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
     assetNumber: '',
     type: 'Vehicle',
     makeModel: '',
+    vin: '',
     rego: '',
     regoNotApplicable: false,
     serviceDate: '',
@@ -136,6 +137,17 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
                 value={form.makeModel}
                 onChange={(e) => set('makeModel', e.target.value)}
                 placeholder="e.g. Toyota HiLux SR5 2022"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold mb-1.5">VIN</label>
+              <input
+                type="text"
+                value={form.vin ?? ''}
+                onChange={(e) => set('vin', e.target.value)}
+                placeholder="e.g. 1HGBH41JXMN109186"
                 className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
               />
             </div>

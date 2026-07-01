@@ -13,6 +13,7 @@ export interface FleetAsset {
   assetNumber: string | null;
   type: string;
   makeModel: string | null;
+  vin: string | null;
   rego: string | null;
   regoNotApplicable: boolean;
   serviceDate: string | null;
@@ -82,6 +83,7 @@ export interface CreateAssetPayload {
   assetNumber?: string;
   type: string;
   makeModel?: string;
+  vin?: string;
   rego?: string;
   regoNotApplicable?: boolean;
   serviceDate?: string;

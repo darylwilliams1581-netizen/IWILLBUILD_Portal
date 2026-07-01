@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
-import { fleetAssets, profiles } from '../../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { profiles } from '../../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -21,15 +21,11 @@ export default async function handler(req: Request, res: Response) {
 
     const showArchived = req.query.archived === 'true';
 
-    const assets = await db
-      .select()
-      .from(fleetAssets)
-      .where(
-        showArchived
-          ? eq(fleetAssets.companyId, profile.companyId)
-          : and(eq(fleetAssets.companyId, profile.companyId), eq(fleetAssets.archived, false)),
-      )
-      .orderBy(fleetAssets.name);
+    const [assets] = await db.execute(
+      showArchived
+        ? sql`SELECT *, vin FROM fleet_assets WHERE company_id = ${profile.companyId} ORDER BY name ASC`
+        : sql`SELECT *, vin FROM fleet_assets WHERE company_id = ${profile.companyId} AND (archived = 0 OR archived IS NULL) ORDER BY name ASC`
+    ) as unknown as [unknown[], unknown];
 
     res.json({ assets });
   } catch (error) {

@@ -35,13 +35,18 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const {
-      name, assetNumber, type, makeModel, rego, regoNotApplicable,
+      name, assetNumber, type, makeModel, vin, rego, regoNotApplicable,
       serviceDate, regoExpiry, status, notes,
     } = req.body as Record<string, string | boolean | undefined>;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Asset name is required' });
     }
+
+    // Ensure vin column exists (self-healing migration)
+    try {
+      await db.execute(sql.raw('ALTER TABLE `fleet_assets` ADD COLUMN `vin` VARCHAR(50) NULL'));
+    } catch { /* already exists */ }
 
     const [inserted] = await db.insert(fleetAssets).values({
       companyId: profile.companyId,
@@ -56,6 +61,11 @@ export default async function handler(req: Request, res: Response) {
       status: status ? String(status).trim() : 'Active',
       notes: notes ? String(notes).trim() : null,
     }).$returningId();
+
+    // Patch VIN separately via raw SQL (column added via self-healing migration, not in Drizzle schema)
+    if (vin && String(vin).trim()) {
+      await db.execute(sql`UPDATE fleet_assets SET vin = ${String(vin).trim()} WHERE id = ${inserted.id}`);
+    }
 
     const asset = await db.query.fleetAssets.findFirst({
       where: eq(fleetAssets.id, inserted.id),
