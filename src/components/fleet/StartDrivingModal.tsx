@@ -98,7 +98,7 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">Select a vehicle to start your driving session.</p>
+          <p className="text-sm text-muted-foreground">Select an asset to start your driving session.</p>
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -106,7 +106,7 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
             </div>
           ) : vehicles.length === 0 ? (
             <div className="text-center py-8 text-sm text-muted-foreground">
-              No active vehicles found.
+              No active fleet assets found. Add assets in Fleet first.
             </div>
           ) : (
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
