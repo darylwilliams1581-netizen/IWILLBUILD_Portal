@@ -7,9 +7,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:client && npm run build:ssr",
-    "build:client": "NODE_OPTIONS=--max-old-space-size=1024 vite build",
-    "build:ssr": "NODE_OPTIONS=--max-old-space-size=4096 vite build --ssr src/server/entry.ts --emptyOutDir=false",
+    "build": "node scripts/publish-build.mjs",
+    "build:app": "npm run build:app:client && npm run build:app:ssr",
+    "build:app:client": "NODE_OPTIONS=--max-old-space-size=1024 vite build",
+    "build:app:ssr": "NODE_OPTIONS=--max-old-space-size=4096 vite build --ssr src/server/entry.ts --emptyOutDir=false",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
