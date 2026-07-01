@@ -69,8 +69,11 @@ export function invalidateMeCache() {
 }
 
 export function useMe() {
-  const [me, setMe] = useState<MeData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Seed from module-level cache immediately — if /api/me was already fetched
+  // (e.g. by a sibling component), start with the cached value so loading is
+  // false from the very first render and there is no flicker.
+  const [me, setMe] = useState<MeData | null>(() => cachedMe);
+  const [loading, setLoading] = useState(() => cachedMe === null);
 
   const reload = useCallback(async () => {
     invalidateMeCache();
@@ -81,6 +84,12 @@ export function useMe() {
   }, []);
 
   useEffect(() => {
+    // If we already have cached data, no need to fetch again
+    if (cachedMe) {
+      setMe(cachedMe);
+      setLoading(false);
+      return;
+    }
     // Initial load
     fetchMe().then((data) => {
       setMe(data);

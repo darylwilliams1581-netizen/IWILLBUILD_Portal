@@ -94,6 +94,8 @@ function SidebarUserStrip({
   const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
   const initial = (displayName || displayEmail || '?')[0].toUpperCase();
 
+  // Only show skeleton on very first load before any data arrives.
+  // Once me or sessionUser is available, always render the real strip.
   if (!me && !sessionUser) {
     return (
       <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5 opacity-40">
@@ -186,9 +188,10 @@ function SidebarContent({
       {/* ── Main nav ── */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item) => {
-          // Hide only after permissions have loaded and the user lacks access.
-          // While still loading, show all items so there is no flash/reflow.
-          if (!permsLoading && item.permKey !== null && !can(item.permKey)) return null;
+          // Always show while permissions are loading — never hide items mid-render.
+          // Once loaded, only hide if the user genuinely lacks access.
+          // Items with permKey: null (Dashboard, Forms) always show.
+          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
 
@@ -243,7 +246,7 @@ function SidebarContent({
 
                 {/* Cost Guide + Recipes nest directly under Admin */}
                 {item.label === 'Admin' && adminSubItems.map((sub) => {
-                  if (!permsLoading && sub.permKey !== null && !can(sub.permKey)) return null;
+                  if (!permsLoading && sub.permKey !== null && me?.profile && !can(sub.permKey)) return null;
                   const SubIcon = sub.icon;
                   const subActive = location.search.includes(sub.href.split('?')[1] ?? '') && location.pathname === '/estimating';
                   if (collapsed) {
