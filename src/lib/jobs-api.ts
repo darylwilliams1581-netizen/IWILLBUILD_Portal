@@ -55,20 +55,44 @@ export function getStatusStyle(status: string) {
   return STATUS_STYLE[status] ?? { color: 'text-slate-600', bg: 'bg-slate-100 border-slate-200', dot: 'bg-slate-400' };
 }
 
+// ── Date normalisation ────────────────────────────────────────────────────────
+// Drizzle's date() column returns a JS Date serialised as a full ISO timestamp
+// (e.g. "2026-06-29T00:00:00.000Z"). <input type="date"> requires "YYYY-MM-DD".
+// This helper strips any value to just the date portion, or returns null.
+function toDateString(val: string | null | undefined): string | null {
+  if (!val) return null;
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  // ISO timestamp — take the date part
+  const iso = val.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return null;
+}
+
+function normaliseJob(job: Job): Job {
+  return {
+    ...job,
+    scheduledStartDate: toDateString(job.scheduledStartDate),
+    expectedCompletionDate: toDateString(job.expectedCompletionDate),
+    actualStartDate: toDateString(job.actualStartDate),
+    actualCompletionDate: toDateString(job.actualCompletionDate),
+  };
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 export async function fetchJobs(): Promise<Job[]> {
   const res = await fetch('/api/jobs', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch jobs');
   const data = await res.json() as { jobs: Job[] };
-  return data.jobs;
+  return (data.jobs ?? []).map(normaliseJob);
 }
 
 export async function fetchJob(id: number): Promise<Job> {
   const res = await fetch(`/api/jobs/${id}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch job');
   const data = await res.json() as { job: Job };
-  return data.job;
+  return normaliseJob(data.job);
 }
 
 export async function createJob(payload: {
@@ -120,5 +144,5 @@ export async function updateJob(id: number, payload: Partial<{
     throw new Error(err.error ?? 'Failed to update job');
   }
   const data = await res.json() as { job: Job };
-  return data.job;
+  return normaliseJob(data.job);
 }

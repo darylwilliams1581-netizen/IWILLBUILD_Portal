@@ -47,6 +47,14 @@ export default async function handler(req: Request, res: Response) {
       assignedTeamLabel?: string | null;
     };
 
+    // Normalise date strings — strip ISO timestamps to YYYY-MM-DD only
+    function toDateStr(v: string | null | undefined): string | null {
+      if (!v) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      const iso = v.slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+    }
+
     await db.update(jobs).set({
       ...(name !== undefined && { name: name.trim() }),
       ...(client !== undefined && { client: client.trim() || null }),
@@ -54,10 +62,10 @@ export default async function handler(req: Request, res: Response) {
       ...(status !== undefined && { status }),
       ...(notes !== undefined && { notes: notes.trim() || null }),
       ...(jobNumber !== undefined && { jobNumber: jobNumber.trim() || null }),
-      ...(scheduledStartDate !== undefined && { scheduledStartDate: scheduledStartDate || null }),
-      ...(expectedCompletionDate !== undefined && { expectedCompletionDate: expectedCompletionDate || null }),
-      ...(actualStartDate !== undefined && { actualStartDate: actualStartDate || null }),
-      ...(actualCompletionDate !== undefined && { actualCompletionDate: actualCompletionDate || null }),
+      ...(scheduledStartDate !== undefined && { scheduledStartDate: toDateStr(scheduledStartDate) }),
+      ...(expectedCompletionDate !== undefined && { expectedCompletionDate: toDateStr(expectedCompletionDate) }),
+      ...(actualStartDate !== undefined && { actualStartDate: toDateStr(actualStartDate) }),
+      ...(actualCompletionDate !== undefined && { actualCompletionDate: toDateStr(actualCompletionDate) }),
       ...(assignedSupervisorUserId !== undefined && { assignedSupervisorUserId: assignedSupervisorUserId || null }),
       ...(assignedTeamLabel !== undefined && { assignedTeamLabel: assignedTeamLabel?.trim() || null }),
     }).where(eq(jobs.id, jobId));

@@ -921,6 +921,32 @@
       "summary": "Screenshot of an admin dashboard menu showing navigation structure with tabs (Admin, Team, Subscription, Settings, Cost Guide, Recipes, Log out) and a free trial indicator. User is referencing this to clarify menu organization.",
       "fileName": "screenshot-2026-07-01T05-05-58.jpg",
       "storedUploadFilename": "f38wenbvln_1782882359448_file_9aOqNB6Qm8.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a job scheduling form showing date fields, supervisor assignment, and team label. User is reporting a date validation issue in this interface.",
+      "fileName": "screenshot-2026-07-01T06-19-52.jpg",
+      "storedUploadFilename": "f38wenbvln_1782886793318_file_Ni17_lhPDZ.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a jobs/scheduling interface showing invalid date errors across multiple date fields, provided as a bug report reference for troubleshooting the date-saving issue.",
+      "fileName": "screenshot-2026-07-01T06-20-09.jpg",
+      "storedUploadFilename": "f38wenbvln_1782886810043_file_2GqBPCdki2.jpg"
     }
   ]
 }
