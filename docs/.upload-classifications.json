@@ -986,6 +986,19 @@
       "summary": "Screenshot of a Dazza AI Safety Assistant feature description. The prompt 'remove' provides no clear directive for how this file should be used in the website build.",
       "fileName": "screenshot-2026-07-01T10-20-11.jpg",
       "storedUploadFilename": "f38wenbvln_1782901212385_file_IZz-6lkffQ.jpg"
+    },
+    {
+      "variant": "spec-driven",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a settings/admin panel showing team permissions and account management options. User is referencing this to check developer access permissions for a specific email.",
+      "fileName": "screenshot-2026-07-01T12-10-09.jpg",
+      "storedUploadFilename": "f38wenbvln_1782907809927_file_1RwaN46m_O.jpg"
     }
   ]
 }

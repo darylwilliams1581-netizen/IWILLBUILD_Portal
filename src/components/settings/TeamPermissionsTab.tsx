@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 
+
 type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
 type Status = 'active' | 'invited' | 'inactive';
 
@@ -240,7 +241,9 @@ function EditModal({
 // ── Main Tab ──────────────────────────────────────────────────────────────────
 export default function TeamPermissionsTab({ isAdmin }: { isAdmin: boolean }) {
   const navigate = useNavigate();
-  const { isOwner, isAdmin: callerIsAdmin } = usePermissions();
+  const { isOwner, isAdmin: callerIsAdmin, isPlatformOwner } = usePermissions();
+  // Platform developers always get admin-level access in Settings
+  const effectiveAdmin = isAdmin || isPlatformOwner;
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -263,7 +266,7 @@ export default function TeamPermissionsTab({ isAdmin }: { isAdmin: boolean }) {
 
   useEffect(() => { void loadMembers(); }, [loadMembers]);
 
-  if (!isAdmin) {
+  if (!effectiveAdmin) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400">
         <Lock size={28} className="mb-2 opacity-40" />
