@@ -960,6 +960,19 @@
       "summary": "Screenshot of a dashboard interface showing a sidebar navigation issue where the Forms tab appears to be missing or malfunctioning, provided as a bug report reference.",
       "fileName": "screenshot-2026-07-01T09-03-19.jpg",
       "storedUploadFilename": "f38wenbvln_1782896604386_file_dcb-qGLLtZ.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a system notification indicating loss of Forms and form builder functionality. No design or structural guidance for site building.",
+      "fileName": "screenshot-2026-07-01T09-56-24.jpg",
+      "storedUploadFilename": "f38wenbvln_1782899784601_file_JVva4lK4l2.jpg"
     }
   ]
 }
