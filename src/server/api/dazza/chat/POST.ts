@@ -583,6 +583,48 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     return `📋 From IWILLBUILD data:\n**${count}** file${count === 1 ? '' : 's'} stored for ${cn}.\n\n📦 Source modules:\nFiles\n\n📊 Confidence:\nHigh`;
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // SECURE SHARE LINKS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── Share link count ──────────────────────────────────────────────────────
+  if (/how many.*share.*link|share.*link.*count|number of.*share|active.*link|secure.*link/i.test(lq)) {
+    const links = (ctx.shareLinks ?? []) as Array<Record<string, unknown>>;
+    if (links.length === 0) return `📋 From IWILLBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    const active = links.filter((l) => !l.revoked && !l.isExpired && !l.isMaxed).length;
+    const revoked = links.filter((l) => l.revoked).length;
+    const expired = links.filter((l) => l.isExpired && !l.revoked).length;
+    return `📋 From IWILLBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n• Active: ${active} | Expired: ${expired} | Revoked: ${revoked}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── List share links ──────────────────────────────────────────────────────
+  if (/list.*share.*link|show.*share.*link|what.*share.*link|share.*link.*exist|all.*share.*link/i.test(lq)) {
+    const links = (ctx.shareLinks ?? []) as Array<Record<string, unknown>>;
+    if (links.length === 0) return `📋 From IWILLBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    const list = links.slice(0, 15).map((l) => {
+      const status = l.revoked ? '🔴 Revoked' : l.isExpired ? '🟡 Expired' : l.isMaxed ? '🟡 Limit reached' : '🟢 Active';
+      const target = `${String(l.target_type ?? '').replace(/_/g, ' ')} #${String(l.target_id ?? '')}`;
+      return `• **${String(l.title ?? 'Untitled')}** — ${status} | ${target} | ${String(l.link_type ?? '').replace(/_/g, ' ')}`;
+    }).join('\n');
+    return `📋 From IWILLBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n${list}${links.length > 15 ? `\n…and ${links.length - 15} more.` : ''}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Expired / revoked share links (Annette hygiene) ───────────────────────
+  if (/expired.*link|revoked.*link|link.*expired|link.*revoked|stale.*link|old.*share.*link/i.test(lq)) {
+    const links = (ctx.shareLinks ?? []) as Array<Record<string, unknown>>;
+    const expired = links.filter((l) => l.isExpired && !l.revoked);
+    const revoked = links.filter((l) => l.revoked);
+    const parts: string[] = [];
+    if (expired.length > 0) {
+      parts.push(`**${expired.length}** expired link${expired.length === 1 ? '' : 's'}:\n${expired.slice(0, 8).map((l) => `• ${String(l.title ?? 'Untitled')} (${String(l.target_type ?? '').replace(/_/g, ' ')} #${String(l.target_id ?? '')})`).join('\n')}`);
+    }
+    if (revoked.length > 0) {
+      parts.push(`**${revoked.length}** revoked link${revoked.length === 1 ? '' : 's'}:\n${revoked.slice(0, 8).map((l) => `• ${String(l.title ?? 'Untitled')}`).join('\n')}`);
+    }
+    if (parts.length === 0) return `📋 From IWILLBUILD data:\nNo expired or revoked share links found for ${cn}. All links are active.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWILLBUILD data:\n${parts.join('\n\n')}\n\n⚠️ Hygiene tip:\nExpired links are harmless but can be confusing. Consider revoking old links you no longer need.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+  }
+
   return null; // no local handler matched — fall through to OpenAI
 }
 

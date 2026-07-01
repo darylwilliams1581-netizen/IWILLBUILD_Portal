@@ -16,9 +16,10 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock,
-  Download, ExternalLink, MapPin, Upload, Shield, Key,
+  Download, ExternalLink, MapPin, Upload, Shield, Key, Link2,
 } from 'lucide-react';
 import ExternalFormPage from './external-form';
+import { Button } from '@/components/ui/button';
 
 // ── GPS type (mirrors FormRunner) ─────────────────────────────────────────────
 interface GpsAnswer {
@@ -362,7 +363,207 @@ function InvoiceViewer({ content }: { content: Record<string, unknown> }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Secure Share types ────────────────────────────────────────────────────────
+
+interface SecureShareLink {
+  id: number;
+  linkType: string;
+  targetType: string;
+  targetId: string;
+  title: string;
+  permissions: string[];
+  metadata: Record<string, unknown> | null;
+  expiresAt: string | null;
+  maxUses: number | null;
+  useCount: number;
+  requiresPassword: boolean;
+  createdAt: string;
+}
+
+// ── SecureShareViewer — public viewer for /api/secure-share/:token ────────────
+
+function SecureShareViewer({ token }: { token: string }) {
+  const [link, setLink] = useState<SecureShareLink | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errCode, setErrCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [validating, setValidating] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/secure-share/${token}`)
+      .then(async (r) => {
+        const body = await r.json() as SecureShareLink & { error?: string; code?: string };
+        if (!r.ok) { setError(body.error ?? 'Link unavailable'); setErrCode(body.code ?? null); return; }
+        setLink(body);
+        if (!body.requiresPassword) setUnlocked(true);
+      })
+      .catch(() => setError('Failed to load link.'))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  async function handleUnlock() {
+    if (!password.trim()) { setPasswordError('Enter the password.'); return; }
+    setValidating(true);
+    setPasswordError('');
+    try {
+      const r = await fetch(`/api/secure-share/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'validate_password', password }),
+      });
+      const body = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || !body.ok) { setPasswordError(body.error ?? 'Incorrect password.'); return; }
+      setUnlocked(true);
+    } catch { setPasswordError('Failed to validate password.'); }
+    finally { setValidating(false); }
+  }
+
+  const isExpired = link?.expiresAt ? new Date(link.expiresAt) < new Date() : false;
+  const isMaxed = link?.maxUses !== null && link?.maxUses !== undefined && (link?.useCount ?? 0) >= link.maxUses;
+
+  return (
+    <>
+      <Helmet>
+        <title>{link ? `${link.title} — IWILLBUILD` : 'Secure Share — IWILLBUILD'}</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+              <Link2 size={14} className="text-white" />
+            </div>
+            <span className="font-bold text-slate-800 text-sm">IWILLBUILD</span>
+          </div>
+          {link && (
+            <>
+              <span className="text-slate-300">|</span>
+              <span className="text-xs text-slate-500 truncate">{link.title}</span>
+            </>
+          )}
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-10">
+          {loading && (
+            <div className="flex items-center justify-center py-20 gap-3 text-slate-500">
+              <Loader2 size={20} className="animate-spin" />
+              <span className="text-sm">Loading…</span>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="bg-white border border-red-200 rounded-2xl p-8 text-center">
+              <AlertTriangle size={40} className="text-red-400 mx-auto mb-4" />
+              <h1 className="text-lg font-bold text-slate-800 mb-2">
+                {errCode === 'REVOKED' ? 'Link Revoked'
+                  : errCode === 'EXPIRED' ? 'Link Expired'
+                  : errCode === 'MAX_USES' ? 'Link Limit Reached'
+                  : 'Link Unavailable'}
+              </h1>
+              <p className="text-sm text-slate-500">{error}</p>
+            </div>
+          )}
+
+          {!loading && link && !unlocked && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-5">
+              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                <Key size={22} className="text-primary" />
+              </div>
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-slate-800 mb-1">{link.title}</h1>
+                <p className="text-sm text-slate-500">This link is password protected.</p>
+              </div>
+              <div className="w-full flex flex-col gap-2">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleUnlock(); }}
+                  placeholder="Enter password"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  autoFocus
+                />
+                {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
+                <Button onClick={() => void handleUnlock()} disabled={validating} className="w-full gap-2">
+                  {validating ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+                  Unlock
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!loading && link && unlocked && (
+            <div className="flex flex-col gap-4">
+              {/* Status / info card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">
+                      {link.linkType.replace(/_/g, ' ')}
+                    </p>
+                    <h1 className="text-lg font-bold text-slate-800">{link.title}</h1>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${
+                    isExpired || isMaxed
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {isExpired ? 'Expired' : isMaxed ? 'Limit reached' : 'Active'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                  {link.expiresAt && (
+                    <span className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1">
+                      <Clock size={10} />
+                      {isExpired ? 'Expired' : 'Expires'} {new Date(link.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                  {link.maxUses && (
+                    <span className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1">
+                      {link.useCount}/{link.maxUses} uses
+                    </span>
+                  )}
+                  {link.permissions.map((p) => (
+                    <span key={p} className="flex items-center gap-1 bg-orange-50 border border-orange-200 text-orange-700 rounded-full px-2.5 py-1 font-semibold">
+                      <Shield size={10} />
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target info */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <FileText size={22} className="text-slate-500" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700 mb-1">
+                  {link.targetType.replace(/_/g, ' ')} #{link.targetId}
+                </p>
+                <p className="text-xs text-slate-400">
+                  This link was shared securely via IWILLBUILD.
+                </p>
+                {link.permissions.includes('download') && (
+                  <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
+                    <Download size={11} /> Download access granted
+                  </p>
+                )}
+              </div>
+
+              <p className="text-center text-xs text-slate-400">
+                Shared securely via IWILLBUILD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
+    </>
+  );
+}
 
 export default function SharePage() {
   const { token } = useParams<{ token: string }>();
@@ -370,6 +571,7 @@ export default function SharePage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLegacy, setIsLegacy] = useState(false);
+  const [isSecureShare, setIsSecureShare] = useState(false);
 
   useEffect(() => {
     if (!token) { setError('Invalid link.'); setLoading(false); return; }
@@ -378,6 +580,13 @@ export default function SharePage() {
     fetch(`/api/documents/share/${token}`)
       .then(async (r) => {
         if (r.status === 404) {
+          // Try Secure Share system next
+          const secureR = await fetch(`/api/secure-share/${token}`);
+          if (secureR.ok || secureR.status === 401) {
+            setIsSecureShare(true);
+            setLoading(false);
+            return;
+          }
           // Fall back to legacy share endpoint
           const legacyR = await fetch(`/api/share/${token}`);
           if (legacyR.ok) {
@@ -395,6 +604,11 @@ export default function SharePage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Secure Share — delegate to SecureShareViewer
+  if (isSecureShare && token) {
+    return <SecureShareViewer token={token} />;
+  }
 
   // Legacy form — delegate to ExternalFormPage via the old /external/form/:token route
   if (isLegacy) {

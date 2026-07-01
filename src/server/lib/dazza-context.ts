@@ -522,6 +522,24 @@ export async function buildDazzaContext(
     console.warn(`[dazza-context] Context built with ${warnings.length} warning(s) for company ${effectiveCompanyId}`);
   }
 
+  // ── Secure Share Links ────────────────────────────────────────────────────
+  ctx.shareLinks = await safeQuery('share_links', async () => {
+    const [rows] = await db.execute(
+      sql`SELECT id, link_type, target_type, target_id, title,
+                 permissions_json, expires_at, max_uses, use_count,
+                 revoked, created_at
+          FROM secure_share_links
+          WHERE company_id = ${effectiveCompanyId}
+          ORDER BY created_at DESC LIMIT 50`
+    ) as unknown as [Array<Record<string, unknown>>, unknown];
+    return (rows ?? []).map((r) => ({
+      ...r,
+      permissions: (() => { try { return JSON.parse(r.permissions_json as string); } catch { return []; } })(),
+      isExpired: r.expires_at ? new Date(r.expires_at as string) < new Date() : false,
+      isMaxed: r.max_uses !== null && (r.use_count as number) >= (r.max_uses as number),
+    }));
+  });
+
   return ctx;
 }
 

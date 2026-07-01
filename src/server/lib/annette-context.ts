@@ -61,6 +61,13 @@ export interface AnnetteData {
     incompleteSubmissions: Array<{ form_name: string; job_name: string; submitted_at: string }>;
     jobsWithNoForms:       number; // redundant with jobs.noForms.length but kept for clarity
   };
+
+  // Secure Share hygiene
+  shareLinks: {
+    total:   number;
+    expired: Array<{ id: number; title: string; target_type: string; target_id: string; expires_at: string }>;
+    maxed:   Array<{ id: number; title: string; target_type: string; target_id: string; use_count: number; max_uses: number }>;
+  };
 }
 
 async function safeQuery<T>(
@@ -119,6 +126,7 @@ export async function buildAnnetteContext(
     },
     estimates: { draftTooLong: [], pendingApproval: [] },
     forms:     { incompleteSubmissions: [], jobsWithNoForms: 0 },
+    shareLinks: { total: 0, expired: [], maxed: [] },
   };
 
   // ── Jobs ──────────────────────────────────────────────────────────────────
@@ -415,6 +423,28 @@ export async function buildAnnetteContext(
     }, [], warnings, moduleCounts);
   }
 
+  // ── Secure Share hygiene ──────────────────────────────────────────────────
+  await safeQuery('share_links_hygiene', async () => {
+    const [rows] = await db.execute(
+      sql`SELECT id, title, target_type, target_id, expires_at, max_uses, use_count, revoked
+          FROM secure_share_links
+          WHERE company_id = ${companyId} AND revoked = 0
+          ORDER BY created_at DESC LIMIT 100`
+    ) as unknown as [Array<{
+      id: number; title: string; target_type: string; target_id: string;
+      expires_at: string | null; max_uses: number | null; use_count: number; revoked: number;
+    }>, unknown];
+    const links = rows ?? [];
+    data.shareLinks.total = links.length;
+    data.shareLinks.expired = links
+      .filter((l) => l.expires_at && new Date(l.expires_at) < now)
+      .map((l) => ({ id: l.id, title: l.title, target_type: l.target_type, target_id: l.target_id, expires_at: l.expires_at! }));
+    data.shareLinks.maxed = links
+      .filter((l) => l.max_uses !== null && l.use_count >= l.max_uses!)
+      .map((l) => ({ id: l.id, title: l.title, target_type: l.target_type, target_id: l.target_id, use_count: l.use_count, max_uses: l.max_uses! }));
+    return rows;
+  }, [], warnings, moduleCounts);
+
   return data;
 }
 
@@ -577,6 +607,25 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
   }
   lines.push('');
 
+  // Secure Share hygiene
+  lines.push(`## SECURE SHARE LINKS (Source: Secure Share)`);
+  lines.push(`Total active (non-revoked) share links: ${d.shareLinks.total}`);
+  if (d.shareLinks.expired.length) {
+    lines.push(`Expired links still on record (not yet revoked): ${d.shareLinks.expired.length}`);
+    for (const l of d.shareLinks.expired.slice(0, 10)) {
+      lines.push(`  - "${l.title}" (${l.target_type.replace(/_/g, ' ')} #${l.target_id}) — expired ${new Date(l.expires_at).toLocaleDateString('en-AU')}`);
+    }
+  } else {
+    lines.push(`No expired links on record.`);
+  }
+  if (d.shareLinks.maxed.length) {
+    lines.push(`Links that have reached their max-use limit: ${d.shareLinks.maxed.length}`);
+    for (const l of d.shareLinks.maxed.slice(0, 10)) {
+      lines.push(`  - "${l.title}" — ${l.use_count}/${l.max_uses} uses`);
+    }
+  }
+  lines.push('');
+
   // Warnings
   if (d.warnings.length) {
     lines.push(`## DATA WARNINGS (modules that failed to load)`);
@@ -599,7 +648,7 @@ export function buildAnnetteSystemPrompt(d: AnnetteData): string {
   lines.push('');
   lines.push(`## 🟠 Needs Attention`);
   lines.push(`Items that need action this week but aren't critical yet.`);
-  lines.push(`Includes: service due within 14 days, rego expiring within 14 days, stalled jobs, pending estimates, open prestart flags, to-dos due soon.`);
+  lines.push(`Includes: service due within 14 days, rego expiring within 14 days, stalled jobs, pending estimates, open prestart flags, to-dos due soon, expired share links that should be cleaned up.`);
   lines.push(`Format each as: • **[Name]** — [what needs doing] — [timeframe] — Source: [module]`);
   lines.push(`If none: "Nothing pressing this week."`);
   lines.push('');

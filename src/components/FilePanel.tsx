@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, Download, Trash2, FolderOpen, FileText, FileImage,
   File, AlertCircle, X, Loader2, Search, Filter,
-  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2, ExternalLink,
+  ChevronDown, ZoomIn, LayoutGrid, List, Cloud, CheckCircle2, ExternalLink, Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import {
   type CompanyFile, FILE_CATEGORIES, ALLOWED_EXTENSIONS, MAX_FILE_BYTES,
   formatBytes, mimeColor, mimeLabel, fetchFiles, uploadFile, deleteFile, downloadFile,
 } from '@/lib/files-api';
+import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
 import { fileViewUrl, isImageMime } from '@/lib/files-view';
 
 // ── Category filter options (spec) ────────────────────────────────────────────
@@ -279,6 +280,21 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
             >
               <ExternalLink size={13} />
               Open in new tab
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-9 text-sm"
+              onClick={() => setShareTarget({
+                type: 'file',
+                id: String(file.id),
+                title: file.originalName,
+                linkType: 'file_transfer',
+                defaultPermissions: ['view', 'download'],
+              })}
+            >
+              <Link2 size={13} />
+              Share / QR
             </Button>
             <Button
               size="sm"
@@ -541,6 +557,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
   const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
   const [showUpload, setShowUpload] = useState(false);
   const [preview, setPreview] = useState<CompanyFile | null>(null);
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
   // OneDrive transfer state
   const [oneDriveConnected, setOneDriveConnected] = useState<boolean | null>(null);
   const [transferringId, setTransferringId] = useState<number | null>(null);
@@ -777,6 +794,19 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
                   >
                     <ExternalLink size={15} />
                   </button>
+                  <button
+                    onClick={() => setShareTarget({
+                      type: 'file',
+                      id: String(f.id),
+                      title: f.originalName,
+                      linkType: 'file_transfer',
+                      defaultPermissions: ['view', 'download'],
+                    })}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                    title="Share / QR"
+                  >
+                    <Link2 size={15} />
+                  </button>
                   {oneDriveConnected && (
                     transferSuccess?.id === f.id ? (
                       <a
@@ -830,6 +860,14 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
           fleetAssetId={fleetAssetId}
           onClose={() => setShowUpload(false)}
           onUploaded={(f) => setFiles((prev) => [f, ...prev])}
+        />
+      )}
+
+      {shareTarget && (
+        <ShareLinkModal
+          open={true}
+          onClose={() => setShareTarget(null)}
+          target={shareTarget}
         />
       )}
 

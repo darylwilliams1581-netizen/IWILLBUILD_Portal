@@ -11,8 +11,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Share2, Clock, CheckCircle2, Lock, Unlock, Copy, XCircle,
   Loader2, AlertTriangle, ChevronLeft, Eye, Download, ClipboardList,
-  History, Activity, ExternalLink, RotateCcw,
+  History, Activity, ExternalLink, RotateCcw, Link2,
 } from 'lucide-react';
+import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,7 @@ export default function DocumentViewerPage() {
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [secureShareTarget, setSecureShareTarget] = useState<ShareTarget | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -508,12 +510,36 @@ export default function DocumentViewerPage() {
 
             {/* Sidebar */}
             <div className="flex flex-col gap-5">
-              {/* Share panel */}
+              {/* Document Engine share panel */}
               <SharePanel
                 documentId={doc.id}
                 shares={detail.shares}
                 onRefresh={() => void load()}
               />
+
+              {/* Secure Share / QR link */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Link2 size={15} className="text-primary" />
+                  <h3 className="text-sm font-bold text-slate-800">Secure Share / QR</h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Create a secure link with password, expiry, and QR code for external access.
+                </p>
+                <button
+                  onClick={() => setSecureShareTarget({
+                    type: 'document',
+                    id: String(doc.id),
+                    title: doc.title,
+                    linkType: 'document_view',
+                    defaultPermissions: ['view'],
+                  })}
+                  className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Link2 size={13} />
+                  Create Secure Link
+                </button>
+              </div>
 
               {/* Version history */}
               <VersionHistory versions={detail.versions} />
@@ -554,6 +580,14 @@ export default function DocumentViewerPage() {
           </div>
         )}
       </div>
+
+      {secureShareTarget && (
+        <ShareLinkModal
+          open={true}
+          onClose={() => setSecureShareTarget(null)}
+          target={secureShareTarget}
+        />
+      )}
     </>
   );
 }

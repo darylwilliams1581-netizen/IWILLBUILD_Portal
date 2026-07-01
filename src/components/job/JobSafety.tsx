@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, X, AlertCircle, Users, UserCheck,
   Printer, Wand2, Trash2, CheckSquare, Square, Search, ClipboardList,
-  Check,
+  Check, Link2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
+import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -980,6 +981,7 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
   const [signonTarget, setSignonTarget] = useState<JobSwmsRecord | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [loadingSignoffs, setLoadingSignoffs] = useState<number | null>(null);
+  const [swmsShareTarget, setSwmsShareTarget] = useState<ShareTarget | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1112,6 +1114,20 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
                     >
                       {loadingSignoffs === j.id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                     </button>
+                    {/* Share / QR */}
+                    <button
+                      onClick={() => setSwmsShareTarget({
+                        type: 'job_swms',
+                        id: String(j.id),
+                        title: j.title,
+                        linkType: 'swms_signon',
+                        defaultPermissions: ['view', 'sign'],
+                      })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                      title="Share / QR"
+                    >
+                      <Link2 size={14} />
+                    </button>
                     {/* Edit */}
                     <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
                       <Wand2 size={14} />
@@ -1166,6 +1182,14 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
           />
         )}
       </AnimatePresence>
+
+      {swmsShareTarget && (
+        <ShareLinkModal
+          open={true}
+          onClose={() => setSwmsShareTarget(null)}
+          target={swmsShareTarget}
+        />
+      )}
     </div>
   );
 }
