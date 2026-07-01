@@ -71,11 +71,19 @@ function protect(element: React.ReactElement) {
   return <ProtectedRoute><Suspense fallback={<PageLoader />}>{element}</Suspense></ProtectedRoute>;
 }
 
-/** Owner-only route — redirects non-owners to /owner-console */
+/** Owner-only route — redirects non-owners to /dashboard */
 function OwnerOnlyRoute({ children }: { children: React.ReactElement }) {
   const { isOwner, loading } = usePermissions();
   if (loading) return <PageLoader />;
-  if (!isOwner) return <Navigate to="/owner-console" replace />;
+  if (!isOwner) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+/** Platform developer route — redirects non-developers to /dashboard */
+function PlatformDevRoute({ children }: { children: React.ReactElement }) {
+  const { isPlatformOwner, loading } = usePermissions();
+  if (loading) return <PageLoader />;
+  if (!isPlatformOwner) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -84,6 +92,16 @@ function protectOwner(element: React.ReactElement) {
     <ProtectedRoute>
       <Suspense fallback={<PageLoader />}>
         <OwnerOnlyRoute>{element}</OwnerOnlyRoute>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
+function protectDev(element: React.ReactElement) {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageLoader />}>
+        <PlatformDevRoute>{element}</PlatformDevRoute>
       </Suspense>
     </ProtectedRoute>
   );
@@ -130,7 +148,8 @@ export const routes: RouteObject[] = [
   { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
-  { path: '/owner-console', element: protect(<OwnerConsolePage />),    errorElement: routeError },
+  { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
+  { path: '/developer-console', element: <Navigate to="/owner-console" replace /> },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)

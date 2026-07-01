@@ -554,7 +554,7 @@ export default function OwnerConsolePage() {
               <Shield size={28} className="text-red-400" />
             </div>
             <h2 className="text-xl font-black text-slate-900 mb-2">Access Denied</h2>
-            <p className="text-sm text-slate-500 mb-6">Owner access is required to view the Owner Console.</p>
+            <p className="text-sm text-slate-500 mb-6">Platform developer access is required to view the Developer Console.</p>
             <button
               onClick={() => navigate('/dashboard')}
               className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors"
@@ -593,17 +593,17 @@ export default function OwnerConsolePage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Helmet>
-          <title>Owner Console — IWILLBUILD Portal</title>
+          <title>Developer Console — IWILLBUILD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
-          <meta property="og:title" content="Owner Console — IWILLBUILD Portal" />
+          <meta property="og:title" content="Developer Console — IWILLBUILD Portal" />
           <meta property="og:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://iwillbuild.com/owner-console" />
           <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content="Owner Console — IWILLBUILD Portal" />
+          <meta name="twitter:title" content="Developer Console — IWILLBUILD Portal" />
           <meta name="twitter:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
         </Helmet>
@@ -615,7 +615,7 @@ export default function OwnerConsolePage() {
               <Shield size={16} className="text-primary" />
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Owner Only</p>
             </div>
-            <h1 className="font-heading font-black text-xl text-slate-900">Owner Console</h1>
+            <h1 className="font-heading font-black text-xl text-slate-900">Developer Console</h1>
           </div>
           {supportMode.active && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
@@ -683,7 +683,7 @@ export default function OwnerConsolePage() {
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 size={28} className="animate-spin text-primary" />
-                <p className="text-sm text-slate-400">Loading Owner Console…</p>
+                <p className="text-sm text-slate-400">Loading Developer Console…</p>
               </div>
             </div>
           ) : (
