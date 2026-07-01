@@ -203,13 +203,27 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
   }
 
   // Walk a MemberExpression / Identifier chain and return `["root", "a", "b"]`
-  // iff every hop is an identifier-typed, non-computed property access.
-  // Returns null for any unsupported shape (computed indices, destructuring, etc.).
-  function readChain(node: Expression): string[] | null {
-    const parts: string[] = [];
+  // iff every hop is an identifier-typed, non-computed property access OR a
+  // computed access whose property is a non-negative integer NumericLiteral
+  // (captured as a numeric index segment, e.g. `stats[0]` → `["stats", 0]`).
+  // Returns null for any other unsupported shape (string-literal/identifier/
+  // expression computed indices, destructuring, etc.).
+  function readChain(node: Expression): (string | number)[] | null {
+    const parts: (string | number)[] = [];
     let cur: Expression = node;
     while (t.isMemberExpression(cur)) {
-      if (cur.computed) return null;
+      if (cur.computed) {
+        if (
+          t.isNumericLiteral(cur.property) &&
+          Number.isInteger(cur.property.value) &&
+          cur.property.value >= 0
+        ) {
+          parts.unshift(cur.property.value);
+          cur = cur.object as Expression;
+          continue;
+        }
+        return null;
+      }
       if (!t.isIdentifier(cur.property)) return null;
       parts.unshift(cur.property.name);
       cur = cur.object as Expression;
@@ -217,6 +231,23 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     if (!t.isIdentifier(cur)) return null;
     parts.unshift(cur.name);
     return parts;
+  }
+
+  // Render a chain of name/index segments to canonical content-key form:
+  // numeric segments become `[N]` with no leading dot, string segments are
+  // dot-joined. e.g. `["home", "about", "stats", 0, "value"]` →
+  // `home.about.stats[0].value`. The first segment is always a string (root).
+  function renderChain(parts: (string | number)[]): string {
+    let out = '';
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (typeof part === 'number') {
+        out += `[${part}]`;
+      } else {
+        out += i === 0 ? part : `.${part}`;
+      }
+    }
+    return out;
   }
 
   // If `node` is a `.map()` call on a content-rooted chain, return the frame
@@ -378,18 +409,64 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     const chain = readChain(node);
     if (!chain) return null;
     const root = chain[0];
+    // The root segment is the identifier name; a numeric root is impossible
+    // (readChain always unshifts an Identifier name first), but narrow for type.
+    if (typeof root !== 'string') return null;
     if (s.contentBindings.has(root)) {
-      return chain.join('.');
+      return renderChain(chain);
     }
     for (let i = s.mapStack.length - 1; i >= 0; i--) {
       if (s.mapStack[i].paramName === root) {
         const rest = chain.slice(1);
         return rest.length === 0
           ? `${s.mapStack[i].pathBase}[]`
-          : `${s.mapStack[i].pathBase}[].${rest.join('.')}`;
+          : `${s.mapStack[i].pathBase}[].${renderChain(rest)}`;
       }
     }
     return null;
+  }
+
+  // Resolve a content key reached indirectly through a call, e.g.
+  // `const { display } = useCounter(home.about.stats[0].value)` rendered as
+  // `<span>{display}</span>`. Conservative: only a bare Identifier bound to a
+  // VariableDeclarator whose init is a CallExpression where exactly ONE argument
+  // resolves to a NON-template content key (no `[]`); other args (durations,
+  // options, flags) are ignored, and ≥2 content args is ambiguous → skip.
+  // Indexed keys (`home.about.stats[0].value`) are allowed. Returns the key or null.
+  //
+  // This matches by call SHAPE, so it also attributes e.g. `const [v] =
+  // useState(home.x)` — intentionally. Whether the value is a genuine
+  // pass-through or a transform is decided at edit time by the server guard
+  // (it writes only when the stored content still equals the rendered text),
+  // NOT here. So a false match is safe: a transforming hook simply gets its
+  // edit refused rather than corrupting content.
+  function resolveDerivedContentKey(
+    expression: Expression,
+    path: NodePath<JSXElement>,
+    s: PluginState,
+  ): string | null {
+    if (!t.isIdentifier(expression)) return null;
+    const binding = path.scope.getBinding(expression.name);
+    if (!binding) return null;
+    const declarator: NodePath | null = binding.path.isVariableDeclarator()
+      ? binding.path
+      : binding.path.findParent((p: NodePath): boolean => p.isVariableDeclarator());
+    if (!declarator || !declarator.isVariableDeclarator()) return null;
+    const init = declarator.node.init;
+    if (!init || !t.isCallExpression(init)) return null;
+    // Exactly ONE argument must resolve to a (non-template) content key; other
+    // args (durations, options, flags — e.g. `useCountUp(home.x, 2000, started)`)
+    // are ignored. Zero content args = nothing to attribute; two or more =
+    // ambiguous which one the rendered value derives from, so skip.
+    const contentKeys: string[] = init.arguments
+      .filter(
+        (a): a is Expression =>
+          !t.isSpreadElement(a) && !t.isJSXNamespacedName(a) && !t.isArgumentPlaceholder(a),
+      )
+      .map((a: Expression): string | null => resolveContentKey(a, s))
+      .filter((k: string | null): k is string => k !== null && !k.includes('[]'));
+    if (contentKeys.length !== 1) return null;
+    return contentKeys[0]!;
   }
 
   function pickSoleExpressionContainer(jsxElement: JSXElement): types.JSXExpressionContainer | null {
@@ -439,6 +516,57 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
       !(t.isTemplateLiteral(child.expression) && child.expression.expressions.length === 0) &&
       !isStructuralPassthroughExpression(child.expression)
     );
+  }
+
+  // Inline-formatting tags that may appear as direct children of an editable
+  // text element without disqualifying it. Mirrors the client's hasOnlyText
+  // allowlist in dev-tools/element-detection.ts.
+  const INLINE_FORMAT_TAGS = new Set(['span', 'strong', 'em', 'b', 'i', 'a', 'br']);
+
+  // Resolve the intrinsic tag of an inline-formatting child element, or null if
+  // it isn't statically knowable. `<span>` → "span"; a native-tag wrapper like
+  // `<motion.span>`/`<motion.strong>` (lowercase member-expression root) → its
+  // leaf property ("span"); a real component (`<Highlight>`, `<Foo.Bar>`) → null,
+  // because we can't know what it renders.
+  function inlineChildTagName(opening: JSXElement['openingElement']): string | null {
+    const name = opening.name;
+    if (t.isJSXIdentifier(name)) return name.name;
+    if (t.isJSXMemberExpression(name)) {
+      let root: types.JSXMemberExpression['object'] = name;
+      while (t.isJSXMemberExpression(root)) root = root.object;
+      const isNativeWrapper: boolean = t.isJSXIdentifier(root) && /^[a-z]/.test(root.name);
+      return isNativeWrapper ? name.property.name : null;
+    }
+    return null;
+  }
+
+  // Authoritative editability predicate for the additive data-dev-editable="text"
+  // marker. Direct-children-only. A CONSERVATIVE SUBSET of server-acceptance
+  // (hasUnsupportedDynamicTextExpression, ast-text-editor.ts): it never marks a
+  // node the server would reject, but it may withhold the marker on a node the
+  // server WOULD accept — the server ignores element children entirely, whereas
+  // this also requires every element child to resolve to an intrinsic inline tag
+  // (so an unresolvable component child — unknown render — shuts editing off
+  // rather than risk an accept-then-reject). A non-static JSXExpressionContainer
+  // child (identifier/member/call/conditional/template-with-substitutions)
+  // disqualifies; JSXText, static expression containers (string literal / empty
+  // template / comment), and intrinsic inline-format child elements (incl.
+  // `motion.*` wrappers, resolved to their leaf tag) are all editable.
+  function isStaticallyTextEditable(jsxElement: JSXElement): boolean {
+    return jsxElement.children.every((child) => {
+      if (t.isJSXText(child)) return true;
+      if (t.isJSXExpressionContainer(child)) {
+        return t.isJSXEmptyExpression(child.expression) ||
+          t.isStringLiteral(child.expression) ||
+          (t.isTemplateLiteral(child.expression) && child.expression.expressions.length === 0);
+      }
+      if (t.isJSXElement(child)) {
+        const tag: string | null = inlineChildTagName(child.openingElement);
+        return tag !== null && INLINE_FORMAT_TAGS.has(tag);
+      }
+      // JSXFragment / JSXSpreadChild — not statically editable.
+      return false;
+    });
   }
 
   return {
@@ -629,6 +757,10 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
           const expressionContainer = pickSoleExpressionContainer(path.node);
           const expression = expressionContainer?.expression as Expression | undefined;
           const contentKey = expression ? resolveContentKey(expression, state) : null;
+          const derivedContentKey =
+            isDevBuild && !contentKey && expression
+              ? resolveDerivedContentKey(expression, path, state)
+              : null;
           const hasDynamic = hasDynamicChildExpression(path.node);
           const lineNumber = openingElement.loc ? openingElement.loc.start.line : 0;
 
@@ -643,6 +775,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
             textTagName &&
             expression &&
             !isStaticLiteralExpression(expression) &&
+            !derivedContentKey &&
             state.formatBoundTextRuntimeAvailable &&
             state.genericMapDepth === 0
               ? {
@@ -681,12 +814,35 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
                 t.jsxAttribute(t.jsxIdentifier(attrName), t.stringLiteral(contentKey)),
               );
             }
+          } else if (derivedContentKey) {
+            if (!hasAttr(openingElement.attributes, 'data-dev-content-key')) {
+              openingElement.attributes.push(
+                t.jsxAttribute(t.jsxIdentifier('data-dev-content-key'), t.stringLiteral(derivedContentKey)),
+                t.jsxAttribute(t.jsxIdentifier('data-dev-content-derived'), t.stringLiteral('true')),
+              );
+            }
           } else {
             if (hasDynamic && !hasAttr(openingElement.attributes, 'data-dev-dynamic')) {
               openingElement.attributes.push(
                 t.jsxAttribute(
                   t.jsxIdentifier('data-dev-dynamic'),
                   t.stringLiteral('true')
+                )
+              );
+            } else if (
+              textTagName &&
+              !hasDynamic &&
+              isStaticallyTextEditable(path.node) &&
+              !hasAttr(openingElement.attributes, 'data-dev-editable')
+            ) {
+              // Authoritative per-node signal: this intrinsic text element is
+              // statically editable by the same rule the server uses to accept a
+              // save. Purely additive — never emitted for content-keyed or
+              // dynamic nodes. The client trusts this only to shut OFF editing.
+              openingElement.attributes.push(
+                t.jsxAttribute(
+                  t.jsxIdentifier('data-dev-editable'),
+                  t.stringLiteral('text')
                 )
               );
             }

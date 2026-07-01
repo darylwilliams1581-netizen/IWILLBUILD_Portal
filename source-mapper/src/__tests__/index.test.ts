@@ -244,10 +244,21 @@ describe('jsxSourceMapper — data-dev-content-key', () => {
     expect(output).toContain('data-dev-dynamic="true"');
   });
 
-  it('falls through for computed member access', () => {
+  it('attributes a numeric computed member access in canonical bracket form', () => {
     const output = transform(`
       import { site } from 'virtual:content';
       export default () => <p>{site.nav[0].label}</p>;
+    `);
+    expect(output).toContain('data-dev-content-key="site.nav[0].label"');
+    expect(output).not.toContain('data-dev-dynamic');
+  });
+
+  it('falls through for a non-numeric computed member access', () => {
+    const output = transform(`
+      import { site } from 'virtual:content';
+      export default function Nav({ i }) {
+        return <p>{site.nav[i].label}</p>;
+      }
     `);
     expect(output).not.toContain('data-dev-content-key');
     expect(output).toContain('data-dev-dynamic="true"');
@@ -1066,5 +1077,211 @@ describe('jsxSourceMapper — per-item list instrumentation (gap 2b)', () => {
     `);
     expect(out).not.toContain('data-dev-item-id');
     expect(out).not.toContain('data-dev-content-list');
+  });
+});
+
+describe('jsxSourceMapper — indexed and derived content keys', () => {
+  it('attributes a direct indexed array access in canonical bracket form', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default () => <span>{home.about.stats[0].value}</span>;
+    `);
+    expect(output).toContain('data-dev-content-key="home.about.stats[0].value"');
+    expect(output).not.toContain('data-dev-dynamic');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+
+  it('attributes a value derived through a single-arg call (destructured)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function StatCounter0() {
+        const { display } = useCounter(home.about.stats[0].value);
+        return <span ref={ref}>{display}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-content-key="home.about.stats[0].value"');
+    expect(output).toContain('data-dev-content-derived="true"');
+    expect(output).not.toContain('data-dev-dynamic');
+    expect(output).not.toContain('data-dev-bound-source-kind');
+    expect(output).not.toContain('FormattedBoundText');
+  });
+
+  it('attributes a value derived through a single-arg call (non-destructured scalar)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function Title() {
+        const x = animate(home.hero.title);
+        return <h1>{x}</h1>;
+      }
+    `);
+    expect(output).toContain('data-dev-content-key="home.hero.title"');
+    expect(output).toContain('data-dev-content-derived="true"');
+    expect(output).not.toContain('data-dev-dynamic');
+  });
+
+  it('does not attribute when multiple args resolve to content keys (ambiguous)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function Combined() {
+        const x = combine(home.a.b, home.c.d);
+        return <span>{x}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-dynamic="true"');
+    expect(output).not.toContain('data-dev-content-key');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+
+  it('attributes a multi-arg call with exactly one content arg (e.g. useCountUp(key, duration, started))', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function Counter() {
+        const count = useCountUp(home.about.stats[0].value, 2000, true);
+        return <span>{count}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-content-key="home.about.stats[0].value"');
+    expect(output).toContain('data-dev-content-derived="true"');
+    expect(output).not.toContain('data-dev-dynamic="true"');
+  });
+
+  it('does not attribute a value derived through a call with no content arg', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function Counter() {
+        const x = useState(0);
+        return <span>{x}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-dynamic="true"');
+    expect(output).not.toContain('data-dev-content-key');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+
+  it('does not attribute a non-numeric computed index', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function List({ i }) {
+        return <span>{home.items[i].name}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-dynamic="true"');
+    expect(output).not.toContain('data-dev-content-key');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+
+  it('leaves a plain content key byte-identical (no derived attr)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default () => <h2>{home.about.heading}</h2>;
+    `);
+    expect(output).toContain('data-dev-content-key="home.about.heading"');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+
+  it('keeps mapped array template keys unchanged', () => {
+    const output = transform(`
+      import { products } from 'virtual:content';
+      export default () => (
+        <ul>{products.map((p) => <li>{p.name}</li>)}</ul>
+      );
+    `);
+    expect(output).toContain('data-dev-content-key-template="products[].name"');
+    expect(output).not.toContain('data-dev-content-derived');
+  });
+});
+
+describe('jsxSourceMapper — data-dev-editable authoritative marker', () => {
+  it('marks a static text element', () => {
+    const output = transform('<h1>Hi</h1>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('marks a static element with inline-formatting children', () => {
+    const output = transform('<h2>Static <strong>bold</strong></h2>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('does NOT mark an element with dynamic expression children', () => {
+    const output = transform('<span>{prefix}{display}{suffix}</span>');
+    expect(output).not.toContain('data-dev-editable');
+  });
+
+  it('does NOT mark an element with mixed static text and a dynamic expression', () => {
+    const output = transform('<p>Label {x}</p>');
+    expect(output).not.toContain('data-dev-editable');
+  });
+
+  it('does NOT mark a content-keyed element (content path owns it)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default () => <h2>{home.x}</h2>;
+    `);
+    expect(output).not.toContain('data-dev-editable');
+    expect(output).toContain('data-dev-content-key="home.x"');
+  });
+
+  it('does NOT mark a data-dev-dynamic element', () => {
+    const output = transform('<p>{product.price}</p>');
+    expect(output).toContain('data-dev-dynamic="true"');
+    expect(output).not.toContain('data-dev-editable');
+  });
+
+  it('does NOT mark a non-text container tag', () => {
+    const output = transform('<div>Hi</div>');
+    expect(output).not.toContain('data-dev-editable');
+  });
+
+  it('marks a static element whose only child is a static expression container', () => {
+    const output = transform('<p>{"static string"}</p>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  // Regression guards: these shapes are editable today via the client's
+  // hasOnlyText path — the marker MUST be emitted for them or clicking them
+  // would silently go read-only with no test failing.
+  it('marks a static <li> (list-item click path)', () => {
+    const output = transform('<li>Item</li>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('marks a heading containing a <br/>', () => {
+    const output = transform('<h1>Shop better.<br />Spend less.</h1>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('marks an element with a JSX whitespace expression among static text', () => {
+    const output = transform("<h1>Hi{' '}there</h1>");
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  // Contract guards for the inline-child tag list — a future edit to the tag set
+  // (here vs the client's hasOnlyText) breaks a test instead of silently going
+  // read-only.
+  it('marks a heading with a plain inline-format child', () => {
+    const output = transform('<span>Hi</span>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('marks a heading whose only child is an <a>', () => {
+    const output = transform('<h2>Read <a>more</a></h2>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  // Regression: motion.* inline wrappers must NOT lose the marker (server accepts
+  // them; pre-fix they were disqualified as JSXMemberExpression children).
+  it('marks a static heading with a motion.* inline-format child', () => {
+    const output = transform('<h1>Shop <motion.span>smarter</motion.span></h1>');
+    expect(output).toContain('data-dev-editable="text"');
+  });
+
+  it('does NOT mark a heading with a motion.* BLOCK child (not inline-format)', () => {
+    const output = transform('<h1>Big <motion.div>block</motion.div></h1>');
+    expect(output).not.toContain('data-dev-editable');
+  });
+
+  it('does NOT mark a heading with a custom-component child (unknown render)', () => {
+    const output = transform('<h1>Text <Highlight>word</Highlight></h1>');
+    expect(output).not.toContain('data-dev-editable');
   });
 });
