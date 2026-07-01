@@ -7,12 +7,15 @@
  *  - Job Cost Report Word document
  */
 
-import {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  HeadingLevel, AlignmentType, WidthType, BorderStyle, ShadingType,
-  Header, Footer, PageNumber, NumberFormat,
-} from 'docx';
+// docx is loaded lazily (dynamic import) to keep it out of the main SSR
+// bundle traversal — reduces Rollup peak memory by ~7 MB during publish.
 import type { SwmsData, SafetyPlanData, CostReportData } from './pdf-generator.js';
+
+type DocxLib = typeof import('docx');
+
+async function getDocx(): Promise<DocxLib> {
+  return import('docx') as Promise<DocxLib>;
+}
 
 // ── Colour constants (OOXML hex, no #) ────────────────────────────────────────
 const ORANGE_HEX = 'F97316';
@@ -22,79 +25,79 @@ const LIGHT_HEX  = 'F2F3F5';
 const MUTED_HEX  = '808890';
 const WHITE_HEX  = 'FFFFFF';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers (all take docx lib as first arg) ───────────────────────────────────
 
-function bold(text: string, size = 22, color = '000000'): TextRun {
-  return new TextRun({ text, bold: true, size, color });
+function bold(d: DocxLib, text: string, size = 22, color = '000000') {
+  return new d.TextRun({ text, bold: true, size, color });
 }
-function normal(text: string, size = 20, color = '000000'): TextRun {
-  return new TextRun({ text, size, color });
+function normal(d: DocxLib, text: string, size = 20, color = '000000') {
+  return new d.TextRun({ text, size, color });
 }
-function muted(text: string, size = 18): TextRun {
-  return new TextRun({ text, size, color: MUTED_HEX });
+function muted(d: DocxLib, text: string, size = 18) {
+  return new d.TextRun({ text, size, color: MUTED_HEX });
 }
 
-function heading1(text: string): Paragraph {
-  return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 32, color: WHITE_HEX })],
-    heading: HeadingLevel.HEADING_1,
-    shading: { type: ShadingType.SOLID, color: DARK_HEX, fill: DARK_HEX },
+function heading1(d: DocxLib, text: string) {
+  return new d.Paragraph({
+    children: [new d.TextRun({ text, bold: true, size: 32, color: WHITE_HEX })],
+    heading: d.HeadingLevel.HEADING_1,
+    shading: { type: d.ShadingType.SOLID, color: DARK_HEX, fill: DARK_HEX },
     spacing: { before: 200, after: 100 },
   });
 }
 
-function sectionHead(text: string): Paragraph {
-  return new Paragraph({
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, size: 18, color: SLATE_HEX })],
-    shading: { type: ShadingType.SOLID, color: LIGHT_HEX, fill: LIGHT_HEX },
+function sectionHead(d: DocxLib, text: string) {
+  return new d.Paragraph({
+    children: [new d.TextRun({ text: text.toUpperCase(), bold: true, size: 18, color: SLATE_HEX })],
+    shading: { type: d.ShadingType.SOLID, color: LIGHT_HEX, fill: LIGHT_HEX },
     spacing: { before: 240, after: 80 },
   });
 }
 
-function labelPara(label: string, value: string): Paragraph[] {
+function labelPara(d: DocxLib, label: string, value: string) {
   return [
-    new Paragraph({ children: [muted(label, 16)], spacing: { before: 80, after: 20 } }),
-    new Paragraph({ children: [normal(value || '—')], spacing: { before: 0, after: 80 } }),
+    new d.Paragraph({ children: [muted(d, label, 16)], spacing: { before: 80, after: 20 } }),
+    new d.Paragraph({ children: [normal(d, value || '—')], spacing: { before: 0, after: 80 } }),
   ];
 }
 
-function divider(): Paragraph {
-  return new Paragraph({
+function divider(d: DocxLib) {
+  return new d.Paragraph({
     children: [],
-    border: { bottom: { color: LIGHT_HEX, space: 1, style: BorderStyle.SINGLE, size: 6 } },
+    border: { bottom: { color: LIGHT_HEX, space: 1, style: d.BorderStyle.SINGLE, size: 6 } },
     spacing: { before: 100, after: 100 },
   });
 }
 
-function docHeader(title: string, subtitle?: string): Header {
-  return new Header({
+function docHeader(d: DocxLib, title: string, subtitle?: string) {
+  return new d.Header({
     children: [
-      new Paragraph({
+      new d.Paragraph({
         children: [
-          new TextRun({ text: 'IWILLBUILD  ', bold: true, size: 22, color: WHITE_HEX }),
-          new TextRun({ text: `| ${title.toUpperCase()}`, size: 20, color: 'FFCCAA' }),
-          ...(subtitle ? [new TextRun({ text: `  —  ${subtitle}`, size: 18, color: 'FFCCAA' })] : []),
+          new d.TextRun({ text: 'IWILLBUILD  ', bold: true, size: 22, color: WHITE_HEX }),
+          new d.TextRun({ text: `| ${title.toUpperCase()}`, size: 20, color: 'FFCCAA' }),
+          ...(subtitle ? [new d.TextRun({ text: `  —  ${subtitle}`, size: 18, color: 'FFCCAA' })] : []),
         ],
-        shading: { type: ShadingType.SOLID, color: ORANGE_HEX, fill: ORANGE_HEX },
+        shading: { type: d.ShadingType.SOLID, color: ORANGE_HEX, fill: ORANGE_HEX },
         spacing: { before: 80, after: 80 },
       }),
     ],
   });
 }
 
-function docFooter(): Footer {
-  return new Footer({
+function docFooter(d: DocxLib) {
+  return new d.Footer({
     children: [
-      new Paragraph({
+      new d.Paragraph({
         children: [
-          muted('IWILLBUILD Portal — Confidential   |   Page ', 16),
-          new TextRun({ children: [PageNumber.CURRENT], size: 16, color: MUTED_HEX }),
-          muted(' of ', 16),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: MUTED_HEX }),
-          muted(`   |   Generated ${new Date().toLocaleDateString('en-AU')}`, 16),
+          muted(d, 'IWILLBUILD Portal — Confidential   |   Page ', 16),
+          new d.TextRun({ children: [d.PageNumber.CURRENT], size: 16, color: MUTED_HEX }),
+          muted(d, ' of ', 16),
+          new d.TextRun({ children: [d.PageNumber.TOTAL_PAGES], size: 16, color: MUTED_HEX }),
+          muted(d, `   |   Generated ${new Date().toLocaleDateString('en-AU')}`, 16),
         ],
-        alignment: AlignmentType.CENTER,
-        shading: { type: ShadingType.SOLID, color: DARK_HEX, fill: DARK_HEX },
+        alignment: d.AlignmentType.CENTER,
+        shading: { type: d.ShadingType.SOLID, color: DARK_HEX, fill: DARK_HEX },
         spacing: { before: 60, after: 60 },
       }),
     ],
