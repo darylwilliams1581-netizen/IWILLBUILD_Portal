@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Settings,
@@ -29,6 +29,9 @@ import {
   Plug,
   Receipt,
   ShieldCheck,
+  Smartphone,
+  BadgeCheck,
+  RefreshCw,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useMe, usePermissions } from '@/lib/usePermissions';
@@ -449,6 +452,278 @@ function MyAccountTab() {
             </div>
           </form>
         </div>
+      </div>
+
+      {/* SMS Recovery Phone */}
+      <PhoneVerificationSection />
+    </div>
+  );
+}
+
+// ── Phone Verification Section ────────────────────────────────────────────────
+function PhoneVerificationSection() {
+  const [savedPhone, setSavedPhone]       = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [loadingPhone, setLoadingPhone]   = useState(true);
+
+  // Save phone state
+  const [editPhone, setEditPhone]         = useState('');
+  const [savingPhone, setSavingPhone]     = useState(false);
+  const [savePhoneError, setSavePhoneError] = useState('');
+  const [savePhoneOk, setSavePhoneOk]     = useState(false);
+
+  // Verify flow state
+  const [verifyStep, setVerifyStep]       = useState<'idle' | 'sent' | 'done'>('idle');
+  const [sendingCode, setSendingCode]     = useState(false);
+  const [sendError, setSendError]         = useState('');
+  const [code, setCode]                   = useState('');
+  const [verifying, setVerifying]         = useState(false);
+  const [verifyError, setVerifyError]     = useState('');
+  const [smsAvailable, setSmsAvailable]   = useState(true);
+
+  const loadPhone = useCallback(async () => {
+    try {
+      const res = await fetch('/api/me/phone', { credentials: 'include' });
+      const data = await res.json() as { phoneNumber?: string | null; phoneVerified?: boolean };
+      setSavedPhone(data.phoneNumber ?? null);
+      setPhoneVerified(data.phoneVerified ?? false);
+      setEditPhone(data.phoneNumber ?? '');
+    } catch {
+      // ignore
+    } finally {
+      setLoadingPhone(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPhone();
+    fetch('/api/auth/sms-configured', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { configured?: boolean }) => setSmsAvailable(d.configured ?? false))
+      .catch(() => setSmsAvailable(false));
+  }, [loadPhone]);
+
+  async function handleSavePhone(e: React.FormEvent) {
+    e.preventDefault();
+    setSavePhoneError('');
+    setSavePhoneOk(false);
+    const trimmed = editPhone.trim().replace(/\s+/g, '');
+    if (!trimmed) { setSavePhoneError('Please enter a phone number.'); return; }
+    setSavingPhone(true);
+    try {
+      const res = await fetch('/api/me/phone', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: trimmed }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setSavePhoneError(data.error ?? 'Failed to save phone number.');
+      } else {
+        setSavePhoneOk(true);
+        setSavedPhone(trimmed);
+        setPhoneVerified(false);
+        setVerifyStep('idle');
+        setTimeout(() => setSavePhoneOk(false), 3000);
+      }
+    } catch {
+      setSavePhoneError('Network error. Please try again.');
+    } finally {
+      setSavingPhone(false);
+    }
+  }
+
+  async function handleSendCode() {
+    setSendError('');
+    setSendingCode(true);
+    try {
+      const res = await fetch('/api/auth/send-sms-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: savedPhone }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setSendError(data.error ?? 'Failed to send code.');
+      } else {
+        setVerifyStep('sent');
+        setCode('');
+        setVerifyError('');
+      }
+    } catch {
+      setSendError('Network error. Please try again.');
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setVerifyError('');
+    if (!code.trim()) { setVerifyError('Please enter the 6-digit code.'); return; }
+    setVerifying(true);
+    try {
+      const res = await fetch('/api/auth/verify-sms-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setVerifyError(data.error ?? 'Verification failed.');
+      } else {
+        setVerifyStep('done');
+        setPhoneVerified(true);
+      }
+    } catch {
+      setVerifyError('Network error. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  if (loadingPhone) return null;
+
+  return (
+    <div>
+      <h2 className="font-bold text-base text-slate-800 mb-4 flex items-center gap-2">
+        <Smartphone size={16} className="text-slate-400" />
+        SMS Account Recovery
+      </h2>
+      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-5">
+        <p className="text-sm text-slate-500 leading-relaxed">
+          Add and verify your mobile number to recover your account via SMS if you lose access to your email.
+          {!smsAvailable && (
+            <span className="block mt-1 text-amber-600 font-medium">
+              SMS is not yet configured on this portal. Add your Twilio credentials in Settings to enable this feature.
+            </span>
+          )}
+        </p>
+
+        {/* Save phone number */}
+        <form onSubmit={handleSavePhone} className="flex flex-col gap-3">
+          <label className={labelClass}>
+            <span className="flex items-center gap-1"><Phone size={11} /> Mobile Number</span>
+          </label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Smartphone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="+61 4xx xxx xxx"
+                autoComplete="tel"
+                className={`${inputClass} pl-9`}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={savingPhone || editPhone.trim().replace(/\s+/g, '') === savedPhone}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              {savingPhone ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              Save
+            </button>
+          </div>
+          {savePhoneError && (
+            <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{savePhoneError}</p>
+          )}
+          {savePhoneOk && (
+            <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 size={11} />Phone number saved. Now verify it below.</p>
+          )}
+        </form>
+
+        {/* Verification status + flow */}
+        {savedPhone && (
+          <div className="border-t border-slate-100 pt-4">
+            {phoneVerified && verifyStep !== 'sent' ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold">
+                  <BadgeCheck size={16} className="text-emerald-500" />
+                  <span>{savedPhone} — Verified</span>
+                </div>
+                <button
+                  onClick={() => { setVerifyStep('idle'); setPhoneVerified(false); }}
+                  className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+                >
+                  <RefreshCw size={11} />Re-verify
+                </button>
+              </div>
+            ) : verifyStep === 'done' ? (
+              <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold">
+                <BadgeCheck size={16} className="text-emerald-500" />
+                Phone verified! You can now use SMS for account recovery.
+              </div>
+            ) : verifyStep === 'sent' ? (
+              <form onSubmit={handleVerifyCode} className="flex flex-col gap-3">
+                <p className="text-sm text-slate-600">
+                  A 6-digit code was sent to <span className="font-semibold text-slate-800">{savedPhone}</span>. Enter it below — expires in 10 minutes.
+                </p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    className={`${inputClass} tracking-[0.3em] text-center font-mono text-lg max-w-[160px]`}
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={verifying || code.length !== 6}
+                    className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verifying ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}
+                    Verify
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVerifyStep('idle')}
+                    className="text-sm text-slate-400 hover:text-slate-600 px-3 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {verifyError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{verifyError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={sendingCode}
+                  className="text-xs text-primary hover:text-orange-600 transition-colors self-start"
+                >
+                  Resend code
+                </button>
+              </form>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-amber-600 text-sm">
+                  <AlertCircle size={14} />
+                  <span>{savedPhone} — Not verified</span>
+                </div>
+                {sendError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{sendError}</p>
+                )}
+                <button
+                  onClick={handleSendCode}
+                  disabled={sendingCode || !smsAvailable}
+                  className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors self-start"
+                >
+                  {sendingCode ? <Loader2 size={13} className="animate-spin" /> : <Smartphone size={13} />}
+                  Send verification code
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
