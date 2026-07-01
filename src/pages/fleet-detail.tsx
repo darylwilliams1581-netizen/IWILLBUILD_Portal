@@ -21,9 +21,12 @@ import {
   Plus,
   Clock,
   FolderOpen,
+  Car,
+  StopCircle,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FilePanel from '@/components/FilePanel';
+import { usePermissions } from '@/lib/usePermissions';
 import {
   fetchAsset,
   updateAsset,
@@ -37,7 +40,7 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 
-type Tab = 'details' | 'prestarts' | 'files';
+type Tab = 'details' | 'prestarts' | 'history' | 'files';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -397,12 +400,37 @@ function DetailRow({ label, value, mono = false }: { label: string; value: strin
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+
+interface DriverSession {
+  id: number;
+  user_id: string;
+  driver_name: string;
+  start_at: string;
+  end_at: string | null;
+  status: string;
+  source: string;
+}
+
+function formatDuration(start: string, end: string | null): string {
+  const endMs = end ? new Date(end).getTime() : Date.now();
+  const diffMs = endMs - new Date(start).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+}
+
 export default function FleetDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin, isOwner } = usePermissions();
 
   const [asset, setAsset] = useState<FleetAsset | null>(null);
   const [prestarts, setPrestarts] = useState<FleetPrestart[]>([]);
+  const [driverSessions, setDriverSessions] = useState<DriverSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [stoppingId, setStoppingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [prestartLoading, setPrestartLoading] = useState(false);
   const [error, setError] = useState('');
@@ -439,11 +467,39 @@ export default function FleetDetailPage() {
     }
   }, [id]);
 
+  const loadDriverSessions = useCallback(async () => {
+    if (!id) return;
+    setSessionsLoading(true);
+    try {
+      const res = await fetch(`/api/fleet/${id}/driver-sessions`, { credentials: 'include' });
+      const data = await res.json() as { sessions?: DriverSession[] };
+      setDriverSessions(data.sessions ?? []);
+    } catch {
+      // silently fail
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [id]);
+
+  async function forceStopSession(sessionId: number) {
+    setStoppingId(sessionId);
+    try {
+      await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      void loadDriverSessions();
+    } finally {
+      setStoppingId(null);
+    }
+  }
+
   useEffect(() => { void loadAsset(); }, [loadAsset]);
 
   useEffect(() => {
     if (activeTab === 'prestarts') void loadPrestarts();
-  }, [activeTab, loadPrestarts]);
+    if (activeTab === 'history') void loadDriverSessions();
+  }, [activeTab, loadPrestarts, loadDriverSessions]);
 
   if (!loading && !asset && !error) return null;
 
@@ -556,6 +612,7 @@ export default function FleetDetailPage() {
                 {([
                   { key: 'details',   label: 'Details',   icon: Truck },
                   { key: 'prestarts', label: 'Prestarts', icon: ClipboardList },
+                  { key: 'history',   label: 'Driver Log', icon: Car },
                   { key: 'files',     label: 'Files',     icon: FolderOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
@@ -699,6 +756,85 @@ export default function FleetDetailPage() {
               {activeTab === 'files' && (
                 <div className="bg-white rounded-xl border border-border">
                   <FilePanel fleetAssetId={asset.id} />
+                </div>
+              )}
+
+              {/* ── Driver History tab ── */}
+              {activeTab === 'history' && (
+                <div className="bg-white rounded-xl border border-border">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      <Car size={15} className="text-muted-foreground" />
+                      <h2 className="font-heading font-bold text-sm">Driver Log</h2>
+                    </div>
+                    {sessionsLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+                  </div>
+
+                  {sessionsLoading && driverSessions.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                    </div>
+                  ) : driverSessions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-6">
+                      <Car size={28} className="text-muted-foreground/40" />
+                      <p className="text-sm font-semibold text-muted-foreground">No driver sessions yet</p>
+                      <p className="text-xs text-muted-foreground/70">Sessions are logged when a team member starts driving this vehicle from the dashboard.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {driverSessions.map((s) => {
+                        const isActive = s.status === 'active';
+                        const canForceStop = (isAdmin || isOwner) && isActive;
+                        return (
+                          <div key={s.id} className="flex items-center gap-4 px-5 py-3.5">
+                            {/* Status dot */}
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-primary animate-pulse' : 'bg-slate-300'}`} />
+
+                            {/* Driver info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-foreground truncate">{s.driver_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(s.start_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {' · '}
+                                {new Date(s.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                                {s.end_at && ` → ${new Date(s.end_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}`}
+                              </p>
+                            </div>
+
+                            {/* Duration */}
+                            <div className="text-right shrink-0">
+                              <p className="text-xs font-semibold text-foreground">
+                                {formatDuration(s.start_at, s.end_at)}
+                              </p>
+                              {isActive ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 rounded-full px-2 py-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping inline-block" />
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">Completed</span>
+                              )}
+                            </div>
+
+                            {/* Admin force-stop */}
+                            {canForceStop && (
+                              <button
+                                onClick={() => void forceStopSession(s.id)}
+                                disabled={stoppingId === s.id}
+                                title="Force stop this session"
+                                className="p-1.5 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50 shrink-0"
+                              >
+                                {stoppingId === s.id
+                                  ? <Loader2 size={13} className="animate-spin" />
+                                  : <StopCircle size={13} />
+                                }
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>

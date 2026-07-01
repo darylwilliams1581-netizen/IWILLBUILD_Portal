@@ -246,6 +246,22 @@ export default function DashboardPage() {
               >
                 <Calculator size={18} />
               </Link>
+
+              {/* Quick Vehicle Driver Log — car icon */}
+              {!permLoading && canFleet && (
+                driverSession
+                  ? <DrivingSessionBadge session={driverSession} onStopped={refreshDriverSession} />
+                  : (
+                    <button
+                      onClick={() => setShowStartDriving(true)}
+                      title="Start driving"
+                      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+                    >
+                      <Car size={18} />
+                    </button>
+                  )
+              )}
+
               <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
                 <Bell size={18} />
               </button>
@@ -688,6 +704,16 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
+
+      {/* Start Driving modal */}
+      <AnimatePresence>
+        {showStartDriving && (
+          <StartDrivingModal
+            onClose={() => setShowStartDriving(false)}
+            onStarted={handleSessionStarted}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
