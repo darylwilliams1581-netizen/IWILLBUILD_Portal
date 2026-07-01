@@ -128,22 +128,32 @@ function windowDayCount(anchor: Date, tw: TimeWindow): number {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Parse a YYYY-MM-DD string as LOCAL midnight (not UTC).
+ * new Date('2026-06-30') parses as UTC midnight → in AEST (+10) it becomes
+ * 29 June, causing off-by-one errors in date comparisons and display.
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
 function fmt(dateStr: string | null): string {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtShort(dateStr: string | null): string {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
 function daysBetween(a: string, b: string): number {
-  const ms = new Date(b).getTime() - new Date(a).getTime();
+  const ms = parseLocalDate(b).getTime() - parseLocalDate(a).getTime();
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
@@ -158,8 +168,8 @@ function isScheduled(job: SchedulerJob): boolean {
  */
 function overlapsWindow(job: SchedulerJob, windowStart: Date, windowEnd: Date): boolean {
   if (!job.scheduledStartDate || !job.expectedCompletionDate) return false;
-  const s = new Date(job.scheduledStartDate);
-  const e = new Date(job.expectedCompletionDate);
+  const s = parseLocalDate(job.scheduledStartDate);
+  const e = parseLocalDate(job.expectedCompletionDate);
   return s <= windowEnd && e >= windowStart;
 }
 
@@ -340,8 +350,8 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
 
   function barProps(job: SchedulerJob) {
     if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
-    const jobStart  = new Date(job.scheduledStartDate);
-    const jobFinish = new Date(job.expectedCompletionDate);
+    const jobStart  = parseLocalDate(job.scheduledStartDate);
+    const jobFinish = parseLocalDate(job.expectedCompletionDate);
 
     const clampedStart  = jobStart  < windowStart ? windowStart : jobStart;
     const clampedFinish = jobFinish > windowEnd   ? windowEnd   : jobFinish;

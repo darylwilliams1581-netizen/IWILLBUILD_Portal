@@ -364,71 +364,131 @@ export default function JobDetailPage() {
               className="flex flex-col h-full"
             >
               {/* ── Status bar ── */}
-              <div className="bg-white border-b border-border px-4 md:px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-                <div className="flex items-center gap-3">
-                  {statusStyle && (
-                    <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
-                      <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
-                      {job.status}
+              <div className="bg-white border-b border-border px-4 md:px-6 py-3 flex flex-col gap-2 shrink-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {statusStyle && (
+                      <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
+                        <span className={`w-2 h-2 rounded-full ${statusStyle.dot}`} />
+                        {job.status}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
-                  )}
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Cost mini-summary */}
-                  {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && (
-                    <button
-                      onClick={() => switchTab('costs')}
-                      className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-slate-500">Costs</span>
-                      <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                      {costSummary.approved > 0 && (
+                  <div className="flex items-center gap-2">
+                    {/* Cost mini-summary */}
+                    {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && (
+                      <button
+                        onClick={() => switchTab('costs')}
+                        className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="text-slate-500">Costs</span>
+                        <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        {costSummary.approved > 0 && (
+                          <>
+                            <span className="text-slate-300">/</span>
+                            <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {costSummary.actual > costSummary.approved ? '⚠ Over' : `${((costSummary.actual / costSummary.approved) * 100).toFixed(0)}%`}
+                            </span>
+                          </>
+                        )}
+                        <Receipt size={11} className="text-slate-400" />
+                      </button>
+                    )}
+
+                    {/* Quick status change */}
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() => setStatusOpen(!statusOpen)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+                      >
+                        Change Status <ChevronDown size={12} />
+                      </button>
+                      {statusOpen && (
                         <>
-                          <span className="text-slate-300">/</span>
-                          <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
-                            {costSummary.actual > costSummary.approved ? '⚠ Over' : `${((costSummary.actual / costSummary.approved) * 100).toFixed(0)}%`}
-                          </span>
+                          <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                          <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                            {JOB_STATUSES.map((s) => {
+                              const st = getStatusStyle(s);
+                              return (
+                                <button
+                                  key={s}
+                                  onClick={() => handleStatusChange(s)}
+                                  className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}
+                                >
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                  {s}
+                                  {job.status === s && <Check size={12} className="ml-auto text-primary" />}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </>
                       )}
-                      <Receipt size={11} className="text-slate-400" />
-                    </button>
-                  )}
-
-                  {/* Quick status change */}
-                  <div className="relative shrink-0">
-                    <button
-                      onClick={() => setStatusOpen(!statusOpen)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
-                    >
-                      Change Status <ChevronDown size={12} />
-                    </button>
-                    {statusOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                        <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                          {JOB_STATUSES.map((s) => {
-                            const st = getStatusStyle(s);
-                            return (
-                              <button
-                                key={s}
-                                onClick={() => handleStatusChange(s)}
-                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}
-                              >
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                                {s}
-                                {job.status === s && <Check size={12} className="ml-auto text-primary" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+                    </div>
                   </div>
                 </div>
+
+                {/* ── Schedule summary strip ── */}
+                {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedSupervisorUserId || job.assignedTeamLabel) && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-2">
+                    {job.scheduledStartDate && (
+                      <span className="flex items-center gap-1">
+                        <CalendarClock size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-slate-400">Sched. Start:</span>
+                        <span className="font-medium text-slate-700">
+                          {(() => { const [y,m,d] = job.scheduledStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                        </span>
+                      </span>
+                    )}
+                    {job.expectedCompletionDate && (
+                      <span className="flex items-center gap-1">
+                        <CalendarCheck size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-slate-400">Exp. Completion:</span>
+                        <span className="font-medium text-slate-700">
+                          {(() => { const [y,m,d] = job.expectedCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                        </span>
+                      </span>
+                    )}
+                    {job.actualStartDate && (
+                      <span className="flex items-center gap-1">
+                        <CalendarClock size={11} className="text-emerald-500 shrink-0" />
+                        <span className="text-slate-400">Actual Start:</span>
+                        <span className="font-medium text-emerald-700">
+                          {(() => { const [y,m,d] = job.actualStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                        </span>
+                      </span>
+                    )}
+                    {job.actualCompletionDate && (
+                      <span className="flex items-center gap-1">
+                        <CalendarCheck size={11} className="text-emerald-500 shrink-0" />
+                        <span className="text-slate-400">Actual Completion:</span>
+                        <span className="font-medium text-emerald-700">
+                          {(() => { const [y,m,d] = job.actualCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                        </span>
+                      </span>
+                    )}
+                    {job.assignedSupervisorUserId && (
+                      <span className="flex items-center gap-1">
+                        <UserCheck size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-slate-400">Supervisor:</span>
+                        <span className="font-medium text-slate-700">
+                          {teamMembers.find((m) => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
+                        </span>
+                      </span>
+                    )}
+                    {job.assignedTeamLabel && (
+                      <span className="flex items-center gap-1">
+                        <Users size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-slate-400">Team:</span>
+                        <span className="font-medium text-slate-700">{job.assignedTeamLabel}</span>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* ── Mobile section selector ── */}
@@ -691,28 +751,28 @@ export default function JobDetailPage() {
                                   <DetailRow
                                     icon={CalendarClock}
                                     label="Scheduled Start"
-                                    value={new Date(job.scheduledStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    value={(() => { const [y,m,d] = job.scheduledStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
                                   />
                                 )}
                                 {job.expectedCompletionDate && (
                                   <DetailRow
                                     icon={CalendarCheck}
                                     label="Expected Completion"
-                                    value={new Date(job.expectedCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    value={(() => { const [y,m,d] = job.expectedCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
                                   />
                                 )}
                                 {job.actualStartDate && (
                                   <DetailRow
                                     icon={CalendarClock}
                                     label="Actual Start"
-                                    value={new Date(job.actualStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    value={(() => { const [y,m,d] = job.actualStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
                                   />
                                 )}
                                 {job.actualCompletionDate && (
                                   <DetailRow
                                     icon={CalendarCheck}
                                     label="Actual Completion"
-                                    value={new Date(job.actualCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    value={(() => { const [y,m,d] = job.actualCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
                                   />
                                 )}
                                 {job.assignedSupervisorUserId && (

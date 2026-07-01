@@ -34,7 +34,11 @@ export default async function handler(req: Request, res: Response) {
         j.client,
         j.address,
         j.status,
-        COALESCE(j.progress, 0)       AS progress,
+        COALESCE((
+          SELECT ROUND(AVG(pl.percent_complete))
+          FROM job_progress_lines pl
+          WHERE pl.job_id = j.id
+        ), 0)                         AS progress,
         j.scheduled_start_date        AS scheduledStartDate,
         j.expected_completion_date    AS expectedCompletionDate,
         j.actual_start_date           AS actualStartDate,
