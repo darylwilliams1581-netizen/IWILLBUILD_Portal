@@ -31,12 +31,13 @@ export default async function handler(req: Request, res: Response) {
     const {
       name, contactPerson, email, phone, mobile,
       address, billingAddress, abn, notes, status,
-      recordType, tradeType, licenceNumber,
+      recordType, tradeType, licenceNumber, stakeholderType,
     } = req.body as Record<string, string>;
 
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
 
     const rType = recordType === 'contractor' ? 'contractor' : 'customer';
+    const sType = stakeholderType?.trim() || 'Customer';
 
     await db.execute(sql`
       UPDATE customers SET
@@ -52,7 +53,8 @@ export default async function handler(req: Request, res: Response) {
         status           = ${status ?? 'active'},
         record_type      = ${rType},
         trade_type       = ${tradeType?.trim() || null},
-        licence_number   = ${licenceNumber?.trim() || null}
+        licence_number   = ${licenceNumber?.trim() || null},
+        stakeholder_type = ${sType}
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 

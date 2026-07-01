@@ -32,7 +32,7 @@ import { fmtMoney } from '@/lib/invoices-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
-  { label: 'Add a Job',       icon: HardHat,  href: '/jobs',      desc: 'Track a new site or project' },
+  { label: 'New Project',     icon: HardHat,  href: '/jobs',      desc: 'Track a new site or project' },
   { label: 'Add Fleet Asset', icon: Truck,    href: '/fleet',     desc: 'Register a vehicle or plant' },
   { label: 'Invite Team',     icon: Users,    href: '/team',      desc: 'Add crew members' },
   { label: 'Ask Dazza AI',    icon: Bot,      href: '/dazza-ai',  desc: 'Your on-site AI assistant' },

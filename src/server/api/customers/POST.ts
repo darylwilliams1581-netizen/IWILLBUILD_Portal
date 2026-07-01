@@ -26,22 +26,23 @@ export default async function handler(req: Request, res: Response) {
     const {
       name, contactPerson, email, phone, mobile,
       address, billingAddress, abn, notes,
-      recordType, tradeType, licenceNumber,
+      recordType, tradeType, licenceNumber, stakeholderType,
     } = req.body as Record<string, string>;
 
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
 
     const rType = recordType === 'contractor' ? 'contractor' : 'customer';
+    const sType = stakeholderType?.trim() || 'Customer';
 
     const [result] = await db.execute(sql`
       INSERT INTO customers
-        (company_id, name, contact_person, email, phone, mobile, address, billing_address, abn, notes, status, record_type, trade_type, licence_number)
+        (company_id, name, contact_person, email, phone, mobile, address, billing_address, abn, notes, status, record_type, trade_type, licence_number, stakeholder_type)
       VALUES
         (${profile.companyId}, ${name.trim()}, ${contactPerson?.trim() || null},
          ${email?.trim() || null}, ${phone?.trim() || null}, ${mobile?.trim() || null},
          ${address?.trim() || null}, ${billingAddress?.trim() || null},
          ${abn?.trim() || null}, ${notes?.trim() || null}, 'active',
-         ${rType}, ${tradeType?.trim() || null}, ${licenceNumber?.trim() || null})
+         ${rType}, ${tradeType?.trim() || null}, ${licenceNumber?.trim() || null}, ${sType})
     `) as unknown as [ResultSetHeader, unknown];
 
     const [rows] = await db.execute(

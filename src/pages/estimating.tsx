@@ -794,17 +794,17 @@ export default function EstimatingPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Estimating Library — IWILLBUILD Portal</title>
+        <title>Tools — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
         <link rel="canonical" href="https://iwillbuild.com/estimating" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Estimating Library — IWILLBUILD Portal" />
+        <meta property="og:title" content="Tools — IWILLBUILD Portal" />
         <meta property="og:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/estimating" />
         <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Estimating Library — IWILLBUILD Portal" />
+        <meta name="twitter:title" content="Tools — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
         <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
@@ -816,7 +816,7 @@ export default function EstimatingPage() {
             <Calculator size={20} />
           </button>
           <Calculator size={18} className="text-primary shrink-0" />
-          <h1 className="font-heading font-bold text-lg">Estimating Library</h1>
+          <h1 className="font-heading font-bold text-lg">Tools</h1>
         </header>
 
         {/* Tabs */}

@@ -837,6 +837,22 @@ async function runStartupMigrations() {
     }
   }
 
+  // Ensure stakeholder_type column on customers table
+  try {
+    const [stRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers' AND COLUMN_NAME = 'stakeholder_type'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(stRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(`ALTER TABLE \`customers\` ADD COLUMN \`stakeholder_type\` VARCHAR(50) NULL DEFAULT 'Customer'`));
+      console.log('[startup-migration] Added customers.stakeholder_type');
+    }
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('ER_DUP_FIELDNAME') && !msg.includes('Duplicate column name')) {
+      console.warn('[startup-migration] Could not ensure customers.stakeholder_type:', msg);
+    }
+  }
+
   // Ensure email columns on manual_verification_log (added in v2)
   const manualVerifCols = [
     { column: 'target_user_email',  definition: 'VARCHAR(255) NULL' },

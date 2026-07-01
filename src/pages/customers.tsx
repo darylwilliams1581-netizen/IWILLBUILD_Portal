@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Plus, Search, Loader2, X, Check, AlertCircle,
   Phone, Mail, MapPin, Building2, Archive, ArchiveRestore,
-  ChevronRight, User, FileText, Briefcase,
+  ChevronRight, User, FileText, Briefcase, Tag,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -20,6 +20,7 @@ import {
 const EMPTY_FORM = {
   name: '', contactPerson: '', email: '', phone: '', mobile: '',
   address: '', billingAddress: '', abn: '', notes: '',
+  stakeholderType: 'Customer' as string,
 };
 
 function CustomerFormModal({
@@ -41,6 +42,7 @@ function CustomerFormModal({
     billingAddress: initial.billing_address ?? '',
     abn: initial.abn ?? '',
     notes: initial.notes ?? '',
+    stakeholderType: (initial as Customer & { stakeholder_type?: string }).stakeholder_type ?? 'Customer',
   } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +51,7 @@ function CustomerFormModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setError('Customer name is required'); return; }
+    if (!form.name.trim()) { setError('Stakeholder name is required'); return; }
     setSaving(true); setError('');
     try {
       const payload = {
@@ -62,6 +64,7 @@ function CustomerFormModal({
         billingAddress: form.billingAddress.trim() || undefined,
         abn: form.abn.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        stakeholderType: form.stakeholderType || 'Customer',
       };
       const saved = initial
         ? await updateCustomer(initial.id, { ...payload, status: initial.status })
@@ -90,15 +93,37 @@ function CustomerFormModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-orange-50 rounded-md"><Users size={16} className="text-primary" /></div>
-            <h2 className="font-heading font-bold text-base">{initial ? 'Edit Customer' : 'New Customer'}</h2>
+            <h2 className="font-heading font-bold text-base">{initial ? 'Edit Stakeholder' : 'New Stakeholder'}</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+          {/* Stakeholder type */}
+          <div>
+            <label className={lbl}>Stakeholder Type <span className="text-red-500">*</span></label>
+            <div className="flex flex-wrap gap-2">
+              {['Customer', 'Client', 'Subcontractor', 'Supplier', 'Employee', 'Support', 'Other'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, stakeholderType: t }))}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                    form.stakeholderType === t
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  <Tag size={10} />
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Business name */}
           <div>
-            <label className={lbl}>Customer / Business Name <span className="text-red-500">*</span></label>
+            <label className={lbl}>Business / Name <span className="text-red-500">*</span></label>
             <input autoFocus value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Thompson Constructions" className={inp} />
           </div>
 
@@ -160,7 +185,7 @@ function CustomerFormModal({
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              {initial ? 'Save Changes' : 'Create Customer'}
+              {initial ? 'Save Changes' : 'Create Stakeholder'}
             </button>
           </div>
         </form>
@@ -194,6 +219,11 @@ function CustomerCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <h3 className="font-bold text-sm text-slate-800 truncate">{customer.name}</h3>
+            {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
+              </span>
+            )}
             {isArchived && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Archived</span>
             )}
@@ -314,18 +344,18 @@ export default function CustomersPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Customers — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage your customer register." />
+        <title>Stakeholders — IWILLBUILD Portal</title>
+        <meta name="description" content="Manage your stakeholder register." />
         <link rel="canonical" href="https://iwillbuild.com/customers" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Customers — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage your customer register." />
+        <meta property="og:title" content="Stakeholders — IWILLBUILD Portal" />
+        <meta property="og:description" content="Manage your stakeholder register." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/customers" />
         <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Customers — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage your customer register." />
+        <meta name="twitter:title" content="Stakeholders — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Manage your stakeholder register." />
         <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
@@ -337,7 +367,7 @@ export default function CustomersPage() {
           <div className="flex items-center gap-3">
             <MobileMenuButton onClick={openMobileMenu} />
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Customers</h1>
+              <h1 className="font-heading font-black text-xl text-foreground">Stakeholders</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {activeCount} active{archivedCount > 0 ? ` · ${archivedCount} archived` : ''}
               </p>
@@ -350,7 +380,7 @@ export default function CustomersPage() {
             className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
-            <span className="hidden sm:inline">Add Customer</span>
+            <span className="hidden sm:inline">+ New Stakeholder</span>
             <span className="sm:hidden">Add</span>
           </button>
         </div>
@@ -362,7 +392,7 @@ export default function CustomersPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search customers, contacts, email…"
+              placeholder="Search stakeholders, contacts, email…"
               className="w-full pl-9 pr-4 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
           </div>
@@ -406,16 +436,16 @@ export default function CustomersPage() {
             <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
               <Users size={26} className="text-primary" />
             </div>
-            <p className="font-heading font-bold text-base text-foreground mb-1">No customers yet</p>
+            <p className="font-heading font-bold text-base text-foreground mb-1">No stakeholders yet</p>
             <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              Add your first customer to link them to jobs and track work history.
+              Add your first stakeholder to link them to projects and track work history.
             </p>
             <button
               onClick={() => !isViewOnly && setShowModal(true)}
               disabled={isViewOnly}
               className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Plus size={15} />Add Customer
+              <Plus size={15} />+ New Stakeholder
             </button>
           </div>
         )}
@@ -423,7 +453,7 @@ export default function CustomersPage() {
         {/* No results */}
         {!loading && !error && customers.length > 0 && filtered.length === 0 && (
           <div className="text-center py-12 text-muted-foreground text-sm">
-            No customers match your search or filter.
+            No stakeholders match your search or filter.
           </div>
         )}
 

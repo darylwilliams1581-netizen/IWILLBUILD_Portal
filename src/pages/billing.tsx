@@ -564,17 +564,17 @@ export default function BillingPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Billing & Subscription — IWILLBUILD Portal</title>
+        <title>Subscription — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
         <link rel="canonical" href="https://iwillbuild.com/billing" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Billing & Subscription — IWILLBUILD Portal" />
+        <meta property="og:title" content="Subscription — IWILLBUILD Portal" />
         <meta property="og:description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/billing" />
         <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Billing & Subscription — IWILLBUILD Portal" />
+        <meta name="twitter:title" content="Subscription — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
         <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
@@ -586,7 +586,7 @@ export default function BillingPage() {
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="font-heading font-black text-2xl text-slate-900">Billing & Subscription</h1>
+            <h1 className="font-heading font-black text-2xl text-slate-900">Subscription</h1>
             <p className="text-sm text-slate-500 mt-1">Manage your plan and payment details</p>
           </div>
 

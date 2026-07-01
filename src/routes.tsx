@@ -17,6 +17,7 @@ import TermsPage from './pages/terms';
 import ProdNotFoundPage from './pages/_404';
 import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
+import { Navigate } from 'react-router-dom';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
 const DashboardPage      = lazy(() => import('./pages/dashboard'));
@@ -84,6 +85,11 @@ export const routes: RouteObject[] = [
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
+  // Alias routes — /projects and /stakeholders redirect to canonical paths
+  { path: '/projects',      element: <Navigate to="/jobs" replace /> },
+  { path: '/stakeholders',  element: <Navigate to="/customers" replace /> },
+  { path: '/subscription',  element: <Navigate to="/billing" replace /> },
+  { path: '/tools',         element: <Navigate to="/estimating" replace /> },
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   // Deep-link: open a specific form instance directly in the job forms tab

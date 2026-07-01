@@ -142,18 +142,18 @@ export default function InvoicesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Invoices — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage invoices linked to jobs and customers." />
+        <title>Ledger — IWILLBUILD Portal</title>
+        <meta name="description" content="Financial register — invoices, costs and payments linked to projects." />
         <link rel="canonical" href="https://iwillbuild.com/invoices" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Invoices — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage invoices linked to jobs and customers." />
+        <meta property="og:title" content="Ledger — IWILLBUILD Portal" />
+        <meta property="og:description" content="Financial register — invoices, costs and payments linked to projects." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/invoices" />
         <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Invoices — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage invoices linked to jobs and customers." />
+        <meta name="twitter:title" content="Ledger — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Financial register — invoices, costs and payments linked to projects." />
         <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
@@ -165,7 +165,7 @@ export default function InvoicesPage() {
           <div className="flex items-center gap-3">
             <MobileMenuButton onClick={openMobileMenu} />
             <div>
-              <h1 className="font-heading font-black text-xl text-foreground">Invoices</h1>
+              <h1 className="font-heading font-black text-xl text-foreground">Ledger</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{invoices.length} total</p>
             </div>
           </div>

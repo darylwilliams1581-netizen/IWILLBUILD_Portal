@@ -12,6 +12,7 @@ import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
+import DazzaWidget from '@/components/DazzaWidget';
 
 const CookieBanner = lazy(() =>
   import('@/components/CookieBanner').catch((error) => {
@@ -31,6 +32,7 @@ const rootElement = (
     <RootLayout>
       <Outlet />
     </RootLayout>
+    <DazzaWidget />
   </Suspense>
 );
 
