@@ -764,6 +764,12 @@ async function runStartupMigrations() {
   ];
   for (const { name, ddl } of safetyTables) {
     try {
+      // Check if table already exists before attempting CREATE — avoids DDL
+      // parse errors from stale published bundles that had invalid TEXT defaults.
+      const [existRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
@@ -803,6 +809,10 @@ async function runStartupMigrations() {
   ];
   for (const { name, ddl } of recoveryTables) {
     try {
+      const [existRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
       await db.execute(sql.raw(ddl));
       console.log(`[startup-migration] ${name} table ready`);
     } catch (e: unknown) {
