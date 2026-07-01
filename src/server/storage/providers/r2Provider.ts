@@ -20,23 +20,24 @@
  * R2 docs: https://developers.cloudflare.com/r2/api/s3/
  */
 
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-  HeadObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner';
+// AWS SDK loaded lazily — keeps it out of the SSR bundle (avoids OOM on build).
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
 
+async function getS3() {
+  return import('@aws-sdk/client-s3') as Promise<typeof import('@aws-sdk/client-s3')>;
+}
+async function getPresigner() {
+  return import('@aws-sdk/s3-request-presigner') as Promise<typeof import('@aws-sdk/s3-request-presigner')>;
+}
+
 // ── Client factory (lazy, singleton per process) ──────────────────────────────
 
-let _client: S3Client | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _client: any | null = null;
 
-function getClient(): S3Client {
+async function getClient() {
   if (_client) return _client;
 
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -49,6 +50,7 @@ function getClient(): S3Client {
     );
   }
 
+  const { S3Client } = await getS3();
   _client = new S3Client({
     region: 'auto',
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -90,7 +92,9 @@ export const r2Provider: StorageProvider = {
   supportsSignedUrls: true,
 
   async saveFile(input: SaveFileInput): Promise<SaveFileResult> {
-    const client = getClient();
+    const client = await getClient();
+    const { PutObjectCommand, GetObjectCommand } = await getS3();
+    const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
     const r2Bucket = getBucket();
     const ext = extFromMime(input.mimeType);
     const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
@@ -108,7 +112,6 @@ export const r2Provider: StorageProvider = {
       },
     }));
 
-    // If a public URL base is configured, use it directly; otherwise sign
     const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
     const publicUrl = publicBase
       ? `${publicBase}/${key}`
@@ -123,7 +126,8 @@ export const r2Provider: StorageProvider = {
   },
 
   async getDownloadStream(storageKey: string, bucket: string): Promise<GetFileResult> {
-    const client = getClient();
+    const client = await getClient();
+    const { GetObjectCommand } = await getS3();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
@@ -136,7 +140,6 @@ export const r2Provider: StorageProvider = {
       throw new Error(`[r2Provider] Empty body for key: ${key}`);
     }
 
-    // AWS SDK v3 returns a SdkStream — convert to Node Readable
     const stream = response.Body as unknown as Readable;
 
     return {
@@ -149,7 +152,8 @@ export const r2Provider: StorageProvider = {
 
   async deleteFile(storageKey: string, bucket: string): Promise<void> {
     try {
-      const client = getClient();
+      const client = await getClient();
+      const { DeleteObjectCommand } = await getS3();
       const r2Bucket = getBucket();
       await client.send(new DeleteObjectCommand({
         Bucket: r2Bucket,
@@ -161,11 +165,12 @@ export const r2Provider: StorageProvider = {
   },
 
   async getSignedUrl(storageKey: string, bucket: string, expiresInSeconds = 3600): Promise<string> {
-    const client = getClient();
+    const client = await getClient();
+    const { GetObjectCommand } = await getS3();
+    const { getSignedUrl: awsGetSignedUrl } = await getPresigner();
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
-    // If a public URL base is configured, return it directly (no signing needed)
     const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
     if (publicBase) return `${publicBase}/${key}`;
 
@@ -185,24 +190,22 @@ export const r2Provider: StorageProvider = {
  */
 export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const client = getClient();
+    const client = await getClient();
+    const { HeadObjectCommand } = await getS3();
     const r2Bucket = getBucket();
 
-    // HeadObject on a non-existent key — R2 returns 404 (not a credentials error)
-    // Any response other than a credentials/network error means the bucket is reachable.
     try {
       await client.send(new HeadObjectCommand({
         Bucket: r2Bucket,
         Key: '__iwillbuild_connection_test__',
       }));
     } catch (err: unknown) {
-      // 404 / NoSuchKey = bucket reachable, object just doesn't exist → OK
       const code = (err as { name?: string; $metadata?: { httpStatusCode?: number } })?.name;
       const status = (err as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
       if (code === 'NotFound' || code === 'NoSuchKey' || status === 404) {
         return { ok: true };
       }
-      throw err; // real error — propagate
+      throw err;
     }
 
     return { ok: true };
