@@ -222,62 +222,60 @@ function SidebarContent({
             const Icon   = item.icon;
             const active = isActive(item.href);
             return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={onClose}
-                title={collapsed ? item.label : undefined}
-                className={linkClass(active)}
-              >
-                <Icon size={17} className="shrink-0" />
-                {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                    {item.label}
-                  </div>
-                )}
-              </Link>
-            );
-          })}
+              <div key={item.href}>
+                <Link
+                  to={item.href}
+                  onClick={onClose}
+                  title={collapsed ? item.label : undefined}
+                  className={linkClass(active)}
+                >
+                  <Icon size={17} className="shrink-0" />
+                  {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
+                  {collapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                      {item.label}
+                    </div>
+                  )}
+                </Link>
 
-          {/* Cost Guide + Recipes sub-items under Admin */}
-          {!collapsed && adminSubItems.map((item) => {
-            if (!permsLoading && item.permKey && !can(item.permKey)) return null;
-            const Icon   = item.icon;
-            const active = location.search.includes(item.href.split('?')[1] ?? '') && location.pathname === '/estimating';
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-2.5 pl-8 pr-3 py-2 rounded-lg transition-colors duration-150 group relative ${
-                  active ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
-                }`}
-              >
-                <Icon size={14} className="shrink-0" />
-                <span className="text-xs font-semibold truncate flex-1">{item.label}</span>
-              </Link>
-            );
-          })}
-          {collapsed && adminSubItems.map((item) => {
-            if (!permsLoading && item.permKey && !can(item.permKey)) return null;
-            const Icon   = item.icon;
-            const active = location.search.includes(item.href.split('?')[1] ?? '') && location.pathname === '/estimating';
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={onClose}
-                title={item.label}
-                className={`flex items-center justify-center px-3 py-2 rounded-lg transition-colors duration-150 group relative ${
-                  active ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
-                }`}
-              >
-                <Icon size={14} className="shrink-0" />
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                  {item.label}
-                </div>
-              </Link>
+                {/* Cost Guide + Recipes nest directly under Admin */}
+                {item.label === 'Admin' && adminSubItems.map((sub) => {
+                  if (!permsLoading && sub.permKey && !can(sub.permKey)) return null;
+                  const SubIcon = sub.icon;
+                  const subActive = location.search.includes(sub.href.split('?')[1] ?? '') && location.pathname === '/estimating';
+                  if (collapsed) {
+                    return (
+                      <Link
+                        key={sub.href}
+                        to={sub.href}
+                        onClick={onClose}
+                        title={sub.label}
+                        className={`flex items-center justify-center px-3 py-2 rounded-lg transition-colors duration-150 group relative ${
+                          subActive ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
+                        }`}
+                      >
+                        <SubIcon size={14} className="shrink-0" />
+                        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                          {sub.label}
+                        </div>
+                      </Link>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={sub.href}
+                      to={sub.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-2.5 pl-8 pr-3 py-1.5 rounded-lg transition-colors duration-150 ${
+                        subActive ? 'bg-primary/15 text-primary' : 'text-white/40 hover:bg-white/8 hover:text-white/75'
+                      }`}
+                    >
+                      <SubIcon size={13} className="shrink-0" />
+                      <span className="text-xs font-semibold truncate flex-1">{sub.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
 
