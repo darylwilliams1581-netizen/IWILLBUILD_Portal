@@ -36,6 +36,7 @@ import {
   CalendarCheck,
   CalendarClock,
   Layers,
+  Image,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPhotos from '@/components/JobPhotos';
@@ -57,6 +58,43 @@ import { useTerminology } from '@/lib/useTerminology';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings';
 
+// ── Nav definition ────────────────────────────────────────────────────────────
+
+const NAV_GROUPS = [
+  {
+    label: 'Site / Daily',
+    items: [
+      { key: 'details'   as Tab, label: 'Details',   icon: FileText },
+      { key: 'photos'    as Tab, label: 'Photos',     icon: Image },
+      { key: 'drawings'  as Tab, label: 'Drawings',   icon: Layers },
+      { key: 'todos'     as Tab, label: 'To-do',      icon: CheckSquare },
+      { key: 'delays'    as Tab, label: 'Delays',     icon: Clock },
+      { key: 'notes'     as Tab, label: 'Notes',      icon: StickyNote },
+    ],
+  },
+  {
+    label: 'Work / Compliance',
+    items: [
+      { key: 'estimates' as Tab, label: 'Estimates',  icon: Calculator },
+      { key: 'progress'  as Tab, label: 'Progress',   icon: TrendingUp },
+      { key: 'forms'     as Tab, label: 'Forms',      icon: ClipboardList },
+      { key: 'safety'    as Tab, label: 'Safety',     icon: ShieldAlert },
+    ],
+  },
+  {
+    label: 'Money / Records',
+    items: [
+      { key: 'costs'     as Tab, label: 'Costs',      icon: Receipt },
+      { key: 'invoices'  as Tab, label: 'Invoices',   icon: DollarSign },
+      { key: 'files'     as Tab, label: 'Files',      icon: FolderOpen },
+    ],
+  },
+] as const;
+
+const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function JobDetailPage() {
   const { id, formInstanceId } = useParams<{ id: string; formInstanceId?: string }>();
   const navigate = useNavigate();
@@ -70,21 +108,21 @@ export default function JobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [formRunnerActive, setFormRunnerActive] = useState(false);
   const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
   const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [teamMembers, setTeamMembers] = useState<Array<{ userId: string; name: string; role: string }>>([]);
+
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    // Deep-link: /jobs/:id/forms/:formInstanceId → open forms tab
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
     if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings') return t as Tab;
     return 'details';
   });
 
-  // Edit form state
   const [form, setForm] = useState({
     name: '',
     jobNumber: '',
@@ -99,21 +137,19 @@ export default function JobDetailPage() {
     assignedSupervisorUserId: '',
     assignedTeamLabel: '',
   });
+
   useEffect(() => {
     if (id) loadJob(parseInt(id, 10));
-    // Fetch user role for permission checks
     fetch('/api/me', { credentials: 'include' })
       .then((r) => r.json())
       .then((d: { profile?: { role?: string } }) => { if (d.profile?.role) setUserRole(d.profile.role); })
       .catch(() => {});
-    // Fetch team members for supervisor dropdown
     fetch('/api/team/members', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((d: { members?: Array<{ userId: string; name: string; role: string }> }) => {
         setTeamMembers(d.members ?? []);
       })
       .catch(() => {});
-    // Fetch cost summary for header bar
     if (id) {
       fetch(`/api/jobs/${id}/costs`, { credentials: 'include' })
         .then((r) => r.json())
@@ -145,7 +181,6 @@ export default function JobDetailPage() {
         assignedSupervisorUserId: data.assignedSupervisorUserId ?? '',
         assignedTeamLabel: data.assignedTeamLabel ?? '',
       });
-      // Load linked customer if present
       if (data.customerId) {
         fetchCustomer(data.customerId)
           .then(({ customer }) => { setLinkedCustomer(customer); setEditingCustomer(customer); })
@@ -201,6 +236,12 @@ export default function JobDetailPage() {
       address: job.address ?? '',
       status: job.status,
       notes: job.notes ?? '',
+      scheduledStartDate: job.scheduledStartDate ?? '',
+      expectedCompletionDate: job.expectedCompletionDate ?? '',
+      actualStartDate: job.actualStartDate ?? '',
+      actualCompletionDate: job.actualCompletionDate ?? '',
+      assignedSupervisorUserId: job.assignedSupervisorUserId ?? '',
+      assignedTeamLabel: job.assignedTeamLabel ?? '',
     });
     setEditingCustomer(linkedCustomer);
     setSaveError('');
@@ -215,8 +256,15 @@ export default function JobDetailPage() {
       setJob(updated);
       setForm((f) => ({ ...f, status: newStatus }));
     } catch {
-      // silent — status badge will revert on next load
+      // silent
     }
+  }
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    setStatusOpen(false);
+    setMobileNavOpen(false);
+    if (tab !== 'forms') setFormRunnerActive(false);
   }
 
   function openMobileMenu() {
@@ -224,6 +272,7 @@ export default function JobDetailPage() {
   }
 
   const statusStyle = job ? getStatusStyle(job.status) : null;
+  const activeNavItem = ALL_NAV_ITEMS.find((i) => i.key === activeTab);
 
   return (
     <div className="portal-page">
@@ -237,7 +286,7 @@ export default function JobDetailPage() {
       <PortalSidebar />
 
       <div className="portal-main">
-        {/* Top bar */}
+        {/* ── Top bar ── */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -290,19 +339,17 @@ export default function JobDetailPage() {
           )}
         </header>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-16">
+        {/* ── Body ── */}
+        <div className="flex-1 overflow-y-auto">
 
-          {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="animate-spin text-primary" />
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg">
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg m-6">
               <AlertCircle size={16} className="shrink-0" />
               {error}
               <button onClick={() => navigate('/jobs')} className="ml-auto font-semibold underline">Back to {workPlural}</button>
@@ -314,10 +361,10 @@ export default function JobDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' as const }}
-              className={formRunnerActive ? 'max-w-2xl flex flex-col gap-4' : 'max-w-2xl flex flex-col gap-4'}
+              className="flex flex-col h-full"
             >
-              {/* Status bar */}
-              <div className="bg-white rounded-xl border border-border p-4 flex items-center justify-between gap-4">
+              {/* ── Status bar ── */}
+              <div className="bg-white border-b border-border px-4 md:px-6 py-3 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-3">
                   {statusStyle && (
                     <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.color}`}>
@@ -325,439 +372,465 @@ export default function JobDetailPage() {
                       {job.status}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
                     Updated {new Date(job.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
 
-                {/* Cost mini-summary */}
-                {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && (
-                  <button
-                    onClick={() => setActiveTab('costs')}
-                    className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
-                  >
-                    <span className="text-slate-500">Costs</span>
-                    <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                    {costSummary.approved > 0 && (
+                <div className="flex items-center gap-2">
+                  {/* Cost mini-summary */}
+                  {costSummary && (costSummary.actual > 0 || costSummary.approved > 0) && (
+                    <button
+                      onClick={() => switchTab('costs')}
+                      className="hidden sm:flex items-center gap-3 text-xs border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="text-slate-500">Costs</span>
+                      <span className="font-bold text-slate-800">${costSummary.actual.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                      {costSummary.approved > 0 && (
+                        <>
+                          <span className="text-slate-300">/</span>
+                          <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {costSummary.actual > costSummary.approved ? '⚠ Over' : `${((costSummary.actual / costSummary.approved) * 100).toFixed(0)}%`}
+                          </span>
+                        </>
+                      )}
+                      <Receipt size={11} className="text-slate-400" />
+                    </button>
+                  )}
+
+                  {/* Quick status change */}
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setStatusOpen(!statusOpen)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+                    >
+                      Change Status <ChevronDown size={12} />
+                    </button>
+                    {statusOpen && (
                       <>
-                        <span className="text-slate-300">/</span>
-                        <span className={`font-semibold ${costSummary.actual > costSummary.approved ? 'text-red-600' : 'text-emerald-600'}`}>
-                          {costSummary.actual > costSummary.approved ? '⚠ Over' : `${((costSummary.actual / costSummary.approved) * 100).toFixed(0)}%`}
-                        </span>
+                        <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                        <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
+                          {JOB_STATUSES.map((s) => {
+                            const st = getStatusStyle(s);
+                            return (
+                              <button
+                                key={s}
+                                onClick={() => handleStatusChange(s)}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}
+                              >
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                {s}
+                                {job.status === s && <Check size={12} className="ml-auto text-primary" />}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </>
                     )}
-                    <Receipt size={11} className="text-slate-400" />
-                  </button>
-                )}
+                  </div>
+                </div>
+              </div>
 
-                {/* Quick status change */}
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setStatusOpen(!statusOpen)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
-                  >
-                    Change Status <ChevronDown size={12} />
-                  </button>
-                  {statusOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                      <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                        {JOB_STATUSES.map((s) => {
-                          const st = getStatusStyle(s);
-                          return (
+              {/* ── Mobile section selector ── */}
+              <div className="md:hidden bg-white border-b border-border px-4 py-2 shrink-0">
+                <button
+                  onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-semibold text-foreground bg-white hover:bg-muted transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    {activeNavItem && <activeNavItem.icon size={15} className="text-primary" />}
+                    {activeNavItem?.label ?? 'Select section'}
+                  </span>
+                  <ChevronDown size={15} className={`text-muted-foreground transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {mobileNavOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMobileNavOpen(false)} />
+                    <div className="absolute left-4 right-4 mt-1 bg-white border border-border rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
+                      {NAV_GROUPS.map((group) => (
+                        <div key={group.label}>
+                          <p className="px-4 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</p>
+                          {group.items.map(({ key, label, icon: Icon }) => (
                             <button
-                              key={s}
-                              onClick={() => handleStatusChange(s)}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${job.status === s ? 'font-bold' : ''}`}
+                              key={key}
+                              onClick={() => switchTab(key)}
+                              className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${
+                                activeTab === key
+                                  ? 'text-primary font-bold bg-orange-50'
+                                  : 'text-foreground hover:bg-muted'
+                              }`}
                             >
-                              <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                              {s}
-                              {job.status === s && <Check size={12} className="ml-auto text-primary" />}
+                              <Icon size={14} className={activeTab === key ? 'text-primary' : 'text-muted-foreground'} />
+                              {label}
+                              {activeTab === key && <Check size={12} className="ml-auto text-primary" />}
                             </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Tabs */}
-              <div className="bg-white rounded-xl border border-border p-1">
-                <div className="flex flex-wrap gap-1">
-                {([
-                  { key: 'details',   label: 'Details',   icon: FileText },
-                  { key: 'estimates', label: 'Estimates', icon: Calculator },
-                  { key: 'costs',     label: 'Costs',     icon: Receipt },
-                  { key: 'invoices',  label: 'Invoices',  icon: DollarSign },
-                  { key: 'progress',  label: 'Progress',  icon: TrendingUp },
-                  { key: 'todos',     label: 'To-do',     icon: CheckSquare },
-                  { key: 'delays',    label: 'Delays',    icon: Clock },
-                  { key: 'photos',    label: 'Photos',    icon: Camera },
-                  { key: 'files',     label: 'Files',     icon: FolderOpen },
-                  { key: 'forms',     label: 'Forms',     icon: ClipboardList },
-                  { key: 'safety',    label: 'Safety',    icon: ShieldAlert },
-                  { key: 'drawings',  label: 'Drawings',  icon: Layers },
-                  { key: 'notes',     label: 'Notes',     icon: StickyNote },
-                ] as const).map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => { setActiveTab(key); setStatusOpen(false); if (key !== 'forms') setFormRunnerActive(false); }}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                      activeTab === key
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Icon size={13} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-                </div>
-              </div>
+              {/* ── Two-column layout: side nav + content ── */}
+              <div className="flex flex-1 min-h-0">
 
-              {/* Save error */}
-              {saveError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700">
-                  <AlertCircle size={14} className="shrink-0" />
-                  {saveError}
-                </div>
-              )}
-
-              {/* ── Details tab ── */}
-              {activeTab === 'details' && (
-                <QuickCameraCard jobId={job.id} onPhotoTab={() => setActiveTab('photos')} />
-              )}
-
-              {activeTab === 'details' && (
-                <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
-                  <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">{workSingular} Details</h2>
-
-                  {editing ? (
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          value={form.name}
-                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold mb-1.5">Job Number</label>
-                          <input
-                            type="text"
-                            value={form.jobNumber}
-                            onChange={(e) => setForm((f) => ({ ...f, jobNumber: e.target.value }))}
-                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold mb-1.5">Status</label>
-                          <select
-                            value={form.status}
-                            onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                          >
-                            {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                          </select>
+                {/* ── Left side nav (desktop only) ── */}
+                <aside className="hidden md:flex flex-col w-52 shrink-0 border-r border-border bg-white overflow-y-auto">
+                  <nav className="py-4 px-3 flex flex-col gap-5">
+                    {NAV_GROUPS.map((group) => (
+                      <div key={group.label}>
+                        <p className="px-2 mb-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</p>
+                        <div className="flex flex-col gap-0.5">
+                          {group.items.map(({ key, label, icon: Icon }) => (
+                            <button
+                              key={key}
+                              onClick={() => switchTab(key)}
+                              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left w-full ${
+                                activeTab === key
+                                  ? 'bg-orange-50 text-primary font-semibold'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              <Icon
+                                size={15}
+                                className={activeTab === key ? 'text-primary' : 'text-muted-foreground'}
+                              />
+                              {label}
+                              {activeTab === key && (
+                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                              )}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5">Link Customer <span className="text-muted-foreground font-normal">(optional)</span></label>
-                        <CustomerSelector
-                          value={editingCustomer}
-                          onChange={(c) => {
-                            setEditingCustomer(c);
-                            if (c && !form.client) setForm((f) => ({ ...f, client: c.name }));
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5">Client Name</label>
-                        <input
-                          type="text"
-                          value={form.client}
-                          onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                        />
-                      </div>                      <div>
-                        <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
-                        <input
-                          type="text"
-                          value={form.address}
-                          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5">Description / Notes</label>
-                        <textarea
-                          value={form.notes}
-                          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                          rows={4}
-                          className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
-                        />
-                      </div>
+                    ))}
+                  </nav>
+                </aside>
 
-                      {/* ── Schedule ── */}
-                      <div className="pt-2 border-t border-border">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule</p>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
-                            <input
-                              type="date"
-                              value={form.scheduledStartDate}
-                              onChange={(e) => setForm((f) => ({ ...f, scheduledStartDate: e.target.value }))}
-                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
-                            <input
-                              type="date"
-                              value={form.expectedCompletionDate}
-                              onChange={(e) => setForm((f) => ({ ...f, expectedCompletionDate: e.target.value }))}
-                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold mb-1.5">Actual Start</label>
-                            <input
-                              type="date"
-                              value={form.actualStartDate}
-                              onChange={(e) => setForm((f) => ({ ...f, actualStartDate: e.target.value }))}
-                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold mb-1.5">Actual Completion</label>
-                            <input
-                              type="date"
-                              value={form.actualCompletionDate}
-                              onChange={(e) => setForm((f) => ({ ...f, actualCompletionDate: e.target.value }))}
-                              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <label className="block text-xs font-semibold mb-1.5">Assigned Supervisor</label>
-                          <select
-                            value={form.assignedSupervisorUserId}
-                            onChange={(e) => setForm((f) => ({ ...f, assignedSupervisorUserId: e.target.value }))}
-                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                          >
-                            <option value="">— Unassigned —</option>
-                            {teamMembers.map((m) => (
-                              <option key={m.userId} value={m.userId}>{m.name}{m.role === 'owner' ? ' (Owner)' : m.role === 'admin' ? ' (Admin)' : ''}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="mt-3">
-                          <label className="block text-xs font-semibold mb-1.5">Team / Crew Label</label>
-                          <input
-                            type="text"
-                            value={form.assignedTeamLabel}
-                            onChange={(e) => setForm((f) => ({ ...f, assignedTeamLabel: e.target.value }))}
-                            placeholder="e.g. Crew A, Framing Team"
-                            className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                          />
-                        </div>
-                      </div>
+                {/* ── Content area ── */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-16 min-w-0">
+
+                  {/* Save error */}
+                  {saveError && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700 mb-4">
+                      <AlertCircle size={14} className="shrink-0" />
+                      {saveError}
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <DetailRow icon={HardHat} label="Job Title" value={job.name} />
-                      {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
-                      {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
-                      {job.address && (
-                        <DetailRow
-                          icon={MapPin}
-                          label="Site Address"
-                          value={job.address}
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
-                        />
-                      )}
-                      <DetailRow
-                        icon={Calendar}
-                        label="Created"
-                        value={new Date(job.createdAt).toLocaleDateString('en-AU', {
-                          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                        })}
-                      />
+                  )}
 
-                      {/* ── Schedule fields (view mode) ── */}
-                      {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel || job.assignedSupervisorUserId) && (
-                        <div className="pt-2 border-t border-border flex flex-col gap-3">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
-                          {job.scheduledStartDate && (
+                  {/* ── Details ── */}
+                  {activeTab === 'details' && (
+                    <div className="flex flex-col gap-4 max-w-2xl">
+                      <QuickCameraCard jobId={job.id} onPhotoTab={() => switchTab('photos')} />
+
+                      <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
+                        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">{workSingular} Details</h2>
+
+                        {editing ? (
+                          <div className="flex flex-col gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold mb-1.5">Job Title <span className="text-red-500">*</span></label>
+                              <input
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1.5">Job Number</label>
+                                <input
+                                  type="text"
+                                  value={form.jobNumber}
+                                  onChange={(e) => setForm((f) => ({ ...f, jobNumber: e.target.value }))}
+                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1.5">Status</label>
+                                <select
+                                  value={form.status}
+                                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                                >
+                                  {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1.5">Link Customer <span className="text-muted-foreground font-normal">(optional)</span></label>
+                              <CustomerSelector
+                                value={editingCustomer}
+                                onChange={(c) => {
+                                  setEditingCustomer(c);
+                                  if (c && !form.client) setForm((f) => ({ ...f, client: c.name }));
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1.5">Client Name</label>
+                              <input
+                                type="text"
+                                value={form.client}
+                                onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
+                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
+                              <input
+                                type="text"
+                                value={form.address}
+                                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1.5">Description / Notes</label>
+                              <textarea
+                                value={form.notes}
+                                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                                rows={4}
+                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
+                              />
+                            </div>
+
+                            {/* Schedule */}
+                            <div className="pt-2 border-t border-border">
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule</p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
+                                  <input
+                                    type="date"
+                                    value={form.scheduledStartDate}
+                                    onChange={(e) => setForm((f) => ({ ...f, scheduledStartDate: e.target.value }))}
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
+                                  <input
+                                    type="date"
+                                    value={form.expectedCompletionDate}
+                                    onChange={(e) => setForm((f) => ({ ...f, expectedCompletionDate: e.target.value }))}
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1.5">Actual Start</label>
+                                  <input
+                                    type="date"
+                                    value={form.actualStartDate}
+                                    onChange={(e) => setForm((f) => ({ ...f, actualStartDate: e.target.value }))}
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1.5">Actual Completion</label>
+                                  <input
+                                    type="date"
+                                    value={form.actualCompletionDate}
+                                    onChange={(e) => setForm((f) => ({ ...f, actualCompletionDate: e.target.value }))}
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <label className="block text-xs font-semibold mb-1.5">Assigned Supervisor</label>
+                                <select
+                                  value={form.assignedSupervisorUserId}
+                                  onChange={(e) => setForm((f) => ({ ...f, assignedSupervisorUserId: e.target.value }))}
+                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                                >
+                                  <option value="">— Unassigned —</option>
+                                  {teamMembers.map((m) => (
+                                    <option key={m.userId} value={m.userId}>{m.name}{m.role === 'owner' ? ' (Owner)' : m.role === 'admin' ? ' (Admin)' : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="mt-3">
+                                <label className="block text-xs font-semibold mb-1.5">Team / Crew Label</label>
+                                <input
+                                  type="text"
+                                  value={form.assignedTeamLabel}
+                                  onChange={(e) => setForm((f) => ({ ...f, assignedTeamLabel: e.target.value }))}
+                                  placeholder="e.g. Crew A, Framing Team"
+                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            <DetailRow icon={HardHat} label="Job Title" value={job.name} />
+                            {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
+                            {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
+                            {job.address && (
+                              <DetailRow
+                                icon={MapPin}
+                                label="Site Address"
+                                value={job.address}
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                              />
+                            )}
                             <DetailRow
-                              icon={CalendarClock}
-                              label="Scheduled Start"
-                              value={new Date(job.scheduledStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              icon={Calendar}
+                              label="Created"
+                              value={new Date(job.createdAt).toLocaleDateString('en-AU', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                              })}
                             />
-                          )}
-                          {job.expectedCompletionDate && (
-                            <DetailRow
-                              icon={CalendarCheck}
-                              label="Expected Completion"
-                              value={new Date(job.expectedCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            />
-                          )}
-                          {job.actualStartDate && (
-                            <DetailRow
-                              icon={CalendarClock}
-                              label="Actual Start"
-                              value={new Date(job.actualStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            />
-                          )}
-                          {job.actualCompletionDate && (
-                            <DetailRow
-                              icon={CalendarCheck}
-                              label="Actual Completion"
-                              value={new Date(job.actualCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            />
-                          )}
-                          {job.assignedSupervisorUserId && (
-                            <DetailRow
-                              icon={UserCheck}
-                              label="Supervisor"
-                              value={teamMembers.find((m) => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
-                            />
-                          )}
-                          {job.assignedTeamLabel && (
-                            <DetailRow icon={Users} label="Team / Crew" value={job.assignedTeamLabel} />
-                          )}
+
+                            {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel || job.assignedSupervisorUserId) && (
+                              <div className="pt-2 border-t border-border flex flex-col gap-3">
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
+                                {job.scheduledStartDate && (
+                                  <DetailRow
+                                    icon={CalendarClock}
+                                    label="Scheduled Start"
+                                    value={new Date(job.scheduledStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  />
+                                )}
+                                {job.expectedCompletionDate && (
+                                  <DetailRow
+                                    icon={CalendarCheck}
+                                    label="Expected Completion"
+                                    value={new Date(job.expectedCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  />
+                                )}
+                                {job.actualStartDate && (
+                                  <DetailRow
+                                    icon={CalendarClock}
+                                    label="Actual Start"
+                                    value={new Date(job.actualStartDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  />
+                                )}
+                                {job.actualCompletionDate && (
+                                  <DetailRow
+                                    icon={CalendarCheck}
+                                    label="Actual Completion"
+                                    value={new Date(job.actualCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  />
+                                )}
+                                {job.assignedSupervisorUserId && (
+                                  <DetailRow
+                                    icon={UserCheck}
+                                    label="Supervisor"
+                                    value={teamMembers.find((m) => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
+                                  />
+                                )}
+                                {job.assignedTeamLabel && (
+                                  <DetailRow icon={Users} label="Team / Crew" value={job.assignedTeamLabel} />
+                                )}
+                              </div>
+                            )}
+                            {job.notes && (
+                              <div className="pt-2 border-t border-border">
+                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
+                                <p className="text-sm text-foreground whitespace-pre-wrap">{job.notes}</p>
+                              </div>
+                            )}
+                            {!job.client && !job.address && !job.notes && (
+                              <p className="text-sm text-muted-foreground italic">
+                                No additional details. Click Edit to add client, address, and notes.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Linked customer card */}
+                      {!editing && linkedCustomer && (
+                        <div className="bg-white rounded-xl border border-border p-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Linked Customer</h2>
+                            <Link
+                              to={`/customers/${linkedCustomer.id}`}
+                              className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                            >
+                              Open Customer <ExternalLink size={11} />
+                            </Link>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-primary font-black text-sm">{linkedCustomer.name[0].toUpperCase()}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm text-foreground">{linkedCustomer.name}</p>
+                              {linkedCustomer.contact_person && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><User size={10} />{linkedCustomer.contact_person}</p>
+                              )}
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                                {linkedCustomer.phone && (
+                                  <a href={`tel:${linkedCustomer.phone}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.phone}</a>
+                                )}
+                                {linkedCustomer.mobile && (
+                                  <a href={`tel:${linkedCustomer.mobile}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.mobile}</a>
+                                )}
+                                {linkedCustomer.email && (
+                                  <a href={`mailto:${linkedCustomer.email}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Mail size={10} />{linkedCustomer.email}</a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      {job.notes && (
-                        <div className="pt-2 border-t border-border">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">{job.notes}</p>
-                        </div>
-                      )}
-                      {!job.client && !job.address && !job.notes && (
-                        <p className="text-sm text-muted-foreground italic">
-                          No additional details. Click Edit to add client, address, and notes.
-                        </p>
                       )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* ── Linked customer card (view mode only) ── */}
-              {activeTab === 'details' && !editing && linkedCustomer && (
-                <div className="bg-white rounded-xl border border-border p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Linked Customer</h2>
-                    <Link
-                      to={`/customers/${linkedCustomer.id}`}
-                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                    >
-                      Open Customer <ExternalLink size={11} />
-                    </Link>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-primary font-black text-sm">{linkedCustomer.name[0].toUpperCase()}</span>
+                  {/* ── Photos ── */}
+                  {activeTab === 'photos' && <JobPhotos jobId={job.id} />}
+
+                  {/* ── Drawings ── */}
+                  {activeTab === 'drawings' && <DrawingsTab jobId={job.id} />}
+
+                  {/* ── To-do ── */}
+                  {activeTab === 'todos' && <JobTodos jobId={job.id} />}
+
+                  {/* ── Delays ── */}
+                  {activeTab === 'delays' && <JobDelays jobId={job.id} />}
+
+                  {/* ── Notes ── */}
+                  {activeTab === 'notes' && <JobNotes jobId={job.id} initialNotes={job.notes ?? null} />}
+
+                  {/* ── Estimates ── */}
+                  {activeTab === 'estimates' && <JobEstimates jobId={job.id} />}
+
+                  {/* ── Progress ── */}
+                  {activeTab === 'progress' && <JobProgress jobId={job.id} />}
+
+                  {/* ── Forms ── */}
+                  {activeTab === 'forms' && (
+                    <JobForms
+                      jobId={job.id}
+                      userRole={userRole}
+                      job={job}
+                      onRunnerActive={setFormRunnerActive}
+                      initialFormInstanceId={formInstanceId ? parseInt(formInstanceId, 10) : undefined}
+                    />
+                  )}
+
+                  {/* ── Safety ── */}
+                  {activeTab === 'safety' && <JobSafety jobId={job.id} />}
+
+                  {/* ── Costs ── */}
+                  {activeTab === 'costs' && <JobCosts jobId={job.id} />}
+
+                  {/* ── Invoices ── */}
+                  {activeTab === 'invoices' && <JobInvoices jobId={job.id} job={job} />}
+
+                  {/* ── Files ── */}
+                  {activeTab === 'files' && (
+                    <div className="bg-white rounded-xl border border-border">
+                      <FilePanel jobId={job.id} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-foreground">{linkedCustomer.name}</p>
-                      {linkedCustomer.contact_person && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><User size={10} />{linkedCustomer.contact_person}</p>
-                      )}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                        {linkedCustomer.phone && (
-                          <a href={`tel:${linkedCustomer.phone}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.phone}</a>
-                        )}
-                        {linkedCustomer.mobile && (
-                          <a href={`tel:${linkedCustomer.mobile}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.mobile}</a>
-                        )}
-                        {linkedCustomer.email && (
-                          <a href={`mailto:${linkedCustomer.email}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Mail size={10} />{linkedCustomer.email}</a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  )}
+
                 </div>
-              )}
-
-              {/* ── Details quick camera card ── */}
-
-              {/* ── Photos tab ── */}
-              {activeTab === 'photos' && (
-                <JobPhotos jobId={job.id} />
-              )}
-
-              {/* ── Estimates tab ── */}
-              {activeTab === 'estimates' && (
-                <JobEstimates jobId={job.id} />
-              )}
-
-              {/* ── Costs tab ── */}
-              {activeTab === 'costs' && (
-                <JobCosts jobId={job.id} />
-              )}
-
-              {/* ── Files tab ── */}
-              {activeTab === 'files' && (
-                <div className="bg-white rounded-xl border border-border">
-                  <FilePanel jobId={job.id} />
-                </div>
-              )}
-
-              {/* ── Notes tab ── */}
-              {activeTab === 'notes' && (
-                <JobNotes jobId={job.id} initialNotes={job.notes ?? null} />
-              )}
-
-              {/* ── To-do tab ── */}
-              {activeTab === 'todos' && (
-                <JobTodos jobId={job.id} />
-              )}
-
-              {/* ── Delays tab ── */}
-              {activeTab === 'delays' && (
-                <JobDelays jobId={job.id} />
-              )}
-
-              {/* ── Progress tab ── */}
-              {activeTab === 'progress' && (
-                <JobProgress jobId={job.id} />
-              )}
-
-              {/* ── Forms tab ── */}
-              {activeTab === 'forms' && (
-                <div>
-                  <JobForms
-                    jobId={job.id}
-                    userRole={userRole}
-                    job={job}
-                    onRunnerActive={setFormRunnerActive}
-                    initialFormInstanceId={formInstanceId ? parseInt(formInstanceId, 10) : undefined}
-                  />
-                </div>
-              )}
-
-              {/* ── Safety tab ── */}
-              {activeTab === 'safety' && (
-                <JobSafety jobId={job.id} />
-              )}
-
-              {/* ── Drawings tab ── */}
-              {activeTab === 'drawings' && (
-                <DrawingsTab jobId={job.id} />
-              )}
-
-              {/* ── Invoices tab ── */}
-              {activeTab === 'invoices' && (
-                <JobInvoices jobId={job.id} job={job} />
-              )}
-
+              </div>
             </motion.div>
           )}
         </div>
@@ -765,6 +838,8 @@ export default function JobDetailPage() {
     </div>
   );
 }
+
+// ── Detail row ────────────────────────────────────────────────────────────────
 
 function DetailRow({
   icon: Icon,
@@ -803,7 +878,7 @@ function DetailRow({
   );
 }
 
-// ── Quick camera card shown on Details tab ────────────────────────────────────
+// ── Quick camera card ─────────────────────────────────────────────────────────
 
 function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () => void }) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -814,7 +889,6 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
   async function doUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     const arr = Array.from(files);
-    // Reject HEIC
     for (const f of arr) {
       const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
       if (ext === 'heic' || ext === 'heif') {
@@ -848,11 +922,8 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
   return (
     <div className="bg-white rounded-xl border border-border p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Photos</h2>
-        <button
-          onClick={onPhotoTab}
-          className="text-xs font-semibold text-primary hover:underline"
-        >
+        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Quick Photo</h2>
+        <button onClick={onPhotoTab} className="text-xs font-semibold text-primary hover:underline">
           View all →
         </button>
       </div>
@@ -879,22 +950,8 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
           </span>
         )}
       </div>
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => doUpload(e.target.files)}
-      />
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        className="hidden"
-        onChange={(e) => doUpload(e.target.files)}
-      />
+      <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={(e) => doUpload(e.target.files)} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => doUpload(e.target.files)} />
     </div>
   );
 }
