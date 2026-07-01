@@ -110,6 +110,10 @@ export async function updateAsset(id: number, payload: Partial<CreateAssetPayloa
   return data.asset;
 }
 
+export async function deleteAsset(id: number): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/api/fleet/${id}`, { method: 'DELETE' });
+}
+
 export interface CreatePrestartPayload {
   kmHours?: string;
   safeToOperate: boolean;

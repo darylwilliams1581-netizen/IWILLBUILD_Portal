@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Car,
   StopCircle,
+  Trash2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FilePanel from '@/components/FilePanel';
@@ -30,6 +31,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import {
   fetchAsset,
   updateAsset,
+  deleteAsset,
   fetchPrestarts,
   submitPrestart,
   ASSET_TYPES,
@@ -437,6 +439,8 @@ export default function FleetDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [showPrestartModal, setShowPrestartModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function openMobileMenu() {
     window.dispatchEvent(new Event('portal:open-menu'));
@@ -501,6 +505,19 @@ export default function FleetDetailPage() {
     if (activeTab === 'history') void loadDriverSessions();
   }, [activeTab, loadPrestarts, loadDriverSessions]);
 
+  async function handleDelete() {
+    if (!asset) return;
+    setDeleting(true);
+    try {
+      await deleteAsset(asset.id);
+      navigate('/fleet');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete asset');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }
+
   if (!loading && !asset && !error) return null;
 
   const statusStyle = asset ? getAssetStatusStyle(asset.status) : null;
@@ -556,6 +573,16 @@ export default function FleetDetailPage() {
                   <Edit2 size={14} />
                   <span className="hidden sm:inline">Edit</span>
                 </button>
+                {(isAdmin || isOwner) && (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
+                    title="Delete asset"
+                  >
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -867,6 +894,52 @@ export default function FleetDetailPage() {
               setShowEditModal(false);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Delete confirm dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && asset && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !deleting && setShowDeleteConfirm(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                  <Trash2 size={18} className="text-red-600" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-bold text-base">Delete Asset?</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">This cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold">{asset.name}</span> and all its prestart records and driver session history will be permanently deleted.
+              </p>
+              <div className="flex gap-3 justify-end pt-1">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-60"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleting ? 'Deleting…' : 'Delete Asset'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

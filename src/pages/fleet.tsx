@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import {
@@ -59,15 +60,16 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { setError('Asset name is required'); return; }
+    if (saving) return; // prevent double-submit
     setSaving(true);
     setError('');
     try {
       const asset = await createAsset(form);
       onCreated(asset);
+      // modal closes via onCreated — no further state updates needed
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create asset');
-    } finally {
-      setSaving(false);
+      setSaving(false); // only reset on error so button stays disabled on success
     }
   }
 
@@ -271,6 +273,7 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
+  const [successName, setSuccessName] = useState('');
   const { isViewOnly } = useViewOnly();
 
   function openMobileMenu() {
@@ -368,6 +371,25 @@ export default function FleetPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
+
+          {/* Success banner */}
+          <AnimatePresence>
+            {successName && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800"
+              >
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span><span className="font-bold">{successName}</span> was added to your fleet.</span>
+                <button onClick={() => setSuccessName('')} className="ml-auto text-emerald-600 hover:text-emerald-800 transition-colors">
+                  <X size={14} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Error */}
           {error && (
@@ -531,6 +553,8 @@ export default function FleetPage() {
             onCreated={(asset) => {
               setAssets((prev) => [asset, ...prev]);
               setShowModal(false);
+              setSuccessName(asset.name);
+              setTimeout(() => setSuccessName(''), 5000);
             }}
           />
         )}
