@@ -6,7 +6,7 @@ import {
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, Plus, X, BookOpen, Bot, Package,
+  ShieldAlert, Plus, X, BookOpen, Bot, Package, Filter,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -18,6 +18,10 @@ import SystemAITab from '@/components/owner-console/SystemAITab';
 import StarterPackTab from '@/components/owner-console/StarterPackTab';
 import FormTemplatesTab from '@/components/owner-console/FormTemplatesTab';
 import ManualVerifyModal from '@/components/ManualVerifyModal';
+import UserActionsMenu from '@/components/owner-console/UserActionsMenu';
+import UserActionModal from '@/components/owner-console/UserActionModal';
+import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
+import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -425,13 +429,22 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
   const [enteringSupport, setEnteringSupport] = useState<number | null>(null);
   const [filterCompanyId, setFilterCompanyId] = useState<number | null>(null);
+
+  // User filter state
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [filterVerified, setFilterVerified] = useState('');
+
+  // User action modal state
+  const [pendingAction, setPendingAction] = useState<{ action: UserAction; user: OcUserForActions } | null>(null);
+  const [actionToast, setActionToast] = useState<string | null>(null);
 
   // Create company modal state
   const [showCreateCompany, setShowCreateCompany] = useState(false);
@@ -569,6 +582,10 @@ export default function OwnerConsolePage() {
 
   const filteredUsers = users.filter((u) => {
     if (filterCompanyId && u.companyId !== filterCompanyId) return false;
+    if (filterStatus && u.status !== filterStatus) return false;
+    if (filterRole && u.role !== filterRole) return false;
+    if (filterVerified === 'verified' && u.emailVerified === false) return false;
+    if (filterVerified === 'unverified' && u.emailVerified !== false) return false;
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
     return (
@@ -664,6 +681,12 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <FileText size={12} />
               Form Templates
+            </span>
+          </Tab>
+          <Tab active={tab === 'audit-log'} onClick={() => { setTab('audit-log'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck size={12} />
+              Audit Log
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && (
@@ -879,25 +902,81 @@ export default function OwnerConsolePage() {
               {tab === 'users' && (
                 <div className="max-w-6xl">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-4 flex-wrap">
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-bold text-slate-800">All Users</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {filterCompanyName ? (
-                            <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
-                          ) : `${users.length} total`}
-                        </p>
+                    {/* Header + filters */}
+                    <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <h2 className="font-bold text-slate-800">All Users</h2>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {filterCompanyName ? (
+                              <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
+                            ) : `${filteredUsers.length} of ${users.length} users`}
+                          </p>
+                        </div>
+                        <input
+                          type="text"
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          placeholder="Search name, email, company…"
+                          className="w-52 px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-primary/60 focus:bg-white transition-colors"
+                        />
                       </div>
-                      <input
-                        type="text"
-                        value={userSearch}
-                        onChange={(e) => setUserSearch(e.target.value)}
-                        placeholder="Search name, email, company…"
-                        className="w-56 px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-primary/60 focus:bg-white transition-colors"
-                      />
+                      {/* Filter chips */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Filter size={12} className="text-slate-400 shrink-0" />
+                        <select
+                          value={filterStatus}
+                          onChange={(e) => setFilterStatus(e.target.value)}
+                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
+                        >
+                          <option value="">All statuses</option>
+                          <option value="active">Active</option>
+                          <option value="invited">Invited</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                        <select
+                          value={filterRole}
+                          onChange={(e) => setFilterRole(e.target.value)}
+                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
+                        >
+                          <option value="">All roles</option>
+                          <option value="owner">Owner</option>
+                          <option value="admin">Admin</option>
+                          <option value="member">Member</option>
+                          <option value="viewer">Viewer</option>
+                        </select>
+                        <select
+                          value={filterVerified}
+                          onChange={(e) => setFilterVerified(e.target.value)}
+                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
+                        >
+                          <option value="">All verification</option>
+                          <option value="verified">Verified</option>
+                          <option value="unverified">Unverified</option>
+                        </select>
+                        <select
+                          value={filterCompanyId?.toString() ?? ''}
+                          onChange={(e) => setFilterCompanyId(e.target.value ? Number(e.target.value) : null)}
+                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
+                        >
+                          <option value="">All companies</option>
+                          {companies.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                        {(filterStatus || filterRole || filterVerified || filterCompanyId) && (
+                          <button
+                            onClick={() => { setFilterStatus(''); setFilterRole(''); setFilterVerified(''); setFilterCompanyId(null); }}
+                            className="text-xs text-primary font-semibold hover:underline"
+                          >
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
                     </div>
+
                     {filteredUsers.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-12">No users found</p>
+                      <p className="text-sm text-slate-400 text-center py-12">No users match the current filters</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -911,18 +990,19 @@ export default function OwnerConsolePage() {
                               <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Last Active</th>
                               <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Online</th>
                               <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Joined</th>
+                              <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredUsers.map((u) => (
-                              <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                              <tr key={u.id} className={`hover:bg-slate-50 transition-colors ${u.status === 'inactive' ? 'opacity-60' : ''}`}>
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 ${u.status === 'inactive' ? 'bg-slate-400' : 'bg-primary'}`}>
                                       {(u.name || u.email || '?')[0].toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
                                         <p className="font-semibold text-slate-800 truncate">{u.name}</p>
                                         {u.emailVerified === false ? (
                                           <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
@@ -930,19 +1010,11 @@ export default function OwnerConsolePage() {
                                           </span>
                                         ) : (
                                           <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
-                                            Verified{(u as unknown as { verificationMethod?: string }).verificationMethod && (u as unknown as { verificationMethod?: string }).verificationMethod !== 'email' ? ` (${(u as unknown as { verificationMethod?: string }).verificationMethod?.replace('_', ' ')})` : ''}
+                                            Verified
                                           </span>
                                         )}
                                       </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
-                                      {u.emailVerified === false && isPlatformOwner && (
-                                        <button
-                                          onClick={() => setVerifyTarget({ id: u.id, name: u.name, email: u.email })}
-                                          className="mt-1 text-[10px] font-bold text-primary hover:text-orange-600 underline underline-offset-2 transition-colors"
-                                        >
-                                          Verify manually
-                                        </button>
-                                      )}
                                     </div>
                                   </div>
                                 </td>
@@ -959,6 +1031,21 @@ export default function OwnerConsolePage() {
                                   <Circle size={10} className={u.onlineNow ? 'text-emerald-500 fill-emerald-500' : 'text-slate-300 fill-slate-300'} />
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-xs">{fmtDate(u.createdAt)}</td>
+                                <td className="px-4 py-3.5 text-right">
+                                  <UserActionsMenu
+                                    user={{
+                                      id: u.id,
+                                      userId: u.userId,
+                                      name: u.name,
+                                      email: u.email,
+                                      role: u.role,
+                                      status: u.status,
+                                      emailVerified: u.emailVerified,
+                                      companyId: u.companyId,
+                                    }}
+                                    onAction={(action, target) => setPendingAction({ action, user: target })}
+                                  />
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -1055,10 +1142,44 @@ export default function OwnerConsolePage() {
               {tab === 'form-templates' && (
                 <FormTemplatesTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
               )}
+
+              {/* ── Developer Audit Log ── */}
+              {tab === 'audit-log' && <DeveloperAuditLogTab />}
             </>
           )}
         </div>
       </div>
+
+      {/* ── User Action Modal ─────────────────────────────────────────────────── */}
+      {pendingAction && (
+        <UserActionModal
+          action={pendingAction.action}
+          user={pendingAction.user}
+          onClose={() => setPendingAction(null)}
+          onSuccess={(action, userId, extra) => {
+            setPendingAction(null);
+            // Update local user state immediately
+            setUsers(prev => prev.map(u => {
+              if (u.userId !== userId) return u;
+              if (action === 'verify') return { ...u, emailVerified: true };
+              if (action === 'deactivate') return { ...u, status: 'inactive' };
+              if (action === 'reactivate') return { ...u, status: 'active' };
+              if (action === 'change-role' && extra?.role) return { ...u, role: extra.role as string };
+              return u;
+            }));
+            // Show toast
+            const msgs: Record<UserAction, string> = {
+              verify: 'Email verified successfully.',
+              'resend-verification': extra?.emailSent ? 'Verification email sent.' : 'Could not send email — use manual verify instead.',
+              deactivate: 'Account deactivated. User is now blocked from logging in.',
+              reactivate: 'Account reactivated.',
+              'change-role': `Role changed to ${extra?.role ?? 'new role'}.`,
+            };
+            setActionToast(msgs[action]);
+            setTimeout(() => setActionToast(null), 4000);
+          }}
+        />
+      )}
 
       {/* ── Create Company Modal ─────────────────────────────────────────────── */}
       {showCreateCompany && (
@@ -1160,14 +1281,21 @@ export default function OwnerConsolePage() {
         user={verifyTarget}
         onClose={() => setVerifyTarget(null)}
         onVerified={(userId) => {
-          // Update local state so the Unverified badge disappears immediately
           setUsers(prev => prev.map(u =>
-            u.id === userId
+            u.userId === userId
               ? { ...u, emailVerified: true, verificationMethod: 'manual_owner' } as typeof u
               : u
           ));
         }}
       />
+
+      {/* Action toast */}
+      {actionToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+          {actionToast}
+        </div>
+      )}
     </div>
   );
 }

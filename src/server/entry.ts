@@ -243,6 +243,11 @@ import owner_console_storage_get_232 from "./api/owner-console/storage/GET";
 import owner_console_system_ai_builtin_checks_post_233 from "./api/owner-console/system-ai/builtin-checks/POST";
 import owner_console_users_get_234 from "./api/owner-console/users/GET";
 import owner_console_users_verify_post_235 from "./api/owner-console/users/verify/POST";
+import developer_users_deactivate_post from "./api/developer/users/[id]/deactivate/POST";
+import developer_users_reactivate_post from "./api/developer/users/[id]/reactivate/POST";
+import developer_users_role_put from "./api/developer/users/[id]/role/PUT";
+import developer_users_resend_verification_post from "./api/developer/users/[id]/resend-verification/POST";
+import developer_audit_log_get from "./api/developer/audit-log/GET";
 import recipes_get_236 from "./api/recipes/GET";
 import recipes_post_237 from "./api/recipes/POST";
 import recipes_id_delete_238 from "./api/recipes/[id]/DELETE";
@@ -1267,6 +1272,11 @@ app.get("/api/owner-console/storage", owner_console_storage_get_232);
 app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post_233);
 app.get("/api/owner-console/users", owner_console_users_get_234);
 app.post("/api/owner-console/users/verify", owner_console_users_verify_post_235);
+app.post("/api/developer/users/:id/deactivate", developer_users_deactivate_post);
+app.post("/api/developer/users/:id/reactivate", developer_users_reactivate_post);
+app.put("/api/developer/users/:id/role", developer_users_role_put);
+app.post("/api/developer/users/:id/resend-verification", developer_users_resend_verification_post);
+app.get("/api/developer/audit-log", developer_audit_log_get);
 app.get("/api/recipes", recipes_get_236);
 app.post("/api/recipes", recipes_post_237);
 app.delete("/api/recipes/:id", recipes_id_delete_238);
@@ -1765,6 +1775,33 @@ if (import.meta.env.PROD) {
 					console.warn('[startup] companies starter_pack columns migration skipped:', msg.slice(0, 120));
 				}
 			}
+
+		// ── developer_audit_log table ─────────────────────────────────────────
+		try {
+			const { db: _db } = await import('./db/client.js');
+			const { sql: _sql } = await import('drizzle-orm');
+			await _db.execute(_sql`
+				CREATE TABLE IF NOT EXISTS developer_audit_log (
+					id INT AUTO_INCREMENT PRIMARY KEY,
+					action_type VARCHAR(60) NOT NULL,
+					performed_by_user_id VARCHAR(36) NOT NULL,
+					performed_by_email VARCHAR(255) NULL,
+					target_user_id VARCHAR(36) NOT NULL,
+					target_email VARCHAR(255) NULL,
+					target_company_id INT NULL,
+					reason TEXT NULL,
+					meta TEXT NULL,
+					created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					INDEX idx_dal_target (target_user_id),
+					INDEX idx_dal_performer (performed_by_user_id),
+					INDEX idx_dal_action (action_type),
+					INDEX idx_dal_created (created_at)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+			`);
+			console.log('[startup] developer_audit_log table ready');
+		} catch (e) {
+			console.warn('[startup] developer_audit_log migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		const server = app.listen(port, host, () => {
