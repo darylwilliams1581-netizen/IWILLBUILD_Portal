@@ -39,6 +39,7 @@ import {
   Image,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import JobPhotos from '@/components/JobPhotos';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
@@ -308,6 +309,8 @@ export default function JobDetailPage() {
               {job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : 'Loading…'}
             </h1>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <FleetHeaderIcon />
           {job && !editing && (
             <button
               onClick={() => setEditing(true)}
@@ -337,6 +340,7 @@ export default function JobDetailPage() {
               </button>
             </div>
           )}
+          </div>
         </header>
 
         {/* ── Body ── */}

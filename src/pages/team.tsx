@@ -31,6 +31,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 
@@ -653,15 +654,18 @@ export default function TeamPage() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => !isViewOnly && setShowInvite(true)}
-            disabled={isViewOnly}
-            title={isViewOnly ? 'Subscribe to continue' : undefined}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={15} />
-            Invite Member
-          </button>
+          <div className="flex items-center gap-2">
+            <FleetHeaderIcon />
+            <button
+              onClick={() => !isViewOnly && setShowInvite(true)}
+              disabled={isViewOnly}
+              title={isViewOnly ? 'Subscribe to continue' : undefined}
+              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={15} />
+              Invite Member
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-auto">

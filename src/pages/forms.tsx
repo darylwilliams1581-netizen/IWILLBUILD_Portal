@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -473,6 +474,7 @@ export default function FormsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <FleetHeaderIcon />
             <button
               onClick={handleSeed}
               disabled={seeding}

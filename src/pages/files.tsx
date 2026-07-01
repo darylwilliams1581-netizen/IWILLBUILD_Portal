@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { FolderOpen, Menu } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FilePanel from '@/components/FilePanel';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
 
@@ -67,6 +68,7 @@ export default function FilesPage() {
               </span>
             )}
           </div>
+          <FleetHeaderIcon />
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-6">

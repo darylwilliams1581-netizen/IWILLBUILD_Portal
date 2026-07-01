@@ -10,6 +10,7 @@ import {
   HardHat, ChevronLeft, DollarSign, ChefHat,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
 import { CostGuideTab, RecipesTab } from '@/pages/estimating';
@@ -760,6 +761,7 @@ export default function SafetyPage() {
             <ShieldAlert size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg">Admin</h1>
           </div>
+          <FleetHeaderIcon />
         </header>
 
         {/* Tab bar */}
