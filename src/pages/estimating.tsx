@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { useLocation } from 'react-router-dom';
 import {
   Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle,
   BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
@@ -784,8 +785,20 @@ function RecipesTab() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 type Tab = 'cost-guide' | 'recipes' | 'builders-calc' | 'takeoff-pad';
 
+const VALID_TABS: Tab[] = ['cost-guide', 'recipes', 'builders-calc', 'takeoff-pad'];
+
 export default function EstimatingPage() {
-  const [tab, setTab] = useState<Tab>('cost-guide');
+  const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'cost-guide'
+  );
+
+  // Sync tab when URL search param changes (e.g. navigating from sidebar/dashboard)
+  useEffect(() => {
+    const t = new URLSearchParams(location.search).get('tab') as Tab | null;
+    if (t && VALID_TABS.includes(t)) setTab(t);
+  }, [location.search]);
 
   function openMobileMenu() {
     window.dispatchEvent(new Event('portal:open-menu'));

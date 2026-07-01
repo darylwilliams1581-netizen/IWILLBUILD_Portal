@@ -19,6 +19,8 @@ import {
   BarChart3,
   Receipt,
   DollarSign,
+  Calculator,
+  Ruler,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -212,6 +214,21 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
+              {/* Quick-access tool icons — Take-off Pad & Builders Calc */}
+              <Link
+                to="/estimating?tab=takeoff-pad"
+                title="Take-off Pad"
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+              >
+                <Ruler size={18} />
+              </Link>
+              <Link
+                to="/estimating?tab=builders-calc"
+                title="Builders Calc"
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+              >
+                <Calculator size={18} />
+              </Link>
               <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
                 <Bell size={18} />
               </button>

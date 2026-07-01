@@ -23,6 +23,8 @@ import {
   BookOpen,
   Receipt,
   Library,
+  DollarSign,
+  ChefHat,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -50,11 +52,10 @@ function useSubscriptionStatus() {
 }
 
 // ── Main nav items ────────────────────────────────────────────────────────────
-// Order: Dashboard, Tools, Projects, Scheduler, Fleet, Stakeholders, Files, Ledger
+// Order: Dashboard, Projects, Scheduler, Fleet, Stakeholders, Files, Ledger
 function buildNavItems(_workPlural: string) {
   return [
     { label: 'Dashboard',    icon: LayoutDashboard, href: '/dashboard',   permKey: null },
-    { label: 'Tools',        icon: Wrench,          href: '/estimating',  permKey: 'estimating' },
     { label: 'Projects',     icon: HardHat,         href: '/jobs',        permKey: 'jobs' },
     { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',   permKey: 'jobs' },
     { label: 'Fleet',        icon: Truck,           href: '/fleet',       permKey: 'fleet' },
@@ -70,6 +71,12 @@ const adminItems = [
   { label: 'Team',         icon: Users,      href: '/team',      adminOnly: true,  permKey: null as string | null },
   { label: 'Subscription', icon: CreditCard, href: '/billing',   adminOnly: false, permKey: null as string | null },
   { label: 'Settings',     icon: Settings,   href: '/settings',  adminOnly: true,  permKey: null as string | null },
+] as const;
+
+// ── Admin sub-items (Cost Guide + Recipes) ────────────────────────────────────
+const adminSubItems = [
+  { label: 'Cost Guide', icon: DollarSign, href: '/estimating?tab=cost-guide',  permKey: 'estimating' as string | null },
+  { label: 'Recipes',    icon: ChefHat,    href: '/estimating?tab=recipes',     permKey: 'estimating' as string | null },
 ] as const;
 
 // ─── User strip sub-component ─────────────────────────────────────────────────
@@ -229,6 +236,47 @@ function SidebarContent({
                     {item.label}
                   </div>
                 )}
+              </Link>
+            );
+          })}
+
+          {/* Cost Guide + Recipes sub-items under Admin */}
+          {!collapsed && adminSubItems.map((item) => {
+            if (!permsLoading && item.permKey && !can(item.permKey)) return null;
+            const Icon   = item.icon;
+            const active = location.search.includes(item.href.split('?')[1] ?? '') && location.pathname === '/estimating';
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-2.5 pl-8 pr-3 py-2 rounded-lg transition-colors duration-150 group relative ${
+                  active ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
+                }`}
+              >
+                <Icon size={14} className="shrink-0" />
+                <span className="text-xs font-semibold truncate flex-1">{item.label}</span>
+              </Link>
+            );
+          })}
+          {collapsed && adminSubItems.map((item) => {
+            if (!permsLoading && item.permKey && !can(item.permKey)) return null;
+            const Icon   = item.icon;
+            const active = location.search.includes(item.href.split('?')[1] ?? '') && location.pathname === '/estimating';
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                title={item.label}
+                className={`flex items-center justify-center px-3 py-2 rounded-lg transition-colors duration-150 group relative ${
+                  active ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
+                }`}
+              >
+                <Icon size={14} className="shrink-0" />
+                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  {item.label}
+                </div>
               </Link>
             );
           })}
