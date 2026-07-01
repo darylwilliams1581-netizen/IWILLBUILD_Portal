@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { CheckCircle, XCircle, Loader2, ArrowRight } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 
 type Status = 'verifying' | 'success' | 'error' | 'invalid';
 
+const REDIRECT_DELAY = 4; // seconds
+
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
   const uid = searchParams.get('uid') ?? '';
 
   const [status, setStatus] = useState<Status>('verifying');
   const [errorMsg, setErrorMsg] = useState('');
+  const [countdown, setCountdown] = useState(REDIRECT_DELAY);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!token || !uid) {
@@ -32,10 +37,20 @@ export default function VerifyEmailPage() {
 
         if (res.ok) {
           setStatus('success');
+          // Start countdown then redirect to login with verified flag
+          let secs = REDIRECT_DELAY;
+          countdownRef.current = setInterval(() => {
+            secs -= 1;
+            setCountdown(secs);
+            if (secs <= 0) {
+              clearInterval(countdownRef.current!);
+              navigate('/login?verified=1');
+            }
+          }, 1000);
         } else {
           const data = await res.json().catch(() => ({}));
           setErrorMsg(data.error ?? 'Verification failed.');
-          setStatus(data.code === 'invalid_or_expired' ? 'error' : 'error');
+          setStatus('error');
         }
       } catch {
         if (!cancelled) {
@@ -46,8 +61,11 @@ export default function VerifyEmailPage() {
     }
 
     verify();
-    return () => { cancelled = true; };
-  }, [token, uid]);
+    return () => {
+      cancelled = true;
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [token, uid, navigate]);
 
   return (
     <>
@@ -101,14 +119,24 @@ export default function VerifyEmailPage() {
                   <CheckCircle size={28} className="text-green-400" />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-3">Email verified!</h1>
-                <p className="text-white/60 text-sm leading-relaxed mb-8">
-                  Your account is now active. You can sign in and start using IWILLBUILD Portal.
+                <p className="text-white/60 text-sm leading-relaxed mb-2">
+                  Your account is now active. Taking you to sign in…
+                </p>
+                {/* Countdown bar */}
+                <div className="w-full bg-white/10 rounded-full h-1.5 mb-6 overflow-hidden">
+                  <div
+                    className="h-full bg-green-400 rounded-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${((REDIRECT_DELAY - countdown) / REDIRECT_DELAY) * 100}%` }}
+                  />
+                </div>
+                <p className="text-white/30 text-xs mb-6">
+                  Redirecting in {countdown}s…
                 </p>
                 <Link
-                  to="/login"
+                  to="/login?verified=1"
                   className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
                 >
-                  Sign in to your account
+                  Sign in now
                   <ArrowRight size={16} />
                 </Link>
               </>

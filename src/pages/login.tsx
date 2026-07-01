@@ -56,9 +56,24 @@ export default function LoginPage() {
   // Forced password change state
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
+  // Just-verified banner — shown when redirected from email verification
+  const [justVerified, setJustVerified] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useSession();
+
+  // ── All hooks must be declared before any conditional return ──────────────
+
+  // Detect ?verified=1 query param and show banner
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('verified') === '1') {
+      setJustVerified(true);
+      // Clean the URL without a page reload
+      navigate('/login', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // ── All hooks must be declared before any conditional return ──────────────
 
@@ -302,6 +317,17 @@ export default function LoginPage() {
               Internal access only
             </p>
           </div>
+
+          {/* ── Email just-verified banner ─────────────────────────────── */}
+          {justVerified && (
+            <div className="flex items-start gap-3 bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3 mx-0">
+              <CheckCircle2 size={16} className="text-green-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-green-300 text-sm font-semibold">Email verified — you're all set!</p>
+                <p className="text-green-400/70 text-xs mt-0.5">Enter your password below to sign in.</p>
+              </div>
+            </div>
+          )}
 
           {/* Mode tabs (only show PIN tab if trusted device exists) */}
           {hasTrustedDevice && !needs2FA && (
