@@ -10,6 +10,7 @@ import { user } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { sql } from 'drizzle-orm';
+import { logActivity } from '../../../../lib/activity-log.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -72,6 +73,14 @@ export default async function handler(req: Request, res: Response) {
       ` by owner=${session.user.email} (${session.user.id})` +
       ` at=${new Date().toISOString()}`
     );
+
+    void logActivity({
+      eventType: 'manual_verified',
+      success: true,
+      userId,
+      email: targetUser.email ?? null,
+      performedByUserId: session.user.id,
+    });
 
     return res.json({
       ok: true,

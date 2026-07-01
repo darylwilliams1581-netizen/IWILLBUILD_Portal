@@ -21,6 +21,7 @@ import ManualVerifyModal from '@/components/ManualVerifyModal';
 import UserActionsMenu from '@/components/owner-console/UserActionsMenu';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
+import ActivityLogTab from '@/components/owner-console/ActivityLogTab';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -429,7 +430,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -687,6 +688,12 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={12} />
               Audit Log
+            </span>
+          </Tab>
+          <Tab active={tab === 'activity-log'} onClick={() => { setTab('activity-log'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Activity size={12} />
+              Activity Log
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && (
@@ -1145,6 +1152,9 @@ export default function OwnerConsolePage() {
 
               {/* ── Developer Audit Log ── */}
               {tab === 'audit-log' && <DeveloperAuditLogTab />}
+
+              {/* ── Activity Log ── */}
+              {tab === 'activity-log' && <ActivityLogTab />}
             </>
           )}
         </div>

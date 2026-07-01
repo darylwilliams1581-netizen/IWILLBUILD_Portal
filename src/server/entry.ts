@@ -248,6 +248,7 @@ import developer_users_reactivate_post from "./api/developer/users/[id]/reactiva
 import developer_users_role_put from "./api/developer/users/[id]/role/PUT";
 import developer_users_resend_verification_post from "./api/developer/users/[id]/resend-verification/POST";
 import developer_audit_log_get from "./api/developer/audit-log/GET";
+import developer_activity_log_get from "./api/developer/activity-log/GET";
 import recipes_get_236 from "./api/recipes/GET";
 import recipes_post_237 from "./api/recipes/POST";
 import recipes_id_delete_238 from "./api/recipes/[id]/DELETE";
@@ -1021,6 +1022,43 @@ async function runStartupMigrations() {
     }
   }
   console.log('[startup-migration] platform_role seeding complete');
+
+  // ── platform_activity_log table ───────────────────────────────────────────
+  try {
+    const [palRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'platform_activity_log'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(palRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(
+        "CREATE TABLE platform_activity_log (" +
+        "  id                    BIGINT AUTO_INCREMENT PRIMARY KEY," +
+        "  event_type            VARCHAR(60) NOT NULL," +
+        "  success               TINYINT(1) NOT NULL DEFAULT 1," +
+        "  user_id               VARCHAR(36) NULL," +
+        "  email                 VARCHAR(255) NULL," +
+        "  company_id            INT NULL," +
+        "  performed_by_user_id  VARCHAR(36) NULL," +
+        "  ip_address            VARCHAR(100) NULL," +
+        "  user_agent            VARCHAR(500) NULL," +
+        "  reason                VARCHAR(500) NULL," +
+        "  metadata_json         TEXT NULL," +
+        "  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+        "  INDEX idx_event_type (event_type)," +
+        "  INDEX idx_user_id (user_id)," +
+        "  INDEX idx_email (email)," +
+        "  INDEX idx_company (company_id)," +
+        "  INDEX idx_created (created_at)," +
+        "  INDEX idx_success (success)" +
+        ")"
+      ));
+      console.log('[startup-migration] platform_activity_log table created');
+    }
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] platform_activity_log create failed:', msg);
+    }
+  }
 }
 
 // ── Startup checks ────────────────────────────────────────────────────────────
@@ -1277,6 +1315,7 @@ app.post("/api/developer/users/:id/reactivate", developer_users_reactivate_post)
 app.put("/api/developer/users/:id/role", developer_users_role_put);
 app.post("/api/developer/users/:id/resend-verification", developer_users_resend_verification_post);
 app.get("/api/developer/audit-log", developer_audit_log_get);
+app.get("/api/developer/activity-log", developer_activity_log_get);
 app.get("/api/recipes", recipes_get_236);
 app.post("/api/recipes", recipes_post_237);
 app.delete("/api/recipes/:id", recipes_id_delete_238);

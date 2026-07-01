@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -56,6 +57,16 @@ export default async function handler(req: Request, res: Response) {
     });
 
     res.json({ ok: true, message: 'Password changed successfully.' });
+
+    void logActivity({
+      eventType: 'password_changed',
+      success: true,
+      userId: session.user.id,
+      email: session.user.email ?? null,
+      ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+      userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+      reason: 'user_initiated',
+    });
   } catch (error) {
     const msg = String(error);
 

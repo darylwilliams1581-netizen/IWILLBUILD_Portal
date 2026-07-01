@@ -12,6 +12,7 @@ import { getAuth } from '@/lib/auth/auth';
 import { toWebRequest, sendWebResponse } from '@/lib/auth/express-adapter';
 import { tryClearStaleSession } from '@/lib/auth/session-cookies';
 import { recordLoginEvent } from '@/server/activity-tracker';
+import { logActivity, getIp, getUserAgent } from '@/server/lib/activity-log';
 
 export async function authHandler(req: Request, res: Response) {
   // Stale-session recovery escape hatch (`?clearCookies=1`). A stale
@@ -62,11 +63,62 @@ export async function authHandler(req: Request, res: Response) {
         const clone = webResponse.clone();
         const body = await clone.json().catch(() => null);
         const userId: string | undefined = body?.user?.id;
+        const email: string | undefined = body?.user?.email;
         if (userId) {
           void recordLoginEvent(userId);
+          void logActivity({
+            eventType: 'login_success',
+            success: true,
+            userId,
+            email: email ?? null,
+            ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+            userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+          });
         }
       } catch {
         // Non-critical — don't block the response
+      }
+    }
+
+    // If sign-in failed (4xx), log the failed attempt
+    if (isSignIn && webResponse.status >= 400 && webResponse.status < 500) {
+      try {
+        const emailAttempted = (req.body as Record<string, unknown>)?.email as string | undefined;
+        const clone = webResponse.clone();
+        const body = await clone.json().catch(() => null) as Record<string, unknown> | null;
+        const reason = (body?.message as string) || (body?.error as string) || `HTTP ${webResponse.status}`;
+        void logActivity({
+          eventType: 'login_failed',
+          success: false,
+          email: emailAttempted ?? null,
+          ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+          userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+          reason: reason.slice(0, 500),
+        });
+      } catch {
+        // Non-critical
+      }
+    }
+
+    // If sign-out succeeded, log it
+    if (isSignOut && webResponse.status >= 200 && webResponse.status < 300) {
+      try {
+        const auth = getAuth();
+        const headers = new Headers();
+        for (const [k, v] of Object.entries(req.headers)) {
+          if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+        }
+        const session = await auth.api.getSession({ headers }).catch(() => null);
+        void logActivity({
+          eventType: 'logout',
+          success: true,
+          userId: session?.user?.id ?? null,
+          email: session?.user?.email ?? null,
+          ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+          userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+        });
+      } catch {
+        // Non-critical
       }
     }
 

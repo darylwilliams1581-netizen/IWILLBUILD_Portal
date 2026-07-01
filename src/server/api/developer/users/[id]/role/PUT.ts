@@ -11,6 +11,7 @@ import { eq, and, ne } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { PLATFORM_OWNER_EMAILS } from '../../../../../lib/platform-owner-guard.js';
 import { sql } from 'drizzle-orm';
+import { logActivity } from '../../../../../lib/activity-log.js';
 
 const ALLOWED_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 type AllowedRole = typeof ALLOWED_ROLES[number];
@@ -114,6 +115,18 @@ export default async function handler(req: Request, res: Response) {
     });
 
     console.log(`[developer] role change: target=${targetEmail} ${oldRole} → ${role} by=${session.user.email}`);
+
+    void logActivity({
+      eventType: 'role_changed',
+      success: true,
+      userId: targetUserId,
+      email: targetEmail,
+      companyId: profile.companyId ?? null,
+      performedByUserId: session.user.id,
+      reason: reason?.trim() || null,
+      metadata: { from: oldRole, to: role },
+    });
+
     return res.json({ ok: true, role });
   } catch (err) {
     console.error('developer/users/role error:', err);

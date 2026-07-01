@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { PLATFORM_OWNER_EMAILS } from '../../../../../lib/platform-owner-guard.js';
 import { sql } from 'drizzle-orm';
+import { logActivity } from '../../../../../lib/activity-log.js';
 
 async function getDevSession(req: Request) {
   const auth = getAuth();
@@ -95,6 +96,16 @@ export default async function handler(req: Request, res: Response) {
       targetUserId,
       targetEmail,
       targetCompanyId: profile.companyId ?? null,
+      reason: reason?.trim() || null,
+    });
+
+    void logActivity({
+      eventType: 'account_deactivated',
+      success: true,
+      userId: targetUserId,
+      email: targetEmail,
+      companyId: profile.companyId ?? null,
+      performedByUserId: session.user.id,
       reason: reason?.trim() || null,
     });
 

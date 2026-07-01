@@ -11,6 +11,7 @@ import { db } from '../../../db/client.js';
 import { user, account } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
 const PASSWORD_RULES = /^(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/;
 
@@ -63,6 +64,18 @@ export default async function handler(req: Request, res: Response) {
     // Invalidate all sessions for this user (security: force re-login)
     const { sql } = await import('drizzle-orm');
     await db.execute(sql`DELETE FROM session WHERE user_id = ${userId}`);
+
+    // Fetch email for logging
+    const [userRows] = await db.execute(sql`SELECT email FROM user WHERE id = ${userId} LIMIT 1`) as unknown as [Array<{ email: string }>, unknown];
+    void logActivity({
+      eventType: 'password_changed',
+      success: true,
+      userId,
+      email: userRows?.[0]?.email ?? null,
+      ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+      userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+      reason: 'password_reset_flow',
+    });
 
     return res.json({ ok: true, message: 'Password reset successfully. Please sign in with your new password.' });
   } catch (err) {

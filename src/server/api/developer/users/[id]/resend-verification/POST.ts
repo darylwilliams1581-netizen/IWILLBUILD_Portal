@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { PLATFORM_OWNER_EMAILS } from '../../../../../lib/platform-owner-guard.js';
 import { sql } from 'drizzle-orm';
+import { logActivity } from '../../../../../lib/activity-log.js';
 
 async function getDevSession(req: Request) {
   const auth = getAuth();
@@ -97,6 +98,16 @@ export default async function handler(req: Request, res: Response) {
       targetUserId,
       targetEmail: targetUser.email ?? '',
       targetCompanyId: companyId,
+    });
+
+    void logActivity({
+      eventType: 'email_verification_sent',
+      success: emailSent,
+      userId: targetUserId,
+      email: targetUser.email ?? null,
+      companyId,
+      performedByUserId: session.user.id,
+      reason: emailSent ? null : 'email_service_not_configured',
     });
 
     return res.json({

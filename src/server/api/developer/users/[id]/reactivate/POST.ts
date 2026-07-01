@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { PLATFORM_OWNER_EMAILS } from '../../../../../lib/platform-owner-guard.js';
 import { sql } from 'drizzle-orm';
+import { logActivity } from '../../../../../lib/activity-log.js';
 
 async function getDevSession(req: Request) {
   const auth = getAuth();
@@ -87,6 +88,17 @@ export default async function handler(req: Request, res: Response) {
     });
 
     console.log(`[developer] reactivate: target=${targetEmail} (${targetUserId}) by=${session.user.email}`);
+
+    void logActivity({
+      eventType: 'account_reactivated',
+      success: true,
+      userId: targetUserId,
+      email: targetEmail,
+      companyId: profile.companyId ?? null,
+      performedByUserId: session.user.id,
+      reason: reason?.trim() || null,
+    });
+
     return res.json({ ok: true });
   } catch (err) {
     console.error('developer/users/reactivate error:', err);

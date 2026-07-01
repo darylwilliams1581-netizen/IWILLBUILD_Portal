@@ -6,6 +6,7 @@
  */
 import type { Request, Response } from 'express';
 import { verifyEmailToken } from '../../../lib/email-verification.js';
+import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -23,6 +24,14 @@ export default async function handler(req: Request, res: Response) {
         error: 'This verification link is invalid or has expired. Please request a new one.',
       });
     }
+
+    void logActivity({
+      eventType: 'email_verified',
+      success: true,
+      userId: uid,
+      ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+      userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+    });
 
     return res.json({ ok: true, message: 'Email verified successfully.' });
   } catch (err) {

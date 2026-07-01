@@ -9,6 +9,7 @@
 import type { Request, Response } from 'express';
 import { sendPasswordResetEmail } from '../../../lib/password-reset.js';
 import { checkPasswordResetRate } from '../../../lib/signup-rate-limiter.js';
+import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -26,6 +27,14 @@ export default async function handler(req: Request, res: Response) {
 
     // Fire and forget — never reveals whether email exists
     await sendPasswordResetEmail(email.trim());
+
+    void logActivity({
+      eventType: 'password_reset_requested',
+      success: true,
+      email: email.trim(),
+      ipAddress: getIp(req as unknown as { headers: Record<string, string | string[] | undefined>; socket?: { remoteAddress?: string } }),
+      userAgent: getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> }),
+    });
 
     return res.json({ ok: true, message: "If an account exists with that email, we'll send reset instructions." });
   } catch (err) {
