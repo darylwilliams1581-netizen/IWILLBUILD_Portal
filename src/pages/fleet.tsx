@@ -362,7 +362,7 @@ export default function FleetPage() {
             className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
-            <span className="hidden sm:inline">New Asset</span>
+            <span className="hidden sm:inline">Add Asset</span>
             <span className="sm:hidden">Add</span>
           </button>
         </header>
