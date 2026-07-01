@@ -854,7 +854,7 @@ function CompanyTab() {
               <span className="flex items-center gap-1"><Factory size={11} /> Industry Mode</span>
             </label>
             <p className="text-xs text-slate-400 mb-3">
-              Sets default job types, form templates and Dazza AI context for your industry.
+              Sets default job types and form templates for your industry.
               Existing data is not affected when you change this.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">

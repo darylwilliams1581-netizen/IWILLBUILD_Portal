@@ -95,9 +95,9 @@ export default function TermsPage() {
               </ul>
             </Section>
 
-            <Section title="5. Dazza AI">
-              <p>The Dazza AI feature provides AI-generated assistance to help with tasks such as drafting content, answering questions, and generating suggestions. Dazza AI outputs are provided as a starting point only and must be reviewed and verified by a competent person before use.</p>
-              <p>IWILLBUILD does not warrant the accuracy, completeness, or suitability of any AI-generated output. You are responsible for any decisions made based on Dazza AI responses.</p>
+            <Section title="5. System AI tools">
+              <p>IWILLBUILD includes internal AI-assisted tools available to platform administrators. These tools provide AI-generated analysis and assistance to help with tasks such as data review, health checks, and generating suggestions. AI outputs are provided as a starting point only and must be reviewed and verified by a competent person before use.</p>
+              <p>IWILLBUILD does not warrant the accuracy, completeness, or suitability of any AI-generated output. You are responsible for any decisions made based on AI-assisted responses.</p>
             </Section>
 
             <Section title="6. Safety documents and SWMS">

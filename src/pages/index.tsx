@@ -3,8 +3,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
 import {
   Briefcase, FileText, Camera, Truck, LayoutDashboard,
-  Bot, ShieldCheck, Users, CheckCircle, ArrowRight,
-  Star, ChevronRight,
+  ShieldCheck, Users, CheckCircle, ArrowRight,
+  Star, ChevronRight, Calendar, FolderOpen,
 } from 'lucide-react';
 import ContactForm from '@/components/ContactForm';
 
@@ -21,21 +21,21 @@ const stagger = {
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const features = [
-  { icon: Briefcase,     title: 'Jobs and job files',         desc: 'Create jobs, track status, add notes, to-do items, costs and close them out cleanly.' },
-  { icon: FileText,      title: 'Estimates and recipes',      desc: 'Build cost guides, scope lines, approve estimates and print PDF quotes for clients.' },
-  { icon: FileText,      title: 'Forms and signatures',       desc: 'Reusable templates, conditional logic, photo capture, multi-signer and completed PDFs.' },
-  { icon: Camera,        title: 'Photos and files',           desc: 'Upload site photos, label them, view in lightbox and attach files to the job record.' },
-  { icon: Truck,         title: 'Fleet prestarts',            desc: 'Daily prestart checks, service dates, rego reminders and dashboard flags for attention.' },
-  { icon: Bot,           title: 'Dazza AI assistant',         desc: 'Ask Dazza what needs attention, check data health, summarise jobs and flag gaps.' },
-  { icon: ShieldCheck,   title: 'Safety and compliance',      desc: 'SWMS library, site safety plans, policies, posters and safety pack export.' },
-  { icon: Users,         title: 'Team permissions',           desc: 'Role-based access, invite users, control what each person can see and do.' },
+  { icon: Briefcase,   title: 'Jobs and job files',       desc: 'Create jobs, track status, add notes, to-do items, costs and close them out cleanly.' },
+  { icon: FileText,    title: 'Estimates and recipes',    desc: 'Build cost guides, scope lines, approve estimates and print PDF quotes for clients.' },
+  { icon: FileText,    title: 'Forms and signatures',     desc: 'Reusable templates, conditional logic, photo capture, multi-signer and completed PDFs.' },
+  { icon: Camera,      title: 'Photos and files',         desc: 'Upload site photos, label them, view in lightbox and attach files to the job record.' },
+  { icon: Truck,       title: 'Fleet prestarts',          desc: 'Daily prestart checks, service dates, rego reminders and dashboard flags for attention.' },
+  { icon: Calendar,    title: 'Scheduler',                desc: 'Gantt and table views, job timelines, crew scheduling and progress tracking.' },
+  { icon: ShieldCheck, title: 'Safety and compliance',    desc: 'SWMS library, site safety plans, policies, posters and safety pack export.' },
+  { icon: Users,       title: 'Team permissions',         desc: 'Role-based access, invite users, control what each person can see and do.' },
 ];
 
 const howItWorks = [
   { n: '1', title: 'Create your company account',       desc: 'Sign up, choose a plan and set up your company profile in a few minutes.' },
   { n: '2', title: 'Add jobs, users and fleet',         desc: 'Register your active jobs, invite your team and add your vehicles and plant.' },
   { n: '3', title: 'Complete forms and upload photos',  desc: 'Field teams fill in forms, upload photos and update job progress from site.' },
-  { n: '4', title: 'Use Dazza AI to check in',          desc: 'Ask Dazza what needs attention, what fleet service is due or what forms are incomplete.' },
+  { n: '4', title: 'Track progress and close out jobs', desc: 'Monitor job status, review estimates, manage safety docs and close out cleanly.' },
 ];
 
 const plans = [
@@ -47,10 +47,15 @@ const plans = [
     users: '1 user',
     popular: false,
     features: [
-      'Jobs, photos, forms, fleet, estimating',
-      'Dazza AI helper',
+      '1 user',
+      'Projects & job files',
+      'Forms & templates',
+      'Estimates',
+      'Photos & files',
+      'Fleet basics',
+      'Safety basics',
+      'Email support',
       '30-day free trial',
-      'Cancel anytime',
     ],
     cta: 'Start Solo Trial',
     ctaStyle: 'outline',
@@ -63,10 +68,16 @@ const plans = [
     users: 'Up to 5 users',
     popular: true,
     features: [
-      'Everything in Solo',
+      'Up to 5 users',
+      'Projects & job files',
+      'Forms & templates',
+      'Estimates',
+      'Photos & files',
+      'Fleet & prestarts',
+      'Safety library',
+      'Scheduler',
       'Team permissions',
-      'Fleet and forms workflows',
-      'Dazza AI + health checks',
+      'Priority support',
       '30-day free trial',
     ],
     cta: 'Start Team Trial',
@@ -80,10 +91,13 @@ const plans = [
     users: 'Up to 10 users',
     popular: false,
     features: [
+      'Up to 10 users',
       'Everything in Team',
-      'More storage',
-      'Owner and admin controls',
-      'Better suited for growing crews',
+      'Advanced permissions',
+      'Safety plans & SWMS library',
+      'Ledger / job cost tracking',
+      'Secure file storage',
+      'Owner & admin reporting',
       '30-day free trial',
     ],
     cta: 'Start Business Trial',
@@ -97,9 +111,11 @@ const plans = [
     users: 'Larger teams',
     popular: false,
     features: [
-      'Custom setup',
-      'Industry template packs',
-      'Priority support',
+      'Custom users',
+      'Setup support',
+      'Template migration',
+      'Advanced storage & integrations',
+      'Custom onboarding',
       'Contact us to discuss',
     ],
     cta: 'Contact Us',
@@ -316,7 +332,7 @@ export default function HomePage() {
           <nav className="hidden md:flex" style={{ gap: 24, alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#475569' }}>
             <a href="#features" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Features</a>
             <a href="#pricing"  style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Pricing</a>
-            <a href="#dazza"    style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Dazza AI</a>
+            <a href="#how"      style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">How it works</a>
             <Link to="/login" style={{
               padding: '8px 16px', borderRadius: 8,
               border: '1.5px solid #1263d8', color: '#1263d8',
@@ -485,7 +501,7 @@ export default function HomePage() {
             Construction job management software built for the field
           </motion.h2>
           <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
-            Jobs, estimating, forms, photos, files, fleet prestarts and Dazza AI — built around the way construction work actually moves, from job setup through to closeout.
+            Projects, estimates, forms, photos, safety, fleet, files and scheduling — in one clean portal built around the way construction work actually moves.
           </motion.p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
             {features.map((f) => {
@@ -648,8 +664,8 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* ── Dazza AI ───────────────────────────────────────────────────────── */}
-      <section id="dazza" style={{ background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+      {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
+      <section id="why" style={{ background: '#0f172a', borderTop: '1px solid #1e293b' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '72px 22px',
           display: 'grid', gap: 48, alignItems: 'center',
@@ -660,23 +676,15 @@ export default function HomePage() {
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 20,
             }}>
-              <Bot size={13} color="#f97316" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Dazza AI</span>
+              <FolderOpen size={13} color="#f97316" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Built for construction</span>
             </motion.div>
 
             <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#fff' }}>
-              Ask Dazza what needs attention
+              Everything in one place — no spreadsheets, no paper
             </motion.h2>
-            <motion.p variants={fadeUp} style={{ color: '#94a3b8', fontSize: 17, lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560 }}>
-              Dazza AI reads your IWILLBUILD data and helps you ask questions like: What jobs need attention? What fleet service is due? What forms are incomplete?
-            </motion.p>
-            <motion.p variants={fadeUp} style={{
-              color: '#64748b', fontSize: 13, lineHeight: 1.6,
-              margin: '0 0 28px', maxWidth: 520,
-              padding: '12px 16px', background: '#1e293b',
-              borderRadius: 8, borderLeft: '3px solid #334155',
-            }}>
-              Dazza helps summarise and organise information. Always verify building, WHS, legal and compliance decisions with a competent person.
+            <motion.p variants={fadeUp} style={{ color: '#94a3b8', fontSize: 17, lineHeight: 1.6, margin: '0 0 28px', maxWidth: 560 }}>
+              IWILLBUILD brings your projects, estimates, forms, photos, safety docs, fleet and scheduling into a single clean portal. Your team works from site, your office stays across everything.
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/signup" style={{
@@ -685,13 +693,13 @@ export default function HomePage() {
                 padding: '13px 22px', fontWeight: 800, fontSize: 14,
                 textDecoration: 'none',
               }}>
-                Try Dazza free for 30 days
+                Start your free 30-day trial
                 <ArrowRight size={15} />
               </Link>
             </motion.div>
           </motion.div>
 
-          {/* Chat preview */}
+          {/* Feature highlights */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -709,30 +717,27 @@ export default function HomePage() {
                 background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
                 display: 'grid', placeItems: 'center',
               }}>
-                <Bot size={16} color="#fff" />
+                <LayoutDashboard size={16} color="#fff" />
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>Dazza AI</div>
-                <div style={{ fontSize: 11, color: '#22c55e' }}>● Online</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>IWILLBUILD Portal</div>
+                <div style={{ fontSize: 11, color: '#22c55e' }}>● All modules active</div>
               </div>
             </div>
             {[
-              { user: false, text: "G'day. I can check your jobs, fleet, forms and estimates. What do you need?" },
-              { user: true,  text: 'What jobs need attention this week?' },
-              { user: false, text: 'Job #1042 has 2 incomplete forms. Job #1038 has a fleet prestart overdue. Job #1035 estimate is not yet approved.' },
-              { user: true,  text: 'What fleet service is coming up?' },
-              { user: false, text: 'Truck IW-04 is due for a service in 3 days. Trailer IW-07 rego expires in 12 days.' },
-            ].map((b, i) => (
+              { label: 'Jobs & scheduling',         value: '12 active jobs' },
+              { label: 'Forms completed this week', value: '34 forms' },
+              { label: 'Fleet prestarts today',     value: '8 / 8 done' },
+              { label: 'Estimates pending approval',value: '3 estimates' },
+              { label: 'Safety docs on file',       value: '21 SWMS' },
+            ].map((row, i) => (
               <div key={i} style={{
-                background: b.user ? '#1263d8' : '#0f172a',
-                borderRadius: 10, padding: '10px 14px',
-                marginBottom: 8, lineHeight: 1.5, fontSize: 13,
-                color: b.user ? '#fff' : '#cbd5e1',
-                marginLeft: b.user ? 40 : 0,
-                marginRight: b.user ? 0 : 40,
-                border: b.user ? 'none' : '1px solid #1e293b',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '10px 0', borderBottom: i < 4 ? '1px solid #1e293b' : 'none',
+                fontSize: 13,
               }}>
-                {b.text}
+                <span style={{ color: '#94a3b8' }}>{row.label}</span>
+                <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{row.value}</span>
               </div>
             ))}
           </motion.div>

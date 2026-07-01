@@ -40,7 +40,7 @@ const PERMISSIONS: PermDef[] = [
   { key: 'forms',         label: 'Forms' },
   { key: 'files',         label: 'Files' },
   { key: 'estimating',    label: 'Estimating' },
-  { key: 'dazzaAi',       label: 'Dazza AI' },
+  { key: 'dazzaAi',       label: 'System Tools' },
   { key: 'seeDollars',    label: 'See Dollars' },
   { key: 'inviteUsers',   label: 'Invite Users' },
   { key: 'deleteRecords', label: 'Delete Records' },

@@ -1,7 +1,7 @@
 /**
  * Settings → Integrations tab
  * ─────────────────────────────────────────────────────────────────────────────
- * Manages third-party integrations. Currently: OneDrive / SharePoint, Dazza AI key.
+ * Manages third-party integrations. Currently: OneDrive / SharePoint, Xero.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,7 +14,6 @@ import {
   Info,
   FolderOpen,
 } from 'lucide-react';
-import DazzaAiKeyCard from './DazzaAiKeyCard';
 
 interface OneDriveStatus {
   configured: boolean;
@@ -262,9 +261,6 @@ export default function IntegrationsTab({ isOwner = false }: { isOwner?: boolean
       <div className="border border-dashed border-slate-200 rounded-2xl px-5 py-6 text-center">
         <p className="text-sm text-slate-400">More integrations coming soon — Google Drive, Dropbox, and more.</p>
       </div>
-
-      {/* Dazza AI — company OpenAI key (owner only) */}
-      <DazzaAiKeyCard isOwner={isOwner} />
     </div>
   );
 }

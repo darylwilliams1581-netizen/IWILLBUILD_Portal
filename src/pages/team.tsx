@@ -71,7 +71,7 @@ const PERMISSIONS: PermDef[] = [
   { key: 'files',         label: 'Files',          description: 'Access file storage' },
   { key: 'estimating',    label: 'Estimating',     description: 'View and create estimates' },
   { key: 'invoices',      label: 'Invoices',       description: 'View and create invoices' },
-  { key: 'dazzaAi',       label: 'Dazza AI',       description: 'Use the AI assistant' },
+  { key: 'dazzaAi',       label: 'System Tools',   description: 'Access advanced system tools (owner-managed)' },
   { key: 'seeDollars',    label: 'See Dollars',    description: 'View financial figures' },
   { key: 'inviteUsers',   label: 'Invite Users',   description: 'Invite new team members' },
   { key: 'deleteRecords', label: 'Delete Records', description: 'Permanently delete records' },
