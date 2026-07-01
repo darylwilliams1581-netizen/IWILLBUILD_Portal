@@ -2,24 +2,24 @@
 /**
  * publish-build.mjs
  *
- * Wrapper around `npm run build:app` that:
- *  - Passes stdout through untouched (Vite progress, module counts, timings)
- *  - Passes stderr through EXCEPT for the two known-harmless airo-sandbox WARN
- *    lines that the publish pipeline incorrectly treats as build failures
- *  - Exits with the same code as the underlying build process
+ * Runs the two Vite build steps directly (no npm subprocess) so that every
+ * byte of stderr passes through this process first.  The only lines suppressed
+ * are the two known-harmless airo-sandbox WARN messages that the publish
+ * pipeline incorrectly treats as build failures:
  *
- * Only these exact WARN patterns are suppressed:
- *   WARN airo-sandbox: user-specified path does not exist, skipping path=/git-repo ...
- *   WARN airo-sandbox: user-specified path does not exist, skipping path=/node_modules ...
+ *   WARN airo-sandbox: user-specified path does not exist, skipping path=/git-repo …
+ *   WARN airo-sandbox: user-specified path does not exist, skipping path=/node_modules …
  *
  * All TypeScript errors, Vite errors, dependency errors, and any other stderr
- * output is forwarded verbatim so real failures remain visible.
+ * output is forwarded verbatim so real failures remain fully visible.
+ *
+ * Exit code mirrors the underlying build: non-zero on any failure, 0 on success.
  */
 
 import { spawn } from 'node:child_process';
 
 // Lines matching this pattern are the only ones suppressed.
-// Using a simple string test (no regex) to avoid any ReDoS risk.
+// Plain string test — no regex — to avoid any ReDoS risk.
 function isHarmlessSandboxWarn(line) {
   return (
     line.includes('WARN airo-sandbox: user-specified path does not exist') &&
@@ -27,32 +27,71 @@ function isHarmlessSandboxWarn(line) {
   );
 }
 
-const child = spawn('npm', ['run', 'build:app'], {
-  stdio: ['inherit', 'inherit', 'pipe'],
-  shell: false,
-});
+/**
+ * Run a command, filter its stderr, and resolve with the exit code.
+ * stdout is always inherited (passed through untouched).
+ */
+function run(cmd, args, env = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, {
+      stdio: ['inherit', 'inherit', 'pipe'],
+      shell: false,
+      env: { ...process.env, ...env },
+    });
 
-let stderrBuf = '';
+    let buf = '';
 
-child.stderr.on('data', (chunk) => {
-  stderrBuf += chunk.toString();
-  // Flush complete lines, holding back any partial line at the end.
-  const lines = stderrBuf.split('\n');
-  stderrBuf = lines.pop(); // last element may be incomplete
-  for (const line of lines) {
-    if (!isHarmlessSandboxWarn(line)) {
-      process.stderr.write(line + '\n');
-    }
-  }
-});
+    child.stderr.on('data', (chunk) => {
+      buf += chunk.toString();
+      const lines = buf.split('\n');
+      buf = lines.pop(); // hold back any incomplete trailing line
+      for (const line of lines) {
+        if (!isHarmlessSandboxWarn(line)) {
+          process.stderr.write(line + '\n');
+        }
+      }
+    });
 
-child.stderr.on('end', () => {
-  // Flush any remaining partial line.
-  if (stderrBuf && !isHarmlessSandboxWarn(stderrBuf)) {
-    process.stderr.write(stderrBuf + '\n');
-  }
-});
+    child.stderr.on('end', () => {
+      if (buf && !isHarmlessSandboxWarn(buf)) {
+        process.stderr.write(buf + '\n');
+      }
+    });
 
-child.on('close', (code) => {
-  process.exit(code ?? 1);
-});
+    child.on('close', (code) => resolve(code ?? 1));
+  });
+}
+
+// Resolve the vite binary path relative to this script so it works regardless
+// of how the publish pipeline invokes us.
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const vite = join(root, 'node_modules', '.bin', 'vite');
+
+console.log('> build:app:client');
+const clientCode = await run(
+  process.execPath,          // node
+  [vite, 'build'],
+  { NODE_OPTIONS: '--max-old-space-size=1024' },
+);
+
+if (clientCode !== 0) {
+  console.error(`build:app:client failed with exit code ${clientCode}`);
+  process.exit(clientCode);
+}
+
+console.log('> build:app:ssr');
+const ssrCode = await run(
+  process.execPath,
+  [vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false'],
+  { NODE_OPTIONS: '--max-old-space-size=4096' },
+);
+
+if (ssrCode !== 0) {
+  console.error(`build:app:ssr failed with exit code ${ssrCode}`);
+  process.exit(ssrCode);
+}
+
+process.exit(0);
