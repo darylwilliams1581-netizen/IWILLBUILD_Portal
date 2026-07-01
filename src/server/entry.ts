@@ -1589,9 +1589,9 @@ if (import.meta.env.PROD) {
 	}
 	const host = process.env.HOST || "0.0.0.0";
 
-	// ── Run all startup migrations BEFORE accepting requests ─────────────────
-	// This ensures schema columns exist before the first /api/me call hits.
-	await (async () => {
+	// ── Run migrations then start listening — wrapped in async IIFE so
+	// top-level await is not needed (publish esbuild target doesn't support it)
+	void (async () => {
 			try {
 				const { db: _db } = await import('./db/client.js');
 				const { sql: _sql } = await import('drizzle-orm');
@@ -1676,16 +1676,16 @@ if (import.meta.env.PROD) {
 					console.warn('[startup] companies starter_pack columns migration skipped:', msg.slice(0, 120));
 				}
 			}
-	})();
 
-	// ── All migrations done — now start accepting requests ─────────────────
-	const server = app.listen(port, host, () => {
-		console.log(`Server listening on http://${host}:${port}`);
-	});
-	server.on("error", (err: NodeJS.ErrnoException) => {
-		console.error("ssr.server.listen-failed", { port, host, code: err.code, error: err.message });
-		process.exit(1);
-	});
+		// ── All migrations done — now start accepting requests ─────────────────
+		const server = app.listen(port, host, () => {
+			console.log(`Server listening on http://${host}:${port}`);
+		});
+		server.on("error", (err) => {
+			console.error("ssr.server.listen-failed", { port, host, code: err.code, error: err.message });
+			process.exit(1);
+		});
+	})();
 }
 
 export default app;
