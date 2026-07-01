@@ -2,17 +2,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn,
-  RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
-  ShieldCheck, Settings, FileText, ClipboardList, LogOut,
+  RefreshCw, Shield, ChevronRight, Activity, Loader2,
+  ShieldCheck, FileText, ClipboardList,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, Plus, X, BookOpen, Bot, Package, Filter,
-  Mail, BarChart2, StickyNote, Eye, Trash2, MessageSquare,
+  ShieldAlert, X, Bot, Package,
+  Mail, BarChart2, StickyNote,
   Send, Ban, RotateCcw, Server, AlertCircle,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSupportMode } from '@/lib/useSupportMode';
+import OverviewTab from '@/components/owner-console/OverviewTab';
+import CompaniesTab from '@/components/owner-console/CompaniesTab';
+import UsersTab from '@/components/owner-console/UsersTab';
+import ActivityTab from '@/components/owner-console/ActivityTab';
 import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
@@ -20,14 +23,12 @@ import SystemAITab from '@/components/owner-console/SystemAITab';
 import StarterPackTab from '@/components/owner-console/StarterPackTab';
 import FormTemplatesTab from '@/components/owner-console/FormTemplatesTab';
 import ManualVerifyModal from '@/components/ManualVerifyModal';
-import UserActionsMenu from '@/components/owner-console/UserActionsMenu';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
 import ActivityLogTab from '@/components/owner-console/ActivityLogTab';
 import EmailLogTab from '@/components/owner-console/EmailLogTab';
 import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
-import OrphanActionsMenu from '@/components/owner-console/OrphanActionsMenu';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -122,33 +123,6 @@ function fmtDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function roleBadge(role: string) {
-  const map: Record<string, string> = {
-    owner: 'bg-orange-100 text-orange-700 border-orange-200',
-    admin: 'bg-blue-100 text-blue-700 border-blue-200',
-    viewer: 'bg-slate-100 text-slate-600 border-slate-200',
-  };
-  return map[role] ?? 'bg-slate-100 text-slate-600 border-slate-200';
-}
-
-function statusBadge(status: string) {
-  const map: Record<string, string> = {
-    active: 'bg-green-100 text-green-700 border-green-200',
-    invited: 'bg-amber-100 text-amber-700 border-amber-200',
-    inactive: 'bg-slate-100 text-slate-500 border-slate-200',
-  };
-  return map[status] ?? 'bg-slate-100 text-slate-500 border-slate-200';
-}
-
-function eventBadge(type: string) {
-  const map: Record<string, string> = {
-    login: 'bg-green-100 text-green-700',
-    logout: 'bg-slate-100 text-slate-600',
-    active: 'bg-blue-100 text-blue-700',
-  };
-  return map[type] ?? 'bg-slate-100 text-slate-600';
-}
-
 function auditActionLabel(type: string): string {
   const map: Record<string, string> = {
     enter_support_mode: 'Entered support mode',
@@ -160,23 +134,6 @@ function auditActionLabel(type: string): string {
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon, color, sub }: {
-  label: string; value: number | string; icon: React.ElementType; color: string; sub?: string;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex items-start gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-        <Icon size={20} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-black text-slate-900 leading-none">{value}</p>
-        <p className="text-xs font-semibold text-slate-500 mt-1">{label}</p>
-        {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
 function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -187,56 +144,6 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
     >
       {children}
     </button>
-  );
-}
-
-// ── Company Actions Dropdown ──────────────────────────────────────────────────
-
-function CompanyActionsMenu({ company, onEnterSupport, onViewUsers, onViewActivity }: {
-  company: Company;
-  onEnterSupport: (c: Company) => void;
-  onViewUsers: (c: Company) => void;
-  onViewActivity: (c: Company) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-      >
-        Actions <ChevronDown size={11} />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border border-slate-200 shadow-xl z-20 overflow-hidden">
-            <button
-              onClick={() => { setOpen(false); onEnterSupport(company); }}
-              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
-            >
-              <ShieldAlert size={14} />
-              Support Setup
-            </button>
-            <button
-              onClick={() => { setOpen(false); onViewUsers(company); }}
-              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <Users size={14} />
-              View Users
-            </button>
-            <button
-              onClick={() => { setOpen(false); onViewActivity(company); }}
-              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <Activity size={14} />
-              View Activity
-            </button>
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -594,22 +501,6 @@ export default function OwnerConsolePage() {
     );
   }
 
-  const filteredUsers = users.filter((u) => {
-    if (filterCompanyId && u.companyId !== filterCompanyId) return false;
-    if (filterStatus && u.status !== filterStatus) return false;
-    if (filterRole && u.role !== filterRole) return false;
-    if (filterVerified === 'verified' && u.emailVerified === false) return false;
-    if (filterVerified === 'unverified' && u.emailVerified !== false) return false;
-    if (!userSearch) return true;
-    const q = userSearch.toLowerCase();
-    return (
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.company.toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q)
-    );
-  });
-
   const filteredActivity = filterCompanyId
     ? activity.filter((a) => a.companyId === filterCompanyId)
     : activity;
@@ -751,470 +642,99 @@ export default function OwnerConsolePage() {
             <>
               {/* ── Overview ── */}
               {tab === 'overview' && (
-                <div className="flex flex-col gap-6 max-w-5xl">
-
-                  {/* GoDaddy Dev Dashboard shortcut */}
-                  <a
-                    href="https://dashboard.godaddy.com/venture?ventureId=97327aea-9a8c-4bb2-bad7-3bd8ec50d6c6&ua_placement=shared_header"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-[#1BDBAD]/10 border border-[#1BDBAD]/30 flex items-center justify-center shrink-0">
-                      <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 3C8.82 3 3 8.82 3 16s5.82 13 13 13 13-5.82 13-13S23.18 3 16 3zm0 23.4A10.4 10.4 0 1 1 16 5.6a10.4 10.4 0 0 1 0 20.8z" fill="#1BDBAD"/>
-                        <path d="M16 10.4a5.6 5.6 0 1 0 0 11.2A5.6 5.6 0 0 0 16 10.4z" fill="#1BDBAD"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">GoDaddy Developer Dashboard</p>
-                      <p className="text-xs text-slate-400 truncate">Open the IWILLBUILD Portal development workspace</p>
-                    </div>
-                    <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
-                  </a>
-
-                  {/* System Map shortcut */}
-                  <a
-                    href="/docs/IWILLBUILD_SYSTEM_MAP.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
-                      <BookOpen size={18} className="text-violet-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">System Map / Product Bible</p>
-                      <p className="text-xs text-slate-400 truncate">Full platform architecture, modules, permissions, DB schema, API reference</p>
-                    </div>
-                    <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
-                  </a>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <StatCard label="Total Companies" value={stats?.totalCompanies ?? 0} icon={Building2} color="bg-blue-50 text-blue-600" />
-                    <StatCard label="Total Users" value={stats?.totalUsers ?? 0} icon={Users} color="bg-slate-100 text-slate-600" />
-                    <StatCard label="Active Users" value={stats?.activeUsers ?? 0} icon={UserCheck} color="bg-green-50 text-green-600" />
-                    <StatCard label="Invited" value={stats?.invitedUsers ?? 0} icon={Clock} color="bg-amber-50 text-amber-600" />
-                    <StatCard label="Inactive" value={stats?.inactiveUsers ?? 0} icon={UserX} color="bg-red-50 text-red-500" />
-                    <StatCard label="Online Now" value={stats?.onlineNow ?? 0} icon={Wifi} color="bg-emerald-50 text-emerald-600" sub="Active in last 5 min" />
-                    <StatCard label="Logins Today" value={stats?.loginsToday ?? 0} icon={LogIn} color="bg-primary/10 text-primary" />
-                  </div>
-
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                      <h2 className="font-bold text-slate-800">Companies</h2>
-                      <button onClick={() => setTab('companies')} className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
-                        View all <ChevronRight size={12} />
-                      </button>
-                    </div>
-                    {companies.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-8">No companies found</p>
-                    ) : (
-                      <div className="divide-y divide-slate-100">
-                        {companies.slice(0, 5).map((c) => (
-                          <div key={c.id} className="px-5 py-3 flex items-center gap-4">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                              <Building2 size={14} className="text-blue-500" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
-                              <p className="text-xs text-slate-400">Owner: {c.owner}</p>
-                            </div>
-                            <div className="text-right shrink-0 mr-3">
-                              <p className="text-sm font-bold text-slate-700">{c.totalUsers}</p>
-                              <p className="text-[11px] text-slate-400">users</p>
-                            </div>
-                            <button
-                              onClick={() => void handleEnterSupport(c)}
-                              disabled={enteringSupport === c.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50 shrink-0"
-                            >
-                              {enteringSupport === c.id ? <Loader2 size={11} className="animate-spin" /> : <ShieldAlert size={11} />}
-                              Support
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                      <h2 className="font-bold text-slate-800">Recent Activity</h2>
-                      <button onClick={() => setTab('activity')} className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
-                        View all <ChevronRight size={12} />
-                      </button>
-                    </div>
-                    {activity.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet.</p>
-                    ) : (
-                      <div className="divide-y divide-slate-100">
-                        {activity.slice(0, 8).map((e) => (
-                          <div key={e.id} className="px-5 py-3 flex items-center gap-3">
-                            <Activity size={13} className="text-slate-300 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-slate-700 truncate">
-                                <span className="font-semibold">{e.userName ?? e.userEmail ?? e.userId}</span>
-                              </p>
-                            </div>
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${eventBadge(e.eventType)}`}>{e.eventType}</span>
-                            <span className="text-[11px] text-slate-400 shrink-0">{timeAgo(e.createdAt)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <OverviewTab
+                  stats={stats}
+                  companies={companies}
+                  activity={activity}
+                  enteringSupport={enteringSupport}
+                  onEnterSupport={handleEnterSupport}
+                  onViewCompanies={() => { setTab('companies'); setFilterCompanyId(null); setSearchParams({}); }}
+                  onViewActivity={() => { setTab('activity'); setFilterCompanyId(null); setSearchParams({}); }}
+                />
               )}
 
               {/* ── Companies ── */}
               {tab === 'companies' && (
-                <div className="max-w-5xl">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
-                      <div>
-                        <h2 className="font-bold text-slate-800">All Companies</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">{companies.length} {companies.length === 1 ? 'company' : 'companies'}</p>
-                      </div>
-                      <button
-                        onClick={() => setShowCreateCompany(true)}
-                        className="flex items-center gap-2 px-3 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors"
-                      >
-                        <Plus size={13} /> Create Company
-                      </button>
-                    </div>
-                    {companies.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-12">No companies found</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50">
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Company</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Owner</th>
-                              <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Users</th>
-                              <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Created</th>
-                              <th className="text-right px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {companies.map((c) => (
-                              <tr key={c.id} className={`hover:bg-slate-50 transition-colors ${supportMode.active && supportMode.companyId === c.id ? 'bg-amber-50/50' : ''}`}>
-                                <td className="px-5 py-3.5">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                                      <Building2 size={13} className="text-blue-500" />
-                                    </div>
-                                    <div>
-                                      <span className="font-semibold text-slate-800">{c.name}</span>
-                                      {supportMode.active && supportMode.companyId === c.id && (
-                                        <span className="ml-2 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">ACTIVE</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-5 py-3.5 text-slate-600">{c.owner}</td>
-                                <td className="px-4 py-3.5 text-center font-bold text-slate-700">{c.totalUsers}</td>
-                                <td className="px-4 py-3.5 text-center font-bold text-green-600">{c.activeUsers}</td>
-                                <td className="px-5 py-3.5 text-slate-500">{fmtDate(c.createdAt)}</td>
-                                <td className="px-5 py-3.5 text-right">
-                                  <CompanyActionsMenu
-                                    company={c}
-                                    onEnterSupport={handleEnterSupport}
-                                    onViewUsers={handleViewUsers}
-                                    onViewActivity={handleViewActivity}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <CompaniesTab
+                  companies={companies}
+                  supportMode={supportMode}
+                  enteringSupport={enteringSupport}
+                  onEnterSupport={handleEnterSupport}
+                  onViewUsers={handleViewUsers}
+                  onViewActivity={handleViewActivity}
+                  onCreateCompany={() => setShowCreateCompany(true)}
+                />
               )}
 
               {/* ── Users ── */}
               {tab === 'users' && (
-                <div className="max-w-6xl">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    {/* Header + filters */}
-                    <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <div className="flex-1 min-w-0">
-                          <h2 className="font-bold text-slate-800">All Users</h2>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {filterCompanyName ? (
-                              <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
-                            ) : (
-                              <>
-                                {filteredUsers.length} of {users.length} users
-                                {users.filter(u => u.isOrphan).length > 0 && (
-                                  <span className="ml-2 text-amber-600 font-semibold">
-                                    · {users.filter(u => u.isOrphan).length} incomplete signup{users.filter(u => u.isOrphan).length !== 1 ? 's' : ''}
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </p>
-                        </div>
-                        <input
-                          type="text"
-                          value={userSearch}
-                          onChange={(e) => setUserSearch(e.target.value)}
-                          placeholder="Search name, email, company…"
-                          className="w-52 px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-primary/60 focus:bg-white transition-colors"
-                        />
-                      </div>
-                      {/* Filter chips */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Filter size={12} className="text-slate-400 shrink-0" />
-                        <select
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
-                        >
-                          <option value="">All statuses</option>
-                          <option value="active">Active</option>
-                          <option value="invited">Invited</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="orphan">Incomplete signup</option>
-                        </select>
-                        <select
-                          value={filterRole}
-                          onChange={(e) => setFilterRole(e.target.value)}
-                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
-                        >
-                          <option value="">All roles</option>
-                          <option value="owner">Owner</option>
-                          <option value="admin">Admin</option>
-                          <option value="member">Member</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
-                        <select
-                          value={filterVerified}
-                          onChange={(e) => setFilterVerified(e.target.value)}
-                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
-                        >
-                          <option value="">All verification</option>
-                          <option value="verified">Verified</option>
-                          <option value="unverified">Unverified</option>
-                        </select>
-                        <select
-                          value={filterCompanyId?.toString() ?? ''}
-                          onChange={(e) => setFilterCompanyId(e.target.value ? Number(e.target.value) : null)}
-                          className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-primary/60 transition-colors"
-                        >
-                          <option value="">All companies</option>
-                          {companies.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                        {(filterStatus || filterRole || filterVerified || filterCompanyId) && (
-                          <button
-                            onClick={() => { setFilterStatus(''); setFilterRole(''); setFilterVerified(''); setFilterCompanyId(null); }}
-                            className="text-xs text-primary font-semibold hover:underline"
-                          >
-                            Clear filters
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {filteredUsers.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-12">No users match the current filters</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50">
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">User</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Company</th>
-                              <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Role</th>
-                              <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Last Login</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Last Active</th>
-                              <th className="text-center px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Online</th>
-                              <th className="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Joined</th>
-                              <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredUsers.map((u) => (
-                              <tr key={u.userId} className={`hover:bg-slate-50 transition-colors ${u.status === 'inactive' ? 'opacity-60' : ''} ${u.isOrphan ? 'bg-amber-50/40' : ''}`}>
-                                <td className="px-5 py-3.5">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 ${u.isOrphan ? 'bg-amber-400' : u.status === 'inactive' ? 'bg-slate-400' : 'bg-primary'}`}>
-                                      {(u.name || u.email || '?')[0].toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <p className="font-semibold text-slate-800 truncate">{u.name}</p>
-                                        {u.isOrphan ? (
-                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-300">
-                                            Incomplete signup
-                                          </span>
-                                        ) : u.emailVerified === false ? (
-                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
-                                            Unverified
-                                          </span>
-                                        ) : (
-                                          <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
-                                            Verified
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
-                                      {u.isOrphan && (
-                                        <p className="text-[10px] text-amber-600 mt-0.5">No profile · No company</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-5 py-3.5 text-slate-600 truncate max-w-[140px]">
-                                  {u.isOrphan ? <span className="text-amber-500 text-xs font-semibold">—</span> : u.company}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  {u.isOrphan ? (
-                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-600 border-amber-200">—</span>
-                                  ) : (
-                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${roleBadge(u.role)}`}>{u.role}</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  {u.isOrphan ? (
-                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200">Orphan</span>
-                                  ) : (
-                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border capitalize ${statusBadge(u.status)}`}>{u.status}</span>
-                                  )}
-                                </td>
-                                <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastLoginAt)}</td>
-                                <td className="px-5 py-3.5 text-slate-500 text-xs">{timeAgo(u.lastActiveAt)}</td>
-                                <td className="px-4 py-3.5 text-center">
-                                  <Circle size={10} className={u.onlineNow ? 'text-emerald-500 fill-emerald-500' : 'text-slate-300 fill-slate-300'} />
-                                </td>
-                                <td className="px-5 py-3.5 text-slate-500 text-xs">{fmtDate(u.createdAt)}</td>
-                                <td className="px-4 py-3.5 text-right">
-                                  {u.isOrphan ? (
-                                    <OrphanActionsMenu
-                                      user={{
-                                        userId: u.userId,
-                                        name: u.name,
-                                        email: u.email,
-                                        emailVerified: u.emailVerified ?? false,
-                                      }}
-                                      onAction={(action, target) => setPendingOrphanAction({ action, user: target })}
-                                    />
-                                  ) : (
-                                    <UserActionsMenu
-                                      user={{
-                                        id: u.id,
-                                        userId: u.userId,
-                                        name: u.name,
-                                        email: u.email,
-                                        role: u.role,
-                                        status: u.status,
-                                        emailVerified: u.emailVerified,
-                                        companyId: u.companyId,
-                                      }}
-                                      onAction={async (action, target) => {
-                                        if (action === 'impersonate') {
-                                          const r = await fetch(`/api/developer/users/${target.userId}/impersonate`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            credentials: 'include',
-                                            body: JSON.stringify({ reason: 'Developer support session' }),
-                                          });
-                                          if (r.ok) {
-                                            window.location.href = '/dashboard';
-                                          } else {
-                                            const d = await r.json() as { error?: string };
-                                            alert(d.error ?? 'Failed to start impersonation.');
-                                          }
-                                          return;
-                                        }
-                                        if (action === 'view-sessions') {
-                                          const r = await fetch(`/api/developer/users/${target.userId}/sessions`, { credentials: 'include' });
-                                          if (r.ok) {
-                                            const d = await r.json() as { sessions: Array<{ id: string; ipAddress: string; userAgent: string; createdAt: string }>; total: number };
-                                            const list = d.sessions.map(s => `• ${s.ipAddress} — ${s.userAgent?.slice(0, 60)} (${new Date(s.createdAt).toLocaleString('en-AU')})`).join('\n');
-                                            alert(`${d.total} active session(s) for ${target.email}:\n\n${list || 'None'}`);
-                                          }
-                                          return;
-                                        }
-                                        if (action === 'revoke-sessions') {
-                                          if (!confirm(`Force logout ${target.email}? All their active sessions will be revoked.`)) return;
-                                          const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
-                                            method: 'DELETE',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            credentials: 'include',
-                                            body: JSON.stringify({ reason: 'Force logout by developer' }),
-                                          });
-                                          if (r.ok) {
-                                            setActionToast(`Sessions revoked for ${target.email}`);
-                                            setTimeout(() => setActionToast(''), 3000);
-                                          }
-                                          return;
-                                        }
-                                        setPendingAction({ action, user: target });
-                                      }}
-                                    />
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <UsersTab
+                  users={users}
+                  companies={companies}
+                  filterStatus={filterStatus}
+                  filterRole={filterRole}
+                  filterVerified={filterVerified}
+                  filterCompanyId={filterCompanyId}
+                  userSearch={userSearch}
+                  onFilterStatus={setFilterStatus}
+                  onFilterRole={setFilterRole}
+                  onFilterVerified={setFilterVerified}
+                  onFilterCompanyId={setFilterCompanyId}
+                  onUserSearch={setUserSearch}
+                  onClearFilters={() => { setFilterStatus(''); setFilterRole(''); setFilterVerified(''); setFilterCompanyId(null); }}
+                  onUserAction={async (action, target) => {
+                    if (action === 'impersonate') {
+                      const r = await fetch(`/api/developer/users/${target.userId}/impersonate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ reason: 'Developer support session' }),
+                      });
+                      if (r.ok) {
+                        window.location.href = '/dashboard';
+                      } else {
+                        const d = await r.json() as { error?: string };
+                        alert(d.error ?? 'Failed to start impersonation.');
+                      }
+                      return;
+                    }
+                    if (action === 'view-sessions') {
+                      const r = await fetch(`/api/developer/users/${target.userId}/sessions`, { credentials: 'include' });
+                      if (r.ok) {
+                        const d = await r.json() as { sessions: Array<{ id: string; ipAddress: string; userAgent: string; createdAt: string }>; total: number };
+                        const list = d.sessions.map(s => `\u2022 ${s.ipAddress} \u2014 ${s.userAgent?.slice(0, 60)} (${new Date(s.createdAt).toLocaleString('en-AU')})`).join('\n');
+                        alert(`${d.total} active session(s) for ${target.email}:\n\n${list || 'None'}`);
+                      }
+                      return;
+                    }
+                    if (action === 'revoke-sessions') {
+                      if (!confirm(`Force logout ${target.email}? All their active sessions will be revoked.`)) return;
+                      const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ reason: 'Force logout by developer' }),
+                      });
+                      if (r.ok) {
+                        setActionToast(`Sessions revoked for ${target.email}`);
+                        setTimeout(() => setActionToast(''), 3000);
+                      }
+                      return;
+                    }
+                    setPendingAction({ action, user: target });
+                  }}
+                  onOrphanAction={(action, user) => setPendingOrphanAction({ action, user })}
+                  actionToast={actionToast}
+                />
               )}
 
-              {/* ── Activity Log ── */}
+              {/* ── Activity ── */}
               {tab === 'activity' && (
-                <div className="max-w-4xl">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                      <div>
-                        <h2 className="font-bold text-slate-800">Activity Log</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {filterCompanyName ? (
-                            <span>Filtered: <span className="font-semibold text-slate-600">{filterCompanyName}</span> · <button onClick={() => setFilterCompanyId(null)} className="text-primary hover:underline">Clear</button></span>
-                          ) : `${filteredActivity.length} recent events`}
-                        </p>
-                      </div>
-                    </div>
-                    {filteredActivity.length === 0 ? (
-                      <div className="text-center py-16">
-                        <Activity size={28} className="text-slate-200 mx-auto mb-3" />
-                        <p className="text-sm font-semibold text-slate-400">No activity recorded yet</p>
-                        <p className="text-xs text-slate-300 mt-1">Events appear after the next user login</p>
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-slate-100">
-                        {filteredActivity.map((e) => (
-                          <div key={e.id} className="px-5 py-3.5 flex items-center gap-4">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${e.eventType === 'login' ? 'bg-emerald-500' : e.eventType === 'logout' ? 'bg-slate-400' : 'bg-blue-400'}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-slate-700">
-                                <span className="font-semibold">{e.userName ?? e.userEmail ?? e.userId}</span>
-                                {e.userEmail && e.userName && <span className="text-slate-400 ml-1 text-xs">({e.userEmail})</span>}
-                              </p>
-                            </div>
-                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${eventBadge(e.eventType)}`}>{e.eventType}</span>
-                            <span className="text-xs text-slate-400 shrink-0 w-24 text-right">{timeAgo(e.createdAt)}</span>
-                            <span className="text-[11px] text-slate-300 shrink-0 hidden lg:block">
-                              {new Date(e.createdAt).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ActivityTab
+                  activity={filteredActivity}
+                  filterCompanyName={filterCompanyName}
+                  onClearFilter={() => setFilterCompanyId(null)}
+                />
               )}
 
               {/* ── Support Setup ── */}
