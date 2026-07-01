@@ -20,6 +20,7 @@ import {
   Receipt,
   Library,
   ClipboardList,
+  Bot,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -47,7 +48,7 @@ function useSubscriptionStatus() {
 }
 
 // ── Main nav items ────────────────────────────────────────────────────────────
-// Order: Dashboard, Projects, Scheduler, Fleet, Stakeholders, Files, Ledger
+// Order: Dashboard, Projects, Scheduler, Fleet, Stakeholders, Files, Ledger, Dazza AI
 function buildNavItems(_workPlural: string) {
   return [
     { label: 'Dashboard',    icon: LayoutDashboard, href: '/dashboard',   permKey: null },
@@ -58,6 +59,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Files',        icon: FolderOpen,      href: '/files',       permKey: 'files' },
     { label: 'Forms',        icon: ClipboardList,   href: '/forms',       permKey: null },
     { label: 'Ledger',       icon: Receipt,         href: '/invoices',    permKey: 'invoices' },
+    { label: 'Dazza AI',     icon: Bot,             href: '/dazza-ai',    permKey: null },
   ] as const;
 }
 
@@ -185,6 +187,7 @@ function SidebarContent({
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
+          const isDazza = item.href === '/dazza-ai';
 
           return (
             <Link
@@ -192,7 +195,11 @@ function SidebarContent({
               to={item.href}
               onClick={onClose}
               title={collapsed ? item.label : undefined}
-              className={linkClass(active)}
+              className={
+                isDazza
+                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-300 hover:bg-white/8 hover:text-violet-200'}`
+                  : linkClass(active)
+              }
             >
               <Icon size={17} className="shrink-0" />
               {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
