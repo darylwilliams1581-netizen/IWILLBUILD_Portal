@@ -933,8 +933,54 @@ async function runStartupMigrations() {
       }
     }
   }
+
+  // ── Promote first admin/owner per company to role='owner' (idempotent) ──────
+  // Ensures the account owner always sees the Owner Console in the sidebar.
+  try {
+    await db.execute(sql`
+      UPDATE profiles p
+      INNER JOIN (
+        SELECT MIN(id) AS min_id
+        FROM profiles
+        WHERE company_id IS NOT NULL
+          AND role IN ('admin', 'owner')
+        GROUP BY company_id
+      ) AS first_admins ON p.id = first_admins.min_id
+      SET p.role               = 'owner',
+          p.perm_admin          = 1,
+          p.perm_invite_users   = 1,
+          p.perm_delete_records = 1,
+          p.perm_jobs           = 1,
+          p.perm_fleet          = 1,
+          p.perm_forms          = 1,
+          p.perm_files          = 1,
+          p.perm_estimating     = 1,
+          p.perm_dazza_ai       = 1,
+          p.perm_see_dollars    = 1,
+          p.status              = 'active'
+      WHERE p.role != 'owner'
+    `);
+    // Also lock all existing owners to have full perms
+    await db.execute(sql`
+      UPDATE profiles
+      SET perm_admin          = 1,
+          perm_invite_users   = 1,
+          perm_delete_records = 1,
+          perm_jobs           = 1,
+          perm_fleet          = 1,
+          perm_forms          = 1,
+          perm_files          = 1,
+          perm_estimating     = 1,
+          perm_dazza_ai       = 1,
+          perm_see_dollars    = 1,
+          status              = 'active'
+      WHERE role = 'owner'
+    `);
+    console.log('[startup-migration] owner-role promotion complete');
+  } catch (e: unknown) {
+    console.warn('[startup-migration] owner-role promotion failed:', String((e as Error)?.message ?? e));
+  }
 }
-runStartupMigrations().catch((e) => console.warn('[startup-migration] Failed:', e));
 
 // ── Startup checks ────────────────────────────────────────────────────────────
 const openAiKey = getSecret('OPENAI_API_KEY');
