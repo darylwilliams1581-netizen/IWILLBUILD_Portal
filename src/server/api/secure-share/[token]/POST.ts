@@ -10,7 +10,6 @@ import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { hashToken } from '../../../lib/share-tokens.js';
-import bcrypt from 'bcryptjs';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -60,6 +59,7 @@ export default async function handler(req: Request, res: Response) {
       return res.json({ ok: true }); // No password set — always valid
     }
 
+    const { default: bcrypt } = await import('bcryptjs');
     const valid = await bcrypt.compare(password.trim(), link.password_hash);
     if (!valid) {
       // Log failed attempt

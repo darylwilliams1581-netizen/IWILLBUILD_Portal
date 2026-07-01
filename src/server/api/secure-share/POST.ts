@@ -21,7 +21,6 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { resolveEffectiveCompany } from '../../lib/dazza-context.js';
 import { generateShareToken, hashToken } from '../../lib/share-tokens.js';
-import bcrypt from 'bcryptjs';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -72,6 +71,7 @@ export default async function handler(req: Request, res: Response) {
     // Hash password if provided
     let passwordHash: string | null = null;
     if (password && password.trim()) {
+      const { default: bcrypt } = await import('bcryptjs');
       passwordHash = await bcrypt.hash(password.trim(), 10);
     }
 

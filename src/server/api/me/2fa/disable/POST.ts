@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import * as otplib from 'otplib';
-import bcrypt from 'bcryptjs';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 
@@ -20,6 +19,7 @@ export default async function handler(req: Request, res: Response) {
     if (!user) return res.status(404).json({ error: 'User not found.' });
     if (!user.two_factor_enabled) return res.status(400).json({ error: '2FA is not enabled.' });
 
+    const { default: bcrypt } = await import('bcryptjs');
     const pwOk = user.password ? await bcrypt.compare(password, user.password) : false;
     if (!pwOk) return res.status(400).json({ error: 'Incorrect password.' });
 
