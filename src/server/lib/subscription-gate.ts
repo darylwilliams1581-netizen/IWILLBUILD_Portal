@@ -15,7 +15,7 @@
  *   past_due           — payment failed
  *                          → FULL ACCESS during 7-day grace period
  *                          → VIEW-ONLY after grace period
- *   suspended          — manually suspended by platform owner → VIEW-ONLY
+ *   suspended          — manually suspended by platform developer → VIEW-ONLY
  *   no_company         — user has no company record
  *
  * VIEW-ONLY STATES (writes blocked):
@@ -23,7 +23,7 @@
  *
  * ALWAYS WRITABLE:
  *   active | trial | cancel_at_period_end | past_due (within grace)
- *   platform owner (role === 'owner') — always bypasses
+ *   platform developer (platform_role === 'developer') — always bypasses
  *
  * PAST-DUE GRACE PERIOD: 7 days from past_due_since
  *   If past_due_since is NULL, grace period starts from now (fail-open).

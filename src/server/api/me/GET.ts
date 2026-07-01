@@ -42,9 +42,9 @@ export default async function handler(req: Request, res: Response) {
     const email = session.user.email ?? '';
     const dbPlatformRole = (profile as unknown as { platformRole?: string | null })?.platformRole ?? null;
     const isPlatformOwner =
-      dbPlatformRole === 'owner' ||
+      dbPlatformRole === 'developer' ||
       PLATFORM_OWNER_EMAILS.has(email.toLowerCase());
-    const platformRole = isPlatformOwner ? 'owner' : (dbPlatformRole ?? null);
+    const platformRole = isPlatformOwner ? 'developer' : (dbPlatformRole ?? null);
 
     authLog('me.ok', {
       userId: session.user.id,

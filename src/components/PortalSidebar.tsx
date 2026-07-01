@@ -238,7 +238,7 @@ function SidebarContent({
             );
           })}
 
-          {/* Owner Console — platform owner only (NOT company admin/owner) */}
+          {/* Owner Console — platform developer only (NOT company admin/owner) */}
           {!permsLoading && isPlatformOwner && (() => {
             const active = isActive('/owner-console');
             return (

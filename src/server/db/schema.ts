@@ -132,7 +132,7 @@ export const profiles = mysqlTable('profiles', {
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
   permInvoices: boolean('perm_invoices').notNull().default(true),
   // Platform-level role — separate from company role.
-  // 'owner' = IWILLBUILD platform owner (full Owner Console access)
+  // 'developer' = IWILLBUILD platform developer (full Owner Console access)
   // 'support' = platform support staff (read-only Owner Console)
   // null = normal company user
   platformRole: varchar('platform_role', { length: 30 }),

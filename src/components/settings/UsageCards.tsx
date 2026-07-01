@@ -127,7 +127,7 @@ export default function UsageCards({ compact = false }: { compact?: boolean }) {
   }
 
   const planLabel = (p: string) => {
-    const m: Record<string, string> = { trial: 'Free Trial', solo: 'Solo', team: 'Team', business: 'Business', pro: 'Business', enterprise: 'Enterprise', owner: 'Platform Owner' };
+    const m: Record<string, string> = { trial: 'Free Trial', solo: 'Solo', team: 'Team', business: 'Business', pro: 'Business', enterprise: 'Enterprise', owner: 'Platform Developer' };
     return m[p] ?? p;
   };
 

@@ -406,9 +406,9 @@ export default function VerifyRequiredPage() {
 
               {/* 5. Platform owner bypass */}
               <div className="border border-white/10 rounded-xl p-4">
-                <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1">Platform Owner?</p>
+                <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1">Platform Developer?</p>
                 <p className="text-white/30 text-xs mb-3 leading-relaxed">
-                  If you're the platform owner and can't receive email, you can bypass verification below.
+                  If you're the platform developer and can't receive email, you can bypass verification below.
                 </p>
                 {selfVerified ? (
                   <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
@@ -422,7 +422,7 @@ export default function VerifyRequiredPage() {
                     className="flex items-center gap-2 text-xs font-bold text-primary hover:text-orange-400 disabled:opacity-50 transition-colors"
                   >
                     <ShieldCheck size={14} className={selfVerifying ? 'animate-pulse' : ''} />
-                    {selfVerifying ? 'Verifying…' : 'Bypass email — I am the platform owner'}
+                    {selfVerifying ? 'Verifying…' : 'Bypass email — I am the platform developer'}
                   </button>
                 )}
               </div>

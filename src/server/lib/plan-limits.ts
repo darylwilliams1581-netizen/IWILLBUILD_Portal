@@ -95,7 +95,7 @@ const PLAN_LIMITS: Record<string, PlanLimits> = {
     formTemplates:  9999,
     fleetAssets:    9999,
   },
-  // owner = platform owner, no limits
+  // developer = platform developer, no limits
   owner: {
     users:          9999,
     activeJobs:     9999,

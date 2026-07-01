@@ -1,14 +1,14 @@
 /**
  * platform-owner-guard.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Middleware and helper for IWILLBUILD platform-owner access.
+ * Middleware and helper for IWILLBUILD platform-developer access.
  *
- * Platform owners are distinct from company owners/admins.
+ * Platform developers are distinct from company owners/admins.
  * They have access to the Owner Console (all companies, all users, system AI,
  * starter packs, storage, subscriptions, support tools).
  *
- * A user is a platform owner if:
- *   1. profiles.platform_role = 'owner'   (preferred — DB flag)
+ * A user is a platform developer if:
+ *   1. profiles.platform_role = 'developer'   (preferred — DB flag)
  *   2. OR their email is in PLATFORM_OWNER_EMAILS (emergency fallback)
  *
  * Company role ('owner' | 'admin' | 'member') is completely separate and
@@ -22,8 +22,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../lib/auth/auth.js';
 
 // ── Emergency fallback emails ─────────────────────────────────────────────────
-// These always have platform owner access regardless of DB flag.
-// Remove once platform_role is reliably set in the DB.
+// These always have platform developer access regardless of DB flag.
 export const PLATFORM_OWNER_EMAILS: ReadonlySet<string> = new Set([
   'daryl.williams@energyq.com.au',
   'daryl.williams1581@gmail.com',
@@ -39,7 +38,7 @@ export interface PlatformOwnerInfo {
 }
 
 /**
- * Resolve whether the authenticated user is a platform owner.
+ * Resolve whether the authenticated user is a platform developer.
  * Returns null if the request is unauthenticated.
  */
 export async function getPlatformOwnerInfo(req: Request): Promise<PlatformOwnerInfo | null> {
@@ -57,7 +56,7 @@ export async function getPlatformOwnerInfo(req: Request): Promise<PlatformOwnerI
 
     // Emergency email fallback
     if (PLATFORM_OWNER_EMAILS.has(email.toLowerCase())) {
-      return { isPlatformOwner: true, platformRole: 'owner', userId, email };
+      return { isPlatformOwner: true, platformRole: 'developer', userId, email };
     }
 
     // DB flag check
@@ -66,7 +65,7 @@ export async function getPlatformOwnerInfo(req: Request): Promise<PlatformOwnerI
     });
 
     const platformRole = (profile as unknown as { platformRole?: string | null })?.platformRole ?? null;
-    const isPlatformOwner = platformRole === 'owner';
+    const isPlatformOwner = platformRole === 'developer';
 
     return { isPlatformOwner, platformRole, userId, email };
   } catch {
@@ -78,7 +77,7 @@ export async function getPlatformOwnerInfo(req: Request): Promise<PlatformOwnerI
 
 /**
  * requirePlatformOwner
- * Blocks requests from non-platform-owners with HTTP 403.
+ * Blocks requests from non-platform-developers with HTTP 403.
  * Apply to ALL owner-console API routes.
  */
 export async function requirePlatformOwner(
@@ -96,7 +95,7 @@ export async function requirePlatformOwner(
   if (!info.isPlatformOwner) {
     res.status(403).json({
       error: 'forbidden',
-      message: 'Owner Console access is restricted to IWILLBUILD platform owners.',
+      message: 'Owner Console access is restricted to IWILLBUILD platform developers.',
     });
     return;
   }

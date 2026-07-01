@@ -88,7 +88,7 @@ function fmtDate(iso: string | null | undefined): string {
 function planLabel(plan: string): string {
   const map: Record<string, string> = {
     solo: 'Solo', team: 'Team', business: 'Business',
-    pro: 'Business', enterprise: 'Enterprise', trial: 'Free Trial', owner: 'Platform Owner',
+    pro: 'Business', enterprise: 'Enterprise', trial: 'Free Trial', owner: 'Platform Developer',
   };
   return map[plan] ?? plan.charAt(0).toUpperCase() + plan.slice(1);
 }

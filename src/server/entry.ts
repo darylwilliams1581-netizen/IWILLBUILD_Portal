@@ -995,7 +995,7 @@ async function runStartupMigrations() {
     console.warn('[startup-migration] platform_role column error:', String((e as Error)?.message ?? e));
   }
 
-  // ── Seed platform_role = 'owner' for known platform owner emails ──────────
+  // ── Seed platform_role = 'developer' for known platform developer emails ──────────
   const platformOwnerEmails = [
     'daryl.williams@energyq.com.au',
     'daryl.williams1581@gmail.com',
@@ -1006,7 +1006,7 @@ async function runStartupMigrations() {
       await db.execute(
         sql`UPDATE profiles p
             INNER JOIN user u ON u.id = p.user_id
-            SET p.platform_role = 'owner'
+            SET p.platform_role = 'developer'
             WHERE LOWER(u.email) = LOWER(${email})`
       );
     } catch (e: unknown) {
