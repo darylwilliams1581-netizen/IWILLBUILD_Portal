@@ -66,6 +66,7 @@ function run(cmd, args, env = {}) {
 // of how the publish pipeline invokes us.
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
+import { cp, mkdir } from 'node:fs/promises';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const vite = join(root, 'node_modules', '.bin', 'vite');
@@ -97,6 +98,21 @@ const ssrCode = await run(
 if (ssrCode !== 0) {
   console.error(`build:app:ssr failed with exit code ${ssrCode}`);
   process.exit(ssrCode);
+}
+
+// ── Copy seed JSON files into dist so the server can read them at runtime ──
+// src/server/seed/starter-packs/default/*.json
+//   → dist/server/seed/starter-packs/default/*.json
+console.log('> copy:seed-data');
+try {
+  const seedSrc  = join(root, 'src',  'server', 'seed');
+  const seedDest = join(root, 'dist', 'server', 'seed');
+  await mkdir(seedDest, { recursive: true });
+  await cp(seedSrc, seedDest, { recursive: true });
+  console.log('  seed data copied to dist/server/seed/');
+} catch (e) {
+  // Non-fatal: if the directory doesn't exist the seeder will log a clear error at runtime.
+  console.warn('  WARNING: could not copy seed data:', e.message);
 }
 
 process.exit(0);
