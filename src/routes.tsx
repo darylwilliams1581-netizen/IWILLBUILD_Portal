@@ -18,6 +18,7 @@ import TermsPage from './pages/terms';
 import ProdNotFoundPage from './pages/_404';
 import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
+import LoginHelpPage from './pages/login-help';
 import { Navigate } from 'react-router-dom';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
@@ -118,6 +119,7 @@ export const routes: RouteObject[] = [
   { path: '/verify-required', element: <VerifyRequiredPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password',  element: <ResetPasswordPage /> },
+  { path: '/login-help',      element: <LoginHelpPage /> },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },

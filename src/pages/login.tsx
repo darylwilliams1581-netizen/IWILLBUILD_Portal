@@ -536,6 +536,11 @@ export default function LoginPage() {
                       Create one
                     </Link>
                   </p>
+                  <p className="text-center text-xs text-white/25 mt-1">
+                    <Link to="/login-help" className="hover:text-white/50 transition-colors">
+                      Having trouble logging in?
+                    </Link>
+                  </p>
                 </div>
               </motion.form>
             ) : (

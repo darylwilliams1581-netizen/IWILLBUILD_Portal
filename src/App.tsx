@@ -13,6 +13,7 @@ import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 import DazzaWidget from '@/components/DazzaWidget';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 
 const CookieBanner = lazy(() =>
   import('@/components/CookieBanner').catch((error) => {
@@ -66,6 +67,7 @@ const router = createBrowserRouter(routeTree);
 export default function App() {
   return (
     <>
+      <ImpersonationBanner />
       <RouterProvider router={router} />
       {/*
         CookieBanner reads document.cookie and subscribes to browser events.

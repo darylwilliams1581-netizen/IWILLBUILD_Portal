@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, AlertTriangle, CheckCircle2, Shield, Mail, UserCheck, XCircle } from 'lucide-react';
+import { X, Loader2, AlertTriangle, CheckCircle2, Shield, Mail, UserCheck, XCircle, Eye, MonitorSmartphone, Trash2 } from 'lucide-react';
 import type { OcUserForActions, UserAction } from './UserActionsMenu';
 
 const REASON_PRESETS: Record<string, string[]> = {
@@ -8,6 +8,8 @@ const REASON_PRESETS: Record<string, string[]> = {
   deactivate: ['Left business', 'Duplicate account', 'Security concern', 'Support request', 'Other'],
   reactivate: ['Returned to business', 'Support request', 'Error — was incorrectly deactivated', 'Other'],
   'change-role': ['Promotion', 'Role change', 'Support request', 'Other'],
+  impersonate: ['Support session', 'Troubleshooting login issue', 'Investigating bug report', 'Other'],
+  'revoke-sessions': ['Security concern', 'User left business', 'Account compromised', 'Other'],
 };
 
 const ROLE_OPTIONS = ['owner', 'admin', 'member', 'viewer'] as const;

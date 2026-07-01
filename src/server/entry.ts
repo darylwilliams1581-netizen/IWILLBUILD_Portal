@@ -343,6 +343,21 @@ import team_verify_user_post_332 from "./api/team/verify-user/POST";
 import team_id_delete_333 from "./api/team/[id]/DELETE";
 import team_id_put_334 from "./api/team/[id]/PUT";
 import usage_get_335 from "./api/usage/GET";
+// Support essentials — new endpoints
+import developer_users_impersonate_post from "./api/developer/users/[id]/impersonate/POST";
+import developer_users_impersonate_delete from "./api/developer/users/[id]/impersonate/DELETE";
+import developer_users_sessions_get from "./api/developer/users/[id]/sessions/GET";
+import developer_users_sessions_delete from "./api/developer/users/[id]/sessions/DELETE";
+import developer_support_notes_get from "./api/developer/support-notes/GET";
+import developer_support_notes_post from "./api/developer/support-notes/POST";
+import developer_support_notes_id_delete from "./api/developer/support-notes/[id]/DELETE";
+import developer_email_log_get from "./api/developer/email-log/GET";
+import developer_company_health_get from "./api/developer/company-health/GET";
+import developer_companies_archive_post from "./api/developer/companies/[id]/archive/POST";
+import team_invites_get from "./api/team/invites/GET";
+import team_invites_post from "./api/team/invites/POST";
+import team_invites_id_resend_post from "./api/team/invites/[id]/resend/POST";
+import team_invites_id_cancel_post from "./api/team/invites/[id]/cancel/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -850,6 +865,23 @@ async function runStartupMigrations() {
       name: 'notifications',
       ddl: "CREATE TABLE IF NOT EXISTS notifications (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, user_id VARCHAR(36) NOT NULL, type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, body TEXT NULL, link VARCHAR(500) NULL, is_read TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company_user (company_id, user_id), INDEX idx_user_read (user_id, is_read))",
     },
+    // ── Support essentials tables ──────────────────────────────────────────────
+    {
+      name: 'company_invites',
+      ddl: "CREATE TABLE IF NOT EXISTS company_invites (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, email VARCHAR(255) NOT NULL, name VARCHAR(255) NULL, role VARCHAR(50) NOT NULL DEFAULT 'member', token VARCHAR(64) NOT NULL UNIQUE, status VARCHAR(20) NOT NULL DEFAULT 'pending', invited_by_user_id VARCHAR(36) NOT NULL, invited_by_email VARCHAR(255) NOT NULL, expires_at DATETIME NOT NULL, accepted_at DATETIME NULL, cancelled_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_email (email), INDEX idx_token (token), INDEX idx_status (company_id, status))",
+    },
+    {
+      name: 'email_delivery_log',
+      ddl: "CREATE TABLE IF NOT EXISTS email_delivery_log (id INT AUTO_INCREMENT PRIMARY KEY, email_type VARCHAR(60) NOT NULL, recipient_email VARCHAR(255) NOT NULL, recipient_user_id VARCHAR(36) NULL, subject VARCHAR(500) NULL, status VARCHAR(20) NOT NULL DEFAULT 'sent', provider_message_id VARCHAR(255) NULL, error_message TEXT NULL, company_id INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_recipient (recipient_email), INDEX idx_type (email_type), INDEX idx_status (status), INDEX idx_company (company_id), INDEX idx_created (created_at))",
+    },
+    {
+      name: 'developer_support_notes',
+      ddl: "CREATE TABLE IF NOT EXISTS developer_support_notes (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NULL, company_id INT NULL, note TEXT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, created_by_email VARCHAR(255) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_user (user_id), INDEX idx_company (company_id), INDEX idx_created (created_at))",
+    },
+    {
+      name: 'developer_audit_log',
+      ddl: "CREATE TABLE IF NOT EXISTS developer_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, action_type VARCHAR(60) NOT NULL, performed_by_user_id VARCHAR(36) NOT NULL, performed_by_email VARCHAR(255) NOT NULL, target_user_id VARCHAR(36) NULL, target_email VARCHAR(255) NULL, target_company_id INT NULL, reason TEXT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_performed_by (performed_by_user_id), INDEX idx_target_user (target_user_id), INDEX idx_action (action_type), INDEX idx_created (created_at))",
+    },
   ];
   for (const { name, ddl } of recoveryTables) {
     try {
@@ -1151,6 +1183,17 @@ app.post("/api/developer/users/:id/delete-orphan", developer_users_id_delete_orp
 app.post("/api/developer/users/:id/reactivate", developer_users_id_reactivate_post_61);
 app.post("/api/developer/users/:id/resend-verification", developer_users_id_resend_verification_post_62);
 app.put("/api/developer/users/:id/role", developer_users_id_role_put_63);
+// Support essentials — new developer routes
+app.post("/api/developer/users/:id/impersonate", requirePlatformOwner, developer_users_impersonate_post);
+app.delete("/api/developer/users/:id/impersonate", requirePlatformOwner, developer_users_impersonate_delete);
+app.get("/api/developer/users/:id/sessions", requirePlatformOwner, developer_users_sessions_get);
+app.delete("/api/developer/users/:id/sessions", requirePlatformOwner, developer_users_sessions_delete);
+app.get("/api/developer/support-notes", requirePlatformOwner, developer_support_notes_get);
+app.post("/api/developer/support-notes", requirePlatformOwner, developer_support_notes_post);
+app.delete("/api/developer/support-notes/:id", requirePlatformOwner, developer_support_notes_id_delete);
+app.get("/api/developer/email-log", requirePlatformOwner, developer_email_log_get);
+app.get("/api/developer/company-health", requirePlatformOwner, developer_company_health_get);
+app.post("/api/developer/companies/:id/archive", requirePlatformOwner, developer_companies_archive_post);
 app.get("/api/documents", documents_get_64);
 app.get("/api/documents/share/:token", documents_share_token_get_65);
 app.post("/api/documents/share/:token", documents_share_token_post_66);
@@ -1422,6 +1465,11 @@ app.post("/api/team/resend-verification", team_resend_verification_post_331);
 app.post("/api/team/verify-user", team_verify_user_post_332);
 app.delete("/api/team/:id", team_id_delete_333);
 app.put("/api/team/:id", team_id_put_334);
+// Invite tracking — new routes
+app.get("/api/team/invites", team_invites_get);
+app.post("/api/team/invites", team_invites_post);
+app.post("/api/team/invites/:id/resend", team_invites_id_resend_post);
+app.post("/api/team/invites/:id/cancel", team_invites_id_cancel_post);
 app.get("/api/usage", usage_get_335);
 // </api-registrations>
 

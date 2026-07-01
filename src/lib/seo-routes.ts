@@ -40,6 +40,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/verify-required", changefreq: "monthly", priority: 0.8 },
   { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
   { path: "/reset-password", changefreq: "monthly", priority: 0.8 },
+  { path: "/login-help", changefreq: "monthly", priority: 0.8 },
   { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
   { path: "/projects", changefreq: "monthly", priority: 0.8 },
   { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },

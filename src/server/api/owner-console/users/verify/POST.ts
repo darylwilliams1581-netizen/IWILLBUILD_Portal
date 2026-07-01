@@ -23,8 +23,9 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
     // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
-    const { userId } = req.body as { userId?: string };
-    if (!userId?.trim()) return res.status(400).json({ error: 'userId is required.' });
+    const rawUserId = req.body?.userId;
+    const userId = rawUserId != null ? String(rawUserId).trim() : '';
+    if (!userId) return res.status(400).json({ error: 'userId is required.' });
 
     // Fetch target user details before update (for audit log)
     const [targetUser] = await db

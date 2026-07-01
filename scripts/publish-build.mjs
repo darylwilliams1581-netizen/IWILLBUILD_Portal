@@ -64,12 +64,39 @@ function run(cmd, args, env = {}) {
 
 // Resolve the vite binary path relative to this script so it works regardless
 // of how the publish pipeline invokes us.
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
 import { cp, mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+// existsSync removed — accessSync used instead (follows symlinks correctly)
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const vite = join(root, 'node_modules', '.bin', 'vite');
+
+// Resolve the vite binary robustly:
+//   1. Try node_modules/.bin/vite (symlink — works in dev, may break in publish container)
+//      Use accessSync to verify the target is actually readable (not a dangling symlink)
+//   2. Fall back to node_modules/vite/bin/vite.js (direct path — always works)
+import { accessSync, constants as fsConstants } from 'node:fs';
+function resolveVite() {
+  const symlink = join(root, 'node_modules', '.bin', 'vite');
+  try {
+    // accessSync follows symlinks — throws if the target doesn't exist or isn't executable
+    accessSync(symlink, fsConstants.X_OK);
+    return symlink;
+  } catch { /* symlink missing or dangling — fall through */ }
+
+  // Resolve via require so it follows the real package location
+  try {
+    const req = createRequire(pathToFileURL(join(root, 'package.json')));
+    return req.resolve('vite/bin/vite.js');
+  } catch {
+    // Last resort — construct the path directly
+    return join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+  }
+}
+
+const vite = resolveVite();
+console.log(`> using vite at: ${vite}`);
 
 console.log('> build:app:client');
 const clientCode = await run(

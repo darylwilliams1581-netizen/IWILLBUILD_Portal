@@ -7,6 +7,8 @@ import {
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
   ShieldAlert, Plus, X, BookOpen, Bot, Package, Filter,
+  Mail, BarChart2, StickyNote, Eye, Trash2, MessageSquare,
+  Send, Ban, RotateCcw, Server, AlertCircle,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -22,6 +24,9 @@ import UserActionsMenu from '@/components/owner-console/UserActionsMenu';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
 import ActivityLogTab from '@/components/owner-console/ActivityLogTab';
+import EmailLogTab from '@/components/owner-console/EmailLogTab';
+import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
+import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import OrphanActionsMenu from '@/components/owner-console/OrphanActionsMenu';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
@@ -435,7 +440,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'company-health' | 'support-notes'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -702,6 +707,24 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <Activity size={12} />
               Activity Log
+            </span>
+          </Tab>
+          <Tab active={tab === 'email-log'} onClick={() => { setTab('email-log'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Mail size={12} />
+              Email Log
+            </span>
+          </Tab>
+          <Tab active={tab === 'company-health'} onClick={() => { setTab('company-health'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <BarChart2 size={12} />
+              Company Health
+            </span>
+          </Tab>
+          <Tab active={tab === 'support-notes'} onClick={() => { setTab('support-notes'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <StickyNote size={12} />
+              Support Notes
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && (
@@ -1096,7 +1119,47 @@ export default function OwnerConsolePage() {
                                         emailVerified: u.emailVerified,
                                         companyId: u.companyId,
                                       }}
-                                      onAction={(action, target) => setPendingAction({ action, user: target })}
+                                      onAction={async (action, target) => {
+                                        if (action === 'impersonate') {
+                                          const r = await fetch(`/api/developer/users/${target.userId}/impersonate`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
+                                            body: JSON.stringify({ reason: 'Developer support session' }),
+                                          });
+                                          if (r.ok) {
+                                            window.location.href = '/dashboard';
+                                          } else {
+                                            const d = await r.json() as { error?: string };
+                                            alert(d.error ?? 'Failed to start impersonation.');
+                                          }
+                                          return;
+                                        }
+                                        if (action === 'view-sessions') {
+                                          const r = await fetch(`/api/developer/users/${target.userId}/sessions`, { credentials: 'include' });
+                                          if (r.ok) {
+                                            const d = await r.json() as { sessions: Array<{ id: string; ipAddress: string; userAgent: string; createdAt: string }>; total: number };
+                                            const list = d.sessions.map(s => `• ${s.ipAddress} — ${s.userAgent?.slice(0, 60)} (${new Date(s.createdAt).toLocaleString('en-AU')})`).join('\n');
+                                            alert(`${d.total} active session(s) for ${target.email}:\n\n${list || 'None'}`);
+                                          }
+                                          return;
+                                        }
+                                        if (action === 'revoke-sessions') {
+                                          if (!confirm(`Force logout ${target.email}? All their active sessions will be revoked.`)) return;
+                                          const r = await fetch(`/api/developer/users/${target.userId}/sessions`, {
+                                            method: 'DELETE',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
+                                            body: JSON.stringify({ reason: 'Force logout by developer' }),
+                                          });
+                                          if (r.ok) {
+                                            setActionToast(`Sessions revoked for ${target.email}`);
+                                            setTimeout(() => setActionToast(''), 3000);
+                                          }
+                                          return;
+                                        }
+                                        setPendingAction({ action, user: target });
+                                      }}
                                     />
                                   )}
                                 </td>
@@ -1202,6 +1265,15 @@ export default function OwnerConsolePage() {
 
               {/* ── Activity Log ── */}
               {tab === 'activity-log' && <ActivityLogTab />}
+
+              {/* ── Email Delivery Log ── */}
+              {tab === 'email-log' && <EmailLogTab />}
+
+              {/* ── Company Health ── */}
+              {tab === 'company-health' && <CompanyHealthTab />}
+
+              {/* ── Support Notes ── */}
+              {tab === 'support-notes' && <SupportNotesTab />}
             </>
           )}
         </div>
