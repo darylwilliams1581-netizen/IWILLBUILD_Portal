@@ -19,15 +19,18 @@ const PLAN_MAX_USERS: Record<string, number> = {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { userId, companyName, plan, industry, password } = req.body as {
-      userId?: string;
-      companyName?: string;
+    const { userId: rawUserId, companyName: rawCompanyName, plan, industry, password } = req.body as {
+      userId?: unknown;
+      companyName?: unknown;
       plan?: string;
       industry?: string;
       password?: string;
     };
 
-    if (!userId?.trim() || !companyName?.trim() || !password) {
+    const userId = rawUserId != null ? String(rawUserId).trim() : '';
+    const companyName = rawCompanyName != null ? String(rawCompanyName).trim() : '';
+
+    if (!userId || !companyName || !password) {
       return res.status(400).json({ error: 'userId, companyName, and password are required.' });
     }
 
@@ -35,7 +38,7 @@ export default async function handler(req: Request, res: Response) {
     const [authUser] = await db
       .select({ id: user.id, email: user.email, name: user.name, emailVerified: user.emailVerified })
       .from(user)
-      .where(eq(user.id, userId.trim()))
+      .where(eq(user.id, userId))
       .limit(1);
 
     if (!authUser) return res.status(404).json({ error: 'User not found.' });
@@ -70,7 +73,7 @@ export default async function handler(req: Request, res: Response) {
     const [newCompany] = await db
       .insert(companies)
       .values({
-        name: companyName.trim(),
+        name: companyName,
         plan: resolvedPlan,
         subscriptionStatus: 'trial',
         trialEndsAt,
