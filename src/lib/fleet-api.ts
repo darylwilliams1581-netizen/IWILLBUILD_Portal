@@ -1,6 +1,6 @@
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export const ASSET_TYPES = ['Vehicle', 'Plant', 'Trailer', 'Tool', 'Other'] as const;
+export const ASSET_TYPES = ['Vehicle', 'Truck', 'Plant', 'Trailer', 'Tool', 'Other'] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
 export const ASSET_STATUSES = ['Active', 'Maintenance', 'Out of Service', 'Archived'] as const;
