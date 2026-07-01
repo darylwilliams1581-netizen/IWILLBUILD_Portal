@@ -7,6 +7,7 @@ import type { Job } from '@/lib/jobs-api';
 
 // ── Local line type (shared with editor) ─────────────────────────────────────
 export interface LocalLine {
+  category?: string;
   _key: string;
   id?: number;
   description: string;

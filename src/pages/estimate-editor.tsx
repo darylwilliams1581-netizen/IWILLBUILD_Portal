@@ -22,10 +22,10 @@ import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/com
 let _keyCounter = 0;
 function newKey() { return `line-${++_keyCounter}`; }
 function blankLine(order: number): LocalLine {
-  return { _key: newKey(), description: '', quantity: '1', unit: '', rate: '0', lineOrder: order };
+  return { _key: newKey(), category: '', description: '', quantity: '1', unit: '', rate: '0', lineOrder: order };
 }
 function fromApiLine(l: EstimateLine): LocalLine {
-  return { _key: newKey(), id: l.id, description: l.description, quantity: l.quantity, unit: l.unit ?? '', rate: l.rate, lineOrder: l.lineOrder };
+  return { _key: newKey(), id: l.id, category: (l as EstimateLine & { category?: string }).category ?? '', description: l.description, quantity: l.quantity, unit: l.unit ?? '', rate: l.rate, lineOrder: l.lineOrder };
 }
 
 // ── Main editor ───────────────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ export default function EstimateEditorPage() {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [estimateCategories, setEstimateCategories] = useState<string[]>([]);
   // Refs for save-on-back — always hold latest values without stale closures
   const estimateRef = useRef<Estimate | null>(null);
   const linesRef = useRef<LocalLine[]>([]);
@@ -57,6 +58,17 @@ export default function EstimateEditorPage() {
   useEffect(() => {
     if (id) load(parseInt(id, 10));
   }, [id]);
+
+  // Load estimate categories from company structure settings
+  useEffect(() => {
+    fetch('/api/company-settings', { credentials: 'include' })
+      .then((r) => r.json() as Promise<{ structure?: { estimateCategories?: string[] } }>)
+      .then((d) => {
+        const cats = d.structure?.estimateCategories;
+        if (Array.isArray(cats) && cats.length > 0) setEstimateCategories(cats);
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   // Keep refs in sync so save-on-back always reads current values
   useEffect(() => { linesRef.current = lines; }, [lines]);
@@ -100,6 +112,7 @@ export default function EstimateEditorPage() {
           unit: l.unit || undefined,
           rate: l.rate,
           lineOrder: i,
+          category: l.category || undefined,
         })),
       });
       setEstimate(updated);
@@ -608,7 +621,8 @@ export default function EstimateEditorPage() {
                   <table className="w-full text-sm table-fixed">
                     <thead>
                       <tr className="bg-muted/40 text-xs font-semibold text-muted-foreground">
-                        <th className="text-left px-4 py-2.5 w-[55%]">Description</th>
+                        <th className="text-left px-4 py-2.5 w-[42%]">Description</th>
+                        <th className="text-left px-2 py-2.5 w-[13%]">Category</th>
                         <th className="text-right px-2 py-2.5 w-[7%]">Qty</th>
                         <th className="text-left px-2 py-2.5 w-[7%]">Unit</th>
                         <th className="text-right px-2 py-2.5 w-[9%]">Rate</th>
@@ -642,6 +656,31 @@ export default function EstimateEditorPage() {
                                 }
                               }}
                             />
+                          </td>
+                          {/* Category dropdown */}
+                          <td className="px-2 py-2">
+                            {estimateCategories.length > 0 ? (
+                              <select
+                                value={line.category ?? ''}
+                                disabled={isLocked}
+                                onChange={(e) => updateLine(line._key, 'category', e.target.value)}
+                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors bg-transparent disabled:cursor-default text-slate-500"
+                              >
+                                <option value="">— none —</option>
+                                {estimateCategories.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={line.category ?? ''}
+                                disabled={isLocked}
+                                onChange={(e) => updateLine(line._key, 'category', e.target.value)}
+                                placeholder="Category"
+                                className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors disabled:bg-transparent disabled:cursor-default text-slate-500"
+                              />
+                            )}
                           </td>
                           <td className="px-2 py-2">
                             <input
@@ -725,6 +764,23 @@ export default function EstimateEditorPage() {
                         placeholder="Description"
                         className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none disabled:bg-muted"
                       />
+                      {/* Category — mobile */}
+                      {estimateCategories.length > 0 && (
+                        <div>
+                          <label className="text-xs text-muted-foreground">Category</label>
+                          <select
+                            value={line.category ?? ''}
+                            disabled={isLocked}
+                            onChange={(e) => updateLine(line._key, 'category', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-muted"
+                          >
+                            <option value="">— none —</option>
+                            {estimateCategories.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-xs text-muted-foreground">Qty</label>

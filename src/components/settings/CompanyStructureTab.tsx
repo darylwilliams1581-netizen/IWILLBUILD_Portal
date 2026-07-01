@@ -15,6 +15,7 @@ import {
   ChevronUp,
   ChevronDown,
   Type,
+  Calculator,
 } from 'lucide-react';
 import { invalidateTerminologyCache } from '@/lib/useTerminology';
 
@@ -32,6 +33,7 @@ interface CompanyStructureData {
   jobStatuses: string[];
   formCategories: string[];
   fileFolders: string[];
+  estimateCategories: string[];
 }
 
 const DEFAULT_STRUCTURE: CompanyStructureData = {
@@ -40,6 +42,7 @@ const DEFAULT_STRUCTURE: CompanyStructureData = {
   jobStatuses: ['Enquiry', 'Quoted', 'Approved', 'In Progress', 'On Hold', 'Completed', 'Invoiced', 'Cancelled'],
   formCategories: ['Safety', 'HR', 'Quality', 'Compliance', 'Prestart', 'Induction', 'Inspection'],
   fileFolders: ['Contracts', 'Plans', 'Permits', 'Safety', 'Photos', 'Invoices', 'Correspondence'],
+  estimateCategories: ['Labour', 'Materials', 'Subcontractors', 'Plant & Equipment', 'Preliminaries', 'Allowances'],
 };
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
@@ -374,7 +377,12 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
       if (settingsRes.ok) {
         const json = await settingsRes.json() as { structure?: Partial<CompanyStructureData> };
         if (json.structure && Object.keys(json.structure).length > 0) {
-          setData({ ...DEFAULT_STRUCTURE, ...json.structure });
+          setData({
+            ...DEFAULT_STRUCTURE,
+            ...json.structure,
+            // Ensure new field always has a value even if not yet in saved JSON
+            estimateCategories: json.structure.estimateCategories ?? DEFAULT_STRUCTURE.estimateCategories,
+          });
         }
       }
       if (termRes.ok) {
@@ -467,7 +475,7 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
         <div>
           <h2 className="font-bold text-base text-slate-800">Company Structure</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Configure crews, supervisors, job statuses, form categories and file folders used across the portal.
+            Configure crews, supervisors, job statuses, form categories, file folders and estimate categories used across the portal.
           </p>
         </div>
         {!isAdmin && (
@@ -595,6 +603,13 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
           items={data.fileFolders}
           onChange={(v) => setData((d) => ({ ...d, fileFolders: v }))}
           placeholder="e.g. As-Builts"
+        />
+        <StringListEditor
+          label="Estimate Categories"
+          icon={Calculator}
+          items={data.estimateCategories}
+          onChange={(v) => setData((d) => ({ ...d, estimateCategories: v }))}
+          placeholder="e.g. Scaffolding"
         />
       </div>
 
