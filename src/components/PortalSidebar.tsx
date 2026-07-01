@@ -10,20 +10,15 @@ import {
   LogOut,
   Settings,
   FolderOpen,
-  Wrench,
   Menu,
   X,
   ShieldCheck,
-  Activity,
   CreditCard,
   AlertTriangle,
   CalendarDays,
   UserCheck,
-  BookOpen,
   Receipt,
   Library,
-  DollarSign,
-  ChefHat,
   ClipboardList,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
@@ -74,11 +69,7 @@ const adminItems = [
   { label: 'Settings',     icon: Settings,   href: '/settings',  adminOnly: false, permKey: null as string | null },
 ] as const;
 
-// ── Admin sub-items (Cost Guide + Recipes) ────────────────────────────────────
-const adminSubItems = [
-  { label: 'Cost Guide', icon: DollarSign, href: '/estimating?tab=cost-guide',  permKey: 'estimating' as string | null },
-  { label: 'Recipes',    icon: ChefHat,    href: '/estimating?tab=recipes',     permKey: 'estimating' as string | null },
-] as const;
+// ── Admin sub-items removed — Cost Guide + Recipes now live inside the Admin page tabs
 
 // ─── User strip sub-component ─────────────────────────────────────────────────
 function SidebarUserStrip({
@@ -243,44 +234,6 @@ function SidebarContent({
                     </div>
                   )}
                 </Link>
-
-                {/* Cost Guide + Recipes nest directly under Admin */}
-                {item.label === 'Admin' && adminSubItems.map((sub) => {
-                  if (!permsLoading && sub.permKey !== null && me?.profile && !can(sub.permKey)) return null;
-                  const SubIcon = sub.icon;
-                  const subActive = location.search.includes(sub.href.split('?')[1] ?? '') && location.pathname === '/estimating';
-                  if (collapsed) {
-                    return (
-                      <Link
-                        key={sub.href}
-                        to={sub.href}
-                        onClick={onClose}
-                        title={sub.label}
-                        className={`flex items-center justify-center px-3 py-2 rounded-lg transition-colors duration-150 group relative ${
-                          subActive ? 'bg-primary/15 text-primary' : 'text-white/45 hover:bg-white/8 hover:text-white/80'
-                        }`}
-                      >
-                        <SubIcon size={14} className="shrink-0" />
-                        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                          {sub.label}
-                        </div>
-                      </Link>
-                    );
-                  }
-                  return (
-                    <Link
-                      key={sub.href}
-                      to={sub.href}
-                      onClick={onClose}
-                      className={`flex items-center gap-2.5 pl-8 pr-3 py-1.5 rounded-lg transition-colors duration-150 ${
-                        subActive ? 'bg-primary/15 text-primary' : 'text-white/40 hover:bg-white/8 hover:text-white/75'
-                      }`}
-                    >
-                      <SubIcon size={13} className="shrink-0" />
-                      <span className="text-xs font-semibold truncate flex-1">{sub.label}</span>
-                    </Link>
-                  );
-                })}
               </div>
             );
           })}

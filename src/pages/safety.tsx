@@ -6,13 +6,14 @@ import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
-  Users, Calendar, Building2, ChevronDown, Wand2, Bot, Send,
+  Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  HardHat, ChevronLeft,
+  HardHat, ChevronLeft, DollarSign, ChefHat,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
+import { CostGuideTab, RecipesTab } from '@/pages/estimating';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2414,12 +2415,13 @@ function JobSwmsTab() {
 
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard',    icon: ShieldCheck },
-  { id: 'swms',      label: 'SWMS Library', icon: ShieldAlert },
-  { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
-  { id: 'policies',  label: 'Policies',     icon: BookOpen },
-  { id: 'posters',   label: 'Posters',      icon: Image },
-  { id: 'ai',        label: 'Dazza AI',     icon: Bot },
+  { id: 'dashboard',  label: 'Dashboard',    icon: ShieldCheck },
+  { id: 'swms',       label: 'SWMS Library', icon: ShieldAlert },
+  { id: 'plans',      label: 'Safety Plans', icon: ClipboardList },
+  { id: 'policies',   label: 'Policies',     icon: BookOpen },
+  { id: 'posters',    label: 'Posters',      icon: Image },
+  { id: 'cost-guide', label: 'Cost Guide',   icon: DollarSign },
+  { id: 'recipes',    label: 'Recipes',      icon: ChefHat },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -2439,18 +2441,18 @@ export default function SafetyPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Safety — IWILLBUILD Portal</title>
-        <meta name="description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
+        <title>Admin — IWILLBUILD Portal</title>
+        <meta name="description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Safety — IWILLBUILD Portal" />
-        <meta property="og:description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
+        <meta property="og:title" content="Admin — IWILLBUILD Portal" />
+        <meta property="og:description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/safety" />
         <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Safety — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Safety management — SWMS, site safety plans, policies, procedures and site posters." />
+        <meta name="twitter:title" content="Admin — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
         <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
       </Helmet>
 
@@ -2464,7 +2466,7 @@ export default function SafetyPage() {
               <Menu size={20} />
             </button>
             <ShieldAlert size={18} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base md:text-lg">Safety</h1>
+            <h1 className="font-heading font-bold text-base md:text-lg">Admin</h1>
           </div>
         </header>
 
@@ -2496,12 +2498,13 @@ export default function SafetyPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'dashboard' && <SafetyDashboardTab />}
-            {activeTab === 'swms'      && <SwmsLibraryTab />}
-            {activeTab === 'plans'     && <SafetyPlansTab />}
-            {activeTab === 'policies'  && <PoliciesTab />}
-            {activeTab === 'posters'   && <PostersTab />}
-            {activeTab === 'ai'        && <DazzaAiTab />}
+            {activeTab === 'dashboard'  && <SafetyDashboardTab />}
+            {activeTab === 'swms'       && <SwmsLibraryTab />}
+            {activeTab === 'plans'      && <SafetyPlansTab />}
+            {activeTab === 'policies'   && <PoliciesTab />}
+            {activeTab === 'posters'    && <PostersTab />}
+            {activeTab === 'cost-guide' && <CostGuideTab />}
+            {activeTab === 'recipes'    && <RecipesTab />}
           </motion.div>
         </div>
       </div>

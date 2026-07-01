@@ -410,7 +410,7 @@ function RecipeModal({
 }
 
 // ── Cost Guide Tab ────────────────────────────────────────────────────────────
-function CostGuideTab() {
+export function CostGuideTab() {
   const [items, setItems] = useState<CostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -614,7 +614,7 @@ function CostGuideTab() {
 }
 
 // ── Recipes Tab ───────────────────────────────────────────────────────────────
-function RecipesTab() {
+export function RecipesTab() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
