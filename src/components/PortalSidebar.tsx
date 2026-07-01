@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Users,
   Settings,
   FolderOpen,
   Wrench,
@@ -67,12 +66,12 @@ function buildNavItems(_workPlural: string) {
   ] as const;
 }
 
-// ── Admin group ───────────────────────────────────────────────────────────────
+// ── Manage group — order: Admin, Subscription, Settings ──────────────────────
+// "Team" is accessible inside the Admin (/safety) area, not a top-level item.
 const adminItems = [
   { label: 'Admin',        icon: Library,    href: '/safety',    adminOnly: false, permKey: null as string | null },
-  { label: 'Team',         icon: Users,      href: '/team',      adminOnly: true,  permKey: null as string | null },
   { label: 'Subscription', icon: CreditCard, href: '/billing',   adminOnly: false, permKey: null as string | null },
-  { label: 'Settings',     icon: Settings,   href: '/settings',  adminOnly: true,  permKey: null as string | null },
+  { label: 'Settings',     icon: Settings,   href: '/settings',  adminOnly: false, permKey: null as string | null },
 ] as const;
 
 // ── Admin sub-items (Cost Guide + Recipes) ────────────────────────────────────
