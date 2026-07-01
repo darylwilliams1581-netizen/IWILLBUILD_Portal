@@ -9,16 +9,9 @@
  *   Returns: { session: { customerName, amountTotal, currency, paymentStatus } }
  */
 import type { Request, Response } from 'express';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { getSecret } from '#airo/secrets';
-
-function getStripe(): Stripe {
-  const secretKey = getSecret('STRIPE_SECRET_KEY');
-  if (!secretKey || typeof secretKey !== 'string') {
-    throw new Error('STRIPE_SECRET_KEY not provisioned. Re-run Stripe setup or contact support.');
-  }
-  return new Stripe(secretKey);
-}
+import { getStripe } from '../../../../lib/stripe-client.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -42,7 +35,7 @@ export default async function handler(req: Request, res: Response) {
       return;
     }
 
-    const stripe = getStripe();
+    const stripe = await getStripe();
 
     const session = await stripe.checkout.sessions.retrieve(sid, {
       expand: ['line_items', 'subscription'],

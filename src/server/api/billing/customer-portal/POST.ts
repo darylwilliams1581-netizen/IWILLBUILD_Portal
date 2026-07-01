@@ -6,8 +6,8 @@
  * cancel subscription, change plan (if configured in Stripe dashboard).
  */
 import type { Request, Response } from 'express';
-import Stripe from 'stripe';
 import { getSecret } from '#airo/secrets';
+import { getStripe } from '../../../lib/stripe-client.js';
 import { db } from '../../../db/client.js';
 import { profiles, companies } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -40,7 +40,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    const stripe = new Stripe(apiKey as string, { apiVersion: '2026-02-25.clover' });
+    const stripe = await getStripe();
     const origin = req.headers.origin ?? `https://${req.headers.host}`;
 
     const portalSession = await stripe.billingPortal.sessions.create({

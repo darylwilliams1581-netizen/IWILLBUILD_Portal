@@ -6,8 +6,8 @@
  * Auth required. Owner/Admin only.
  */
 import type { Request, Response } from 'express';
-import Stripe from 'stripe';
 import { getSecret } from '#airo/secrets';
+import { getStripe } from '../../../lib/stripe-client.js';
 import { db } from '../../../db/client.js';
 import { profiles, companies } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
@@ -38,7 +38,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No subscription found for this company.' });
     }
 
-    const stripe = new Stripe(apiKey as string, { apiVersion: '2026-02-25.clover' });
+    const stripe = await getStripe();
 
     // Remove the cancellation — subscription continues as normal
     await stripe.subscriptions.update(company.stripeSubscriptionId, {

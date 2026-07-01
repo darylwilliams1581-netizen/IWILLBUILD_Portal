@@ -11,8 +11,9 @@
  *   invoice.payment_failed          — payment failed → past_due + record past_due_since
  */
 import type { Request, Response } from 'express';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { getSecret } from '#airo/secrets';
+import { getStripe } from '../../../lib/stripe-client.js';
 import { db } from '../../../db/client.js';
 import { companies } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
@@ -39,7 +40,7 @@ export default async function handler(req: Request, res: Response) {
   let event: Stripe.Event;
 
   try {
-    const stripe = new Stripe(apiKey as string, { apiVersion: '2026-02-25.clover' });
+    const stripe = await getStripe();
 
     if (webhookSecret) {
       const sig = req.headers['stripe-signature'] as string;
