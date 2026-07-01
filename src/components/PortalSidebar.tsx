@@ -25,6 +25,7 @@ import {
   Library,
   DollarSign,
   ChefHat,
+  ClipboardList,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -61,6 +62,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Fleet',        icon: Truck,           href: '/fleet',       permKey: 'fleet' },
     { label: 'Stakeholders', icon: UserCheck,       href: '/customers',   permKey: 'jobs' },
     { label: 'Files',        icon: FolderOpen,      href: '/files',       permKey: 'files' },
+    { label: 'Forms',        icon: ClipboardList,   href: '/forms',       permKey: null },
     { label: 'Ledger',       icon: Receipt,         href: '/invoices',    permKey: 'invoices' },
   ] as const;
 }
