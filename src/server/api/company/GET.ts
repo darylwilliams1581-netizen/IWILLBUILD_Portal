@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { companies, profiles } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -24,7 +24,13 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!company) return res.status(404).json({ error: 'Company not found' });
 
-    res.json({ company });
+    // logo_url is a late-added column — read via raw SQL to avoid schema mismatch
+    const [logoRows] = await db.execute(
+      sql.raw(`SELECT \`logo_url\` FROM \`companies\` WHERE \`id\` = ${profile.companyId}`)
+    ) as unknown as [Array<{ logo_url: string | null }>, unknown];
+    const logoUrl = logoRows?.[0]?.logo_url ?? null;
+
+    res.json({ company: { ...company, logo_url: logoUrl } });
   } catch (error) {
     console.error('GET /api/company error:', error);
     res.status(500).json({ error: 'Failed to fetch company' });

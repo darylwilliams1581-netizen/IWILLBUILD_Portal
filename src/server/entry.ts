@@ -36,6 +36,7 @@ import billing_reactivate_subscription_post_25 from "./api/billing/reactivate-su
 import billing_upgrade_subscription_post_26 from "./api/billing/upgrade-subscription/POST";
 import company_get_27 from "./api/company/GET";
 import company_put_28 from "./api/company/PUT";
+import company_logo_post from "./api/company/logo/POST";
 import company_settings_get_29 from "./api/company-settings/GET";
 import company_settings_put_30 from "./api/company-settings/PUT";
 import contact_post_31 from "./api/contact/POST";
@@ -735,6 +736,9 @@ async function runStartupMigrations() {
     // ── swms_signoffs: extended sign-on fields ────────────────────────────────
     { table: 'swms_signoffs', column: 'company_name', definition: 'VARCHAR(255) NULL' },
     { table: 'swms_signoffs', column: 'role',         definition: 'VARCHAR(100) NULL' },
+    // ── Company branding ──────────────────────────────────────────────────────
+    // logo_url: path to uploaded company logo for PDF branding
+    { table: 'companies', column: 'logo_url', definition: 'VARCHAR(500) NULL' },
     // ── Account recovery support tools ───────────────────────────────────────
     // must_change_password: set by developer; forces user to set new password on next login
     { table: 'user', column: 'must_change_password',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
@@ -1152,6 +1156,7 @@ app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription
 app.post("/api/billing/upgrade-subscription", billing_upgrade_subscription_post_26);
 app.get("/api/company", company_get_27);
 app.put("/api/company", company_put_28);
+app.post("/api/company/logo", company_logo_post);
 app.get("/api/company-settings", company_settings_get_29);
 app.put("/api/company-settings", company_settings_put_30);
 app.post("/api/contact", contact_post_31);
