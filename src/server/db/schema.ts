@@ -89,6 +89,9 @@ export const companies = mysqlTable('companies', {
   pastDueSince: timestamp('past_due_since'),
   maxUsers: int('max_users').notNull().default(1),
   industry: varchar('industry', { length: 50 }).notNull().default('construction'),
+  // ── Starter pack ─────────────────────────────────────────────────────────
+  starterPackLoaded: boolean('starter_pack_loaded').notNull().default(false),
+  starterPackLoadedAt: timestamp('starter_pack_loaded_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
@@ -540,4 +543,14 @@ export const manualVerificationLog = mysqlTable('manual_verification_log', {
   method:           varchar('method', { length: 30 }).notNull().default('manual_admin'),
   note:             text('note'),
   createdAt:        timestamp('created_at').defaultNow(),
+});
+
+// ── Starter Pack Runs ─────────────────────────────────────────────────────────
+export const starterPackRuns = mysqlTable('starter_pack_runs', {
+  id:            int('id').primaryKey().autoincrement(),
+  companyId:     int('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  runByUserId:   varchar('run_by_user_id', { length: 36 }),
+  status:        varchar('status', { length: 30 }).notNull().default('pending'), // pending | success | partial | failed
+  notes:         text('notes'),
+  createdAt:     timestamp('created_at').defaultNow(),
 });

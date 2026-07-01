@@ -6,7 +6,7 @@ import {
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, Plus, X, BookOpen, Bot,
+  ShieldAlert, Plus, X, BookOpen, Bot, Package,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -15,6 +15,7 @@ import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
 import SystemAITab from '@/components/owner-console/SystemAITab';
+import StarterPackTab from '@/components/owner-console/StarterPackTab';
 import ManualVerifyModal from '@/components/ManualVerifyModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -423,7 +424,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -650,6 +651,12 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <Bot size={12} />
               System AI
+            </span>
+          </Tab>
+          <Tab active={tab === 'starter-pack'} onClick={() => { setTab('starter-pack'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Package size={12} />
+              Starter Pack
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && (
@@ -1032,6 +1039,11 @@ export default function OwnerConsolePage() {
               {/* ── System AI ── */}
               {tab === 'system-ai' && (
                 <SystemAITab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
+              )}
+
+              {/* ── Starter Pack ── */}
+              {tab === 'starter-pack' && (
+                <StarterPackTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
               )}
             </>
           )}

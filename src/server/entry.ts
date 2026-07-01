@@ -218,6 +218,7 @@ import migrate_owner_console_post_202 from "./api/migrate-owner-console/POST";
 import migrate_owner_role_post_203 from "./api/migrate-owner-role/POST";
 import migrate_pdf_settings_post_204 from "./api/migrate-pdf-settings/POST";
 import migrate_safety_post_205 from "./api/migrate-safety/POST";
+import migrate_starter_pack_post from "./api/migrate-starter-pack/POST";
 import migrate_subscriptions_post_206 from "./api/migrate-subscriptions/POST";
 import migrate_support_mode_post_207 from "./api/migrate-support-mode/POST";
 import migrate_takeoff_pad_post_208 from "./api/migrate-takeoff-pad/POST";
@@ -235,6 +236,8 @@ import owner_console_companies_id_limits_put_219 from "./api/owner-console/compa
 import owner_console_stats_get_220 from "./api/owner-console/stats/GET";
 import owner_console_storage_get_221 from "./api/owner-console/storage/GET";
 import owner_console_system_ai_builtin_checks_post from "./api/owner-console/system-ai/builtin-checks/POST";
+import owner_console_starter_pack_get from "./api/owner-console/starter-pack/GET";
+import owner_console_starter_pack_post from "./api/owner-console/starter-pack/POST";
 import owner_console_users_get_222 from "./api/owner-console/users/GET";
 import owner_console_users_verify_post_223 from "./api/owner-console/users/verify/POST";
 import recipes_get_224 from "./api/recipes/GET";
@@ -1158,6 +1161,7 @@ app.post("/api/migrate-owner-console", migrate_owner_console_post_202);
 app.post("/api/migrate-owner-role", migrate_owner_role_post_203);
 app.post("/api/migrate-pdf-settings", migrate_pdf_settings_post_204);
 app.post("/api/migrate-safety", migrate_safety_post_205);
+app.post("/api/migrate-starter-pack", migrate_starter_pack_post);
 app.post("/api/migrate-subscriptions", migrate_subscriptions_post_206);
 app.post("/api/migrate-support-mode", migrate_support_mode_post_207);
 app.post("/api/migrate-takeoff-pad", migrate_takeoff_pad_post_208);
@@ -1175,6 +1179,8 @@ app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_li
 app.get("/api/owner-console/stats", owner_console_stats_get_220);
 app.get("/api/owner-console/storage", owner_console_storage_get_221);
 app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post);
+app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get);
+app.post("/api/owner-console/starter-pack", owner_console_starter_pack_post);
 app.get("/api/owner-console/users", owner_console_users_get_222);
 app.post("/api/owner-console/users/verify", owner_console_users_verify_post_223);
 app.get("/api/recipes", recipes_get_224);
@@ -1608,6 +1614,67 @@ if (import.meta.env.PROD) {
 				console.log('[startup] dazza_knowledge table ready');
 			} catch (e) {
 				console.warn('[startup] dazza_knowledge migration skipped:', (e as Error)?.message?.slice(0, 120));
+			}
+
+			// ── fleet_driver_sessions ─────────────────────────────────────────
+			try {
+				const { db: _db } = await import('./db/client.js');
+				const { sql: _sql } = await import('drizzle-orm');
+				await _db.execute(_sql`
+					CREATE TABLE IF NOT EXISTS fleet_driver_sessions (
+						id INT PRIMARY KEY AUTO_INCREMENT,
+						company_id INT NOT NULL,
+						fleet_asset_id INT NOT NULL,
+						user_id VARCHAR(36) NOT NULL,
+						driver_name VARCHAR(255) NOT NULL,
+						start_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						end_at TIMESTAMP NULL,
+						status VARCHAR(20) NOT NULL DEFAULT 'active',
+						source VARCHAR(50) NOT NULL DEFAULT 'dashboard_quick_start',
+						created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+						FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+						FOREIGN KEY (fleet_asset_id) REFERENCES fleet_assets(id) ON DELETE CASCADE,
+						FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+				`);
+				console.log('[startup] fleet_driver_sessions table ready');
+			} catch (e) {
+				console.warn('[startup] fleet_driver_sessions migration skipped:', (e as Error)?.message?.slice(0, 120));
+			}
+
+			// ── starter_pack_runs + companies columns ─────────────────────────
+			try {
+				const { db: _db } = await import('./db/client.js');
+				const { sql: _sql } = await import('drizzle-orm');
+				await _db.execute(_sql`
+					CREATE TABLE IF NOT EXISTS starter_pack_runs (
+						id INT PRIMARY KEY AUTO_INCREMENT,
+						company_id INT NOT NULL,
+						run_by_user_id VARCHAR(36) NULL,
+						status VARCHAR(30) NOT NULL DEFAULT 'pending',
+						notes TEXT NULL,
+						created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+				`);
+				console.log('[startup] starter_pack_runs table ready');
+			} catch (e) {
+				console.warn('[startup] starter_pack_runs migration skipped:', (e as Error)?.message?.slice(0, 120));
+			}
+			try {
+				const { db: _db } = await import('./db/client.js');
+				const { sql: _sql } = await import('drizzle-orm');
+				// MySQL 8 ALTER TABLE ADD COLUMN IF NOT EXISTS is supported in 8.0.3+
+				// Use separate statements to avoid partial failure
+				await _db.execute(_sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS starter_pack_loaded TINYINT(1) NOT NULL DEFAULT 0`);
+				await _db.execute(_sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS starter_pack_loaded_at TIMESTAMP NULL`);
+				console.log('[startup] companies.starter_pack_loaded columns ready');
+			} catch (e) {
+				const msg = (e as Error)?.message ?? '';
+				if (!msg.includes('Duplicate column') && !msg.includes('already exists')) {
+					console.warn('[startup] companies starter_pack columns migration skipped:', msg.slice(0, 120));
+				}
 			}
 		})();
 	});
