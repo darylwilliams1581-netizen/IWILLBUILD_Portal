@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
+import { openPrintWindow } from '@/lib/print-html';
 import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
@@ -1686,12 +1687,11 @@ function SwmsPrintModal({ swms, onClose }: { swms: SwmsPrintData; onClose: () =>
   function handlePrint() {
     const content = printRef.current;
     if (!content) return;
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) return;
     // content.innerHTML is from a React-rendered DOM ref — trusted, not user-injected.
     // Only swms.title goes into the <title> tag and is escaped below.
-    win.document.write(`<!DOCTYPE html><html><head>
-      <title>SWMS — ${swms.title.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c))}</title>
+    const safeTitle = swms.title.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c));
+    const html = `<!DOCTYPE html><html><head>
+      <title>SWMS — ${safeTitle}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 20mm 18mm; }
@@ -1719,10 +1719,8 @@ function SwmsPrintModal({ swms, onClose }: { swms: SwmsPrintData; onClose: () =>
         .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
         @media print { body { padding: 10mm 12mm; } @page { margin: 10mm; } }
       </style>
-    </head><body><div class="print-root">${content.innerHTML}</div></body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
+    </head><body><div class="print-root">${content.innerHTML}</div></body></html>`;
+    openPrintWindow(html, true);
   }
 
   const today = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });

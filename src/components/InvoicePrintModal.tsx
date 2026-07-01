@@ -7,6 +7,7 @@ import { X, Printer, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fmtMoney, STATUS_LABELS, type Invoice } from '@/lib/invoices-api';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
+import { openPrintWindow } from '@/lib/print-html';
 
 interface CompanySettings {
   name?: string;
@@ -158,10 +159,8 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
 </body>
 </html>`;
 
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
+    openPrintWindow(html, true);
+    return;
   }
 
   return (

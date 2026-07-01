@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Copy, Download, Printer, Trash2, CheckCircle2, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { openPrintWindow } from '@/lib/print-html';
 
 interface Props {
   shareUrl: string;
@@ -65,31 +66,26 @@ export default function ShareQrPanel({
   function handlePrintQr() {
     if (!canvasRef.current) return;
     const dataUrl = canvasRef.current.toDataURL('image/png');
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>QR Code — ${title}</title>
-        <style>
-          body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
-          img { width: 200px; height: 200px; display: block; margin: 0 auto 16px; }
-          h2 { font-size: 18px; margin: 0 0 8px; }
-          p { font-size: 12px; color: #666; word-break: break-all; }
-          .url { font-size: 10px; color: #999; margin-top: 8px; }
-        </style>
-      </head>
-      <body>
-        <h2>${title}</h2>
-        <img src="${dataUrl}" alt="QR Code" />
-        <p>Scan to access</p>
-        <p class="url">${shareUrl}</p>
-        <script>window.onload = () => { window.print(); window.close(); }<\/script>
-      </body>
-      </html>
-    `);
-    win.document.close();
+    // Title and URL are display-only in a print popup — escape for HTML safety.
+    const safeTitle = title.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c));
+    const safeUrl   = shareUrl.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c));
+    const html = `<!DOCTYPE html><html><head>
+      <title>QR Code — ${safeTitle}</title>
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+        img { width: 200px; height: 200px; display: block; margin: 0 auto 16px; }
+        h2 { font-size: 18px; margin: 0 0 8px; }
+        p { font-size: 12px; color: #666; word-break: break-all; }
+        .url { font-size: 10px; color: #999; margin-top: 8px; }
+      </style>
+    </head>
+    <body>
+      <h2>${safeTitle}</h2>
+      <img src="${dataUrl}" alt="QR Code" />
+      <p>Scan to access</p>
+      <p class="url">${safeUrl}</p>
+    </body></html>`;
+    openPrintWindow(html, true);
   }
 
   async function handleRevoke() {

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Printer, Save, Loader2, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { openPrintWindow } from '@/lib/print-html';
 import {
   PosterRiskMatrix, PosterEmergencyContacts, PosterEmergencyAssembly,
   PosterLifeSavingRules, PosterPPE, PosterLiftSafely, PosterSiteRules,
@@ -204,15 +205,11 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
     // innerHTML is from a React-rendered DOM ref — all content was set via
     // React's JSX renderer which escapes text nodes automatically.  No
     // user-supplied raw HTML is injected into this ref.
-    // eslint-disable-next-line no-unsanitized/method
     const html = printRef.current.innerHTML;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    // eslint-disable-next-line no-unsanitized/method
-    win.document.write(`<!DOCTYPE html><html><head><title>Safety Poster</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
+    openPrintWindow(
+      `<!DOCTYPE html><html><head><title>Safety Poster</title><style>body{margin:0;padding:20px;background:#fff;}@media print{body{padding:0;}}</style></head><body>${html}</body></html>`,
+      true,
+    );
   }
 
   return (

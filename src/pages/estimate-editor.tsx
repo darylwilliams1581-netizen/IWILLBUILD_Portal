@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
+import { openPrintWindow } from '@/lib/print-html';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
@@ -330,12 +331,7 @@ function PrintModal({
 </body>
 </html>`;
 
-    const w = window.open('', '_blank', 'width=900,height=750');
-    if (!w) { setPrinting(false); return; }
-    w.document.write(html);
-    w.document.close();
-    w.document.title = docTitle;
-    w.onload = () => { w.focus(); w.print(); };
+    openPrintWindow(html, true);
     setPrinting(false);
     onClose();
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
+import { openPrintWindow } from '@/lib/print-html';
 import {
   ChevronLeft,
   ChevronRight,
@@ -996,12 +997,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 </body>
 </html>`;
 
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.document.title = docTitle;
-    win.onload = () => { win.focus(); win.print(); };
+    openPrintWindow(html, true);
   }
 
   // Progress stats — across ALL pages

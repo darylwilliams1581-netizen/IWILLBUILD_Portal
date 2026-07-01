@@ -1467,14 +1467,13 @@ if (import.meta.env.PROD) {
 
 	const shutdown = async (signal: string) => {
 		console.log(`Got ${signal}, shutting down gracefully...`);
-		// Scope the ERR_MODULE_NOT_FOUND suppression to the import() only.
-		// A closeConnection() failure that happens to carry the same code
-		// (unlikely but possible for wrapped errors) must not be silently
-		// swallowed - it indicates a real db-close failure worth logging.
+		// Use a static import() path so security scanners don't flag a
+		// dynamic string being passed to import().  The module may not exist
+		// in all build configurations (e.g. SSR-only bundles), so we still
+		// catch ERR_MODULE_NOT_FOUND and suppress it silently.
 		let mod: { closeConnection?: () => Promise<void> | void } | null = null;
 		try {
-			const dbClient = "./db/client" + ".js";
-			mod = await import(/* @vite-ignore */ dbClient);
+			mod = await import("./db/client.js");
 		} catch (error: unknown) {
 			const code = (error as { code?: string } | null)?.code;
 			if (code !== "ERR_MODULE_NOT_FOUND") {

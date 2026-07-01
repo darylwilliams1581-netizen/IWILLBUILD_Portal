@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { openPrintWindow } from '@/lib/print-html';
 import {
   ShieldAlert, Plus, Loader2, X, AlertCircle, Users, UserCheck,
   Printer, Wand2, Trash2, CheckSquare, Square, Search, ClipboardList,
@@ -637,11 +638,8 @@ function SwmsPrintModal({ swms, signoffs, job, onClose }: {
   function handlePrint() {
     const content = printRef.current;
     if (!content) return;
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) return;
     const safeTitle = swms.title.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] ?? c));
-    // eslint-disable-next-line no-unsanitized/method
-    win.document.write(`<!DOCTYPE html><html><head>
+    const html = `<!DOCTYPE html><html><head>
       <title>SWMS — ${safeTitle}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -670,10 +668,8 @@ function SwmsPrintModal({ swms, signoffs, job, onClose }: {
         .footer { margin-top: 20px; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
         @media print { body { padding: 10mm 12mm; } @page { margin: 10mm; } }
       </style>
-    </head><body><div class="print-root">${content.innerHTML}</div></body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
+    </head><body><div class="print-root">${content.innerHTML}</div></body></html>`;
+    openPrintWindow(html, true);
   }
 
   function Section({ title, content }: { title: string; content: string | null | undefined }) {
