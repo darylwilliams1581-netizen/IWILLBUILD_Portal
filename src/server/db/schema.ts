@@ -199,6 +199,26 @@ export const fleetPrestarts = mysqlTable('fleet_prestarts', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const fleetDriverSessions = mysqlTable('fleet_driver_sessions', {
+  id: int('id').primaryKey().autoincrement(),
+  companyId: int('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  fleetAssetId: int('fleet_asset_id')
+    .notNull()
+    .references(() => fleetAssets.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  driverName: varchar('driver_name', { length: 255 }).notNull(),
+  startAt: timestamp('start_at').notNull().defaultNow(),
+  endAt: timestamp('end_at'),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  source: varchar('source', { length: 50 }).notNull().default('dashboard_quick_start'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
 export const dazzaThreads = mysqlTable('dazza_threads', {
   id: int('id').primaryKey().autoincrement(),
   userId: varchar('user_id', { length: 36 })

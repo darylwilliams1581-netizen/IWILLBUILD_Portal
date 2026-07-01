@@ -904,6 +904,23 @@
       "summary": "A pricing/plan selection screen showing four tiers (Solo, Team, Business, Enterprise) with a dark theme and orange accent color. The user is requesting this as a reference to test sign-up friction and add a new option for a 1-month free trial with deferred upgrade path.",
       "fileName": "screenshot-2026-06-30T20-43-38.jpg",
       "storedUploadFilename": "f38wenbvln_1782852219147_file_xUr4sWKSoD.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "partial",
+      "contentStructure": "partial",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": [
+        "#FF8C00",
+        "#2C3E50",
+        "#E74C3C"
+      ],
+      "extractedPages": null,
+      "summary": "Screenshot of an admin dashboard menu showing navigation structure with tabs (Admin, Team, Subscription, Settings, Cost Guide, Recipes, Log out) and a free trial indicator. User is referencing this to clarify menu organization.",
+      "fileName": "screenshot-2026-07-01T05-05-58.jpg",
+      "storedUploadFilename": "f38wenbvln_1782882359448_file_9aOqNB6Qm8.jpg"
     }
   ]
 }

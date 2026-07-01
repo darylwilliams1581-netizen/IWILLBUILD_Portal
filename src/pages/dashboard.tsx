@@ -21,6 +21,7 @@ import {
   DollarSign,
   Calculator,
   Ruler,
+  Car,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -30,6 +31,10 @@ import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
+import { AnimatePresence } from 'motion/react';
+import StartDrivingModal, { type ActiveSession } from '@/components/fleet/StartDrivingModal';
+import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
+import { useDriverSession } from '@/lib/useDriverSession';
 import { fmtMoney } from '@/lib/invoices-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
@@ -73,6 +78,18 @@ export default function DashboardPage() {
   const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
   const [invoiceSummary, setInvoiceSummary] = useState<{ unpaid: number; overdue: number; balanceDue: number } | null>(null);
+
+  // Driver session
+  const { session: driverSession, refresh: refreshDriverSession } = useDriverSession();
+  const [showStartDriving, setShowStartDriving] = useState(false);
+  const canFleet = isAdmin || isOwner || can('fleet');
+
+  function handleSessionStarted(s: ActiveSession) {
+    setShowStartDriving(false);
+    void refreshDriverSession();
+    // Suppress unused var warning — session is refreshed via hook
+    void s;
+  }
 
   // Setup detection — true once we know whether the company has real data
   const [setupChecked, setSetupChecked] = useState(false);
