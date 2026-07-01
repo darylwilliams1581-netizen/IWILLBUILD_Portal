@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "packId": "default",
+  "packName": "IWILLBUILD Default Starter Pack",
+  "description": "Ready-to-use content seeded into every new company on first login.",
+  "sections": {
+    "project": {
+      "enabled": true,
+      "sourceFile": "generated-json/project.json",
+      "appFile": "src/server/seed/starter-packs/default/project.json",
+      "description": "One sample project (TEST-001) so the portal is never empty."
+    },
+    "stakeholders": {
+      "enabled": true,
+      "sourceFile": "stakeholders.json",
+      "appFile": "src/server/seed/starter-packs/default/stakeholders.json",
+      "description": "Sample customer and subcontractor records."
+    },
+    "fleet": {
+      "enabled": true,
+      "sourceFile": "fleet.json",
+      "appFile": "src/server/seed/starter-packs/default/fleet.json",
+      "description": "One sample vehicle so the fleet module is not empty."
+    },
+    "form_templates": {
+      "enabled": true,
+      "sourceFile": "generated-json/forms.json",
+      "appFile": "src/server/seed/starter-packs/default/forms.json",
+      "description": "8 ready-to-use form templates: prestart, toolbox talk, incident report, site inspection, sign-on register, photo record, variation request, completion sign-off."
+    },
+    "swms_library": {
+      "enabled": true,
+      "sourceFile": "generated-json/safety.json",
+      "appFile": "src/server/seed/starter-packs/default/safety.json",
+      "description": "3 SWMS templates: general site safety, working at heights, excavation and trenching."
+    },
+    "safety_plan": {
+      "enabled": true,
+      "sourceFile": "generated-json/safety.json",
+      "appFile": "src/server/seed/starter-packs/default/safety.json",
+      "description": "One site safety management plan template."
+    },
+    "cost_guide": {
+      "enabled": true,
+      "sourceFile": "cost-guide/cost-guide.json",
+      "appFile": "src/server/seed/starter-packs/default/cost-guide.json",
+      "description": "27 cost guide line items covering labour, carpentry, painting, materials, plant, and site setup."
+    }
+  },
+  "sourceDocx": {
+    "swms": "source-docx/swms/",
+    "policies": "source-docx/policies/",
+    "forms": "source-docx/forms/"
+  },
+  "notes": [
+    "The app reads from src/server/seed/starter-packs/default/ at runtime.",
+    "content/starter-packs/default/ is the human-editable master copy.",
+    "After editing generated-json files here, copy them to the appFile path.",
+    "DOCX files in source-docx/ are the original master documents — edit these first, then regenerate JSON."
+  ]
+}
