@@ -58,10 +58,12 @@ export default async function handler(req: Request, res: Response) {
 
     authLog('me.ok', {
       userId: session.user.id,
+      emailDomain: email.split('@')[1] ?? 'unknown',
       role: profile?.role ?? 'none',
       companyId: profile?.companyId ?? null,
       status: profile?.status ?? 'none',
       isPlatformOwner,
+      platformRole,
     });
 
     res.json({

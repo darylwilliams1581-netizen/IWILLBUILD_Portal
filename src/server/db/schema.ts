@@ -89,9 +89,8 @@ export const companies = mysqlTable('companies', {
   pastDueSince: timestamp('past_due_since'),
   maxUsers: int('max_users').notNull().default(1),
   industry: varchar('industry', { length: 50 }).notNull().default('construction'),
-  // ── Starter pack ─────────────────────────────────────────────────────────
-  starterPackLoaded: boolean('starter_pack_loaded').notNull().default(false),
-  starterPackLoadedAt: timestamp('starter_pack_loaded_at'),
+  // starter_pack_loaded / starter_pack_loaded_at are NOT in the Drizzle schema —
+  // late-added columns read/written via raw SQL only to avoid cold-start crashes.
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });

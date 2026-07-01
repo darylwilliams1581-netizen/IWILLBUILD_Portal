@@ -1747,10 +1747,17 @@ if (import.meta.env.PROD) {
 			try {
 				const { db: _db } = await import('./db/client.js');
 				const { sql: _sql } = await import('drizzle-orm');
-				// MySQL 8 ALTER TABLE ADD COLUMN IF NOT EXISTS is supported in 8.0.3+
-				// Use separate statements to avoid partial failure
-				await _db.execute(_sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS starter_pack_loaded TINYINT(1) NOT NULL DEFAULT 0`);
-				await _db.execute(_sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS starter_pack_loaded_at TIMESTAMP NULL`);
+				// Use INFORMATION_SCHEMA check — ADD COLUMN IF NOT EXISTS not supported on all MySQL versions
+				const [spCols] = await _db.execute(
+					_sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME IN ('starter_pack_loaded', 'starter_pack_loaded_at')`
+				) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
+				const existingCols = new Set((spCols ?? []).map((r) => r.COLUMN_NAME));
+				if (!existingCols.has('starter_pack_loaded')) {
+					await _db.execute(_sql.raw(`ALTER TABLE \`companies\` ADD COLUMN \`starter_pack_loaded\` TINYINT(1) NOT NULL DEFAULT 0`));
+				}
+				if (!existingCols.has('starter_pack_loaded_at')) {
+					await _db.execute(_sql.raw(`ALTER TABLE \`companies\` ADD COLUMN \`starter_pack_loaded_at\` TIMESTAMP NULL`));
+				}
 				console.log('[startup] companies.starter_pack_loaded columns ready');
 			} catch (e) {
 				const msg = (e as Error)?.message ?? '';
