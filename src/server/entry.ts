@@ -298,6 +298,11 @@ import settings_terminology_get_282 from "./api/settings/terminology/GET";
 import settings_terminology_post_283 from "./api/settings/terminology/POST";
 import settings_xero_credentials_get_284 from "./api/settings/xero-credentials/GET";
 import settings_xero_credentials_post_285 from "./api/settings/xero-credentials/POST";
+import secure_share_get from "./api/secure-share/GET";
+import secure_share_post from "./api/secure-share/POST";
+import secure_share_id_delete from "./api/secure-share/[id]/DELETE";
+import secure_share_token_get from "./api/secure-share/[token]/GET";
+import secure_share_token_post from "./api/secure-share/[token]/POST";
 import share_token_get_286 from "./api/share/[token]/GET";
 import signup_post_287 from "./api/signup/POST";
 import stripe_create_checkout_session_post_288 from "./api/stripe/create-checkout-session/POST";
@@ -1233,6 +1238,13 @@ app.post("/api/settings/terminology", settings_terminology_post_283);
 app.get("/api/settings/xero-credentials", settings_xero_credentials_get_284);
 app.post("/api/settings/xero-credentials", settings_xero_credentials_post_285);
 app.get("/api/share/:token", share_token_get_286);
+// Secure share links (new QR/token system using secure_share_links table)
+// IMPORTANT: specific routes before wildcard — /api/secure-share must come before /api/secure-share/:token
+app.get("/api/secure-share", secure_share_get);
+app.post("/api/secure-share", secure_share_post);
+app.delete("/api/secure-share/:id", secure_share_id_delete);
+app.get("/api/secure-share/:token", secure_share_token_get);
+app.post("/api/secure-share/:token", secure_share_token_post);
 app.post("/api/signup", signup_post_287);
 app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_288);
 app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_289);
