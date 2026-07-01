@@ -449,6 +449,55 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     return `📋 From IWILLBUILD data:\n**${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
+  // ── Who is driving / currently driving ────────────────────────────────────
+  if (/who.*driving|driving.*who|who.*got.*vehicle|who.*has.*vehicle|who.*checked.*out|currently.*driving|active.*session|who.*in.*the\s+\w+/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const active = (ctx.activeDriverSessions ?? []) as Array<Record<string, unknown>>;
+    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    const list = active.map((s) => `• **${String(s.asset_name ?? 'Unknown')}** — driven by **${String(s.driver_name ?? 'Unknown')}** since ${String(s.start_at ?? '').slice(11, 16)}`).join('\n');
+    return `📋 From IWILLBUILD data:\n**${active.length}** vehicle${active.length === 1 ? '' : 's'} currently being driven:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Which vehicles are active / being driven ──────────────────────────────
+  if (/which.*vehicle.*driven|which.*vehicle.*active|vehicles.*being.*driven|active.*vehicle.*session/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const active = (ctx.activeDriverSessions ?? []) as Array<Record<string, unknown>>;
+    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    const list = active.map((s) => `• **${String(s.asset_name ?? 'Unknown')}** — ${String(s.driver_name ?? 'Unknown')}`).join('\n');
+    return `📋 From IWILLBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── Who had / drove a vehicle (historical) ────────────────────────────────
+  if (/who.*had|who.*drove|who.*was.*driving|who.*last.*drove|last.*driver|had.*yesterday|drove.*yesterday|drove.*last/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const sessions = (ctx.recentDriverSessions ?? []) as Array<Record<string, unknown>>;
+    if (sessions.length === 0) return `📋 From IWILLBUILD data:\nNo driver session history found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    // Try to match a vehicle name from the question
+    const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
+    const mentionedVehicle = fleet.find((f) => lq.includes(String(f.name ?? '').toLowerCase()));
+    const relevant = mentionedVehicle
+      ? sessions.filter((s) => String(s.asset_name ?? '').toLowerCase() === String(mentionedVehicle.name ?? '').toLowerCase())
+      : sessions;
+    if (relevant.length === 0) return `📋 From IWILLBUILD data:\nNo driver sessions found${mentionedVehicle ? ` for ${String(mentionedVehicle.name)}` : ''}.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    const list = relevant.slice(0, 8).map((s) => {
+      const start = String(s.start_at ?? '').slice(0, 16).replace('T', ' ');
+      const end = s.end_at ? String(s.end_at).slice(0, 16).replace('T', ' ') : 'still active';
+      return `• **${String(s.driver_name ?? 'Unknown')}** drove **${String(s.asset_name ?? 'Unknown')}** — ${start} → ${end}`;
+    }).join('\n');
+    return `📋 From IWILLBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+  }
+
+  // ── When did [person] stop driving ────────────────────────────────────────
+  if (/when.*stop.*driving|stop.*driving.*when|when.*finish.*driving|finish.*driving.*when/i.test(lq)) {
+    if (!p.canFleet) return "You don't have Fleet access.";
+    const sessions = (ctx.recentDriverSessions ?? []) as Array<Record<string, unknown>>;
+    const completed = sessions.filter((s) => s.status === 'completed' && s.end_at);
+    if (completed.length === 0) return `📋 From IWILLBUILD data:\nNo completed driving sessions found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    const last = completed[0];
+    const endTime = String(last.end_at ?? '').slice(0, 16).replace('T', ' ');
+    return `📋 From IWILLBUILD data:\n**${String(last.driver_name ?? 'Unknown')}** stopped driving **${String(last.asset_name ?? 'Unknown')}** at **${endTime}**.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+  }
+
   // ── Prestart count ────────────────────────────────────────────────────────
   if (/how many prestart|prestart count|number of prestart/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
@@ -963,6 +1012,22 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
         ));
         lines.push('');
       }
+    }
+
+    // Driver sessions
+    const activeSessions = (ctx.activeDriverSessions ?? []) as Array<Record<string, unknown>>;
+    const recentSessions = (ctx.recentDriverSessions ?? []) as Array<Record<string, unknown>>;
+    lines.push(`## ACTIVE DRIVER SESSIONS — ${ctx.companyName} — ${activeSessions.length} active`);
+    if (activeSessions.length === 0) {
+      lines.push('No vehicles are currently being driven.');
+    } else {
+      lines.push(JSON.stringify(activeSessions, null, 0));
+    }
+    lines.push('');
+    if (recentSessions.length > 0) {
+      lines.push(`## RECENT DRIVER SESSIONS (last 50) — ${ctx.companyName} — use to answer who drove what and when`);
+      lines.push(JSON.stringify(recentSessions, null, 0));
+      lines.push('');
     }
   }
 

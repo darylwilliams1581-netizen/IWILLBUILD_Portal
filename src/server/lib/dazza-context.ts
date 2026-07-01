@@ -65,6 +65,8 @@ export interface DazzaContext {
   fleetDueDates?:   unknown[];
   prestarts?:       unknown[];
   prestartCount?:   number;
+  activeDriverSessions?: unknown[];
+  recentDriverSessions?: unknown[];
   estimates?:       unknown[];
   formTemplates?:   unknown[];
   formSubmissions?: unknown[];
@@ -373,6 +375,32 @@ export async function buildDazzaContext(
       return rows ?? [];
     });
     ctx.prestartCount = ctx.prestarts.length;
+
+    ctx.activeDriverSessions = await safeQuery('active_driver_sessions', async () => {
+      const [rows] = await db.execute(
+        sql`SELECT fds.id, fds.driver_name, fds.start_at, fds.status, fds.source,
+                   fa.name as asset_name, fa.type as asset_type, fa.rego
+            FROM fleet_driver_sessions fds
+            JOIN fleet_assets fa ON fa.id = fds.fleet_asset_id
+            WHERE fds.company_id = ${effectiveCompanyId}
+              AND fds.status = 'active'
+            ORDER BY fds.start_at DESC`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return rows ?? [];
+    });
+
+    ctx.recentDriverSessions = await safeQuery('recent_driver_sessions', async () => {
+      const [rows] = await db.execute(
+        sql`SELECT fds.id, fds.driver_name, fds.start_at, fds.end_at, fds.status, fds.source,
+                   fa.name as asset_name, fa.type as asset_type, fa.rego
+            FROM fleet_driver_sessions fds
+            JOIN fleet_assets fa ON fa.id = fds.fleet_asset_id
+            WHERE fds.company_id = ${effectiveCompanyId}
+            ORDER BY fds.start_at DESC
+            LIMIT 50`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return rows ?? [];
+    });
 
     ctx.fleetDueDates = await safeQuery('fleet_due_dates', async () => {
       const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
