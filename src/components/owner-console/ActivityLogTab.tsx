@@ -8,7 +8,7 @@ import {
   Loader2, RefreshCw, Activity, LogIn, LogOut, ShieldX,
   KeyRound, Mail, MailCheck, ChevronLeft,
   ChevronRight, Search, Filter, AlertTriangle, CheckCircle2, XCircle,
-  Eye, Globe,
+  Eye, Globe, Unlock,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -57,18 +57,22 @@ function formatDate(dateStr: string): string {
 
 function eventLabel(type: string): string {
   const map: Record<string, string> = {
-    login_success:              'Login success',
-    login_failed:               'Login failed',
-    login_blocked_unverified:   'Blocked — unverified',
-    login_blocked_inactive:     'Blocked — inactive',
-    rate_limited_login:         'Rate limited',
-    logout:                     'Logout',
-    password_reset_requested:   'Password reset requested',
-    password_changed:           'Password changed',
-    email_verification_sent:    'Verification email sent',
-    email_verified:             'Email verified',
-    pin_login_success:          'PIN login success',
-    pin_login_failed:           'PIN login failed',
+    login_success:                      'Login success',
+    login_failed:                       'Login failed',
+    login_blocked_unverified:           'Blocked — unverified',
+    login_blocked_inactive:             'Blocked — inactive',
+    rate_limited_login:                 'Rate limited',
+    logout:                             'Logout',
+    password_reset_requested:           'Password reset requested',
+    password_changed:                   'Password changed',
+    email_verification_sent:            'Verification email sent',
+    email_verified:                     'Email verified',
+    pin_login_success:                  'PIN login success',
+    pin_login_failed:                   'PIN login failed',
+    impersonation_started:              'Impersonation started',
+    temporary_password_set:             'Temp password set',
+    account_unlocked:                   'Account unlocked',
+    forced_password_change_completed:   'Forced change completed',
   };
   return map[type] ?? type.replace(/_/g, ' ');
 }
@@ -90,6 +94,10 @@ function EventIcon({ type, success }: { type: string; success: boolean }) {
     case 'password_changed':       return <KeyRound size={sz} className={`${cls} text-blue-600`} />;
     case 'email_verification_sent': return <Mail size={sz} className={`${cls} text-sky-500`} />;
     case 'email_verified':         return <MailCheck size={sz} className={`${cls} text-emerald-600`} />;
+    case 'impersonation_started':  return <Eye size={sz} className={`${cls} text-orange-500`} />;
+    case 'temporary_password_set': return <KeyRound size={sz} className={`${cls} text-orange-500`} />;
+    case 'account_unlocked':       return <Unlock size={sz} className={`${cls} text-emerald-600`} />;
+    case 'forced_password_change_completed': return <KeyRound size={sz} className={`${cls} text-emerald-600`} />;
     default:                       return <Activity size={sz} className={`${cls} text-slate-400`} />;
   }
 }
@@ -143,6 +151,10 @@ const EVENT_TYPE_OPTIONS = [
   { value: 'email_verified',             label: 'Email verified' },
   { value: 'pin_login_success',          label: 'PIN login success' },
   { value: 'pin_login_failed',           label: 'PIN login failed' },
+  { value: 'impersonation_started',      label: 'Impersonation started' },
+  { value: 'temporary_password_set',     label: 'Temp password set' },
+  { value: 'account_unlocked',           label: 'Account unlocked' },
+  { value: 'forced_password_change_completed', label: 'Forced change completed' },
 ];
 
 const SUCCESS_OPTIONS = [

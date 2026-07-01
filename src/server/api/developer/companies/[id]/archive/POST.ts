@@ -68,8 +68,8 @@ export default async function handler(req: Request, res: Response) {
     // Audit
     try {
       await db.execute(sql`
-        INSERT INTO developer_audit_log
-          (action_type, performed_by_user_id, performed_by_email, target_company_id, reason, created_at)
+        INSERT INTO platform_developer_audit_log
+          (action_type, performed_by_user_id, performed_by_email, company_id, reason, created_at)
         VALUES (
           'company_archived', ${session.user.id}, ${session.user.email ?? ''},
           ${companyId}, ${reason?.trim() ?? null}, NOW()

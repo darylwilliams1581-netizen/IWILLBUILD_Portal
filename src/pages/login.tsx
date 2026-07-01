@@ -5,6 +5,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -51,6 +52,9 @@ export default function LoginPage() {
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  // Forced password change state
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -145,10 +149,17 @@ export default function LoginPage() {
       }
       // Login succeeded — check if the user is unverified
       const userData = result.data?.user as { emailVerified?: boolean; id?: string } | undefined;
+      const dataAny = result.data as Record<string, unknown> | undefined;
       authLog('success', { emailVerified: userData?.emailVerified, userId: userData?.id });
       if (userData && userData.emailVerified === false) {
         setUnverified(true);
         setLoading(false);
+        return;
+      }
+      // Check if forced password change is required
+      if (dataAny?.mustChangePassword) {
+        setLoading(false);
+        setMustChangePassword(true);
         return;
       }
       // Check if 2FA is required
@@ -236,6 +247,17 @@ export default function LoginPage() {
         <link rel="canonical" href="https://iwillbuild.com/login" />
         <meta name="robots" content="noindex" />
       </Helmet>
+
+      {/* Forced password change modal */}
+      {mustChangePassword && (
+        <ForcedPasswordChangeModal
+          onSuccess={() => {
+            setMustChangePassword(false);
+            const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+            navigate(from, { replace: true });
+          }}
+        />
+      )}
 
       {/* Blueprint grid background */}
       <div

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, AlertTriangle, CheckCircle2, Shield, Mail, UserCheck, XCircle, Eye, MonitorSmartphone, Trash2 } from 'lucide-react';
+import { X, Loader2, AlertTriangle, CheckCircle2, Shield, Mail, UserCheck, XCircle, KeyRound, Unlock, Send } from 'lucide-react';
 import type { OcUserForActions, UserAction } from './UserActionsMenu';
 
 const REASON_PRESETS: Record<string, string[]> = {
@@ -10,6 +10,9 @@ const REASON_PRESETS: Record<string, string[]> = {
   'change-role': ['Promotion', 'Role change', 'Support request', 'Other'],
   impersonate: ['Support session', 'Troubleshooting login issue', 'Investigating bug report', 'Other'],
   'revoke-sessions': ['Security concern', 'User left business', 'Account compromised', 'Other'],
+  'force-temp-password': ['User locked out', 'Account compromised', 'Support request', 'Other'],
+  'unlock-account': ['Too many failed attempts', 'User locked out', 'Support request', 'Other'],
+  'send-reset-email': ['User forgot password', 'Support request', 'Account recovery', 'Other'],
 };
 
 const ROLE_OPTIONS = ['owner', 'admin', 'member', 'viewer'] as const;
@@ -34,7 +37,7 @@ function actionConfig(action: UserAction) {
     };
     case 'resend-verification': return {
       title: 'Resend verification email',
-      description: 'A new verification link will be sent to the user\'s email address.',
+      description: "A new verification link will be sent to the user's email address.",
       confirmLabel: 'Resend email',
       icon: Mail,
       iconColor: 'text-blue-600',
@@ -61,8 +64,44 @@ function actionConfig(action: UserAction) {
     };
     case 'change-role': return {
       title: 'Change company role',
-      description: 'Changes the user\'s role within their company. Platform developer access is separate and unaffected.',
+      description: "Changes the user's role within their company. Platform developer access is separate and unaffected.",
       confirmLabel: 'Change role',
+      icon: Shield,
+      iconColor: 'text-slate-600',
+      iconBg: 'bg-slate-50 border-slate-200',
+      confirmClass: 'bg-primary hover:bg-orange-600 text-white',
+    };
+    case 'force-temp-password': return {
+      title: 'Set temporary password',
+      description: 'Generates a temporary password and forces the user to change it on next login. All active sessions will be revoked.',
+      confirmLabel: 'Set temp password',
+      icon: KeyRound,
+      iconColor: 'text-orange-600',
+      iconBg: 'bg-orange-50 border-orange-200',
+      confirmClass: 'bg-orange-500 hover:bg-orange-600 text-white',
+    };
+    case 'unlock-account': return {
+      title: 'Unlock account',
+      description: 'Clears the failed login attempt counter and removes any lockout, allowing the user to try logging in again.',
+      confirmLabel: 'Unlock account',
+      icon: Unlock,
+      iconColor: 'text-emerald-600',
+      iconBg: 'bg-emerald-50 border-emerald-200',
+      confirmClass: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    };
+    case 'send-reset-email': return {
+      title: 'Send password reset email',
+      description: 'Sends a password reset link to the user. The link expires in 30 minutes.',
+      confirmLabel: 'Send reset email',
+      icon: Send,
+      iconColor: 'text-blue-600',
+      iconBg: 'bg-blue-50 border-blue-200',
+      confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+    };
+    default: return {
+      title: 'Confirm action',
+      description: 'Are you sure you want to perform this action?',
+      confirmLabel: 'Confirm',
       icon: Shield,
       iconColor: 'text-slate-600',
       iconBg: 'bg-slate-50 border-slate-200',
@@ -76,6 +115,7 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
   const [selectedRole, setSelectedRole] = useState(user.role);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const cfg = actionConfig(action);
   const Icon = cfg.icon;
@@ -108,6 +148,15 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
           method = 'PUT';
           body = { role: selectedRole, reason: reason || null };
           break;
+        case 'force-temp-password':
+          url = `/api/developer/users/${user.userId}/force-temp-password`;
+          break;
+        case 'unlock-account':
+          url = `/api/developer/users/${user.userId}/unlock-account`;
+          break;
+        case 'send-reset-email':
+          url = `/api/developer/users/${user.userId}/send-reset-email`;
+          break;
       }
 
       const res = await fetch(url, {
@@ -116,8 +165,15 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as { ok?: boolean; error?: string; message?: string; emailSent?: boolean };
+      const data = await res.json() as { ok?: boolean; error?: string; message?: string; emailSent?: boolean; tempPassword?: string };
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); setLoading(false); return; }
+
+      // For force-temp-password, show the temp password before closing
+      if (action === 'force-temp-password' && data.tempPassword) {
+        setTempPassword(data.tempPassword);
+        setLoading(false);
+        return;
+      }
 
       onSuccess(action, user.userId, { role: selectedRole, emailSent: data.emailSent, message: data.message });
     } catch {
@@ -125,6 +181,50 @@ export default function UserActionModal({ action, user, onClose, onSuccess }: Pr
     }
     setLoading(false);
   };
+
+  // Temp password reveal screen
+  if (tempPassword) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="px-6 pt-6 pb-4 flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl border bg-orange-50 border-orange-200 flex items-center justify-center shrink-0">
+              <KeyRound size={20} className="text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-black text-slate-900 text-lg">Temporary password set</h2>
+              <p className="text-sm text-slate-500 mt-1">Share this with the user securely. It will not be shown again.</p>
+            </div>
+            <button onClick={() => { onSuccess(action, user.userId, {}); }} className="text-slate-400 hover:text-slate-600 mt-0.5">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="mx-6 mb-4 px-4 py-3 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between gap-3">
+            <code className="text-orange-400 font-mono text-lg tracking-widest">{tempPassword}</code>
+            <button
+              onClick={() => { void navigator.clipboard.writeText(tempPassword); }}
+              className="text-xs text-slate-400 hover:text-white border border-slate-600 rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              Copy
+            </button>
+          </div>
+          <div className="mx-6 mb-4 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-xs text-amber-700">
+              The user must change this password on their next login. All their active sessions have been revoked.
+            </p>
+          </div>
+          <div className="px-6 pb-6">
+            <button
+              onClick={() => { onSuccess(action, user.userId, {}); }}
+              className="w-full py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">

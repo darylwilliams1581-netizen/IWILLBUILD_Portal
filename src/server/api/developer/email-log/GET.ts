@@ -43,13 +43,6 @@ export default async function handler(req: Request, res: Response) {
     const typeFilter = req.query.type ? String(req.query.type).trim() : null;
     const statusFilter = req.query.status ? String(req.query.status).trim() : null;
 
-    // Build WHERE conditions safely
-    const conditions: string[] = [];
-    if (emailFilter) conditions.push(`recipient_email LIKE '%${emailFilter.replace(/['"\\%_]/g, c => '\\' + c)}%'`);
-    if (typeFilter) conditions.push(`email_type = '${typeFilter.replace(/'/g, '')}'`);
-    if (statusFilter) conditions.push(`status = '${statusFilter.replace(/'/g, '')}'`);
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
     type EmailLogRow = {
       id: number;
       email_type: string;
@@ -63,17 +56,25 @@ export default async function handler(req: Request, res: Response) {
       created_at: string;
     };
 
+    // Build query with parameterized conditions (no sql.raw interpolation)
+    const emailPat = emailFilter ? `%${emailFilter}%` : null;
+
     const [rows] = await db.execute(
       sql`SELECT id, email_type, recipient_email, recipient_user_id, subject, status,
                  provider_message_id, error_message, company_id, created_at
           FROM email_delivery_log
-          ${sql.raw(where)}
+          WHERE (${emailPat} IS NULL OR recipient_email LIKE ${emailPat})
+            AND (${typeFilter} IS NULL OR email_type = ${typeFilter})
+            AND (${statusFilter} IS NULL OR status = ${statusFilter})
           ORDER BY created_at DESC
           LIMIT ${limit} OFFSET ${offset}`
     ) as unknown as [EmailLogRow[], unknown];
 
     const [countRows] = await db.execute(
-      sql`SELECT COUNT(*) as total FROM email_delivery_log ${sql.raw(where)}`
+      sql`SELECT COUNT(*) as total FROM email_delivery_log
+          WHERE (${emailPat} IS NULL OR recipient_email LIKE ${emailPat})
+            AND (${typeFilter} IS NULL OR email_type = ${typeFilter})
+            AND (${statusFilter} IS NULL OR status = ${statusFilter})`
     ) as unknown as [Array<{ total: number }>, unknown];
 
     return res.json({

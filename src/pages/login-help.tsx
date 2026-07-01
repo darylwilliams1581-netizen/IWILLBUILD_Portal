@@ -3,6 +3,7 @@
  * Helps users who can't log in: forgot password, no email received, browser tips.
  */
 import { Link } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   KeyRound, Mail, HelpCircle, Monitor, RefreshCw,
   ChevronRight, AlertCircle, CheckCircle2, ExternalLink
@@ -135,6 +136,12 @@ const sections: HelpSection[] = [
 export default function LoginHelpPage() {
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>Login Help — IWILLBUILD Portal</title>
+        <meta name="description" content="Troubleshoot login issues with the IWILLBUILD portal. Reset your password, resend verification emails, and fix common browser problems." />
+        <link rel="canonical" href="https://iwillbuild.com/login-help" />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  MoreHorizontal, CheckCircle2, XCircle, RefreshCw,
+  MoreHorizontal, CheckCircle2, XCircle,
   UserCheck, Mail, Shield, Eye, Trash2, MonitorSmartphone,
+  KeyRound, Unlock, Send,
 } from 'lucide-react';
 
 export interface OcUserForActions {
@@ -23,7 +24,10 @@ export type UserAction =
   | 'change-role'
   | 'impersonate'
   | 'view-sessions'
-  | 'revoke-sessions';
+  | 'revoke-sessions'
+  | 'force-temp-password'
+  | 'unlock-account'
+  | 'send-reset-email';
 
 interface Props {
   user: OcUserForActions;
@@ -119,6 +123,31 @@ export default function UserActionsMenu({ user, onAction }: Props) {
           >
             <Trash2 size={14} />
             Force logout
+          </button>
+
+          <div className="my-1 border-t border-slate-100" />
+
+          {/* Password & lockout tools */}
+          <button
+            onClick={() => trigger('force-temp-password')}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition-colors"
+          >
+            <KeyRound size={14} />
+            Set temp password
+          </button>
+          <button
+            onClick={() => trigger('unlock-account')}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+          >
+            <Unlock size={14} />
+            Unlock account
+          </button>
+          <button
+            onClick={() => trigger('send-reset-email')}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
+          >
+            <Send size={14} />
+            Send reset email
           </button>
 
           <div className="my-1 border-t border-slate-100" />

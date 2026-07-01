@@ -37,7 +37,6 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const companyIdFilter = req.query.companyId ? Number(req.query.companyId) : null;
-    const whereClause = companyIdFilter ? `WHERE c.id = ${companyIdFilter}` : '';
 
     type HealthRow = {
       company_id: number;
@@ -75,7 +74,7 @@ export default async function handler(req: Request, res: Response) {
       FROM companies c
       LEFT JOIN profiles p ON p.company_id = c.id
       LEFT JOIN user u ON u.id = p.user_id
-      ${sql.raw(whereClause)}
+      WHERE (${companyIdFilter} IS NULL OR c.id = ${companyIdFilter})
       GROUP BY c.id
       ORDER BY c.created_at DESC
       LIMIT 200

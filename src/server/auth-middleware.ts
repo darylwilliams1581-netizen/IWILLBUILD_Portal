@@ -14,6 +14,8 @@ import { tryClearStaleSession } from '@/lib/auth/session-cookies';
 import { recordLoginEvent } from '@/server/activity-tracker';
 import { logActivity, getIp, getUserAgent } from '@/server/lib/activity-log';
 import { checkLoginRate } from '@/server/lib/signup-rate-limiter';
+import { db } from '@/server/db/client';
+import { sql } from 'drizzle-orm';
 
 export async function authHandler(req: Request, res: Response) {
   // Stale-session recovery escape hatch (`?clearCookies=1`). A stale
@@ -93,6 +95,20 @@ export async function authHandler(req: Request, res: Response) {
             ipAddress: ip,
             userAgent: ua,
           });
+
+          // Check must_change_password — if set, inject flag into response
+          try {
+            const [rows] = await db.execute(
+              sql`SELECT must_change_password FROM profiles WHERE user_id = ${userId} LIMIT 1`
+            ) as unknown as [Array<{ must_change_password: number | null }>, unknown];
+            const mustChange = rows?.[0]?.must_change_password;
+            if (mustChange) {
+              // Intercept: return 200 with mustChangePassword flag so the client redirects
+              const responseBody = await webResponse.clone().json().catch(() => ({}));
+              res.status(200).json({ ...responseBody, mustChangePassword: true });
+              return;
+            }
+          } catch { /* non-critical — don't block login */ }
         }
       } catch {
         // Non-critical — don't block the response
