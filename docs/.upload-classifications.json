@@ -947,6 +947,19 @@
       "summary": "Screenshot of a jobs/scheduling interface showing invalid date errors across multiple date fields, provided as a bug report reference for troubleshooting the date-saving issue.",
       "fileName": "screenshot-2026-07-01T06-20-09.jpg",
       "storedUploadFilename": "f38wenbvln_1782886810043_file_2GqBPCdki2.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "reference_only",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a dashboard interface showing a sidebar navigation issue where the Forms tab appears to be missing or malfunctioning, provided as a bug report reference.",
+      "fileName": "screenshot-2026-07-01T09-03-19.jpg",
+      "storedUploadFilename": "f38wenbvln_1782896604386_file_dcb-qGLLtZ.jpg"
     }
   ]
 }
