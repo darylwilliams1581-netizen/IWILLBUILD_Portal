@@ -712,6 +712,15 @@ async function runStartupMigrations() {
     // ── swms_signoffs: extended sign-on fields ────────────────────────────────
     { table: 'swms_signoffs', column: 'company_name', definition: 'VARCHAR(255) NULL' },
     { table: 'swms_signoffs', column: 'role',         definition: 'VARCHAR(100) NULL' },
+    // ── Account recovery support tools ───────────────────────────────────────
+    // must_change_password: set by developer; forces user to set new password on next login
+    { table: 'user', column: 'must_change_password',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // temp_password_hash: bcrypt hash of one-time temp password; cleared after use
+    { table: 'user', column: 'temp_password_hash',       definition: 'TEXT NULL' },
+    // lockout_until: set when too many failed password attempts; cleared by developer
+    { table: 'user', column: 'lockout_until',            definition: 'DATETIME NULL' },
+    // failed_login_attempts: counter for password lockout (separate from PIN)
+    { table: 'user', column: 'failed_login_attempts',    definition: 'INT NOT NULL DEFAULT 0' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
