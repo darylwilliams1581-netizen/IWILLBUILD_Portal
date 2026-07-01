@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { profiles, companies } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { PLATFORM_OWNER_EMAILS } from '../../lib/platform-owner-guard.js';
 
@@ -36,11 +36,21 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    // Resolve platform owner status:
-    // 1. DB flag (platform_role = 'owner')
-    // 2. Emergency email fallback
+    // Resolve platform developer status:
+    // 1. Emergency email fallback (works even before migration runs)
+    // 2. DB flag via raw SQL (platform_role column may not exist on fresh DBs)
     const email = session.user.email ?? '';
-    const dbPlatformRole = (profile as unknown as { platformRole?: string | null })?.platformRole ?? null;
+    let dbPlatformRole: string | null = null;
+    if (!PLATFORM_OWNER_EMAILS.has(email.toLowerCase())) {
+      try {
+        const [prRows] = await db.execute(
+          sql`SELECT platform_role FROM profiles WHERE user_id = ${session.user.id} LIMIT 1`
+        ) as unknown as [Array<{ platform_role: string | null }>, unknown];
+        dbPlatformRole = prRows?.[0]?.platform_role ?? null;
+      } catch {
+        // Column doesn't exist yet — safe to ignore
+      }
+    }
     const isPlatformOwner =
       dbPlatformRole === 'developer' ||
       PLATFORM_OWNER_EMAILS.has(email.toLowerCase());

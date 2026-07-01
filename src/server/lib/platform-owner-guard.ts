@@ -17,8 +17,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { db } from '../db/client.js';
-import { profiles } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getAuth } from '../../lib/auth/auth.js';
 
 // ── Emergency fallback emails ─────────────────────────────────────────────────
@@ -54,20 +53,23 @@ export async function getPlatformOwnerInfo(req: Request): Promise<PlatformOwnerI
     const email = session.user.email ?? '';
     const userId = session.user.id;
 
-    // Emergency email fallback
+    // Emergency email fallback — always grants access regardless of DB state
     if (PLATFORM_OWNER_EMAILS.has(email.toLowerCase())) {
       return { isPlatformOwner: true, platformRole: 'developer', userId, email };
     }
 
-    // DB flag check
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.userId, userId),
-    });
-
-    const platformRole = (profile as unknown as { platformRole?: string | null })?.platformRole ?? null;
-    const isPlatformOwner = platformRole === 'developer';
-
-    return { isPlatformOwner, platformRole, userId, email };
+    // Read platform_role via raw SQL — column may not exist yet on fresh DBs
+    try {
+      const [rows] = await db.execute(
+        sql`SELECT platform_role FROM profiles WHERE user_id = ${userId} LIMIT 1`
+      ) as unknown as [Array<{ platform_role: string | null }>, unknown];
+      const platformRole = rows?.[0]?.platform_role ?? null;
+      const isPlatformOwner = platformRole === 'developer';
+      return { isPlatformOwner, platformRole, userId, email };
+    } catch {
+      // Column doesn't exist yet — not a platform developer
+      return { isPlatformOwner: false, platformRole: null, userId, email };
+    }
   } catch {
     return null;
   }

@@ -135,7 +135,9 @@ export const profiles = mysqlTable('profiles', {
   // 'developer' = IWILLBUILD platform developer (full Owner Console access)
   // 'support' = platform support staff (read-only Owner Console)
   // null = normal company user
-  platformRole: varchar('platform_role', { length: 30 }),
+  // platform_role is NOT in the Drizzle schema — it's a late-added column read via raw SQL only.
+  // Keeping it out of the schema prevents Drizzle from including it in SELECT * queries,
+  // which would crash on production DBs that haven't run the startup migration yet.
   // Notification preferences stored as JSON blob (user-scoped)
   notificationPrefs: text('notification_prefs'),
   // Activity tracking
