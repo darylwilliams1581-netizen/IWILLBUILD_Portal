@@ -373,3 +373,24 @@ export async function seedStarterPack(
     return result;
   }
 }
+
+/**
+ * Standalone export — install/re-install form templates for a company.
+ * Skips templates that already exist unless force=true.
+ */
+export async function installFormTemplates(companyId: number, force = false): Promise<{ result: string; errors: string[] }> {
+  const errors: string[] = [];
+  try {
+    if (force) {
+      // Delete existing templates so they get re-created fresh
+      await db.execute(sql`DELETE FROM form_templates WHERE company_id = ${companyId}`);
+    }
+    const result = await seedFormTemplates(companyId);
+    return { result, errors };
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    errors.push(msg);
+    return { result: 'error', errors };
+  }
+}
+

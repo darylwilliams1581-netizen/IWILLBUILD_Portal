@@ -236,6 +236,8 @@ import owner_console_companies_usage_get_225 from "./api/owner-console/companies
 import owner_console_companies_id_limits_put_226 from "./api/owner-console/companies/[id]/limits/PUT";
 import owner_console_starter_pack_get_227 from "./api/owner-console/starter-pack/GET";
 import owner_console_starter_pack_post_228 from "./api/owner-console/starter-pack/POST";
+import owner_console_form_templates_get from "./api/owner-console/form-templates/GET";
+import owner_console_form_templates_post from "./api/owner-console/form-templates/POST";
 import owner_console_stats_get_229 from "./api/owner-console/stats/GET";
 import owner_console_storage_get_230 from "./api/owner-console/storage/GET";
 import owner_console_system_ai_builtin_checks_post_231 from "./api/owner-console/system-ai/builtin-checks/POST";
@@ -1258,6 +1260,8 @@ app.get("/api/owner-console/companies/usage", requirePlatformOwner, owner_consol
 app.put("/api/owner-console/companies/:id/limits", requirePlatformOwner, owner_console_companies_id_limits_put_226);
 app.get("/api/owner-console/starter-pack", requirePlatformOwner, owner_console_starter_pack_get_227);
 app.post("/api/owner-console/starter-pack", requirePlatformOwner, owner_console_starter_pack_post_228);
+app.get("/api/owner-console/form-templates", requirePlatformOwner, owner_console_form_templates_get);
+app.post("/api/owner-console/form-templates", requirePlatformOwner, owner_console_form_templates_post);
 app.get("/api/owner-console/stats", requirePlatformOwner, owner_console_stats_get_229);
 app.get("/api/owner-console/storage", requirePlatformOwner, owner_console_storage_get_230);
 app.post("/api/owner-console/system-ai/builtin-checks", requirePlatformOwner, owner_console_system_ai_builtin_checks_post_231);

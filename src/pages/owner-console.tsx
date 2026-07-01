@@ -16,6 +16,7 @@ import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
 import SystemAITab from '@/components/owner-console/SystemAITab';
 import StarterPackTab from '@/components/owner-console/StarterPackTab';
+import FormTemplatesTab from '@/components/owner-console/FormTemplatesTab';
 import ManualVerifyModal from '@/components/ManualVerifyModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -424,7 +425,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -657,6 +658,12 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <Package size={12} />
               Starter Pack
+            </span>
+          </Tab>
+          <Tab active={tab === 'form-templates'} onClick={() => { setTab('form-templates'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <FileText size={12} />
+              Form Templates
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && (
@@ -1044,6 +1051,9 @@ export default function OwnerConsolePage() {
               {/* ── Starter Pack ── */}
               {tab === 'starter-pack' && (
                 <StarterPackTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
+              )}
+              {tab === 'form-templates' && (
+                <FormTemplatesTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
               )}
             </>
           )}
