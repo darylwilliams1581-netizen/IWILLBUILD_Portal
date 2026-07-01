@@ -7,7 +7,20 @@ export interface UserProfile {
   status: string;
   phone: string | null;
   companyId: number | null;
-  permissions: {
+  // Raw perm fields as returned by /api/me (flat on the profile object)
+  permJobs:          boolean | null;
+  permFleet:         boolean | null;
+  permForms:         boolean | null;
+  permFiles:         boolean | null;
+  permEstimating:    boolean | null;
+  permDazzaAi:       boolean | null;
+  permAdmin:         boolean | null;
+  permSeeDollars:    boolean | null;
+  permInviteUsers:   boolean | null;
+  permDeleteRecords: boolean | null;
+  permInvoices:      boolean | null;
+  // Legacy nested shape — kept for backward compat but may be absent
+  permissions?: {
     jobs: boolean;
     fleet: boolean;
     forms: boolean;
@@ -19,6 +32,26 @@ export interface UserProfile {
     inviteUsers: boolean;
     deleteRecords: boolean;
     invoices: boolean;
+  };
+}
+
+/** Normalise the flat perm_* fields into a consistent permissions map. */
+function resolvePermissions(profile: UserProfile) {
+  // If the legacy nested shape is present, use it directly
+  if (profile.permissions) return profile.permissions;
+  // Otherwise map the flat perm* fields
+  return {
+    jobs:          profile.permJobs          ?? true,
+    fleet:         profile.permFleet         ?? true,
+    forms:         profile.permForms         ?? true,
+    files:         profile.permFiles         ?? true,
+    estimating:    profile.permEstimating    ?? true,
+    dazzaAi:       profile.permDazzaAi       ?? true,
+    admin:         profile.permAdmin         ?? false,
+    seeDollars:    profile.permSeeDollars    ?? true,
+    inviteUsers:   profile.permInviteUsers   ?? false,
+    deleteRecords: profile.permDeleteRecords ?? false,
+    invoices:      profile.permInvoices      ?? true,
   };
 }
 
@@ -109,33 +142,31 @@ export function useMe() {
 }
 
 export function usePermissions() {
-  // Single call to useMe — callers should NOT call useMe() separately when they
-  // already call usePermissions(), to avoid duplicate hook instances and
-  // out-of-sync state between two independent useMe() state machines.
   const { me, loading } = useMe();
 
   const role = me?.profile?.role ?? null;
 
   const isOwner = role === 'owner';
-  const isAdmin = isOwner || role === 'admin' || me?.profile?.permissions?.admin === true;
+  const isAdmin = isOwner || role === 'admin' || (me?.profile ? resolvePermissions(me.profile).admin : false);
+
+  const perms = me?.profile ? resolvePermissions(me.profile) : null;
 
   return {
     loading,
     isOwner,
     isAdmin,
     role,
-    // Expose me + user so callers can avoid a second useMe() call
     me,
     user: me?.user ?? null,
     company: me?.company ?? null,
-    permissions: me?.profile?.permissions ?? null,
+    permissions: perms,
     can: (key: keyof NonNullable<UserProfile['permissions']>) => {
       if (!me?.profile) return false;
       // Owner always has everything
       if (isOwner) return true;
       // Admin (role or perm) always has everything
       if (isAdmin) return true;
-      return me.profile.permissions?.[key] ?? false;
+      return perms?.[key] ?? false;
     },
   };
 }
