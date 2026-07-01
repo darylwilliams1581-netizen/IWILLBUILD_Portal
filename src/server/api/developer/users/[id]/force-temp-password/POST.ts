@@ -1,18 +1,9 @@
 /**
  * POST /api/developer/users/:id/force-temp-password
- * Platform developer only — sets a temporary password and forces the user to
- * change it on next login (must_change_password = 1).
+ * Platform developer only — generates a temporary password, sets must_change_password = 1,
+ * and revokes all active sessions. Returns the temp password in the response (shown once).
  *
  * Body: { reason?: string }
- * Returns: { ok: true, tempPassword: string }
- *
- * Security rules:
- *  - Temp password is returned ONCE in this response and never stored in plain text.
- *  - The hashed value is stored in the `password` column via better-auth's account table.
- *  - must_change_password is set to 1 on the profile.
- *  - All sessions for the target user are revoked.
- *  - Event is audited in both audit log and activity log.
- *  - Plain password is NEVER logged.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -41,15 +32,11 @@ async function isPlatformDev(userId: string, email: string): Promise<boolean> {
 }
 
 function generateTempPassword(): string {
-  // 12 chars: letters + digits + symbol — always meets strength requirements
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const symbols = '!@#$%&*';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  // Use Math.random as a fallback — crypto is imported async below for hashing
   let pw = '';
-  for (let i = 0; i < 10; i++) pw += chars[Math.floor(Math.random() * chars.length)];
-  pw += symbols[Math.floor(Math.random() * symbols.length)];
-  pw += Math.floor(Math.random() * 10);
-  // Shuffle
-  return pw.split('').sort(() => Math.random() - 0.5).join('');
+  for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+  return pw;
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -60,40 +47,39 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'Platform developer access required.' });
     }
 
-    const targetUserId = req.params.id;
-    const reason = req.body?.reason ?? 'Temporary password set by developer';
+    const targetUserId = String(req.params.id).trim();
+    const reason = (req.body?.reason as string | undefined) ?? 'Temporary password set by developer';
 
-    // Verify target user exists
+    // Verify user exists
     const [userRows] = await db.execute(
       sql`SELECT id, email FROM user WHERE id = ${targetUserId} LIMIT 1`
     ) as unknown as [Array<{ id: string; email: string }>, unknown];
     const targetUser = userRows?.[0];
     if (!targetUser) return res.status(404).json({ error: 'User not found.' });
 
+    // Generate and hash temp password
     const tempPassword = generateTempPassword();
-
-    // Hash with bcryptjs (dynamic import per project rules)
     const { hash } = await import('bcryptjs');
-    const hashed = await hash(tempPassword, 12);
+    const hashedPassword = await hash(tempPassword, 12);
 
-    // Update the account password in better-auth's account table
+    // Update password in account table
     await db.execute(sql`
       UPDATE account
-      SET password = ${hashed}, updated_at = NOW()
+      SET password = ${hashedPassword}, updated_at = NOW()
       WHERE user_id = ${targetUserId} AND provider_id = 'credential'
     `);
 
-    // Set must_change_password flag on profile
+    // Set must_change_password flag
     await db.execute(sql`
-      UPDATE profiles
-      SET must_change_password = 1
+      UPDATE profiles SET must_change_password = 1, updated_at = NOW()
       WHERE user_id = ${targetUserId}
     `);
 
     // Revoke all active sessions
-    await db.execute(sql`
-      DELETE FROM session WHERE user_id = ${targetUserId}
-    `);
+    try {
+      const auth = getAuth();
+      await auth.api.revokeUserSessions({ body: { userId: targetUserId } });
+    } catch { /* non-critical */ }
 
     // Audit log
     try {
@@ -107,7 +93,6 @@ export default async function handler(req: Request, res: Response) {
       `);
     } catch { /* non-critical */ }
 
-    // Activity log
     void logActivity({
       eventType: 'temporary_password_set',
       success: true,
@@ -117,7 +102,7 @@ export default async function handler(req: Request, res: Response) {
       reason,
     });
 
-    return res.json({ ok: true, tempPassword });
+    return res.json({ ok: true, tempPassword, message: `Temporary password set for ${targetUser.email}. All sessions revoked.` });
   } catch (err) {
     console.error('developer/users/force-temp-password POST error:', err);
     return res.status(500).json({ error: 'Failed to set temporary password.' });

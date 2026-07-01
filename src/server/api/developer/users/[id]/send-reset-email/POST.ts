@@ -70,7 +70,7 @@ export default async function handler(req: Request, res: Response) {
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
     try {
-      const { sendEmail } = await import('../../../../../../lib/email/send.js');
+      const { sendEmail } = await import('../../../../../email.js');
       await sendEmail({
         to: targetUser.email,
         subject: 'Reset your IWILLBUILD password',

@@ -1,7 +1,6 @@
 /**
  * POST /api/developer/users/:id/unlock-account
- * Platform developer only — clears failed_login_attempts and locked_until,
- * allowing the user to log in again after a lockout.
+ * Platform developer only — clears lockout_until and resets failed login attempt counters.
  *
  * Body: { reason?: string }
  */
@@ -39,21 +38,28 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'Platform developer access required.' });
     }
 
-    const targetUserId = req.params.id;
-    const reason = req.body?.reason ?? 'Account unlocked by developer';
+    const targetUserId = String(req.params.id).trim();
+    const reason = (req.body?.reason as string | undefined) ?? 'Account unlocked by developer';
 
+    // Verify user exists
     const [userRows] = await db.execute(
       sql`SELECT id, email FROM user WHERE id = ${targetUserId} LIMIT 1`
     ) as unknown as [Array<{ id: string; email: string }>, unknown];
     const targetUser = userRows?.[0];
     if (!targetUser) return res.status(404).json({ error: 'User not found.' });
 
-    // Clear lockout fields
+    // Clear lockout_until on profiles
     await db.execute(sql`
-      UPDATE profiles
-      SET failed_login_attempts = 0, locked_until = NULL
+      UPDATE profiles SET lockout_until = NULL, updated_at = NOW()
       WHERE user_id = ${targetUserId}
     `);
+
+    // Clear PIN login attempt counters if table exists
+    try {
+      await db.execute(sql`
+        DELETE FROM pin_login_attempts WHERE user_id = ${targetUserId}
+      `);
+    } catch { /* table may not exist */ }
 
     // Audit log
     try {
@@ -76,7 +82,7 @@ export default async function handler(req: Request, res: Response) {
       reason,
     });
 
-    return res.json({ ok: true, message: 'Account unlocked successfully.' });
+    return res.json({ ok: true, message: `Account unlocked for ${targetUser.email}.` });
   } catch (err) {
     console.error('developer/users/unlock-account POST error:', err);
     return res.status(500).json({ error: 'Failed to unlock account.' });
