@@ -73,8 +73,8 @@ const vite = join(root, 'node_modules', '.bin', 'vite');
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,          // node
-  [vite, 'build'],
-  { NODE_OPTIONS: '--max-old-space-size=1024' },
+  ['--max-old-space-size=1024', vite, 'build'],
+  {},
 );
 
 if (clientCode !== 0) {
@@ -85,8 +85,13 @@ if (clientCode !== 0) {
 console.log('> build:app:ssr');
 const ssrCode = await run(
   process.execPath,
-  [vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false'],
-  { NODE_OPTIONS: '--max-old-space-size=4096' },
+  [
+    '--max-old-space-size=3500',
+    '--optimize-for-size',
+    '--gc-interval=100',
+    vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false',
+  ],
+  {},
 );
 
 if (ssrCode !== 0) {

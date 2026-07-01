@@ -172,6 +172,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     minify: false,
     ssr: "src/server/entry.ts",
     rollupOptions: {
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+      },
       output: {
         format: "es",
         entryFileNames: "server.bundle.mjs",
