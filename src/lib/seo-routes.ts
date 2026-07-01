@@ -2,11 +2,6 @@
  * Auto-synced registry of publicly-crawlable routes. Consumed by the
  * /sitemap.xml handler in src/server/entry.ts.
  *
- * IMPORTANT: Only include routes that are publicly accessible WITHOUT login.
- * Authenticated portal routes (dashboard, jobs, scheduler, fleet, etc.) must
- * NOT appear here — crawlers cannot access them and their presence in the
- * sitemap wastes crawl budget and can trigger soft-404 signals in GSC.
- *
  * DO NOT add or remove paths by hand. Static paths are mirrored here from
  * src/routes.tsx automatically whenever that file is edited (any manual
  * path edit would be overwritten on the next routes.tsx change). For sync
@@ -32,46 +27,38 @@ export interface SeoRoute {
     | "never";
   priority?: number;
   lastmod?: string;
-  /** Set to false to exclude from sitemap (e.g. auth-only routes) */
-  sitemap?: boolean;
 }
 
 export const seoRoutes: SeoRoute[] = [
-  // ── Public marketing / legal ──────────────────────────────────────────────
-  { path: "/",              changefreq: "weekly",  priority: 1.0 },
-  { path: "/privacy",       changefreq: "yearly",  priority: 0.4 },
-  { path: "/terms",         changefreq: "yearly",  priority: 0.4 },
-
-  // ── Auth flows (public, but low crawl value) ──────────────────────────────
-  { path: "/login",         changefreq: "monthly", priority: 0.5 },
-  { path: "/signup",        changefreq: "monthly", priority: 0.7 },
+  { path: "/", changefreq: "weekly", priority: 1.0 },
+  { path: "/login", changefreq: "monthly", priority: 0.5 },
+  { path: "/signup", changefreq: "monthly", priority: 0.7 },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4 },
+  { path: "/terms", changefreq: "yearly", priority: 0.4 },
+  { path: "/check-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-required", changefreq: "monthly", priority: 0.8 },
   { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
-
-  // ── Authenticated portal routes — excluded from sitemap ───────────────────
-  // Crawlers cannot access these; including them wastes crawl budget.
-  { path: "/dashboard",     sitemap: false },
-  { path: "/projects",      sitemap: false },
-  { path: "/jobs",          sitemap: false },
-  { path: "/scheduler",     sitemap: false },
-  { path: "/fleet",         sitemap: false },
-  { path: "/forms",         sitemap: false },
-  { path: "/files",         sitemap: false },
-  { path: "/estimating",    sitemap: false },
-  { path: "/safety",        sitemap: false },
-  { path: "/customers",     sitemap: false },
-  { path: "/stakeholders",  sitemap: false },
-  { path: "/invoices",      sitemap: false },
-  { path: "/downloads",     sitemap: false },
-  { path: "/dazza-ai",      sitemap: false },
-  { path: "/annette",       sitemap: false },
-  { path: "/team",          sitemap: false },
-  { path: "/settings",      sitemap: false },
-  { path: "/owner-console", sitemap: false },
-  { path: "/billing",       sitemap: false },
-  { path: "/subscription",  sitemap: false },
-  { path: "/tools",         sitemap: false },
-  { path: "/check-email",   sitemap: false },
-  { path: "/verify-email",  sitemap: false },
-  { path: "/verify-required", sitemap: false },
-  { path: "/reset-password", sitemap: false },
+  { path: "/reset-password", changefreq: "monthly", priority: 0.8 },
+  { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
+  { path: "/projects", changefreq: "monthly", priority: 0.8 },
+  { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscription", changefreq: "monthly", priority: 0.8 },
+  { path: "/tools", changefreq: "monthly", priority: 0.8 },
+  { path: "/jobs", changefreq: "monthly", priority: 0.8 },
+  { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
+  { path: "/fleet", changefreq: "monthly", priority: 0.8 },
+  { path: "/forms", changefreq: "monthly", priority: 0.8 },
+  { path: "/files", changefreq: "monthly", priority: 0.8 },
+  { path: "/estimating", changefreq: "monthly", priority: 0.8 },
+  { path: "/safety", changefreq: "monthly", priority: 0.8 },
+  { path: "/customers", changefreq: "monthly", priority: 0.8 },
+  { path: "/invoices", changefreq: "monthly", priority: 0.8 },
+  { path: "/downloads", changefreq: "monthly", priority: 0.8 },
+  { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
+  { path: "/annette", changefreq: "monthly", priority: 0.8 },
+  { path: "/team", changefreq: "monthly", priority: 0.8 },
+  { path: "/settings", changefreq: "monthly", priority: 0.8 },
+  { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/billing", changefreq: "monthly", priority: 0.8 },
 ];

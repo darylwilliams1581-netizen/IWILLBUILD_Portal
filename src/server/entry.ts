@@ -234,6 +234,7 @@ import owner_console_companies_usage_get_218 from "./api/owner-console/companies
 import owner_console_companies_id_limits_put_219 from "./api/owner-console/companies/[id]/limits/PUT";
 import owner_console_stats_get_220 from "./api/owner-console/stats/GET";
 import owner_console_storage_get_221 from "./api/owner-console/storage/GET";
+import owner_console_system_ai_builtin_checks_post from "./api/owner-console/system-ai/builtin-checks/POST";
 import owner_console_users_get_222 from "./api/owner-console/users/GET";
 import owner_console_users_verify_post_223 from "./api/owner-console/users/verify/POST";
 import recipes_get_224 from "./api/recipes/GET";
@@ -1173,6 +1174,7 @@ app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_
 app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_219);
 app.get("/api/owner-console/stats", owner_console_stats_get_220);
 app.get("/api/owner-console/storage", owner_console_storage_get_221);
+app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post);
 app.get("/api/owner-console/users", owner_console_users_get_222);
 app.post("/api/owner-console/users/verify", owner_console_users_verify_post_223);
 app.get("/api/recipes", recipes_get_224);

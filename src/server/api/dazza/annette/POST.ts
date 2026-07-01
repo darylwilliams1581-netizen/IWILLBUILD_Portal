@@ -49,6 +49,11 @@ export default async function handler(req: Request, res: Response) {
     const permissions = derivePermissions(profile);
     if (!permissions.canDazzaAi) return res.status(403).json({ error: 'Dazza AI not enabled for your account' });
 
+    // ── System AI is owner-only ───────────────────────────────────────────────
+    if (!permissions.isOwner) {
+      return res.status(403).json({ error: 'System AI is restricted to the platform owner.' });
+    }
+
     // ── Wall 11: Subscription wall ───────────────────────────────────────────
     const subscriptionStatus = await wall11_getSubscriptionStatus(profile.companyId);
     const isViewOnly = !permissions.isOwner && (

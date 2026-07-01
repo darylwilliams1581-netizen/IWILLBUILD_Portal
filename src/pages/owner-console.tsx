@@ -6,7 +6,7 @@ import {
   RefreshCw, Shield, ChevronRight, Activity, Circle, Loader2,
   ShieldCheck, Settings, FileText, ClipboardList, LogOut,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, Plus, X, BookOpen,
+  ShieldAlert, Plus, X, BookOpen, Bot,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -14,6 +14,7 @@ import { useSupportMode } from '@/lib/useSupportMode';
 import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
+import SystemAITab from '@/components/owner-console/SystemAITab';
 import ManualVerifyModal from '@/components/ManualVerifyModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -270,7 +271,6 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
     { label: 'Cost Guide', icon: FileText, href: '/estimating?tab=cost-guide' },
     { label: 'Form Templates', icon: ClipboardList, href: '/forms' },
     { label: 'PDF / Print Style', icon: FileText, href: '/settings?tab=pdf' },
-    { label: 'Dazza AI Knowledge', icon: Activity, href: '/settings?tab=dazza' },
     { label: 'Fleet Assets', icon: Building2, href: '/fleet' },
     { label: 'Files', icon: FileText, href: '/files' },
   ];
@@ -423,7 +423,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -646,6 +646,12 @@ export default function OwnerConsolePage() {
           <Tab active={tab === 'usage'} onClick={() => { setTab('usage'); setSearchParams({}); }}>Usage</Tab>
           <Tab active={tab === 'storage'} onClick={() => { setTab('storage'); setSearchParams({}); }}>System Storage</Tab>
           <Tab active={tab === 'cancellation-feedback'} onClick={() => { setTab('cancellation-feedback'); setSearchParams({}); }}>Cancellation Feedback</Tab>
+          <Tab active={tab === 'system-ai'} onClick={() => { setTab('system-ai'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Bot size={12} />
+              System AI
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -1022,6 +1028,11 @@ export default function OwnerConsolePage() {
               {/* ── System Storage ── */}
               {tab === 'storage' && <SystemStorageTab />}
               {tab === 'cancellation-feedback' && <CancellationFeedbackTab />}
+
+              {/* ── System AI ── */}
+              {tab === 'system-ai' && (
+                <SystemAITab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
+              )}
             </>
           )}
         </div>

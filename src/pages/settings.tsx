@@ -22,7 +22,6 @@ import {
   EyeOff,
   KeyRound,
   Layers,
-  Bot,
   Megaphone,
   FileText,
   Factory,
@@ -37,7 +36,6 @@ import PortalSidebar from '@/components/PortalSidebar';
 import { useMe, usePermissions } from '@/lib/usePermissions';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
-import DazzaAITab from '@/components/settings/DazzaAITab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
 import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
@@ -55,7 +53,6 @@ const tabs = [
   { id: 'structure',    label: 'Company Structure',  icon: Layers },
   { id: 'pdf',          label: 'PDF / Print Style',  icon: FileText },
   { id: 'accounting',   label: 'Accounting',         icon: Receipt },
-  { id: 'dazza',        label: 'Dazza AI',           icon: Bot },
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
   { id: 'integrations', label: 'Integrations',       icon: Plug },
@@ -1030,7 +1027,6 @@ export default function SettingsPage() {
               {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
               {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
               {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
-              {activeTab === 'dazza'      && <DazzaAITab isAdmin={isAdmin} />}
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}
               {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}

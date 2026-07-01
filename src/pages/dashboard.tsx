@@ -5,7 +5,7 @@ import {
   HardHat,
   Users,
   Truck,
-  Bot,
+  Receipt,
   Bell,
   ChevronRight,
   Plus,
@@ -17,7 +17,6 @@ import {
   Clock,
   XCircle,
   BarChart3,
-  Receipt,
   DollarSign,
   Calculator,
   Ruler,
@@ -42,7 +41,7 @@ const quickActions = [
   { label: 'New Project',     icon: HardHat,  href: '/jobs',      desc: 'Track a new site or project' },
   { label: 'Add Fleet Asset', icon: Truck,    href: '/fleet',     desc: 'Register a vehicle or plant' },
   { label: 'Invite Team',     icon: Users,    href: '/team',      desc: 'Add crew members' },
-  { label: 'Ask Dazza AI',    icon: Bot,      href: '/dazza-ai',  desc: 'Your on-site AI assistant' },
+  { label: 'Upload Files',    icon: Receipt,  href: '/files',     desc: 'Store documents and photos' },
 ];
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -684,22 +683,6 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Dazza AI teaser */}
-              <div className="mx-4 mb-4 p-4 rounded-lg bg-[#1A1D23] text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot size={16} className="text-primary" />
-                  <span className="text-sm font-semibold">Dazza AI</span>
-                </div>
-                <p className="text-xs text-white/60 mb-3">
-                  Your on-site AI assistant. Ask about jobs, crew, or compliance.
-                </p>
-                <Link
-                  to="/dazza-ai"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-                >
-                  Open Dazza <ChevronRight size={12} />
-                </Link>
-              </div>
             </motion.div>
           </div>
         </main>

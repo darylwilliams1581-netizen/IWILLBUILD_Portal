@@ -25,9 +25,9 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    // Only admins/owners can see key status
-    const isAdmin = profile.role === 'owner' || profile.role === 'admin';
-    if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+    // Only platform owner can see key status
+    const isOwner = profile.role === 'owner';
+    if (!isOwner) return res.status(403).json({ error: 'Owner only' });
 
     const key = getSecret('OPENAI_API_KEY');
     const configured = !!(key && key.trim().length > 0);

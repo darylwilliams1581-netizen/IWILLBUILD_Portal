@@ -44,6 +44,11 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'Dazza AI access not permitted for your role.' });
     }
 
+    // ── System AI is owner-only ───────────────────────────────────────────────
+    if (!permissions.isOwner) {
+      return res.status(403).json({ error: 'System AI is restricted to the platform owner.' });
+    }
+
     // ── Support Mode resolution (owners only) ─────────────────────────────────
     const requestedSupportId = req.query.supportCompanyId
       ? parseInt(req.query.supportCompanyId as string, 10)

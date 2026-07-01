@@ -25,7 +25,7 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const permissions = derivePermissions(profile);
-    if (!permissions.isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    if (!permissions.isOwner) return res.status(403).json({ error: 'Owner access required' });
     if (!permissions.canDazzaAi) return res.status(403).json({ error: 'Dazza AI not enabled' });
 
     const { supportCompanyId: reqSupportId } = req.query as { supportCompanyId?: string };

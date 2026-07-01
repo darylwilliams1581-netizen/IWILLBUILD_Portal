@@ -2,6 +2,7 @@ import { RouteObject } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
+import { usePermissions } from '@/lib/usePermissions';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
 import HomePage from './pages/index';
@@ -70,6 +71,24 @@ function protect(element: React.ReactElement) {
   return <ProtectedRoute><Suspense fallback={<PageLoader />}>{element}</Suspense></ProtectedRoute>;
 }
 
+/** Owner-only route — redirects non-owners to /owner-console */
+function OwnerOnlyRoute({ children }: { children: React.ReactElement }) {
+  const { isOwner, loading } = usePermissions();
+  if (loading) return <PageLoader />;
+  if (!isOwner) return <Navigate to="/owner-console" replace />;
+  return children;
+}
+
+function protectOwner(element: React.ReactElement) {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageLoader />}>
+        <OwnerOnlyRoute>{element}</OwnerOnlyRoute>
+      </Suspense>
+    </ProtectedRoute>
+  );
+}
+
 export const routes: RouteObject[] = [
   { path: '/',              element: <HomePage /> },
   { path: '/login',         element: <LoginPage /> },
@@ -107,8 +126,8 @@ export const routes: RouteObject[] = [
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
   { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
-  { path: '/dazza-ai',      element: protect(<DazzaAIPage />),         errorElement: routeError },
-  { path: '/annette',       element: protect(<AnnettePage />),         errorElement: routeError },
+  { path: '/dazza-ai',      element: protectOwner(<DazzaAIPage />),      errorElement: routeError },
+  { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console', element: protect(<OwnerConsolePage />),    errorElement: routeError },
