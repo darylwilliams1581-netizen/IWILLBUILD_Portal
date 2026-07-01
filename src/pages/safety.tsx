@@ -1336,13 +1336,6 @@ function SafetyDashboardTab() {
         </div>
       </div>
 
-      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
-        <Sparkles size={16} className="text-primary shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-bold text-orange-800">Dazza AI Safety Assistant</p>
-          <p className="text-xs text-orange-700 mt-0.5">Use the AI tab to draft SWMS documents, get SWMS suggestions from your job scope, and generate safety plan content — all powered by GPT-4o.</p>
-        </div>
-      </div>
     </div>
   );
 }

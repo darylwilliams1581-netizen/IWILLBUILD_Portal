@@ -973,6 +973,19 @@
       "summary": "Screenshot of a system notification indicating loss of Forms and form builder functionality. No design or structural guidance for site building.",
       "fileName": "screenshot-2026-07-01T09-56-24.jpg",
       "storedUploadFilename": "f38wenbvln_1782899784601_file_JVva4lK4l2.jpg"
+    },
+    {
+      "variant": "adaptive",
+      "classification": "screenshot",
+      "designDirection": "none",
+      "contentStructure": "none",
+      "assetRole": null,
+      "placementIntent": "unclear",
+      "extractedColors": null,
+      "extractedPages": null,
+      "summary": "Screenshot of a Dazza AI Safety Assistant feature description. The prompt 'remove' provides no clear directive for how this file should be used in the website build.",
+      "fileName": "screenshot-2026-07-01T10-20-11.jpg",
+      "storedUploadFilename": "f38wenbvln_1782901212385_file_IZz-6lkffQ.jpg"
     }
   ]
 }
