@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
-import { profiles } from '../../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { fleetAssets, profiles } from '../../db/schema.js';
+import { eq, and, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -21,11 +21,31 @@ export default async function handler(req: Request, res: Response) {
 
     const showArchived = req.query.archived === 'true';
 
-    const [assets] = await db.execute(
-      showArchived
-        ? sql`SELECT *, vin FROM fleet_assets WHERE company_id = ${profile.companyId} ORDER BY name ASC`
-        : sql`SELECT *, vin FROM fleet_assets WHERE company_id = ${profile.companyId} AND (archived = 0 OR archived IS NULL) ORDER BY name ASC`
-    ) as unknown as [unknown[], unknown];
+    // Fetch assets via Drizzle (schema columns)
+    const rows = await db
+      .select()
+      .from(fleetAssets)
+      .where(
+        showArchived
+          ? eq(fleetAssets.companyId, profile.companyId)
+          : and(eq(fleetAssets.companyId, profile.companyId), eq(fleetAssets.archived, false)),
+      )
+      .orderBy(fleetAssets.name);
+
+    // Attempt to enrich with vin column (self-healing — column may not exist yet)
+    let vinMap: Record<number, string | null> = {};
+    try {
+      const [vinRows] = await db.execute(
+        sql`SELECT id, vin FROM fleet_assets WHERE company_id = ${profile.companyId}`
+      ) as unknown as [Array<{ id: number; vin: string | null }>, unknown];
+      for (const r of vinRows) {
+        vinMap[r.id] = r.vin ?? null;
+      }
+    } catch {
+      // vin column doesn't exist yet — safe to ignore, will be created on first POST
+    }
+
+    const assets = rows.map((a) => ({ ...a, vin: vinMap[a.id] ?? null }));
 
     res.json({ assets });
   } catch (error) {

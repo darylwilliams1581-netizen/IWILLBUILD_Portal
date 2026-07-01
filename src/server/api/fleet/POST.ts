@@ -43,10 +43,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Asset name is required' });
     }
 
-    // Ensure vin column exists (self-healing migration)
-    try {
-      await db.execute(sql.raw('ALTER TABLE `fleet_assets` ADD COLUMN `vin` VARCHAR(50) NULL'));
-    } catch { /* already exists */ }
+    // Ensure vin column exists (self-healing migration runs at startup via entry.ts)
 
     const [inserted] = await db.insert(fleetAssets).values({
       companyId: profile.companyId,

@@ -748,6 +748,8 @@ async function runStartupMigrations() {
     { table: 'user', column: 'lockout_until',            definition: 'DATETIME NULL' },
     // failed_login_attempts: counter for password lockout (separate from PIN)
     { table: 'user', column: 'failed_login_attempts',    definition: 'INT NOT NULL DEFAULT 0' },
+    // ── Fleet assets: VIN ────────────────────────────────────────────────────
+    { table: 'fleet_assets', column: 'vin', definition: 'VARCHAR(50) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
