@@ -1,11 +1,11 @@
 /**
  * POST /api/owner-console/companies
- * Owner only — create a new company with a trial subscription.
+ * Platform owner only — create a new company with a trial subscription.
+ * Access enforced by requirePlatformOwner middleware in entry.ts.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { profiles, companies } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { companies } from '../../../db/schema.js';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 const PLAN_MAX_USERS: Record<string, number> = {
@@ -24,9 +24,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (profile?.role !== 'owner') return res.status(403).json({ error: 'Owner only' });
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     const { name, plan, abn, phone, email } = req.body as {
       name?: string;

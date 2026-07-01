@@ -124,7 +124,7 @@ function SidebarContent({
 }) {
   const location  = useLocation();
   const navigate  = useNavigate();
-  const { isAdmin, loading: permsLoading, can, isOwner, me } = usePermissions();
+  const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
   const subInfo   = useSubscriptionStatus();
 
   const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
@@ -238,8 +238,8 @@ function SidebarContent({
             );
           })}
 
-          {/* Owner Console — owner only */}
-          {!permsLoading && isOwner && (() => {
+          {/* Owner Console — platform owner only (NOT company admin/owner) */}
+          {!permsLoading && isPlatformOwner && (() => {
             const active = isActive('/owner-console');
             return (
               <Link

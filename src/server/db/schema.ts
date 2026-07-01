@@ -131,6 +131,11 @@ export const profiles = mysqlTable('profiles', {
   permInviteUsers: boolean('perm_invite_users').notNull().default(false),
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
   permInvoices: boolean('perm_invoices').notNull().default(true),
+  // Platform-level role — separate from company role.
+  // 'owner' = IWILLBUILD platform owner (full Owner Console access)
+  // 'support' = platform support staff (read-only Owner Console)
+  // null = normal company user
+  platformRole: varchar('platform_role', { length: 30 }),
   // Notification preferences stored as JSON blob (user-scoped)
   notificationPrefs: text('notification_prefs'),
   // Activity tracking

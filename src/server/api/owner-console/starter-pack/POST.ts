@@ -1,19 +1,18 @@
 /**
  * POST /api/owner-console/starter-pack
- * Owner-only: manually trigger starter pack seeding for a company.
+ * Platform owner only: manually trigger starter pack seeding for a company.
+ * Access enforced by requirePlatformOwner middleware in entry.ts.
  * Idempotent — respects the once-only guard unless force=true is passed.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
-import { profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
 import { seedStarterPack } from '../../../lib/seed-starter-pack.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
-    // ── Auth: owner only ──────────────────────────────────────────────────────
+    // ── Auth ──────────────────────────────────────────────────────────────────
     const auth = getAuth();
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
@@ -21,9 +20,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (profile?.role !== 'owner') return res.status(403).json({ error: 'Owner access required' });
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     const { companyId, force } = req.body as { companyId?: number; force?: boolean };
     if (!companyId || typeof companyId !== 'number') {

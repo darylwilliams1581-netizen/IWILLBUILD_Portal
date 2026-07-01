@@ -414,7 +414,7 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
 export default function OwnerConsolePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isOwner, loading: permsLoading } = usePermissions();
+  const { isPlatformOwner, loading: permsLoading } = usePermissions();
   const supportMode = useSupportMode();
 
   const [migrated, setMigrated] = useState(false);
@@ -473,10 +473,10 @@ export default function OwnerConsolePage() {
   }, []);
 
   useEffect(() => {
-    if (migrated && !permsLoading && isOwner) {
+    if (migrated && !permsLoading && isPlatformOwner) {
       void loadData();
     }
-  }, [migrated, permsLoading, isOwner, loadData]);
+  }, [migrated, permsLoading, isPlatformOwner, loadData]);
 
   // Sync tab from URL
   useEffect(() => {
@@ -543,7 +543,7 @@ export default function OwnerConsolePage() {
   };
 
   // Access guard
-  if (!permsLoading && !isOwner) {
+  if (!permsLoading && !isPlatformOwner) {
     return (
       <div className="flex h-full bg-[#F4F5F7]">
         <PortalSidebar />
@@ -928,7 +928,7 @@ export default function OwnerConsolePage() {
                                         )}
                                       </div>
                                       <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
-                                      {u.emailVerified === false && isOwner && (
+                                      {u.emailVerified === false && isPlatformOwner && (
                                         <button
                                           onClick={() => setVerifyTarget({ id: u.id, name: u.name, email: u.email })}
                                           className="mt-1 text-[10px] font-bold text-primary hover:text-orange-600 underline underline-offset-2 transition-colors"

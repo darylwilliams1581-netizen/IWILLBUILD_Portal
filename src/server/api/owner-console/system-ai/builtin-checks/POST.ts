@@ -1,8 +1,8 @@
 /**
  * POST /api/owner-console/system-ai/builtin-checks
  * ─────────────────────────────────────────────────────────────────────────────
- * Owner-only. Runs built-in data quality checks on a company without needing
- * an OpenAI API key. Returns a structured health report.
+ * Platform owner only. Runs built-in data quality checks on a company.
+ * Access enforced by requirePlatformOwner middleware in entry.ts.
  *
  * Checks:
  *  - Module inventory (which modules have data)
@@ -11,8 +11,6 @@
  *  - Storage usage (file count)
  *  - Template gaps (forms with no instances)
  *  - Company health score (0-100)
- *
- * Security: Owner-only. Audit-logged.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
@@ -29,7 +27,8 @@ interface BuiltinCheck {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    // ── Auth + owner gate ────────────────────────────────────────────────────
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
     const auth = getAuth();
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
@@ -44,9 +43,6 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const permissions = derivePermissions(profile);
-    if (!permissions.isOwner) {
-      return res.status(403).json({ error: 'Owner access required' });
-    }
 
     const { companyId: targetCompanyId } = req.body as { companyId?: number };
     const companyId = targetCompanyId ?? profile.companyId;

@@ -2,7 +2,8 @@
  * GET /api/owner-console/storage
  * ─────────────────────────────────────────────────────────────────────────────
  * Platform-wide storage aggregation for the platform owner.
- * Owner access required. Never exposes file contents — metadata only.
+ * Access enforced by requirePlatformOwner middleware in entry.ts.
+ * Never exposes file contents — metadata only.
  *
  * Returns:
  *   platform   — totals across all companies
@@ -13,8 +14,7 @@
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { profiles } from '../../../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { getPlanLimits } from '../../../lib/plan-limits.js';
 
@@ -59,13 +59,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const callerProfile = await db.query.profiles.findFirst({
-      where: eq(profiles.userId, session.user.id),
-    });
-    if (callerProfile?.role !== 'owner') {
-      return res.status(403).json({ error: 'Owner access required' });
-    }
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     // ── Platform-wide totals ──────────────────────────────────────────────────
 

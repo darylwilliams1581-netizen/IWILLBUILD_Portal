@@ -1,12 +1,11 @@
 /**
  * GET /api/owner-console/cancellation-feedback
  * Returns all cancellation feedback rows for the Owner Console.
- * Owner-only.
+ * Platform-owner only — enforced by requirePlatformOwner middleware in entry.ts.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { profiles } from '../../../db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -18,11 +17,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.userId, session.user.id),
-    });
-    if (profile?.role !== 'owner') return res.status(403).json({ error: 'Owner only' });
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     const [rows] = await db.execute(sql`
       SELECT

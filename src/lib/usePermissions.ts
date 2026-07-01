@@ -59,6 +59,9 @@ export interface MeData {
   user: { id: string; name: string; email: string };
   profile: UserProfile | null;
   company: { id: number; name: string } | null;
+  // Platform owner fields returned by /api/me
+  isPlatformOwner?: boolean;
+  platformRole?: string | null;
 }
 
 let cachedMe: MeData | null = null;
@@ -146,8 +149,14 @@ export function usePermissions() {
 
   const role = me?.profile?.role ?? null;
 
+  // Company-level role checks
   const isOwner = role === 'owner';
   const isAdmin = isOwner || role === 'admin' || (me?.profile ? resolvePermissions(me.profile).admin : false);
+
+  // Platform-level owner check — completely separate from company role
+  // Driven by /api/me which checks platform_role DB flag + email fallback
+  const isPlatformOwner = me?.isPlatformOwner === true;
+  const platformRole = me?.platformRole ?? null;
 
   const perms = me?.profile ? resolvePermissions(me.profile) : null;
 
@@ -155,6 +164,8 @@ export function usePermissions() {
     loading,
     isOwner,
     isAdmin,
+    isPlatformOwner,
+    platformRole,
     role,
     me,
     user: me?.user ?? null,

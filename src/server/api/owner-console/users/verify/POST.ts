@@ -1,11 +1,12 @@
 /**
  * POST /api/owner-console/users/verify
- * Owner-only: manually marks a user's email as verified and unlocks their login.
+ * Platform owner only: manually marks a user's email as verified and unlocks their login.
+ * Access enforced by requirePlatformOwner middleware in entry.ts.
  * Writes a full audit record to manual_verification_log.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
-import { profiles, user } from '../../../../db/schema.js';
+import { user } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { sql } from 'drizzle-orm';
@@ -19,14 +20,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    // Owner-only guard
-    const callerProfile = await db.query.profiles.findFirst({
-      where: eq(profiles.userId, session.user.id),
-    });
-    if (callerProfile?.role !== 'owner') {
-      return res.status(403).json({ error: 'Owner access required.' });
-    }
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     const { userId } = req.body as { userId?: string };
     if (!userId?.trim()) return res.status(400).json({ error: 'userId is required.' });

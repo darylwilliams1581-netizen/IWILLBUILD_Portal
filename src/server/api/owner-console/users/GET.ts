@@ -13,13 +13,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const callerProfile = await db.query.profiles.findFirst({
-      where: eq(profiles.userId, session.user.id),
-    });
-    if (callerProfile?.role !== 'owner') {
-      return res.status(403).json({ error: 'Owner access required' });
-    }
+    // Platform owner check handled by requirePlatformOwner middleware in entry.ts
 
     const rows = await db
       .select({

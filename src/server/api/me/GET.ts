@@ -3,6 +3,7 @@ import { db } from '../../db/client.js';
 import { profiles, companies } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { PLATFORM_OWNER_EMAILS } from '../../lib/platform-owner-guard.js';
 
 /** Safe server-side auth log — never logs passwords or tokens */
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -35,11 +36,22 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    // Resolve platform owner status:
+    // 1. DB flag (platform_role = 'owner')
+    // 2. Emergency email fallback
+    const email = session.user.email ?? '';
+    const dbPlatformRole = (profile as unknown as { platformRole?: string | null })?.platformRole ?? null;
+    const isPlatformOwner =
+      dbPlatformRole === 'owner' ||
+      PLATFORM_OWNER_EMAILS.has(email.toLowerCase());
+    const platformRole = isPlatformOwner ? 'owner' : (dbPlatformRole ?? null);
+
     authLog('me.ok', {
       userId: session.user.id,
       role: profile?.role ?? 'none',
       companyId: profile?.companyId ?? null,
       status: profile?.status ?? 'none',
+      isPlatformOwner,
     });
 
     res.json({
@@ -50,6 +62,9 @@ export default async function handler(req: Request, res: Response) {
       },
       profile: profile ?? null,
       company: company ?? null,
+      // Platform owner fields — separate from company role
+      isPlatformOwner,
+      platformRole,
     });
   } catch (error) {
     authLog('me.error', { errorMsg: String((error as Error)?.message ?? error).slice(0, 120) });
@@ -57,3 +72,4 @@ export default async function handler(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
 }
+

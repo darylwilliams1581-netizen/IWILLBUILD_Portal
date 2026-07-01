@@ -4,6 +4,7 @@ import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { getSecret } from '#airo/secrets';
 import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
+import { requirePlatformOwner } from './lib/platform-owner-guard.js';
 
 // <api-imports>
 import active_ping_post_0 from "./api/active-ping/POST";
@@ -980,6 +981,39 @@ async function runStartupMigrations() {
   } catch (e: unknown) {
     console.warn('[startup-migration] owner-role promotion failed:', String((e as Error)?.message ?? e));
   }
+
+  // ── Add platform_role column (idempotent) ─────────────────────────────────
+  try {
+    const [prColRows] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'platform_role'`
+    ) as unknown as [Array<{ cnt: number }>, unknown];
+    if (Number(prColRows?.[0]?.cnt ?? 0) === 0) {
+      await db.execute(sql.raw(`ALTER TABLE \`profiles\` ADD COLUMN \`platform_role\` VARCHAR(30) NULL DEFAULT NULL`));
+      console.log('[startup-migration] profiles.platform_role column added');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] platform_role column error:', String((e as Error)?.message ?? e));
+  }
+
+  // ── Seed platform_role = 'owner' for known platform owner emails ──────────
+  const platformOwnerEmails = [
+    'daryl.williams@energyq.com.au',
+    'daryl.williams1581@gmail.com',
+  ];
+  for (const email of platformOwnerEmails) {
+    try {
+      // Find the better-auth user by email, then update their profile
+      await db.execute(
+        sql`UPDATE profiles p
+            INNER JOIN user u ON u.id = p.user_id
+            SET p.platform_role = 'owner'
+            WHERE LOWER(u.email) = LOWER(${email})`
+      );
+    } catch (e: unknown) {
+      console.warn(`[startup-migration] platform_role seed failed for ${email}:`, String((e as Error)?.message ?? e));
+    }
+  }
+  console.log('[startup-migration] platform_role seeding complete');
 }
 
 // ── Startup checks ────────────────────────────────────────────────────────────
@@ -1216,19 +1250,19 @@ app.get("/api/notifications/alerts", notifications_alerts_get_217);
 app.get("/api/notifications/prefs", notifications_prefs_get_218);
 app.put("/api/notifications/prefs", notifications_prefs_put_219);
 app.post("/api/notifications/read", notifications_read_post_220);
-app.get("/api/owner-console/activity", owner_console_activity_get_221);
-app.get("/api/owner-console/cancellation-feedback", owner_console_cancellation_feedback_get_222);
-app.get("/api/owner-console/companies", owner_console_companies_get_223);
-app.post("/api/owner-console/companies", owner_console_companies_post_224);
-app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_225);
-app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_226);
-app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_227);
-app.post("/api/owner-console/starter-pack", owner_console_starter_pack_post_228);
-app.get("/api/owner-console/stats", owner_console_stats_get_229);
-app.get("/api/owner-console/storage", owner_console_storage_get_230);
-app.post("/api/owner-console/system-ai/builtin-checks", owner_console_system_ai_builtin_checks_post_231);
-app.get("/api/owner-console/users", owner_console_users_get_232);
-app.post("/api/owner-console/users/verify", owner_console_users_verify_post_233);
+app.get("/api/owner-console/activity", requirePlatformOwner, owner_console_activity_get_221);
+app.get("/api/owner-console/cancellation-feedback", requirePlatformOwner, owner_console_cancellation_feedback_get_222);
+app.get("/api/owner-console/companies", requirePlatformOwner, owner_console_companies_get_223);
+app.post("/api/owner-console/companies", requirePlatformOwner, owner_console_companies_post_224);
+app.get("/api/owner-console/companies/usage", requirePlatformOwner, owner_console_companies_usage_get_225);
+app.put("/api/owner-console/companies/:id/limits", requirePlatformOwner, owner_console_companies_id_limits_put_226);
+app.get("/api/owner-console/starter-pack", requirePlatformOwner, owner_console_starter_pack_get_227);
+app.post("/api/owner-console/starter-pack", requirePlatformOwner, owner_console_starter_pack_post_228);
+app.get("/api/owner-console/stats", requirePlatformOwner, owner_console_stats_get_229);
+app.get("/api/owner-console/storage", requirePlatformOwner, owner_console_storage_get_230);
+app.post("/api/owner-console/system-ai/builtin-checks", requirePlatformOwner, owner_console_system_ai_builtin_checks_post_231);
+app.get("/api/owner-console/users", requirePlatformOwner, owner_console_users_get_232);
+app.post("/api/owner-console/users/verify", requirePlatformOwner, owner_console_users_verify_post_233);
 app.get("/api/recipes", recipes_get_234);
 app.post("/api/recipes", recipes_post_235);
 app.delete("/api/recipes/:id", recipes_id_delete_236);
