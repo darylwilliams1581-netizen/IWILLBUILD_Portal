@@ -998,7 +998,7 @@ async function runStartupMigrations() {
   // ── Seed platform_role = 'developer' for known platform developer emails ──────────
   const platformOwnerEmails = [
     'daryl.williams@energyq.com.au',
-    'daryl.williams1581@gmail.com',
+    'darylwilliams1581@gmail.com',
   ];
   for (const email of platformOwnerEmails) {
     try {

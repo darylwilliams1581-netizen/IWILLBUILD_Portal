@@ -25,7 +25,6 @@ import { getAuth } from '../../lib/auth/auth.js';
 // These always have platform developer access regardless of DB flag.
 export const PLATFORM_OWNER_EMAILS: ReadonlySet<string> = new Set([
   'daryl.williams@energyq.com.au',
-  'daryl.williams1581@gmail.com',
   'darylwilliams1581@gmail.com',
 ]);
 
