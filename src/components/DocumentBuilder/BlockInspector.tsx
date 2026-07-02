@@ -1,18 +1,21 @@
 /**
- * Smart Document Builder — Block Inspector (Right Panel)
+ * Studio Builder — Block Inspector (Right Panel)
  * ─────────────────────────────────────────────────────────────────────────────
  * Shows settings for the currently selected block. When nothing is selected,
  * shows document-level settings (page layout, theme).
+ * Each block has two tabs: Settings and Logic.
  */
 
 import { useState } from 'react';
-import { Settings, Palette, Layout, X, Plus, Trash2 } from 'lucide-react';
+import { Settings, Zap, X, Plus, Trash2 } from 'lucide-react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
+import LogicPanel from './LogicPanel';
 import type {
   DocumentBlock, HeadingBlock, TextBlock, RichTextBlock, DividerBlock,
   SpacerBlock, BannerBlock, SafetyBadgeRowBlock, TableBlock, ImageBlock,
   FieldBlock, SystemFieldBlock, SafetyBadgeType, BannerVariant,
+  InspectorTab,
 } from './types';
 
 const inp = 'w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors';
@@ -21,10 +24,10 @@ const lbl = 'block text-[10px] font-bold text-slate-400 uppercase tracking-wider
 
 export default function BlockInspector() {
   const {
-    blocks, selection, pageLayout, theme,
-    setPageLayout, setTheme, updateBlock, deselect,
-    templateName, setTemplateName, templateType, setTemplateType,
+    blocks, selection, deselect, logicRules,
   } = useDocumentStore();
+
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('settings');
 
   const selectedBlock = selection.blockId
     ? findBlock(blocks, selection.blockId)
@@ -34,20 +37,60 @@ export default function BlockInspector() {
     return <DocumentInspector />;
   }
 
+  // Count rules on this block for the badge
+  const ruleCount = logicRules.filter((r) => r.ownerBlockId === selectedBlock.id).length;
+
   return (
     <aside className="w-64 flex-shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <Settings size={13} className="text-slate-400" />
-          <span className="text-xs font-bold text-slate-600 capitalize">{selectedBlock.type.replace('_', ' ')} Settings</span>
-        </div>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+        <span className="text-xs font-bold text-slate-600 capitalize">
+          {selectedBlock.type.replace(/_/g, ' ')}
+        </span>
         <button onClick={deselect} className="text-slate-300 hover:text-slate-500 transition-colors">
           <X size={13} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4">
-        <BlockSpecificSettings block={selectedBlock} />
-        <CommonBlockSettings block={selectedBlock} />
+
+      {/* Tab bar: Settings | Logic */}
+      <div className="flex border-b border-slate-100 flex-shrink-0">
+        <button
+          onClick={() => setInspectorTab('settings')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold transition-colors border-b-2 ${
+            inspectorTab === 'settings'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Settings size={11} /> Settings
+        </button>
+        <button
+          onClick={() => setInspectorTab('logic')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold transition-colors border-b-2 ${
+            inspectorTab === 'logic'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Zap size={11} /> Logic
+          {ruleCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-primary text-white text-[9px] font-bold leading-none">
+              {ruleCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Panel body */}
+      <div className="flex-1 overflow-y-auto p-3">
+        {inspectorTab === 'settings' ? (
+          <div className="flex flex-col gap-4">
+            <BlockSpecificSettings block={selectedBlock} />
+            <CommonBlockSettings block={selectedBlock} />
+          </div>
+        ) : (
+          <LogicPanel blockId={selectedBlock.id} />
+        )}
       </div>
     </aside>
   );

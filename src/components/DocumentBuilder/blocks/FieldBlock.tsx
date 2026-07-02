@@ -3,13 +3,21 @@ import type { FieldBlock } from '../types';
 
 interface Props {
   block: FieldBlock;
+  /** Logic engine required override (fill mode) */
+  requiredOverride?: boolean;
+  /** Current fill value (fill mode) */
+  value?: string | string[] | boolean | undefined;
+  /** Called when the user changes the value (fill mode) */
+  onChange?: (value: string | string[] | boolean | undefined) => void;
 }
 
-export default function FieldBlockView({ block }: Props) {
+export default function FieldBlockView({ block, requiredOverride, value, onChange }: Props) {
+  const isRequired = requiredOverride !== undefined ? requiredOverride : block.required;
+  const strVal = value !== undefined ? String(value) : (block.defaultValue ?? '');
   const labelEl = (
     <label className="block text-xs font-semibold text-slate-700 mb-1">
       {block.label}
-      {block.required && <span className="text-red-500 ml-1">*</span>}
+      {isRequired && <span className="text-red-500 ml-1">*</span>}
     </label>
   );
 
@@ -24,7 +32,13 @@ export default function FieldBlockView({ block }: Props) {
       return (
         <div className="my-2">
           {labelEl}
-          <input type="text" placeholder={block.placeholder ?? ''} defaultValue={block.defaultValue ?? ''} className={inputClass} />
+          <input
+            type="text"
+            placeholder={block.placeholder ?? ''}
+            value={strVal}
+            onChange={(e) => onChange?.(e.target.value)}
+            className={inputClass}
+          />
           {helpEl}
         </div>
       );
@@ -33,7 +47,13 @@ export default function FieldBlockView({ block }: Props) {
       return (
         <div className="my-2">
           {labelEl}
-          <textarea rows={3} placeholder={block.placeholder ?? ''} defaultValue={block.defaultValue ?? ''} className={`${inputClass} resize-y`} />
+          <textarea
+            rows={3}
+            placeholder={block.placeholder ?? ''}
+            value={strVal}
+            onChange={(e) => onChange?.(e.target.value)}
+            className={`${inputClass} resize-y`}
+          />
           {helpEl}
         </div>
       );

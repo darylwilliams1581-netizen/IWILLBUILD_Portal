@@ -16,6 +16,8 @@ import type {
   DocumentTheme,
   BlockId,
   ColumnDef,
+  LogicRule,
+  LogicRuleValidation,
 } from './types';
 import { DEFAULT_PAGE_LAYOUT, DEFAULT_THEME } from './types';
 
@@ -33,6 +35,7 @@ function cloneBlocks(blocks: DocumentBlock[]): DocumentBlock[] {
 
 interface HistoryEntry {
   blocks: DocumentBlock[];
+  logicRules: LogicRule[];
 }
 
 const MAX_HISTORY = 50;
@@ -53,6 +56,9 @@ interface DocumentStore {
   mode: BuilderMode;
   isDirty: boolean;
   isSaving: boolean;
+
+  // ── Logic rules (flat index — source of truth for engine) ─────────────────
+  logicRules: LogicRule[];
 
   // ── Undo/redo ──────────────────────────────────────────────────────────────
   past: HistoryEntry[];
@@ -81,6 +87,15 @@ interface DocumentStore {
   moveBlock: (id: BlockId, direction: 'up' | 'down') => void;
   reorderBlocks: (newOrder: DocumentBlock[]) => void;
 
+  // ── Actions: logic rules ──────────────────────────────────────────────────
+  addLogicRule: (rule: LogicRule) => void;
+  updateLogicRule: (ruleId: string, patch: Partial<LogicRule>) => void;
+  removeLogicRule: (ruleId: string) => void;
+  /** Returns all rules whose ownerBlockId matches the given block id */
+  getRulesForBlock: (blockId: string) => LogicRule[];
+  /** Validate all rules — returns array of validation results for broken rules */
+  validateLogicRules: () => LogicRuleValidation[];
+
   // ── Actions: undo/redo ────────────────────────────────────────────────────
   undo: () => void;
   redo: () => void;
@@ -104,6 +119,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   pageLayout: DEFAULT_PAGE_LAYOUT,
   theme: DEFAULT_THEME,
   blocks: [],
+  logicRules: [],
   selection: { blockId: null },
   mode: 'edit',
   isDirty: false,
@@ -132,8 +148,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   // ── Block helpers (push history before mutation) ──────────────────────────
 
   _pushHistory() {
-    const { blocks, past } = get();
-    const newPast = [...past, { blocks: cloneBlocks(blocks) }];
+    const { blocks, logicRules, past } = get();
+    const newPast = [...past, { blocks: cloneBlocks(blocks), logicRules: JSON.parse(JSON.stringify(logicRules)) as LogicRule[] }];
     if (newPast.length > MAX_HISTORY) newPast.shift();
     set({ past: newPast, future: [] });
   },
@@ -210,6 +226,11 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     (get() as unknown as { _pushHistory: () => void })._pushHistory();
     set((s) => ({
       blocks: s.blocks.filter((b) => b.id !== id),
+      // Remove rules owned by this block AND rules that target this block
+      logicRules: s.logicRules.filter(
+        (r) => r.ownerBlockId !== id &&
+               !r.actions.some((a) => a.targetBlockId === id)
+      ),
       selection: s.selection.blockId === id ? { blockId: null } : s.selection,
       isDirty: true,
     }));
@@ -251,28 +272,85 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     set({ blocks: newOrder, isDirty: true });
   },
 
+  // ── Logic rules ───────────────────────────────────────────────────────────
+
+  addLogicRule: (rule) => {
+    (get() as unknown as { _pushHistory: () => void })._pushHistory();
+    set((s) => ({ logicRules: [...s.logicRules, rule], isDirty: true }));
+  },
+
+  updateLogicRule: (ruleId, patch) => {
+    (get() as unknown as { _pushHistory: () => void })._pushHistory();
+    set((s) => ({
+      logicRules: s.logicRules.map((r) => r.id === ruleId ? { ...r, ...patch } : r),
+      isDirty: true,
+    }));
+  },
+
+  removeLogicRule: (ruleId) => {
+    (get() as unknown as { _pushHistory: () => void })._pushHistory();
+    set((s) => ({
+      logicRules: s.logicRules.filter((r) => r.id !== ruleId),
+      isDirty: true,
+    }));
+  },
+
+  getRulesForBlock: (blockId) => {
+    return get().logicRules.filter((r) => r.ownerBlockId === blockId);
+  },
+
+  validateLogicRules: () => {
+    const { logicRules, blocks } = get();
+    const allBlockIds = new Set<string>();
+    const collectIds = (bs: DocumentBlock[]) => {
+      bs.forEach((b) => {
+        allBlockIds.add(b.id);
+        if (b.type === 'columns') b.columns.forEach((col) => collectIds(col.blocks));
+      });
+    };
+    collectIds(blocks);
+
+    return logicRules.map((rule): import('./types').LogicRuleValidation => {
+      const errors: string[] = [];
+      rule.conditions.forEach((cond, i) => {
+        if (cond.source === 'field' && cond.fieldId && !allBlockIds.has(cond.fieldId)) {
+          errors.push(`Condition ${i + 1}: referenced field "${cond.fieldLabel || cond.fieldId}" no longer exists`);
+        }
+      });
+      rule.actions.forEach((action, i) => {
+        const needsTarget = ['show','hide','require','unrequire','enable','disable','set_value','clear_value','require_signature','require_upload','insert_section'];
+        if (needsTarget.includes(action.action) && action.targetBlockId && !allBlockIds.has(action.targetBlockId)) {
+          errors.push(`Action ${i + 1}: target "${action.targetLabel || action.targetBlockId}" no longer exists`);
+        }
+      });
+      return { ruleId: rule.id, valid: errors.length === 0, errors };
+    }).filter((v) => !v.valid);
+  },
+
   // ── Undo/redo ─────────────────────────────────────────────────────────────
 
   undo: () => {
-    const { past, blocks, future } = get();
+    const { past, blocks, logicRules, future } = get();
     if (past.length === 0) return;
     const prev = past[past.length - 1];
     set({
       past: past.slice(0, -1),
       blocks: prev.blocks,
-      future: [{ blocks: cloneBlocks(blocks) }, ...future],
+      logicRules: prev.logicRules,
+      future: [{ blocks: cloneBlocks(blocks), logicRules: JSON.parse(JSON.stringify(logicRules)) as LogicRule[] }, ...future],
       isDirty: true,
     });
   },
 
   redo: () => {
-    const { future, blocks, past } = get();
+    const { future, blocks, logicRules, past } = get();
     if (future.length === 0) return;
     const next = future[0];
     set({
       future: future.slice(1),
       blocks: next.blocks,
-      past: [...past, { blocks: cloneBlocks(blocks) }],
+      logicRules: next.logicRules,
+      past: [...past, { blocks: cloneBlocks(blocks), logicRules: JSON.parse(JSON.stringify(logicRules)) as LogicRule[] }],
       isDirty: true,
     });
   },
@@ -290,6 +368,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       pageLayout: template.pageLayout ?? DEFAULT_PAGE_LAYOUT,
       theme: template.theme ?? DEFAULT_THEME,
       blocks: template.blocks ?? [],
+      logicRules: template.logicRules ?? [],
       selection: { blockId: null },
       mode: 'edit',
       isDirty: false,
@@ -306,6 +385,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       pageLayout: DEFAULT_PAGE_LAYOUT,
       theme: DEFAULT_THEME,
       blocks: [],
+      logicRules: [],
       selection: { blockId: null },
       mode: 'edit',
       isDirty: false,
@@ -325,6 +405,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       pageLayout: s.pageLayout,
       theme: s.theme,
       blocks: s.blocks,
+      logicRules: s.logicRules,
       systemFields: extractSystemFieldKeys(s.blocks),
       sourceAttachments: [],
       isActive: true,

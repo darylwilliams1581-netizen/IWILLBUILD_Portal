@@ -10,6 +10,176 @@
 
 export type BlockId = string;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONDITIONAL LOGIC
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every operator that can appear in a condition's left-hand comparison.
+ *
+ * String / text operators:   equals, not_equals, contains, not_contains,
+ *                             is_empty, is_not_empty, one_of, not_one_of
+ * Numeric operators:         greater_than, less_than, greater_than_or_equal,
+ *                             less_than_or_equal
+ * Date operators:            before_date, after_date
+ * Boolean shorthand:         is_true, is_false  (for yes/no, checkbox)
+ */
+export type LogicOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'contains'
+  | 'not_contains'
+  | 'is_empty'
+  | 'is_not_empty'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_than_or_equal'
+  | 'less_than_or_equal'
+  | 'before_date'
+  | 'after_date'
+  | 'one_of'
+  | 'not_one_of'
+  | 'is_true'
+  | 'is_false';
+
+/**
+ * Where the condition value comes from.
+ *
+ * - field        → a FieldBlock in this document (by block id)
+ * - system_field → a system field token key (e.g. "job.risk_rating")
+ * - static       → a hard-coded literal value (used for "always" rules)
+ */
+export type ConditionSource = 'field' | 'system_field' | 'static';
+
+/**
+ * A single condition clause.
+ * Multiple conditions in a rule are combined with `conditionMode` (AND / OR).
+ */
+export interface LogicCondition {
+  id: string;
+  /** Where the left-hand value comes from */
+  source: ConditionSource;
+  /**
+   * For source=field:        the FieldBlock.id
+   * For source=system_field: the system field key (e.g. "job.risk_rating")
+   * For source=static:       unused / empty
+   */
+  fieldId: string;
+  /** Human-readable label shown in the rule builder (auto-populated) */
+  fieldLabel: string;
+  operator: LogicOperator;
+  /**
+   * The right-hand comparison value.
+   * - string for text/date comparisons
+   * - string[] for one_of / not_one_of
+   * - boolean for is_true / is_false (value ignored — operator is self-contained)
+   * - undefined for is_empty / is_not_empty
+   */
+  value?: string | string[] | boolean;
+}
+
+/**
+ * All possible action types a rule can trigger.
+ */
+export type LogicActionType =
+  | 'show'               // make a block visible
+  | 'hide'               // hide a block
+  | 'require'            // mark a field required
+  | 'unrequire'          // mark a field not required
+  | 'enable'             // enable a disabled field
+  | 'disable'            // disable / lock a field
+  | 'set_value'          // set a field's value to a literal
+  | 'clear_value'        // clear a field's value
+  | 'show_banner'        // inject a warning/info banner
+  | 'require_approval'   // flag the document for approval before submission
+  | 'require_signature'  // mark a signature field required
+  | 'require_upload'     // mark a file upload field required
+  | 'prevent_submission' // block form submission with a message
+  | 'insert_section';    // show a hidden section block
+
+/**
+ * A single action triggered when a rule's conditions are met.
+ */
+export interface LogicAction {
+  id: string;
+  action: LogicActionType;
+  /**
+   * The block or field this action targets.
+   * - For show/hide/insert_section: a BlockId
+   * - For require/unrequire/enable/disable/set_value/clear_value/
+   *   require_signature/require_upload: a FieldBlock.id
+   * - For show_banner/require_approval/prevent_submission: unused
+   */
+  targetBlockId?: string;
+  /** Human-readable label for the target (auto-populated) */
+  targetLabel?: string;
+  /** For set_value: the literal value to assign */
+  setValue?: string;
+  /** For show_banner: the banner text */
+  bannerText?: string;
+  /** For show_banner: the banner variant */
+  bannerVariant?: 'info' | 'warning' | 'danger' | 'success' | 'safety';
+  /** For prevent_submission: the message shown to the user */
+  preventMessage?: string;
+}
+
+/**
+ * A complete conditional logic rule.
+ *
+ * Evaluation:
+ *   if conditionMode === 'AND': ALL conditions must be true
+ *   if conditionMode === 'OR':  ANY condition must be true
+ *
+ * The rule is attached to a specific block (the "owner") but its actions
+ * can target any block in the document.
+ */
+export interface LogicRule {
+  id: string;
+  /** The block this rule is authored on (for UI grouping) */
+  ownerBlockId: string;
+  /** Human-readable description (auto-generated or user-edited) */
+  description?: string;
+  conditionMode: 'AND' | 'OR';
+  conditions: LogicCondition[];
+  actions: LogicAction[];
+  /** Disabled rules are stored but never evaluated */
+  enabled: boolean;
+}
+
+/**
+ * Validation result for a single rule.
+ * Broken rules have references to deleted blocks/fields.
+ */
+export interface LogicRuleValidation {
+  ruleId: string;
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * Runtime state produced by the logic engine for a single block.
+ * Consumed by BlockCanvas and BlockRenderer in fill/preview mode.
+ */
+export interface BlockLogicState {
+  visible: boolean;
+  required?: boolean;       // only meaningful for FieldBlocks
+  disabled?: boolean;       // only meaningful for FieldBlocks
+  forcedValue?: string;     // set_value action result
+  injectedBanners: Array<{  // show_banner action results
+    text: string;
+    variant: 'info' | 'warning' | 'danger' | 'success' | 'safety';
+  }>;
+}
+
+/**
+ * Document-level flags set by logic rules.
+ */
+export interface DocumentLogicFlags {
+  requiresApproval: boolean;
+  submissionBlocked: boolean;
+  submissionBlockedMessage?: string;
+}
+
 // ── Page Layout ───────────────────────────────────────────────────────────────
 
 export type PaperSize = 'A4' | 'Letter' | 'Legal';
@@ -72,6 +242,12 @@ export interface BlockBase {
   padding?: 'none' | 'sm' | 'md' | 'lg';
   /** Column span when inside a ColumnsBlock */
   colSpan?: number;
+  /**
+   * Conditional logic rules authored on this block.
+   * Rules are stored on the owning block for easy lookup but their actions
+   * can target any block in the document.
+   */
+  logic?: LogicRule[];
 }
 
 // ── Block Types ───────────────────────────────────────────────────────────────
@@ -337,19 +513,46 @@ export interface SourceAttachment {
 
 // ── Document Template (the full saved JSON) ───────────────────────────────────
 
+export type StudioDocumentType =
+  | 'user_form'
+  | 'policy'
+  | 'procedure'
+  | 'swms'
+  | 'safety_plan'
+  | 'toolbox_talk'
+  | 'prestart'
+  | 'inspection'
+  | 'register'
+  | 'checklist'
+  | 'completion_report'
+  | 'handover'
+  | 'quote_scope'
+  | 'custom'
+  // legacy aliases kept for backward compat
+  | 'document'
+  | 'pre_start';
+
 export interface DocumentTemplate {
   id?: number;
   companyId?: number;
   name: string;
-  templateType: 'document' | 'swms' | 'policy' | 'toolbox_talk' | 'pre_start' | 'inspection' | 'register' | 'completion_report';
+  templateType: StudioDocumentType;
   pageLayout: PageLayout;
   theme: DocumentTheme;
   blocks: DocumentBlock[];
   systemFields: string[]; // keys of system fields used
   sourceAttachments: SourceAttachment[];
+  /**
+   * Flat array of ALL logic rules in the document.
+   * Rules are also stored on their owning block (block.logic[]) for
+   * inspector access, but this top-level array is the authoritative
+   * serialised form and is what the logic engine reads.
+   */
+  logicRules?: LogicRule[];
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  sourceDocxName?: string;
 }
 
 // ── Builder UI State ──────────────────────────────────────────────────────────
@@ -360,3 +563,6 @@ export interface BuilderSelection {
 }
 
 export type BuilderMode = 'edit' | 'preview' | 'fill';
+
+/** Which tab is active in the BlockInspector right panel */
+export type InspectorTab = 'settings' | 'logic';
