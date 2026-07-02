@@ -727,7 +727,16 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
       </div>
 
       {/* ── MYOB AccountRight card ── */}
-      <div className="bg-white border border-border rounded-xl overflow-hidden">
+      <div className="relative rounded-xl overflow-hidden">
+        {/* UNDER DEVELOPMENT overlay */}
+        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-slate-900/40 rounded-xl">
+          <div className="rotate-[-12deg] border-4 border-white/80 px-8 py-2.5 bg-slate-900/60 shadow-xl">
+            <span className="text-white font-black text-2xl tracking-[0.25em] uppercase select-none drop-shadow">
+              Under Development
+            </span>
+          </div>
+        </div>
+      <div className="bg-white border border-border rounded-xl overflow-hidden opacity-60">
         <div className="flex items-center gap-4 px-5 py-4 border-b border-border">
           <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0">
             <span className="text-purple-600 font-black text-xs">MYOB</span>
@@ -775,12 +784,12 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
               </div>
               {isAdmin && (
                 <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
-                  <button onClick={() => void handleMyobConnect()} disabled={myobConnecting}
-                    className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
+                  <button onClick={() => void handleMyobConnect()} disabled={true}
+                    className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-not-allowed">
                     {myobConnecting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}Reconnect
                   </button>
-                  <button onClick={() => void handleMyobDisconnect()} disabled={myobDisconnecting}
-                    className="flex items-center gap-2 px-3 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50">
+                  <button onClick={() => void handleMyobDisconnect()} disabled={true}
+                    className="flex items-center gap-2 px-3 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 cursor-not-allowed">
                     {myobDisconnecting ? <Loader2 size={12} className="animate-spin" /> : <Unplug size={12} />}Disconnect
                   </button>
                 </div>
@@ -800,8 +809,8 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
               </ul>
               {isAdmin && myob?.platformReady ? (
                 <div className="flex items-center gap-3">
-                  <button onClick={() => void handleMyobConnect()} disabled={myobConnecting}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                  <button onClick={() => void handleMyobConnect()} disabled={true}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-40 cursor-not-allowed">
                     {myobConnecting ? <Loader2 size={14} className="animate-spin" /> : <span className="font-black text-white text-xs">M</span>}
                     Connect MYOB
                   </button>
@@ -822,6 +831,7 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
           )}
         </div>
       </div>
+      </div>{/* end MYOB under-development wrapper */}
 
       {/* ── Immutability notice ── */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex items-start gap-3">
