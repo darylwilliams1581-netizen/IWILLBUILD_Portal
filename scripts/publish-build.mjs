@@ -66,7 +66,7 @@ function run(cmd, args, env = {}) {
 // of how the publish pipeline invokes us.
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
-import { cp, mkdir } from 'node:fs/promises';
+import { cp, mkdir, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 // existsSync removed — accessSync used instead (follows symlinks correctly)
 
@@ -111,6 +111,11 @@ if (clientCode !== 0) {
 }
 
 console.log('> build:app:ssr');
+// Clean dist/bin/ before the SSR build so stale hashed chunks from previous
+// builds don't accumulate and inflate the deploy package.
+try {
+  await rm(join(root, 'dist', 'bin'), { recursive: true, force: true });
+} catch { /* ignore if absent */ }
 const ssrCode = await run(
   process.execPath,
   [
