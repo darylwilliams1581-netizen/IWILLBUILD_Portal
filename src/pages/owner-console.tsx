@@ -27,6 +27,7 @@ import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
 import ActivityLogTab from '@/components/owner-console/ActivityLogTab';
 import EmailLogTab from '@/components/owner-console/EmailLogTab';
+import PlatformEmailTab from '@/components/owner-console/PlatformEmailTab';
 import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
@@ -347,7 +348,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'company-health' | 'support-notes'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -606,6 +607,12 @@ export default function OwnerConsolePage() {
               Email Log
             </span>
           </Tab>
+          <Tab active={tab === 'platform-email'} onClick={() => { setTab('platform-email'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Mail size={12} />
+              Email Settings
+            </span>
+          </Tab>
           <Tab active={tab === 'company-health'} onClick={() => { setTab('company-health'); setSearchParams({}); }}>
             <span className="flex items-center gap-1.5">
               <BarChart2 size={12} />
@@ -788,6 +795,9 @@ export default function OwnerConsolePage() {
 
               {/* ── Email Delivery Log ── */}
               {tab === 'email-log' && <EmailLogTab />}
+
+              {/* ── Platform Email Settings ── */}
+              {tab === 'platform-email' && <PlatformEmailTab />}
 
               {/* ── Company Health ── */}
               {tab === 'company-health' && <CompanyHealthTab />}

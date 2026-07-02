@@ -70,6 +70,9 @@ import developer_audit_log_get_59 from "./api/developer/audit-log/GET";
 import developer_companies_id_archive_post_60 from "./api/developer/companies/[id]/archive/POST";
 import developer_company_health_get_61 from "./api/developer/company-health/GET";
 import developer_email_log_get_62 from "./api/developer/email-log/GET";
+import developer_email_settings_get from "./api/developer/email-settings/GET";
+import developer_email_settings_put from "./api/developer/email-settings/PUT";
+import developer_email_settings_test_post from "./api/developer/email-settings/test/POST";
 import developer_support_notes_get_63 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_64 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_65 from "./api/developer/support-notes/[id]/DELETE";
@@ -892,6 +895,11 @@ async function runStartupMigrations() {
       name: 'developer_audit_log',
       ddl: "CREATE TABLE IF NOT EXISTS developer_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, action_type VARCHAR(60) NOT NULL, performed_by_user_id VARCHAR(36) NOT NULL, performed_by_email VARCHAR(255) NOT NULL, target_user_id VARCHAR(36) NULL, target_email VARCHAR(255) NULL, target_company_id INT NULL, reason TEXT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_performed_by (performed_by_user_id), INDEX idx_target_user (target_user_id), INDEX idx_action (action_type), INDEX idx_created (created_at))",
     },
+    // ── Platform email settings (singleton key/value store) ───────────────────
+    {
+      name: 'platform_email_settings',
+      ddl: "CREATE TABLE IF NOT EXISTS platform_email_settings (id INT AUTO_INCREMENT PRIMARY KEY, setting_key VARCHAR(100) NOT NULL UNIQUE, setting_value TEXT NULL, updated_by_user_id VARCHAR(36) NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_key (setting_key))",
+    },
   ];
   for (const { name, ddl } of recoveryTables) {
     try {
@@ -907,6 +915,23 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
       }
     }
+  }
+
+  // Seed default platform email settings (idempotent — INSERT IGNORE)
+  try {
+    const defaultEmailSettings = [
+      { key: 'contact_notification_email', value: 'darylwilliams1581@gmail.com' },
+      { key: 'support_reply_to',           value: 'support@iwillbuild.com' },
+      { key: 'from_name',                  value: 'IWILLBUILD' },
+    ];
+    for (const { key, value } of defaultEmailSettings) {
+      await db.execute(sql`
+        INSERT IGNORE INTO platform_email_settings (setting_key, setting_value)
+        VALUES (${key}, ${value})
+      `);
+    }
+  } catch (e) {
+    console.warn('[startup-migration] platform_email_settings seed failed:', e);
   }
 
   // Ensure phone_number and verification_method columns on user table
@@ -1192,6 +1217,9 @@ app.get("/api/developer/audit-log", developer_audit_log_get_59);
 app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_60);
 app.get("/api/developer/company-health", developer_company_health_get_61);
 app.get("/api/developer/email-log", developer_email_log_get_62);
+app.get("/api/developer/email-settings", developer_email_settings_get);
+app.put("/api/developer/email-settings", developer_email_settings_put);
+app.post("/api/developer/email-settings/test", developer_email_settings_test_post);
 app.get("/api/developer/support-notes", developer_support_notes_get_63);
 app.post("/api/developer/support-notes", developer_support_notes_post_64);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_65);
