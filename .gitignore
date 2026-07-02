@@ -89,6 +89,9 @@ content/
 # Internal platform reports — not needed at runtime
 .airo/security-report.json
 
+# Temporary working directories
+tmp/
+
 # docs/ — authoring/reference files only; none are read at runtime.
 # The only runtime-served doc is public/docs/IWILLBUILD_SYSTEM_MAP.md (kept in public/).
 # Exclude all docs/ content from deploy package.
