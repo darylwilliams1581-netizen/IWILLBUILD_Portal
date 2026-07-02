@@ -83,7 +83,7 @@ export default async function handler(req: Request, res: Response) {
     // Send auto-reply to the enquirer so they know it landed
     await sendEmail({
       to: senderEmail,
-      replyTo: 'hello@iwillbuild.com',
+      replyTo: 'support@iwillbuild.com',
       fromName: 'IWILLBUILD',
       subject: "We've received your enquiry",
       html: `
@@ -104,13 +104,13 @@ export default async function handler(req: Request, res: Response) {
             </a>
             <hr style="border:none;border-top:1px solid #f1f5f9;margin:28px 0 16px;" />
             <p style="color:#94a3b8;font-size:12px;margin:0;">
-              IWILLBUILD &nbsp;·&nbsp; hello@iwillbuild.com &nbsp;·&nbsp; +61 498 350 566<br/>
+              IWILLBUILD &nbsp;·&nbsp; support@iwillbuild.com &nbsp;·&nbsp; +61 498 350 566<br/>
               ABN 89 791 350 823
             </p>
           </div>
         </div>
       `,
-      text: `Hi ${senderName},\n\nThanks for reaching out. We've received your message and will get back to you shortly.\n\nIWILLBUILD\nhello@iwillbuild.com\n+61 498 350 566`,
+      text: `Hi ${senderName},\n\nThanks for reaching out. We've received your message and will get back to you shortly.\n\nIWILLBUILD\nsupport@iwillbuild.com\n+61 498 350 566`,
     });
 
     return res.status(200).json({ ok: true });

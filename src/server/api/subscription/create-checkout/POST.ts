@@ -60,7 +60,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Block enterprise — should never reach here but guard anyway
     if (plan === 'enterprise') {
-      return res.status(400).json({ error: 'Enterprise plan requires a direct enquiry. Please contact hello@iwillbuild.com.' });
+      return res.status(400).json({ error: 'Enterprise plan requires a direct enquiry. Please contact support@iwillbuild.com.' });
     }
 
     if (!plan || !isCheckoutPlan(plan)) {

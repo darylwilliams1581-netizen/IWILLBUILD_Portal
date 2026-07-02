@@ -418,7 +418,7 @@ export default function BillingPage() {
 
   async function handleSubscribe(planId: PlanId) {
     if (planId === 'enterprise') {
-      window.location.href = 'mailto:hello@iwillbuild.com?subject=Enterprise Plan Enquiry';
+      window.location.href = 'mailto:support@iwillbuild.com?subject=Enterprise Plan Enquiry';
       return;
     }
     setCheckoutLoading(planId);
@@ -983,7 +983,7 @@ export default function BillingPage() {
               </div>
               <p className="text-sm text-slate-600">
                 Your subscription is active. To change or cancel your plan, contact your account administrator or email{' '}
-                <a href="mailto:hello@iwillbuild.com" className="text-primary hover:underline">hello@iwillbuild.com</a>.
+                <a href="mailto:support@iwillbuild.com" className="text-primary hover:underline">support@iwillbuild.com</a>.
               </p>
             </div>
           )}

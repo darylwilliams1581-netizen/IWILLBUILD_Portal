@@ -120,7 +120,7 @@ const plans = [
     ],
     cta: 'Contact Us',
     ctaStyle: 'ghost',
-    href: 'mailto:hello@iwillbuild.com',
+    href: 'mailto:support@iwillbuild.com',
   },
 ];
 
@@ -801,8 +801,8 @@ export default function HomePage() {
               </p>
               <div style={{ fontSize: 13, lineHeight: 2 }}>
                 <div>
-                  <a href="mailto:hello@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
-                    hello@iwillbuild.com
+                  <a href="mailto:support@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
+                    support@iwillbuild.com
                   </a>
                 </div>
                 <div>

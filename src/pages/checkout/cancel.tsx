@@ -85,7 +85,7 @@ export default function CheckoutCancel() {
 
         <p className="mt-6 text-sm text-gray-500">
           {t('stripe.need_help_text')}{' '}
-          <a href="mailto:support@example.com" className="text-blue-600 hover:underline">
+          <a href="mailto:support@iwillbuild.com" className="text-blue-600 hover:underline">
             {t('stripe.contact_support_link')}
           </a>
         </p>

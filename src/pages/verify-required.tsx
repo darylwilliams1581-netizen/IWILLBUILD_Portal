@@ -397,7 +397,7 @@ export default function VerifyRequiredPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail size={12} />
-                    <a href="mailto:support@iwillbuild.com.au" className="text-primary hover:text-orange-400 transition-colors">
+                    <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-orange-400 transition-colors">
                       Contact IWILLBUILD support
                     </a>
                   </div>
