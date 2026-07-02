@@ -45,5 +45,18 @@
     "userModified": true,
     "createdAt": "2026-06-30T13:10:20.115Z",
     "lastUpdated": "2026-06-30T13:10:20.115Z"
+  },
+  "debug/publish-failure-screenshot": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-publish-failure-screenshot-3dc4be94.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-02T22:23:42.315Z",
+    "lastUpdated": "2026-07-02T22:23:42.315Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-publish-failure-screenshot-3dc4be94.jpg": "f38wenbvln_1783011343405_file_4sCoYv2esK.jpg"
+    },
+    "uploadContentHash": "6a95c8cac48c25741aa3f6211f868eb20cd551c40817926888cc991e18f6d33c"
   }
 }
