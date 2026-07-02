@@ -97,6 +97,11 @@ export function parseMultipartForm(
       limitError: null,
     };
 
+    // Safety net: if busboy stalls for any reason, reject after 30 s
+    const timeout = setTimeout(() => {
+      reject(new Error('Upload timed out — request took too long to parse.'));
+    }, 30_000);
+
     let bb: ReturnType<typeof Busboy>;
     try {
       bb = Busboy({
@@ -104,6 +109,7 @@ export function parseMultipartForm(
         limits: { fileSize: maxFileSize, files: maxFiles },
       });
     } catch (err) {
+      clearTimeout(timeout);
       return reject(err);
     }
 
@@ -113,13 +119,20 @@ export function parseMultipartForm(
       let truncated = false;
 
       stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-      stream.on('limit', () => { truncated = true; });
+
+      // IMPORTANT: must resume() the stream on 'limit' so busboy can continue
+      // processing the rest of the request and eventually emit 'finish'.
+      // Without this the promise never resolves and the proxy returns a
+      // plain-text "Service unavailable" timeout.
+      stream.on('limit', () => {
+        truncated = true;
+        result.limitError = `File too large — maximum is ${formatBytes(maxFileSize)}.`;
+        // Drain the stream so busboy can finish
+        stream.resume();
+      });
+
       stream.on('end', () => {
-        if (truncated) {
-          result.limitError = `File too large — maximum is ${formatBytes(maxFileSize)}.`;
-          // drain remaining data
-          return;
-        }
+        if (truncated) return; // limitError already set above
         const buffer = Buffer.concat(chunks);
         const parsed: ParsedFile = {
           fieldname,
@@ -137,8 +150,8 @@ export function parseMultipartForm(
       result.fields[name] = value;
     });
 
-    bb.on('finish', () => resolve(result));
-    bb.on('error', (err: Error) => reject(err));
+    bb.on('finish', () => { clearTimeout(timeout); resolve(result); });
+    bb.on('error', (err: Error) => { clearTimeout(timeout); reject(err); });
 
     req.pipe(bb);
   });

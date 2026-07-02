@@ -30,6 +30,7 @@ export default async function handler(req: Request, res: Response) {
   try {
     parsed = await parseMultipartForm(req, { maxFileSize: MAX_FILE_SIZE_BYTES, maxFiles: 1 });
   } catch (err) {
+    console.error('POST /api/files — multipart parse error:', err);
     return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
   }
 
