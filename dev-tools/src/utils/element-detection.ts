@@ -326,7 +326,7 @@ export function detectImage(element: HTMLElement): {
   if (bg && bg !== "none") {
     const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
     if (match?.[1])
-      return { isImage: true, imageUrl: match[1], imageElement: element, type: "background" };
+      return { isImage: true, imageUrl: match[1], imageElement: element, type: "background", isVideo: false };
   }
 
   const siblings = element.parentElement ? Array.from(element.parentElement.children) : [];
@@ -387,6 +387,33 @@ export function detectImage(element: HTMLElement): {
   }
 
   return none;
+}
+
+/** Payload identifying a conformable array target — shared by resolveConformTarget,
+ *  CONFORM_REQUEST bus data, and the in-flight PendingConform state. */
+export interface ConformTarget {
+  page: string;
+  arrayName: string;
+  /** Declarator loc-id (`L<line>C<col>`) from the source-mapper marker, when present.
+   *  Threads through to the id-addressed binding-precise heal; absent → S1 batch. */
+  conformId?: string;
+}
+
+/**
+ * Resolve the nearest conformable-array ancestor for `element`. Returns the
+ * page file path and array name needed to fire CONFORM_REQUEST, or null when
+ * the element is not inside a conformable array wrapper. When the source-mapper
+ * stamped a `data-dev-conformable-id`, it is carried as `conformId` for the
+ * id-addressed heal; older markup without it falls back to the S1 batch path.
+ */
+export function resolveConformTarget(element: HTMLElement): ConformTarget | null {
+  const host = element.closest("[data-dev-conformable-array]") as HTMLElement | null;
+  if (!host) return null;
+  const arrayName = host.getAttribute("data-dev-conformable-array");
+  const page = host.getAttribute("data-dev-conformable-page");
+  if (!arrayName || !page) return null;
+  const conformId = host.getAttribute("data-dev-conformable-id");
+  return conformId ? { page, arrayName, conformId } : { page, arrayName };
 }
 
 /** Check if a URL is a media slot and extract the slot path */
