@@ -169,7 +169,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
-    minify: false,
+    minify: 'esbuild',
     ssr: "src/server/entry.ts",
     rollupOptions: {
       treeshake: {
