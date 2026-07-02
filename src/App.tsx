@@ -14,7 +14,6 @@ import Spinner from './components/Spinner';
 import { routes } from './routes';
 import DazzaWidget from '@/components/DazzaWidget';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
-import HammerClickEffect from '@/components/HammerClickEffect';
 
 const CookieBanner = lazy(() =>
   import('@/components/CookieBanner').catch((error) => {
@@ -80,8 +79,6 @@ export default function App() {
           <CookieBanner />
         </Suspense>
       </CookieBannerErrorBoundary>
-      {/* Hammer cursor click animation — mounts once, no-ops when disabled */}
-      <HammerClickEffect />
     </>
   );
 }

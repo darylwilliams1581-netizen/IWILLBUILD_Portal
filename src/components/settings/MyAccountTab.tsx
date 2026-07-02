@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Save, Mail, Phone, Loader2, CheckCircle2, AlertCircle,
-  Lock, Eye, EyeOff, KeyRound, Smartphone, BadgeCheck, RefreshCw, Hammer,
+  Lock, Eye, EyeOff, KeyRound, Smartphone, BadgeCheck, RefreshCw,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
-import { useHammerCursor } from '@/lib/useHammerCursor';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -339,61 +338,6 @@ export default function MyAccountTab() {
       </div>
 
       <PhoneVerificationSection />
-
-      <PreferencesSection />
-    </div>
-  );
-}
-
-// ── Preferences section ───────────────────────────────────────────────────────
-
-function PreferencesSection() {
-  const { enabled, setEnabled } = useHammerCursor();
-
-  return (
-    <div>
-      <h2 className="font-bold text-base text-slate-800 mb-4 flex items-center gap-2">
-        <Hammer size={16} className="text-slate-400" />
-        Preferences
-      </h2>
-      <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
-        {/* Hammer cursor toggle */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              <Hammer size={14} className="text-primary flex-shrink-0" />
-              <p className="text-sm font-semibold text-slate-800">Hammer cursor</p>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Replaces the mouse cursor with a hammer and plays a small swing animation on click.
-              Purely cosmetic — does not affect any portal functionality.
-              Automatically disabled when your system has reduced-motion enabled.
-            </p>
-          </div>
-          {/* Toggle switch */}
-          <button
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled(!enabled)}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 ${
-              enabled ? 'bg-primary' : 'bg-slate-200'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                enabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {enabled && (
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-700 font-medium">
-            <Hammer size={12} className="flex-shrink-0" />
-            Hammer cursor is active. Click anywhere in the portal to see it in action.
-          </div>
-        )}
-      </div>
     </div>
   );
 }
