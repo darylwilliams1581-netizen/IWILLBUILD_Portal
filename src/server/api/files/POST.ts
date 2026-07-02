@@ -77,12 +77,18 @@ export default async function handler(req: Request, res: Response) {
       : { buffer: file.buffer, mimeType: file.mimetype };
 
     // ── Save via storage service ──────────────────────────────────────────────
-    const saved = await saveFile({
-      buffer,
-      originalName: file.originalname,
-      mimeType,
-      bucket: BUCKET_COMPANY_FILES,
-    });
+    let saved;
+    try {
+      saved = await saveFile({
+        buffer,
+        originalName: file.originalname,
+        mimeType,
+        bucket: BUCKET_COMPANY_FILES,
+      });
+    } catch (storageErr) {
+      console.error('POST /api/files storage error:', storageErr);
+      return res.status(503).json({ error: 'File storage is temporarily unavailable. Please try again in a minute.' });
+    }
 
     // ── Parse request body ────────────────────────────────────────────────────
     const { jobId, fleetAssetId, fileCategory, label, notes } = parsed.fields as {
