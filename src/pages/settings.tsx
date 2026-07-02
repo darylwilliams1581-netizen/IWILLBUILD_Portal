@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Settings,
@@ -58,7 +59,10 @@ const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-s
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('account');
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const validTab = tabs.find((t) => t.id === tabFromUrl)?.id ?? 'account';
+  const [activeTab, setActiveTab] = useState(validTab);
   const { me, isAdmin } = usePermissions();
   const isOwner = me?.profile?.role === 'owner';
 
