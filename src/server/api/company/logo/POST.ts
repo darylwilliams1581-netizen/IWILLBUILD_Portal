@@ -7,11 +7,11 @@
 import type { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs/promises';
-import multer from 'multer';
 import { db } from '../../../db/client.js';
 import { profiles } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { parseMultipartForm } from '../../../lib/file-upload.js';
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/png':     'png',
@@ -21,21 +21,14 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/svg+xml': 'svg',
 };
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-}).single('logo');
-
 export default async function handler(req: Request, res: Response) {
-  // Run multer first
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    upload(req, res, (err: unknown) => { if (err) multerError = err; resolve(); });
-  });
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : 'Upload error';
-    return res.status(400).json({ error: msg });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: 5 * 1024 * 1024, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
   }
+  if (parsed.limitError) return res.status(400).json({ error: parsed.limitError });
 
   try {
     const auth = getAuth();
@@ -51,7 +44,7 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!profile?.companyId) return res.status(404).json({ error: 'No company found' });
 
-    const file = (req as Request & { file?: Express.Multer.File }).file;
+    const file = parsed.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
     const ext = ALLOWED_TYPES[file.mimetype];

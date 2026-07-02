@@ -6,7 +6,7 @@ import { getAuth } from '../../../../../../../lib/auth/auth.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import multer from 'multer';
+import { parseMultipartForm } from '../../../../../../lib/file-upload.js';
 
 // ── Jimp lazy-loaded ──────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,27 +23,25 @@ async function getJimp() {
   return { Jimp: _Jimp, JimpMime: _JimpMime };
 }
 
-// ── multer: memory storage, 10 MB, images only ───────────────────────────────
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
-  },
-});
-
-function runMiddleware(req: Request, res: Response, fn: Function): Promise<void> {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (err: unknown) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-}
+const THUMB_MAX = 10 * 1024 * 1024;
+const ALLOWED_THUMB_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default async function handler(req: Request, res: Response) {
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: THUMB_MAX, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
+  }
+  if (parsed.limitError) return res.status(400).json({ error: parsed.limitError });
+
+  const file = parsed.file;
+  if (!file) return res.status(400).json({ error: 'No image file provided' });
+
+  if (!ALLOWED_THUMB_MIMES.includes(file.mimetype)) {
+    return res.status(400).json({ error: 'Only JPEG, PNG, and WebP images are allowed' });
+  }
+
   try {
     const auth = getAuth();
     const headers = new Headers();
@@ -60,7 +58,6 @@ export default async function handler(req: Request, res: Response) {
     const fieldId = parseInt(String(req.params.fieldId), 10);
     if (isNaN(templateId) || isNaN(fieldId)) return res.status(400).json({ error: 'Invalid ID' });
 
-    // Verify template ownership
     const template = await db.query.formTemplates.findFirst({
       where: and(eq(formTemplates.id, templateId), eq(formTemplates.companyId, profile.companyId)),
     });
@@ -75,12 +72,6 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!field) return res.status(404).json({ error: 'Field not found' });
 
-    // Parse multipart
-    await runMiddleware(req, res, upload.single('image'));
-
-    const file = (req as Request & { file?: Express.Multer.File }).file;
-    if (!file) return res.status(400).json({ error: 'No image file provided' });
-
     // Resize to max 800px wide, JPEG 85%
     const { Jimp, JimpMime } = await getJimp();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -88,11 +79,9 @@ export default async function handler(req: Request, res: Response) {
     if (image.width > 800) {
       image.resize({ w: 800 });
     }
-    // JimpMime.jpeg = 'image/jpeg' (lowercase key in Jimp v1)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const outputBuffer: Buffer = await image.getBuffer(JimpMime.jpeg);
 
-    // Save to persistent storage
     const uuid = randomUUID();
     const filename = `${uuid}.jpg`;
     const dir = `/shared-storage/public/assets/form-thumbnails/company-${profile.companyId}`;
@@ -101,7 +90,6 @@ export default async function handler(req: Request, res: Response) {
 
     const url = `/airo-assets/uploads/form-thumbnails/company-${profile.companyId}/${filename}`;
 
-    // Persist URL into settingsJson
     let currentSettings: Record<string, unknown> = {};
     if (field.settingsJson) {
       try { currentSettings = JSON.parse(field.settingsJson) as Record<string, unknown>; } catch { /* ignore */ }

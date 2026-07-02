@@ -1,10 +1,5 @@
-/**
- * POST /api/estimates/:id/import-csv
- * Appends CSV rows to the bottom of an existing estimate.
- * Estimate must not be Approved/locked.
- */
 import type { Request, Response } from 'express';
-import multer from 'multer';
+import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { db } from '../../../../db/client.js';
 import { estimates, estimateLines, profiles } from '../../../../db/schema.js';
 import { eq, and, max, count } from 'drizzle-orm';
@@ -12,27 +7,24 @@ import { getAuth } from '../../../../../lib/auth/auth.js';
 import { parseEstimateCsv } from '../../../../lib/csv-utils.js';
 import { LIMITS } from '../../../../lib/limits.js';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
-  fileFilter: (_req, file, cb) => {
-    const ok = file.originalname.toLowerCase().endsWith('.csv') || file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel';
-    cb(ok ? null : new Error('CSV_ONLY'), ok);
-  },
-}).single('file');
+const CSV_MAX = 2 * 1024 * 1024;
 
 export default async function handler(req: Request, res: Response) {
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    upload(req, res, (err: unknown) => { if (err) multerError = err; resolve(); });
-  });
-
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    if (msg === 'CSV_ONLY') return res.status(400).json({ error: 'Only .csv files are accepted.' });
-    if (msg.includes('File too large')) return res.status(400).json({ error: 'CSV file must be under 2 MB.' });
-    return res.status(400).json({ error: msg });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: CSV_MAX, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
   }
+  if (parsed.limitError) return res.status(400).json({ error: 'CSV file must be under 2 MB.' });
+
+  const file = parsed.file;
+  if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const isCsv = file.originalname.toLowerCase().endsWith('.csv')
+    || file.mimetype === 'text/csv'
+    || file.mimetype === 'application/vnd.ms-excel';
+  if (!isCsv) return res.status(400).json({ error: 'Only .csv files are accepted.' });
 
   try {
     const auth = getAuth();
@@ -57,9 +49,6 @@ export default async function handler(req: Request, res: Response) {
     if (estimate.status === 'Approved') {
       return res.status(403).json({ error: 'This estimate is Approved and locked. Unlock it before importing.' });
     }
-
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
     const raw = file.buffer.toString('utf-8');
     const { valid, errors } = parseEstimateCsv(raw);

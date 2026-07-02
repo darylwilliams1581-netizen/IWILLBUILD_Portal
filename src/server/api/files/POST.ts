@@ -9,7 +9,7 @@ import { db } from '../../db/client.js';
 import { companyFiles, profiles } from '../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
-import multer from 'multer';
+import { parseMultipartForm } from '../../lib/file-upload.js';
 import {
   validateUpload,
   saveFile,
@@ -22,27 +22,19 @@ import {
 import { getPlanLimits, getCompanyPlan } from '../../lib/plan-limits.js';
 import type { ResultSetHeader } from 'mysql2';
 
-// ── Multer: memory storage, 25 MB limit, 1 file ───────────────────────────────
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
-}).single('file');
-
 const FILE_CATEGORIES = ['Job','Fleet','Company','User','Template','Report','Other'] as const;
 
 export default async function handler(req: Request, res: Response) {
   // Parse multipart
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    upload(req, res, (err: unknown) => { if (err) multerError = err; resolve(); });
-  });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: MAX_FILE_SIZE_BYTES, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
+  }
 
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    if (msg.includes('File too large') || msg.includes('LIMIT_FILE_SIZE')) {
-      return res.status(400).json({ error: `File exceeds the ${Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024))} MB limit.` });
-    }
-    return res.status(400).json({ error: msg });
+  if (parsed.limitError) {
+    return res.status(400).json({ error: `File exceeds the ${Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024))} MB limit.` });
   }
 
   try {
@@ -57,7 +49,7 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const file = req.file;
+    const file = parsed.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
     // ── Centralised validation ────────────────────────────────────────────────
@@ -93,7 +85,7 @@ export default async function handler(req: Request, res: Response) {
     });
 
     // ── Parse request body ────────────────────────────────────────────────────
-    const { jobId, fleetAssetId, fileCategory, label, notes } = req.body as {
+    const { jobId, fleetAssetId, fileCategory, label, notes } = parsed.fields as {
       jobId?: string;
       fleetAssetId?: string;
       fileCategory?: string;

@@ -4,7 +4,7 @@ import { jobPhotos, profiles, jobs } from '../../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../../lib/auth/auth.js';
 import { randomUUID } from 'node:crypto';
-import multer from 'multer';
+import { parseMultipartForm } from '../../../../../../lib/file-upload.js';
 import {
   compressImageIfNeeded,
   saveFile,
@@ -14,34 +14,20 @@ import {
 
 const PHOTO_BUCKET = 'job-photos';
 
-// ── Multer (memory storage) ───────────────────────────────────────────────────
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = Object.keys(ALLOWED_IMAGE_MIMES);
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error(`UNSUPPORTED_TYPE:${file.originalname}`));
-  },
-}).single('photo');
-
 export default async function handler(req: Request, res: Response) {
-  // Run multer
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    upload(req, res, (err: unknown) => {
-      if (err) multerError = err;
-      resolve();
-    });
-  });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: 20 * 1024 * 1024, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
+  }
+  if (parsed.limitError) return res.status(400).json({ error: parsed.limitError });
 
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    if (msg.startsWith('UNSUPPORTED_TYPE:')) {
-      const name = msg.replace('UNSUPPORTED_TYPE:', '');
-      return res.status(400).json({ error: `"${name}" is not a supported type. Use JPEG, PNG, or WebP.` });
-    }
-    return res.status(400).json({ error: msg });
+  const file = parsed.file;
+  if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+  if (!ALLOWED_IMAGE_MIMES[file.mimetype]) {
+    return res.status(400).json({ error: `"${file.originalname}" is not a supported type. Use JPEG, PNG, or WebP.` });
   }
 
   try {
@@ -76,10 +62,6 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!photo) return res.status(404).json({ error: 'Photo not found' });
 
-    const file = (req as unknown as { file?: Express.Multer.File }).file;
-    if (!file) return res.status(400).json({ error: 'No file uploaded' });
-
-    // Compress via storage service
     const { buffer: compressed, mimeType: outMime } = await compressImageIfNeeded(
       file.buffer,
       file.mimetype,
@@ -88,7 +70,6 @@ export default async function handler(req: Request, res: Response) {
     const ext = outMime === 'image/png' ? 'png' : 'jpg';
     const storageKey = `${randomUUID()}.${ext}`;
 
-    // Save new file via storage service
     const result = await saveFile({
       buffer: compressed,
       originalName: file.originalname,
@@ -97,10 +78,8 @@ export default async function handler(req: Request, res: Response) {
       storageKey,
     });
 
-    // Delete old file (best-effort)
     await deleteFile(photo.filename, PHOTO_BUCKET);
 
-    // Update DB
     await db.update(jobPhotos).set({
       filename: result.storageKey,
       originalName: file.originalname,

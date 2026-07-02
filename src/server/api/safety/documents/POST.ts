@@ -7,24 +7,19 @@ import { eq } from 'drizzle-orm';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { fileUploadMiddleware, extForMime, isHeic, isBlockedExtension, ALLOWED_MIMES } from '../../../lib/file-upload.js';
+import { parseMultipartForm, extForMime, isHeic, isBlockedExtension, ALLOWED_MIMES, MAX_FILE_SIZE } from '../../../lib/file-upload.js';
 import type { ResultSetHeader } from 'mysql2';
 
 const SAFETY_DIR = '/shared-storage/public/assets/safety-docs';
 
 export default async function handler(req: Request, res: Response) {
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    fileUploadMiddleware(req, res, (err: unknown) => {
-      if (err) multerError = err;
-      resolve();
-    });
-  });
-
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    return res.status(400).json({ error: msg });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: MAX_FILE_SIZE, maxFiles: 1 });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Upload error' });
   }
+  if (parsed.limitError) return res.status(400).json({ error: parsed.limitError });
 
   try {
     const auth = getAuth();
@@ -38,14 +33,14 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const file = req.file;
+    const file = parsed.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
     if (isHeic(file.originalname)) return res.status(400).json({ error: 'HEIC/HEIF not supported.' });
     if (isBlockedExtension(file.originalname)) return res.status(400).json({ error: 'File type not allowed.' });
     if (!ALLOWED_MIMES[file.mimetype]) return res.status(400).json({ error: 'File type not supported.' });
 
-    const { title, docType, reviewDate, notes } = req.body as Record<string, string>;
+    const { title, docType, reviewDate, notes } = parsed.fields as Record<string, string>;
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
 
     const ext = extForMime(file.mimetype);

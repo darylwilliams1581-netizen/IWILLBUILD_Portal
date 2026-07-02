@@ -5,7 +5,7 @@ import { eq, and, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../../lib/plan-limits.js';
 import { randomUUID } from 'node:crypto';
-import multer from 'multer';
+import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import {
   validateBatch,
   compressImageIfNeeded,
@@ -15,47 +15,25 @@ import {
 
 const PHOTO_BUCKET = 'job-photos';
 const MAX_PHOTOS_PER_JOB = 200;
-
-// ── multer: memory storage, 20 MB per file, max 10 files ─────────────────────
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024, files: 10 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = Object.keys(ALLOWED_IMAGE_MIMES);
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`UNSUPPORTED_TYPE:${file.originalname}`));
-    }
-  },
-}).array('photos', 10);
+const PHOTO_MAX_BYTES = 20 * 1024 * 1024;
 
 export default async function handler(req: Request, res: Response) {
-  // Run multer
-  let multerError: unknown = null;
-  await new Promise<void>((resolve) => {
-    upload(req, res, (err: unknown) => {
-      if (err) multerError = err;
-      resolve();
-    });
-  });
+  let parsed;
+  try {
+    parsed = await parseMultipartForm(req, { maxFileSize: PHOTO_MAX_BYTES, maxFiles: 10 });
+  } catch (err) {
+    return res.status(400).json({ code: 'upload_error', error: err instanceof Error ? err.message : 'Upload error' });
+  }
+  if (parsed.limitError) return res.status(400).json({ code: 'upload_error', error: parsed.limitError });
 
-  if (multerError) {
-    const msg = multerError instanceof Error ? multerError.message : String(multerError);
-    if (msg.startsWith('UNSUPPORTED_TYPE:')) {
-      const name = msg.replace('UNSUPPORTED_TYPE:', '');
+  // Validate image types
+  for (const f of parsed.files) {
+    if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
       return res.status(400).json({
         code: 'invalid_file_type',
-        error: `"${name}" is not a supported image type. Please upload JPEG, PNG, or WebP. HEIC/HEIF files must be converted first.`,
+        error: `"${f.originalname}" is not a supported image type. Please upload JPEG, PNG, or WebP. HEIC/HEIF files must be converted first.`,
       });
     }
-    if (msg.includes('Too many files') || msg.includes('too many files')) {
-      return res.status(400).json({
-        code: 'too_many_files',
-        error: `Maximum 10 photos per upload batch. Please select fewer files.`,
-      });
-    }
-    return res.status(400).json({ code: 'upload_error', error: msg });
   }
 
   try {
@@ -80,7 +58,7 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const files = req.files as Express.Multer.File[] | undefined;
+    const files = parsed.files;
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
@@ -128,14 +106,13 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ code: planCheck.code, error: planCheck.message });
     }
 
-    const label = typeof req.body?.label === 'string' ? req.body.label.trim() : null;
+    const label = typeof parsed.fields?.label === 'string' ? parsed.fields.label.trim() : null;
     const uploaderName = session.user.name ?? session.user.email ?? null;
     const uploaderUserId = session.user.id ?? null;
 
     const saved: Array<{ id: number; filename: string; url: string }> = [];
 
     for (const file of files) {
-      // Compress via storage service
       const { buffer: compressed, mimeType: outMime } = await compressImageIfNeeded(
         file.buffer,
         file.mimetype,
@@ -144,7 +121,6 @@ export default async function handler(req: Request, res: Response) {
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
       const storageKey = `${randomUUID()}.${ext}`;
 
-      // Save via storage service
       const result = await saveFile({
         buffer: compressed,
         originalName: file.originalname,
