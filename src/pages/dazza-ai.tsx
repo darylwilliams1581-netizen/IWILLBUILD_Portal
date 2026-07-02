@@ -6,7 +6,7 @@ import {
   RefreshCw, Calculator, Wrench, AlertTriangle,
   CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
-  Brain,
+  Brain, Bug, Copy, Check, X,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -411,7 +411,8 @@ I can help summarise jobs, check fleet issues, review forms, look at estimates, 
 What do you need today?`;
 
 export default function DazzaAIPage() {
-  const { me, isAdmin } = usePermissions();
+  const { me, isAdmin, platformRole } = usePermissions();
+  const isDeveloper = platformRole === 'developer';
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: WELCOME_MSG, timestamp: new Date() },
   ]);
@@ -427,6 +428,21 @@ export default function DazzaAIPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'brain'>('chat');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── Bug Fix Mode (Developer only) ─────────────────────────────────────────
+  type BugFixStep = 'idle' | 'page' | 'clicked' | 'happened' | 'expected' | 'role' | 'error' | 'done';
+  interface BugReport {
+    page: string;
+    clicked: string;
+    happened: string;
+    expected: string;
+    role: string;
+    error: string;
+  }
+  const [bugStep, setBugStep] = useState<BugFixStep>('idle');
+  const [bugReport, setBugReport] = useState<Partial<BugReport>>({});
+  const [bugInput, setBugInput] = useState('');
+  const [bugCopied, setBugCopied] = useState(false);
 
   // Load Dazza context summary on mount (for right panel display only)
   const loadContext = useCallback(async () => {
@@ -590,6 +606,114 @@ export default function DazzaAIPage() {
     URL.revokeObjectURL(url);
   }
 
+  // ── Bug Fix Mode helpers ───────────────────────────────────────────────────
+
+  function startBugFix() {
+    setBugStep('page');
+    setBugReport({});
+    setBugInput('');
+  }
+
+  function cancelBugFix() {
+    setBugStep('idle');
+    setBugReport({});
+    setBugInput('');
+  }
+
+  const BUG_STEP_PROMPTS: Record<string, string> = {
+    page:     '1 of 6 — Which page or module did this happen on? (e.g. Fleet, Job Detail, Settings → Team)',
+    clicked:  '2 of 6 — What did you click or do? (e.g. "Clicked Save on the fleet asset form")',
+    happened: '3 of 6 — What actually happened? (e.g. "Page went blank", "Got a 401 error", "Nothing happened")',
+    expected: '4 of 6 — What should have happened?',
+    role:     '5 of 6 — What user role and company was this on? (e.g. "Owner, ACME Constructions")',
+    error:    '6 of 6 — Any error message, console output, or screenshot description? (type "none" to skip)',
+  };
+
+  const BUG_STEP_ORDER: BugFixStep[] = ['page', 'clicked', 'happened', 'expected', 'role', 'error', 'done'];
+
+  function advanceBugStep(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const updated = { ...bugReport };
+    if (bugStep === 'page')     updated.page     = trimmed;
+    if (bugStep === 'clicked')  updated.clicked  = trimmed;
+    if (bugStep === 'happened') updated.happened = trimmed;
+    if (bugStep === 'expected') updated.expected = trimmed;
+    if (bugStep === 'role')     updated.role     = trimmed;
+    if (bugStep === 'error')    updated.error    = trimmed === 'none' ? 'None provided' : trimmed;
+
+    setBugReport(updated);
+    setBugInput('');
+
+    const currentIdx = BUG_STEP_ORDER.indexOf(bugStep);
+    const nextStep = BUG_STEP_ORDER[currentIdx + 1];
+    setBugStep(nextStep ?? 'done');
+
+    if (nextStep === 'done') {
+      // Build the full report and send to Dazza
+      const r = updated as BugReport;
+      const prompt = `[BUG FIX REQUEST — DEVELOPER MODE]
+
+Page/Module: ${r.page}
+What was clicked: ${r.clicked}
+What happened: ${r.happened}
+What should have happened: ${r.expected}
+User role/company: ${r.role}
+Error or screenshot: ${r.error}
+
+Analyse this bug report and respond with EXACTLY this format:
+
+**Likely cause:**
+[Your analysis here]
+
+**Priority:** Critical / High / Medium / Low
+[Brief reason]
+
+**Files likely involved:**
+- [file1]
+- [file2]
+- [file3]
+
+**Airo prompt:**
+\`\`\`
+[A clean, copy-paste ready prompt that a developer can paste into Airo to fix this bug. Be specific about the file, the problem, and the fix. Do not include secrets or database credentials.]
+\`\`\`
+
+**Test steps after fix:**
+- [step 1]
+- [step 2]
+- [step 3]
+
+**Publish risk:** Safe / Needs caution / Do not publish yet
+[Brief reason]
+
+**Additional notes:**
+[Any logs needed, edge cases, or caveats. If more information is needed to diagnose, say so here.]
+
+Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small targeted fixes over large refactors. Only suggest database changes if truly necessary.`;
+
+      void sendMessage(prompt);
+      setTimeout(() => setBugStep('idle'), 500);
+    }
+  }
+
+  function copyBugPrompt() {
+    if (!messages.length) return;
+    // Find the last assistant message that contains "Airo prompt:"
+    const last = [...messages].reverse().find(
+      (m) => m.role === 'assistant' && m.content.includes('Airo prompt:')
+    );
+    if (!last) return;
+    // Extract the code block content
+    const match = last.content.match(/```[\s\S]*?```/);
+    const toCopy = match ? match[0].replace(/```/g, '').trim() : last.content;
+    void navigator.clipboard.writeText(toCopy).then(() => {
+      setBugCopied(true);
+      setTimeout(() => setBugCopied(false), 2000);
+    });
+  }
+
   const perms = dazzaCtx?.permissions;
   const supportMode = dazzaCtx?.supportMode ?? false;
 
@@ -722,6 +846,18 @@ export default function DazzaAIPage() {
                     {a.label}
                   </button>
                 ))}
+
+                {/* Developer-only: Suggest bug fix */}
+                {isDeveloper && (
+                  <button
+                    onClick={startBugFix}
+                    disabled={isTyping || ctxLoading || bugStep !== 'idle'}
+                    className="flex items-center gap-1.5 shrink-0 bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300 rounded-full px-3 py-1.5 text-xs font-semibold text-red-700 hover:text-red-900 transition-all disabled:opacity-40 whitespace-nowrap"
+                  >
+                    <Bug size={11} />
+                    Suggest bug fix
+                  </button>
+                )}
               </div>
             </div>
 
@@ -800,8 +936,89 @@ export default function DazzaAIPage() {
               <div ref={bottomRef} />
             </div>
 
+            {/* ── Bug Fix Intake Panel (Developer only) ── */}
+            <AnimatePresence>
+              {isDeveloper && bugStep !== 'idle' && bugStep !== 'done' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden shrink-0"
+                >
+                  <div className="px-4 py-3 bg-red-50 border-b border-red-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Bug size={13} className="text-red-600" />
+                        <span className="text-xs font-bold text-red-800">Bug Fix Mode</span>
+                        <span className="text-[10px] bg-red-100 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-semibold">Developer only</span>
+                      </div>
+                      <button
+                        onClick={cancelBugFix}
+                        className="text-red-400 hover:text-red-700 transition-colors"
+                        title="Cancel bug report"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-red-700 mb-2.5 font-medium">
+                      {BUG_STEP_PROMPTS[bugStep] ?? ''}
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={bugInput}
+                        onChange={(e) => setBugInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); advanceBugStep(bugInput); }
+                          if (e.key === 'Escape') cancelBugFix();
+                        }}
+                        placeholder="Type your answer and press Enter…"
+                        className="flex-1 border border-red-200 bg-white rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-300 text-slate-800 placeholder:text-slate-400"
+                      />
+                      <button
+                        onClick={() => advanceBugStep(bugInput)}
+                        disabled={!bugInput.trim()}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-3 rounded-lg transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                    {/* Progress dots */}
+                    <div className="flex items-center gap-1 mt-2.5">
+                      {(['page', 'clicked', 'happened', 'expected', 'role', 'error'] as BugFixStep[]).map((s, i) => (
+                        <div
+                          key={s}
+                          className={`h-1 rounded-full transition-all ${
+                            BUG_STEP_ORDER.indexOf(bugStep) > i
+                              ? 'bg-red-500 w-4'
+                              : bugStep === s
+                              ? 'bg-red-400 w-4'
+                              : 'bg-red-200 w-2'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Input */}
             <div className="px-4 pb-4 pt-2 bg-slate-100 border-t border-slate-200 shrink-0">
+              {/* Copy Airo prompt button — shown after a bug fix response */}
+              {isDeveloper && messages.some((m) => m.role === 'assistant' && m.content.includes('Airo prompt:')) && (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    onClick={copyBugPrompt}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 hover:text-red-800 bg-red-50 border border-red-200 hover:border-red-300 rounded-lg px-2.5 py-1 transition-all"
+                  >
+                    {bugCopied ? <Check size={11} /> : <Copy size={11} />}
+                    {bugCopied ? 'Copied!' : 'Copy Airo prompt'}
+                  </button>
+                </div>
+              )}
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-end gap-2 px-3 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                 <textarea
                   ref={textareaRef}
