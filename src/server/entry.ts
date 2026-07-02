@@ -59,6 +59,7 @@ import dazza_brain_hive_approve_post_48 from "./api/dazza/brain/hive/approve/POS
 import dazza_brain_hive_reject_post_49 from "./api/dazza/brain/hive/reject/POST";
 import dazza_brain_status_get_50 from "./api/dazza/brain/status/GET";
 import dazza_chat_post_51 from "./api/dazza/chat/POST";
+import dazza_chat_v2_post from "./api/dazza/chat-v2/POST";
 import dazza_context_get_52 from "./api/dazza/context/GET";
 import dazza_key_status_get_53 from "./api/dazza/key-status/GET";
 import dazza_knowledge_get_54 from "./api/dazza/knowledge/GET";
@@ -1242,6 +1243,7 @@ app.post("/api/dazza/brain/hive/approve", dazza_brain_hive_approve_post_48);
 app.post("/api/dazza/brain/hive/reject", dazza_brain_hive_reject_post_49);
 app.get("/api/dazza/brain/status", dazza_brain_status_get_50);
 app.post("/api/dazza/chat", dazza_chat_post_51);
+app.post("/api/dazza/chat-v2", dazza_chat_v2_post);
 app.get("/api/dazza/context", dazza_context_get_52);
 app.get("/api/dazza/key-status", dazza_key_status_get_53);
 app.get("/api/dazza/knowledge", dazza_knowledge_get_54);
