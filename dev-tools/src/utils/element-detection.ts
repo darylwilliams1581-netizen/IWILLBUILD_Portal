@@ -123,7 +123,21 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   // path hardcodes the value and breaks the binding for every mapped item.
   if (resolveContentKey(element) !== null) return cmsInlineEditEnabled;
 
-  if (element.closest("[data-dev-dynamic]") || element.querySelector("[data-dev-dynamic]")) return false;
+  // data-dev-bound-text marks text-tag elements whose sole JSX child is a bound
+  // expression rendered via a render-prop pattern (e.g. ReactMarkdown renderers:
+  // `p: ({children}) => <p>{children}</p>`). These elements carry data-dev-dynamic
+  // on *themselves* because {children} is a dynamic expression, but their actual
+  // DOM content is user-authored text that is safe to inline-edit.
+  // The source mapper only adds data-dev-bound-text when genericMapDepth === 0
+  // (not inside any .map() call), so ancestor dynamic checks are unnecessary —
+  // a dynamic ancestor is always a page-level conditional render, not a list.
+  // Block only when a descendant is dynamic (nested programmatic subtrees).
+  const hasBoundText = element.getAttribute("data-dev-bound-text") === "true";
+  if (hasBoundText) {
+    if (element.querySelector("[data-dev-dynamic]")) return false;
+  } else {
+    if (element.closest("[data-dev-dynamic]") || element.querySelector("[data-dev-dynamic]")) return false;
+  }
 
   const tagName = element.tagName.toLowerCase();
   const textContent = element.textContent?.trim() || "";
@@ -148,7 +162,10 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   // List containers (ul/ol) are exempt: the source-mapper only marks intrinsic
   // text tags (getIntrinsicTextTagName excludes ul/ol), so requiring the marker
   // there would regress list editing rather than shut off a server-rejected node.
-  const passesMarkerGate = isListContainer || element.getAttribute("data-dev-editable") === "text";
+  // Bound-text elements use the markdown save path, not the AST path, so the
+  // data-dev-editable="text" marker is irrelevant to whether their save succeeds.
+  // Their guard is the dynamic-descendant check above.
+  const passesMarkerGate = isListContainer || hasBoundText || element.getAttribute("data-dev-editable") === "text";
 
   return (TEXT_TAGS.has(tagName) || isListContainer) && hasText && hasOnlyText && passesMarkerGate;
 }
