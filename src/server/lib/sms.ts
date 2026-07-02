@@ -1,14 +1,16 @@
 /**
  * SMS sending via Twilio.
- * Only active when TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER
+ * Only active when TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER
  * are all set. Returns false if SMS is not configured.
+ *
+ * Env var: TWILIO_PHONE_NUMBER (E.164 format, e.g. +61400000000)
  */
 
 export function isSmsConfigured(): boolean {
   return !!(
     process.env.TWILIO_ACCOUNT_SID &&
     process.env.TWILIO_AUTH_TOKEN &&
-    process.env.TWILIO_FROM_NUMBER
+    process.env.TWILIO_PHONE_NUMBER
   );
 }
 
@@ -24,7 +26,7 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID!;
   const authToken = process.env.TWILIO_AUTH_TOKEN!;
-  const from = process.env.TWILIO_FROM_NUMBER!;
+  const from = process.env.TWILIO_PHONE_NUMBER!;
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const params = new URLSearchParams({ To: to, From: from, Body: body });
