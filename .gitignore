@@ -80,10 +80,11 @@ pids
 # Turnscript platform execution scripts (never commit/deploy)
 .airo/turnscript-*
 
-# Large development-only artifacts — excluded from deploy package
-# These are source/authoring files with no runtime value.
-# The server reads only the compiled JSON from dist/server/seed/ at runtime.
-content/starter-packs/default/source-docx/
+# Authoring workspace — excluded from deploy package entirely.
+# The app never reads from content/ at runtime.
+# Runtime seed data lives in src/server/seed/ (copied to dist/server/seed/ at build time).
+# Source DOCX files and the full content/ authoring tree are stored in /private/iwillbuild-dev-assets/.
+content/
 
 # Internal platform reports — not needed at runtime
 .airo/security-report.json
