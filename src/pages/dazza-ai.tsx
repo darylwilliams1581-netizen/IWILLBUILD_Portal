@@ -496,25 +496,18 @@ export default function DazzaAIPage() {
     setIsTyping(true);
 
     try {
-      const chatHistory = [...messages, userMsg]
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-
-      // NOTE: We send messages only — NO context payload.
-      // The server re-fetches context from the session on every request.
-      const res = await fetch('/api/dazza/chat', {
+      // Drayl engine v2 — send the current message only.
+      // Context is re-fetched server-side from the session on every request.
+      const res = await fetch('/api/dazza/chat-v2', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: chatHistory,
-          // Support mode: pass supportCompanyId if active (owner only)
-          supportCompanyId: dazzaCtx?.supportCompanyId ?? null,
+          message: text.trim(),
         }),
       });
 
       if (!res.ok) {
-        // Try to get a meaningful error from the server response
         let serverDetail = '';
         try {
           const errData = await res.json() as { error?: string; detail?: string };
@@ -525,18 +518,15 @@ export default function DazzaAIPage() {
 
       const data = await res.json() as {
         reply: string;
-        noApiKey?: boolean;
-        localTool?: boolean;
-        contextDebug?: string;
-        supportMode?: boolean;
-        supportCompanyName?: string;
-        tokens?: number;
+        mode?: 'refusal' | 'context' | 'annette' | 'ai';
+        usedOpenAI?: boolean;
+        warnings?: string[];
       };
 
-      if (data.noApiKey) {
+      // If the engine ran in AI mode but OpenAI wasn't available, surface the no-key banner
+      if (data.mode === 'ai' && data.usedOpenAI === false) {
         setNoApiKey(true);
       } else {
-        // Key is working — clear the banner if it was showing
         setNoApiKey(false);
       }
 
@@ -545,19 +535,10 @@ export default function DazzaAIPage() {
         role: 'assistant',
         content: data.reply,
         timestamp: new Date(),
-        isCalc: data.localTool,
+        // Mark as a local calc/context answer (no AI token cost) when mode is context
+        isCalc: data.mode === 'context',
       };
       setMessages((prev) => [...prev, assistantMsg]);
-
-      // Admin/owner debug line — append as system-info message
-      if (data.contextDebug) {
-        setMessages((prev) => [...prev, {
-          id: (Date.now() + 2).toString(),
-          role: 'system-info',
-          content: data.contextDebug!,
-          timestamp: new Date(),
-        }]);
-      }
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
       // Only show "trouble connecting" for genuine network failures (TypeError = fetch failed)
