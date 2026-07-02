@@ -92,3 +92,6 @@ content/starter-packs/default/source-docx/
 docs/*.mp4
 docs/*.mov
 docs/*.avi
+
+# HTML prototypes and archive docs — not served by the app
+docs/archive/
