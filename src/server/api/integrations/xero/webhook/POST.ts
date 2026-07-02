@@ -13,6 +13,7 @@ import { getSecret } from '#airo/secrets';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { getValidXeroToken } from '../../../../lib/xero-client.js';
 
 interface XeroWebhookEvent {
   resourceUrl: string;
@@ -87,7 +88,6 @@ export default async function handler(req: Request, res: Response) {
 
       // Fetch current status from Xero
       try {
-        const { getValidXeroToken } = await import('../../../../lib/xero-client.js');
         const { accessToken, tenantId } = await getValidXeroToken(localInvoice.company_id);
 
         const xeroRes = await fetch(`https://api.xero.com/api.xro/2.0/Invoices/${xeroInvoiceId}`, {
