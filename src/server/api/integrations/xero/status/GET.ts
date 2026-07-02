@@ -23,11 +23,12 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+
     // Check whether Xero credentials are configured (company or platform)
     const creds = await getXeroCredentials(profile?.companyId ?? null);
     const platformReady = creds !== null;
 
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.json({ connected: false, platformReady });
 
     const [rows] = await db.execute(
