@@ -35,11 +35,24 @@ export default async function handler(req: Request, res: Response) {
       ORDER BY jc.purchase_date DESC, jc.created_at DESC
     `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    // Get approved estimate total
+    // Get approved estimate total.
+    // The estimates table has no pre-computed total_amount column — the total
+    // is derived by summing (quantity * rate) across estimate_lines, matching
+    // the pattern used everywhere else in the codebase (dazza-context, annette-context).
     const [estRows] = await db.execute(sql`
-      SELECT COALESCE(SUM(total_amount), 0) AS approved_total
-      FROM estimates
-      WHERE job_id = ${jobId} AND company_id = ${profile.companyId} AND status = 'approved'
+      SELECT COALESCE(
+        (
+          SELECT SUM(
+            CAST(el.quantity AS DECIMAL(15,4)) * CAST(el.rate AS DECIMAL(15,4))
+          )
+          FROM estimates e
+          JOIN estimate_lines el ON el.estimate_id = e.id
+          WHERE e.job_id = ${jobId}
+            AND e.company_id = ${profile.companyId}
+            AND LOWER(e.status) = 'approved'
+        ),
+        0
+      ) AS approved_total
     `) as unknown as [Array<Record<string, unknown>>, unknown];
 
     const approvedTotal = parseFloat(String(estRows?.[0]?.approved_total ?? 0));
