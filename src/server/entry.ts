@@ -488,7 +488,7 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response, next: NextFunction) => {
-  // Prevent clickjacking
+  // Prevent clickjacking — allow same-origin framing (needed for builder preview iframe)
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   // Prevent MIME-type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -500,12 +500,17 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()');
   // Disable DNS prefetching to reduce info leakage
   res.setHeader('X-DNS-Prefetch-Control', 'off');
-  // Prevent cross-origin window attacks
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  // Prevent cross-origin resource embedding
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-  // Complete the COOP/COEP pair — required for SharedArrayBuffer and high-res timers
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  // COOP: same-origin-allow-popups — allows Stripe, Xero, QBO OAuth popups to
+  // communicate back while still isolating the browsing context from unrelated openers.
+  // 'same-origin' would break OAuth redirect flows that open in a popup.
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  // CORP: cross-origin — allows the builder preview iframe (different origin) to
+  // load assets served by this app. 'same-origin' blocks the preview entirely.
+  // NOTE: COEP (require-corp) is intentionally omitted — this app does not use
+  // SharedArrayBuffer or high-res timers, so the COOP/COEP pair is not needed.
+  // Adding COEP would require every third-party resource (Google Fonts, Stripe JS,
+  // CDN assets) to opt in with CORP headers, which most do not send.
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   // CSP — same-origin + trusted third parties only
   // connect-src includes R2 public URL if configured
   const r2PublicUrl = process.env.R2_PUBLIC_URL ? process.env.R2_PUBLIC_URL.replace(/\/$/, '') : null;
@@ -514,6 +519,8 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
     'https://api.stripe.com',
     'https://login.xero.com',
     'https://api.xero.com',
+    // Allow WebSocket connections for Vite HMR in dev
+    ...(import.meta.env.PROD ? [] : ['ws:', 'wss:']),
     ...(r2PublicUrl ? [r2PublicUrl] : []),
   ].join(' ');
   // In production: drop unsafe-eval (only needed by Vite HMR in dev).
@@ -521,6 +528,11 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   const scriptSrc = import.meta.env.PROD
     ? `script-src 'self' 'unsafe-inline' https://js.stripe.com`
     : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`;
+  // frame-ancestors: allow the GoDaddy builder iframe to embed this app in preview.
+  // In production this is same-origin only (no builder iframe needed).
+  const frameAncestors = import.meta.env.PROD
+    ? "frame-ancestors 'self'"
+    : "frame-ancestors 'self' https://*.airoapp.ai https://*.godaddy.com";
   res.setHeader(
     'Content-Security-Policy',
     [
@@ -534,6 +546,7 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      frameAncestors,
       "upgrade-insecure-requests",
     ].join('; ')
   );
