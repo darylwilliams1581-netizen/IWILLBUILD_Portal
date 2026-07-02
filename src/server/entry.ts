@@ -805,6 +805,21 @@ async function runStartupMigrations() {
     // ── MYOB company connection ───────────────────────────────────────────────
     // ── Document Builder ─────────────────────────────────────────────────────
     // (tables created via CREATE TABLE IF NOT EXISTS below; no extra columns needed at launch)
+    // ── platform_activity_log: self-heal all columns ─────────────────────────
+    // The table is created via CREATE TABLE IF NOT EXISTS in the startup block
+    // below, but columns added after initial creation won't exist in older DBs.
+    // List every non-PK, non-auto column here so they're added on next boot.
+    { table: 'platform_activity_log', column: 'event_type',           definition: "VARCHAR(60) NOT NULL DEFAULT ''" },
+    { table: 'platform_activity_log', column: 'success',              definition: 'TINYINT(1) NOT NULL DEFAULT 1' },
+    { table: 'platform_activity_log', column: 'user_id',              definition: 'VARCHAR(36) NULL' },
+    { table: 'platform_activity_log', column: 'email',                definition: 'VARCHAR(255) NULL' },
+    { table: 'platform_activity_log', column: 'company_id',           definition: 'INT NULL' },
+    { table: 'platform_activity_log', column: 'performed_by_user_id', definition: 'VARCHAR(36) NULL' },
+    { table: 'platform_activity_log', column: 'ip_address',           definition: 'VARCHAR(100) NULL' },
+    { table: 'platform_activity_log', column: 'user_agent',           definition: 'VARCHAR(500) NULL' },
+    { table: 'platform_activity_log', column: 'reason',               definition: 'VARCHAR(500) NULL' },
+    { table: 'platform_activity_log', column: 'metadata_json',        definition: 'TEXT NULL' },
+    { table: 'platform_activity_log', column: 'created_at',           definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
