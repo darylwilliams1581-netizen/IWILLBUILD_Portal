@@ -24,13 +24,18 @@ export default async function handler(req: Request, res: Response) {
 
     const id = Number(req.params.id);
     const [rows] = await db.execute(
-      sql`SELECT id, status FROM invoices WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as [Array<{ id: number; status: string }>, unknown];
+      sql`SELECT id, status, locked FROM invoices WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
+    ) as unknown as [Array<{ id: number; status: string; locked: number }>, unknown];
     if (!rows?.length) return res.status(404).json({ error: 'Invoice not found' });
     if (rows[0].status === 'void') return res.status(400).json({ error: 'Cannot mark a void invoice as sent' });
+    if (rows[0].locked) return res.status(423).json({ error: 'Invoice is already locked', locked: true });
+
+    const lockedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const lockedBy = session.user.name ?? session.user.email ?? 'System';
 
     await db.execute(
-      sql`UPDATE invoices SET status = 'sent' WHERE id = ${id} AND company_id = ${profile.companyId}`
+      sql`UPDATE invoices SET status = 'sent', locked = 1, locked_at = ${lockedAt}, locked_by = ${lockedBy}
+          WHERE id = ${id} AND company_id = ${profile.companyId}`
     );
 
     const [updated] = await db.execute(

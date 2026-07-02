@@ -154,6 +154,18 @@ import integrations_xero_status_get_140 from "./api/integrations/xero/status/GET
 import integrations_xero_sync_customer_post_141 from "./api/integrations/xero/sync-customer/POST";
 import integrations_xero_sync_invoice_post_142 from "./api/integrations/xero/sync-invoice/POST";
 import integrations_xero_webhook_post_143 from "./api/integrations/xero/webhook/POST";
+// ── QuickBooks Online ──────────────────────────────────────────────────────────
+import integrations_qbo_auth_url_get from "./api/integrations/qbo/auth-url/GET";
+import integrations_qbo_callback_get from "./api/integrations/qbo/callback/GET";
+import integrations_qbo_status_get from "./api/integrations/qbo/status/GET";
+import integrations_qbo_disconnect_post from "./api/integrations/qbo/disconnect/POST";
+import integrations_qbo_sync_invoice_post from "./api/integrations/qbo/sync-invoice/POST";
+// ── MYOB AccountRight ──────────────────────────────────────────────────────────
+import integrations_myob_auth_url_get from "./api/integrations/myob/auth-url/GET";
+import integrations_myob_callback_get from "./api/integrations/myob/callback/GET";
+import integrations_myob_status_get from "./api/integrations/myob/status/GET";
+import integrations_myob_disconnect_post from "./api/integrations/myob/disconnect/POST";
+import integrations_myob_sync_invoice_post from "./api/integrations/myob/sync-invoice/POST";
 import invoices_get_144 from "./api/invoices/GET";
 import invoices_post_145 from "./api/invoices/POST";
 import invoices_id_delete_146 from "./api/invoices/[id]/DELETE";
@@ -194,6 +206,7 @@ import jobs_id_ledger_export_get_180 from "./api/jobs/[id]/ledger/export/GET";
 import jobs_id_ledger_sync_post_181 from "./api/jobs/[id]/ledger/sync/POST";
 import jobs_id_ledger_entryId_delete_182 from "./api/jobs/[id]/ledger/[entryId]/DELETE";
 import jobs_id_ledger_entryId_put_183 from "./api/jobs/[id]/ledger/[entryId]/PUT";
+import jobs_id_ledger_entryId_correct_post from "./api/jobs/[id]/ledger/[entryId]/correct/POST";
 import jobs_id_photos_get_184 from "./api/jobs/[id]/photos/GET";
 import jobs_id_photos_post_185 from "./api/jobs/[id]/photos/POST";
 import jobs_id_photos_photoId_delete_186 from "./api/jobs/[id]/photos/[photoId]/DELETE";
@@ -753,6 +766,25 @@ async function runStartupMigrations() {
     { table: 'user', column: 'failed_login_attempts',    definition: 'INT NOT NULL DEFAULT 0' },
     // ── Fleet assets: VIN ────────────────────────────────────────────────────
     { table: 'fleet_assets', column: 'vin', definition: 'VARCHAR(50) NULL' },
+    // ── Invoice immutability lock ─────────────────────────────────────────────
+    { table: 'invoices', column: 'locked',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'invoices', column: 'locked_at',  definition: 'DATETIME NULL' },
+    { table: 'invoices', column: 'locked_by',  definition: 'VARCHAR(255) NULL' },
+    { table: 'invoices', column: 'pdf_url',    definition: 'VARCHAR(500) NULL' },
+    // ── Accounting provider columns (QBO + MYOB) ─────────────────────────────
+    { table: 'invoices', column: 'qbo_invoice_id',      definition: 'VARCHAR(255) NULL' },
+    { table: 'invoices', column: 'qbo_sync_status',     definition: "VARCHAR(30) NULL DEFAULT 'not_synced'" },
+    { table: 'invoices', column: 'qbo_sync_error',      definition: 'TEXT NULL' },
+    { table: 'invoices', column: 'myob_invoice_uid',    definition: 'VARCHAR(255) NULL' },
+    { table: 'invoices', column: 'myob_sync_status',    definition: "VARCHAR(30) NULL DEFAULT 'not_synced'" },
+    { table: 'invoices', column: 'myob_sync_error',     definition: 'TEXT NULL' },
+    // ── Job cost ledger immutability ──────────────────────────────────────────
+    { table: 'job_cost_ledger', column: 'locked',            definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'job_cost_ledger', column: 'locked_at',         definition: 'DATETIME NULL' },
+    { table: 'job_cost_ledger', column: 'original_entry_id', definition: 'INT NULL' },
+    { table: 'job_cost_ledger', column: 'is_correction',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── QBO company connection ────────────────────────────────────────────────
+    // ── MYOB company connection ───────────────────────────────────────────────
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -815,6 +847,10 @@ async function runStartupMigrations() {
     { name: 'invoice_payments', ddl: "CREATE TABLE IF NOT EXISTS invoice_payments (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, payment_date DATE NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 0, method VARCHAR(50) NULL, reference VARCHAR(255) NULL, notes TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_invoice (invoice_id))" },
     // ── Xero OAuth connections ─────────────────────────────────────────────────
     { name: 'xero_connections', ddl: "CREATE TABLE IF NOT EXISTS xero_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, tenant_id VARCHAR(100) NOT NULL DEFAULT '', tenant_name VARCHAR(255) NOT NULL DEFAULT '', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    // ── QuickBooks Online connections ─────────────────────────────────────────
+    { name: 'qbo_connections', ddl: "CREATE TABLE IF NOT EXISTS qbo_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, realm_id VARCHAR(100) NOT NULL DEFAULT '', company_name VARCHAR(255) NOT NULL DEFAULT '', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
+    // ── MYOB AccountRight connections ─────────────────────────────────────────
+    { name: 'myob_connections', ddl: "CREATE TABLE IF NOT EXISTS myob_connections (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL UNIQUE, company_file_id VARCHAR(100) NOT NULL DEFAULT '', company_file_name VARCHAR(255) NOT NULL DEFAULT '', access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at DATETIME NOT NULL, connected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     // ── Purchase Orders ────────────────────────────────────────────────────────
     { name: 'job_purchase_orders', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_orders (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, contractor_id INT NULL, assigned_to_type VARCHAR(20) NOT NULL DEFAULT 'internal', assigned_to_name VARCHAR(255) NULL, trade_type VARCHAR(100) NULL, po_number VARCHAR(50) NOT NULL, title VARCHAR(255) NOT NULL DEFAULT '', instructions TEXT NULL, start_date DATE NULL, finish_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, cancelled_note TEXT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
     { name: 'job_purchase_order_lines', ddl: "CREATE TABLE IF NOT EXISTS job_purchase_order_lines (id INT AUTO_INCREMENT PRIMARY KEY, purchase_order_id INT NOT NULL, progress_line_id INT NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, amount DECIMAL(12,2) NOT NULL DEFAULT 0, sort_order INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_po (purchase_order_id))" },
@@ -1299,8 +1335,20 @@ app.get("/api/integrations/xero/callback", integrations_xero_callback_get_138);
 app.post("/api/integrations/xero/disconnect", integrations_xero_disconnect_post_139);
 app.get("/api/integrations/xero/status", integrations_xero_status_get_140);
 app.post("/api/integrations/xero/sync-customer", integrations_xero_sync_customer_post_141);
-app.post("/api/integrations/xero/sync-invoice", integrations_xero_sync_invoice_post_142);
+app.post("/api/integrations/xero/sync-invoice/:invoiceId", integrations_xero_sync_invoice_post_142);
 app.post("/api/integrations/xero/webhook", integrations_xero_webhook_post_143);
+// ── QuickBooks Online routes ───────────────────────────────────────────────────
+app.get("/api/integrations/qbo/auth-url", integrations_qbo_auth_url_get);
+app.get("/api/integrations/qbo/callback", integrations_qbo_callback_get);
+app.get("/api/integrations/qbo/status", integrations_qbo_status_get);
+app.post("/api/integrations/qbo/disconnect", integrations_qbo_disconnect_post);
+app.post("/api/integrations/qbo/sync-invoice/:invoiceId", integrations_qbo_sync_invoice_post);
+// ── MYOB AccountRight routes ───────────────────────────────────────────────────
+app.get("/api/integrations/myob/auth-url", integrations_myob_auth_url_get);
+app.get("/api/integrations/myob/callback", integrations_myob_callback_get);
+app.get("/api/integrations/myob/status", integrations_myob_status_get);
+app.post("/api/integrations/myob/disconnect", integrations_myob_disconnect_post);
+app.post("/api/integrations/myob/sync-invoice/:invoiceId", integrations_myob_sync_invoice_post);
 app.get("/api/invoices", invoices_get_144);
 app.post("/api/invoices", invoices_post_145);
 app.delete("/api/invoices/:id", invoices_id_delete_146);
@@ -1341,6 +1389,7 @@ app.get("/api/jobs/:id/ledger/export", jobs_id_ledger_export_get_180);
 app.post("/api/jobs/:id/ledger/sync", jobs_id_ledger_sync_post_181);
 app.delete("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_delete_182);
 app.put("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_put_183);
+app.post("/api/jobs/:id/ledger/:entryId/correct", jobs_id_ledger_entryId_correct_post);
 app.get("/api/jobs/:id/photos", jobs_id_photos_get_184);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post_185);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_186);

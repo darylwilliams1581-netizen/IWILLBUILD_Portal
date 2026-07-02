@@ -31,9 +31,17 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(entryId)) return res.status(400).json({ error: 'Invalid entry ID' });
 
     const [existing] = await db.execute(sql`
-      SELECT id FROM job_cost_ledger WHERE id = ${entryId} AND company_id = ${profile.companyId} LIMIT 1
-    `) as unknown as [Array<{ id: number }>, unknown];
+      SELECT id, locked, status FROM job_cost_ledger WHERE id = ${entryId} AND company_id = ${profile.companyId} LIMIT 1
+    `) as unknown as [Array<{ id: number; locked: number; status: string }>, unknown];
     if (!existing?.length) return res.status(404).json({ error: 'Entry not found' });
+
+    // Immutability guard — approved/locked entries cannot be edited
+    if (existing[0].locked || existing[0].status === 'approved') {
+      return res.status(423).json({
+        error: 'This cost entry is locked and cannot be edited. Use "Correct Entry" to post an adjustment.',
+        locked: true,
+      });
+    }
 
     const body = req.body as Record<string, string | number | boolean>;
 

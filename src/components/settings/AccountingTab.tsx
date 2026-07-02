@@ -19,7 +19,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Receipt, CheckCircle2, XCircle, Loader2, AlertCircle,
   ExternalLink, Unplug, RefreshCw, ArrowRight, Settings2,
-  Link2, Building2,
+  Link2, Building2, Lock,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -38,6 +38,22 @@ interface XeroCredStatus {
   source: 'company' | 'platform' | 'none';
   maskedClientId: string | null;
   redirectUri: string | null;
+}
+
+interface QboStatus {
+  connected: boolean;
+  platformReady?: boolean;
+  realmId?: string;
+  companyName?: string;
+  connectedAt?: string;
+}
+
+interface MyobStatus {
+  connected: boolean;
+  platformReady?: boolean;
+  companyFileId?: string;
+  companyFileName?: string;
+  connectedAt?: string;
 }
 
 interface Props {
@@ -202,19 +218,37 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // QBO state
+  const [qbo, setQbo] = useState<QboStatus | null>(null);
+  const [qboConnecting, setQboConnecting] = useState(false);
+  const [qboDisconnecting, setQboDisconnecting] = useState(false);
+
+  // MYOB state
+  const [myob, setMyob] = useState<MyobStatus | null>(null);
+  const [myobConnecting, setMyobConnecting] = useState(false);
+  const [myobDisconnecting, setMyobDisconnecting] = useState(false);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [statusRes, credsRes] = await Promise.all([
+      const [statusRes, credsRes, qboRes, myobRes] = await Promise.all([
         fetch('/api/integrations/xero/status', { credentials: 'include' }),
         isOwner ? fetch('/api/settings/xero-credentials', { credentials: 'include' }) : Promise.resolve(null),
+        fetch('/api/integrations/qbo/status', { credentials: 'include' }),
+        fetch('/api/integrations/myob/status', { credentials: 'include' }),
       ]);
       if (statusRes.ok) setXero(await statusRes.json() as XeroStatus);
       else setXero({ connected: false });
       if (credsRes?.ok) setCreds(await credsRes.json() as XeroCredStatus);
       else if (isOwner) setCreds({ configured: false, source: 'none', maskedClientId: null, redirectUri: null });
+      if (qboRes.ok) setQbo(await qboRes.json() as QboStatus);
+      else setQbo({ connected: false });
+      if (myobRes.ok) setMyob(await myobRes.json() as MyobStatus);
+      else setMyob({ connected: false });
     } catch {
       setXero({ connected: false });
+      setQbo({ connected: false });
+      setMyob({ connected: false });
     }
     setLoading(false);
   }, [isOwner]);
@@ -235,6 +269,32 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
     const next = new URLSearchParams(searchParams);
     next.delete('xero'); next.delete('reason');
     setSearchParams(next, { replace: true });
+  }, [searchParams]);
+
+  // Handle redirect back from QBO OAuth
+  useEffect(() => {
+    const qboConnected = searchParams.get('qbo_connected');
+    const qboError = searchParams.get('qbo_error');
+    if (qboConnected) { setSuccessMsg('QuickBooks Online connected successfully!'); void loadAll(); }
+    if (qboError) setError(`QuickBooks connection failed: ${qboError.replace(/_/g, ' ')}`);
+    if (qboConnected || qboError) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('qbo_connected'); next.delete('qbo_error');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams]);
+
+  // Handle redirect back from MYOB OAuth
+  useEffect(() => {
+    const myobConnected = searchParams.get('myob_connected');
+    const myobError = searchParams.get('myob_error');
+    if (myobConnected) { setSuccessMsg('MYOB AccountRight connected successfully!'); void loadAll(); }
+    if (myobError) setError(`MYOB connection failed: ${myobError.replace(/_/g, ' ')}`);
+    if (myobConnected || myobError) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('myob_connected'); next.delete('myob_error');
+      setSearchParams(next, { replace: true });
+    }
   }, [searchParams]);
 
   async function handleConnect() {
@@ -278,6 +338,64 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
       setSuccessMsg('Xero credentials removed.');
     } catch {
       setError('Failed to remove credentials.');
+    }
+  }
+
+  async function handleQboConnect() {
+    setQboConnecting(true); setError(''); setSuccessMsg('');
+    try {
+      const res = await fetch('/api/integrations/qbo/auth-url', { credentials: 'include' });
+      const d = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !d.url) { setError(d.error ?? 'Failed to start QuickBooks connection.'); return; }
+      window.location.href = d.url;
+    } catch {
+      setError('Failed to start QuickBooks connection. Please try again.');
+    } finally {
+      setQboConnecting(false);
+    }
+  }
+
+  async function handleQboDisconnect() {
+    if (!confirm('Disconnect QuickBooks Online? Existing synced invoices will keep their QBO IDs.')) return;
+    setQboDisconnecting(true); setError(''); setSuccessMsg('');
+    try {
+      const res = await fetch('/api/integrations/qbo/disconnect', { method: 'POST', credentials: 'include' });
+      if (!res.ok) { const d = await res.json() as { error?: string }; setError(d.error ?? 'Failed to disconnect'); return; }
+      setSuccessMsg('QuickBooks Online disconnected.');
+      setQbo({ connected: false });
+    } catch {
+      setError('Failed to disconnect QuickBooks');
+    } finally {
+      setQboDisconnecting(false);
+    }
+  }
+
+  async function handleMyobConnect() {
+    setMyobConnecting(true); setError(''); setSuccessMsg('');
+    try {
+      const res = await fetch('/api/integrations/myob/auth-url', { credentials: 'include' });
+      const d = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !d.url) { setError(d.error ?? 'Failed to start MYOB connection.'); return; }
+      window.location.href = d.url;
+    } catch {
+      setError('Failed to start MYOB connection. Please try again.');
+    } finally {
+      setMyobConnecting(false);
+    }
+  }
+
+  async function handleMyobDisconnect() {
+    if (!confirm('Disconnect MYOB AccountRight? Existing synced invoices will keep their MYOB UIDs.')) return;
+    setMyobDisconnecting(true); setError(''); setSuccessMsg('');
+    try {
+      const res = await fetch('/api/integrations/myob/disconnect', { method: 'POST', credentials: 'include' });
+      if (!res.ok) { const d = await res.json() as { error?: string }; setError(d.error ?? 'Failed to disconnect'); return; }
+      setSuccessMsg('MYOB AccountRight disconnected.');
+      setMyob({ connected: false });
+    } catch {
+      setError('Failed to disconnect MYOB');
+    } finally {
+      setMyobDisconnecting(false);
     }
   }
 
@@ -511,24 +629,211 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
         </div>
       )}
 
-      {/* ── QuickBooks + MYOB coming soon ── */}
-      {[
-        { name: 'QuickBooks Online', desc: 'Push invoices and customers to QuickBooks Online.', color: 'border-green-100' },
-        { name: 'MYOB', desc: 'Sync invoices and contacts with MYOB AccountRight or Essentials.', color: 'border-purple-100' },
-      ].map((provider) => (
-        <div key={provider.name} className={`bg-white border ${provider.color} rounded-xl px-5 py-4 flex items-center justify-between gap-4 opacity-60`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Receipt size={15} className="text-slate-400" />
-            </div>
-            <div>
-              <p className="font-bold text-sm text-foreground">{provider.name}</p>
-              <p className="text-xs text-muted-foreground">{provider.desc}</p>
-            </div>
+      {/* ── QuickBooks Online card ── */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-4 px-5 py-4 border-b border-border">
+          <div className="w-10 h-10 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
+            <span className="text-green-600 font-black text-xs">QBO</span>
           </div>
-          <span className="text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-400 border border-slate-200 rounded-full shrink-0">Coming Soon</span>
+          <div className="flex-1">
+            <p className="font-bold text-sm text-foreground">QuickBooks Online</p>
+            <p className="text-xs text-muted-foreground">Sync invoices and customers with QuickBooks Online.</p>
+          </div>
+          {loading ? <Loader2 size={16} className="animate-spin text-muted-foreground" />
+            : qbo?.connected ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
+              </span>
+            ) : qbo?.platformReady ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Ready to connect
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Not configured
+              </span>
+            )}
         </div>
-      ))}
+        <div className="px-5 py-5">
+          {qbo?.connected ? (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Building2 size={10} />Company</p>
+                  <p className="text-sm font-semibold text-foreground">{qbo.companyName || '—'}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Link2 size={10} />Connected</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {qbo.connectedAt ? new Date(qbo.connectedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-xs font-bold text-emerald-700 mb-2">What syncs to QuickBooks:</p>
+                <ul className="text-xs text-emerald-700 space-y-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Invoices — line items, GST, due dates</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Customers → QBO Customers (name, email, ABN)</li>
+                </ul>
+              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
+                  <button onClick={() => void handleQboConnect()} disabled={qboConnecting}
+                    className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
+                    {qboConnecting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}Reconnect
+                  </button>
+                  <button onClick={() => void handleQboDisconnect()} disabled={qboDisconnecting}
+                    className="flex items-center gap-2 px-3 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50">
+                    {qboDisconnecting ? <Loader2 size={12} className="animate-spin" /> : <Unplug size={12} />}Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                {qbo?.platformReady
+                  ? 'Your QBO app is configured. Click below to authorise access to your QuickBooks company.'
+                  : 'To connect QuickBooks Online, add QBO_CLIENT_ID, QBO_CLIENT_SECRET, and QBO_REDIRECT_URI in Settings → Secrets.'}
+              </p>
+              <ul className="text-xs text-slate-500 space-y-1">
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Push invoices to QuickBooks with one click</li>
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Sync customers as QBO Customers automatically</li>
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />GST, line items and due dates stay in sync</li>
+              </ul>
+              {isAdmin && qbo?.platformReady ? (
+                <div className="flex items-center gap-3">
+                  <button onClick={() => void handleQboConnect()} disabled={qboConnecting}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                    {qboConnecting ? <Loader2 size={14} className="animate-spin" /> : <span className="font-black text-white text-xs">QBO</span>}
+                    Connect QuickBooks
+                  </button>
+                  <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                    QBO OAuth docs <ExternalLink size={11} />
+                  </a>
+                </div>
+              ) : isAdmin ? (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+                  <AlertCircle size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                  <p>Add <code className="bg-amber-100 px-1 rounded font-mono">QBO_CLIENT_ID</code>, <code className="bg-amber-100 px-1 rounded font-mono">QBO_CLIENT_SECRET</code>, and <code className="bg-amber-100 px-1 rounded font-mono">QBO_REDIRECT_URI</code> in Settings → Secrets to enable QuickBooks.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Only admins can connect accounting integrations.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── MYOB AccountRight card ── */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-4 px-5 py-4 border-b border-border">
+          <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0">
+            <span className="text-purple-600 font-black text-xs">MYOB</span>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-sm text-foreground">MYOB AccountRight</p>
+            <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB AccountRight.</p>
+          </div>
+          {loading ? <Loader2 size={16} className="animate-spin text-muted-foreground" />
+            : myob?.connected ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
+              </span>
+            ) : myob?.platformReady ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Ready to connect
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Not configured
+              </span>
+            )}
+        </div>
+        <div className="px-5 py-5">
+          {myob?.connected ? (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Building2 size={10} />Company File</p>
+                  <p className="text-sm font-semibold text-foreground">{myob.companyFileName || '—'}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Link2 size={10} />Connected</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {myob.connectedAt ? new Date(myob.connectedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-xs font-bold text-emerald-700 mb-2">What syncs to MYOB:</p>
+                <ul className="text-xs text-emerald-700 space-y-1">
+                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Sale Invoices (Service type) — line items, GST</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Customers → MYOB Contacts (name, email, ABN)</li>
+                </ul>
+              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
+                  <button onClick={() => void handleMyobConnect()} disabled={myobConnecting}
+                    className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
+                    {myobConnecting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}Reconnect
+                  </button>
+                  <button onClick={() => void handleMyobDisconnect()} disabled={myobDisconnecting}
+                    className="flex items-center gap-2 px-3 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50">
+                    {myobDisconnecting ? <Loader2 size={12} className="animate-spin" /> : <Unplug size={12} />}Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                {myob?.platformReady
+                  ? 'Your MYOB app is configured. Click below to authorise access to your company file.'
+                  : 'To connect MYOB AccountRight, add MYOB_CLIENT_ID, MYOB_CLIENT_SECRET, and MYOB_REDIRECT_URI in Settings → Secrets.'}
+              </p>
+              <ul className="text-xs text-slate-500 space-y-1">
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Push invoices to MYOB with one click</li>
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Sync customers as MYOB Contacts automatically</li>
+                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />GST, line items and ABN stay in sync</li>
+              </ul>
+              {isAdmin && myob?.platformReady ? (
+                <div className="flex items-center gap-3">
+                  <button onClick={() => void handleMyobConnect()} disabled={myobConnecting}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                    {myobConnecting ? <Loader2 size={14} className="animate-spin" /> : <span className="font-black text-white text-xs">M</span>}
+                    Connect MYOB
+                  </button>
+                  <a href="https://developer.myob.com/api/myob-business-api/api-overview/authentication/" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                    MYOB OAuth docs <ExternalLink size={11} />
+                  </a>
+                </div>
+              ) : isAdmin ? (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+                  <AlertCircle size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                  <p>Add <code className="bg-amber-100 px-1 rounded font-mono">MYOB_CLIENT_ID</code>, <code className="bg-amber-100 px-1 rounded font-mono">MYOB_CLIENT_SECRET</code>, and <code className="bg-amber-100 px-1 rounded font-mono">MYOB_REDIRECT_URI</code> in Settings → Secrets to enable MYOB.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Only admins can connect accounting integrations.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Immutability notice ── */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex items-start gap-3">
+        <Lock size={15} className="shrink-0 mt-0.5 text-slate-500" />
+        <div>
+          <p className="text-sm font-bold text-slate-700 mb-1">Financial record immutability</p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Sent invoices and approved cost entries are locked automatically — they cannot be edited or deleted after posting.
+            This matches standard accounting practice. To correct an error, use <strong>Void</strong> on invoices or <strong>Correct Entry</strong> on ledger costs to post an offsetting adjustment. Both entries remain visible for a full audit trail.
+          </p>
+        </div>
+      </div>
 
       {/* Setup modal */}
       {showSetupModal && (

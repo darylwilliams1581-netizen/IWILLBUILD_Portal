@@ -26,9 +26,17 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(entryId)) return res.status(400).json({ error: 'Invalid entry ID' });
 
     const [existing] = await db.execute(sql`
-      SELECT id, status FROM job_cost_ledger WHERE id = ${entryId} AND company_id = ${profile.companyId} LIMIT 1
-    `) as unknown as [Array<{ id: number; status: string }>, unknown];
+      SELECT id, status, locked FROM job_cost_ledger WHERE id = ${entryId} AND company_id = ${profile.companyId} LIMIT 1
+    `) as unknown as [Array<{ id: number; status: string; locked: number }>, unknown];
     if (!existing?.length) return res.status(404).json({ error: 'Entry not found' });
+
+    // Immutability guard — approved or locked entries cannot be deleted
+    if (existing[0].locked || existing[0].status === 'approved') {
+      return res.status(423).json({
+        error: 'Posted costs cannot be deleted. To correct an error, use the "Correct Entry" function to post an adjustment (negative amount). This maintains a full audit trail.',
+        locked: true,
+      });
+    }
 
     await db.execute(sql`DELETE FROM job_cost_ledger WHERE id = ${entryId} AND company_id = ${profile.companyId}`);
     res.json({ ok: true });

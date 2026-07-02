@@ -25,9 +25,18 @@ export default async function handler(req: Request, res: Response) {
 
     const id = Number(req.params.id);
     const [existing] = await db.execute(
-      sql`SELECT id, status FROM invoices WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as [Array<{ id: number; status: string }>, unknown];
+      sql`SELECT id, status, locked FROM invoices WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
+    ) as unknown as [Array<{ id: number; status: string; locked: number }>, unknown];
     if (!existing?.length) return res.status(404).json({ error: 'Invoice not found' });
+
+    // Immutability guard — sent/paid/void invoices are locked for accounting compliance
+    const lockedStatuses = ['sent', 'paid', 'partially_paid', 'overdue', 'void'];
+    if (existing[0].locked || lockedStatuses.includes(existing[0].status)) {
+      return res.status(423).json({
+        error: 'This invoice is locked and cannot be edited. It has already been sent or paid. To correct an error, void this invoice and create a new one.',
+        locked: true,
+      });
+    }
 
     const {
       job_id, customer_id, invoice_number, title, status,
