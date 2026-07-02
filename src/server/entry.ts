@@ -378,6 +378,12 @@ import team_verify_user_post_367 from "./api/team/verify-user/POST";
 import team_id_delete_368 from "./api/team/[id]/DELETE";
 import team_id_put_369 from "./api/team/[id]/PUT";
 import usage_get_370 from "./api/usage/GET";
+import document_templates_get_371 from "./api/document-templates/GET";
+import document_templates_post_372 from "./api/document-templates/POST";
+import document_templates_id_get_373 from "./api/document-templates/[id]/GET";
+import document_templates_id_put_374 from "./api/document-templates/[id]/PUT";
+import document_templates_id_delete_375 from "./api/document-templates/[id]/DELETE";
+import document_templates_id_import_docx_post_376 from "./api/document-templates/[id]/import-docx/POST";
 // </api-imports>
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -797,6 +803,8 @@ async function runStartupMigrations() {
     { table: 'job_cost_ledger', column: 'is_correction',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── QBO company connection ────────────────────────────────────────────────
     // ── MYOB company connection ───────────────────────────────────────────────
+    // ── Document Builder ─────────────────────────────────────────────────────
+    // (tables created via CREATE TABLE IF NOT EXISTS below; no extra columns needed at launch)
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -881,6 +889,9 @@ async function runStartupMigrations() {
     // ── Secure Share Links (QR / token-based sharing) ─────────────────────────
     { name: 'secure_share_links', ddl: "CREATE TABLE IF NOT EXISTS secure_share_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, link_type VARCHAR(30) NOT NULL DEFAULT 'file_transfer', target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, title VARCHAR(500) NOT NULL DEFAULT '', permissions_json TEXT NULL, metadata_json TEXT NULL, expires_at DATETIME NULL, password_hash VARCHAR(255) NULL, max_uses INT NULL, use_count INT NOT NULL DEFAULT 0, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id), INDEX idx_revoked (company_id, revoked))" },
     { name: 'secure_share_events', ddl: "CREATE TABLE IF NOT EXISTS secure_share_events (id INT AUTO_INCREMENT PRIMARY KEY, share_link_id INT NOT NULL, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, file_id INT NULL, metadata_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (share_link_id), INDEX idx_company (company_id, created_at))" },
+    // ── Smart Document Builder ────────────────────────────────────────────────
+    { name: 'document_templates', ddl: "CREATE TABLE IF NOT EXISTS document_templates (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, template_type VARCHAR(50) NOT NULL DEFAULT 'document', builder_json LONGTEXT NULL, page_layout_json TEXT NULL, theme_json TEXT NULL, source_docx_path VARCHAR(500) NULL, source_docx_name VARCHAR(255) NULL, is_active TINYINT(1) NOT NULL DEFAULT 1, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_type (company_id, template_type), INDEX idx_active (company_id, is_active))" },
+    { name: 'document_submissions', ddl: "CREATE TABLE IF NOT EXISTS document_submissions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, job_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', answers_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_template (template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1573,6 +1584,12 @@ app.post("/api/team/verify-user", team_verify_user_post_367);
 app.delete("/api/team/:id", team_id_delete_368);
 app.put("/api/team/:id", team_id_put_369);
 app.get("/api/usage", usage_get_370);
+app.get("/api/document-templates", document_templates_get_371);
+app.post("/api/document-templates", document_templates_post_372);
+app.get("/api/document-templates/:id", document_templates_id_get_373);
+app.put("/api/document-templates/:id", document_templates_id_put_374);
+app.delete("/api/document-templates/:id", document_templates_id_delete_375);
+app.post("/api/document-templates/:id/import-docx", document_templates_id_import_docx_post_376);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express
