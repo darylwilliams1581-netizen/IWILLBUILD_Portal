@@ -109,16 +109,60 @@ const ALL_MODULES = ['Jobs', 'Fleet', 'Forms', 'Estimates', 'Files', 'To-do', 'P
 
 export function detectModulesUsed(ctx: DazzaContext): string[] {
   const used: string[] = [];
-  if (ctx.permissions.canJobs) {
-    if (ctx.jobs?.length)         used.push('Jobs');
-    if (ctx.openTodos?.length)    used.push('To-do');
-    if (ctx.jobProgress?.length)  used.push('Progress');
+  const p = ctx.permissions;
+
+  // A module is "used" if the user has permission for it — the context was
+  // fetched and loaded into the system prompt regardless of whether it has
+  // records. Empty modules are labelled "(no records yet)" so the source
+  // section is honest about what was consulted.
+  if (p.canJobs) {
+    if ((ctx.jobs?.length ?? 0) > 0) {
+      used.push('Jobs');
+    } else {
+      used.push('Jobs (no records yet)');
+    }
+    if (ctx.openTodos?.length)   used.push('To-do');
+    if (ctx.jobProgress?.length) used.push('Progress');
   }
-  if (ctx.permissions.canFleet && ctx.fleet?.length)           used.push('Fleet');
-  if (ctx.permissions.canEstimating && ctx.estimates?.length)  used.push('Estimates');
-  if (ctx.permissions.canForms && ctx.formTemplates?.length)   used.push('Forms');
-  if (ctx.permissions.canFiles && ctx.files?.length)           used.push('Files');
-  if (ctx.knowledgeEntries?.length)                            used.push('Company Knowledge');
+
+  if (p.canFleet) {
+    if ((ctx.fleet?.length ?? 0) > 0) {
+      used.push('Fleet');
+    } else {
+      used.push('Fleet (no records yet)');
+    }
+  }
+
+  if (p.canEstimating) {
+    if ((ctx.estimates?.length ?? 0) > 0) {
+      used.push('Estimates');
+    } else {
+      used.push('Estimates (no records yet)');
+    }
+  }
+
+  if (p.canForms) {
+    if ((ctx.formTemplates?.length ?? 0) > 0) {
+      used.push('Forms');
+    } else {
+      used.push('Forms (no records yet)');
+    }
+  }
+
+  if (p.canFiles) {
+    if ((ctx.files?.length ?? 0) > 0) {
+      used.push('Files');
+    } else {
+      used.push('Files (no records yet)');
+    }
+  }
+
+  // Company Knowledge and Settings are always loaded when context is built
+  used.push('Settings');
+  used.push('Company');
+
+  if (ctx.knowledgeEntries?.length) used.push('Company Knowledge');
+
   return used;
 }
 
@@ -161,11 +205,51 @@ export function formatDazzaAnswer(answer: DazzaAnswer): string {
     sections.push(`🧠 AI reasoning:\n${reasoning}`);
   }
 
-  // 3. Source modules
-  const moduleList = answer.modulesUsed.length > 0
-    ? answer.modulesUsed.join(', ')
-    : 'No portal data used — AI reasoning only.';
-  sections.push(`📦 Source modules:\n${moduleList}`);
+  // 3. Source modules — label depends on what was actually used
+  //
+  //  • Portal data loaded AND AI reasoning used  → "IWILLBUILD data + AI reasoning\n<modules>"
+  //  • Portal data loaded, no AI reasoning       → list modules only
+  //  • No portal data, pure AI reasoning         → "No portal data used — AI reasoning only."
+  //
+  // "Portal data loaded" means modulesUsed is non-empty (detectModulesUsed now
+  // always populates it when the user has permissions, even for empty modules).
+  // We distinguish "pure AI" by checking whether portalDataSection is absent
+  // AND none of the modules have actual records (i.e. all entries end with
+  // "(no records yet)" or are Settings/Company).
+
+  const hasRealPortalData = answer.modulesUsed.some(
+    (m) => !m.endsWith('(no records yet)') && m !== 'Settings' && m !== 'Company'
+  );
+  const hasAiReasoning = !!answer.aiReasoningSection;
+  const hasPortalSection = !!answer.portalDataSection;
+
+  let sourceLabel: string;
+  if (answer.modulesUsed.length === 0) {
+    // No permissions / no context loaded at all
+    sourceLabel = 'No portal data used — AI reasoning only.';
+  } else if ((hasRealPortalData || hasPortalSection) && hasAiReasoning) {
+    // Both portal data and AI reasoning contributed
+    const moduleNames = answer.modulesUsed
+      .filter((m) => m !== 'Settings' && m !== 'Company')
+      .join(', ');
+    sourceLabel = `IWILLBUILD data + AI reasoning\n${moduleNames || answer.modulesUsed.join(', ')}`;
+  } else if (hasRealPortalData || hasPortalSection) {
+    // Portal data only
+    const moduleNames = answer.modulesUsed
+      .filter((m) => m !== 'Settings' && m !== 'Company')
+      .join(', ');
+    sourceLabel = moduleNames || answer.modulesUsed.join(', ');
+  } else if (hasAiReasoning && !hasPortalSection) {
+    // AI reasoning only — but context was loaded (permissions exist)
+    // Show which modules were consulted even if empty
+    const moduleNames = answer.modulesUsed.join(', ');
+    sourceLabel = `No portal data used — AI reasoning only.\nModules consulted: ${moduleNames}`;
+  } else {
+    // Fallback: list whatever we have
+    sourceLabel = answer.modulesUsed.join(', ') || 'No portal data used — AI reasoning only.';
+  }
+
+  sections.push(`📦 Source modules:\n${sourceLabel}`);
 
   // 4. Confidence
   let confidenceLine = answer.confidence;
@@ -901,18 +985,56 @@ export async function processDazzaQuestion(
 
   if (openaiHasStructure && !conflictDetected) {
     // Use OpenAI's formatted reply but override portal data section with our authoritative version
+    let builtReply = openaiReply;
     if (internalSource === 'portal_data' && internalAnswer && parsed.portalDataSection) {
       // Replace OpenAI's portal section with our authoritative one (stripped of headers)
       const authoritativeContent = isPreFormattedAnswer(internalAnswer)
         ? extractPortalDataContent(internalAnswer)
         : internalAnswer;
-      answer.reply = openaiReply.replace(
+      builtReply = builtReply.replace(
         parsed.portalDataSection,
         authoritativeContent,
       );
-    } else {
-      answer.reply = openaiReply;
     }
+
+    // Always patch the Source modules section with our authoritative modulesUsed list.
+    // OpenAI may write "No portal data used — AI reasoning only." even when portal
+    // context was loaded. We replace whatever OpenAI wrote with the correct label.
+    if (/📦\s*Source modules:/i.test(builtReply)) {
+      // Build the correct source label using the same logic as formatDazzaAnswer
+      const hasRealPortalDataInReply = modulesUsed.some(
+        (m) => !m.endsWith('(no records yet)') && m !== 'Settings' && m !== 'Company'
+      );
+      const hasAiReasoningInReply = !!parsed.aiReasoningSection;
+      const hasPortalSectionInReply = !!finalPortalSection;
+
+      let correctSourceLabel: string;
+      if (modulesUsed.length === 0) {
+        correctSourceLabel = 'No portal data used — AI reasoning only.';
+      } else if ((hasRealPortalDataInReply || hasPortalSectionInReply) && hasAiReasoningInReply) {
+        const moduleNames = modulesUsed
+          .filter((m) => m !== 'Settings' && m !== 'Company')
+          .join(', ');
+        correctSourceLabel = `IWILLBUILD data + AI reasoning\n${moduleNames || modulesUsed.join(', ')}`;
+      } else if (hasRealPortalDataInReply || hasPortalSectionInReply) {
+        const moduleNames = modulesUsed
+          .filter((m) => m !== 'Settings' && m !== 'Company')
+          .join(', ');
+        correctSourceLabel = moduleNames || modulesUsed.join(', ');
+      } else {
+        // AI reasoning only — but context was consulted
+        const moduleNames = modulesUsed.join(', ');
+        correctSourceLabel = `No portal data used — AI reasoning only.\nModules consulted: ${moduleNames}`;
+      }
+
+      // Replace the entire Source modules block (up to the next emoji section or end)
+      builtReply = builtReply.replace(
+        /📦\s*Source modules:\n[^\n📊💡⚠️]*([\s\S]*?)(?=\n\n(?:📊|💡|⚠️)|$)/,
+        `📦 Source modules:\n${correctSourceLabel}\n\n`,
+      );
+    }
+
+    answer.reply = builtReply;
   } else {
     // Build from our parsed sections
     answer.reply = formatDazzaAnswer(answer);
