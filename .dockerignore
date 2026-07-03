@@ -1,11 +1,48 @@
-# Docker ignore for V8 App Template
-node_modules
+# Docker ignore for IWILLBUILD Portal
+# ─────────────────────────────────────────────────────────────────────────────
+# CRITICAL: Keep this list tight — every file NOT listed here gets uploaded
+# to the publish pipeline. Large uploads cause socket hang up timeouts.
 
-# Development files
+# Git history — 44 MB, never needed in the build container
+.git
+.gitignore
+
+# Dependencies — installed fresh in the container
+node_modules
+dev-tools/node_modules
+source-mapper/node_modules
+content-plugin/node_modules
+content-lib/node_modules
+
+# Lock files for sub-packages (root package-lock.json IS needed)
+dev-tools/package-lock.json
+dev-tools/pnpm-lock.yaml
+source-mapper/package-lock.json
+content-plugin/package-lock.json
+content-lib/package-lock.json
+
+# Build output — built fresh in the container
+dist
+dist-ssr
+build
+
+# Test files — not needed at runtime
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Dev / editor files
 *.log
 .env.local
 .env.development
 .env.test
+.DS_Store
+.vscode
+.idea
 
-# Container management scripts are provided via --build-context container-scripts
-# (no longer needed in this directory)
+# Internal docs that should never be publicly served
+IWILLBUILD_SYSTEM_MAP.md
+README.md
+env.example
