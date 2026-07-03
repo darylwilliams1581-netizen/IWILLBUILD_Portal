@@ -194,7 +194,7 @@ function PortalMockup() {
 
           {/* Job rows */}
           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Jobs</div>
-          {home.rows.map((r) => (
+          {(home.rows ?? []).map((r) => (
             <div key={r.label} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: '#1e293b', borderRadius: 7, padding: '9px 12px',
