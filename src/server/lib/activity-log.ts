@@ -66,7 +66,8 @@ export async function logActivity(params: ActivityLogParams): Promise<void> {
     `);
   } catch (err) {
     // Non-critical — log to console but never propagate
-    console.warn('[activity-log] insert failed:', (err as Error)?.message?.slice(0, 120));
+    const e = err as Error & { code?: string; sqlMessage?: string };
+    console.warn('[activity-log] insert failed:', e?.sqlMessage ?? e?.message ?? String(err));
   }
 }
 
