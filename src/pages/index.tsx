@@ -1,3 +1,4 @@
+import { home } from 'virtual:content';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
@@ -126,12 +127,6 @@ const plans = [
 
 // ── Portal mockup component ───────────────────────────────────────────────────
 function PortalMockup() {
-  const tabs = ['Dashboard', 'Jobs', 'Fleet', 'Forms', 'Estimating'];
-  const rows = [
-    { label: 'Job #1042 — Riverside Reno',   status: 'In Progress', color: '#1263d8' },
-    { label: 'Job #1038 — Warehouse Fitout', status: 'Pending',     color: '#f97316' },
-    { label: 'Job #1035 — Office Strip-out', status: 'Complete',    color: '#16a34a' },
-  ];
   return (
     <div style={{
       background: '#0f172a',
@@ -149,7 +144,6 @@ function PortalMockup() {
         <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
         <span style={{ flex: 1, background: '#334155', borderRadius: 4, height: 18, marginLeft: 8 }} />
       </div>
-
       {/* Sidebar + content */}
       <div style={{ display: 'flex', minHeight: 340 }}>
         {/* Sidebar */}
@@ -170,7 +164,7 @@ function PortalMockup() {
         <div style={{ flex: 1, padding: '16px 18px', color: '#f1f5f9' }}>
           {/* Tab bar */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-            {tabs.map((t, i) => (
+            {home.tabs.map((t, i) => (
               <span key={t} style={{
                 fontSize: 11, fontWeight: 700, padding: '4px 10px',
                 borderRadius: 6,
@@ -200,7 +194,7 @@ function PortalMockup() {
 
           {/* Job rows */}
           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Jobs</div>
-          {rows.map((r) => (
+          {home.rows.map((r) => (
             <div key={r.label} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: '#1e293b', borderRadius: 7, padding: '9px 12px',
