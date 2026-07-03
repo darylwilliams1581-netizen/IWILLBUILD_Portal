@@ -1,10 +1,36 @@
-# Docker ignore for IWILLBUILD Portal
-# The platform pipeline has its own built-in exclusion logic —
-# this file is kept minimal to avoid interfering with it.
 node_modules
+.git
+.gitignore
+.gitattributes
 
-# Development files
+# Source — bundled into dist/server.bundle.mjs at build time
+src
+
+# Dev tooling — not needed at runtime
+dev-tools
+source-mapper
+content-lib
+content-plugin
+drizzle
+scripts
+airo-secrets
+
+# Config files — not needed at runtime
+vite.config.ts
+vite.config.js
+tsconfig.json
+tsconfig.*.json
+tailwind.config.*
+postcss.config.*
+eslint.config.*
+drizzle.config.*
+vitest.config.*
+format-overrides-plugin.ts
+fullstory-plugin.ts
+IWILLBUILD_SYSTEM_MAP.md
+README.md
+
+# Logs and OS junk
 *.log
-.env.local
-.env.development
-.env.test
+.DS_Store
+Thumbs.db
