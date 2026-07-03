@@ -1,77 +1,10 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# IWILLBUILD Portal — .dockerignore
-#
-# Pipeline fast path: detects dist/server.bundle.mjs → deploys pre-built
-# artifacts directly, no npm ci or fresh build needed.
-#
-# Runtime requirements:
-#   dist/server.bundle.mjs  ← Express server + all API handlers (bundled)
-#   dist/client/            ← Static assets served by express.static()
-#   dist/bin/               ← Chunked worker files loaded at runtime
-#   dist/server/            ← SSR seed data
-#   package.json            ← Runtime metadata
-#   package-lock.json       ← Required if pipeline falls back to npm ci
-#
-# Upload budget (uncompressed ~15 MB → compressed ~3 MB on the wire):
-#   dist/          ~13 MB  ✅ required
-#   package*.json  ~0.7 MB ✅ required
-#   src/           ~6.3 MB ❌ NOT needed at runtime — excluded
-#   .git/          ~44 MB  ❌ excluded
-#   node_modules/  ~777 MB ❌ excluded
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Source code — NOT needed at runtime (everything is in dist/)
-src
-
-# Git history — 44 MB, never needed
-.git
-.gitignore
-.gitattributes
-
-# Dependencies — 777 MB, not needed (all bundled into server.bundle.mjs)
+# Docker ignore for IWILLBUILD Portal
+# The platform pipeline has its own built-in exclusion logic —
+# this file is kept minimal to avoid interfering with it.
 node_modules
 
-# Config / tooling files not needed at runtime
-vite.config.ts
-vite.config.js
-tsconfig.json
-tsconfig.*.json
-tailwind.config.*
-postcss.config.*
-eslint.config.*
-.eslintrc*
-.prettierrc*
-drizzle.config.*
-drizzle
-scripts
-airo-secrets
-
-# Sub-package lock files (root package-lock.json kept for npm ci fallback)
-dev-tools/package-lock.json
-dev-tools/pnpm-lock.yaml
-source-mapper/package-lock.json
-content-plugin/package-lock.json
-content-lib/package-lock.json
-
-# Logs and OS junk
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm/_logs
+# Development files
 *.log
-.DS_Store
-Thumbs.db
-
-# Test files
-**/__tests__/**
-**/test/**
-**/tests/**
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-**/*.spec.tsx
-
-# Internal docs
-IWILLBUILD_SYSTEM_MAP.md
-README.md
-docs
+.env.local
+.env.development
+.env.test
