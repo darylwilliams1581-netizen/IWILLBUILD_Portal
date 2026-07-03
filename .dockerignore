@@ -1,26 +1,52 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # IWILLBUILD Portal — .dockerignore
 #
-# The publish pipeline uses a "fast path": it detects dist/server.bundle.mjs
-# and deploys the pre-built artifacts directly WITHOUT running npm ci or a
-# fresh build in the container. So dist/ MUST be included in the upload.
+# Pipeline fast path: detects dist/server.bundle.mjs → deploys pre-built
+# artifacts directly, no npm ci or fresh build needed.
 #
-# Upload budget breakdown (target < 20 MB):
-#   dist/          ~13 MB  ← required (pre-built artifacts)
-#   src/           ~6.3 MB ← required (source for SSR / reference)
-#   package*.json  ~0.7 MB ← required (npm ci fallback)
-#   everything else excluded
+# Runtime requirements:
+#   dist/server.bundle.mjs  ← Express server + all API handlers (bundled)
+#   dist/client/            ← Static assets served by express.static()
+#   dist/bin/               ← Chunked worker files loaded at runtime
+#   dist/server/            ← SSR seed data
+#   package.json            ← Runtime metadata
+#   package-lock.json       ← Required if pipeline falls back to npm ci
+#
+# Upload budget (uncompressed ~15 MB → compressed ~3 MB on the wire):
+#   dist/          ~13 MB  ✅ required
+#   package*.json  ~0.7 MB ✅ required
+#   src/           ~6.3 MB ❌ NOT needed at runtime — excluded
+#   .git/          ~44 MB  ❌ excluded
+#   node_modules/  ~777 MB ❌ excluded
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Git history — 44 MB, never needed in the build container
+# Source code — NOT needed at runtime (everything is in dist/)
+src
+
+# Git history — 44 MB, never needed
 .git
 .gitignore
 .gitattributes
 
-# Dependencies — 777 MB, installed fresh if needed
+# Dependencies — 777 MB, not needed (all bundled into server.bundle.mjs)
 node_modules
 
-# Sub-package lock files (root package-lock.json is kept for npm ci)
+# Config / tooling files not needed at runtime
+vite.config.ts
+vite.config.js
+tsconfig.json
+tsconfig.*.json
+tailwind.config.*
+postcss.config.*
+eslint.config.*
+.eslintrc*
+.prettierrc*
+drizzle.config.*
+drizzle
+scripts
+airo-secrets
+
+# Sub-package lock files (root package-lock.json kept for npm ci fallback)
 dev-tools/package-lock.json
 dev-tools/pnpm-lock.yaml
 source-mapper/package-lock.json
@@ -48,3 +74,4 @@ Thumbs.db
 # Internal docs
 IWILLBUILD_SYSTEM_MAP.md
 README.md
+docs
