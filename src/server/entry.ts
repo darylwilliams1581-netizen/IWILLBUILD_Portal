@@ -748,10 +748,10 @@ async function runStartupMigrations() {
     { table: 'user', column: 'two_factor_enabled', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── Dazza AI — per-company OpenAI key ────────────────────────────────────
     { table: 'company_settings', column: 'openai_api_key',      definition: 'TEXT NULL' },
-    // ── Xero — per-company credentials stored in UI (owner sets via Settings → Accounting) ──
-    { table: 'company_settings', column: 'xero_client_id',      definition: 'TEXT NULL' },
-    { table: 'company_settings', column: 'xero_client_secret',  definition: 'TEXT NULL' },
-    { table: 'company_settings', column: 'xero_redirect_uri',   definition: 'TEXT NULL' },
+    // ── Xero — per-company OAuth config (shelved; columns kept for schema continuity) ──
+    // NOTE: these columns are intentionally not referenced by any active route while
+    // the accounting integrations are shelved. Re-enable when unshelving.
+    { table: 'company_settings', column: 'xero_oauth_config',   definition: 'TEXT NULL' },
     // ── Customers: contractor fields ─────────────────────────────────────────
     { table: 'customers', column: 'record_type',    definition: "VARCHAR(20) NOT NULL DEFAULT 'customer'" },
     { table: 'customers', column: 'trade_type',     definition: 'VARCHAR(100) NULL' },
