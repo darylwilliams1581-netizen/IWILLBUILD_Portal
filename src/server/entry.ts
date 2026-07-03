@@ -651,6 +651,37 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1c. Ensure platform_activity_log exists BEFORE colsToEnsure runs so the
+  //     column-healing loop can add any missing columns on older DBs.
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS platform_activity_log (" +
+      "  id INT AUTO_INCREMENT PRIMARY KEY," +
+      "  event_type VARCHAR(60) NOT NULL DEFAULT ''," +
+      "  success TINYINT(1) NOT NULL DEFAULT 1," +
+      "  user_id VARCHAR(36) NULL," +
+      "  email VARCHAR(255) NULL," +
+      "  company_id INT NULL," +
+      "  performed_by_user_id VARCHAR(36) NULL," +
+      "  ip_address VARCHAR(100) NULL," +
+      "  user_agent VARCHAR(500) NULL," +
+      "  reason VARCHAR(500) NULL," +
+      "  metadata_json TEXT NULL," +
+      "  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  INDEX idx_company (company_id)," +
+      "  INDEX idx_user (user_id)," +
+      "  INDEX idx_event (event_type)," +
+      "  INDEX idx_created (created_at)" +
+      ")"
+    ));
+    console.log('[startup-migration] platform_activity_log table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] platform_activity_log CREATE failed:', msg);
+    }
+  }
+
   // 2. Ensure individual columns exist — check INFORMATION_SCHEMA first, then ALTER
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
     { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },
