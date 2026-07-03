@@ -1,13 +1,33 @@
-# VCS + local tooling metadata
+# ─────────────────────────────────────────────────────────────────────────────
+# IWILLBUILD Portal — .dockerignore
+#
+# The publish pipeline uses a "fast path": it detects dist/server.bundle.mjs
+# and deploys the pre-built artifacts directly WITHOUT running npm ci or a
+# fresh build in the container. So dist/ MUST be included in the upload.
+#
+# Upload budget breakdown (target < 20 MB):
+#   dist/          ~13 MB  ← required (pre-built artifacts)
+#   src/           ~6.3 MB ← required (source for SSR / reference)
+#   package*.json  ~0.7 MB ← required (npm ci fallback)
+#   everything else excluded
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Git history — 44 MB, never needed in the build container
 .git
 .gitignore
 .gitattributes
 
-# Node deps and build artifacts
+# Dependencies — 777 MB, installed fresh if needed
 node_modules
-dist
 
-# Logs/temp
+# Sub-package lock files (root package-lock.json is kept for npm ci)
+dev-tools/package-lock.json
+dev-tools/pnpm-lock.yaml
+source-mapper/package-lock.json
+content-plugin/package-lock.json
+content-lib/package-lock.json
+
+# Logs and OS junk
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -16,7 +36,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Test code (optional if you don't need tests in publish bundle)
+# Test files
 **/__tests__/**
 **/test/**
 **/tests/**
@@ -25,8 +45,6 @@ Thumbs.db
 **/*.spec.ts
 **/*.spec.tsx
 
-# Internal package metadata not needed in deploy
-**/pnpm-lock.yaml
-**/package-lock.json
-!package-lock.json
+# Internal docs
 IWILLBUILD_SYSTEM_MAP.md
+README.md
