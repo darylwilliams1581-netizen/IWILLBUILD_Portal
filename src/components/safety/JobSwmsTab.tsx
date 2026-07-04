@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Search, Plus, Loader2, Wand2, Trash2, Printer,
   HardHat, Building2, X, Check, AlertCircle, CheckSquare, Square,
+  Link2, Copy, CheckCircle2, Users, Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import SwmsPrintModal from './SwmsPrintModal';
 import type { JobSwms, SwmsTemplate } from './safety-types';
@@ -327,6 +328,126 @@ function AddJobSwmsModal({ onClose, onAdded }: {
 
 // ── JobSwmsTab ────────────────────────────────────────────────────────────────
 
+interface Signoff {
+  id: number;
+  worker_name: string;
+  company_name: string | null;
+  role: string | null;
+  white_card_number: string | null;
+  signed_at: string;
+}
+
+/** Inline sign-off panel for a single job SWMS */
+function SignoffPanel({ swmsId, onClose }: { swmsId: number; onClose: () => void }) {
+  const [signoffs,    setSignoffs]    = useState<Signoff[]>([]);
+  const [shareUrl,    setShareUrl]    = useState('');
+  const [loading,     setLoading]     = useState(true);
+  const [generating,  setGenerating]  = useState(false);
+  const [copied,      setCopied]      = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/safety/job-swms/${swmsId}/signoffs`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/safety/job-swms/${swmsId}/share-token`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+    ]).then(([signoffData, tokenData]) => {
+      setSignoffs((signoffData as { signoffs?: Signoff[] }).signoffs ?? []);
+      setShareUrl((tokenData as { url?: string }).url ?? '');
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [swmsId]);
+
+  async function regenerate() {
+    setGenerating(true);
+    try {
+      const r = await fetch(`/api/safety/job-swms/${swmsId}/share-token`, { method: 'POST', credentials: 'include' });
+      const d = await r.json() as { url?: string };
+      setShareUrl(d.url ?? '');
+    } finally { setGenerating(false); }
+  }
+
+  function copyLink() {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+      className="overflow-hidden"
+    >
+      <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 space-y-4">
+        {/* Share link */}
+        <div>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Sign-off Link</p>
+          <p className="text-xs text-slate-500 mb-2">Share this link with workers. They can read the SWMS and sign off on their phone — no login required.</p>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Generating link…</div>
+          ) : shareUrl ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 truncate font-mono">
+                {shareUrl}
+              </div>
+              <button
+                onClick={copyLink}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+                  copied ? 'bg-emerald-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {copied ? <><CheckCircle2 size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+              </button>
+            </div>
+          ) : (
+            <button onClick={regenerate} disabled={generating} className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors">
+              {generating ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
+              Generate link
+            </button>
+          )}
+        </div>
+
+        {/* Signoffs list */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+              Sign-offs ({signoffs.length})
+            </p>
+            <button onClick={onClose} className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1">
+              <ChevronUp size={12} /> Hide
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Loading…</div>
+          ) : signoffs.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No sign-offs yet. Share the link above with workers.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {signoffs.map(s => (
+                <div key={s.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800">{s.worker_name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {[s.role, s.company_name, s.white_card_number ? `WC: ${s.white_card_number}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0">
+                    <Clock size={9} />
+                    {fmtDate(s.signed_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function JobSwmsTab() {
   const [list, setList] = useState<JobSwms[]>([]);
   const [loading, setLoading] = useState(true);
@@ -336,6 +457,7 @@ export default function JobSwmsTab() {
   const [editing, setEditing] = useState<JobSwms | null>(null);
   const [printing, setPrinting] = useState<JobSwms | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [expandedSignoffs, setExpandedSignoffs] = useState<Set<number>>(new Set());
 
   const load = useCallback(() => {
     setLoading(true);
@@ -423,44 +545,67 @@ export default function JobSwmsTab() {
 
       {!loading && filtered.length > 0 && (
         <div className="flex flex-col gap-2">
-          {filtered.map((j) => (
-            <div key={j.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between gap-3 hover:border-slate-300 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(j.status)}`}>
-                    {j.status.charAt(0).toUpperCase() + j.status.slice(1)}
-                  </span>
-                  <span className="text-xs text-slate-400">Rev {j.revision_number}</span>
-                  {j.review_date && <span className="text-xs text-slate-400">Review: {fmtDate(j.review_date)}</span>}
-                  {j.approved_at && <span className="text-xs text-emerald-600 font-semibold">Approved {fmtDate(j.approved_at)}</span>}
+          {filtered.map((j) => {
+            const signoffsOpen = expandedSignoffs.has(j.id);
+            return (
+              <div key={j.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
+                <div className="p-4 flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(j.status)}`}>
+                        {j.status.charAt(0).toUpperCase() + j.status.slice(1)}
+                      </span>
+                      <span className="text-xs text-slate-400">Rev {j.revision_number}</span>
+                      {j.review_date && <span className="text-xs text-slate-400">Review: {fmtDate(j.review_date)}</span>}
+                      {j.approved_at && <span className="text-xs text-emerald-600 font-semibold">Approved {fmtDate(j.approved_at)}</span>}
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-800 truncate">{j.title}</h3>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      {j.job_name && (
+                        <span className="flex items-center gap-1 text-xs text-slate-500">
+                          <Building2 size={11} className="text-slate-400" />
+                          {j.job_name}{j.job_number ? ` · ${j.job_number}` : ''}
+                        </span>
+                      )}
+                      {j.client_name && <span className="text-xs text-slate-400">{j.client_name}</span>}
+                      {j.job_site_address && <span className="text-xs text-slate-400 truncate max-w-xs">{j.job_site_address}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {j.status === 'draft' && (
+                      <button onClick={() => void handleStatusChange(j, 'reviewed')} className="px-2 py-1 rounded-md text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">Review</button>
+                    )}
+                    {j.status === 'reviewed' && (
+                      <button onClick={() => void handleStatusChange(j, 'approved')} className="px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors">Approve</button>
+                    )}
+                    {/* Sign-off toggle */}
+                    <button
+                      onClick={() => setExpandedSignoffs(prev => {
+                        const next = new Set(prev);
+                        next.has(j.id) ? next.delete(j.id) : next.add(j.id);
+                        return next;
+                      })}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-colors ${
+                        signoffsOpen ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:bg-slate-100'
+                      }`}
+                      title="Sign-off management"
+                    >
+                      <Users size={12} />
+                      {signoffsOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                    </button>
+                    <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
+                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                      {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
+                  </div>
                 </div>
-                <h3 className="font-bold text-sm text-slate-800 truncate">{j.title}</h3>
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  {j.job_name && (
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                      <Building2 size={11} className="text-slate-400" />
-                      {j.job_name}{j.job_number ? ` \u00b7 ${j.job_number}` : ''}
-                    </span>
-                  )}
-                  {j.client_name && <span className="text-xs text-slate-400">{j.client_name}</span>}
-                  {j.job_site_address && <span className="text-xs text-slate-400 truncate max-w-xs">{j.job_site_address}</span>}
-                </div>
+                <AnimatePresence>
+                  {signoffsOpen && <SignoffPanel key={j.id} swmsId={j.id} onClose={() => setExpandedSignoffs(prev => { const next = new Set(prev); next.delete(j.id); return next; })} />}
+                </AnimatePresence>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {j.status === 'draft' && (
-                  <button onClick={() => void handleStatusChange(j, 'reviewed')} className="px-2 py-1 rounded-md text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors">Review</button>
-                )}
-                {j.status === 'reviewed' && (
-                  <button onClick={() => void handleStatusChange(j, 'approved')} className="px-2 py-1 rounded-md text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors">Approve</button>
-                )}
-                <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
-                <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
-                <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
-                  {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

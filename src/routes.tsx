@@ -48,6 +48,8 @@ const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const RoadmapPage        = lazy(() => import('./pages/roadmap'));
+const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
+const FormFillPage       = lazy(() => import('./pages/form-fill'));
 // ── New-tab viewer pages ──────────────────────────────────────────────────────
 const ViewFilePage       = lazy(() => import('./pages/view-file'));
 const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
@@ -126,6 +128,8 @@ export const routes: RouteObject[] = [
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },
+  { path: '/safety/sign/:token',    element: <Suspense fallback={<PageLoader />}><SwmsSignoffPage /></Suspense> },
+  { path: '/forms/fill/:token',     element: <Suspense fallback={<PageLoader />}><FormFillPage /></Suspense> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
   // Alias routes — /projects and /stakeholders redirect to canonical paths
   { path: '/projects',      element: <Navigate to="/jobs" replace /> },

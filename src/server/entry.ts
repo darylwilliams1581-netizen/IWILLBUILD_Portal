@@ -343,6 +343,13 @@ import fleet_id_service_logs_get from "./api/fleet/[id]/service-logs/GET";
 import fleet_id_service_logs_post from "./api/fleet/[id]/service-logs/POST";
 import fleet_service_logs_id_patch from "./api/fleet/service-logs/[logId]/PATCH";
 import fleet_service_logs_id_delete from "./api/fleet/service-logs/[logId]/DELETE";
+import safety_job_swms_id_share_token_post from "./api/safety/job-swms/[id]/share-token/POST";
+import public_swms_token_get from "./api/public/swms/[token]/GET";
+import public_swms_token_signoff_post from "./api/public/swms/[token]/signoff/POST";
+import forms_templates_id_share_link_post from "./api/forms/templates/[id]/share-link/POST";
+import public_form_token_get from "./api/public/form/[token]/GET";
+import public_form_token_submit_post from "./api/public/form/[token]/submit/POST";
+import forms_submissions_get from "./api/forms/submissions/GET";
 import secure_share_get_326 from "./api/secure-share/GET";
 import secure_share_post_327 from "./api/secure-share/POST";
 import secure_share_id_delete_328 from "./api/secure-share/[id]/DELETE";
@@ -956,6 +963,12 @@ async function runStartupMigrations() {
     { name: 'document_submissions', ddl: "CREATE TABLE IF NOT EXISTS document_submissions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, job_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', answers_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_template (template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
     // ── Fleet Service / Maintenance Logs ─────────────────────────────────────
     { name: 'fleet_service_logs', ddl: "CREATE TABLE IF NOT EXISTS fleet_service_logs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, fleet_asset_id INT NOT NULL, service_type VARCHAR(60) NOT NULL DEFAULT 'Service', title VARCHAR(255) NOT NULL, service_date DATE NOT NULL, odometer_km INT NULL, cost DECIMAL(12,2) NULL, provider VARCHAR(255) NULL, invoice_number VARCHAR(100) NULL, notes TEXT NULL, next_service_date DATE NULL, next_service_km INT NULL, status VARCHAR(30) NOT NULL DEFAULT 'completed', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_asset (fleet_asset_id), INDEX idx_date (fleet_asset_id, service_date))" },
+    // ── SWMS share tokens (public sign-off links) ─────────────────────────────
+    { name: 'swms_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS swms_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, job_swms_id INT NOT NULL, company_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_job_swms (job_swms_id))" },
+    // ── Public form submissions (template-level, no job required) ─────────────
+    { name: 'form_public_submissions', ddl: "CREATE TABLE IF NOT EXISTS form_public_submissions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL, submitter_name VARCHAR(255) NULL, submitter_email VARCHAR(255) NULL, job_id INT NULL, answers_json LONGTEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'submitted', submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(64) NULL, INDEX idx_company (company_id), INDEX idx_template (template_id), INDEX idx_token (token), INDEX idx_job (company_id, job_id))" },
+    // ── Form public share tokens ──────────────────────────────────────────────
+    { name: 'form_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS form_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_template (template_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1613,6 +1626,13 @@ app.get("/api/fleet/:id/service-logs", fleet_id_service_logs_get);
 app.post("/api/fleet/:id/service-logs", fleet_id_service_logs_post);
 app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_id_patch);
 app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_id_delete);
+app.post("/api/safety/job-swms/:id/share-token", safety_job_swms_id_share_token_post);
+app.get("/api/public/swms/:token", public_swms_token_get);
+app.post("/api/public/swms/:token/signoff", public_swms_token_signoff_post);
+app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_post);
+app.get("/api/public/form/:token", public_form_token_get);
+app.post("/api/public/form/:token/submit", public_form_token_submit_post);
+app.get("/api/forms/submissions", forms_submissions_get);
 app.get("/api/secure-share", secure_share_get_326);
 app.post("/api/secure-share", secure_share_post_327);
 app.delete("/api/secure-share/:id", secure_share_id_delete_328);

@@ -3,7 +3,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
-  LayoutTemplate, Clock, FileUp,
+  LayoutTemplate, Clock, FileUp, Link2, Copy, CheckCircle2, Inbox,
+  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -248,11 +249,12 @@ function DeleteConfirm({ name, onConfirm, onCancel, deleting }: {
 
 // ── Template card ─────────────────────────────────────────────────────────────
 
-function TemplateCard({ t, onBuild, onEdit, onDelete }: {
+function TemplateCard({ t, onBuild, onEdit, onDelete, onShare }: {
   t: FormTemplate;
   onBuild: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onShare: () => void;
 }) {
   const meta = TYPE_META[t.formType];
 
@@ -318,6 +320,13 @@ function TemplateCard({ t, onBuild, onEdit, onDelete }: {
           <Zap size={12} /> Build fields <ChevronRight size={11} />
         </button>
         <button
+          onClick={onShare}
+          className="p-2 rounded-xl text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+          title="Share public link"
+        >
+          <Link2 size={14} />
+        </button>
+        <button
           onClick={onEdit}
           className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
           title="Edit template"
@@ -336,6 +345,238 @@ function TemplateCard({ t, onBuild, onEdit, onDelete }: {
   );
 }
 
+// ── Share Link Modal ──────────────────────────────────────────────────────────
+
+function ShareLinkModal({ templateId, templateName, onClose }: {
+  templateId: number;
+  templateName: string;
+  onClose: () => void;
+}) {
+  const [url,      setUrl]      = useState('');
+  const [loading,  setLoading]  = useState(true);
+  const [copied,   setCopied]   = useState(false);
+  const [error,    setError]    = useState('');
+
+  useEffect(() => {
+    fetch(`/api/forms/templates/${templateId}/share-link`, { method: 'POST', credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { url?: string; error?: string }) => {
+        if (d.error) { setError(d.error); return; }
+        setUrl(d.url ?? '');
+      })
+      .catch(() => setError('Failed to generate link'))
+      .finally(() => setLoading(false));
+  }, [templateId]);
+
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.15 }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+              <Link2 size={15} className="text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">Public Share Link</h2>
+              <p className="text-xs text-slate-400 truncate max-w-[200px]">{templateName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={15} /></button>
+        </div>
+
+        <p className="text-xs text-slate-500 mb-3">
+          Anyone with this link can fill out the form without logging in. Responses appear in the Submissions inbox.
+        </p>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400 py-3">
+            <Loader2 size={14} className="animate-spin" /> Generating link…
+          </div>
+        ) : error ? (
+          <p className="text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 truncate font-mono">
+              {url}
+            </div>
+            <button
+              onClick={copy}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+                copied ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:brightness-110'
+              }`}
+            >
+              {copied ? <><CheckCircle2 size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+            </button>
+          </div>
+        )}
+
+        <p className="text-[10px] text-slate-400 mt-3">
+          This link is permanent. To revoke access, contact your administrator.
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Submissions Inbox ─────────────────────────────────────────────────────────
+
+interface Submission {
+  id: number;
+  template_id: number;
+  template_name: string;
+  form_type: string;
+  submitter_name: string | null;
+  submitter_email: string | null;
+  job_id: number | null;
+  job_name: string | null;
+  job_number: string | null;
+  status: string;
+  submitted_at: string;
+  answers_json: string | null;
+}
+
+function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
+  const [submissions,  setSubmissions]  = useState<Submission[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [templateFilter, setTemplateFilter] = useState('');
+  const [expanded,     setExpanded]     = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const url = templateFilter
+      ? `/api/forms/submissions?templateId=${templateFilter}`
+      : '/api/forms/submissions';
+    fetch(url, { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { submissions?: Submission[] }) => setSubmissions(d.submissions ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [templateFilter]);
+
+  function toggleExpand(id: number) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function fmtDate(d: string) {
+    return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <select
+          value={templateFilter}
+          onChange={e => { setTemplateFilter(e.target.value); setLoading(true); }}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">All templates</option>
+          {templates.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
+        </select>
+        <span className="text-xs text-slate-400">{submissions.length} response{submissions.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 size={22} className="animate-spin text-primary" />
+        </div>
+      ) : submissions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4">
+            <Inbox size={24} className="text-primary" />
+          </div>
+          <p className="font-heading font-bold text-slate-700 mb-1">No submissions yet</p>
+          <p className="text-sm text-slate-400 max-w-xs">Share a form link with workers or clients to start collecting responses.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {submissions.map(s => {
+            const isOpen = expanded.has(s.id);
+            let answers: Record<string, unknown> = {};
+            try { answers = s.answers_json ? JSON.parse(s.answers_json) as Record<string, unknown> : {}; } catch { /* ignore */ }
+            const answerCount = Object.keys(answers).length;
+
+            return (
+              <div key={s.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
+                <div
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                  onClick={() => toggleExpand(s.id)}
+                >
+                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                    <User size={14} className="text-orange-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">
+                      {s.submitter_name ?? 'Anonymous'}
+                      {s.submitter_email && <span className="text-slate-400 font-normal ml-2 text-xs">{s.submitter_email}</span>}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400">
+                      <span className="font-medium text-slate-600">{s.template_name}</span>
+                      {s.job_name && <span>· {s.job_name}{s.job_number ? ` #${s.job_number}` : ''}</span>}
+                      <span className="flex items-center gap-1"><Calendar size={9} />{fmtDate(s.submitted_at)}</span>
+                      <span>{answerCount} answer{answerCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.status}</span>
+                    {isOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
+                        {answerCount === 0 ? (
+                          <p className="text-xs text-slate-400 italic">No answers recorded</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {Object.entries(answers).map(([fieldId, answer]) => (
+                              <div key={fieldId} className="bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Field {fieldId}</p>
+                                <p className="text-xs text-slate-700 break-words">
+                                  {Array.isArray(answer) ? (answer as string[]).join(', ') : String(answer ?? '—')}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FormsPage() {
@@ -347,12 +588,13 @@ export default function FormsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareTarget, setShareTarget] = useState<FormTemplate | null>(null);
   const [builderTemplateId, setBuilderTemplateId] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
 
   // ── Document Builder state ─────────────────────────────────────────────────
-  const [pageTab, setPageTab] = useState<'forms' | 'documents'>('forms');
+  const [pageTab, setPageTab] = useState<'forms' | 'documents' | 'submissions'>('forms');
   const [docTemplates, setDocTemplates] = useState<DocumentTemplate[]>([]);
   const [docLoading, setDocLoading] = useState(false);
   const [openDocBuilder, setOpenDocBuilder] = useState<DocumentTemplate | null | 'new'>(null);
@@ -542,6 +784,7 @@ export default function FormsPage() {
           {([
             { key: 'forms', label: 'Forms', icon: FileText },
             { key: 'documents', label: 'Smart Documents', icon: LayoutTemplate },
+            { key: 'submissions', label: 'Submissions', icon: Inbox },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -633,6 +876,7 @@ export default function FormsPage() {
                       onBuild={() => setBuilderTemplateId(t.id)}
                       onEdit={() => setEditTarget(t)}
                       onDelete={() => setDeleteTarget(t)}
+                      onShare={() => setShareTarget(t)}
                     />
                   ))}
                 </motion.div>
@@ -687,6 +931,11 @@ export default function FormsPage() {
               )}
             </>
           )}
+
+          {/* ── Submissions tab ── */}
+          {pageTab === 'submissions' && (
+            <SubmissionsInbox templates={templates} />
+          )}
         </div>
       </div>
 
@@ -700,6 +949,13 @@ export default function FormsPage() {
         )}
         {deleteTarget && (
           <DeleteConfirm name={deleteTarget.name} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} deleting={deleting} />
+        )}
+        {shareTarget && (
+          <ShareLinkModal
+            templateId={shareTarget.id}
+            templateName={shareTarget.name}
+            onClose={() => setShareTarget(null)}
+          />
         )}
       </AnimatePresence>
     </div>

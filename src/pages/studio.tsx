@@ -42,7 +42,7 @@ const MODULES: StudioModule[] = [
   { id: 'variation-order',     label: 'Variation Orders',      description: 'Scope change documentation with approval workflow',            icon: ClipboardList, status: 'coming_soon', category: 'Documents',  color: '#f97316' },
   { id: 'progress-claim',      label: 'Progress Claims',       description: 'Milestone-based payment claims tied to job stages',            icon: BarChart2,     status: 'coming_soon', category: 'Documents',  color: '#f97316' },
   // Safety
-  { id: 'swms-builder',        label: 'SWMS Builder',          description: 'Safe Work Method Statements with hazard and control blocks',   icon: ShieldCheck,   status: 'coming_soon', category: 'Safety',     color: '#10b981' },
+  { id: 'swms-builder',        label: 'SWMS Builder',          description: 'Safe Work Method Statements with hazard and control blocks',   icon: ShieldCheck,   status: 'available',   category: 'Safety',     color: '#10b981' },
   { id: 'site-safety-plan',    label: 'Site Safety Plan',      description: 'Full project safety plan with emergency and induction info',   icon: HardHat,       status: 'coming_soon', category: 'Safety',     color: '#10b981' },
   { id: 'incident-report',     label: 'Incident Report',       description: 'Structured incident capture with photo attachments',           icon: Camera,        status: 'coming_soon', category: 'Safety',     color: '#10b981' },
   { id: 'toolbox-talk',        label: 'Toolbox Talk',          description: 'Pre-start meeting templates with sign-off capture',            icon: Users,         status: 'coming_soon', category: 'Safety',     color: '#10b981' },
