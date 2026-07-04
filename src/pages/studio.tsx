@@ -1,5 +1,5 @@
 import { studio } from 'virtual:content';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -8,10 +8,18 @@ import {
   ClipboardList, Truck, Users, BarChart2, Wrench,
   Package, Map, Camera, BookOpen, Zap, Star,
   ChevronRight, Plus, Clock, CheckCircle2, Lock,
+  FilePlus2, MoreHorizontal,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface RecentTemplate {
+  id: number;
+  name: string;
+  template_type: string;
+  updated_at: string;
+}
 
 type ModuleStatus = 'available' | 'coming_soon' | 'locked';
 
@@ -147,6 +155,31 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
 export default function StudioPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const navigate = useNavigate();
+  const [recentDocs, setRecentDocs] = useState<RecentTemplate[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/document-templates')
+      .then((r) => r.json() as Promise<{ templates?: RecentTemplate[] }>)
+      .then((d) => setRecentDocs((d.templates ?? []).slice(0, 8)))
+      .catch(() => setRecentDocs([]))
+      .finally(() => setRecentLoading(false));
+  }, []);
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function typeLabel(t: string) {
+    const map: Record<string, string> = {
+      quote_scope: 'Quote', swms: 'SWMS', safety_plan: 'Safety Plan',
+      toolbox_talk: 'Toolbox Talk', pre_start: 'Pre-Start', register: 'Register',
+      procedure: 'Procedure', user_form: 'Form', handover: 'Handover',
+      custom: 'Document', document: 'Document',
+    };
+    return map[t] ?? t;
+  }
 
   const filtered = MODULES.filter(
     (m) => activeCategory === 'All' || m.category === activeCategory
@@ -234,14 +267,51 @@ export default function StudioPage() {
             ))}
           </div>
 
-          {/* Recent documents placeholder */}
+          {/* Recent documents */}
           <div className="mt-8 mb-2">
-            <h2 className="text-sm font-semibold text-slate-400 mb-3">Recent documents</h2>
-            <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-8 text-center">
-              <Layers size={28} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-sm text-slate-500">No documents yet</p>
-              <p className="text-xs text-slate-600 mt-1">Documents you create will appear here</p>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-slate-400">Recent documents</h2>
+              {recentDocs.length > 0 && (
+                <button
+                  onClick={() => navigate('/studio/builder/new')}
+                  className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 transition-colors"
+                >
+                  <FilePlus2 size={13} />
+                  New
+                </button>
+              )}
             </div>
+
+            {recentLoading ? (
+              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-6 text-center">
+                <div className="w-5 h-5 border-2 border-slate-600 border-t-orange-400 rounded-full animate-spin mx-auto" />
+              </div>
+            ) : recentDocs.length === 0 ? (
+              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-8 text-center">
+                <Layers size={28} className="text-slate-600 mx-auto mb-2" />
+                <p className="text-sm text-slate-500">No documents yet</p>
+                <p className="text-xs text-slate-600 mt-1">Documents you create will appear here</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 overflow-hidden divide-y divide-slate-700/30">
+                {recentDocs.map((doc) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => navigate(`/studio/builder/${doc.id}`)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/30 transition-colors text-left group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
+                      <FileText size={14} className="text-orange-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-200 truncate">{doc.name}</p>
+                      <p className="text-xs text-slate-500">{typeLabel(doc.template_type)} · {formatDate(doc.updated_at)}</p>
+                    </div>
+                    <MoreHorizontal size={15} className="text-slate-600 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -104,7 +104,7 @@ interface DocumentStore {
 
   // ── Actions: persistence ──────────────────────────────────────────────────
   loadTemplate: (template: DocumentTemplate) => void;
-  resetToBlank: (name?: string) => void;
+  resetToBlank: (name?: string, type?: DocumentTemplate['templateType']) => void;
   markSaved: (id: number) => void;
   setIsSaving: (v: boolean) => void;
   getSerialised: () => Omit<DocumentTemplate, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>;
@@ -377,11 +377,11 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     });
   },
 
-  resetToBlank: (name = 'Untitled Document') => {
+  resetToBlank: (name = 'Untitled Document', type?: DocumentTemplate['templateType']) => {
     set({
       templateId: null,
       templateName: name,
-      templateType: 'document',
+      templateType: type ?? 'document',
       pageLayout: DEFAULT_PAGE_LAYOUT,
       theme: DEFAULT_THEME,
       blocks: [],
