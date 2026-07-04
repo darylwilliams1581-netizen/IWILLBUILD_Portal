@@ -1269,6 +1269,8 @@ export default function RoadmapPage() {
     <div className="min-h-screen bg-slate-50">
       <Helmet>
         <title>Product Roadmap — IWILLBUILD Portal</title>
+        <meta name="description" content="Internal product roadmap for the IWILLBUILD Portal — epics, stories, release gates and sprint priorities." />
+        <link rel="canonical" href="https://iwillbuild.com/roadmap" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

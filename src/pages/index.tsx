@@ -8,6 +8,8 @@ import {
   Star, ChevronRight, Calendar, FolderOpen,
 } from 'lucide-react';
 import ContactForm from '@/components/ContactForm';
+import Header from '@/layouts/parts/Header';
+import Footer from '@/layouts/parts/Footer';
 
 // ── Animation variants ────────────────────────────────────────────────────────
 const fadeUp = {
@@ -301,59 +303,8 @@ export default function HomePage() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(255,255,255,0.97)',
-        borderBottom: '1px solid #e2e8f0',
-        backdropFilter: 'blur(14px)',
-      }}>
-        <div style={{
-          maxWidth: 1180, margin: '0 auto',
-          padding: '0 22px', height: 64,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18,
-        }}>
-          <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
-            <span style={{
-              width: 38, height: 38, borderRadius: 9,
-              background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
-              display: 'grid', placeItems: 'center',
-              color: '#fff', fontWeight: 900, fontSize: 16, flexShrink: 0,
-            }}>IW</span>
-            <strong style={{ fontSize: 20, letterSpacing: '-0.03em', color: '#0f172a' }}>IWILLBUILD</strong>
-          </a>
-
-          <nav className="hidden md:flex" style={{ gap: 24, alignItems: 'center', fontSize: 14, fontWeight: 600, color: '#475569' }}>
-            <a href="#features" style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Features</a>
-            <a href="#pricing"  style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">Pricing</a>
-            <a href="#how"      style={{ textDecoration: 'none', color: 'inherit' }} className="hover:text-[#1263d8] transition-colors">How it works</a>
-            <Link to="/login" style={{
-              padding: '8px 16px', borderRadius: 8,
-              border: '1.5px solid #1263d8', color: '#1263d8',
-              fontWeight: 700, fontSize: 14, textDecoration: 'none',
-            }}>Sign in</Link>
-            <Link to="/signup" style={{
-              padding: '8px 18px', borderRadius: 8,
-              background: '#f97316', color: '#fff',
-              fontWeight: 700, fontSize: 14, textDecoration: 'none',
-            }}>Start free trial</Link>
-          </nav>
-
-          {/* Mobile */}
-          <div className="md:hidden" style={{ display: 'flex', gap: 8 }}>
-            <Link to="/login" style={{
-              padding: '8px 12px', borderRadius: 8,
-              border: '1.5px solid #1263d8', color: '#1263d8',
-              fontWeight: 700, fontSize: 13, textDecoration: 'none',
-            }}>Sign in</Link>
-            <Link to="/signup" style={{
-              padding: '8px 12px', borderRadius: 8,
-              background: '#f97316', color: '#fff',
-              fontWeight: 700, fontSize: 13, textDecoration: 'none',
-            }}>Free trial</Link>
-          </div>
-        </div>
-      </header>
+      {/* ── Topbar — IWILLBUILD branded header ────────────────────────────── */}
+      <Header />
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section id="top" style={{
@@ -772,87 +723,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer style={{ background: '#0f172a', borderTop: '1px solid #1e293b', color: '#64748b' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 22px 32px' }}>
-
-          {/* ── Contact form + links grid ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 40, marginBottom: 40 }}>
-
-            {/* Brand + contact details */}
-            <div style={{ minWidth: 220 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <span style={{
-                  width: 34, height: 34, borderRadius: 8,
-                  background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
-                  display: 'grid', placeItems: 'center',
-                  color: '#fff', fontWeight: 900, fontSize: 14,
-                }}>IW</span>
-                <strong style={{ color: '#f1f5f9', fontSize: 16 }}>IWILLBUILD</strong>
-              </div>
-              <p style={{ fontSize: 13, lineHeight: 1.7, margin: '0 0 16px' }}>
-                A practical portal for builders and field teams.
-              </p>
-              <div style={{ fontSize: 13, lineHeight: 2 }}>
-                <div>
-                  <a href="mailto:support@iwillbuild.com" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
-                    support@iwillbuild.com
-                  </a>
-                </div>
-                <div>
-                  <a href="tel:+61498350566" style={{ color: '#64748b', textDecoration: 'none' }} className="hover:text-white transition-colors">
-                    +61 498 350 566
-                  </a>
-                </div>
-                <div style={{ color: '#475569', fontSize: 12, marginTop: 4 }}>ABN 89 791 350 823</div>
-              </div>
-            </div>
-
-            {/* Portal links */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Portal</div>
-              {[
-                { label: 'Sign in',  to: '/login'  },
-                { label: 'Sign up',  to: '/signup' },
-                { label: 'Pricing',  href: '#pricing' },
-              ].map((l) => (
-                <div key={l.label} style={{ marginBottom: 8 }}>
-                  {l.to ? (
-                    <Link to={l.to} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</Link>
-                  ) : (
-                    <a href={l.href} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</a>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Legal links */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Legal</div>
-              {[
-                { label: 'Privacy Policy', to: '/privacy' },
-                { label: 'Terms of Use',   to: '/terms'   },
-              ].map((l) => (
-                <div key={l.label} style={{ marginBottom: 8 }}>
-                  <Link to={l.to} style={{ color: '#64748b', textDecoration: 'none', fontSize: 14 }} className="hover:text-white transition-colors">{l.label}</Link>
-                </div>
-              ))}
-            </div>
-
-            {/* Contact form */}
-            <div style={{ minWidth: 260 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>Send us a message</div>
-              <ContactForm />
-            </div>
-
-          </div>
-
-          <div style={{ borderTop: '1px solid #1e293b', paddingTop: 20, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontSize: 13 }}>© {new Date().getFullYear()} IWILLBUILD. All rights reserved.</span>
-            <span style={{ fontSize: 13 }}>Australian-built construction portal.</span>
-          </div>
-        </div>
-      </footer>
+      {/* ── Footer — IWILLBUILD branded footer ────────────────────────────── */}
+      <Footer />
 
       {/* Responsive styles */}
       <style>{`

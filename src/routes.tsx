@@ -151,6 +151,11 @@ export const routes: RouteObject[] = [
   { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
   { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
   { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
+  // Primary module short-paths — redirect to canonical portal routes
+  { path: '/studio/jobs',      element: <Navigate to="/jobs" replace /> },
+  { path: '/studio/estimates', element: <Navigate to="/estimating" replace /> },
+  { path: '/studio/fleet',     element: <Navigate to="/fleet" replace /> },
+  { path: '/studio/accounts',  element: <Navigate to="/settings" replace /> },
   { path: '/dazza-ai',      element: protectOwner(<DazzaAIPage />),      errorElement: routeError },
   { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
