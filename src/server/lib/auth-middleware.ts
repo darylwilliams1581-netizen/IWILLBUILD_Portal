@@ -168,6 +168,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Public form fill — token-validated, no session required
   { method: 'GET',  pattern: /^\/api\/public\/form\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/public\/form\/[^/]+\/submit$/ },
+  // Plan Manager share validation — public, token-validated, read-only
+  { method: 'GET',  pattern: /^\/api\/plan-manager\/share\/validate$/ },
 ];
 
 /**

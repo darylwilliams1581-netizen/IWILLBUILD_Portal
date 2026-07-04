@@ -350,6 +350,21 @@ import forms_templates_id_share_link_post from "./api/forms/templates/[id]/share
 import public_form_token_get from "./api/public/form/[token]/GET";
 import public_form_token_submit_post from "./api/public/form/[token]/submit/POST";
 import forms_submissions_get from "./api/forms/submissions/GET";
+// ── Plan Manager ──────────────────────────────────────────────────────────────
+import plan_manager_drawings_get from "./api/plan-manager/drawings/GET";
+import plan_manager_drawings_post from "./api/plan-manager/drawings/POST";
+import plan_manager_drawings_id_get from "./api/plan-manager/drawings/[id]/GET";
+import plan_manager_drawings_id_upload_post from "./api/plan-manager/drawings/[id]/upload/POST";
+import plan_manager_drawings_id_page_annotations_get from "./api/plan-manager/drawings/[id]/pages/[pageNo]/annotations/GET";
+import plan_manager_drawings_id_annotations_put from "./api/plan-manager/drawings/[id]/annotations/PUT";
+import plan_manager_drawings_id_revisions_post from "./api/plan-manager/drawings/[id]/revisions/POST";
+import plan_manager_drawings_id_revisions_finalize_post from "./api/plan-manager/drawings/[id]/revisions/[revisionId]/finalize/POST";
+import plan_manager_drawings_id_archive_post from "./api/plan-manager/drawings/[id]/archive/POST";
+import plan_manager_drawings_id_restore_post from "./api/plan-manager/drawings/[id]/restore/POST";
+import plan_manager_drawings_id_permanent_delete from "./api/plan-manager/drawings/[id]/permanent/DELETE";
+import plan_manager_share_post from "./api/plan-manager/share/POST";
+import plan_manager_share_validate_get from "./api/plan-manager/share/validate/GET";
+import plan_manager_drawings_id_job_links_post from "./api/plan-manager/drawings/[id]/job-links/POST";
 import secure_share_get_326 from "./api/secure-share/GET";
 import secure_share_post_327 from "./api/secure-share/POST";
 import secure_share_id_delete_328 from "./api/secure-share/[id]/DELETE";
@@ -969,6 +984,14 @@ async function runStartupMigrations() {
     { name: 'form_public_submissions', ddl: "CREATE TABLE IF NOT EXISTS form_public_submissions (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL, submitter_name VARCHAR(255) NULL, submitter_email VARCHAR(255) NULL, job_id INT NULL, answers_json LONGTEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'submitted', submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address VARCHAR(64) NULL, INDEX idx_company (company_id), INDEX idx_template (template_id), INDEX idx_token (token), INDEX idx_job (company_id, job_id))" },
     // ── Form public share tokens ──────────────────────────────────────────────
     { name: 'form_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS form_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, template_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE, created_by_user_id VARCHAR(36) NULL, expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token), INDEX idx_template (template_id))" },
+    // ── Plan Manager ─────────────────────────────────────────────────────────
+    { name: 'project_drawings', ddl: "CREATE TABLE IF NOT EXISTS project_drawings (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, project_id INT NULL, title VARCHAR(500) NOT NULL, description TEXT NULL, source_file_path VARCHAR(1000) NULL, source_file_name VARCHAR(500) NULL, page_count INT NOT NULL DEFAULT 1, current_revision_id INT NULL, status VARCHAR(30) NOT NULL DEFAULT 'active', created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_project (company_id, project_id), INDEX idx_status (company_id, status))" },
+    { name: 'project_drawing_sheets', ddl: "CREATE TABLE IF NOT EXISTS project_drawing_sheets (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, page_no INT NOT NULL DEFAULT 1, thumbnail_path VARCHAR(1000) NULL, status VARCHAR(30) NOT NULL DEFAULT 'active', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_drawing (drawing_id), INDEX idx_page (drawing_id, page_no))" },
+    { name: 'drawing_revisions', ddl: "CREATE TABLE IF NOT EXISTS drawing_revisions (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, revision_no INT NOT NULL DEFAULT 1, name VARCHAR(255) NOT NULL DEFAULT 'Draft', source_type VARCHAR(20) NOT NULL DEFAULT 'draft', created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, locked TINYINT(1) NOT NULL DEFAULT 0, locked_at DATETIME NULL, locked_by VARCHAR(36) NULL, is_current TINYINT(1) NOT NULL DEFAULT 1, INDEX idx_drawing (drawing_id), INDEX idx_current (drawing_id, is_current))" },
+    { name: 'drawing_annotations', ddl: "CREATE TABLE IF NOT EXISTS drawing_annotations (id INT AUTO_INCREMENT PRIMARY KEY, revision_id INT NOT NULL, drawing_id INT NOT NULL, sheet_id INT NULL, page_no INT NOT NULL DEFAULT 1, type VARCHAR(30) NOT NULL, geometry_json LONGTEXT NOT NULL, style_json TEXT NULL, label TEXT NULL, author_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, is_locked TINYINT(1) NOT NULL DEFAULT 0, INDEX idx_revision (revision_id), INDEX idx_drawing (drawing_id), INDEX idx_page (revision_id, page_no))" },
+    { name: 'drawing_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS drawing_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, company_id INT NOT NULL, revision_id INT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NULL, scope VARCHAR(20) NOT NULL DEFAULT 'view', revoked TINYINT(1) NOT NULL DEFAULT 0, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token_hash), INDEX idx_drawing (drawing_id))" },
+    { name: 'job_drawing_links', ddl: "CREATE TABLE IF NOT EXISTS job_drawing_links (id INT AUTO_INCREMENT PRIMARY KEY, job_id INT NOT NULL, drawing_id INT NOT NULL, context_note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_by VARCHAR(36) NULL, UNIQUE KEY uq_job_drawing (job_id, drawing_id), INDEX idx_job (job_id), INDEX idx_drawing (drawing_id))" },
+    { name: 'drawing_audit_log', ddl: "CREATE TABLE IF NOT EXISTS drawing_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, revision_id INT NULL, actor_id VARCHAR(36) NULL, action VARCHAR(60) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_drawing (drawing_id), INDEX idx_created (drawing_id, created_at))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1633,6 +1656,21 @@ app.post("/api/forms/templates/:id/share-link", forms_templates_id_share_link_po
 app.get("/api/public/form/:token", public_form_token_get);
 app.post("/api/public/form/:token/submit", public_form_token_submit_post);
 app.get("/api/forms/submissions", forms_submissions_get);
+// ── Plan Manager ──────────────────────────────────────────────────────────────
+app.get("/api/plan-manager/drawings", plan_manager_drawings_get);
+app.post("/api/plan-manager/drawings", plan_manager_drawings_post);
+app.get("/api/plan-manager/drawings/:id", plan_manager_drawings_id_get);
+app.post("/api/plan-manager/drawings/:id/upload", plan_manager_drawings_id_upload_post);
+app.get("/api/plan-manager/drawings/:id/pages/:pageNo/annotations", plan_manager_drawings_id_page_annotations_get);
+app.put("/api/plan-manager/drawings/:id/annotations", plan_manager_drawings_id_annotations_put);
+app.post("/api/plan-manager/drawings/:id/revisions", plan_manager_drawings_id_revisions_post);
+app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", plan_manager_drawings_id_revisions_finalize_post);
+app.post("/api/plan-manager/drawings/:id/archive", plan_manager_drawings_id_archive_post);
+app.post("/api/plan-manager/drawings/:id/restore", plan_manager_drawings_id_restore_post);
+app.delete("/api/plan-manager/drawings/:id/permanent", plan_manager_drawings_id_permanent_delete);
+app.post("/api/plan-manager/share", plan_manager_share_post);
+app.get("/api/plan-manager/share/validate", plan_manager_share_validate_get);
+app.post("/api/plan-manager/drawings/:id/job-links", plan_manager_drawings_id_job_links_post);
 app.get("/api/secure-share", secure_share_get_326);
 app.post("/api/secure-share", secure_share_post_327);
 app.delete("/api/secure-share/:id", secure_share_id_delete_328);
