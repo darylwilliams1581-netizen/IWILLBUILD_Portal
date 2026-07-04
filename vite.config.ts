@@ -101,24 +101,43 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    // During `vite build --ssr` (publish): bundle ALL npm deps into
-    // server.bundle.mjs — the publish environment has no node_modules.
-    // OOM risk is managed by --max-old-space-size=4096 on the SSR build step.
+    // During `vite build --ssr` (publish): keep noExternal true so Vite's
+    // module resolver handles CJS/ESM interop for most packages, BUT we
+    // explicitly externalize the heaviest deps so Rollup doesn't inline them
+    // into server.bundle.mjs (which was pushing build time past the pipeline
+    // timeout). These packages are present in the publish container's
+    // node_modules and are resolved at runtime by Node.
     //
     // During dev (`vite` / ssrLoadModule): leave noExternal as [] so Vite's
-    // CJS-interop layer can handle packages like express normally. Setting
-    // noExternal:true in dev causes "module is not defined" for CJS packages.
+    // CJS-interop layer can handle packages like express normally.
     noExternal: isSsrBuild ? true : [],
     external: [
-      // Always exclude — browser-only or native packages that must never
-      // be traversed by Rollup/Node in any context.
-      // The publish container has NO node_modules — do NOT add runtime
-      // dependencies here or the deployed app will crash on startup.
+      // ── Always external (browser-only / native) ───────────────────────────
       'pdfjs-dist',
       'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
       'canvas',
+      // ── Heavy runtime deps — externalized to cut SSR bundle size & build time
+      // These are all in node_modules on the publish container.
+      'pdf-lib',
+      'openai',
+      '@anthropic-ai/sdk',
+      'drizzle-orm',
+      'better-auth',
+      'mysql2',
+      'stripe',
+      '@aws-sdk/client-s3',
+      '@aws-sdk/s3-request-presigner',
+      '@aws-sdk/lib-storage',
+      'express',
+      'busboy',
+      'nodemailer',
+      'qrcode',
+      'bcryptjs',
+      'otplib',
+      'twilio',
+      'xero-node',
     ],
   },
 
