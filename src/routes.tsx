@@ -47,6 +47,7 @@ const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
+const RoadmapPage        = lazy(() => import('./pages/roadmap'));
 // ── New-tab viewer pages ──────────────────────────────────────────────────────
 const ViewFilePage       = lazy(() => import('./pages/view-file'));
 const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
@@ -156,6 +157,7 @@ export const routes: RouteObject[] = [
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', element: <Navigate to="/owner-console" replace /> },
+  { path: '/roadmap',           element: protectDev(<RoadmapPage />),         errorElement: routeError },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
