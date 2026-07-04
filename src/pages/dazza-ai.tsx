@@ -410,6 +410,25 @@ I can help summarise jobs, check fleet issues, review forms, look at estimates, 
 
 What do you need today?`;
 
+// ── SSE event types ───────────────────────────────────────────────────────────
+
+interface SseToken    { type: 'token';       content: string }
+interface SseToolCall { type: 'tool_call';   name: string; status: 'running' }
+interface SseToolResult { type: 'tool_result'; name: string; status: 'done' }
+interface SseDone     { type: 'done';        mode: string; usedOpenAI: boolean; model?: string }
+interface SseError    { type: 'error';       message: string }
+type SseEvent = SseToken | SseToolCall | SseToolResult | SseDone | SseError;
+
+// ── Tool call display names ───────────────────────────────────────────────────
+
+const TOOL_LABELS: Record<string, string> = {
+  lookup_jobs:       'Looking up jobs…',
+  lookup_job_costs:  'Fetching cost data…',
+  lookup_fleet:      'Checking fleet…',
+  lookup_estimates:  'Loading estimates…',
+  lookup_open_todos: 'Scanning to-dos…',
+};
+
 export default function DazzaAIPage() {
   const { me, isAdmin, platformRole } = usePermissions();
   const isDeveloper = platformRole === 'developer';
@@ -418,6 +437,8 @@ export default function DazzaAIPage() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
   const [dazzaCtx, setDazzaCtx] = useState<DazzaContextSummary | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
   const [noApiKey, setNoApiKey] = useState(false);
@@ -494,66 +515,103 @@ export default function DazzaAIPage() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    setActiveToolCall(null);
+
+    // Create a placeholder assistant message that we'll fill in as tokens arrive
+    const assistantId = (Date.now() + 1).toString();
+    setStreamingId(assistantId);
+    setMessages((prev) => [...prev, {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    }]);
 
     try {
-      // Drayl engine v2 — send the current message only.
-      // Context is re-fetched server-side from the session on every request.
-      const res = await fetch('/api/dazza/chat-v2', {
+      const res = await fetch('/api/dazza/chat-v2/stream', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text.trim(),
-        }),
+        body: JSON.stringify({ message: text.trim() }),
       });
 
       if (!res.ok) {
         let serverDetail = '';
         try {
-          const errData = await res.json() as { error?: string; detail?: string };
-          serverDetail = errData.detail ?? errData.error ?? '';
-        } catch { /* ignore parse error */ }
+          const errData = await res.json() as { error?: string };
+          serverDetail = errData.error ?? '';
+        } catch { /* ignore */ }
         throw new Error(`HTTP ${res.status}${serverDetail ? `: ${serverDetail}` : ''}`);
       }
 
-      const data = await res.json() as {
-        reply: string;
-        mode?: 'refusal' | 'context' | 'annette' | 'ai';
-        usedOpenAI?: boolean;
-        warnings?: string[];
-      };
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response body');
 
-      // If the engine ran in AI mode but OpenAI wasn't available, surface the no-key banner
-      if (data.mode === 'ai' && data.usedOpenAI === false) {
-        setNoApiKey(true);
-      } else {
-        setNoApiKey(false);
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalMode = 'ai';
+      let usedOpenAI = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+
+          let event: SseEvent;
+          try { event = JSON.parse(raw) as SseEvent; } catch { continue; }
+
+          if (event.type === 'token') {
+            setMessages((prev) => prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: m.content + event.content }
+                : m
+            ));
+          } else if (event.type === 'tool_call') {
+            setActiveToolCall(TOOL_LABELS[event.name] ?? `Running ${event.name}…`);
+          } else if (event.type === 'tool_result') {
+            setActiveToolCall(null);
+          } else if (event.type === 'done') {
+            finalMode = event.mode;
+            usedOpenAI = event.usedOpenAI;
+            setActiveToolCall(null);
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
       }
 
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.reply,
-        timestamp: new Date(),
-        // Mark as a local calc/context answer (no AI token cost) when mode is context
-        isCalc: data.mode === 'context',
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      // Mark as context mode if no AI was used
+      if (finalMode === 'ai' && !usedOpenAI) setNoApiKey(true);
+      else setNoApiKey(false);
+
+      setMessages((prev) => prev.map((m) =>
+        m.id === assistantId
+          ? { ...m, isCalc: finalMode === 'context' }
+          : m
+      ));
+
     } catch (err) {
       const errMsg = String((err as Error)?.message ?? err);
-      // Only show "trouble connecting" for genuine network failures (TypeError = fetch failed)
       const isNetworkError = err instanceof TypeError;
       const displayMsg = isNetworkError
         ? "I had trouble connecting. Please check your internet connection and try again."
         : `Something went wrong on the server (${errMsg}). Please try again or contact support if this persists.`;
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: displayMsg,
-        timestamp: new Date(),
-      }]);
+      setMessages((prev) => prev.map((m) =>
+        m.id === assistantId
+          ? { ...m, content: displayMsg }
+          : m
+      ));
     } finally {
       setIsTyping(false);
+      setStreamingId(null);
+      setActiveToolCall(null);
     }
   }
 
@@ -878,7 +936,20 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                             : 'bg-primary text-white rounded-tr-sm'
                         }`}>
                           <div className="flex flex-col gap-0.5 text-[13px]">
-                            {msg.role === 'assistant' ? formatMessage(msg.content) : <p>{msg.content}</p>}
+                            {msg.role === 'assistant'
+                              ? <>
+                                  {formatMessage(msg.content)}
+                                  {/* Streaming cursor */}
+                                  {streamingId === msg.id && msg.content && (
+                                    <motion.span
+                                      className="inline-block w-0.5 h-3.5 bg-slate-400 ml-0.5 align-middle"
+                                      animate={{ opacity: [1, 0] }}
+                                      transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' as const }}
+                                    />
+                                  )}
+                                </>
+                              : <p>{msg.content}</p>
+                            }
                           </div>
                           <div className={`text-[10px] mt-1.5 ${msg.role === 'assistant' ? 'text-slate-300' : 'text-white/50'}`}>
                             {msg.timestamp.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
@@ -889,8 +960,8 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   </motion.div>
                 ))}
 
-                {/* Typing indicator */}
-                {isTyping && (
+                {/* Typing / tool-call indicator — only show when no content yet */}
+                {isTyping && !streamingId && (
                   <motion.div
                     key="typing"
                     initial={{ opacity: 0, y: 8 }}
@@ -910,6 +981,25 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                           transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
                         />
                       ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Active tool call badge */}
+                {isTyping && activeToolCall && (
+                  <motion.div
+                    key="tool-call"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex gap-2.5 items-center"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
+                      <Bot size={13} className="text-white" />
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 shadow-sm">
+                      <Loader2 size={11} className="text-orange-500 animate-spin shrink-0" />
+                      <span className="text-xs text-orange-700 font-medium">{activeToolCall}</span>
                     </div>
                   </motion.div>
                 )}
