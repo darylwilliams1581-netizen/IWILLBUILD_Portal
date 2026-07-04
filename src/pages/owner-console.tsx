@@ -6,7 +6,7 @@ import {
   ShieldCheck, FileText, ClipboardList,
   CheckCircle2, XCircle, ChevronDown, ExternalLink,
   ShieldAlert, X, Bot, Package,
-  Mail, BarChart2, StickyNote,
+  Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -30,6 +30,7 @@ import EmailLogTab from '@/components/owner-console/EmailLogTab';
 import PlatformEmailTab from '@/components/owner-console/PlatformEmailTab';
 import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
+import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -348,7 +349,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke'>(
     (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
@@ -625,6 +626,12 @@ export default function OwnerConsolePage() {
               Support Notes
             </span>
           </Tab>
+          <Tab active={tab === 'accounting-smoke'} onClick={() => { setTab('accounting-smoke'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <Receipt size={12} />
+              Accounting Tests
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -804,6 +811,7 @@ export default function OwnerConsolePage() {
 
               {/* ── Support Notes ── */}
               {tab === 'support-notes' && <SupportNotesTab />}
+              {tab === 'accounting-smoke' && <AccountingSmokeTestTab />}
             </>
           )}
         </div>

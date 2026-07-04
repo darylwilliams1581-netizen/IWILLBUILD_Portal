@@ -5,7 +5,7 @@ import {
   Receipt, ArrowLeft, Save, Send, Printer, Copy, Trash2,
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
-  ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle,
+  ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download,
 } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -234,6 +234,7 @@ export default function InvoiceBuilderPage() {
   const [dirty, setDirty] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [xeroSyncing, setXeroSyncing] = useState(false);
   const [xeroMsg, setXeroMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
@@ -491,6 +492,24 @@ export default function InvoiceBuilderPage() {
     finally { setSaving(false); }
   }
 
+  async function handleExportPdf() {
+    if (!invoice) return;
+    setExportingPdf(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/export-pdf`, { credentials: 'include' });
+      if (!res.ok) { alert('PDF export failed'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoice.invoiceNumber ?? invoice.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   const s = STATUS_COLORS[status] ?? STATUS_COLORS.draft;
   const isVoid = status === 'void';
   const isPaid = status === 'paid';
@@ -569,6 +588,17 @@ export default function InvoiceBuilderPage() {
                   {!isNew && canEdit && (
                     <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
                       <Printer size={13} />Print / PDF
+                    </button>
+                  )}
+                  {!isNew && canEdit && (
+                    <button
+                      onClick={handleExportPdf}
+                      disabled={exportingPdf}
+                      className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                      title="Download PDF"
+                    >
+                      {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      Download PDF
                     </button>
                   )}
                   {!isNew && canEdit && status === 'draft' && (

@@ -431,6 +431,494 @@ export async function generateCostReportPdf(data: CostReportData): Promise<Uint8
   return doc.save();
 }
 
+// ── Estimate PDF ──────────────────────────────────────────────────────────────
+
+export interface EstimateLine {
+  category?: string;
+  description: string;
+  quantity: string | number;
+  unit?: string;
+  rate: string | number;
+  lineOrder?: number;
+}
+
+export interface EstimateData {
+  id: number;
+  title: string;
+  status?: string;
+  markup_percent?: number | string;
+  gst_mode?: string;
+  notes?: string;
+  valid_until?: string;
+  company_name?: string;
+  company_abn?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_address?: string;
+  job_name?: string;
+  job_number?: string;
+  job_address?: string;
+  client_name?: string;
+  header_text?: string;
+  footer_text?: string;
+  disclaimer?: string;
+  payment_terms?: string;
+  acceptance_note?: string;
+  lines: EstimateLine[];
+}
+
+function fmtMoney(v: number): string {
+  return `$${v.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export async function generateEstimatePdf(data: EstimateData): Promise<Uint8Array> {
+  const pdfLib = await getPdfLib();
+  const { PDFDocument, rgb, StandardFonts } = pdfLib;
+  const BLACK  = rgb(0, 0, 0);
+  const WHITE  = rgb(1, 1, 1);
+  const ORANGE = rgb(0.976, 0.451, 0.086);
+  const SLATE  = rgb(0.243, 0.267, 0.322);
+  const LIGHT  = rgb(0.949, 0.953, 0.961);
+  const MUTED  = rgb(0.502, 0.533, 0.580);
+  const GREEN  = rgb(0.133, 0.545, 0.133);
+
+  const doc = await PDFDocument.create();
+  const boldFont    = await doc.embedFont(StandardFonts.HelveticaBold);
+  const regularFont = await doc.embedFont(StandardFonts.Helvetica);
+
+  const subtitle = data.job_number
+    ? `Job #${data.job_number} — ${data.job_name ?? ''}`
+    : (data.job_name ?? '');
+
+  // ── Page 1 ──
+  let page = addPage(doc);
+  drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate', data.company_name);
+  drawFooter(pdfLib, page, regularFont, 1);
+  let y = PAGE_H - 90;
+  let pageNum = 1;
+
+  // Estimate title block
+  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, SLATE);
+  drawText(page, data.title, MARGIN + 8, y - 10, boldFont, 13, WHITE);
+  if (subtitle) drawText(page, subtitle, MARGIN + 8, y - 24, regularFont, 9, MUTED);
+  y -= 50;
+
+  // Status + ID
+  const statusColor = data.status === 'approved' ? GREEN : (data.status === 'sent' ? ORANGE : SLATE);
+  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
+  drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
+  drawText(page, `Estimate #${data.id}`, MARGIN + 90, y - 10, regularFont, 8, MUTED);
+  if (data.valid_until) {
+    const vd = `Valid until: ${new Date(data.valid_until).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    const vw = regularFont.widthOfTextAtSize(vd, 8);
+    drawText(page, vd, PAGE_W - MARGIN - vw, y - 10, regularFont, 8, MUTED);
+  }
+  y -= 32;
+
+  // Company + Client two-column
+  y = sectionHeading(pdfLib, page, boldFont, 'Prepared By / For', y);
+  const col2x = MARGIN + (PAGE_W - MARGIN * 2) / 2;
+  let leftY = y, rightY = y;
+  if (data.company_name) {
+    drawText(page, data.company_name, MARGIN + 4, leftY, boldFont, 9, BLACK);
+    leftY -= 14;
+  }
+  if (data.company_abn)     { drawText(page, `ABN: ${data.company_abn}`, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_phone)   { drawText(page, data.company_phone, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_email)   { drawText(page, data.company_email, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_address) { drawText(page, data.company_address, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+
+  if (data.client_name) {
+    drawText(page, 'Prepared for:', col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12;
+    drawText(page, data.client_name, col2x + 4, rightY, boldFont, 9, BLACK); rightY -= 14;
+  }
+  if (data.job_address) { drawText(page, data.job_address, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+
+  y = Math.min(leftY, rightY) - 16;
+
+  // Header text / notes
+  if (data.header_text) {
+    y = sectionHeading(pdfLib, page, boldFont, 'Notes', y);
+    const hl = wrapText(data.header_text, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+    hl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+    y -= hl.length * 12 + 12;
+  }
+
+  // ── Line items table ──
+  y = sectionHeading(pdfLib, page, boldFont, 'Line Items', y);
+
+  const COL = {
+    cat:  { x: MARGIN + 4,   w: 70  },
+    desc: { x: MARGIN + 78,  w: 200 },
+    qty:  { x: MARGIN + 282, w: 40  },
+    unit: { x: MARGIN + 326, w: 36  },
+    rate: { x: MARGIN + 366, w: 60  },
+    amt:  { x: MARGIN + 430, w: 70  },
+  };
+
+  // Table header row
+  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
+  drawText(page, 'Category',    COL.cat.x,  y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Description', COL.desc.x, y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Qty',         COL.qty.x,  y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Unit',        COL.unit.x, y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Rate',        COL.rate.x, y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Amount',      COL.amt.x,  y + 1, boldFont, 7, WHITE);
+  y -= 20;
+
+  const markup = Number(data.markup_percent ?? 0);
+  const gstMode = data.gst_mode ?? 'inclusive';
+  let subtotalEx = 0;
+
+  for (let i = 0; i < data.lines.length; i++) {
+    if (y < 60) {
+      pageNum++;
+      page = addPage(doc);
+      drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate (cont.)', data.company_name);
+      drawFooter(pdfLib, page, regularFont, pageNum);
+      y = PAGE_H - 90;
+      drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
+      drawText(page, 'Category',    COL.cat.x,  y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Description', COL.desc.x, y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Qty',         COL.qty.x,  y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Unit',        COL.unit.x, y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Rate',        COL.rate.x, y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Amount',      COL.amt.x,  y + 1, boldFont, 7, WHITE);
+      y -= 20;
+    }
+
+    const ln = data.lines[i];
+    const qty  = Number(ln.quantity ?? 0);
+    const rate = Number(ln.rate ?? 0);
+    const lineAmt = qty * rate;
+    const withMarkup = markup > 0 ? lineAmt * (1 + markup / 100) : lineAmt;
+    subtotalEx += withMarkup;
+
+    if (i % 2 === 0) drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, LIGHT);
+
+    const descLines = wrapText(ln.description ?? '', regularFont, 7, COL.desc.w);
+    const rowH = Math.max(16, descLines.length * 11 + 4);
+
+    if (i % 2 === 0) drawRect(page, MARGIN, y - rowH + 14, PAGE_W - MARGIN * 2, rowH, LIGHT);
+
+    drawText(page, String(ln.category ?? '').substring(0, 12), COL.cat.x, y + 1, regularFont, 7, MUTED);
+    descLines.forEach((dl, di) => drawText(page, dl, COL.desc.x, y + 1 - di * 11, regularFont, 7, BLACK));
+    drawText(page, String(qty),                COL.qty.x,  y + 1, regularFont, 7, BLACK);
+    drawText(page, String(ln.unit ?? ''),      COL.unit.x, y + 1, regularFont, 7, MUTED);
+    drawText(page, fmtMoney(rate),             COL.rate.x, y + 1, regularFont, 7, BLACK);
+    drawText(page, fmtMoney(withMarkup),       COL.amt.x,  y + 1, boldFont,    7, BLACK);
+    y -= rowH;
+  }
+
+  // ── Totals block ──
+  y -= 8;
+  if (y < 120) {
+    pageNum++;
+    page = addPage(doc);
+    drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate — Totals', data.company_name);
+    drawFooter(pdfLib, page, regularFont, pageNum);
+    y = PAGE_H - 90;
+  }
+
+  const totalsX = PAGE_W - MARGIN - 180;
+  const totalsW = 180;
+
+  let gstAmount = 0;
+  let totalInc  = 0;
+  if (gstMode === 'inclusive') {
+    totalInc  = subtotalEx;
+    gstAmount = subtotalEx / 11;
+  } else if (gstMode === 'exclusive') {
+    gstAmount = subtotalEx * 0.1;
+    totalInc  = subtotalEx + gstAmount;
+  } else {
+    // no_gst
+    totalInc  = subtotalEx;
+    gstAmount = 0;
+  }
+
+  const totalsRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean }> = [];
+  if (markup > 0) {
+    totalsRows.push({ label: `Subtotal (before ${markup}% markup)`, value: fmtMoney(subtotalEx / (1 + markup / 100)) });
+    totalsRows.push({ label: `Markup (${markup}%)`, value: fmtMoney(subtotalEx - subtotalEx / (1 + markup / 100)) });
+  }
+  totalsRows.push({ label: gstMode === 'inclusive' ? 'Subtotal (ex. GST)' : 'Subtotal', value: fmtMoney(subtotalEx) });
+  if (gstMode !== 'no_gst') totalsRows.push({ label: 'GST (10%)', value: fmtMoney(gstAmount) });
+  totalsRows.push({ label: 'TOTAL', value: fmtMoney(totalInc), bold: true, highlight: true });
+
+  const rowH2 = 18;
+  const blockH = totalsRows.length * rowH2 + 8;
+  drawRect(page, totalsX - 8, y - blockH + 8, totalsW + 8, blockH, LIGHT);
+
+  totalsRows.forEach((row) => {
+    if (row.highlight) drawRect(page, totalsX - 8, y - rowH2 + 4, totalsW + 8, rowH2, ORANGE);
+    const lw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.label, 8);
+    const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
+    const textColor = row.highlight ? WHITE : BLACK;
+    drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
+    drawText(page, row.value, totalsX + totalsW - vw, y, row.bold ? boldFont : regularFont, 9, textColor);
+    y -= rowH2;
+  });
+
+  y -= 16;
+
+  // Footer / disclaimer / acceptance note
+  if (data.disclaimer || data.payment_terms || data.acceptance_note) {
+    if (y < 100) {
+      pageNum++;
+      page = addPage(doc);
+      drawHeader(pdfLib, page, boldFont, regularFont, 'Estimate — Terms', data.company_name);
+      drawFooter(pdfLib, page, regularFont, pageNum);
+      y = PAGE_H - 90;
+    }
+    if (data.disclaimer) {
+      y = sectionHeading(pdfLib, page, boldFont, 'Disclaimer', y);
+      const dl = wrapText(data.disclaimer, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+      dl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, MUTED));
+      y -= dl.length * 12 + 12;
+    }
+    if (data.payment_terms) {
+      y = sectionHeading(pdfLib, page, boldFont, 'Payment Terms', y);
+      const pl = wrapText(data.payment_terms, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+      pl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+      y -= pl.length * 12 + 12;
+    }
+    if (data.acceptance_note) {
+      y = sectionHeading(pdfLib, page, boldFont, 'Acceptance', y);
+      const al = wrapText(data.acceptance_note, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+      al.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+    }
+  }
+
+  return doc.save();
+}
+
+// ── Invoice PDF ────────────────────────────────────────────────────────────────
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: string | number;
+  unit_price: string | number;
+  amount: string | number;
+  gst_amount?: string | number;
+  sort_order?: number;
+}
+
+export interface InvoiceData {
+  id: number;
+  invoice_number?: string;
+  status?: string;
+  issue_date?: string;
+  due_date?: string;
+  notes?: string;
+  payment_terms?: string;
+  stripe_payment_link?: string;
+  company_name?: string;
+  company_abn?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_address?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  customer_address?: string;
+  customer_abn?: string;
+  job_name?: string;
+  job_number?: string;
+  job_address?: string;
+  subtotal?: string | number;
+  gst_total?: string | number;
+  total?: string | number;
+  amount_paid?: string | number;
+  amount_due?: string | number;
+  lines: InvoiceLineItem[];
+}
+
+export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
+  const pdfLib = await getPdfLib();
+  const { PDFDocument, rgb, StandardFonts } = pdfLib;
+  const BLACK  = rgb(0, 0, 0);
+  const WHITE  = rgb(1, 1, 1);
+  const ORANGE = rgb(0.976, 0.451, 0.086);
+  const SLATE  = rgb(0.243, 0.267, 0.322);
+  const LIGHT  = rgb(0.949, 0.953, 0.961);
+  const MUTED  = rgb(0.502, 0.533, 0.580);
+  const GREEN  = rgb(0.133, 0.545, 0.133);
+  const RED    = rgb(0.8, 0.1, 0.1);
+
+  const doc = await PDFDocument.create();
+  const boldFont    = await doc.embedFont(StandardFonts.HelveticaBold);
+  const regularFont = await doc.embedFont(StandardFonts.Helvetica);
+
+  const subtitle = data.job_number
+    ? `Job #${data.job_number} — ${data.job_name ?? ''}`
+    : (data.job_name ?? '');
+
+  let page = addPage(doc);
+  drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice', data.company_name);
+  drawFooter(pdfLib, page, regularFont, 1);
+  let y = PAGE_H - 90;
+  let pageNum = 1;
+
+  // Invoice title block
+  drawRect(page, MARGIN, y - 30, PAGE_W - MARGIN * 2, 36, SLATE);
+  const invNum = data.invoice_number ? `Invoice #${data.invoice_number}` : `Invoice #${data.id}`;
+  drawText(page, invNum, MARGIN + 8, y - 10, boldFont, 13, WHITE);
+  if (subtitle) drawText(page, subtitle, MARGIN + 8, y - 24, regularFont, 9, MUTED);
+  y -= 50;
+
+  // Status + dates
+  const statusColor = data.status === 'paid' ? GREEN : (data.status === 'overdue' ? RED : (data.status === 'sent' ? ORANGE : SLATE));
+  drawRect(page, MARGIN, y - 16, 80, 18, statusColor);
+  drawText(page, (data.status ?? 'draft').toUpperCase(), MARGIN + 6, y - 10, boldFont, 8, WHITE);
+  if (data.issue_date) {
+    const id2 = `Issued: ${new Date(data.issue_date).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    drawText(page, id2, MARGIN + 90, y - 10, regularFont, 8, MUTED);
+  }
+  if (data.due_date) {
+    const dd = `Due: ${new Date(data.due_date).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    const dw = regularFont.widthOfTextAtSize(dd, 8);
+    drawText(page, dd, PAGE_W - MARGIN - dw, y - 10, regularFont, 8, data.status === 'overdue' ? RED : MUTED);
+  }
+  y -= 32;
+
+  // Billed by / Billed to
+  y = sectionHeading(pdfLib, page, boldFont, 'Billed By / Billed To', y);
+  const col2x = MARGIN + (PAGE_W - MARGIN * 2) / 2;
+  let leftY = y, rightY = y;
+
+  if (data.company_name)   { drawText(page, data.company_name, MARGIN + 4, leftY, boldFont, 9, BLACK); leftY -= 14; }
+  if (data.company_abn)    { drawText(page, `ABN: ${data.company_abn}`, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_phone)  { drawText(page, data.company_phone, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_email)  { drawText(page, data.company_email, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+  if (data.company_address){ drawText(page, data.company_address, MARGIN + 4, leftY, regularFont, 8, MUTED); leftY -= 12; }
+
+  if (data.customer_name)   { drawText(page, data.customer_name, col2x + 4, rightY, boldFont, 9, BLACK); rightY -= 14; }
+  if (data.customer_abn)    { drawText(page, `ABN: ${data.customer_abn}`, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+  if (data.customer_phone)  { drawText(page, data.customer_phone, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+  if (data.customer_email)  { drawText(page, data.customer_email, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+  if (data.customer_address){ drawText(page, data.customer_address, col2x + 4, rightY, regularFont, 8, MUTED); rightY -= 12; }
+
+  y = Math.min(leftY, rightY) - 16;
+
+  // Line items
+  y = sectionHeading(pdfLib, page, boldFont, 'Line Items', y);
+
+  const ICOL = {
+    desc: { x: MARGIN + 4,   w: 240 },
+    qty:  { x: MARGIN + 248, w: 40  },
+    unit: { x: MARGIN + 292, w: 60  },
+    gst:  { x: MARGIN + 356, w: 60  },
+    amt:  { x: MARGIN + 420, w: 80  },
+  };
+
+  drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
+  drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, WHITE);
+  drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, WHITE);
+  drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, WHITE);
+  y -= 20;
+
+  for (let i = 0; i < data.lines.length; i++) {
+    if (y < 60) {
+      pageNum++;
+      page = addPage(doc);
+      drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice (cont.)', data.company_name);
+      drawFooter(pdfLib, page, regularFont, pageNum);
+      y = PAGE_H - 90;
+      drawRect(page, MARGIN, y - 2, PAGE_W - MARGIN * 2, 16, SLATE);
+      drawText(page, 'Description', ICOL.desc.x, y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Qty',         ICOL.qty.x,  y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Unit Price',  ICOL.unit.x, y + 1, boldFont, 7, WHITE);
+      drawText(page, 'GST',         ICOL.gst.x,  y + 1, boldFont, 7, WHITE);
+      drawText(page, 'Amount',      ICOL.amt.x,  y + 1, boldFont, 7, WHITE);
+      y -= 20;
+    }
+
+    const ln = data.lines[i];
+    const descLines = wrapText(ln.description ?? '', regularFont, 7, ICOL.desc.w);
+    const rowH = Math.max(16, descLines.length * 11 + 4);
+    if (i % 2 === 0) drawRect(page, MARGIN, y - rowH + 14, PAGE_W - MARGIN * 2, rowH, LIGHT);
+
+    descLines.forEach((dl, di) => drawText(page, dl, ICOL.desc.x, y + 1 - di * 11, regularFont, 7, BLACK));
+    drawText(page, String(ln.quantity ?? ''),                    ICOL.qty.x,  y + 1, regularFont, 7, BLACK);
+    drawText(page, fmtMoney(Number(ln.unit_price ?? 0)),         ICOL.unit.x, y + 1, regularFont, 7, BLACK);
+    drawText(page, fmtMoney(Number(ln.gst_amount ?? 0)),         ICOL.gst.x,  y + 1, regularFont, 7, MUTED);
+    drawText(page, fmtMoney(Number(ln.amount ?? 0)),             ICOL.amt.x,  y + 1, boldFont,    7, BLACK);
+    y -= rowH;
+  }
+
+  // Totals
+  y -= 8;
+  if (y < 140) {
+    pageNum++;
+    page = addPage(doc);
+    drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice — Totals', data.company_name);
+    drawFooter(pdfLib, page, regularFont, pageNum);
+    y = PAGE_H - 90;
+  }
+
+  const totalsX = PAGE_W - MARGIN - 180;
+  const totalsW = 180;
+  const amtDue = Number(data.amount_due ?? data.total ?? 0);
+  const amtPaid = Number(data.amount_paid ?? 0);
+
+  const tRows: Array<{ label: string; value: string; bold?: boolean; highlight?: boolean; color?: typeof ORANGE }> = [
+    { label: 'Subtotal (ex. GST)', value: fmtMoney(Number(data.subtotal ?? 0)) },
+    { label: 'GST (10%)',          value: fmtMoney(Number(data.gst_total ?? 0)) },
+    { label: 'Total (inc. GST)',   value: fmtMoney(Number(data.total ?? 0)), bold: true },
+  ];
+  if (amtPaid > 0) {
+    tRows.push({ label: 'Amount Paid', value: fmtMoney(amtPaid), color: GREEN });
+  }
+  tRows.push({ label: 'AMOUNT DUE', value: fmtMoney(amtDue), bold: true, highlight: true });
+
+  const blockH2 = tRows.length * 18 + 8;
+  drawRect(page, totalsX - 8, y - blockH2 + 8, totalsW + 8, blockH2, LIGHT);
+
+  tRows.forEach((row) => {
+    if (row.highlight) drawRect(page, totalsX - 8, y - 14, totalsW + 8, 18, ORANGE);
+    const vw = (row.bold ? boldFont : regularFont).widthOfTextAtSize(row.value, 9);
+    const textColor = row.highlight ? WHITE : (row.color ?? BLACK);
+    drawText(page, row.label, totalsX, y, row.bold ? boldFont : regularFont, 8, row.highlight ? WHITE : MUTED);
+    drawText(page, row.value, totalsX + totalsW - vw, y, row.bold ? boldFont : regularFont, 9, textColor);
+    y -= 18;
+  });
+
+  y -= 16;
+
+  // Payment link notice
+  if (data.stripe_payment_link) {
+    if (y < 80) {
+      pageNum++;
+      page = addPage(doc);
+      drawHeader(pdfLib, page, boldFont, regularFont, 'Tax Invoice — Payment', data.company_name);
+      drawFooter(pdfLib, page, regularFont, pageNum);
+      y = PAGE_H - 90;
+    }
+    drawRect(page, MARGIN, y - 28, PAGE_W - MARGIN * 2, 32, rgb(0.059, 0.067, 0.090));
+    drawText(page, 'Pay online:', MARGIN + 8, y - 8, boldFont, 8, MUTED);
+    drawText(page, data.stripe_payment_link, MARGIN + 8, y - 22, regularFont, 8, ORANGE);
+    y -= 44;
+  }
+
+  // Notes / payment terms
+  if (data.notes) {
+    y = sectionHeading(pdfLib, page, boldFont, 'Notes', y);
+    const nl = wrapText(data.notes, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+    nl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, BLACK));
+    y -= nl.length * 12 + 12;
+  }
+  if (data.payment_terms) {
+    y = sectionHeading(pdfLib, page, boldFont, 'Payment Terms', y);
+    const pl = wrapText(data.payment_terms, regularFont, 8, PAGE_W - MARGIN * 2 - 10);
+    pl.forEach((l, i) => drawText(page, l, MARGIN + 4, y - i * 12, regularFont, 8, MUTED));
+  }
+
+  return doc.save();
+}
+
 // ── Safety Pack (combined PDF) ─────────────────────────────────────────────────
 
 export async function generateSafetyPackPdf(

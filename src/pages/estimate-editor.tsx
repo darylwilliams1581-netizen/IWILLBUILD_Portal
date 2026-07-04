@@ -50,6 +50,7 @@ export default function EstimateEditorPage() {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [estimateCategories, setEstimateCategories] = useState<string[]>([]);
   // Refs for save-on-back — always hold latest values without stale closures
   const estimateRef = useRef<Estimate | null>(null);
@@ -272,6 +273,25 @@ export default function EstimateEditorPage() {
     }
   }
 
+  async function handleExportPdf() {
+    if (!estimate) return;
+    setExportingPdf(true);
+    try {
+      const res = await fetch(`/api/estimates/${estimate.id}/export-pdf`, { credentials: 'include' });
+      if (!res.ok) { alert('PDF export failed'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (estimate.title ?? 'estimate').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.download = `estimate-${safeName}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   function downloadEstimateTemplate() {
     const csv = 'description,quantity,unit,rate\nSupply and install internal door,1,each,183\n';
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -424,6 +444,17 @@ export default function EstimateEditorPage() {
             >
               <Printer size={14} />
               <span className="hidden sm:inline">Print</span>
+            </button>
+
+            {/* Export PDF */}
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf || !estimate}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50"
+              title="Download PDF"
+            >
+              {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              <span className="hidden sm:inline">PDF</span>
             </button>
 
             {/* Duplicate */}
