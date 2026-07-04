@@ -29,6 +29,8 @@ const JobDetailPage      = lazy(() => import('./pages/job-detail'));
 const FleetPage          = lazy(() => import('./pages/fleet'));
 const FleetDetailPage    = lazy(() => import('./pages/fleet-detail'));
 const DazzaAIPage        = lazy(() => import('./pages/dazza-ai'));
+const StudioPage         = lazy(() => import('./pages/studio'));
+const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const AnnettePage        = lazy(() => import('./pages/annette'));
 const DownloadsPage      = lazy(() => import('./pages/downloads'));
 const TeamPage           = lazy(() => import('./pages/team'));
@@ -146,6 +148,8 @@ export const routes: RouteObject[] = [
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
   { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
+  { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
+  { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
   { path: '/dazza-ai',      element: protectOwner(<DazzaAIPage />),      errorElement: routeError },
   { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
