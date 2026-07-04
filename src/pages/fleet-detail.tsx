@@ -12,7 +12,7 @@ import {
   AlertCircle,
   ClipboardList,
   Calendar as _Calendar,
-  Wrench as _Wrench,
+  Wrench,
   Archive,
   Menu,
   CheckCircle2,
@@ -24,6 +24,10 @@ import {
   Car,
   StopCircle,
   Trash2,
+  Gauge,
+  Bell,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FilePanel from '@/components/FilePanel';
@@ -42,7 +46,7 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 
-type Tab = 'details' | 'prestarts' | 'history' | 'files';
+type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -390,6 +394,195 @@ function EditAssetModal({ asset, onClose, onSaved }: EditAssetModalProps) {
   );
 }
 
+// ── Service Log types ─────────────────────────────────────────────────────────
+
+interface ServiceLog {
+  id: number;
+  service_type: string;
+  title: string;
+  service_date: string;
+  odometer_km: number | null;
+  cost: number | null;
+  provider: string | null;
+  invoice_number: string | null;
+  notes: string | null;
+  next_service_date: string | null;
+  next_service_km: number | null;
+  status: string;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+interface ServiceLogForm {
+  service_type: string;
+  title: string;
+  service_date: string;
+  odometer_km: string;
+  cost: string;
+  provider: string;
+  invoice_number: string;
+  notes: string;
+  next_service_date: string;
+  next_service_km: string;
+  status: string;
+}
+
+const SERVICE_TYPES = ['Service', 'Oil Change', 'Tyre Rotation', 'Brake Service', 'Registration', 'Inspection', 'Repair', 'Warranty', 'Other'];
+
+function ServiceLogModal({ assetId, log, onClose, onSaved }: {
+  assetId: number;
+  log?: ServiceLog;
+  onClose: () => void;
+  onSaved: (l: ServiceLog) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState<ServiceLogForm>({
+    service_type: log?.service_type ?? 'Service',
+    title:        log?.title ?? '',
+    service_date: log?.service_date ? String(log.service_date).slice(0, 10) : today,
+    odometer_km:  log?.odometer_km != null ? String(log.odometer_km) : '',
+    cost:         log?.cost != null ? String(log.cost) : '',
+    provider:     log?.provider ?? '',
+    invoice_number: log?.invoice_number ?? '',
+    notes:        log?.notes ?? '',
+    next_service_date: log?.next_service_date ? String(log.next_service_date).slice(0, 10) : '',
+    next_service_km: log?.next_service_km != null ? String(log.next_service_km) : '',
+    status:       log?.status ?? 'completed',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  function set(k: keyof ServiceLogForm, v: string) {
+    setForm(prev => ({ ...prev, [k]: v }));
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim() || !form.service_date) {
+      setError('Title and service date are required');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const body = {
+        service_type:    form.service_type,
+        title:           form.title.trim(),
+        service_date:    form.service_date,
+        odometer_km:     form.odometer_km ? parseInt(form.odometer_km, 10) : null,
+        cost:            form.cost ? parseFloat(form.cost) : null,
+        provider:        form.provider.trim() || null,
+        invoice_number:  form.invoice_number.trim() || null,
+        notes:           form.notes.trim() || null,
+        next_service_date: form.next_service_date || null,
+        next_service_km: form.next_service_km ? parseInt(form.next_service_km, 10) : null,
+        status:          form.status,
+      };
+      const url = log ? `/api/fleet/service-logs/${log.id}` : `/api/fleet/${assetId}/service-logs`;
+      const method = log ? 'PATCH' : 'POST';
+      const res = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json() as { log?: ServiceLog; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save');
+      onSaved(data.log!);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inp = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white';
+  const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1';
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-bold text-slate-800">{log ? 'Edit Service Log' : 'Add Service Log'}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={16} /></button>
+        </div>
+        <form onSubmit={handleSave} className="p-6 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              <AlertCircle size={14} />{error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Service Type</label>
+              <select value={form.service_type} onChange={e => set('service_type', e.target.value)} className={inp}>
+                {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={lbl}>Status</label>
+              <select value={form.status} onChange={e => set('status', e.target.value)} className={inp}>
+                <option value="completed">Completed</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Title *</label>
+            <input type="text" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. 10,000km service" className={inp} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Service Date *</label>
+              <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)} className={inp} required />
+            </div>
+            <div>
+              <label className={lbl}>Odometer (km)</label>
+              <input type="number" value={form.odometer_km} onChange={e => set('odometer_km', e.target.value)} placeholder="e.g. 45000" className={inp} min="0" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Cost ($)</label>
+              <input type="number" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="0.00" className={inp} min="0" step="0.01" />
+            </div>
+            <div>
+              <label className={lbl}>Provider / Workshop</label>
+              <input type="text" value={form.provider} onChange={e => set('provider', e.target.value)} placeholder="e.g. Bob's Auto" className={inp} />
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Invoice / Reference #</label>
+            <input type="text" value={form.invoice_number} onChange={e => set('invoice_number', e.target.value)} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} className={inp} />
+          </div>
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Next Service Reminder</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Next Service Date</label>
+                <input type="date" value={form.next_service_date} onChange={e => set('next_service_date', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Next Service (km)</label>
+                <input type="number" value={form.next_service_km} onChange={e => set('next_service_km', e.target.value)} placeholder="e.g. 55000" className={inp} min="0" />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {log ? 'Save Changes' : 'Add Log'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Detail row helper ─────────────────────────────────────────────────────────
 function DetailRow({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
   if (!value) return null;
@@ -438,6 +631,14 @@ export default function FleetDetailPage() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [showPrestartModal, setShowPrestartModal] = useState(false);
+  // Maintenance state
+  const [serviceLogs, setServiceLogs] = useState<ServiceLog[]>([]);
+  const [serviceLogsLoading, setServiceLogsLoading] = useState(false);
+  const [currentOdometerKm, setCurrentOdometerKm] = useState<number | null>(null);
+  const [nextServiceAlert, setNextServiceAlert] = useState<{ date: string; km?: number; title: string } | null>(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingLog, setEditingLog] = useState<ServiceLog | undefined>(undefined);
+  const [deletingLogId, setDeletingLogId] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -485,6 +686,22 @@ export default function FleetDetailPage() {
     }
   }, [id]);
 
+  const loadServiceLogs = useCallback(async () => {
+    if (!id) return;
+    setServiceLogsLoading(true);
+    try {
+      const res = await fetch(`/api/fleet/${id}/service-logs`, { credentials: 'include' });
+      const data = await res.json() as { logs?: ServiceLog[]; currentOdometerKm?: number | null; nextServiceAlert?: { date: string; km?: number; title: string } | null };
+      setServiceLogs(data.logs ?? []);
+      setCurrentOdometerKm(data.currentOdometerKm ?? null);
+      setNextServiceAlert(data.nextServiceAlert ?? null);
+    } catch {
+      // silently fail
+    } finally {
+      setServiceLogsLoading(false);
+    }
+  }, [id]);
+
   async function forceStopSession(sessionId: number) {
     setStoppingId(sessionId);
     try {
@@ -501,9 +718,10 @@ export default function FleetDetailPage() {
   useEffect(() => { void loadAsset(); }, [loadAsset]);
 
   useEffect(() => {
-    if (activeTab === 'prestarts') void loadPrestarts();
-    if (activeTab === 'history') void loadDriverSessions();
-  }, [activeTab, loadPrestarts, loadDriverSessions]);
+    if (activeTab === 'prestarts')   void loadPrestarts();
+    if (activeTab === 'history')     void loadDriverSessions();
+    if (activeTab === 'maintenance') void loadServiceLogs();
+  }, [activeTab, loadPrestarts, loadDriverSessions, loadServiceLogs]);
 
   async function handleDelete() {
     if (!asset) return;
@@ -635,12 +853,13 @@ export default function FleetDetailPage() {
               </div>
 
               {/* Tabs */}
-              <div className="flex gap-1 bg-white rounded-xl border border-border p-1">
+              <div className="flex gap-1 bg-white rounded-xl border border-border p-1 flex-wrap">
                 {([
-                  { key: 'details',   label: 'Details',   icon: Truck },
-                  { key: 'prestarts', label: 'Prestarts', icon: ClipboardList },
-                  { key: 'history',   label: 'Driver Log', icon: Car },
-                  { key: 'files',     label: 'Files',     icon: FolderOpen },
+                  { key: 'details',     label: 'Details',     icon: Truck },
+                  { key: 'prestarts',   label: 'Prestarts',   icon: ClipboardList },
+                  { key: 'maintenance', label: 'Maintenance',  icon: Wrench },
+                  { key: 'history',     label: 'Driver Log',  icon: Car },
+                  { key: 'files',       label: 'Files',       icon: FolderOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
@@ -783,6 +1002,158 @@ export default function FleetDetailPage() {
               {activeTab === 'files' && (
                 <div className="bg-white rounded-xl border border-border">
                   <FilePanel fleetAssetId={asset.id} />
+                </div>
+              )}
+
+              {/* ── Maintenance tab ── */}
+              {activeTab === 'maintenance' && (
+                <div className="bg-white rounded-xl border border-border">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      <Wrench size={15} className="text-muted-foreground" />
+                      <h2 className="font-heading font-bold text-sm">Service &amp; Maintenance Log</h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {serviceLogsLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+                      <button
+                        onClick={() => { setEditingLog(undefined); setShowServiceModal(true); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+                      >
+                        <Plus size={12} /> Add Log
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Odometer + next service summary */}
+                  <div className="grid grid-cols-2 gap-3 px-5 py-4 border-b border-border bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                        <Gauge size={16} className="text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Current Odometer</p>
+                        <p className="text-sm font-bold text-slate-800">
+                          {currentOdometerKm != null ? `${currentOdometerKm.toLocaleString()} km` : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${nextServiceAlert ? 'bg-amber-100' : 'bg-slate-100'}`}>
+                        <Bell size={16} className={nextServiceAlert ? 'text-amber-600' : 'text-slate-400'} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Next Service</p>
+                        {nextServiceAlert ? (
+                          <div>
+                            <p className="text-sm font-bold text-amber-700">
+                              {new Date(String(nextServiceAlert.date)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                            {nextServiceAlert.km && (
+                              <p className="text-[10px] text-slate-500">or {nextServiceAlert.km.toLocaleString()} km</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-400">No upcoming service</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Log list */}
+                  {serviceLogsLoading && serviceLogs.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                    </div>
+                  ) : serviceLogs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-6">
+                      <Wrench size={28} className="text-muted-foreground/40" />
+                      <p className="text-sm font-semibold text-muted-foreground">No service logs yet</p>
+                      <p className="text-xs text-muted-foreground/70">Add a log to track services, repairs, and maintenance history for this asset.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {serviceLogs.map(log => {
+                        const isScheduled = log.status === 'scheduled';
+                        const isOverdue   = log.status === 'overdue';
+                        return (
+                          <div key={log.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    isOverdue   ? 'bg-red-100 text-red-700' :
+                                    isScheduled ? 'bg-blue-100 text-blue-700' :
+                                    'bg-green-100 text-green-700'
+                                  }`}>
+                                    {isOverdue ? <AlertTriangle size={9} /> : isScheduled ? <Clock size={9} /> : <CheckCircle2 size={9} />}
+                                    {log.status}
+                                  </span>
+                                  <span className="text-[10px] bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">{log.service_type}</span>
+                                </div>
+                                <p className="text-sm font-semibold text-foreground mt-1">{log.title}</p>
+                                <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Clock size={10} />
+                                    {new Date(String(log.service_date)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  {log.odometer_km != null && (
+                                    <span className="flex items-center gap-1">
+                                      <Gauge size={10} />
+                                      {log.odometer_km.toLocaleString()} km
+                                    </span>
+                                  )}
+                                  {log.cost != null && (
+                                    <span className="font-semibold text-slate-700">${Number(log.cost).toFixed(2)}</span>
+                                  )}
+                                  {log.provider && <span>{log.provider}</span>}
+                                  {log.invoice_number && <span>#{log.invoice_number}</span>}
+                                </div>
+                                {log.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1 italic">{log.notes}</p>
+                                )}
+                                {(log.next_service_date || log.next_service_km) && (
+                                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 w-fit">
+                                    <Bell size={9} />
+                                    Next: {log.next_service_date ? new Date(String(log.next_service_date)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                                    {log.next_service_km ? ` or ${log.next_service_km.toLocaleString()} km` : ''}
+                                  </div>
+                                )}
+                              </div>
+                              {(isAdmin || isOwner) && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => { setEditingLog(log); setShowServiceModal(true); }}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm('Delete this service log?')) return;
+                                      setDeletingLogId(log.id);
+                                      try {
+                                        await fetch(`/api/fleet/service-logs/${log.id}`, { method: 'DELETE', credentials: 'include' });
+                                        setServiceLogs(prev => prev.filter(l => l.id !== log.id));
+                                      } finally {
+                                        setDeletingLogId(null);
+                                      }
+                                    }}
+                                    disabled={deletingLogId === log.id}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                    title="Delete"
+                                  >
+                                    {deletingLogId === log.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -942,6 +1313,35 @@ export default function FleetDetailPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Service Log Modal */}
+      {showServiceModal && asset && (
+        <ServiceLogModal
+          assetId={asset.id}
+          log={editingLog}
+          onClose={() => { setShowServiceModal(false); setEditingLog(undefined); }}
+          onSaved={(log) => {
+            setServiceLogs(prev => {
+              const idx = prev.findIndex(l => l.id === log.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = log;
+                return updated;
+              }
+              return [log, ...prev];
+            });
+            setShowServiceModal(false);
+            setEditingLog(undefined);
+            // Refresh to get updated odometer/next-service
+            void (async () => {
+              const res = await fetch(`/api/fleet/${asset.id}/service-logs`, { credentials: 'include' });
+              const data = await res.json() as { currentOdometerKm?: number | null; nextServiceAlert?: { date: string; km?: number; title: string } | null };
+              setCurrentOdometerKm(data.currentOdometerKm ?? null);
+              setNextServiceAlert(data.nextServiceAlert ?? null);
+            })();
+          }}
+        />
+      )}
     </div>
   );
 }

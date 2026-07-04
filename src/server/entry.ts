@@ -337,6 +337,12 @@ import safety_swms_id_put_322 from "./api/safety/swms/[id]/PUT";
 import safety_swms_id_duplicate_post_323 from "./api/safety/swms/[id]/duplicate/POST";
 import safety_swms_id_export_get_324 from "./api/safety/swms/[id]/export/GET";
 import scheduler_jobs_get_325 from "./api/scheduler/jobs/GET";
+import scheduler_jobs_id_reschedule_patch from "./api/scheduler/jobs/[id]/reschedule/PATCH";
+import scheduler_crew_get from "./api/scheduler/crew/GET";
+import fleet_id_service_logs_get from "./api/fleet/[id]/service-logs/GET";
+import fleet_id_service_logs_post from "./api/fleet/[id]/service-logs/POST";
+import fleet_service_logs_id_patch from "./api/fleet/service-logs/[logId]/PATCH";
+import fleet_service_logs_id_delete from "./api/fleet/service-logs/[logId]/DELETE";
 import secure_share_get_326 from "./api/secure-share/GET";
 import secure_share_post_327 from "./api/secure-share/POST";
 import secure_share_id_delete_328 from "./api/secure-share/[id]/DELETE";
@@ -819,6 +825,8 @@ async function runStartupMigrations() {
     { table: 'user', column: 'failed_login_attempts',    definition: 'INT NOT NULL DEFAULT 0' },
     // ── Fleet assets: VIN ────────────────────────────────────────────────────
     { table: 'fleet_assets', column: 'vin', definition: 'VARCHAR(50) NULL' },
+    // ── Fleet assets: odometer tracking ──────────────────────────────────────
+    { table: 'fleet_assets', column: 'current_odometer_km', definition: 'INT NULL' },
     // ── Invoice immutability lock ─────────────────────────────────────────────
     { table: 'invoices', column: 'locked',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'invoices', column: 'locked_at',  definition: 'DATETIME NULL' },
@@ -946,6 +954,8 @@ async function runStartupMigrations() {
     // ── Smart Document Builder ────────────────────────────────────────────────
     { name: 'document_templates', ddl: "CREATE TABLE IF NOT EXISTS document_templates (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, template_type VARCHAR(50) NOT NULL DEFAULT 'document', builder_json LONGTEXT NULL, page_layout_json TEXT NULL, theme_json TEXT NULL, source_docx_path VARCHAR(500) NULL, source_docx_name VARCHAR(255) NULL, is_active TINYINT(1) NOT NULL DEFAULT 1, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_type (company_id, template_type), INDEX idx_active (company_id, is_active))" },
     { name: 'document_submissions', ddl: "CREATE TABLE IF NOT EXISTS document_submissions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, job_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', answers_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_template (template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
+    // ── Fleet Service / Maintenance Logs ─────────────────────────────────────
+    { name: 'fleet_service_logs', ddl: "CREATE TABLE IF NOT EXISTS fleet_service_logs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, fleet_asset_id INT NOT NULL, service_type VARCHAR(60) NOT NULL DEFAULT 'Service', title VARCHAR(255) NOT NULL, service_date DATE NOT NULL, odometer_km INT NULL, cost DECIMAL(12,2) NULL, provider VARCHAR(255) NULL, invoice_number VARCHAR(100) NULL, notes TEXT NULL, next_service_date DATE NULL, next_service_km INT NULL, status VARCHAR(30) NOT NULL DEFAULT 'completed', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_asset (fleet_asset_id), INDEX idx_date (fleet_asset_id, service_date))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1597,6 +1607,12 @@ app.put("/api/safety/swms/:id", safety_swms_id_put_322);
 app.post("/api/safety/swms/:id/duplicate", safety_swms_id_duplicate_post_323);
 app.get("/api/safety/swms/:id/export", safety_swms_id_export_get_324);
 app.get("/api/scheduler/jobs", scheduler_jobs_get_325);
+app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_patch);
+app.get("/api/scheduler/crew", scheduler_crew_get);
+app.get("/api/fleet/:id/service-logs", fleet_id_service_logs_get);
+app.post("/api/fleet/:id/service-logs", fleet_id_service_logs_post);
+app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_id_patch);
+app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_id_delete);
 app.get("/api/secure-share", secure_share_get_326);
 app.post("/api/secure-share", secure_share_post_327);
 app.delete("/api/secure-share/:id", secure_share_id_delete_328);

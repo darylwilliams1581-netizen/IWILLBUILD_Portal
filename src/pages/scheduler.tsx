@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -16,6 +16,9 @@ import {
   User,
   MapPin,
   Calendar,
+  Users,
+  GripVertical,
+  CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -23,10 +26,6 @@ import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * A job as returned by GET /api/scheduler/jobs.
- * The scheduler reads ONLY these job-record fields — no estimates, no derived dates.
- */
 interface SchedulerJob {
   id: number;
   jobNumber: string | null;
@@ -45,8 +44,16 @@ interface SchedulerJob {
   createdAt: string | null;
 }
 
-type ViewMode    = 'table' | 'timeline';
-type TimeWindow  = 'day' | 'week' | 'month' | '3months';
+interface CrewMember {
+  id: string;
+  name: string;
+  role: string;
+  trade: string | null;
+  jobs: SchedulerJob[];
+}
+
+type ViewMode   = 'table' | 'timeline' | 'calendar' | 'crew';
+type TimeWindow = 'day' | 'week' | 'month' | '3months';
 
 // ─── Window config ────────────────────────────────────────────────────────────
 
@@ -64,12 +71,6 @@ const DAY_WIDTH: Record<TimeWindow, number> = {
   '3months':14,
 };
 
-/**
- * Returns the anchor date snapped to the natural start of the window:
- *  - Day/Week: today as-is
- *  - Month: 1st of the current month
- *  - 3 Months: 1st of the current month
- */
 function snapAnchor(tw: TimeWindow): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -77,48 +78,22 @@ function snapAnchor(tw: TimeWindow): Date {
   return d;
 }
 
-/**
- * Returns the inclusive end date for a window starting at anchor.
- * Month = last day of that calendar month.
- * 3 Months = last day of the 3rd calendar month from anchor.
- * Week = anchor + 6 days.
- * Day = anchor.
- */
 function windowEndDate(anchor: Date, tw: TimeWindow): Date {
   const d = new Date(anchor);
-  if (tw === 'day') {
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
-  if (tw === 'week') {
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
-  if (tw === 'month') {
-    // last day of the same calendar month
-    d.setMonth(d.getMonth() + 1, 0);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
-  // 3months: last day of the 3rd calendar month
-  d.setMonth(d.getMonth() + 3, 0);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  if (tw === 'day') { d.setHours(23, 59, 59, 999); return d; }
+  if (tw === 'week') { d.setDate(d.getDate() + 6); d.setHours(23, 59, 59, 999); return d; }
+  if (tw === 'month') { d.setMonth(d.getMonth() + 1, 0); d.setHours(23, 59, 59, 999); return d; }
+  d.setMonth(d.getMonth() + 3, 0); d.setHours(23, 59, 59, 999); return d;
 }
 
-/**
- * Steps the anchor forward or back by one natural period.
- */
 function stepAnchor(anchor: Date, tw: TimeWindow, dir: -1 | 1): Date {
   const d = new Date(anchor);
-  if (tw === 'day')      { d.setDate(d.getDate() + dir); return d; }
-  if (tw === 'week')     { d.setDate(d.getDate() + dir * 7); return d; }
-  if (tw === 'month')    { d.setMonth(d.getMonth() + dir); return d; }
-  /* 3months */            d.setMonth(d.getMonth() + dir * 3); return d;
+  if (tw === 'day')   { d.setDate(d.getDate() + dir); return d; }
+  if (tw === 'week')  { d.setDate(d.getDate() + dir * 7); return d; }
+  if (tw === 'month') { d.setMonth(d.getMonth() + dir); return d; }
+  d.setMonth(d.getMonth() + dir * 3); return d;
 }
 
-/** Total calendar days in a window (for building the header day array). */
 function windowDayCount(anchor: Date, tw: TimeWindow): number {
   const end = windowEndDate(anchor, tw);
   end.setHours(0, 0, 0, 0);
@@ -128,14 +103,16 @@ function windowDayCount(anchor: Date, tw: TimeWindow): number {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Parse a YYYY-MM-DD string as LOCAL midnight (not UTC).
- * new Date('2026-06-30') parses as UTC midnight → in AEST (+10) it becomes
- * 29 June, causing off-by-one errors in date comparisons and display.
- */
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function fmt(dateStr: string | null): string {
@@ -157,15 +134,10 @@ function daysBetween(a: string, b: string): number {
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
-/** A job is "scheduled" when it has both scheduledStartDate AND expectedCompletionDate. */
 function isScheduled(job: SchedulerJob): boolean {
   return !!(job.scheduledStartDate && job.expectedCompletionDate);
 }
 
-/**
- * Returns true if the job overlaps the given window [windowStart, windowEnd].
- * A job overlaps if its bar starts before the window ends AND finishes after the window starts.
- */
 function overlapsWindow(job: SchedulerJob, windowStart: Date, windowEnd: Date): boolean {
   if (!job.scheduledStartDate || !job.expectedCompletionDate) return false;
   const s = parseLocalDate(job.scheduledStartDate);
@@ -173,7 +145,7 @@ function overlapsWindow(job: SchedulerJob, windowStart: Date, windowEnd: Date): 
   return s <= windowEnd && e >= windowStart;
 }
 
-// ─── Status bar colours for Gantt ─────────────────────────────────────────────
+// ─── Status bar colours ───────────────────────────────────────────────────────
 
 const STATUS_BAR: Record<string, string> = {
   'New':                    'bg-slate-400',
@@ -189,8 +161,46 @@ const STATUS_BAR: Record<string, string> = {
   'Closed':                 'bg-gray-400',
 };
 
+const STATUS_BAR_HEX: Record<string, string> = {
+  'New':                    '#94a3b8',
+  'Quoting':                '#fbbf24',
+  'Submitted':              '#60a5fa',
+  'Awaiting Approval':      '#c084fc',
+  'Works Approved':         '#2dd4bf',
+  'Ready to Start':         '#22d3ee',
+  'Works in Progress':      '#10b981',
+  'On Hold':                '#fb923c',
+  'Completed':              '#22c55e',
+  'Rectification Required': '#ef4444',
+  'Closed':                 '#9ca3af',
+};
+
 function barColor(status: string) {
   return STATUS_BAR[status] ?? 'bg-slate-400';
+}
+
+function barHex(status: string) {
+  return STATUS_BAR_HEX[status] ?? '#94a3b8';
+}
+
+// ─── Reschedule API call ──────────────────────────────────────────────────────
+
+async function rescheduleJob(
+  jobId: number,
+  scheduledStartDate: string,
+  expectedCompletionDate: string
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/scheduler/jobs/${jobId}/reschedule`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledStartDate, expectedCompletionDate }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // ─── Table View ───────────────────────────────────────────────────────────────
@@ -207,15 +217,12 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
 
   return (
     <>
-      {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Team', 'Progress', ''].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -253,10 +260,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      to={`/jobs/${job.id}`}
-                      className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 whitespace-nowrap"
-                    >
+                    <Link to={`/jobs/${job.id}`} className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 whitespace-nowrap">
                       Open <ExternalLink size={11} />
                     </Link>
                   </td>
@@ -267,7 +271,6 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
         </table>
       </div>
 
-      {/* Mobile cards */}
       <div className="md:hidden divide-y divide-slate-100">
         {jobs.map(job => {
           const style = getStatusStyle(job.status);
@@ -288,11 +291,6 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                 {job.address && <span className="flex items-center gap-1"><MapPin size={10} />{job.address}</span>}
                 <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.scheduledStartDate)}</span>
                 <span className="flex items-center gap-1"><Clock    size={10} />{fmt(job.expectedCompletionDate)}</span>
-                {(job.supervisorName ?? job.teamLabel) && (
-                  <span className="flex items-center gap-1 col-span-2">
-                    <User size={10} />{job.supervisorName ?? job.teamLabel}
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
@@ -300,10 +298,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                 </div>
                 <span className="text-xs text-slate-500">{job.progress}%</span>
               </div>
-              <Link
-                to={`/jobs/${job.id}`}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
-              >
+              <Link to={`/jobs/${job.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
                 Open Job <ChevronRight size={12} />
               </Link>
             </div>
@@ -314,29 +309,186 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
   );
 }
 
+// ─── Calendar View ────────────────────────────────────────────────────────────
+
+interface CalendarViewProps {
+  jobs: SchedulerJob[];
+  anchorDate: Date;
+  onNavigate: (dir: -1 | 1) => void;
+  onReschedule: (job: SchedulerJob, newStart: string, newEnd: string) => void;
+}
+
+function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarViewProps) {
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const [draggingJob, setDraggingJob] = useState<SchedulerJob | null>(null);
+
+  // Build the month grid
+  const year  = anchorDate.getFullYear();
+  const month = anchorDate.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+
+  // Start grid on Monday
+  const startOffset = (firstDay.getDay() + 6) % 7; // Mon=0
+  const totalCells  = Math.ceil((startOffset + lastDay.getDate()) / 7) * 7;
+
+  const cells: Array<Date | null> = Array.from({ length: totalCells }, (_, i) => {
+    const dayNum = i - startOffset + 1;
+    if (dayNum < 1 || dayNum > lastDay.getDate()) return null;
+    return new Date(year, month, dayNum);
+  });
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  // Jobs that fall on a given date
+  function jobsOnDate(date: Date): SchedulerJob[] {
+    return jobs.filter(j => {
+      if (!j.scheduledStartDate || !j.expectedCompletionDate) return false;
+      const s = parseLocalDate(j.scheduledStartDate);
+      const e = parseLocalDate(j.expectedCompletionDate);
+      return date >= s && date <= e;
+    });
+  }
+
+  function handleDragStart(e: React.DragEvent, job: SchedulerJob) {
+    setDraggingJob(job);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('jobId', String(job.id));
+  }
+
+  function handleDrop(e: React.DragEvent, date: Date) {
+    e.preventDefault();
+    setDragOver(null);
+    if (!draggingJob) return;
+
+    const duration = draggingJob.scheduledStartDate && draggingJob.expectedCompletionDate
+      ? daysBetween(draggingJob.scheduledStartDate, draggingJob.expectedCompletionDate) - 1
+      : 0;
+
+    const newStart = toDateStr(date);
+    const endDate  = new Date(date);
+    endDate.setDate(endDate.getDate() + duration);
+    const newEnd = toDateStr(endDate);
+
+    onReschedule(draggingJob, newStart, newEnd);
+    setDraggingJob(null);
+  }
+
+  const monthLabel = anchorDate.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="p-4">
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => onNavigate(-1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 transition-colors">
+          <ChevronLeft size={16} />
+        </button>
+        <h2 className="text-sm font-bold text-slate-800">{monthLabel}</h2>
+        <button onClick={() => onNavigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 transition-colors">
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+          <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wide py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+        {cells.map((date, i) => {
+          if (!date) {
+            return <div key={i} className="bg-slate-50 min-h-[80px]" />;
+          }
+          const dateStr   = toDateStr(date);
+          const isToday   = date.getTime() === today.getTime();
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          const cellJobs  = jobsOnDate(date);
+          const isDragTarget = dragOver === dateStr;
+
+          return (
+            <div
+              key={i}
+              className={`min-h-[80px] p-1.5 transition-colors ${
+                isToday   ? 'bg-orange-50' :
+                isWeekend ? 'bg-slate-50/80' :
+                isDragTarget ? 'bg-blue-50' :
+                'bg-white'
+              }`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(dateStr); }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={(e) => handleDrop(e, date)}
+            >
+              <div className={`text-xs font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
+                isToday ? 'bg-orange-500 text-white' : 'text-slate-500'
+              }`}>
+                {date.getDate()}
+              </div>
+              <div className="space-y-0.5">
+                {cellJobs.slice(0, 3).map(job => {
+                  const isStart = job.scheduledStartDate === dateStr;
+                  return (
+                    <div
+                      key={job.id}
+                      draggable={isStart}
+                      onDragStart={isStart ? (e) => handleDragStart(e, job) : undefined}
+                      title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}`}
+                      className={`text-[10px] font-semibold text-white px-1 py-0.5 rounded truncate leading-tight ${
+                        isStart ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-80'
+                      }`}
+                      style={{ background: barHex(job.status) }}
+                    >
+                      {isStart && <GripVertical size={8} className="inline mr-0.5 opacity-70" />}
+                      {job.name}
+                    </div>
+                  );
+                })}
+                {cellJobs.length > 3 && (
+                  <div className="text-[10px] text-slate-400 font-medium pl-1">+{cellJobs.length - 3} more</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 flex flex-wrap gap-3">
+        {Object.entries(STATUS_BAR_HEX).slice(0, 6).map(([status, color]) => (
+          <div key={status} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
+            <span className="text-[10px] text-slate-500">{status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Timeline / Gantt View ────────────────────────────────────────────────────
 
 interface TimelineViewProps {
   jobs: SchedulerJob[];
   window: TimeWindow;
   anchorDate: Date;
+  onReschedule: (job: SchedulerJob, newStart: string, newEnd: string) => void;
 }
 
-function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProps) {
+function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: TimelineViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const DW = DAY_WIDTH[timeWindow];
 
-  // Window bounds derived from anchor + calendar-accurate helpers
   const windowStart = useMemo(() => {
     const d = new Date(anchorDate); d.setHours(0, 0, 0, 0); return d;
   }, [anchorDate]);
 
-  const windowEnd = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
+  const windowEnd   = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
+  const totalDays   = useMemo(() => windowDayCount(anchorDate, timeWindow), [anchorDate, timeWindow]);
 
-  const totalDays = useMemo(() => windowDayCount(anchorDate, timeWindow), [anchorDate, timeWindow]);
-
-  // Header days
-  const headerDays = useMemo(() =>
+  const headerDays  = useMemo(() =>
     Array.from({ length: totalDays }, (_, i) => {
       const d = new Date(windowStart); d.setDate(d.getDate() + i); return d;
     }),
@@ -345,20 +497,21 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayOffset = Math.round((today.getTime() - windowStart.getTime()) / 86400000);
 
-  // Jobs visible in this window
   const visibleJobs = jobs.filter(j => overlapsWindow(j, windowStart, windowEnd));
+
+  // Drag state
+  const [dragging, setDragging] = useState<{ jobId: number; startX: number; origStart: string; origEnd: string } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dropTarget, setDropTarget] = useState<string | null>(null); // for unscheduled drop
 
   function barProps(job: SchedulerJob) {
     if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
     const jobStart  = parseLocalDate(job.scheduledStartDate);
     const jobFinish = parseLocalDate(job.expectedCompletionDate);
-
     const clampedStart  = jobStart  < windowStart ? windowStart : jobStart;
     const clampedFinish = jobFinish > windowEnd   ? windowEnd   : jobFinish;
-
     const leftDays  = Math.round((clampedStart.getTime()  - windowStart.getTime()) / 86400000);
     const widthDays = Math.max(1, Math.round((clampedFinish.getTime() - clampedStart.getTime()) / 86400000) + 1);
-
     return {
       left: leftDays * DW,
       width: widthDays * DW,
@@ -367,16 +520,49 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
     };
   }
 
-  function shouldShowMonth(d: Date, i: number): boolean {
-    return i === 0 || d.getDate() === 1;
-  }
-
+  function shouldShowMonth(d: Date, i: number): boolean { return i === 0 || d.getDate() === 1; }
   function showDayLabel(i: number): boolean {
-    if (timeWindow === 'day')      return true;
-    if (timeWindow === 'week')     return true;
-    if (timeWindow === 'month')    return i % 2 === 0;
+    if (timeWindow === 'day')   return true;
+    if (timeWindow === 'week')  return true;
+    if (timeWindow === 'month') return i % 2 === 0;
     return i % 7 === 0;
   }
+
+  // Drag handlers for Gantt bars
+  function handleBarMouseDown(e: React.MouseEvent, job: SchedulerJob) {
+    if (!job.scheduledStartDate || !job.expectedCompletionDate) return;
+    e.preventDefault();
+    setDragging({ jobId: job.id, startX: e.clientX, origStart: job.scheduledStartDate, origEnd: job.expectedCompletionDate });
+    setDragOffset(0);
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+    function onMouseMove(e: MouseEvent) {
+      setDragOffset(e.clientX - dragging!.startX);
+    }
+    function onMouseUp() {
+      if (dragging && dragOffset !== 0) {
+        const dayShift = Math.round(dragOffset / DW);
+        if (dayShift !== 0) {
+          const newStart = new Date(parseLocalDate(dragging.origStart));
+          newStart.setDate(newStart.getDate() + dayShift);
+          const newEnd = new Date(parseLocalDate(dragging.origEnd));
+          newEnd.setDate(newEnd.getDate() + dayShift);
+          const job = jobs.find(j => j.id === dragging!.jobId);
+          if (job) onReschedule(job, toDateStr(newStart), toDateStr(newEnd));
+        }
+      }
+      setDragging(null);
+      setDragOffset(0);
+    }
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [dragging, dragOffset, DW, jobs, onReschedule]);
 
   if (visibleJobs.length === 0) {
     return (
@@ -389,59 +575,39 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
   }
 
   return (
-    <div className="overflow-x-auto" ref={scrollRef}>
+    <div className="overflow-x-auto select-none" ref={scrollRef}>
       <div style={{ minWidth: totalDays * DW + 200 }}>
 
-        {/* Two-row header: month labels + day numbers */}
+        {/* Header */}
         <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-          {/* Job label column */}
           <div className="w-48 shrink-0 border-r border-slate-200" style={{ minHeight: 48 }}>
             <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Job</div>
           </div>
-
-          {/* Day columns */}
           <div className="flex flex-col flex-1">
-            {/* Month row */}
             <div className="flex border-b border-slate-100">
               {headerDays.map((d, i) => {
-                if (!shouldShowMonth(d, i)) {
-                  return <div key={i} style={{ width: DW }} className="shrink-0" />;
-                }
+                if (!shouldShowMonth(d, i)) return <div key={i} style={{ width: DW }} className="shrink-0" />;
                 let span = 1;
                 for (let j = i + 1; j < headerDays.length; j++) {
                   if (headerDays[j].getDate() === 1) break;
                   span++;
                 }
                 return (
-                  <div
-                    key={i}
-                    style={{ width: span * DW }}
-                    className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide border-r border-slate-200 bg-slate-50"
-                  >
+                  <div key={i} style={{ width: span * DW }} className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide border-r border-slate-200 bg-slate-50">
                     {d.toLocaleDateString('en-AU', { month: 'short', year: timeWindow === '3months' ? '2-digit' : undefined })}
                   </div>
                 );
               })}
             </div>
-
-            {/* Day number row */}
             <div className="flex">
               {headerDays.map((d, i) => {
-                const isToday     = d.toDateString() === new Date().toDateString();
-                const isWeekend   = d.getDay() === 0 || d.getDay() === 6;
+                const isToday   = d.toDateString() === new Date().toDateString();
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 const isMonthEdge = d.getDate() === 1;
                 return (
-                  <div
-                    key={i}
-                    style={{ width: DW }}
-                    className={`shrink-0 text-center py-0.5 border-r ${
-                      isMonthEdge ? 'border-slate-300' : 'border-slate-100'
-                    } ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}
-                  >
+                  <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-0.5 border-r ${isMonthEdge ? 'border-slate-300' : 'border-slate-100'} ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
                     {showDayLabel(i) && (
-                      <span className={`text-[10px] font-medium ${
-                        isToday ? 'text-orange-600 font-bold' : 'text-slate-400'
-                      }`}>
+                      <span className={`text-[10px] font-medium ${isToday ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>
                         {d.getDate()}
                       </span>
                     )}
@@ -455,13 +621,11 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
         {/* Job rows */}
         {visibleJobs.map(job => {
           const bar = barProps(job);
+          const isDraggingThis = dragging?.jobId === job.id;
+          const dayShift = isDraggingThis ? Math.round(dragOffset / DW) : 0;
+
           return (
-            <div
-              key={job.id}
-              className="flex border-b border-slate-100 hover:bg-slate-50/60 transition-colors"
-              style={{ height: 44 }}
-            >
-              {/* Job name column */}
+            <div key={job.id} className="flex border-b border-slate-100 hover:bg-slate-50/60 transition-colors" style={{ height: 44 }}>
               <div className="w-48 shrink-0 px-3 flex items-center border-r border-slate-200 overflow-hidden">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 truncate">{job.name}</p>
@@ -470,46 +634,33 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
                   </p>
                 </div>
               </div>
-
-              {/* Bar area */}
               <div className="relative" style={{ width: totalDays * DW }}>
-                {/* Weekend shading */}
                 {headerDays.map((d, i) => {
                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                   return isWeekend ? (
-                    <div
-                      key={i}
-                      className="absolute top-0 bottom-0 bg-slate-50/80"
-                      style={{ left: i * DW, width: DW }}
-                    />
+                    <div key={i} className="absolute top-0 bottom-0 bg-slate-50/80" style={{ left: i * DW, width: DW }} />
                   ) : null;
                 })}
-
-                {/* Today line */}
                 {todayOffset >= 0 && todayOffset < totalDays && (
-                  <div
-                    className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70"
-                    style={{ left: todayOffset * DW + DW / 2 }}
-                  />
+                  <div className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
                 )}
-
-                {/* Gantt bar */}
                 {bar && (
-                  <Link
-                    to={`/jobs/${job.id}`}
-                    title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}\n${job.supervisorName ?? job.teamLabel ?? ''}`}
-                    className={`absolute top-2.5 h-[18px] flex items-center text-white text-[10px] font-semibold truncate shadow-sm hover:brightness-110 transition-all ${barColor(job.status)} ${
+                  <div
+                    title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}\nDrag to reschedule`}
+                    onMouseDown={(e) => handleBarMouseDown(e, job)}
+                    className={`absolute top-2.5 h-[18px] flex items-center text-white text-[10px] font-semibold truncate shadow-sm cursor-grab active:cursor-grabbing transition-all ${barColor(job.status)} ${
                       bar.clippedLeft && !bar.clippedRight ? 'rounded-r-md' :
                       bar.clippedRight && !bar.clippedLeft ? 'rounded-l-md' :
                       bar.clippedLeft && bar.clippedRight  ? '' :
                       'rounded-md'
-                    }`}
-                    style={{ left: bar.left, width: bar.width }}
+                    } ${isDraggingThis ? 'opacity-70 ring-2 ring-white/60' : 'hover:brightness-110'}`}
+                    style={{ left: bar.left + dayShift * DW, width: bar.width }}
                   >
                     {bar.clippedLeft  && <span className="shrink-0 pl-0.5 opacity-70">◀</span>}
-                    <span className="px-1.5 truncate">{bar.width > 50 ? job.name : ''}</span>
+                    <GripVertical size={10} className="shrink-0 ml-1 opacity-60" />
+                    <span className="px-1 truncate">{bar.width > 50 ? job.name : ''}</span>
                     {bar.clippedRight && <span className="shrink-0 pr-0.5 ml-auto opacity-70">▶</span>}
-                  </Link>
+                  </div>
                 )}
               </div>
             </div>
@@ -517,12 +668,12 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
         })}
 
         {/* Legend */}
-        <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 bg-slate-50/50 flex-wrap">
+        <div className="flex flex-wrap gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50">
           {Object.entries(STATUS_BAR).map(([status, cls]) => (
-            <span key={status} className="flex items-center gap-1 text-[10px] text-slate-500">
-              <span className={`w-2.5 h-2.5 rounded-sm ${cls}`} />
-              {status}
-            </span>
+            <div key={status} className="flex items-center gap-1.5">
+              <div className={`w-3 h-3 rounded-sm ${cls}`} />
+              <span className="text-[10px] text-slate-500">{status}</span>
+            </div>
           ))}
         </div>
       </div>
@@ -530,41 +681,177 @@ function TimelineView({ jobs, window: timeWindow, anchorDate }: TimelineViewProp
   );
 }
 
-// ─── Unscheduled section ──────────────────────────────────────────────────────
+// ─── Crew Availability View ───────────────────────────────────────────────────
 
-function UnscheduledSection({ jobs }: { jobs: SchedulerJob[] }) {
-  if (jobs.length === 0) return null;
-  return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2 mb-3">
-        <AlertTriangle size={15} className="text-amber-500" />
-        <h3 className="text-sm font-semibold text-slate-700">Unscheduled Jobs ({jobs.length})</h3>
-        <span className="text-xs text-slate-400 hidden sm:inline">— open the job and set Scheduled Start + Expected Completion</span>
+interface CrewViewProps {
+  members: CrewMember[];
+  unassignedJobs: SchedulerJob[];
+  window: TimeWindow;
+  anchorDate: Date;
+  loading: boolean;
+  onReschedule: (job: SchedulerJob, newStart: string, newEnd: string) => void;
+}
+
+function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loading, onReschedule }: CrewViewProps) {
+  const DW = DAY_WIDTH[timeWindow];
+
+  const windowStart = useMemo(() => {
+    const d = new Date(anchorDate); d.setHours(0, 0, 0, 0); return d;
+  }, [anchorDate]);
+
+  const windowEnd   = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
+  const totalDays   = useMemo(() => windowDayCount(anchorDate, timeWindow), [anchorDate, timeWindow]);
+
+  const headerDays  = useMemo(() =>
+    Array.from({ length: totalDays }, (_, i) => {
+      const d = new Date(windowStart); d.setDate(d.getDate() + i); return d;
+    }),
+  [windowStart, totalDays]);
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayOffset = Math.round((today.getTime() - windowStart.getTime()) / 86400000);
+
+  function barProps(job: SchedulerJob) {
+    if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
+    const jobStart  = parseLocalDate(job.scheduledStartDate);
+    const jobFinish = parseLocalDate(job.expectedCompletionDate);
+    if (jobStart > windowEnd || jobFinish < windowStart) return null;
+    const clampedStart  = jobStart  < windowStart ? windowStart : jobStart;
+    const clampedFinish = jobFinish > windowEnd   ? windowEnd   : jobFinish;
+    const leftDays  = Math.round((clampedStart.getTime()  - windowStart.getTime()) / 86400000);
+    const widthDays = Math.max(1, Math.round((clampedFinish.getTime() - clampedStart.getTime()) / 86400000) + 1);
+    return { left: leftDays * DW, width: widthDays * DW };
+  }
+
+  function showDayLabel(i: number): boolean {
+    if (timeWindow === 'day')   return true;
+    if (timeWindow === 'week')  return true;
+    if (timeWindow === 'month') return i % 2 === 0;
+    return i % 7 === 0;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-orange-500" size={24} />
       </div>
-      <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
-        <div className="divide-y divide-amber-100">
-          {jobs.map(job => {
-            const style = getStatusStyle(job.status);
-            return (
-              <div key={job.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{job.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {job.jobNumber && <span className="text-xs text-slate-400">#{job.jobNumber}</span>}
-                    {job.client    && <span className="text-xs text-slate-500">{job.client}</span>}
-                    {job.address   && <span className="text-xs text-slate-400 truncate">{job.address}</span>}
-                  </div>
+    );
+  }
+
+  if (members.length === 0) {
+    return (
+      <div className="text-center py-16 text-slate-400">
+        <Users size={36} className="mx-auto mb-3 opacity-30" />
+        <p className="text-sm">No team members found.</p>
+        <p className="text-xs mt-1">Add team members in Settings → Team to see crew availability.</p>
+      </div>
+    );
+  }
+
+  const allRows = [
+    ...members.map(m => ({ id: m.id, label: m.name, sublabel: m.role, jobs: m.jobs })),
+    ...(unassignedJobs.length > 0 ? [{ id: 'unassigned', label: 'Unassigned', sublabel: `${unassignedJobs.length} jobs`, jobs: unassignedJobs }] : []),
+  ];
+
+  return (
+    <div className="overflow-x-auto select-none">
+      <div style={{ minWidth: totalDays * DW + 200 }}>
+
+        {/* Header */}
+        <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+          <div className="w-48 shrink-0 border-r border-slate-200 px-3 py-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Team Member</p>
+          </div>
+          <div className="flex">
+            {headerDays.map((d, i) => {
+              const isToday   = d.toDateString() === new Date().toDateString();
+              const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+              return (
+                <div key={i} style={{ width: DW }} className={`shrink-0 text-center py-1.5 border-r border-slate-100 ${isToday ? 'bg-orange-50' : isWeekend ? 'bg-slate-50/60' : ''}`}>
+                  {showDayLabel(i) && (
+                    <span className={`text-[10px] font-medium ${isToday ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>
+                      {d.getDate()}
+                    </span>
+                  )}
                 </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${style.bg} ${style.color}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                  {job.status}
-                </span>
-                <Link
-                  to={`/jobs/${job.id}`}
-                  className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700 shrink-0"
-                >
-                  Open Job <ChevronRight size={12} />
-                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Member rows */}
+        {allRows.map(row => {
+          const rowJobs = row.jobs.filter(j => overlapsWindow(j, windowStart, windowEnd));
+          const isUnassigned = row.id === 'unassigned';
+
+          // Stack overlapping jobs into lanes
+          const lanes: SchedulerJob[][] = [];
+          rowJobs.forEach(job => {
+            const jobStart = job.scheduledStartDate ? parseLocalDate(job.scheduledStartDate) : null;
+            const jobEnd   = job.expectedCompletionDate ? parseLocalDate(job.expectedCompletionDate) : null;
+            if (!jobStart || !jobEnd) return;
+            let placed = false;
+            for (const lane of lanes) {
+              const lastJob = lane[lane.length - 1];
+              const lastEnd = lastJob.expectedCompletionDate ? parseLocalDate(lastJob.expectedCompletionDate) : null;
+              if (!lastEnd || jobStart > lastEnd) {
+                lane.push(job);
+                placed = true;
+                break;
+              }
+            }
+            if (!placed) lanes.push([job]);
+          });
+
+          const rowH = Math.max(44, lanes.length * 24 + 12);
+
+          return (
+            <div key={row.id} className="flex border-b border-slate-100" style={{ height: rowH }}>
+              <div className={`w-48 shrink-0 px-3 flex flex-col justify-center border-r border-slate-200 ${isUnassigned ? 'bg-amber-50' : ''}`}>
+                <p className="text-xs font-semibold text-slate-800 truncate">{row.label}</p>
+                <p className="text-[10px] text-slate-400 truncate capitalize">{row.sublabel}</p>
+              </div>
+              <div className="relative flex-1" style={{ width: totalDays * DW }}>
+                {headerDays.map((d, i) => {
+                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                  return isWeekend ? (
+                    <div key={i} className="absolute top-0 bottom-0 bg-slate-50/80" style={{ left: i * DW, width: DW }} />
+                  ) : null;
+                })}
+                {todayOffset >= 0 && todayOffset < totalDays && (
+                  <div className="absolute top-0 bottom-0 w-px bg-orange-400 z-10 opacity-70" style={{ left: todayOffset * DW + DW / 2 }} />
+                )}
+                {lanes.map((lane, laneIdx) =>
+                  lane.map(job => {
+                    const bar = barProps(job);
+                    if (!bar) return null;
+                    return (
+                      <Link
+                        key={job.id}
+                        to={`/jobs/${job.id}`}
+                        title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}`}
+                        className={`absolute h-[18px] flex items-center text-white text-[10px] font-semibold truncate shadow-sm hover:brightness-110 transition-all rounded-md ${barColor(job.status)}`}
+                        style={{ left: bar.left, width: bar.width, top: 4 + laneIdx * 24 }}
+                      >
+                        <span className="px-1.5 truncate">{bar.width > 40 ? job.name : ''}</span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Availability summary */}
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-4">
+          {members.map(m => {
+            const activeJobs = m.jobs.filter(j => overlapsWindow(j, windowStart, windowEnd));
+            return (
+              <div key={m.id} className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${activeJobs.length === 0 ? 'bg-green-400' : activeJobs.length === 1 ? 'bg-orange-400' : 'bg-red-400'}`} />
+                <span className="text-[10px] text-slate-600 font-medium">{m.name}</span>
+                <span className="text-[10px] text-slate-400">{activeJobs.length === 0 ? 'Available' : `${activeJobs.length} job${activeJobs.length > 1 ? 's' : ''}`}</span>
               </div>
             );
           })}
@@ -574,40 +861,195 @@ function UnscheduledSection({ jobs }: { jobs: SchedulerJob[] }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Unscheduled Section ──────────────────────────────────────────────────────
+
+function UnscheduledSection({ jobs, onSchedule }: { jobs: SchedulerJob[]; onSchedule: (job: SchedulerJob) => void }) {
+  if (jobs.length === 0) return null;
+  return (
+    <div className="mt-4 bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 bg-amber-50 flex items-center gap-2">
+        <AlertTriangle size={14} className="text-amber-500" />
+        <h3 className="text-sm font-bold text-slate-700">Unscheduled Jobs</h3>
+        <span className="ml-auto text-xs text-slate-400">{jobs.length} job{jobs.length !== 1 ? 's' : ''} need scheduling</span>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {jobs.map(job => {
+          const style = getStatusStyle(job.status);
+          return (
+            <div key={job.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+              <GripVertical size={14} className="text-slate-300 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{job.name}</p>
+                <p className="text-xs text-slate-400 truncate">
+                  {[job.client, job.address, job.supervisorName ?? job.teamLabel].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${style.bg} ${style.color}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                {job.status}
+              </span>
+              <button
+                onClick={() => onSchedule(job)}
+                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 border border-orange-200 rounded-lg transition-colors"
+              >
+                Schedule
+              </button>
+              <Link to={`/jobs/${job.id}`} className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+                <ExternalLink size={13} />
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Quick Schedule Modal ─────────────────────────────────────────────────────
+
+function QuickScheduleModal({ job, onClose, onSave }: {
+  job: SchedulerJob;
+  onClose: () => void;
+  onSave: (start: string, end: string) => void;
+}) {
+  const today = toDateStr(new Date());
+  const [start, setStart] = useState(job.scheduledStartDate ?? today);
+  const [end,   setEnd]   = useState(job.expectedCompletionDate ?? today);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!start || !end) return;
+    setSaving(true);
+    await onSave(start, end);
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-slate-800 mb-1">Schedule Job</h2>
+        <p className="text-sm text-slate-500 mb-4 truncate">{job.name}</p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Date</label>
+            <input type="date" value={start} onChange={e => setStart(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Completion Date</label>
+            <input type="date" value={end} onChange={e => setEnd(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onClose} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving || !start || !end}
+            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SchedulerPage() {
-  const [jobs, setJobs]                         = useState<SchedulerJob[]>([]);
-  const [loading, setLoading]                   = useState(true);
-  const [error, setError]                       = useState('');
-  const [view, setView]                         = useState<ViewMode>('table');
-  const [timeWindow, setTimeWindow]             = useState<TimeWindow>('month');
-  const [anchorDate, setAnchorDate]             = useState<Date>(() => snapAnchor('month'));
-  const [search, setSearch]                     = useState('');
-  const [statusFilter, setStatusFilter]         = useState('All');
-  const [supervisorFilter, setSupervisorFilter] = useState('All');
+  const [jobs,            setJobs]            = useState<SchedulerJob[]>([]);
+  const [crewMembers,     setCrewMembers]      = useState<CrewMember[]>([]);
+  const [unassignedJobs,  setUnassignedJobs]   = useState<SchedulerJob[]>([]);
+  const [loading,         setLoading]          = useState(true);
+  const [crewLoading,     setCrewLoading]      = useState(false);
+  const [error,           setError]            = useState('');
+  const [view,            setView]             = useState<ViewMode>('timeline');
+  const [timeWindow,      setTimeWindow]       = useState<TimeWindow>('week');
+  const [anchorDate,      setAnchorDate]       = useState<Date>(() => snapAnchor('week'));
+  const [search,          setSearch]           = useState('');
+  const [statusFilter,    setStatusFilter]     = useState('All');
+  const [supervisorFilter,setSupervisorFilter] = useState('All');
+  const [scheduleTarget,  setScheduleTarget]   = useState<SchedulerJob | null>(null);
+  const [saveMsg,         setSaveMsg]          = useState('');
 
+  // Load jobs
   useEffect(() => {
+    setLoading(true);
     fetch('/api/scheduler/jobs', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
-      .then(data => setJobs(data.jobs ?? []))
-      .catch(() => setError('Failed to load scheduler data. Please refresh.'))
+      .then(r => r.json())
+      .then((data: { jobs?: SchedulerJob[] }) => {
+        setJobs(data.jobs ?? []);
+        setError('');
+      })
+      .catch(() => setError('Failed to load scheduler data'))
       .finally(() => setLoading(false));
   }, []);
 
-  // Supervisor filter options — built from actual job data
+  // Load crew when crew view is selected
+  useEffect(() => {
+    if (view !== 'crew') return;
+    setCrewLoading(true);
+    fetch('/api/scheduler/crew', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { members?: CrewMember[]; unassignedJobs?: SchedulerJob[] }) => {
+        setCrewMembers(data.members ?? []);
+        setUnassignedJobs(data.unassignedJobs ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setCrewLoading(false));
+  }, [view]);
+
+  // Reschedule handler — optimistic update + API call
+  const handleReschedule = useCallback(async (job: SchedulerJob, newStart: string, newEnd: string) => {
+    // Optimistic update
+    setJobs(prev => prev.map(j => j.id === job.id
+      ? { ...j, scheduledStartDate: newStart, expectedCompletionDate: newEnd }
+      : j
+    ));
+    setCrewMembers(prev => prev.map(m => ({
+      ...m,
+      jobs: m.jobs.map(j => j.id === job.id
+        ? { ...j, scheduledStartDate: newStart, expectedCompletionDate: newEnd }
+        : j
+      ),
+    })));
+
+    const ok = await rescheduleJob(job.id, newStart, newEnd);
+    if (ok) {
+      setSaveMsg(`${job.name} rescheduled to ${fmt(newStart)}`);
+      setTimeout(() => setSaveMsg(''), 3000);
+    } else {
+      // Revert
+      setJobs(prev => prev.map(j => j.id === job.id
+        ? { ...j, scheduledStartDate: job.scheduledStartDate, expectedCompletionDate: job.expectedCompletionDate }
+        : j
+      ));
+      setSaveMsg('Failed to save — please try again');
+      setTimeout(() => setSaveMsg(''), 3000);
+    }
+  }, []);
+
+  const handleQuickSchedule = useCallback(async (start: string, end: string) => {
+    if (!scheduleTarget) return;
+    await handleReschedule(scheduleTarget, start, end);
+    // Move from unscheduled to scheduled
+    setJobs(prev => prev.map(j => j.id === scheduleTarget.id
+      ? { ...j, scheduledStartDate: start, expectedCompletionDate: end }
+      : j
+    ));
+    setScheduleTarget(null);
+  }, [scheduleTarget, handleReschedule]);
+
   const supervisors = useMemo(() => {
-    const names = jobs
-      .map(j => j.supervisorName ?? j.teamLabel)
-      .filter((n): n is string => !!n);
+    const names = jobs.map(j => j.supervisorName ?? j.teamLabel).filter((n): n is string => !!n);
     return ['All', ...Array.from(new Set(names)).sort()];
   }, [jobs]);
 
-  // Split: scheduled = both dates set; unscheduled = either missing
   const scheduled   = jobs.filter(isScheduled);
   const unscheduled = jobs.filter(j => !isScheduled(j));
 
-  // Apply search + status + supervisor filters to scheduled jobs
   const filtered = scheduled.filter(job => {
     if (statusFilter !== 'All' && job.status !== statusFilter) return false;
     if (supervisorFilter !== 'All') {
@@ -626,7 +1068,6 @@ export default function SchedulerPage() {
     return true;
   });
 
-  // Navigation: step by one calendar period
   function navigate(direction: -1 | 1) {
     setAnchorDate(prev => stepAnchor(prev, timeWindow, direction));
   }
@@ -640,29 +1081,20 @@ export default function SchedulerPage() {
     setAnchorDate(snapAnchor(tw));
   }
 
-  // Window label for the nav bar
   const windowLabel = useMemo(() => {
     const end = windowEndDate(anchorDate, timeWindow);
-    if (timeWindow === 'day') {
-      return anchorDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    }
-    if (timeWindow === 'week') {
-      return `${fmtShort(anchorDate.toISOString())} – ${fmtShort(end.toISOString())}`;
-    }
-    if (timeWindow === 'month') {
-      return anchorDate.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
-    }
-    // 3 months
+    if (timeWindow === 'day')   return anchorDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (timeWindow === 'week')  return `${fmtShort(toDateStr(anchorDate))} – ${fmtShort(toDateStr(end))}`;
+    if (timeWindow === 'month') return anchorDate.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
     const s = anchorDate.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
     const e = end.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
     return `${s} – ${e}`;
   }, [anchorDate, timeWindow]);
 
-  // Window bounds for the visible-count calculation
   const windowStart = useMemo(() => { const d = new Date(anchorDate); d.setHours(0,0,0,0); return d; }, [anchorDate]);
   const windowEnd   = useMemo(() => windowEndDate(anchorDate, timeWindow), [anchorDate, timeWindow]);
 
-  const visibleCount = view === 'timeline'
+  const visibleCount = view === 'timeline' || view === 'crew'
     ? filtered.filter(j => overlapsWindow(j, windowStart, windowEnd)).length
     : filtered.length;
 
@@ -696,53 +1128,63 @@ export default function SchedulerPage() {
           <CalendarDays size={18} className="text-orange-500 shrink-0" />
           <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
 
-          <div className="ml-auto flex items-center gap-2">
-            {/* Time window: Day / Week / Month / 3 Months — primary control */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-              {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
-                <button
-                  key={key}
-                  onClick={() => switchWindow(key)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    timeWindow === key
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {WINDOW_LABELS[key]}
-                </button>
-              ))}
-            </div>
+          {/* Save message toast */}
+          {saveMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-full text-xs font-semibold text-green-700"
+            >
+              <CheckCircle2 size={11} />
+              {saveMsg}
+            </motion.div>
+          )}
 
-            {/* Divider */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Time window — only for timeline/crew/calendar views */}
+            {view !== 'table' && (
+              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
+                  <button
+                    key={key}
+                    onClick={() => switchWindow(key)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      timeWindow === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {WINDOW_LABELS[key]}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="h-5 w-px bg-slate-200" />
 
-            {/* Table / Timeline toggle */}
+            {/* View toggle */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-              <button
-                onClick={() => setView('table')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  view === 'table' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <List size={13} /> Table
-              </button>
-              <button
-                onClick={() => setView('timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  view === 'timeline' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <BarChart2 size={13} /> Timeline
-              </button>
+              {([
+                { key: 'table',    icon: <List size={13} />,        label: 'Table' },
+                { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
+                { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
+                { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
+              ] as const).map(({ key, icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    view === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {icon} {label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
         {/* ── Filters + period nav bar ── */}
         <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
-
-          {/* Search */}
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -754,7 +1196,6 @@ export default function SchedulerPage() {
             />
           </div>
 
-          {/* Status filter */}
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -764,7 +1205,6 @@ export default function SchedulerPage() {
             {JOB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          {/* Supervisor filter */}
           {supervisors.length > 1 && (
             <select
               value={supervisorFilter}
@@ -777,34 +1217,22 @@ export default function SchedulerPage() {
             </select>
           )}
 
-          {/* Period navigation: prev / label / today / next */}
-          <div className="flex items-center gap-1 ml-auto">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-              title="Previous period"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="text-xs font-semibold text-slate-700 min-w-[140px] text-center px-1">
-              {windowLabel}
-            </span>
-            <button
-              onClick={() => navigate(1)}
-              className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-              title="Next period"
-            >
-              <ChevronRight size={14} />
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1"
-            >
-              Today
-            </button>
-          </div>
+          {/* Period navigation */}
+          {view !== 'table' && (
+            <div className="flex items-center gap-1 ml-auto">
+              <button onClick={() => navigate(-1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Previous period">
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-xs font-semibold text-slate-700 min-w-[140px] text-center px-1">{windowLabel}</span>
+              <button onClick={() => navigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Next period">
+                <ChevronRight size={14} />
+              </button>
+              <button onClick={goToToday} className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1">
+                Today
+              </button>
+            </div>
+          )}
 
-          {/* Counts */}
           <div className="text-xs text-slate-400 hidden lg:block">
             {visibleCount} scheduled · {unscheduled.length} unscheduled
           </div>
@@ -831,21 +1259,54 @@ export default function SchedulerPage() {
               transition={{ duration: 0.2 }}
             >
               <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                {view === 'table' ? (
-                  <TableView jobs={filtered} />
-                ) : (
+                {view === 'table' && <TableView jobs={filtered} />}
+                {view === 'timeline' && (
                   <TimelineView
                     jobs={filtered}
                     window={timeWindow}
                     anchorDate={anchorDate}
+                    onReschedule={handleReschedule}
+                  />
+                )}
+                {view === 'calendar' && (
+                  <CalendarView
+                    jobs={filtered}
+                    anchorDate={anchorDate}
+                    onNavigate={navigate}
+                    onReschedule={handleReschedule}
+                  />
+                )}
+                {view === 'crew' && (
+                  <CrewView
+                    members={crewMembers}
+                    unassignedJobs={unassignedJobs}
+                    window={timeWindow}
+                    anchorDate={anchorDate}
+                    loading={crewLoading}
+                    onReschedule={handleReschedule}
                   />
                 )}
               </div>
-              <UnscheduledSection jobs={unscheduled} />
+
+              {view !== 'crew' && (
+                <UnscheduledSection
+                  jobs={unscheduled}
+                  onSchedule={setScheduleTarget}
+                />
+              )}
             </motion.div>
           )}
         </div>
       </div>
+
+      {/* Quick Schedule Modal */}
+      {scheduleTarget && (
+        <QuickScheduleModal
+          job={scheduleTarget}
+          onClose={() => setScheduleTarget(null)}
+          onSave={handleQuickSchedule}
+        />
+      )}
     </div>
   );
 }
