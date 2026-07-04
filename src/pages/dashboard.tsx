@@ -17,7 +17,6 @@ import {
   Clock,
   XCircle,
   BarChart3,
-  DollarSign,
   Calculator,
   Ruler,
   Car,
@@ -26,15 +25,15 @@ import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
-import { fetchFleet, fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
+import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
+import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
 import { AnimatePresence } from 'motion/react';
 import StartDrivingModal, { type ActiveSession } from '@/components/fleet/StartDrivingModal';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
 import { useDriverSession } from '@/lib/useDriverSession';
-import { fmtMoney } from '@/lib/invoices-api';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 const quickActions = [
@@ -72,11 +71,9 @@ export default function DashboardPage() {
   const { can, isAdmin, isOwner, loading: permLoading } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
-  const [fleetCount, setFleetCount] = useState(0);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
   const [dueTodayTodos, setDueTodayTodos] = useState<DashTodo[]>([]);
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
-  const [invoiceSummary, setInvoiceSummary] = useState<{ unpaid: number; overdue: number; balanceDue: number } | null>(null);
 
   // Driver session
   const { session: driverSession, refresh: refreshDriverSession } = useDriverSession();
@@ -86,13 +83,12 @@ export default function DashboardPage() {
   function handleSessionStarted(s: ActiveSession) {
     setShowStartDriving(false);
     void refreshDriverSession();
-    // Suppress unused var warning — session is refreshed via hook
     void s;
   }
 
-  // Setup detection — true once we know whether the company has real data
+  // Setup detection
   const [setupChecked, setSetupChecked] = useState(false);
-  const [isSetup, setIsSetup] = useState(false); // true = company has real data
+  const [isSetup, setIsSetup] = useState(false);
 
   // Usage warnings
   const [usageWarning, setUsageWarning] = useState<{ hasWarnings: boolean; hasBlocked: boolean; warnings: string[] } | null>(null);
@@ -101,9 +97,6 @@ export default function DashboardPage() {
     fetchJobs()
       .then((data) => { setJobs(data); setJobsLoaded(true); })
       .catch(() => setJobsLoaded(true));
-    fetchFleet()
-      .then((assets) => setFleetCount(assets.filter((a) => a.status === 'Active').length))
-      .catch(() => {});
     fetchFleetFlags()
       .then((flags) => setFleetFlags(flags))
       .catch(() => {});
@@ -111,12 +104,10 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => { setDueTodayTodos(d.dueToday ?? []); setOverdueTodos(d.overdue ?? []); })
       .catch(() => {});
-    // Check if company has real setup data
     fetch('/api/dashboard/setup-check', { credentials: 'include' })
       .then((r) => r.ok ? r.json() as Promise<{ isSetup: boolean }> : Promise.reject())
       .then((d) => { setIsSetup(d.isSetup); setSetupChecked(true); })
       .catch(() => { setIsSetup(false); setSetupChecked(true); });
-    // Load usage warnings (admin/owner only — silently ignore 403)
     fetch('/api/usage', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
@@ -126,40 +117,6 @@ export default function DashboardPage() {
       })
       .catch(() => {});
   }, []);
-
-  // Load invoice summary once permissions are known
-  useEffect(() => {
-    if (permLoading) return;
-    const canInvoices = isAdmin || isOwner || can('invoices');
-    const seeDollars = isAdmin || isOwner || can('seeDollars');
-    if (!canInvoices || !seeDollars) return;
-    fetch('/api/invoices', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        const invs = d.invoices ?? [];
-        const unpaid = invs.filter((i: { status: string }) => ['sent', 'partially_paid', 'overdue'].includes(i.status));
-        const overdue = invs.filter((i: { status: string }) => i.status === 'overdue');
-        const balanceDue = unpaid.reduce((s: number, i: { balance_due: string }) => s + parseFloat(i.balance_due ?? '0'), 0);
-        setInvoiceSummary({ unpaid: unpaid.length, overdue: overdue.length, balanceDue });
-      })
-      .catch(() => {});
-  }, [permLoading, isAdmin, isOwner]);
-
-  const activeJobCount = jobs.filter((j) =>
-    ['New', 'Quoting', 'Submitted', 'Awaiting Approval', 'Works Approved', 'Ready to Start', 'Works in Progress'].includes(j.status)
-  ).length;
-
-  // Scheduled this week — jobs with scheduledStartDate within the next 7 days
-  const scheduledThisWeek = (() => {
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
-    return jobs.filter((j) => {
-      const d = (j as Job & { scheduledStartDate?: string | null }).scheduledStartDate;
-      if (!d) return false;
-      const start = new Date(d);
-      return start >= now && start <= weekEnd;
-    }).length;
-  })();
 
   const recentJobs = jobs.slice(0, 5);
 
@@ -372,78 +329,8 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* ── Metric cards ── */}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6"
-          >
-            {[
-              {
-                label: `Active ${workPlural}`,
-                value: jobsLoaded ? String(activeJobCount) : '—',
-                sub: activeJobCount === 0 ? `No ${workPlural.toLowerCase()} added yet` : `${activeJobCount} in progress`,
-                icon: HardHat,
-                color: 'text-primary',
-                bg: 'bg-orange-50',
-                href: '/jobs',
-                cta: activeJobCount === 0 ? `Add first ${workSingular.toLowerCase()}` : `View ${workPlural.toLowerCase()}`,
-              },
-              {
-                label: 'Crew On-Site',
-                value: '0',
-                sub: 'No crew assigned',
-                icon: Users,
-                color: 'text-blue-600',
-                bg: 'bg-blue-50',
-                href: '/team',
-                cta: 'Add team members',
-              },
-              {
-                label: 'Fleet Active',
-                value: String(fleetCount),
-                sub: fleetCount === 0 ? 'No vehicles added' : `${fleetCount} active asset${fleetCount !== 1 ? 's' : ''}`,
-                icon: Truck,
-                color: 'text-emerald-600',
-                bg: 'bg-emerald-50',
-                href: '/fleet',
-                cta: fleetCount === 0 ? 'Add fleet asset' : 'View fleet',
-              },
-              {
-                label: 'Scheduled This Week',
-                value: jobsLoaded ? String(scheduledThisWeek) : '—',
-                sub: scheduledThisWeek === 0 ? 'No jobs starting this week' : `${scheduledThisWeek} job${scheduledThisWeek !== 1 ? 's' : ''} starting soon`,
-                icon: Calendar,
-                color: 'text-cyan-600',
-                bg: 'bg-cyan-50',
-                href: '/scheduler',
-                cta: 'View scheduler',
-              },
-            ].map((m) => (
-              <motion.div
-                key={m.label}
-                variants={itemVariants}
-                whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
-                className="bg-white rounded-lg border border-border p-4 md:p-5 cursor-default"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`p-2 rounded-md ${m.bg}`}>
-                    <m.icon size={16} className={m.color} />
-                  </div>
-                </div>
-                <p className="font-heading font-bold text-2xl text-foreground">{m.value}</p>
-                <p className="text-sm font-medium text-foreground mt-0.5">{m.label}</p>
-                <p className="text-xs text-muted-foreground mt-1 mb-3">{m.sub}</p>
-                <Link
-                  to={m.href}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                >
-                  {m.cta} <ChevronRight size={11} />
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+          {/* ── KPI Widgets ── */}
+          <KpiWidgets />
 
           {/* ── Fleet Flags ── */}
           {fleetFlags && fleetFlags.totalFlags > 0 && (
@@ -557,32 +444,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
-            </motion.div>
-          )}
-
-          {/* ── Invoice summary card (invoice + seeDollars permission only) ── */}
-          {invoiceSummary && (invoiceSummary.unpaid > 0 || invoiceSummary.overdue > 0) && (
-            <motion.div variants={itemVariants} initial="hidden" animate="visible">
-              <Link
-                to="/invoices"
-                className="flex items-center gap-4 bg-white border border-border rounded-xl px-5 py-4 hover:border-primary/40 hover:shadow-sm transition-all group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                  <Receipt size={18} className="text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">
-                    {invoiceSummary.unpaid} unpaid invoice{invoiceSummary.unpaid !== 1 ? 's' : ''}
-                    {invoiceSummary.overdue > 0 && (
-                      <span className="ml-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">
-                        {invoiceSummary.overdue} overdue
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Balance due: {fmtMoney(invoiceSummary.balanceDue)}</p>
-                </div>
-                <ChevronRight size={15} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-              </Link>
             </motion.div>
           )}
 
