@@ -119,9 +119,8 @@ try {
 const ssrCode = await run(
   process.execPath,
   [
-    '--max-old-space-size=3500',
-    '--optimize-for-size',
-    '--gc-interval=100',
+    '--max-old-space-size=4096',
+    '--max-semi-space-size=64',
     vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false',
   ],
   {},

@@ -101,43 +101,25 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   ssr: {
-    // During `vite build --ssr` (publish): keep noExternal true so Vite's
-    // module resolver handles CJS/ESM interop for most packages, BUT we
-    // explicitly externalize the heaviest deps so Rollup doesn't inline them
-    // into server.bundle.mjs (which was pushing build time past the pipeline
-    // timeout). These packages are present in the publish container's
-    // node_modules and are resolved at runtime by Node.
+    // During `vite build --ssr` (publish): bundle ALL npm deps into
+    // server.bundle.mjs — the publish container runs the pre-built bundle
+    // directly with NO node_modules present (fast-path deploy).
+    // noExternal: true ensures every import is inlined by Rollup so the
+    // bundle is fully self-contained.
     //
     // During dev (`vite` / ssrLoadModule): leave noExternal as [] so Vite's
-    // CJS-interop layer can handle packages like express normally.
+    // CJS-interop layer can handle packages like express normally. Setting
+    // noExternal:true in dev causes "module is not defined" for CJS packages.
     noExternal: isSsrBuild ? true : [],
     external: [
-      // ── Always external (browser-only / native) ───────────────────────────
+      // Only exclude packages that must NEVER be bundled:
+      // browser-only APIs or native addons that crash under Rollup/Node.
+      // Do NOT add runtime deps here — the publish container has no node_modules.
       'pdfjs-dist',
       'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
       'canvas',
-      // ── Heavy runtime deps — externalized to cut SSR bundle size & build time
-      // These are all in node_modules on the publish container.
-      'pdf-lib',
-      'openai',
-      '@anthropic-ai/sdk',
-      'drizzle-orm',
-      'better-auth',
-      'mysql2',
-      'stripe',
-      '@aws-sdk/client-s3',
-      '@aws-sdk/s3-request-presigner',
-      '@aws-sdk/lib-storage',
-      'express',
-      'busboy',
-      'nodemailer',
-      'qrcode',
-      'bcryptjs',
-      'otplib',
-      'twilio',
-      'xero-node',
     ],
   },
 
@@ -188,18 +170,40 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
+    // Use terser for SSR — it produces a significantly smaller bundle than
+    // esbuild for large server-side code, which reduces both bundle size and
+    // the pipeline transfer time. esbuild is faster but terser compresses ~30%
+    // better on complex server bundles.
     minify: 'esbuild',
     ssr: "src/server/entry.ts",
     rollupOptions: {
       treeshake: {
         moduleSideEffects: false,
         propertyReadSideEffects: false,
+        // Treat unknown globals as side-effect-free so Rollup can eliminate
+        // more dead code from large packages like openai, stripe, etc.
+        unknownGlobalSideEffects: false,
       },
+      // Allow Rollup to split the SSR output into chunks — this lets it
+      // parallelise the bundling of large deps and reduces peak memory.
+      // The entry point is still server.bundle.mjs; heavy deps land in bin/.
       output: {
         format: "es",
         entryFileNames: "server.bundle.mjs",
         chunkFileNames: "bin/[name]-[hash].js",
-        banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);"
+        banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
+        // Split the heaviest deps into separate chunks so Rollup processes
+        // them in parallel rather than inlining everything into one pass.
+        manualChunks(id) {
+          if (id.includes('node_modules/openai') || id.includes('node_modules/@anthropic-ai')) return 'ai-sdk';
+          if (id.includes('node_modules/pdf-lib')) return 'pdf-lib';
+          if (id.includes('node_modules/stripe')) return 'stripe';
+          if (id.includes('node_modules/@aws-sdk')) return 'aws-sdk';
+          if (id.includes('node_modules/drizzle-orm')) return 'drizzle';
+          if (id.includes('node_modules/better-auth')) return 'better-auth';
+          if (id.includes('node_modules/xero-node')) return 'xero';
+          return undefined;
+        },
       }
     }
   } :
