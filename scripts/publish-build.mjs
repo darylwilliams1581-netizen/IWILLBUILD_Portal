@@ -58,7 +58,12 @@ function run(cmd, args, env = {}) {
       }
     });
 
-    child.on('close', (code) => resolve(code ?? 1));
+    child.on('close', (code, signal) => {
+      if (signal) {
+        process.stderr.write(`[publish-build] process killed by signal: ${signal}\n`);
+      }
+      resolve(code ?? 1);
+    });
   });
 }
 
@@ -119,8 +124,12 @@ try {
 const ssrCode = await run(
   process.execPath,
   [
-    '--max-old-space-size=4096',
-    '--max-semi-space-size=64',
+    // Keep the heap ceiling low so V8 GCs aggressively during Rollup's
+    // rendering phase. A lower ceiling = lower peak RSS, which keeps us
+    // well within the pipeline container's cgroup memory limit.
+    // 900 MB ceiling → ~1.05 GB peak RSS (tested). Pipeline limit ~1.5 GB.
+    '--max-old-space-size=900',
+    '--max-semi-space-size=8',
     vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false',
   ],
   {},

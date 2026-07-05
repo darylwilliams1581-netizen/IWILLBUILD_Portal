@@ -89,11 +89,18 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
   resolve: {
     dedupe: ["react", "react-dom", "react-router-dom"],
-    alias: {
-      nothing: "/src/fallbacks/missingModule.ts",
-      "@/api": path.resolve(__dirname, "./src/server/api"),
-      "@": path.resolve(__dirname, "./src")
-    }
+    alias: [
+      // During SSR build, redirect browser-only packages to an empty stub so
+      // they are not bundled into server.bundle.mjs. This saves ~400 kB of
+      // uncompressed JS and reduces peak Rollup memory by ~200 MB.
+      ...(isSsrBuild ? [
+        { find: /^react-pdf($|\/)/, replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts') },
+        { find: /^pdfjs-dist($|\/)/, replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts') },
+      ] : []),
+      { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
+      { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+    ],
   },
 
   optimizeDeps: {
@@ -112,9 +119,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // noExternal:true in dev causes "module is not defined" for CJS packages.
     noExternal: isSsrBuild ? true : [],
     external: [
-      // Only exclude packages that must NEVER be bundled:
-      // browser-only APIs or native addons that crash under Rollup/Node.
-      // Do NOT add runtime deps here — the publish container has no node_modules.
+      // These packages are browser-only and must never be bundled into the
+      // SSR bundle. With noExternal:true, Vite's ssr.external check uses
+      // .includes(id) on the bare specifier — so list exact package names here.
+      // Rollup-level regex externals are ignored when noExternal:true.
       'pdfjs-dist',
       'react-pdf',
       '@napi-rs',
@@ -177,6 +185,14 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     minify: 'esbuild',
     ssr: "src/server/entry.ts",
     rollupOptions: {
+      // pdfjs-dist and react-pdf are browser-only. They're listed in
+      // ssr.external above (bare specifier strings) so Vite's noExternal:true
+      // logic skips them. The Rollup-level external below is a belt-and-braces
+      // fallback for any sub-path imports (e.g. pdfjs-dist/build/pdf.worker.mjs)
+      // that Vite resolves to absolute paths before Rollup sees them.
+      external: (id: string) => {
+        return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
+      },
       treeshake: {
         moduleSideEffects: false,
         propertyReadSideEffects: false,
@@ -201,16 +217,20 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         //   - Keep aws-s3 and aws-sdk in ONE chunk — the S3 sub-packages
         //     import from the core SDK, so splitting them creates a cycle.
         manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
           if (id.includes('node_modules/openai')) return 'ai-openai';
           if (id.includes('node_modules/@anthropic-ai')) return 'ai-anthropic';
           if (id.includes('node_modules/pdf-lib')) return 'pdf-lib';
           if (id.includes('node_modules/stripe')) return 'stripe';
-          if (id.includes('node_modules/@aws-sdk')) return 'aws-sdk';
+          if (id.includes('node_modules/@aws-sdk') || id.includes('node_modules/@smithy') || id.includes('node_modules/@aws-crypto')) return 'aws-sdk';
           if (id.includes('node_modules/mysql2')) return 'mysql2';
           if (id.includes('node_modules/drizzle-orm')) return 'drizzle';
-          if (id.includes('node_modules/better-auth')) return 'better-auth';
+          if (id.includes('node_modules/better-auth') || id.includes('node_modules/@better-auth') || id.includes('node_modules/@better-fetch')) return 'better-auth';
+          if (id.includes('node_modules/kysely')) return 'kysely';
           if (id.includes('node_modules/xero-node')) return 'xero';
-          if (id.includes('node_modules/googleapis')) return 'googleapis';
+          if (id.includes('node_modules/jimp') || id.includes('node_modules/@jimp')) return 'jimp';
+          if (id.includes('node_modules/docx')) return 'docx';
+          if (id.includes('node_modules/mammoth')) return 'mammoth';
           return undefined;
         },
       }
