@@ -192,26 +192,23 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         entryFileNames: "server.bundle.mjs",
         chunkFileNames: "bin/[name]-[hash].js",
         banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
-        // Split the heaviest deps into separate chunks so Rollup processes
-        // them in parallel rather than inlining everything into one pass.
-        // Finer splits = lower peak memory per chunk during rendering.
+        // Split the heaviest deps into separate chunks to reduce peak memory
+        // during Rollup's rendering phase. Rules:
+        //   - Only split at package boundaries (node_modules/<pkg>) — never
+        //     at sub-paths, because internal cross-imports create circular
+        //     chunk dependencies that Rollup warns about and then merges back,
+        //     wasting the split entirely.
+        //   - Keep aws-s3 and aws-sdk in ONE chunk — the S3 sub-packages
+        //     import from the core SDK, so splitting them creates a cycle.
         manualChunks(id) {
           if (id.includes('node_modules/openai')) return 'ai-openai';
           if (id.includes('node_modules/@anthropic-ai')) return 'ai-anthropic';
           if (id.includes('node_modules/pdf-lib')) return 'pdf-lib';
           if (id.includes('node_modules/stripe')) return 'stripe';
-          if (id.includes('node_modules/@aws-sdk/client-s3') || id.includes('node_modules/@aws-sdk/s3-request-presigner') || id.includes('node_modules/@aws-sdk/lib-storage')) return 'aws-s3';
           if (id.includes('node_modules/@aws-sdk')) return 'aws-sdk';
-          if (id.includes('node_modules/mysql2/lib/parsers')) return 'mysql2-parsers';
-          if (id.includes('node_modules/mysql2/lib/packets')) return 'mysql2-packets';
           if (id.includes('node_modules/mysql2')) return 'mysql2';
-          if (id.includes('node_modules/drizzle-orm/mysql')) return 'drizzle-mysql';
-          if (id.includes('node_modules/drizzle-orm')) return 'drizzle-core';
-          if (id.includes('node_modules/better-auth/dist/plugins') || id.includes('node_modules/better-auth/plugins')) return 'better-auth-plugins';
-          if (id.includes('node_modules/better-auth/dist/social-providers') || id.includes('node_modules/better-auth/dist/oauth2')) return 'better-auth-oauth';
-          if (id.includes('node_modules/better-auth/dist/client') || id.includes('node_modules/better-auth/client')) return 'better-auth-client';
-          if (id.includes('node_modules/better-auth/dist/adapters') || id.includes('node_modules/better-auth/adapters')) return 'better-auth-adapters';
-          if (id.includes('node_modules/better-auth')) return 'better-auth-core';
+          if (id.includes('node_modules/drizzle-orm')) return 'drizzle';
+          if (id.includes('node_modules/better-auth')) return 'better-auth';
           if (id.includes('node_modules/xero-node')) return 'xero';
           if (id.includes('node_modules/googleapis')) return 'googleapis';
           return undefined;
