@@ -350,39 +350,7 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
       );
 
     case 'safety_badge_row':
-      return (
-        <Section title="Safety Badges">
-          <label className={lbl}>Size</label>
-          <select value={block.size} onChange={(e) => upd({ size: e.target.value as SafetyBadgeRowBlock['size'] })} className={sel}>
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-          </select>
-          <label className={`${lbl} mt-2`}>Align</label>
-          <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
-          <div className="mt-3 flex flex-col gap-1.5">
-            {block.badges.map((badge, i) => (
-              <div key={badge.id} className="flex items-center gap-1.5 text-xs">
-                <span className="flex-1 truncate text-slate-600">{badge.label}</span>
-                <button
-                  onClick={() => upd({ badges: block.badges.filter((_, bi) => bi !== i) })}
-                  className="text-slate-300 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 size={10} />
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => upd({
-                badges: [...block.badges, { id: newId(), badgeType: 'ppe' as SafetyBadgeType, label: 'PPE', required: false }]
-              })}
-              className="flex items-center gap-1 text-xs text-primary hover:text-orange-600 transition-colors mt-1"
-            >
-              <Plus size={11} /> Add badge
-            </button>
-          </div>
-        </Section>
-      );
+      return <SafetyBadgeInspector block={block} upd={upd} />;
 
     default:
       return null;
@@ -494,6 +462,166 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
         <Plus size={11} /> Add option
       </button>
     </div>
+  );
+}
+
+// ── Safety Badge Inspector (per-badge upload + edit) ──────────────────────────
+
+const BADGE_TYPE_OPTIONS: { value: SafetyBadgeType; label: string; emoji: string }[] = [
+  { value: 'helmet',            label: 'Safety Helmet',     emoji: '⛑️' },
+  { value: 'hi_vis',            label: 'Hi-Vis Clothing',   emoji: '🟡' },
+  { value: 'ppe',               label: 'PPE',               emoji: '🦺' },
+  { value: 'footwear',          label: 'Safety Footwear',   emoji: '👢' },
+  { value: 'eye_protection',    label: 'Eye Protection',    emoji: '🥽' },
+  { value: 'gloves',            label: 'Gloves',            emoji: '🧤' },
+  { value: 'electrical_gloves', label: 'Electrical Gloves', emoji: '⚡' },
+  { value: 'hearing',           label: 'Hearing Protection',emoji: '🎧' },
+  { value: 'fall_arrest',       label: 'Fall Arrest',       emoji: '🪝' },
+  { value: 'custom',            label: 'Custom',            emoji: '🛡️' },
+];
+
+function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd: (p: Partial<SafetyBadgeRowBlock>) => void }) {
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const updateBadge = (id: string, patch: Partial<SafetyBadgeRowBlock['badges'][number]>) => {
+    upd({ badges: block.badges.map((b) => b.id === id ? { ...b, ...patch } : b) });
+  };
+
+  const handleUpload = async (badgeId: string, file: File) => {
+    setUploadingId(badgeId);
+    setUploadErrors((prev) => ({ ...prev, [badgeId]: '' }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('name', file.name);
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      const data = await res.json() as { file?: { id: number }; error?: string };
+      if (!res.ok || !data.file?.id) throw new Error(data.error ?? 'Upload failed');
+      const parts = ['/api/files', String(data.file.id), 'download'].join('/');
+      updateBadge(badgeId, { customImageUrl: parts + '?inline=1', badgeType: 'custom' });
+    } catch (err) {
+      setUploadErrors((prev) => ({ ...prev, [badgeId]: err instanceof Error ? err.message : 'Upload failed' }));
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  return (
+    <>
+      <Section title="Row Settings">
+        <label className={lbl}>Size</label>
+        <select value={block.size} onChange={(e) => upd({ size: e.target.value as SafetyBadgeRowBlock['size'] })} className={sel}>
+          <option value="sm">Small</option>
+          <option value="md">Medium</option>
+          <option value="lg">Large</option>
+        </select>
+        <label className={`${lbl} mt-2`}>Align</label>
+        <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
+      </Section>
+
+      <Section title="Badges">
+        <div className="flex flex-col gap-3">
+          {block.badges.map((badge) => (
+            <div key={badge.id} className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 flex flex-col gap-2">
+              {/* Thumbnail + upload */}
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {badge.customImageUrl ? (
+                    <img src={badge.customImageUrl} alt={badge.label} className="w-full h-full object-contain p-0.5" />
+                  ) : (
+                    <span className="text-xl">{BADGE_TYPE_OPTIONS.find((o) => o.value === badge.badgeType)?.emoji ?? '🛡️'}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => fileRefs.current[badge.id]?.click()}
+                    disabled={uploadingId === badge.id}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-orange-50 border border-orange-200 text-primary text-[10px] font-semibold hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                  >
+                    {uploadingId === badge.id
+                      ? <><Loader2 size={10} className="animate-spin" /> Uploading...</>
+                      : <><Upload size={10} /> {badge.customImageUrl ? 'Replace image' : 'Upload image'}</>
+                    }
+                  </button>
+                  {badge.customImageUrl && (
+                    <button
+                      onClick={() => updateBadge(badge.id, { customImageUrl: undefined })}
+                      className="w-full text-[9px] text-slate-400 hover:text-red-400 transition-colors mt-0.5 text-center"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={(el) => { fileRefs.current[badge.id] = el; }}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(badge.id, f); e.target.value = ''; }}
+                />
+                <button
+                  onClick={() => upd({ badges: block.badges.filter((b) => b.id !== badge.id) })}
+                  className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+
+              {uploadErrors[badge.id] && (
+                <p className="text-[9px] text-red-500">{uploadErrors[badge.id]}</p>
+              )}
+
+              {/* Label */}
+              <input
+                type="text"
+                value={badge.label}
+                onChange={(e) => updateBadge(badge.id, { label: e.target.value })}
+                placeholder="Badge label"
+                className={inp}
+              />
+
+              {/* Type (only shown when no custom image) */}
+              {!badge.customImageUrl && (
+                <>
+                  <label className={lbl}>Icon type</label>
+                  <select
+                    value={badge.badgeType}
+                    onChange={(e) => updateBadge(badge.id, { badgeType: e.target.value as SafetyBadgeType })}
+                    className={sel}
+                  >
+                    {BADGE_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.emoji} {o.label}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {/* Required toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={badge.required}
+                  onChange={(e) => updateBadge(badge.id, { required: e.target.checked })}
+                  className="w-3.5 h-3.5 rounded accent-orange-500"
+                />
+                <span className="text-[10px] text-slate-600 font-medium">Mark as required</span>
+              </label>
+            </div>
+          ))}
+
+          <button
+            onClick={() => upd({
+              badges: [...block.badges, { id: newId(), badgeType: 'ppe' as SafetyBadgeType, label: 'New Badge', required: false }]
+            })}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 hover:border-primary hover:text-primary hover:bg-orange-50 transition-colors"
+          >
+            <Plus size={11} /> Add badge
+          </button>
+        </div>
+      </Section>
+    </>
   );
 }
 
