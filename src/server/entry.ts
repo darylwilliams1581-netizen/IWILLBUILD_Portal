@@ -1,5 +1,13 @@
 // entry.ts — portal whitelist updated 2026-07-06
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+// Static import of entry-server so Rollup inlines it directly into server.bundle.mjs.
+// Previously this was a dynamic import("../entry-server") which produced a separate
+// dist/bin/entry-server-HASH.js chunk. The platform overlays new archives on top of
+// old filesystems without cleaning, so stale entry-server chunks from previous builds
+// persisted in dist/bin/ and caused "Uw is not a constructor" SSR crashes when the
+// new server.bundle.mjs tried to load a chunk that no longer matched.
+// Inlining eliminates the separate chunk entirely — no stale file, no hash mismatch.
+import * as _entryServerModule from "../entry-server";
 import portalMigratePost from "./api/portal/migrate/POST";
 import portalInvitePost from "./api/portal/invite/POST";
 import portalValidatePost from "./api/portal/validate/POST";
