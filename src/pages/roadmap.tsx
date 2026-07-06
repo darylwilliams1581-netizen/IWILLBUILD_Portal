@@ -1,4 +1,25 @@
 import { roadmap } from 'virtual:content';
+
+// ── Content fallbacks ─────────────────────────────────────────────────────────
+interface RoadmapGate {
+  id: string;
+  label: string;
+  status: string;
+  criteria: string[];
+  unblock: string;
+}
+
+const roadmapGates: RoadmapGate[] = Array.isArray(roadmap?.GATES) && roadmap.GATES.length > 0
+  ? roadmap.GATES
+  : [
+      { id: 'gate-1', label: 'Phase 1 — Core Portal',    status: 'passed',      criteria: ['Jobs, estimates and job files live', 'Forms builder with conditional logic', 'Fleet prestarts and service log', 'Safety SWMS library and sign-off'],                                    unblock: 'Phase 2 features' },
+      { id: 'gate-2', label: 'Phase 2 — Integrations',   status: 'in-progress', criteria: ['Xero, MYOB and QuickBooks OAuth sync', 'Stripe payment links on invoices', 'Plan Manager PDF viewer', 'Customer portal'],                                                             unblock: 'Phase 3 features' },
+      { id: 'gate-3', label: 'Phase 3 — Scale',          status: 'pending',     criteria: ['PWA push notifications', 'Team time tracking', 'Advanced reporting', 'Multi-company support'],                                                                                        unblock: 'Enterprise plan' },
+    ];
+
+const roadmapPhases: string[] = Array.isArray(roadmap?.phases) && roadmap.phases.length > 0
+  ? roadmap.phases
+  : ['all', 'Phase 1', 'Phase 2', 'Phase 3'];
 /**
  * /roadmap  — IWILLBUILD Portal Product Roadmap
  * Internal-only page (noindex). Accessible from Owner Console / Developer Console.
@@ -1333,7 +1354,7 @@ export default function RoadmapPage() {
             <h2 className="font-heading font-bold text-sm text-foreground uppercase tracking-wide">Release Gates</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {roadmap.GATES.map((gate) => (
+            {roadmapGates.map((gate) => (
               <div key={gate.id} className={`rounded-xl border p-4 ${gate.status === 'passed' ? 'border-emerald-300 bg-emerald-50' : gate.status === 'in-progress' ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-white'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   {gate.status === 'passed'
@@ -1367,7 +1388,7 @@ export default function RoadmapPage() {
             <h2 className="font-heading font-bold text-sm text-foreground uppercase tracking-wide">Epics & Stories</h2>
           </div>
           <div className="flex flex-wrap gap-2 mb-5">
-            {roadmap.phases.map((p) => (
+            {roadmapPhases.map((p) => (
               <button
                 key={p}
                 onClick={() => setActivePhase(p)}

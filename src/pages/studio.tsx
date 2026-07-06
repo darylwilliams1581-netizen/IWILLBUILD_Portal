@@ -1,4 +1,9 @@
 import { studio } from 'virtual:content';
+
+// ── Content fallbacks ─────────────────────────────────────────────────────────
+const studioCategories: string[] = Array.isArray(studio?.CATEGORIES) && studio.CATEGORIES.length > 0
+  ? studio.CATEGORIES
+  : ['All', 'Documents', 'Safety', 'Planning', 'Fleet', 'Training', 'Custom'];
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -243,7 +248,7 @@ export default function StudioPage() {
 
         {/* Category filter */}
         <div className="flex-shrink-0 px-6 py-3 border-b border-slate-700/30 flex items-center gap-2 overflow-x-auto">
-          {studio.CATEGORIES.map((cat) => (
+          {studioCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}

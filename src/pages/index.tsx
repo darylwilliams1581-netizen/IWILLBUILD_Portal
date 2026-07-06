@@ -1,4 +1,21 @@
 import { home } from 'virtual:content';
+
+// ── Content fallbacks ─────────────────────────────────────────────────────────
+// Guard every field consumed from virtual:content so a missing or malformed
+// JSON file never causes a runtime crash during publish or SSR rendering.
+const homeTabs: string[] = Array.isArray(home?.tabs) && home.tabs.length > 0
+  ? home.tabs
+  : ['Overview', 'Jobs', 'Forms', 'Fleet', 'Safety'];
+
+const homeRows: { label: string; status: string; color: string; id?: string }[] =
+  Array.isArray(home?.rows) && home.rows.length > 0
+    ? home.rows
+    : [
+        { label: 'Riverside Apartments — Stage 2', status: 'In Progress', color: '#1263d8' },
+        { label: 'Warehouse Fitout — Lot 14',       status: 'On Site',     color: '#22c55e' },
+        { label: 'Office Reno — Level 3',            status: 'Quoting',     color: '#f97316' },
+        { label: 'Carpark Drainage — CBD',           status: 'Closed',      color: '#64748b' },
+      ];
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
@@ -166,7 +183,7 @@ function PortalMockup() {
         <div style={{ flex: 1, padding: '16px 18px', color: '#f1f5f9' }}>
           {/* Tab bar */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-            {home.tabs.map((t, i) => (
+            {homeTabs.map((t, i) => (
               <span key={t} style={{
                 fontSize: 11, fontWeight: 700, padding: '4px 10px',
                 borderRadius: 6,
@@ -196,7 +213,7 @@ function PortalMockup() {
 
           {/* Job rows */}
           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Jobs</div>
-          {(home.rows ?? []).map((r) => (
+          {homeRows.map((r) => (
             <div key={r.label} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: '#1e293b', borderRadius: 7, padding: '9px 12px',
