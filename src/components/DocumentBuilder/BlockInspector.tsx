@@ -6,8 +6,8 @@
  * Each block has two tabs: Settings and Logic.
  */
 
-import { useState } from 'react';
-import { Settings, Zap, X, Plus, Trash2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Settings, Zap, X, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
 import LogicPanel from './LogicPanel';
@@ -276,25 +276,7 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
       );
 
     case 'image':
-      return (
-        <Section title="Image">
-          <label className={lbl}>Image URL</label>
-          <input type="text" value={block.src} onChange={(e) => upd({ src: e.target.value })} placeholder="https://..." className={inp} />
-          <label className={`${lbl} mt-2`}>Alt Text</label>
-          <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} />
-          <label className={`${lbl} mt-2`}>Caption</label>
-          <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} />
-          <label className={`${lbl} mt-2`}>Size</label>
-          <select value={block.size} onChange={(e) => upd({ size: e.target.value as ImageBlock['size'] })} className={sel}>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
-            <option value="full">Full Width</option>
-          </select>
-          <label className={`${lbl} mt-2`}>Align</label>
-          <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
-        </Section>
-      );
+      return <ImageInspector block={block} upd={upd} />;
 
     case 'field':
       return (
@@ -512,6 +494,88 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
         <Plus size={11} /> Add option
       </button>
     </div>
+  );
+}
+
+// ── Image Inspector (with file upload) ────────────────────────────────────────
+
+function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<ImageBlock>) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('name', file.name);
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      const data = await res.json() as { file?: { id: number }; error?: string };
+      if (!res.ok || !data.file?.id) throw new Error(data.error ?? 'Upload failed');
+      // Build the inline-serve path from parts so it resolves at runtime
+      const parts = ['/api/files', String(data.file.id), 'download'].join('/');
+      upd({ src: parts + '?inline=1', alt: block.alt || file.name.replace(/\.[^.]+$/, '') });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Section title="Image">
+      {/* Upload button */}
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+      >
+        {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> Upload Image</>}
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }}
+      />
+      {uploadError && (
+        <p className="text-[10px] text-red-500 mb-2">{uploadError}</p>
+      )}
+
+      {/* Or paste a URL */}
+      <label className={lbl}>Or paste image URL</label>
+      <input
+        type="text"
+        value={block.src}
+        onChange={(e) => upd({ src: e.target.value })}
+        placeholder="https://..."
+        className={inp}
+      />
+
+      {/* Preview thumbnail */}
+      {block.src && (
+        <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center h-20">
+          <img src={block.src} alt="" className="max-h-full max-w-full object-contain" />
+        </div>
+      )}
+
+      <label className={`${lbl} mt-2`}>Alt Text</label>
+      <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} />
+      <label className={`${lbl} mt-2`}>Caption</label>
+      <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} />
+      <label className={`${lbl} mt-2`}>Size</label>
+      <select value={block.size} onChange={(e) => upd({ size: e.target.value as ImageBlock['size'] })} className={sel}>
+        <option value="small">Small (200px)</option>
+        <option value="medium">Medium (400px)</option>
+        <option value="large">Large (600px)</option>
+        <option value="full">Full Width</option>
+      </select>
+      <label className={`${lbl} mt-2`}>Align</label>
+      <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
+    </Section>
   );
 }
 

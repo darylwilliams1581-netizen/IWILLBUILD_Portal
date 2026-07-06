@@ -40,7 +40,8 @@ export default function ImageBlockView({ block, columnsBlockId, columnId }: Prop
     return (
       <div className={`my-2 ${sizeClass} ${alignClass} border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center gap-2 text-slate-400`}>
         <ImageIcon size={28} />
-        <p className="text-xs text-center">Image block — set image URL in the inspector panel</p>
+        <p className="text-xs text-center font-medium text-slate-500">Image block</p>
+        <p className="text-[10px] text-center text-slate-400">Select this block, then use the inspector panel on the right to upload an image or paste a URL.</p>
       </div>
     );
   }
