@@ -251,7 +251,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom", "motion/react"], exclude: ["drizzle-orm", "mysql2"]
+    include: ["react", "react-dom", "react-router-dom", "motion/react"], exclude: ["drizzle-orm", "mysql2"],
+    // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
+    // always gets the ESM build (not the CJS fallback) in dev SSR mode.
+    esbuildOptions: { target: "esnext" },
   },
 
   ssr: {
@@ -264,7 +267,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // During dev (`vite` / ssrLoadModule): leave noExternal as [] so Vite's
     // CJS-interop layer can handle packages like express normally. Setting
     // noExternal:true in dev causes "module is not defined" for CJS packages.
-    noExternal: isSsrBuild ? true : [],
+    // react-router-dom must be in noExternal in dev so ssrLoadModule gets the
+    // ESM build and named exports like createStaticRouter resolve correctly.
+    noExternal: isSsrBuild ? true : ['react-router-dom'],
     external: [
       // These packages are browser-only and must never be bundled into the
       // SSR bundle. With noExternal:true, Vite's ssr.external check uses
