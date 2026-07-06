@@ -51,3 +51,12 @@ export const toPng = null;
 export const toJpeg = null;
 export const toBlob = null;
 export const toCanvas = null;
+
+// ── react-hook-form ───────────────────────────────────────────────────────────
+export const useForm = null;
+export const useFormContext = null;
+export const useController = null;
+export const useWatch = null;
+export const useFieldArray = null;
+export const FormProvider = null;
+export const Controller = null;

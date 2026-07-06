@@ -209,6 +209,27 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
+        // date-fns — 38 MB of locale/format modules, never imported server-side.
+        {
+          find: /^date-fns(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // react-hook-form — form state management, client-only.
+        {
+          find: /^react-hook-form(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // motion/react — animation library. Uses DOM APIs so it can't run
+        // server-side as-is. We replace it with a dedicated SSR stub that
+        // renders motion.div / motion.span etc. as plain HTML elements so
+        // the SSR render doesn't crash.
+        {
+          find: /^motion(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/motion-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/motion-stub.ts'); },
+        },
         // @heroicons/react — icon library, client-only (already covered by icon-stub
         // above but belt-and-braces for any subpath imports not caught by that alias).
       ] : []),
