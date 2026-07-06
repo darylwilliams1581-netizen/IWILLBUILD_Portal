@@ -15,6 +15,7 @@ import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { hashToken } from '../../../../lib/share-tokens.js';
+import { sendPushToCompany } from '../../../../lib/push-notifications.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -171,6 +172,14 @@ async function notifyFormSubmitted(
                   ${`/jobs/${row.job_id}`},
                   NOW())`
     );
+
+    // Push notification to all company devices
+    void sendPushToCompany(companyId, {
+      title: 'Form Submitted',
+      body: `"${row.form_name}" submitted${submitterName ? ` by ${submitterName}` : ''} on job "${row.job_name}"`,
+      url: `/jobs/${row.job_id}`,
+      tag: `form-submitted-${submissionId}`,
+    });
   } catch {
     // Non-fatal — notification failure must not affect the submission response
   }

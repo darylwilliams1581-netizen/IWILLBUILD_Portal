@@ -3,6 +3,7 @@ import { db } from '../../../db/client.js';
 import { jobs, profiles } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { sendPushToUser } from '../../../lib/push-notifications.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -78,6 +79,20 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const updated = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
+
+    // Push notification: if supervisor was just assigned (changed), notify them
+    if (
+      assignedSupervisorUserId &&
+      assignedSupervisorUserId !== existing.assignedSupervisorUserId
+    ) {
+      void sendPushToUser(assignedSupervisorUserId, {
+        title: 'Job Assigned',
+        body: `You've been assigned to: ${updated?.name ?? `Job #${jobId}`}`,
+        url: `/jobs/${jobId}`,
+        tag: `job-assigned-${jobId}`,
+      });
+    }
+
     res.json({ job: updated });
   } catch (error) {
     console.error('PUT /api/jobs/:id error:', error);

@@ -9,6 +9,7 @@ import {
   Bell, Save, CheckCircle2, AlertCircle, Loader2,
   Clock, Truck, FileText, DollarSign, Megaphone,
 } from 'lucide-react';
+import PushNotificationSettings from './PushNotificationSettings';
 
 interface NotificationPrefs {
   enabled: boolean;
@@ -233,6 +234,12 @@ export default function NotificationsTab() {
             {error}
           </div>
         )}
+      </div>
+
+      {/* Push Notifications */}
+      <div className="mt-8 border-t border-slate-200 pt-6">
+        <h3 className="text-sm font-bold text-slate-700 mb-4">Device Push Notifications</h3>
+        <PushNotificationSettings />
       </div>
     </div>
   );

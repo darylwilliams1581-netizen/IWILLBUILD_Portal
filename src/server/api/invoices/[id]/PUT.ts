@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { sendPushToCompany } from '../../../lib/push-notifications.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -121,6 +122,16 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     res.json({ invoice: { ...(rows?.[0] ?? {}), lines: lineRows ?? [], payments: payRows ?? [] } });
+
+    // Push notification: invoice just became paid
+    if (finalStatus === 'paid' && existing[0].status !== 'paid') {
+      void sendPushToCompany(profile.companyId, {
+        title: 'Invoice Paid',
+        body: `Invoice ${invoice_number ? `#${invoice_number}` : `#${id}`} has been marked as paid`,
+        url: `/invoices/${id}`,
+        tag: `invoice-paid-${id}`,
+      });
+    }
   } catch (err) {
     console.error('PUT /api/invoices/:id error:', err);
     res.status(500).json({ error: 'Failed to update invoice' });

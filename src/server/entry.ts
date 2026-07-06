@@ -462,6 +462,9 @@ import team_id_delete_421 from "./api/team/[id]/DELETE";
 import team_id_put_422 from "./api/team/[id]/PUT";
 import usage_get_423 from "./api/usage/GET";
 // </api-imports>
+import push_vapid_key_get from "./api/push/vapid-key/GET";
+import push_subscribe_post from "./api/push/subscribe/POST";
+import push_subscribe_delete from "./api/push/subscribe/DELETE";
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
@@ -1041,6 +1044,8 @@ async function runStartupMigrations() {
     { name: 'drawing_share_tokens', ddl: "CREATE TABLE IF NOT EXISTS drawing_share_tokens (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, company_id INT NOT NULL, revision_id INT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NULL, scope VARCHAR(20) NOT NULL DEFAULT 'view', revoked TINYINT(1) NOT NULL DEFAULT 0, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token_hash), INDEX idx_drawing (drawing_id))" },
     { name: 'job_drawing_links', ddl: "CREATE TABLE IF NOT EXISTS job_drawing_links (id INT AUTO_INCREMENT PRIMARY KEY, job_id INT NOT NULL, drawing_id INT NOT NULL, context_note TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_by VARCHAR(36) NULL, UNIQUE KEY uq_job_drawing (job_id, drawing_id), INDEX idx_job (job_id), INDEX idx_drawing (drawing_id))" },
     { name: 'drawing_audit_log', ddl: "CREATE TABLE IF NOT EXISTS drawing_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, revision_id INT NULL, actor_id VARCHAR(36) NULL, action VARCHAR(60) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_drawing (drawing_id), INDEX idx_created (drawing_id, created_at))" },
+    // ── PWA Push Subscriptions ────────────────────────────────────────────────
+    { name: 'push_subscriptions', ddl: "CREATE TABLE IF NOT EXISTS push_subscriptions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, endpoint TEXT NOT NULL, p256dh VARCHAR(255) NOT NULL, auth VARCHAR(255) NOT NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY uq_endpoint (endpoint(512)), INDEX idx_user (user_id), INDEX idx_company (company_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1786,6 +1791,10 @@ app.post("/api/team/verify-user", team_verify_user_post_420);
 app.delete("/api/team/:id", team_id_delete_421);
 app.put("/api/team/:id", team_id_put_422);
 app.get("/api/usage", usage_get_423);
+// Push notification routes
+app.get("/api/push/vapid-key", push_vapid_key_get);
+app.post("/api/push/subscribe", push_subscribe_post);
+app.delete("/api/push/subscribe", push_subscribe_delete);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

@@ -173,6 +173,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Customer portal — token-validated, no staff session required
   { method: 'POST', pattern: /^\/api\/portal\// },
   { method: 'GET',  pattern: /^\/api\/portal\// },
+  // Push notifications — VAPID public key is not sensitive
+  { method: 'GET',  pattern: /^\/api\/push\/vapid-key$/ },
 ];
 
 /**

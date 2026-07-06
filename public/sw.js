@@ -1,12 +1,12 @@
 /**
- * IWILLBUILD Service Worker — App Shell Cache Only
+ * IWILLBUILD Service Worker — App Shell Cache + Push Notifications
  * ─────────────────────────────────────────────────────────────────────────────
  * Strategy: Network-first for everything. Cache only static app shell assets
  * (JS bundles, CSS, fonts, icons). NEVER cache API responses, auth routes,
  * user data, job data, photos, forms, or file uploads.
  *
- * This keeps the app online-first while enabling fast shell loads and
- * "Add to Home Screen" PWA install on Android/iOS.
+ * Push notifications: handles 'push' events and 'notificationclick' to
+ * open/focus the relevant page in the app.
  */
 
 const CACHE_NAME = 'iwillbuild-shell-v1';
@@ -152,4 +152,53 @@ self.addEventListener('fetch', (event) => {
   }
 
   // All other requests — network only, no caching
+});
+
+// ── Push Notifications ────────────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'IWILLBUILD', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title ?? 'IWILLBUILD';
+  const options = {
+    body: data.body ?? '',
+    icon: data.icon ?? '/icon-192.svg',
+    badge: data.badge ?? '/icon-192.svg',
+    tag: data.tag ?? 'iwillbuild-notification',
+    data: { url: data.url ?? '/' },
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? event.notification.data.url
+    : '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Focus existing tab if already open
+      for (const client of clients) {
+        const clientUrl = new URL(client.url);
+        const target = new URL(targetUrl, self.location.origin);
+        if (clientUrl.pathname === target.pathname && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new tab
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    }),
+  );
 });
