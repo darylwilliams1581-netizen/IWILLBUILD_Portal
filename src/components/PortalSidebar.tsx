@@ -16,14 +16,16 @@ import {
   CreditCard,
   AlertTriangle,
   CalendarDays,
-  UserCheck,
+  Users,
   Receipt,
-  Library,
   ClipboardList,
   Bot,
   Layers,
   Map,
   Building2,
+  Calculator,
+  Download,
+  UserCircle,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -51,34 +53,32 @@ function useSubscriptionStatus() {
 }
 
 // ── Main nav items ────────────────────────────────────────────────────────────
-// Order: Dashboard, Projects, Scheduler, Fleet, Stakeholders, Files, Ledger, Dazza AI
 function buildNavItems(_workPlural: string) {
   return [
-    { label: 'Dashboard',    icon: LayoutDashboard, href: '/dashboard',   permKey: null },
-    { label: 'Projects',     icon: HardHat,         href: '/jobs',        permKey: 'jobs' },
-    { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',   permKey: 'jobs' },
-    { label: 'Fleet',        icon: Truck,           href: '/fleet',       permKey: 'fleet' },
-    { label: 'Stakeholders', icon: UserCheck,       href: '/customers',   permKey: 'jobs' },
-    { label: 'Files',        icon: FolderOpen,      href: '/files',       permKey: 'files' },
-    { label: 'Forms',        icon: ClipboardList,   href: '/forms',       permKey: null },
-    { label: 'Studio',       icon: Layers,          href: '/studio',              permKey: null },
-    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',        permKey: null },
-    { label: 'Asset Manager',icon: Building2,       href: '/studio/asset-manager',permKey: null },
-    { label: 'Schedule',     icon: CalendarDays,    href: '/team/schedule',       permKey: null },
-    { label: 'Ledger',       icon: Receipt,         href: '/invoices',      permKey: 'invoices' },
-    { label: 'Dazza AI',     icon: Bot,             href: '/dazza-ai',    permKey: null },
+    { label: 'Dashboard',     icon: LayoutDashboard, href: '/dashboard',            permKey: null },
+    { label: 'Jobs',          icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
+    { label: 'Scheduler',     icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
+    { label: 'Fleet',         icon: Truck,           href: '/fleet',                permKey: 'fleet' },
+    { label: 'Customers',     icon: Users,           href: '/customers',            permKey: 'jobs' },
+    { label: 'Estimating',    icon: Calculator,      href: '/estimating',           permKey: null },
+    { label: 'Invoices',      icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
+    { label: 'Files',         icon: FolderOpen,      href: '/files',                permKey: 'files' },
+    { label: 'Forms',         icon: ClipboardList,   href: '/forms',                permKey: null },
+    { label: 'Studio',        icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Plan Manager',  icon: Map,             href: '/plan-manager',         permKey: null },
+    { label: 'Asset Manager', icon: Building2,       href: '/studio/asset-manager', permKey: null },
+    { label: 'Team',          icon: UserCircle,      href: '/team',                 permKey: null },
+    { label: 'Downloads',     icon: Download,        href: '/downloads',            permKey: null },
+    { label: 'Dazza AI',      icon: Bot,             href: '/dazza-ai',             permKey: null },
   ] as const;
 }
 
-// ── Manage group — order: Admin, Subscription, Settings ──────────────────────
-// "Team" is accessible inside the Admin (/safety) area, not a top-level item.
+// ── Manage group ──────────────────────────────────────────────────────────────
 const adminItems = [
-  { label: 'Admin',        icon: Library,    href: '/safety',    adminOnly: false, permKey: null as string | null },
-  { label: 'Subscription', icon: CreditCard, href: '/billing',   adminOnly: false, permKey: null as string | null },
-  { label: 'Settings',     icon: Settings,   href: '/settings',  adminOnly: false, permKey: null as string | null },
+  { label: 'Safety',       icon: ShieldCheck, href: '/safety',   adminOnly: false, permKey: null as string | null },
+  { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, permKey: null as string | null },
+  { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, permKey: null as string | null },
 ] as const;
-
-// ── Admin sub-items removed — Cost Guide + Recipes now live inside the Admin page tabs
 
 // ─── User strip sub-component ─────────────────────────────────────────────────
 function SidebarUserStrip({

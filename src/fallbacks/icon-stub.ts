@@ -209,6 +209,7 @@ export const Unplug = NullIcon;
 export const Upload = NullIcon;
 export const User = NullIcon;
 export const UserCheck = NullIcon;
+export const UserCircle = NullIcon;
 export const UserX = NullIcon;
 export const Users = NullIcon;
 export const Wand2 = NullIcon;
