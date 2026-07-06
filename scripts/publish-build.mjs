@@ -100,6 +100,7 @@ function resolveVite() {
 }
 
 const vite = resolveVite();
+console.log('> [Starting build] publish-build.mjs invoked — full source build starting.');
 console.log(`> using vite at: ${vite}`);
 
 // ── Fast-path: skip build if dist artifacts are already current ───────────────
