@@ -57,6 +57,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/invoices", changefreq: "monthly", priority: 0.8 },
   { path: "/downloads", changefreq: "monthly", priority: 0.8 },
   { path: "/studio", changefreq: "monthly", priority: 0.8 },
+  { path: "/plan-manager", changefreq: "monthly", priority: 0.8 },
   { path: "/studio/jobs", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/estimates", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/fleet", changefreq: "monthly", priority: 0.5 },

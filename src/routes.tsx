@@ -50,14 +50,14 @@ const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const RoadmapPage        = lazy(() => import('./pages/roadmap'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
+const PlanManagerPage      = lazy(() => import('./pages/plan-manager'));
+const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
 // ── New-tab viewer pages ──────────────────────────────────────────────────────
 const ViewFilePage       = lazy(() => import('./pages/view-file'));
 const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
 const ViewInvoicePage    = lazy(() => import('./pages/view-invoice'));
 
 const NotFoundPage = import.meta.env.DEV
-  ? lazy(() => import('../dev-tools/src/PageNotFound'))
-  : ProdNotFoundPage;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Inline error element — renders inside the layout so header/sidebar stay mounted
@@ -155,6 +155,9 @@ export const routes: RouteObject[] = [
   { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
   { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
   { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
+  // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
+  { path: '/plan-manager',              element: protect(<PlanManagerPage />),      errorElement: routeError },
+  { path: '/plan-manager/share/:token', element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
   // Primary module short-paths — redirect to canonical portal routes
   { path: '/studio/jobs',      element: <Navigate to="/jobs" replace /> },
   { path: '/studio/estimates', element: <Navigate to="/estimating" replace /> },
