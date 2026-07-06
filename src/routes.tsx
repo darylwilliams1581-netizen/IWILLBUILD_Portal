@@ -1,4 +1,4 @@
-import { RouteObject } from 'react-router-dom';
+import { RouteObject, redirect } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
@@ -144,11 +144,11 @@ export const routes: RouteObject[] = [
   { path: '/portal/jobs/:id',        element: <Suspense fallback={<PageLoader />}><PortalJobDetailPage /></Suspense> },
   { path: '/portal/payment-success', element: <Suspense fallback={<PageLoader />}><PortalPaymentSuccessPage /></Suspense> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
-  // Alias routes — /projects and /stakeholders redirect to canonical paths
-  { path: '/projects',      element: <Navigate to="/jobs" replace /> },
-  { path: '/stakeholders',  element: <Navigate to="/customers" replace /> },
-  { path: '/subscription',  element: <Navigate to="/billing" replace /> },
-  { path: '/tools',         element: <Navigate to="/estimating" replace /> },
+  // Alias routes — redirect to canonical paths via loader (SSR-safe, no <Navigate> on initial render)
+  { path: '/projects',      loader: () => redirect('/jobs') },
+  { path: '/stakeholders',  loader: () => redirect('/customers') },
+  { path: '/subscription',  loader: () => redirect('/billing') },
+  { path: '/tools',         loader: () => redirect('/estimating') },
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   // Deep-link: open a specific form instance directly in the job forms tab
@@ -174,18 +174,18 @@ export const routes: RouteObject[] = [
   // Asset Manager
   { path: '/studio/asset-manager',      element: protect(<AssetManagerPage />),     errorElement: routeError },
   { path: '/share/asset-report/:token', element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
-  // Primary module short-paths — redirect to canonical portal routes
-  { path: '/studio/jobs',      element: <Navigate to="/jobs" replace /> },
-  { path: '/studio/estimates', element: <Navigate to="/estimating" replace /> },
-  { path: '/studio/fleet',     element: <Navigate to="/fleet" replace /> },
-  { path: '/studio/accounts',  element: <Navigate to="/settings" replace /> },
+  // Primary module short-paths — redirect to canonical portal routes (SSR-safe loader redirects)
+  { path: '/studio/jobs',      loader: () => redirect('/jobs') },
+  { path: '/studio/estimates', loader: () => redirect('/estimating') },
+  { path: '/studio/fleet',     loader: () => redirect('/fleet') },
+  { path: '/studio/accounts',  loader: () => redirect('/settings') },
   { path: '/dazza-ai',      element: protectOwner(<DazzaAIPage />),      errorElement: routeError },
   { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/team/schedule', element: protect(<TeamSchedulePage />),    errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
-  { path: '/developer-console', element: <Navigate to="/owner-console" replace /> },
+  { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           element: protectDev(<RoadmapPage />),         errorElement: routeError },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },

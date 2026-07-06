@@ -803,6 +803,37 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1d. Ensure document_templates exists — explicit early-create so it is
+  //     guaranteed on prod DBs that predate the safetyTables loop entry.
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS document_templates (" +
+      "  id INT AUTO_INCREMENT PRIMARY KEY," +
+      "  company_id INT NOT NULL," +
+      "  name VARCHAR(255) NOT NULL," +
+      "  template_type VARCHAR(50) NOT NULL DEFAULT 'document'," +
+      "  builder_json LONGTEXT NULL," +
+      "  page_layout_json TEXT NULL," +
+      "  theme_json TEXT NULL," +
+      "  source_docx_path VARCHAR(500) NULL," +
+      "  source_docx_name VARCHAR(255) NULL," +
+      "  is_active TINYINT(1) NOT NULL DEFAULT 1," +
+      "  created_by_user_id VARCHAR(36) NULL," +
+      "  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+      "  INDEX idx_company (company_id)," +
+      "  INDEX idx_type (company_id, template_type)," +
+      "  INDEX idx_active (company_id, is_active)" +
+      ")"
+    ));
+    console.log('[startup-migration] document_templates table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] document_templates CREATE failed:', msg);
+    }
+  }
+
   // 2. Ensure individual columns exist — check INFORMATION_SCHEMA first, then ALTER
   const colsToEnsure: Array<{ table: string; column: string; definition: string }> = [
     { table: 'profiles',         column: 'notification_prefs', definition: 'TEXT NULL' },

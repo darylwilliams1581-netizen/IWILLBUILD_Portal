@@ -43,8 +43,9 @@ export default async function handler(req: Request, res: Response) {
     const fmt = (d: Date) => d.toISOString().slice(0, 19).replace('T', ' ');
 
     // ── Revenue MTD (paid invoices) ───────────────────────────────────────────
+    // Note: invoices table uses `total` not `total_amount`
     const [revMtdRows] = await db.execute(sql`
-      SELECT COALESCE(SUM(total_amount), 0) AS revenue
+      SELECT COALESCE(SUM(total), 0) AS revenue
       FROM invoices
       WHERE company_id = ${companyId}
         AND status IN ('paid', 'partially_paid')
@@ -54,7 +55,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Revenue last month ────────────────────────────────────────────────────
     const [revLastRows] = await db.execute(sql`
-      SELECT COALESCE(SUM(total_amount), 0) AS revenue
+      SELECT COALESCE(SUM(total), 0) AS revenue
       FROM invoices
       WHERE company_id = ${companyId}
         AND status IN ('paid', 'partially_paid')
@@ -127,7 +128,7 @@ export default async function handler(req: Request, res: Response) {
     const [sparkRows] = await db.execute(sql`
       SELECT
         DATE(updated_at) AS day,
-        COALESCE(SUM(total_amount), 0) AS revenue
+        COALESCE(SUM(total), 0) AS revenue
       FROM invoices
       WHERE company_id = ${companyId}
         AND status IN ('paid', 'partially_paid')
