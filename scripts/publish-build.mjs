@@ -102,6 +102,44 @@ function resolveVite() {
 const vite = resolveVite();
 console.log(`> using vite at: ${vite}`);
 
+// ── Fast-path: skip build if dist artifacts are already current ───────────────
+// The publish platform always runs `npm run build` even when pre-built artifacts
+// are committed. We detect "already built for this commit" by writing a stamp
+// file (dist/.build-stamp) containing the current git HEAD SHA after a
+// successful build. On the next publish run, if the stamp matches HEAD and
+// dist/server.bundle.mjs exists, we skip both Vite builds entirely (~100s saved).
+import { readFileSync as _readFileSync, writeFileSync as _writeFileSync, existsSync as _existsSync } from 'node:fs';
+import { execSync as _execSync } from 'node:child_process';
+
+function getCurrentGitSha() {
+  try {
+    return _execSync('git rev-parse HEAD', { cwd: root, encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+}
+
+const stampFile = join(root, 'dist', '.build-stamp');
+const bundleFile = join(root, 'dist', 'server.bundle.mjs');
+
+function readStamp() {
+  try { return _readFileSync(stampFile, 'utf8').trim(); } catch { return null; }
+}
+
+const currentSha = getCurrentGitSha();
+const stampSha = readStamp();
+
+if (
+  currentSha &&
+  stampSha === currentSha &&
+  _existsSync(bundleFile)
+) {
+  console.log(`> dist artifacts are current for ${currentSha.slice(0, 8)} — skipping build.`);
+  process.exit(0);
+}
+
+console.log(`> build stamp: ${stampSha ? stampSha.slice(0, 8) : 'none'} → HEAD: ${currentSha ? currentSha.slice(0, 8) : 'unknown'}`);
+
 // ── Pre-publish content check ─────────────────────────────────────────────────
 console.log('> pre-publish-check');
 const checkCode = await run(
@@ -219,6 +257,18 @@ if (ssrCode !== 0) {
 console.log('> restore-entry-static (post-SSR)');
 await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
 
+// ── Write build stamp ─────────────────────────────────────────────────────────
+// Records the git HEAD SHA so the next publish run can skip the build if
+// the artifacts are already current.
+if (currentSha) {
+  try {
+    _writeFileSync(stampFile, currentSha + '\n', 'utf8');
+    console.log(`> build stamp written: ${currentSha.slice(0, 8)}`);
+  } catch (e) {
+    console.warn('  WARNING: could not write build stamp:', e.message);
+  }
+}
+
 // ── Copy seed JSON files into dist ────────────────────────────────────────────
 console.log('> copy:seed-data');
 try {
@@ -243,6 +293,7 @@ try {
     'dist/server.bundle.mjs',
     'dist/entry.mjs',
     'dist/server/',
+    'dist/.build-stamp',
   ], { cwd: root, stdio: 'inherit' });
   console.log('  dist artifacts staged.');
 } catch (e) {

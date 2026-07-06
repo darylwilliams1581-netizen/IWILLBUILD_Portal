@@ -17,6 +17,7 @@ dist-ssr
 # Only the SSR bundle + seed data are committed — client assets (dist/client/) stay ignored.
 !dist/server.bundle.mjs
 !dist/entry.mjs
+!dist/.build-stamp
 !dist/server/
 !dist/server/**
 *.local
