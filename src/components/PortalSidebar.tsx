@@ -67,7 +67,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Plan Manager',  icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Asset Manager', icon: Building2,       href: '/studio/asset-manager', permKey: null },
     { label: 'Team',          icon: UserCircle,      href: '/team',                 permKey: null },
-    { label: 'Dazza AI',      icon: Bot,             href: '/dazza-ai',             permKey: null },
+    { label: 'Dazza AI',      icon: Bot,             href: '/dazza-ai',             permKey: null, ownerOnly: true },
   ] as const;
 }
 
@@ -190,6 +190,7 @@ function SidebarContent({
           // Once loaded, only hide if the user genuinely lacks access.
           // Items with permKey: null (Dashboard, Forms) always show.
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
+          if (!permsLoading && (item as { ownerOnly?: boolean }).ownerOnly && !isOwner) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
           const isDazza = item.href === '/dazza-ai';
