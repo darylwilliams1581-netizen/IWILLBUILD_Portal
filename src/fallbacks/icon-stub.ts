@@ -349,6 +349,9 @@ export const Diff = NullIcon;
 export const Delta = NullIcon;
 
 export const QrCode = NullIcon;
+export const BellOff = NullIcon;
+export const BellRing = NullIcon;
+export const ClipboardCheck = NullIcon;
 
 // lucide-react utility exports
 export const createLucideIcon = () => NullIcon;
