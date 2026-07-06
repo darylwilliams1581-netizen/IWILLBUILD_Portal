@@ -348,6 +348,8 @@ export const LessThan = NullIcon;
 export const Diff = NullIcon;
 export const Delta = NullIcon;
 
+export const QrCode = NullIcon;
+
 // lucide-react utility exports
 export const createLucideIcon = () => NullIcon;
 export const LucideIcon = NullIcon;
