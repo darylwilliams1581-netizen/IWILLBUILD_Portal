@@ -270,6 +270,24 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (id.includes('node_modules/otplib') || id.includes('node_modules/@otplib') || id.includes('node_modules/@scure/base') || id.includes('node_modules/@otplib/plugin-base32-scure') || id.includes('node_modules/@otplib/plugin-crypto-noble')) return 'otplib';
           if (id.includes('node_modules/qrcode') || id.includes('node_modules/dijkstrajs')) return 'qrcode';
           if (id.includes('node_modules/jszip')) return 'jszip';
+          // ── Additional splits to reduce peak Rollup render-phase RSS ──────────
+          // date-fns is 38 MB on disk — one of the largest deps in the bundle.
+          // Splitting it into its own chunk prevents Rollup from holding its
+          // entire AST in memory alongside the entry bundle during rendering.
+          if (id.includes('node_modules/date-fns')) return 'date-fns';
+          // @opentelemetry is pulled in by better-auth/mysql2 tracing hooks.
+          // 14 MB on disk — split it to keep the better-auth chunk smaller.
+          if (id.includes('node_modules/@opentelemetry')) return 'opentelemetry';
+          // zod is used across many modules; splitting it avoids duplicating
+          // its AST in every chunk that imports it during the render phase.
+          if (id.includes('node_modules/zod')) return 'zod';
+          // yjs + lib0 are used by the collaborative editor — large and self-contained.
+          if (id.includes('node_modules/yjs') || id.includes('node_modules/lib0')) return 'yjs';
+          // tldts is used by better-auth for cookie domain parsing — 3 MB, self-contained.
+          if (id.includes('node_modules/tldts')) return 'tldts';
+          // undici is the fetch implementation used by openai/stripe — split it
+          // so it doesn't inflate the entry bundle.
+          if (id.includes('node_modules/undici')) return 'undici';
           return undefined;
         },
       }

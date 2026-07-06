@@ -148,8 +148,16 @@ const ssrCode = await run(
     // --ssr without a path enables SSR mode while letting rollupOptions.input
     // declare multiple entry points (entry + route group files), which splits
     // the 1.3 MB server.bundle.mjs into smaller chunks.
+    // Heap tuning for the SSR Rollup render phase:
+    //
+    // With dynamic imports in entry.ts, Rollup no longer needs to hold all
+    // 408 handler ASTs in memory simultaneously — each handler is a separate
+    // dynamic chunk that Rollup can serialise independently.
+    // 900 MB ceiling is sufficient now that the static import fan-out is gone.
+    // --max-semi-space-size=2 keeps the nursery small so minor GCs run
+    // frequently during the transform phase, preventing old-gen accumulation.
     '--max-old-space-size=900',
-    '--max-semi-space-size=4',
+    '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
