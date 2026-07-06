@@ -6,6 +6,17 @@ import { getSecret } from '#airo/secrets';
 import { globalApiLimiter, authApiLimiter } from './lib/api-rate-limiter.js';
 import { requirePlatformOwner } from './lib/platform-owner-guard.js';
 
+// Route group files — each registers a slice of the API surface.
+// Imported here so Rollup includes them in the single server.bundle entry
+// (no separate rollupOptions.input entries needed — single-entry build uses
+// far less peak memory than a 7-entry parallel build).
+import { register as registerJobsRoutes } from './routes-jobs.js';
+import { register as registerSafetyRoutes } from './routes-safety.js';
+import { register as registerDeveloperRoutes } from './routes-developer.js';
+import { register as registerIntegrationsRoutes } from './routes-integrations.js';
+import { register as registerSettingsRoutes } from './routes-settings.js';
+import { register as registerFleetRoutes } from './routes-fleet.js';
+
 // <api-imports>
 import _h_active_ping_post_0 from "./api/active-ping/POST";
 import _h_auth_change_email_post_1 from "./api/auth/change-email/POST";
@@ -1382,6 +1393,17 @@ app.post("/api/team/verify-user", _h_team_verify_user_post_404);
 app.delete("/api/team/:id", _h_team_id_delete_405);
 app.put("/api/team/:id", _h_team_id_put_406);
 app.get("/api/usage", _h_usage_get_407);
+
+// Register route group slices (jobs, safety, fleet, developer, integrations, settings).
+// These were split into separate files to keep entry.ts manageable; they are
+// imported statically above so Rollup includes them in the single bundle.
+registerJobsRoutes(app);
+registerSafetyRoutes(app);
+registerDeveloperRoutes(app);
+registerIntegrationsRoutes(app);
+registerSettingsRoutes(app);
+registerFleetRoutes(app);
+
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

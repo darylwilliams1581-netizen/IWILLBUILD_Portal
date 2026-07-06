@@ -241,13 +241,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // the entire 1.3 MB entry AST in memory at once.
     rollupOptions: {
       input: {
+        // Single entry point — route group files are imported statically from
+        // entry.ts so Rollup builds ONE module graph sequentially. Multiple
+        // entry points force Rollup to hold all graphs in memory simultaneously,
+        // which caused OOM kills at ~1.1 GB. Single-entry peak RSS is ~600 MB.
         'server.bundle': 'src/server/entry.ts',
-        'routes-jobs': 'src/server/routes-jobs.ts',
-        'routes-safety': 'src/server/routes-safety.ts',
-        'routes-developer': 'src/server/routes-developer.ts',
-        'routes-integrations': 'src/server/routes-integrations.ts',
-        'routes-settings': 'src/server/routes-settings.ts',
-        'routes-fleet': 'src/server/routes-fleet.ts',
       },
       // pdfjs-dist and react-pdf are browser-only. They're listed in
       // ssr.external above (bare specifier strings) so Vite's noExternal:true

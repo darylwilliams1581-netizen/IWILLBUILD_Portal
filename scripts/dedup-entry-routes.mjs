@@ -1,10 +1,21 @@
 #!/usr/bin/env node
 /**
- * dedup-entry-routes.mjs
+ * dedup-entry-routes.mjs — NO-OP (kept for publish-build.mjs compatibility)
  *
- * Removes from src/server/entry.ts every route registration (and its
- * corresponding static import) that is already registered in one of the
- * route group files (routes-safety.ts, routes-jobs.ts, etc.).
+ * Previously this script removed duplicate route registrations from entry.ts
+ * when the route group files were separate Rollup entry points.
+ *
+ * Architecture change (2026-07-06):
+ *   - Route group files (routes-safety.ts, routes-jobs.ts, etc.) are now
+ *     imported STATICALLY from entry.ts and called as registerXxxRoutes(app).
+ *   - rollupOptions.input now has a SINGLE entry point (server.bundle).
+ *   - This eliminates the multi-entry parallel build that caused OOM kills.
+ *   - There are no longer any duplicate registrations to remove.
+ *
+ * This script is kept as a no-op so publish-build.mjs doesn't need changes.
+ */
+console.log('[dedup] Single-entry build — no duplicates to remove. Done.');
+
  *
  * The route group files are separate Rollup entry points — their handlers
  * are bundled in a separate pass. Having the same route in both entry.ts
