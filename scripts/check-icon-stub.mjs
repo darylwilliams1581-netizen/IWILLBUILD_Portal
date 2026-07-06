@@ -20,7 +20,8 @@ for (const f of files) {
   for (const imp of matches) {
     const inner = imp.replace(/import\s*\{/, '').replace(/\}\s*from.*/, '');
     for (const part of inner.split(',')) {
-      const name = part.trim().replace(/.*\s+as\s+/, '').trim();
+      // Strip alias: "Archive as _Archive" → "Archive" (the exported name, not the local alias)
+      const name = part.trim().replace(/\s+as\s+\S+/, '').trim();
       if (name) icons.add(name);
     }
   }
