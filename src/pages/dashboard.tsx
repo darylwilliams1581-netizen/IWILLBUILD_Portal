@@ -239,6 +239,13 @@ export default function DashboardPage() {
           </div>
         </header>
 
+        {/* ── Under Construction Banner ── */}
+        <div className="flex items-center justify-center gap-2.5 px-4 py-2.5 bg-amber-950 border-b border-amber-800/50 print:hidden">
+          <span className="text-sm">🚧</span>
+          <span className="text-xs font-bold text-amber-200 tracking-wide">System under construction — not fully operational</span>
+          <span className="hidden sm:inline text-xs text-amber-400/70">· Some features may be incomplete or unavailable</span>
+        </div>
+
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
 

@@ -323,6 +323,26 @@ export default function HomePage() {
       {/* ── Topbar — IWILLBUILD branded header ────────────────────────────── */}
       <Header />
 
+      {/* ── Under Construction Banner ──────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(90deg, #78350f 0%, #92400e 50%, #78350f 100%)',
+        borderBottom: '1px solid rgba(251,191,36,.3)',
+        padding: '9px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        position: 'relative',
+        zIndex: 10,
+      }}>
+        <span style={{ fontSize: 15, filter: 'grayscale(0)' }}>🚧</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#fde68a', letterSpacing: '0.01em' }}>
+          System under construction — not fully operational
+        </span>
+        <span style={{ fontSize: 13, color: 'rgba(253,230,138,.6)', fontWeight: 400 }}>
+          · Some features may be incomplete or unavailable
+        </span>
+      </div>
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section id="top" style={{
         background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 55%, #0f2d4a 100%)',
