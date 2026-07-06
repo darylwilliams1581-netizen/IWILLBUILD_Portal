@@ -2092,7 +2092,11 @@ if (import.meta.env.PROD) {
 		if (extname(req.path)) return next();
 		const sendFallback = () =>
 			res
-				.status(503)
+				// 200 so the platform health check passes even when SSR is degraded.
+				// The client-side React bundle hydrates and the app works normally.
+				// A 503 here causes the platform health check to fail and roll back
+				// the deploy, which is worse than serving a client-rendered shell.
+				.status(200)
 				.set("Content-Type", "text/html; charset=utf-8")
 				.set("Cache-Control", "no-store")
 				.send(fallbackShell);

@@ -11,17 +11,10 @@ node_modules
 dist
 dist-ssr
 
-# ── Pre-built SSR artifacts (committed so the publish platform skips npm run build) ──
-# The platform detects server.bundle.mjs at the repo root AND dist/server.bundle.mjs
-# and starts the app directly without running the build step.
-# Only the SSR bundle + seed data are committed — client assets (dist/client/) stay ignored.
-!dist/server.bundle.mjs
-!dist/entry.mjs
-!dist/.build-stamp
-!dist/bin/
-!dist/bin/**
-!dist/server/
-!dist/server/**
+# ── Pre-built SSR artifacts ──────────────────────────────────────────────────
+# dist/ is fully ignored. The platform runs `npm run build` (no pre-built
+# artifact fast-path) and then starts the app with `npm start`.
+# Build artifacts are produced fresh on every deploy — not committed to git.
 *.local
 pnpm-lock.yaml
 

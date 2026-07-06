@@ -310,21 +310,46 @@ try {
   console.warn('  WARNING: could not copy seed data:', e.message);
 }
 
+// ── Update EXPECTED_HASH in root server.bundle.mjs launcher ──────────────────
+// Only runs if the root launcher exists (it may have been removed from git
+// in favour of a npm start flow where the platform runs npm run build directly).
+const launcherPath = join(root, 'server.bundle.mjs');
+if (_existsSync(launcherPath)) {
+  console.log('> updating EXPECTED_HASH in server.bundle.mjs');
+  try {
+    const { createHash: _createHashFile } = await import('node:crypto');
+    const bundleBuf = _readFileSync(bundleFile);
+    const newHash = _createHashFile('sha256').update(bundleBuf).digest('hex').slice(0, 16);
+    let launcherSrc = _readFileSync(launcherPath, 'utf8');
+    launcherSrc = launcherSrc.replace(
+      /const EXPECTED_HASH = '[0-9a-f]+';/,
+      `const EXPECTED_HASH = '${newHash}';`
+    );
+    _writeFileSync(launcherPath, launcherSrc, 'utf8');
+    console.log(`  EXPECTED_HASH updated to: ${newHash}`);
+  } catch (e) {
+    console.warn('  WARNING: could not update EXPECTED_HASH:', e.message);
+  }
+}
+
 // ── Stage SSR artifacts so the next git commit includes them ─────────────────
-// The publish platform skips npm run build when it finds server.bundle.mjs
-// already committed in the repo. Staging here ensures every publish commit
-// ships the freshly-built bundle so the platform always has a current artifact.
+// Only runs in dev/CI environments where git is available.
+// On the publish platform (no .git), this step is skipped silently.
 console.log('> git add dist artifacts');
 try {
   const { execFileSync } = await import('node:child_process');
-  execFileSync('git', [
-    'add', '-f',
+  const filesToStage = [
     'dist/server.bundle.mjs',
     'dist/entry.mjs',
     'dist/bin/',
     'dist/server/',
     'dist/.build-stamp',
-  ], { cwd: root, stdio: 'inherit' });
+  ];
+  // Only stage root launcher if it exists
+  if (_existsSync(join(root, 'server.bundle.mjs'))) {
+    filesToStage.unshift('server.bundle.mjs');
+  }
+  execFileSync('git', ['add', '-f', ...filesToStage], { cwd: root, stdio: 'inherit' });
   console.log('  dist artifacts staged.');
 } catch (e) {
   // Non-fatal in CI environments where git may not be available
