@@ -13,7 +13,6 @@ import {
   Menu,
   X,
   ShieldCheck,
-  Rocket,
   CreditCard,
   AlertTriangle,
   CalendarDays,
@@ -258,38 +257,21 @@ function SidebarContent({
           {(permsLoading || isPlatformOwner) && (() => {
             if (!permsLoading && !isPlatformOwner) return null;
             const active = isActive('/owner-console');
-            const roadmapActive = isActive('/roadmap');
             return (
-              <>
-                <Link
-                  to="/owner-console"
-                  onClick={onClose}
-                  title={collapsed ? 'Developer Console' : undefined}
-                  className={`${linkClass(active)} border border-orange-500/30`}
-                >
-                  <ShieldCheck size={17} className="shrink-0 text-orange-400" />
-                  {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-300">Developer Console</span>}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                      Developer Console
-                    </div>
-                  )}
-                </Link>
-                <Link
-                  to="/roadmap"
-                  onClick={onClose}
-                  title={collapsed ? 'Roadmap' : undefined}
-                  className={`${linkClass(roadmapActive)} border border-orange-500/20`}
-                >
-                  <Rocket size={17} className="shrink-0 text-orange-300" />
-                  {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-200">Roadmap</span>}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                      Roadmap
-                    </div>
-                  )}
-                </Link>
-              </>
+              <Link
+                to="/owner-console"
+                onClick={onClose}
+                title={collapsed ? 'Developer Console' : undefined}
+                className={`${linkClass(active)} border border-orange-500/30`}
+              >
+                <ShieldCheck size={17} className="shrink-0 text-orange-400" />
+                {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-300">Developer Console</span>}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    Developer Console
+                  </div>
+                )}
+              </Link>
             );
           })()}
         </div>
