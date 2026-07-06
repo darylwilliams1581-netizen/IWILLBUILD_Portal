@@ -1,4 +1,21 @@
+// entry.ts — portal whitelist updated 2026-07-06
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import portalMigratePost from "./api/portal/migrate/POST.js";
+import portalInvitePost from "./api/portal/invite/POST.js";
+import portalValidatePost from "./api/portal/validate/POST.js";
+import portalJobsGet from "./api/portal/jobs/GET.js";
+import portalJobsIdGet from "./api/portal/jobs/[id]/GET.js";
+import portalEstimatesApprovePost from "./api/portal/estimates/[id]/approve/POST.js";
+import portalInvoicesPayPost from "./api/portal/invoices/[id]/pay/POST.js";
+import teamScheduleMigratePost from "./api/team/schedule/migrate/POST.js";
+import teamShiftsGet from "./api/team/shifts/GET.js";
+import teamShiftsPost from "./api/team/shifts/POST.js";
+import teamShiftsIdPut from "./api/team/shifts/[id]/PUT.js";
+import teamShiftsIdDelete from "./api/team/shifts/[id]/DELETE.js";
+import teamTimeEntriesGet from "./api/team/time-entries/GET.js";
+import teamTimeEntriesPost from "./api/team/time-entries/POST.js";
+import teamTimeEntriesIdPut from "./api/team/time-entries/[id]/PUT.js";
+import teamTimeEntriesExportGet from "./api/team/time-entries/export/GET.js";
 import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -448,6 +465,10 @@ app.use('/api/auth', authApiLimiter);
 app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
   // Let public routes through immediately
   if (isPublicRoute(req.method, req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`)) {
+    return next();
+  }
+  // Customer portal routes are token-validated inside their own handlers
+  if (req.path.startsWith('/portal/')) {
     return next();
   }
   // Check session
@@ -1353,16 +1374,25 @@ app.post("/api/plan-manager/drawings/:id/upload", _h_plan_manager_drawings_id_up
 app.post("/api/plan-manager/share", _h_plan_manager_share_post_305);
 app.get("/api/plan-manager/share/validate", _h_plan_manager_share_validate_get_306);
 
+// ── Customer Portal (token-based, no staff auth) ──────────────────────────────
+app.post("/api/portal/migrate", portalMigratePost);
+app.post("/api/portal/invite", portalInvitePost);
+app.post("/api/portal/validate", portalValidatePost);
+app.get("/api/portal/jobs", portalJobsGet);
+app.get("/api/portal/jobs/:id", portalJobsIdGet);
+app.post("/api/portal/estimates/:id/approve", portalEstimatesApprovePost);
+app.post("/api/portal/invoices/:id/pay", portalInvoicesPayPost);
+
 // ── Team scheduling, time tracking, payroll ───────────────────────────────────
-import teamScheduleMigratePost from "./api/team/schedule/migrate/POST.js";
-import teamShiftsGet from "./api/team/shifts/GET.js";
-import teamShiftsPost from "./api/team/shifts/POST.js";
-import teamShiftsIdPut from "./api/team/shifts/[id]/PUT.js";
-import teamShiftsIdDelete from "./api/team/shifts/[id]/DELETE.js";
-import teamTimeEntriesGet from "./api/team/time-entries/GET.js";
-import teamTimeEntriesPost from "./api/team/time-entries/POST.js";
-import teamTimeEntriesIdPut from "./api/team/time-entries/[id]/PUT.js";
-import teamTimeEntriesExportGet from "./api/team/time-entries/export/GET.js";
+app.post("/api/team/schedule/migrate", teamScheduleMigratePost);
+app.get("/api/team/shifts", teamShiftsGet);
+app.post("/api/team/shifts", teamShiftsPost);
+app.put("/api/team/shifts/:id", teamShiftsIdPut);
+app.delete("/api/team/shifts/:id", teamShiftsIdDelete);
+app.get("/api/team/time-entries/export", teamTimeEntriesExportGet);
+app.get("/api/team/time-entries", teamTimeEntriesGet);
+app.post("/api/team/time-entries", teamTimeEntriesPost);
+app.put("/api/team/time-entries/:id", teamTimeEntriesIdPut);
 
 app.post("/api/team/schedule/migrate", teamScheduleMigratePost);
 app.get("/api/team/shifts", teamShiftsGet);

@@ -53,6 +53,11 @@ const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
 const PlanManagerPage      = lazy(() => import('./pages/plan-manager'));
 const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
+// ── Customer portal (public, token-based) ────────────────────────────────────
+const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
+const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
+const PortalJobDetailPage      = lazy(() => import('./pages/portal/job-detail'));
+const PortalPaymentSuccessPage = lazy(() => import('./pages/portal/payment-success'));
 // ── New-tab viewer pages ──────────────────────────────────────────────────────
 const ViewFilePage       = lazy(() => import('./pages/view-file'));
 const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
@@ -131,6 +136,11 @@ export const routes: RouteObject[] = [
   { path: '/external/form/:token',  element: <ExternalFormPage /> },
   { path: '/safety/sign/:token',    element: <Suspense fallback={<PageLoader />}><SwmsSignoffPage /></Suspense> },
   { path: '/forms/fill/:token',     element: <Suspense fallback={<PageLoader />}><FormFillPage /></Suspense> },
+  // Customer portal — token-based, no staff login required
+  { path: '/portal/login',           element: <Suspense fallback={<PageLoader />}><PortalLoginPage /></Suspense> },
+  { path: '/portal/dashboard',       element: <Suspense fallback={<PageLoader />}><PortalDashboardPage /></Suspense> },
+  { path: '/portal/jobs/:id',        element: <Suspense fallback={<PageLoader />}><PortalJobDetailPage /></Suspense> },
+  { path: '/portal/payment-success', element: <Suspense fallback={<PageLoader />}><PortalPaymentSuccessPage /></Suspense> },
   { path: '/dashboard',     element: protect(<DashboardPage />),       errorElement: routeError },
   // Alias routes — /projects and /stakeholders redirect to canonical paths
   { path: '/projects',      element: <Navigate to="/jobs" replace /> },

@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import {
   Users, Phone, Mail, MapPin, FileText, Building2, ChevronRight,
   Loader2, AlertCircle, ArrowLeft, Briefcase, CheckCircle2,
-  Archive, User, Calendar,
+  Archive, User, Calendar, Send, ExternalLink, Copy,
 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -52,6 +52,29 @@ export default function CustomerDetailPage() {
   const [jobs, setJobs] = useState<LinkedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Portal invite state
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ portalUrl?: string; error?: string } | null>(null);
+
+  async function sendPortalInvite() {
+    if (!id) return;
+    setInviteSending(true);
+    setInviteResult(null);
+    try {
+      const res = await fetch('/api/portal/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: parseInt(id, 10) }),
+      });
+      const data = await res.json() as { ok?: boolean; portalUrl?: string; error?: string };
+      setInviteResult(data);
+    } catch {
+      setInviteResult({ error: 'Failed to send invite. Please try again.' });
+    } finally {
+      setInviteSending(false);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -150,6 +173,56 @@ export default function CustomerDetailPage() {
                     <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Portal invite */}
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Client Portal</p>
+                    <p className="text-xs text-muted-foreground">
+                      {customer.email
+                        ? 'Send a magic link so this client can view jobs, approve estimates, and pay invoices.'
+                        : 'Add an email address to enable portal access for this client.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={sendPortalInvite}
+                    disabled={inviteSending || !customer.email}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  >
+                    {inviteSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    {inviteSending ? 'Sending…' : 'Send invite'}
+                  </button>
+                </div>
+
+                {inviteResult && (
+                  <div className={`mt-3 rounded-xl p-3 text-sm flex items-start gap-2 ${inviteResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
+                    {inviteResult.error ? (
+                      <><AlertCircle size={14} className="shrink-0 mt-0.5" />{inviteResult.error}</>
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 font-semibold mb-1">
+                          <CheckCircle2 size={13} /> Invite sent to {customer.email}
+                        </div>
+                        {inviteResult.portalUrl && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <a href={inviteResult.portalUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-emerald-600 hover:underline flex items-center gap-1 truncate">
+                              <ExternalLink size={10} /> Open portal link
+                            </a>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(inviteResult.portalUrl ?? '')}
+                              className="text-xs text-emerald-600 hover:underline flex items-center gap-1 shrink-0"
+                            >
+                              <Copy size={10} /> Copy link
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
