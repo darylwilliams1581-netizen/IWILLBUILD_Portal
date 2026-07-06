@@ -1352,6 +1352,27 @@ app.post("/api/plan-manager/drawings/:id/revisions/:revisionId/finalize", _h_pla
 app.post("/api/plan-manager/drawings/:id/upload", _h_plan_manager_drawings_id_upload_post_304);
 app.post("/api/plan-manager/share", _h_plan_manager_share_post_305);
 app.get("/api/plan-manager/share/validate", _h_plan_manager_share_validate_get_306);
+
+// ── Team scheduling, time tracking, payroll ───────────────────────────────────
+import teamScheduleMigratePost from "./api/team/schedule/migrate/POST.js";
+import teamShiftsGet from "./api/team/shifts/GET.js";
+import teamShiftsPost from "./api/team/shifts/POST.js";
+import teamShiftsIdPut from "./api/team/shifts/[id]/PUT.js";
+import teamShiftsIdDelete from "./api/team/shifts/[id]/DELETE.js";
+import teamTimeEntriesGet from "./api/team/time-entries/GET.js";
+import teamTimeEntriesPost from "./api/team/time-entries/POST.js";
+import teamTimeEntriesIdPut from "./api/team/time-entries/[id]/PUT.js";
+import teamTimeEntriesExportGet from "./api/team/time-entries/export/GET.js";
+
+app.post("/api/team/schedule/migrate", teamScheduleMigratePost);
+app.get("/api/team/shifts", teamShiftsGet);
+app.post("/api/team/shifts", teamShiftsPost);
+app.put("/api/team/shifts/:id", teamShiftsIdPut);
+app.delete("/api/team/shifts/:id", teamShiftsIdDelete);
+app.get("/api/team/time-entries/export", teamTimeEntriesExportGet);
+app.get("/api/team/time-entries", teamTimeEntriesGet);
+app.post("/api/team/time-entries", teamTimeEntriesPost);
+app.put("/api/team/time-entries/:id", teamTimeEntriesIdPut);
 app.get("/api/public/form/:token", _h_public_form_token_get_307);
 app.post("/api/public/form/:token/submit", _h_public_form_token_submit_post_308);
 app.get("/api/public/swms/:token", _h_public_swms_token_get_309);

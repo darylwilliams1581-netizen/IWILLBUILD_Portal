@@ -63,6 +63,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Forms',        icon: ClipboardList,   href: '/forms',       permKey: null },
     { label: 'Studio',       icon: Layers,          href: '/studio',        permKey: null },
     { label: 'Plan Manager', icon: Map,             href: '/plan-manager',  permKey: null },
+    { label: 'Schedule',     icon: CalendarDays,    href: '/team/schedule', permKey: null },
     { label: 'Ledger',       icon: Receipt,         href: '/invoices',      permKey: 'invoices' },
     { label: 'Dazza AI',     icon: Bot,             href: '/dazza-ai',    permKey: null },
   ] as const;

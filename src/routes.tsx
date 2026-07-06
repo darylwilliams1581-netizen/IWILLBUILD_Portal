@@ -34,6 +34,7 @@ const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const AnnettePage        = lazy(() => import('./pages/annette'));
 const DownloadsPage      = lazy(() => import('./pages/downloads'));
 const TeamPage           = lazy(() => import('./pages/team'));
+const TeamSchedulePage   = lazy(() => import('./pages/team-schedule'));
 const SettingsPage       = lazy(() => import('./pages/settings'));
 const FormsPage          = lazy(() => import('./pages/forms'));
 const FilesPage          = lazy(() => import('./pages/files'));
@@ -166,6 +167,7 @@ export const routes: RouteObject[] = [
   { path: '/dazza-ai',      element: protectOwner(<DazzaAIPage />),      errorElement: routeError },
   { path: '/annette',       element: protectOwner(<AnnettePage />),      errorElement: routeError },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
+  { path: '/team/schedule', element: protect(<TeamSchedulePage />),    errorElement: routeError },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', element: <Navigate to="/owner-console" replace /> },
