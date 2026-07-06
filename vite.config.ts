@@ -68,10 +68,6 @@ if (corsOrigins.length === 0) {
 export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
 
-  // Isolate the Vite dep-optimiser cache per build mode so parallel client +
-  // SSR builds don't corrupt each other's module graph.
-  cacheDir: isSsrBuild ? 'node_modules/.vite-ssr' : 'node_modules/.vite',
-
   plugins: [
   react({
     babel: {
