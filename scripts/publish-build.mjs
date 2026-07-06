@@ -145,7 +145,20 @@ function readStamp() {
 const sourceHash = getSourceHash();
 const stampHash  = readStamp();
 
+// Detect whether we are running inside the publish platform container.
+// The platform extracts a tar.gz archive to /app — there is no .git directory.
+// In the dev/preview environment, .git is always present.
+// When running on the platform, we must NEVER skip the build — the platform
+// overlays archives without cleaning, so stale dist/ files from previous deploys
+// persist unless we overwrite them with a fresh build.
+import { existsSync as _existsSync2 } from 'node:fs';
+const isPublishPlatform = !_existsSync2(join(root, '.git'));
+if (isPublishPlatform) {
+  console.log('> running on publish platform (no .git) — fast-path disabled, forcing full build.');
+}
+
 if (
+  !isPublishPlatform &&
   sourceHash &&
   stampHash === sourceHash &&
   _existsSync(bundleFile)
