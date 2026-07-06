@@ -133,6 +133,23 @@ if (restoreCode !== 0) {
   process.exit(restoreCode);
 }
 
+// ── Remove duplicate route registrations from entry.ts ───────────────────────
+// The route group files (routes-safety.ts, routes-jobs.ts, etc.) are separate
+// Rollup entry points. Any route registered in both entry.ts AND a route group
+// file is bundled twice — doubling the memory cost for those handlers.
+// This step removes the 169 duplicate registrations from entry.ts so each
+// handler module is only bundled once (in its route group chunk).
+console.log('> dedup-entry-routes');
+const dedupCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'dedup-entry-routes.mjs')],
+  {},
+);
+if (dedupCode !== 0) {
+  console.error('dedup-entry-routes failed — aborting build.');
+  process.exit(dedupCode);
+}
+
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,          // node
