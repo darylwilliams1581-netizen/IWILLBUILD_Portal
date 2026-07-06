@@ -18,6 +18,8 @@ dist-ssr
 !dist/server.bundle.mjs
 !dist/entry.mjs
 !dist/.build-stamp
+!dist/bin/
+!dist/bin/**
 !dist/server/
 !dist/server/**
 *.local

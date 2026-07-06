@@ -1,32 +1,4 @@
-import type { Request, Response } from 'express';
-import { db } from '../../db/client.js';
-import { sql } from 'drizzle-orm';
-
-export default async function handler(_req: Request, res: Response) {
-  const results: string[] = [];
-
-  async function run(name: string, ddl: string) {
-    try {
-      await db.execute(sql.raw(ddl));
-      results.push(`✓ ${name}`);
-    } catch (e: unknown) {
-      const msg = String((e as Error)?.message ?? e);
-      // MySQL duplicate-column / table-already-exists codes — all idempotent, not errors
-      if (
-        msg.includes('already exists') ||
-        msg.includes('Duplicate column name') ||
-        msg.includes('ER_TABLE_EXISTS') ||
-        msg.includes('ER_DUP_FIELDNAME')
-      ) {
-        results.push(`~ ${name} (already exists)`);
-      } else {
-        results.push(`✗ ${name}: ${msg}`);
-        console.warn(`[migrate-safety] ${name} failed:`, msg);
-      }
-    }
-  }
-
-  await run('swms_templates', `
+import{createRequire as o}from"module";import{d as U}from"../server.bundle.mjs";import{s}from"./drizzle-Bu3hp1FF.js";import"./express-WU0_rYSr.js";import"tty";import"os";import"util";import"path";import"./iconv-DatUeE_T.js";import"buffer";import"string_decoder";import"node:zlib";import"./es-abstract-B57Whf45.js";import"url";import"node:fs";import"node:path";import"fs";import"crypto";import"node:http";import"node:buffer";import"node:querystring";import"node:net";import"stream";import"node:events";import"./mysql2-BJ7xsy_S.js";import"net";import"events";import"process";import"timers";import"tls";import"zlib";import"node:process";import"./better-auth-CQVzbiZe.js";import"./kysely-9kO2vj_T.js";import"node:crypto";import"./noble-DY0vnRA-.js";import"./opentelemetry-MOfsRXlr.js";import"node:fs/promises";import"node:os";import"fs/promises";import"./multer-aeOynLMg.js";import"http";import"https";import"assert";const n=o(import.meta.url);async function tT(a,E){const t=[];async function L(T,e){try{await U.execute(s.raw(e)),t.push(`✓ ${T}`)}catch(i){const N=String((i==null?void 0:i.message)??i);N.includes("already exists")||N.includes("Duplicate column name")||N.includes("ER_TABLE_EXISTS")||N.includes("ER_DUP_FIELDNAME")?t.push(`~ ${T} (already exists)`):(t.push(`✗ ${T}: ${N}`),console.warn(`[migrate-safety] ${T} failed:`,N))}}await L("swms_templates",`
     CREATE TABLE IF NOT EXISTS swms_templates (
       id                    INT AUTO_INCREMENT PRIMARY KEY,
       company_id            INT NOT NULL,
@@ -62,29 +34,7 @@ export default async function handler(_req: Request, res: Response) {
       updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id)
     )
-  `);
-
-  // Add new columns to swms_templates if they don't exist yet (idempotent)
-  const swmsNewCols: [string, string][] = [
-    ['category',              'VARCHAR(100) NULL'],
-    ['purpose_scope',         'TEXT NULL'],
-    ['critical_risks',        'TEXT NULL'],
-    ['mandatory_controls',    'TEXT NULL'],
-    ['hazard_identification', 'TEXT NULL'],
-    ['high_risk_work',        'TEXT NULL'],
-    ['ppe_requirements',      'TEXT NULL'],
-    ['risk_rating',           'TEXT NULL'],
-    ['sequence_controls',     'TEXT NULL'],
-    ['permits_approvals',     'TEXT NULL'],
-    ['monitoring_review',     'TEXT NULL'],
-    ['notes',                 'TEXT NULL'],
-    ['source_file_id',        'INT NULL'],
-  ];
-  for (const [col, def] of swmsNewCols) {
-    await run(`swms_templates.${col}`, `ALTER TABLE swms_templates ADD COLUMN ${col} ${def}`);
-  }
-
-  await run('safety_plans', `
+  `);const r=[["category","VARCHAR(100) NULL"],["purpose_scope","TEXT NULL"],["critical_risks","TEXT NULL"],["mandatory_controls","TEXT NULL"],["hazard_identification","TEXT NULL"],["high_risk_work","TEXT NULL"],["ppe_requirements","TEXT NULL"],["risk_rating","TEXT NULL"],["sequence_controls","TEXT NULL"],["permits_approvals","TEXT NULL"],["monitoring_review","TEXT NULL"],["notes","TEXT NULL"],["source_file_id","INT NULL"]];for(const[T,e]of r)await L(`swms_templates.${T}`,`ALTER TABLE swms_templates ADD COLUMN ${T} ${e}`);await L("safety_plans",`
     CREATE TABLE IF NOT EXISTS safety_plans (
       id                        INT AUTO_INCREMENT PRIMARY KEY,
       company_id                INT NOT NULL,
@@ -109,9 +59,7 @@ export default async function handler(_req: Request, res: Response) {
       INDEX idx_company (company_id),
       INDEX idx_job (job_id)
     )
-  `);
-
-  await run('job_swms', `
+  `),await L("job_swms",`
     CREATE TABLE IF NOT EXISTS job_swms (
       id                    INT AUTO_INCREMENT PRIMARY KEY,
       company_id            INT NOT NULL,
@@ -154,47 +102,7 @@ export default async function handler(_req: Request, res: Response) {
       INDEX idx_company (company_id),
       INDEX idx_job (job_id)
     )
-  `);
-
-  // Add new columns to job_swms if upgrading from the old thin schema
-  const jobSwmsNewCols: [string, string][] = [
-    ['template_id',           'INT NULL'],
-    ['title',                 "VARCHAR(255) NOT NULL DEFAULT ''"],
-    ['category',              'VARCHAR(100) NULL'],
-    ['work_activity',         'TEXT NULL'],
-    ['purpose_scope',         'TEXT NULL'],
-    ['critical_risks',        'TEXT NULL'],
-    ['mandatory_controls',    'TEXT NULL'],
-    ['hazard_identification', 'TEXT NULL'],
-    ['high_risk_work',        'TEXT NULL'],
-    ['ppe_requirements',      'TEXT NULL'],
-    ['risk_rating',           'TEXT NULL'],
-    ['sequence_controls',     'TEXT NULL'],
-    ['hazards',               'TEXT NULL'],
-    ['risks',                 'TEXT NULL'],
-    ['controls',              'TEXT NULL'],
-    ['ppe',                   'TEXT NULL'],
-    ['plant_equipment',       'TEXT NULL'],
-    ['training_competency',   'TEXT NULL'],
-    ['emergency_controls',    'TEXT NULL'],
-    ['environmental_controls','TEXT NULL'],
-    ['sign_off_requirements', 'TEXT NULL'],
-    ['permits_approvals',     'TEXT NULL'],
-    ['monitoring_review',     'TEXT NULL'],
-    ['notes',                 'TEXT NULL'],
-    ['revision_number',       "VARCHAR(20) NOT NULL DEFAULT '1'"],
-    ['review_date',           'DATE NULL'],
-    ['status',                "VARCHAR(30) NOT NULL DEFAULT 'draft'"],
-    ['reviewed_by_user_id',   'VARCHAR(36) NULL'],
-    ['reviewed_at',           'DATETIME NULL'],
-    ['approved_by_user_id',   'VARCHAR(36) NULL'],
-    ['approved_at',           'DATETIME NULL'],
-  ];
-  for (const [col, def] of jobSwmsNewCols) {
-    await run(`job_swms.${col}`, `ALTER TABLE job_swms ADD COLUMN ${col} ${def}`);
-  }
-
-  await run('swms_signoffs', `
+  `);const _=[["template_id","INT NULL"],["title","VARCHAR(255) NOT NULL DEFAULT ''"],["category","VARCHAR(100) NULL"],["work_activity","TEXT NULL"],["purpose_scope","TEXT NULL"],["critical_risks","TEXT NULL"],["mandatory_controls","TEXT NULL"],["hazard_identification","TEXT NULL"],["high_risk_work","TEXT NULL"],["ppe_requirements","TEXT NULL"],["risk_rating","TEXT NULL"],["sequence_controls","TEXT NULL"],["hazards","TEXT NULL"],["risks","TEXT NULL"],["controls","TEXT NULL"],["ppe","TEXT NULL"],["plant_equipment","TEXT NULL"],["training_competency","TEXT NULL"],["emergency_controls","TEXT NULL"],["environmental_controls","TEXT NULL"],["sign_off_requirements","TEXT NULL"],["permits_approvals","TEXT NULL"],["monitoring_review","TEXT NULL"],["notes","TEXT NULL"],["revision_number","VARCHAR(20) NOT NULL DEFAULT '1'"],["review_date","DATE NULL"],["status","VARCHAR(30) NOT NULL DEFAULT 'draft'"],["reviewed_by_user_id","VARCHAR(36) NULL"],["reviewed_at","DATETIME NULL"],["approved_by_user_id","VARCHAR(36) NULL"],["approved_at","DATETIME NULL"]];for(const[T,e]of _)await L(`job_swms.${T}`,`ALTER TABLE job_swms ADD COLUMN ${T} ${e}`);await L("swms_signoffs",`
     CREATE TABLE IF NOT EXISTS swms_signoffs (
       id                INT AUTO_INCREMENT PRIMARY KEY,
       job_swms_id       INT NOT NULL,
@@ -206,9 +114,7 @@ export default async function handler(_req: Request, res: Response) {
       INDEX idx_job_swms (job_swms_id),
       INDEX idx_company (company_id)
     )
-  `);
-
-  await run('safety_documents', `
+  `),await L("safety_documents",`
     CREATE TABLE IF NOT EXISTS safety_documents (
       id                  INT AUTO_INCREMENT PRIMARY KEY,
       company_id          INT NOT NULL,
@@ -225,9 +131,7 @@ export default async function handler(_req: Request, res: Response) {
       updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id)
     )
-  `);
-
-  await run('safety_posters', `
+  `),await L("safety_posters",`
     CREATE TABLE IF NOT EXISTS safety_posters (
       id                  INT AUTO_INCREMENT PRIMARY KEY,
       company_id          INT NOT NULL,
@@ -243,9 +147,7 @@ export default async function handler(_req: Request, res: Response) {
       updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id)
     )
-  `);
-
-  await run('safety_registers', `
+  `),await L("safety_registers",`
     CREATE TABLE IF NOT EXISTS safety_registers (
       id           INT AUTO_INCREMENT PRIMARY KEY,
       company_id   INT NOT NULL,
@@ -256,7 +158,4 @@ export default async function handler(_req: Request, res: Response) {
       updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id)
     )
-  `);
-
-  res.json({ ok: true, results });
-}
+  `),E.json({ok:!0,results:t})}export{tT as default};

@@ -308,6 +308,7 @@ try {
     'add', '-f',
     'dist/server.bundle.mjs',
     'dist/entry.mjs',
+    'dist/bin/',
     'dist/server/',
     'dist/.build-stamp',
   ], { cwd: root, stdio: 'inherit' });
