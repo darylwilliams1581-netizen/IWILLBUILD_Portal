@@ -189,13 +189,28 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
-    // Use terser for SSR — it produces a significantly smaller bundle than
-    // esbuild for large server-side code, which reduces both bundle size and
-    // the pipeline transfer time. esbuild is faster but terser compresses ~30%
-    // better on complex server bundles.
     minify: 'esbuild',
-    ssr: "src/server/entry.ts",
+    // ssr: true enables SSR mode (noExternal, CJS interop) without overriding
+    // rollupOptions.input. When ssr is a string, Vite replaces input with that
+    // string — using `true` lets us declare multiple entry points below so
+    // Rollup splits shared modules into separate chunks, reducing peak RSS.
+    ssr: true,
+    // Declare the route group files as additional Rollup entry points.
+    // When multiple entry points share modules, Rollup splits those modules
+    // into separate chunks instead of inlining everything into one giant
+    // server.bundle.mjs. This reduces the peak render RSS by ~100–150 MB
+    // because Rollup serialises each chunk independently rather than holding
+    // the entire 1.3 MB entry AST in memory at once.
     rollupOptions: {
+      input: {
+        'server.bundle': 'src/server/entry.ts',
+        'routes-jobs': 'src/server/routes-jobs.ts',
+        'routes-safety': 'src/server/routes-safety.ts',
+        'routes-developer': 'src/server/routes-developer.ts',
+        'routes-integrations': 'src/server/routes-integrations.ts',
+        'routes-settings': 'src/server/routes-settings.ts',
+        'routes-fleet': 'src/server/routes-fleet.ts',
+      },
       // pdfjs-dist and react-pdf are browser-only. They're listed in
       // ssr.external above (bare specifier strings) so Vite's noExternal:true
       // logic skips them. The Rollup-level external below is a belt-and-braces
@@ -216,7 +231,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // The entry point is still server.bundle.mjs; heavy deps land in bin/.
       output: {
         format: "es",
-        entryFileNames: "server.bundle.mjs",
+        // Use [name].mjs for entry points so server.bundle stays server.bundle.mjs
+        // and route group entries get their own named files (routes-jobs.mjs etc.)
+        entryFileNames: "[name].mjs",
         chunkFileNames: "bin/[name]-[hash].js",
         banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
         // Split the heaviest deps into separate chunks to reduce peak memory
@@ -234,8 +251,14 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (id.includes('node_modules/pdf-lib')) return 'pdf-lib';
           if (id.includes('node_modules/stripe')) return 'stripe';
           if (id.includes('node_modules/@aws-sdk') || id.includes('node_modules/@smithy') || id.includes('node_modules/@aws-crypto')) return 'aws-sdk';
+          // Split iconv-lite out of mysql2 — iconv is ~400 kB on disk and
+          // keeping it separate reduces the peak render size of the mysql2 chunk.
+          if (id.includes('node_modules/iconv-lite') || id.includes('node_modules/safer-buffer')) return 'iconv';
           if (id.includes('node_modules/mysql2')) return 'mysql2';
           if (id.includes('node_modules/drizzle-orm')) return 'drizzle';
+          // Split @noble/* out of better-auth — noble is also used by otplib,
+          // and keeping it separate avoids duplicating it across both chunks.
+          if (id.includes('node_modules/@noble/')) return 'noble';
           if (id.includes('node_modules/better-auth') || id.includes('node_modules/@better-auth') || id.includes('node_modules/@better-fetch')) return 'better-auth';
           if (id.includes('node_modules/kysely')) return 'kysely';
           if (id.includes('node_modules/xero-node')) return 'xero';

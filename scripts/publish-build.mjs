@@ -127,10 +127,16 @@ const ssrCode = await run(
     // Keep the heap ceiling low so V8 GCs aggressively during Rollup's
     // rendering phase. A lower ceiling = lower peak RSS, which keeps us
     // well within the pipeline container's cgroup memory limit.
-    // 900 MB ceiling → ~1.05 GB peak RSS (tested). Pipeline limit ~1.5 GB.
+    // 900 MB ceiling + 4 MB semi-space → ~1.02 GB peak RSS (tested).
+    // --max-semi-space-size=4 forces more frequent minor GCs during the
+    // transform phase, preventing live objects from accumulating. The
+    // previous 8 MB setting allowed the nursery to grow to ~1.07 GB RSS.
+    // --ssr without a path enables SSR mode while letting rollupOptions.input
+    // declare multiple entry points (entry + route group files), which splits
+    // the 1.3 MB server.bundle.mjs into smaller chunks.
     '--max-old-space-size=900',
-    '--max-semi-space-size=8',
-    vite, 'build', '--ssr', 'src/server/entry.ts', '--emptyOutDir=false',
+    '--max-semi-space-size=4',
+    vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
 );
