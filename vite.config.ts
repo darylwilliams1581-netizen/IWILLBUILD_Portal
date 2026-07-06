@@ -299,8 +299,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // Splitting it into its own chunk prevents Rollup from holding its
           // entire AST in memory alongside the entry bundle during rendering.
           if (id.includes('node_modules/date-fns')) return 'date-fns';
-          // date-fns-jalali is 15 MB — split separately from date-fns core.
-          if (id.includes('node_modules/date-fns-jalali')) return 'date-fns-jalali';
           // @opentelemetry is pulled in by better-auth/mysql2 tracing hooks.
           // 14 MB on disk — split it to keep the better-auth chunk smaller.
           if (id.includes('node_modules/@opentelemetry')) return 'opentelemetry';
@@ -314,10 +312,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // undici is the fetch implementation used by openai/stripe — split it
           // so it doesn't inflate the entry bundle.
           if (id.includes('node_modules/undici')) return 'undici';
-          // jsdom is pulled in by mammoth/docx for HTML parsing — 11 MB, self-contained.
-          if (id.includes('node_modules/jsdom')) return 'jsdom';
-          // es-abstract is a large polyfill collection used by jsdom/mammoth — 10 MB.
-          if (id.includes('node_modules/es-abstract') || id.includes('node_modules/es-define-property') || id.includes('node_modules/es-errors') || id.includes('node_modules/es-object-atoms') || id.includes('node_modules/es-set-tostringtag') || id.includes('node_modules/es-to-primitive')) return 'es-abstract';
           return undefined;
         },
       }

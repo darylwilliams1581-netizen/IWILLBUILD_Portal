@@ -156,12 +156,14 @@ const ssrCode = await run(
     // 900 MB ceiling is sufficient now that the static import fan-out is gone.
     // --max-semi-space-size=2 keeps the nursery small so minor GCs run
     // frequently during the transform phase, preventing old-gen accumulation.
-    // lucide-react + @heroicons are now externalized from the SSR bundle,
-    // saving ~53 MB of AST from the Rollup render phase. This lets us drop
-    // the heap ceiling from 900 → 850 MB, forcing more aggressive GC and
-    // keeping peak RSS well within the pipeline's ~910 MB cgroup limit.
-    '--max-old-space-size=850',
-    '--max-semi-space-size=2',
+    // lucide-react + @heroicons are aliased to icon-stub.ts during SSR build,
+    // saving ~53 MB of AST from the Rollup render phase.
+    // Heap ceiling: 900 MB. --max-semi-space-size=4 matches the previously
+    // tested working configuration (900 MB + 4 MB semi-space → ~1.02 GB RSS).
+    // The icon stub reduces the working set by ~44 MB (874 → 830 MB), giving
+    // V8 ~70 MB of headroom to GC before hitting the ceiling.
+    '--max-old-space-size=900',
+    '--max-semi-space-size=4',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
