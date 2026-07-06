@@ -45,9 +45,12 @@ let m;
 while ((m = dynRe.exec(src)) !== null) {
   const modulePath = m[3];
   if (!varNames.has(modulePath)) {
-    // Generate a safe variable name from the module path
-    // e.g. "./api/auth/change-email/POST" → "_h_auth_change_email_post_0"
+    // Generate a safe variable name from the module path.
+    // Strip any trailing .js extension BEFORE building the identifier so we
+    // never produce names like "_h_foo.js_0" (dots are invalid in identifiers).
+    // e.g. "./api/auth/change-email/POST.js" → "_h_auth_change_email_post_0"
     const safeName = '_h_' + modulePath
+      .replace(/\.js$/, '')          // strip trailing .js first
       .replace(/^\.\/api\//, '')
       .replace(/\//g, '_')
       .replace(/-/g, '_')
@@ -55,7 +58,10 @@ while ((m = dynRe.exec(src)) !== null) {
       .replace(/\]/g, '')
       .toLowerCase() + '_' + counter++;
     varNames.set(modulePath, safeName);
-    imports.push(`import ${safeName} from "${modulePath}";`);
+    // Import path: strip .js extension so TypeScript resolves the .ts source
+    // in dev and Rollup resolves the compiled module in the SSR bundle.
+    const importPath = modulePath.replace(/\.js$/, '');
+    imports.push(`import ${safeName} from "${importPath}";`);
   }
 }
 

@@ -86,9 +86,26 @@ function lazify(filePath, targetVarPrefixes) {
 // notifications_alerts_  — 12 KB, polling endpoint
 // jobs_id_purchase_orders_idPo_pdf_ — 14 KB, PDF generation
 // jobs_id_ledger_sync_   — 10 KB, accounting sync
+// The <api-imports> block uses _h_ prefixed identifiers (e.g. _h_dazza_chat_post_1).
+// All other handlers in entry.ts use the original naming (e.g. safety_swms_seed_post_355).
+// We target both forms here so the lazify step works regardless of which block
+// the handler was generated into.
 const entryCount = lazify(
   join(root, 'src/server/entry.ts'),
   [
+    // _h_ prefixed block (auto-generated <api-imports> section)
+    '_h_dazza_chat_post_',
+    '_h_dazza_annette_post_',
+    '_h_dazza_chat_v2_post_',
+    '_h_dazza_chat_v2_stream_post_',
+    '_h_form_templates_seed_post_',
+    '_h_migrate_',
+    '_h_owner_console_system_ai_',
+    '_h_notifications_alerts_get_',
+    '_h_jobs_id_purchase_orders_',
+    '_h_jobs_id_ledger_sync_',
+    // Legacy naming (non-_h_ block) — kept for safety in case any of these
+    // were regenerated outside the <api-imports> block
     'dazza_chat_post_',
     'dazza_annette_post_',
     'dazza_chat_v2_post_',
@@ -102,7 +119,7 @@ const entryCount = lazify(
   ],
 );
 
-// routes-safety.ts: lazify seed endpoints
+// routes-safety.ts: seed handlers are already lazified inline — no-op
 const safetyCount = lazify(
   join(root, 'src/server/routes-safety.ts'),
   ['safety_plans_seed_post_', 'safety_swms_seed_post_'],
