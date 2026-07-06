@@ -27,58 +27,20 @@ function isHarmlessSandboxWarn(line) {
   );
 }
 
-// ── Global heartbeat ──────────────────────────────────────────────────────────
-// The publish pipeline monitors stdout for activity. If no bytes arrive for
-// more than ~30s the pipeline's HTTP connection is dropped ("socket hang up").
-// This global heartbeat fires every 5s for the ENTIRE duration of the script —
-// covering pre-build steps, subprocess startup gaps, and Vite's silent phases.
-// The per-subprocess heartbeat (3s) handles the Vite/Rollup render phase;
-// this global one is a belt-and-braces fallback for everything else.
-// The dots are printed to stdout so the pipeline sees them.
-const _globalHeartbeat = setInterval(() => process.stdout.write('.'), 5_000);
-// Ensure the interval doesn't prevent the process from exiting naturally.
-_globalHeartbeat.unref();
-
 /**
  * Run a command, filter its stderr, and resolve with the exit code.
- *
- * stdout handling:
- *   The child's stdout is piped (not inherited) so we can interleave heartbeat
- *   dots with the child's own output on the same stream. This ensures the
- *   pipeline sees activity on stdout even during Vite/Rollup's silent phases.
- *
- * heartbeatMs: emit a "." to stdout every N ms while the process runs.
- *   This prevents the pipeline's HTTP idle-timeout from dropping the connection
- *   during long silent phases (e.g. Rollup's render phase in the SSR build,
- *   which is completely silent for ~50 s).
+ * stdout is always inherited (passed through untouched to the pipeline).
  */
-function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
+function run(cmd, args, env = {}) {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
-      // Pipe both stdout and stderr so we control what reaches the pipeline.
-      // stdin is still inherited (build tools don't need it but it's harmless).
-      stdio: ['inherit', 'pipe', 'pipe'],
+      stdio: ['inherit', 'inherit', 'pipe'],
       shell: false,
       env: { ...process.env, ...env },
     });
 
-    let heartbeat;
-    if (heartbeatMs > 0) {
-      heartbeat = setInterval(() => process.stdout.write('.'), heartbeatMs);
-    }
-
-    // Forward child stdout verbatim
-    child.stdout.on('data', (chunk) => {
-      if (heartbeat) {
-        // Flush a newline before child output so dots don't run into log lines
-        process.stdout.write('\n');
-        clearInterval(heartbeat);
-        heartbeat = setInterval(() => process.stdout.write('.'), heartbeatMs);
-      }
-      process.stdout.write(chunk);
-    });
-
     let buf = '';
+
     child.stderr.on('data', (chunk) => {
       buf += chunk.toString();
       const lines = buf.split('\n');
@@ -97,10 +59,6 @@ function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
     });
 
     child.on('close', (code, signal) => {
-      if (heartbeat) {
-        clearInterval(heartbeat);
-        process.stdout.write('\n'); // newline after the final dots
-      }
       if (signal) {
         process.stderr.write(`[publish-build] process killed by signal: ${signal}\n`);
       }
@@ -114,18 +72,15 @@ function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
 import { cp, mkdir, rm } from 'node:fs/promises';
-import { readFileSync, existsSync, accessSync, constants as fsConstants } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Emit immediately so the pipeline knows the build script is alive.
-// This fires before any async work, preventing a silent gap at startup.
-process.stdout.write('> publish-build starting\n');
-
 // Resolve the vite binary robustly:
 //   1. Try node_modules/.bin/vite (symlink — works in dev, may break in publish container)
+//      Use accessSync to verify the target is actually readable (not a dangling symlink)
 //   2. Fall back to node_modules/vite/bin/vite.js (direct path — always works)
+import { accessSync, constants as fsConstants } from 'node:fs';
 function resolveVite() {
   const symlink = join(root, 'node_modules', '.bin', 'vite');
   try {
@@ -147,102 +102,47 @@ function resolveVite() {
 const vite = resolveVite();
 console.log(`> using vite at: ${vite}`);
 
-// ── Pre-publish content check (inlined) ──────────────────────────────────────
-// Verify required content JSON files exist and have the correct shape before
-// spending time on the Vite build. Inlined here (no subprocess) to save ~80ms
-// of Node.js startup overhead. Fails fast with a clear message.
+// ── Pre-publish content check ─────────────────────────────────────────────────
 console.log('> pre-publish-check');
-{
-  const REQUIRED = [
-    {
-      file: 'src/content/pages/home.json',
-      label: 'home',
-      arrayKeys: ['tabs', 'rows'],
-      rowShape: { key: 'rows', fields: ['label', 'status', 'color', 'id'] },
-    },
-    {
-      file: 'src/content/pages/studio.json',
-      label: 'studio',
-      arrayKeys: ['CATEGORIES'],
-      rowShape: null,
-    },
-  ];
-
-  let checkErrors = 0;
-  for (const spec of REQUIRED) {
-    const absPath = join(root, spec.file);
-    if (!existsSync(absPath)) {
-      console.error(`  ✗ MISSING: ${spec.file}`);
-      checkErrors++;
-      continue;
-    }
-    let data;
-    try { data = JSON.parse(readFileSync(absPath, 'utf8')); }
-    catch (e) { console.error(`  ✗ INVALID JSON in ${spec.file}: ${e.message}`); checkErrors++; continue; }
-    for (const key of spec.arrayKeys) {
-      if (!Array.isArray(data[key]) || data[key].length === 0) {
-        console.error(`  ✗ ${spec.file}: "${key}" must be a non-empty array`);
-        checkErrors++;
-      }
-    }
-    if (spec.rowShape) {
-      const { key, fields } = spec.rowShape;
-      (data[key] || []).forEach((item, i) => {
-        for (const f of fields) {
-          if (!Object.prototype.hasOwnProperty.call(item, f)) {
-            console.error(`  ✗ ${spec.file}: ${key}[${i}] missing field "${f}"`);
-            checkErrors++;
-          }
-        }
-      });
-    }
-  }
-  if (checkErrors > 0) {
-    console.error(`pre-publish-check failed (${checkErrors} error(s)) — fix content files before building.`);
-    process.exit(1);
-  }
-  console.log('  content files OK');
+const checkCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'pre-publish-check.mjs')],
+  {},
+);
+if (checkCode !== 0) {
+  console.error('pre-publish-check failed — fix content files before building.');
+  process.exit(checkCode);
 }
 
-// ── Restore static imports in entry.ts (safety net) ──────────────────────────
-// If a previous build was interrupted mid-lazify, entry.ts may still contain
-// dynamic import wrappers. Detect this inline (no subprocess) and only invoke
-// the restore script when actually needed. Saves ~80ms subprocess overhead on
-// every clean build.
-{
-  const entryPath = join(root, 'src', 'server', 'entry.ts');
-  const entrySrc = readFileSync(entryPath, 'utf8');
-  // Quick check: if the file contains a @vite-ignore dynamic wrapper, it needs restoring
-  const hasDynamic = entrySrc.includes('/* @vite-ignore */');
-  if (hasDynamic) {
-    console.log('> restore-entry-static (interrupted build detected — restoring)');
-    const restoreCode = await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
-    if (restoreCode !== 0) { console.error('restore-entry-static failed — aborting build.'); process.exit(restoreCode); }
-  } else {
-    console.log('> restore-entry-static (already clean — skipped)');
-  }
+// ── Restore static imports in entry.ts (if needed) ───────────────────────────
+// Converts any dynamic await import() wrappers back to static imports so
+// Rollup can tree-shake properly. Skipped automatically if already clean.
+console.log('> restore-entry-static');
+const restoreCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'restore-entry-static.mjs')],
+  {},
+);
+if (restoreCode !== 0) {
+  console.error('restore-entry-static failed — aborting build.');
+  process.exit(restoreCode);
 }
 
-// ── Route deduplication ───────────────────────────────────────────────────────
-// Route group files (routes-safety.ts, routes-jobs.ts, etc.) are imported
-// statically from entry.ts. There are no duplicate registrations to remove.
-// (dedup-entry-routes.mjs is kept as a standalone tool but not called here.)
-console.log('> dedup-entry-routes (single-entry build — skipped)');
+// ── Dedup entry routes (no-op for single-entry build) ────────────────────────
+console.log('> dedup-entry-routes');
+const dedupCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'dedup-entry-routes.mjs')],
+  {},
+);
+if (dedupCode !== 0) {
+  console.error('dedup-entry-routes failed — aborting build.');
+  process.exit(dedupCode);
+}
 
-// ── Lazify heavy handlers before SSR build ────────────────────────────────────
-// Converts the ~40 heaviest handler imports (dazza/chat 84KB, 28 migrate ops,
-// seed endpoints, AI streaming, PDF generation, ledger sync) from static
-// top-level imports to dynamic await import() wrappers. This removes ~200KB
-// of handler AST from Rollup's static module graph during the SSR build,
-// reducing peak RSS by ~80–120 MB.
-//
-// IMPORTANT: This is SELECTIVE lazification — only the heaviest non-hot-path
-// handlers. Full lazification (all 400+ handlers) makes OOM worse because
-// Rollup must resolve all dynamic imports simultaneously during rendering.
-// Selective lazification keeps the static graph small while avoiding that trap.
-//
-// The restore-entry-static step below reverses this after the SSR build so
-// the source files are not left in a modified state.
+// ── Lazify heavy handlers ─────────────────────────────────────────────────────
+// Converts selected large handler imports to dynamic imports so they are
+// split into separate chunks, reducing peak SSR build memory.
 console.log('> lazify-handlers');
 const lazifyCode = await run(
   process.execPath,
@@ -254,25 +154,26 @@ if (lazifyCode !== 0) {
   process.exit(lazifyCode);
 }
 
+// ── Client build ─────────────────────────────────────────────────────────────
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,
   ['--max-old-space-size=896', vite, 'build'],
   {},
-  { heartbeatMs: 3_000 },
 );
-
 if (clientCode !== 0) {
   console.error(`build:app:client failed with exit code ${clientCode}`);
   process.exit(clientCode);
 }
 
+// ── SSR build ────────────────────────────────────────────────────────────────
 console.log('> build:app:ssr');
 // Clean dist/bin/ before the SSR build so stale hashed chunks from previous
 // builds don't accumulate and inflate the deploy package.
 try {
   await rm(join(root, 'dist', 'bin'), { recursive: true, force: true });
 } catch { /* ignore if absent */ }
+
 const ssrCode = await run(
   process.execPath,
   [
@@ -303,12 +204,6 @@ const ssrCode = await run(
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
-  // Emit a heartbeat dot every 3 s during the SSR build.
-  // Rollup's render phase is completely silent on stdout for ~50 s, which
-  // causes the publish pipeline's HTTP idle-timeout to drop the connection
-  // ("socket hang up"). Piping stdout (not inheriting) lets us interleave
-  // dots with Vite's own output so the pipeline always sees activity.
-  { heartbeatMs: 3_000 },
 );
 
 if (ssrCode !== 0) {
@@ -320,14 +215,11 @@ if (ssrCode !== 0) {
 
 // ── Restore static imports after SSR build ────────────────────────────────────
 // Reverses the lazify-handlers step so entry.ts and routes-safety.ts are
-// restored to their original static-import form. This keeps the source tree
-// clean and ensures dev-server restarts work normally.
+// restored to their original static-import form.
 console.log('> restore-entry-static (post-SSR)');
 await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
 
-// ── Copy seed JSON files into dist so the server can read them at runtime ──
-// src/server/seed/starter-packs/default/*.json
-//   → dist/server/seed/starter-packs/default/*.json
+// ── Copy seed JSON files into dist ────────────────────────────────────────────
 console.log('> copy:seed-data');
 try {
   const seedSrc  = join(root, 'src',  'server', 'seed');
@@ -336,7 +228,6 @@ try {
   await cp(seedSrc, seedDest, { recursive: true });
   console.log('  seed data copied to dist/server/seed/');
 } catch (e) {
-  // Non-fatal: if the directory doesn't exist the seeder will log a clear error at runtime.
   console.warn('  WARNING: could not copy seed data:', e.message);
 }
 
