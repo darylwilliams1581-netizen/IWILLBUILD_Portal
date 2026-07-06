@@ -172,6 +172,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       '@napi-rs',
       '@napi-rs/canvas',
       'canvas',
+      // html-to-image uses canvas/DOM APIs — browser only.
+      'html-to-image',
+      // drizzle-kit is a CLI migration tool — never needed at SSR runtime.
+      'drizzle-kit',
       // NOTE: lucide-react and @heroicons are NOT externalized here — they are
       // aliased to a stub in resolve.alias (below) during SSR build so they
       // compile to near-zero bytes rather than their full ~53 MB on disk.
@@ -328,6 +332,28 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // undici is the fetch implementation used by openai/stripe — split it
           // so it doesn't inflate the entry bundle.
           if (id.includes('node_modules/undici')) return 'undici';
+          // ── New splits added to address heap OOM during SSR build ─────────────
+          // @lexical/* is a rich-text editor suite (~8 MB total) used only in
+          // client-side document builder components. Split it out so it doesn't
+          // inflate the SSR entry bundle.
+          if (id.includes('node_modules/@lexical') || id.includes('node_modules/lexical')) return 'lexical';
+          // i18next + react-i18next are frontend-only (~2 MB). Split them out.
+          if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) return 'i18n';
+          // gifwrap is pulled in by @jimp — 6 MB, self-contained.
+          if (id.includes('node_modules/gifwrap') || id.includes('node_modules/omggif')) return 'gifwrap';
+          // @babel/* devDeps can get pulled in transitively — split them to
+          // prevent them inflating the entry bundle.
+          if (id.includes('node_modules/@babel')) return 'babel';
+          // drizzle-kit is a CLI tool (9.8 MB) that should never be in the
+          // runtime bundle — split it into its own chunk so tree-shaking can
+          // eliminate it if nothing actually imports it at runtime.
+          if (id.includes('node_modules/drizzle-kit')) return 'drizzle-kit';
+          // es-abstract is pulled in by some polyfill chains — 10 MB, split it.
+          if (id.includes('node_modules/es-abstract') || id.includes('node_modules/es-define-property') || id.includes('node_modules/es-errors') || id.includes('node_modules/es-object-atoms') || id.includes('node_modules/es-set-tostringtag')) return 'es-abstract';
+          // html-to-image is client-only (canvas API) — split it out.
+          if (id.includes('node_modules/html-to-image')) return 'html-to-image';
+          // react-markdown + remark/rehype pipeline — frontend rendering only.
+          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark') || id.includes('node_modules/rehype') || id.includes('node_modules/unified') || id.includes('node_modules/micromark') || id.includes('node_modules/mdast') || id.includes('node_modules/hast')) return 'markdown';
           return undefined;
         },
       }
