@@ -30,14 +30,22 @@ function isHarmlessSandboxWarn(line) {
 /**
  * Run a command, filter its stderr, and resolve with the exit code.
  * stdout is always inherited (passed through untouched).
+ * heartbeatMs: if set, emit a "." to stdout every N ms while the process runs.
+ * This prevents the pipeline's HTTP idle-timeout from dropping the connection
+ * during long silent phases (e.g. Rollup's render phase in the SSR build).
  */
-function run(cmd, args, env = {}) {
+function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
       stdio: ['inherit', 'inherit', 'pipe'],
       shell: false,
       env: { ...process.env, ...env },
     });
+
+    let heartbeat;
+    if (heartbeatMs > 0) {
+      heartbeat = setInterval(() => process.stdout.write('.'), heartbeatMs);
+    }
 
     let buf = '';
 
@@ -59,6 +67,10 @@ function run(cmd, args, env = {}) {
     });
 
     child.on('close', (code, signal) => {
+      if (heartbeat) {
+        clearInterval(heartbeat);
+        process.stdout.write('\n'); // newline after the dots
+      }
       if (signal) {
         process.stderr.write(`[publish-build] process killed by signal: ${signal}\n`);
       }
@@ -175,65 +187,62 @@ if (lazifyCode !== 0) {
   process.exit(lazifyCode);
 }
 
-// ── Parallel client + SSR builds ─────────────────────────────────────────────
-// Run both Vite builds simultaneously. They write to separate output directories
-// (dist/client/ for the client build, dist/ + dist/bin/ for SSR) so there is
-// no write conflict. Running in parallel cuts wall-clock time from ~99 s to
-// ~66 s (the SSR build dominates; the client build completes first and exits).
-//
-// Memory budget: client uses --max-old-space-size=896 MB, SSR uses 1600 MB.
-// Peak combined RSS is ~2.5 GB — within the pipeline container's 4 GB limit.
-//
-// Clean dist/bin/ before the SSR build so stale hashed chunks don't accumulate.
-try {
-  await rm(join(root, 'dist', 'bin'), { recursive: true, force: true });
-} catch { /* ignore if absent */ }
-
-console.log('> build:app:client + build:app:ssr (parallel)');
-const [clientCode, ssrCode] = await Promise.all([
-  run(
-    process.execPath,
-    ['--max-old-space-size=896', vite, 'build'],
-    {},
-  ),
-  run(
-    process.execPath,
-    [
-      // SSR build heap tuning — Rollup render phase.
-      // noExternal:true forces Rollup to parse every npm dep into an AST.
-      // We reduce the working set by aliasing large client-only packages to
-      // browser-only-stub.ts during SSR build (vite.config.ts resolve.alias):
-      //   - lucide-react + @heroicons → icon-stub        (~53 MB saved)
-      //   - react-pdf + pdfjs-dist                       (~132 MB saved)
-      //   - date-fns-jalali                               (~15.5 MB saved)
-      //   - jsdom                                         (~11.2 MB saved)
-      //   - @babel/*                                      (~11 MB saved)
-      //   - drizzle-kit                                   (~9.8 MB saved)
-      //   - es-abstract                                   (~10 MB saved)
-      //   - @lexical/* + lexical                          (~8 MB saved)
-      //   - @tanstack/react-query                         (~3 MB saved)
-      //   - html-to-image, i18next, react-i18next,
-      //     react-markdown, embla-carousel, vaul,
-      //     cmdk, input-otp, react-day-picker             (~8 MB saved)
-      // Total estimated savings: ~262 MB of AST.
-      // Heap ceiling: 1600 MB — raised from 1400 MB after SIGKILL in publish pipeline.
-      // --optimize-for-size: instructs V8 to prefer smaller memory footprint over speed.
-      // --max-semi-space-size=1: minimise the young-generation heap (default 8 MB)
-      //   so GC runs more frequently and keeps old-gen pressure lower.
-      '--max-old-space-size=1600',
-      '--max-semi-space-size=1',
-      '--optimize-for-size',
-      vite, 'build', '--ssr', '--emptyOutDir=false',
-    ],
-    {},
-  ),
-]);
+console.log('> build:app:client');
+const clientCode = await run(
+  process.execPath,
+  ['--max-old-space-size=896', vite, 'build'],
+  {},
+  { heartbeatMs: 10_000 },
+);
 
 if (clientCode !== 0) {
   console.error(`build:app:client failed with exit code ${clientCode}`);
-  await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
   process.exit(clientCode);
 }
+
+console.log('> build:app:ssr');
+// Clean dist/bin/ before the SSR build so stale hashed chunks from previous
+// builds don't accumulate and inflate the deploy package.
+try {
+  await rm(join(root, 'dist', 'bin'), { recursive: true, force: true });
+} catch { /* ignore if absent */ }
+const ssrCode = await run(
+  process.execPath,
+  [
+    // SSR build heap tuning — Rollup render phase.
+    // noExternal:true forces Rollup to parse every npm dep into an AST.
+    // We reduce the working set by aliasing large client-only packages to
+    // browser-only-stub.ts during SSR build (vite.config.ts resolve.alias):
+    //   - lucide-react + @heroicons → icon-stub        (~53 MB saved)
+    //   - react-pdf + pdfjs-dist                       (~132 MB saved)
+    //   - date-fns-jalali                               (~15.5 MB saved)
+    //   - jsdom                                         (~11.2 MB saved)
+    //   - @babel/*                                      (~11 MB saved)
+    //   - drizzle-kit                                   (~9.8 MB saved)
+    //   - es-abstract                                   (~10 MB saved)
+    //   - @lexical/* + lexical                          (~8 MB saved)
+    //   - @tanstack/react-query                         (~3 MB saved)
+    //   - html-to-image, i18next, react-i18next,
+    //     react-markdown, embla-carousel, vaul,
+    //     cmdk, input-otp, react-day-picker             (~8 MB saved)
+    // Total estimated savings: ~262 MB of AST.
+    // Heap ceiling: 1600 MB — raised from 1400 MB after SIGKILL in publish pipeline.
+    // --optimize-for-size: instructs V8 to prefer smaller memory footprint over speed.
+    // --max-semi-space-size=1: minimise the young-generation heap (default 8 MB)
+    //   so GC runs more frequently and keeps old-gen pressure lower.
+    '--max-old-space-size=1600',
+    '--max-semi-space-size=1',
+    '--optimize-for-size',
+    vite, 'build', '--ssr', '--emptyOutDir=false',
+  ],
+  {},
+  // Emit a heartbeat dot every 10 s during the SSR build.
+  // Rollup's render phase is completely silent on stdout for ~50 s, which
+  // causes the publish pipeline's HTTP idle-timeout to drop the connection
+  // ("socket hang up"). The dots keep the connection alive without polluting
+  // the build log with fake progress lines.
+  { heartbeatMs: 10_000 },
+);
 
 if (ssrCode !== 0) {
   console.error(`build:app:ssr failed with exit code ${ssrCode}`);

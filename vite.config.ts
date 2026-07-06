@@ -68,6 +68,10 @@ if (corsOrigins.length === 0) {
 export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
 
+  // Isolate the Vite dep-optimiser cache per build mode so parallel client +
+  // SSR builds don't corrupt each other's module graph.
+  cacheDir: isSsrBuild ? 'node_modules/.vite-ssr' : 'node_modules/.vite',
+
   plugins: [
   react({
     babel: {
@@ -335,10 +339,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
-    // SSR bundle runs server-side — minification saves no bytes at runtime
-    // and costs ~5–8 s of esbuild time. Disable it to stay under the pipeline
-    // build timeout.
-    minify: false,
+    minify: 'esbuild',
     // ssr: true enables SSR mode (noExternal, CJS interop) without overriding
     // rollupOptions.input. When ssr is a string, Vite replaces input with that
     // string — using `true` lets us declare multiple entry points below so
