@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-import * as otplib from 'otplib';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 
@@ -24,6 +23,7 @@ export default async function handler(req: Request, res: Response) {
     if (!pwOk) return res.status(400).json({ error: 'Incorrect password.' });
 
     if (token && user.totp_secret) {
+      const otplib = await import('otplib');
       const result = await otplib.verify({ token, secret: user.totp_secret });
       if (!result?.valid) return res.status(400).json({ error: 'Invalid authenticator code.' });
     }

@@ -1,6 +1,4 @@
 import type { Request, Response } from 'express';
-import * as otplib from 'otplib';
-import qrcode from 'qrcode';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 
@@ -15,6 +13,10 @@ export default async function handler(req: Request, res: Response) {
 
     if (rows[0]?.two_factor_enabled) return res.json({ alreadyEnabled: true });
 
+    const [otplib, { default: qrcode }] = await Promise.all([
+      import('otplib'),
+      import('qrcode'),
+    ]);
     const secret = otplib.generateSecret(20);
     const email = (req as unknown as { userEmail?: string }).userEmail ?? profile.userId;
     const otpAuthUrl = otplib.generateURI({ secret, account: email, issuer: 'IWILLBUILD' });

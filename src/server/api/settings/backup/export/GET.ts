@@ -21,7 +21,6 @@ import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import JSZip from 'jszip';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -122,6 +121,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Build ZIP with JSZip ──────────────────────────────────────────────────
 
+    const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     zip.file('company-summary.json', JSON.stringify(companySummary, null, 2));
     zip.file('jobs.json', JSON.stringify(jobRows, null, 2));
