@@ -123,6 +123,23 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'); },
         },
+        // date-fns-jalali is a 15.5 MB Persian calendar variant of date-fns.
+        // It is a transitive dep (not imported anywhere in our server code).
+        // Stubbing it during SSR build saves ~15.5 MB of AST from Rollup's
+        // render phase without any runtime impact.
+        {
+          find: /^date-fns-jalali(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // jsdom is a 11.2 MB test/DOM-emulation library. It is a direct dep
+        // but is only used in test files — never imported by any server handler.
+        // Stubbing it during SSR build saves ~11.2 MB of AST.
+        {
+          find: /^jsdom(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },

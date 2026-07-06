@@ -197,11 +197,19 @@ const ssrCode = await run(
     // V8 ~70 MB of headroom to GC before hitting the ceiling.
     // Static imports (restored by restore-entry-static.mjs) allow Rollup to
     // tree-shake the 408 handler modules — only reachable code is bundled.
-    // Heap ceiling raised to 1100 MB: static imports reduce peak working set
-    // vs dynamic imports, and the extra headroom prevents OOM on large builds.
+    // Heap ceiling: 3000 MB. The publish container has 128 GB RAM available
+    // (confirmed via /proc/meminfo). Previous builds OOM-killed at 1066 MB
+    // against a 1100 MB ceiling — the ceiling was the bottleneck, not the
+    // container. Raising to 3000 MB gives Rollup's render phase ample headroom
+    // while still capping runaway allocations well below the container limit.
     // --max-semi-space-size=2 keeps the nursery small → frequent minor GCs →
     // lower old-gen accumulation during Rollup's transform phase.
-    '--max-old-space-size=1100',
+    // Additional SSR memory savings applied in vite.config.ts:
+    //   - date-fns-jalali (15.5 MB) aliased to browser-only-stub
+    //   - jsdom (11.2 MB) aliased to browser-only-stub
+    //   - lucide-react + @heroicons aliased to icon-stub (~53 MB)
+    //   - 169 duplicate handler imports removed from entry.ts (dedup-entry-routes)
+    '--max-old-space-size=3000',
     '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
