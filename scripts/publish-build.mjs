@@ -171,44 +171,25 @@ try {
 const ssrCode = await run(
   process.execPath,
   [
-    // Keep the heap ceiling low so V8 GCs aggressively during Rollup's
-    // rendering phase. A lower ceiling = lower peak RSS, which keeps us
-    // well within the pipeline container's cgroup memory limit.
-    // 900 MB ceiling + 4 MB semi-space → ~1.02 GB peak RSS (tested).
-    // --max-semi-space-size=4 forces more frequent minor GCs during the
-    // transform phase, preventing live objects from accumulating. The
-    // previous 8 MB setting allowed the nursery to grow to ~1.07 GB RSS.
-    // --ssr without a path enables SSR mode while letting rollupOptions.input
-    // declare multiple entry points (entry + route group files), which splits
-    // the 1.3 MB server.bundle.mjs into smaller chunks.
-    // Heap tuning for the SSR Rollup render phase:
-    //
-    // With dynamic imports in entry.ts, Rollup no longer needs to hold all
-    // 408 handler ASTs in memory simultaneously — each handler is a separate
-    // dynamic chunk that Rollup can serialise independently.
-    // 900 MB ceiling is sufficient now that the static import fan-out is gone.
-    // --max-semi-space-size=2 keeps the nursery small so minor GCs run
-    // frequently during the transform phase, preventing old-gen accumulation.
-    // lucide-react + @heroicons are aliased to icon-stub.ts during SSR build,
-    // saving ~53 MB of AST from the Rollup render phase.
-    // Heap ceiling: 900 MB. --max-semi-space-size=4 matches the previously
-    // tested working configuration (900 MB + 4 MB semi-space → ~1.02 GB RSS).
-    // The icon stub reduces the working set by ~44 MB (874 → 830 MB), giving
-    // V8 ~70 MB of headroom to GC before hitting the ceiling.
-    // Static imports (restored by restore-entry-static.mjs) allow Rollup to
-    // tree-shake the 408 handler modules — only reachable code is bundled.
-    // Heap ceiling: 1200 MB.
-    // Architecture: single Rollup entry point (server.bundle only).
-    // Route group files are imported statically from entry.ts via
-    // register() calls — no separate rollupOptions.input entries.
-    // This means Rollup builds ONE module graph sequentially instead of
-    // 7 in parallel, reducing peak RSS from ~1.1 GB to ~600-800 MB.
-    // Additional SSR memory savings in vite.config.ts:
-    //   - date-fns-jalali (15.5 MB) → browser-only-stub
-    //   - jsdom (11.2 MB) → browser-only-stub
-    //   - lucide-react + @heroicons → icon-stub (~53 MB)
-    // 1200 MB ceiling gives ~400 MB headroom above expected peak.
-    '--max-old-space-size=1200',
+    // SSR build heap tuning — Rollup render phase.
+    // noExternal:true forces Rollup to parse every npm dep into an AST.
+    // We reduce the working set by aliasing large client-only packages to
+    // browser-only-stub.ts during SSR build (vite.config.ts resolve.alias):
+    //   - lucide-react + @heroicons → icon-stub        (~53 MB saved)
+    //   - react-pdf + pdfjs-dist                       (~132 MB saved)
+    //   - date-fns-jalali                               (~15.5 MB saved)
+    //   - jsdom                                         (~11.2 MB saved)
+    //   - @babel/*                                      (~11 MB saved)
+    //   - drizzle-kit                                   (~9.8 MB saved)
+    //   - es-abstract                                   (~10 MB saved)
+    //   - @lexical/* + lexical                          (~8 MB saved)
+    //   - @tanstack/react-query                         (~3 MB saved)
+    //   - html-to-image, i18next, react-i18next,
+    //     react-markdown, embla-carousel, vaul,
+    //     cmdk, input-otp, react-day-picker             (~8 MB saved)
+    // Total estimated savings: ~262 MB of AST.
+    // Heap ceiling: 1400 MB gives ample headroom above expected ~900 MB peak.
+    '--max-old-space-size=1400',
     '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],

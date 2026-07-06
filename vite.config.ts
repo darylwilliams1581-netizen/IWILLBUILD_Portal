@@ -140,6 +140,99 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
+        // @babel/* is used only by the source-mapper Vite plugin (build-time).
+        // It is never imported by any server handler. Stubbing it saves ~11 MB.
+        {
+          find: /^@babel(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // html-to-image uses browser canvas/DOM APIs — never used server-side.
+        // Saves ~2 MB of AST.
+        {
+          find: /^html-to-image(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // drizzle-kit is a CLI migration tool — never imported at SSR runtime.
+        // Saves ~9.8 MB of AST.
+        {
+          find: /^drizzle-kit(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // es-abstract + related polyfill packages — pulled in transitively,
+        // never used in server handlers. Saves ~10 MB of AST.
+        {
+          find: /^es-abstract(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // react-markdown + remark/rehype pipeline — client-side rendering only.
+        // Saves ~3 MB of AST.
+        {
+          find: /^react-markdown(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // i18next + react-i18next — frontend translation layer, never used
+        // in server handlers. Saves ~2 MB of AST.
+        {
+          find: /^i18next(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^react-i18next(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // @lexical/* — rich-text editor, client-only. Saves ~8 MB of AST.
+        {
+          find: /^@lexical(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^lexical(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // embla-carousel, react-day-picker, input-otp, vaul, cmdk — UI widgets,
+        // client-only. Combined ~3 MB of AST.
+        {
+          find: /^embla-carousel(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^react-day-picker(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^input-otp(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^vaul(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^cmdk(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // @tanstack/react-query — client-side data fetching, never used server-side.
+        {
+          find: /^@tanstack(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // @heroicons/react — icon library, client-only (already covered by icon-stub
+        // above but belt-and-braces for any subpath imports not caught by that alias).
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },
