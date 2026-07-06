@@ -1,9 +1,4 @@
 import { studio } from 'virtual:content';
-
-// ── Content fallbacks ─────────────────────────────────────────────────────────
-const studioCategories: string[] = Array.isArray(studio?.CATEGORIES) && studio.CATEGORIES.length > 0
-  ? studio.CATEGORIES
-  : ['All', 'Documents', 'Safety', 'Planning', 'Fleet', 'Training', 'Custom'];
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -16,6 +11,11 @@ import {
   FilePlus2, MoreHorizontal,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+
+// ── Content fallbacks ─────────────────────────────────────────────────────────
+const studioCategories: string[] = Array.isArray(studio?.CATEGORIES) && studio.CATEGORIES.length > 0
+  ? studio.CATEGORIES
+  : ['All', 'Documents', 'Safety', 'Planning', 'Fleet', 'Training', 'Custom'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

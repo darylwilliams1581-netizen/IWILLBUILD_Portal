@@ -1,4 +1,15 @@
 import { home } from 'virtual:content';
+import { motion } from 'motion/react';
+import { Helmet } from '@dr.pogodin/react-helmet';
+import { Link } from 'react-router-dom';
+import {
+  Briefcase, FileText, Camera, Truck, LayoutDashboard,
+  ShieldCheck, Users, CheckCircle, ArrowRight,
+  Star, ChevronRight, Calendar, FolderOpen,
+} from 'lucide-react';
+import ContactForm from '@/components/ContactForm';
+import Header from '@/layouts/parts/Header';
+import Footer from '@/layouts/parts/Footer';
 
 // ── Content fallbacks ─────────────────────────────────────────────────────────
 // Guard every field consumed from virtual:content so a missing or malformed
@@ -16,17 +27,6 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
         { label: 'Office Reno — Level 3',            status: 'Quoting',     color: '#f97316' },
         { label: 'Carpark Drainage — CBD',           status: 'Closed',      color: '#64748b' },
       ];
-import { motion } from 'motion/react';
-import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from 'react-router-dom';
-import {
-  Briefcase, FileText, Camera, Truck, LayoutDashboard,
-  ShieldCheck, Users, CheckCircle, ArrowRight,
-  Star, ChevronRight, Calendar, FolderOpen,
-} from 'lucide-react';
-import ContactForm from '@/components/ContactForm';
-import Header from '@/layouts/parts/Header';
-import Footer from '@/layouts/parts/Footer';
 
 // ── Animation variants ────────────────────────────────────────────────────────
 const fadeUp = {

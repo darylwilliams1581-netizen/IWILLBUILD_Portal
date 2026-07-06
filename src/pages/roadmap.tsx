@@ -1,29 +1,8 @@
-import { roadmap } from 'virtual:content';
-
-// ── Content fallbacks ─────────────────────────────────────────────────────────
-interface RoadmapGate {
-  id: string;
-  label: string;
-  status: string;
-  criteria: string[];
-  unblock: string;
-}
-
-const roadmapGates: RoadmapGate[] = Array.isArray(roadmap?.GATES) && roadmap.GATES.length > 0
-  ? roadmap.GATES
-  : [
-      { id: 'gate-1', label: 'Phase 1 — Core Portal',    status: 'passed',      criteria: ['Jobs, estimates and job files live', 'Forms builder with conditional logic', 'Fleet prestarts and service log', 'Safety SWMS library and sign-off'],                                    unblock: 'Phase 2 features' },
-      { id: 'gate-2', label: 'Phase 2 — Integrations',   status: 'in-progress', criteria: ['Xero, MYOB and QuickBooks OAuth sync', 'Stripe payment links on invoices', 'Plan Manager PDF viewer', 'Customer portal'],                                                             unblock: 'Phase 3 features' },
-      { id: 'gate-3', label: 'Phase 3 — Scale',          status: 'pending',     criteria: ['PWA push notifications', 'Team time tracking', 'Advanced reporting', 'Multi-company support'],                                                                                        unblock: 'Enterprise plan' },
-    ];
-
-const roadmapPhases: string[] = Array.isArray(roadmap?.phases) && roadmap.phases.length > 0
-  ? roadmap.phases
-  : ['all', 'Phase 1', 'Phase 2', 'Phase 3'];
 /**
  * /roadmap  — IWILLBUILD Portal Product Roadmap
  * Internal-only page (noindex). Accessible from Owner Console / Developer Console.
  */
+import { roadmap } from 'virtual:content';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,6 +38,27 @@ import {
   BookOpen,
   ClipboardList,
 } from 'lucide-react';
+
+// ── Content fallbacks ─────────────────────────────────────────────────────────
+interface RoadmapGate {
+  id: string;
+  label: string;
+  status: string;
+  criteria: string[];
+  unblock: string;
+}
+
+const roadmapGates: RoadmapGate[] = Array.isArray(roadmap?.GATES) && roadmap.GATES.length > 0
+  ? roadmap.GATES
+  : [
+      { id: 'gate-1', label: 'Phase 1 — Core Portal',  status: 'passed',      criteria: ['Jobs, estimates and job files live', 'Forms builder with conditional logic', 'Fleet prestarts and service log', 'Safety SWMS library and sign-off'],   unblock: 'Phase 2 features' },
+      { id: 'gate-2', label: 'Phase 2 — Integrations', status: 'in-progress', criteria: ['Xero, MYOB and QuickBooks OAuth sync', 'Stripe payment links on invoices', 'Plan Manager PDF viewer', 'Customer portal'],                             unblock: 'Phase 3 features' },
+      { id: 'gate-3', label: 'Phase 3 — Scale',        status: 'pending',     criteria: ['PWA push notifications', 'Team time tracking', 'Advanced reporting', 'Multi-company support'],                                                          unblock: 'Enterprise plan' },
+    ];
+
+const roadmapPhases: string[] = Array.isArray(roadmap?.phases) && roadmap.phases.length > 0
+  ? roadmap.phases
+  : ['all', 'Phase 1', 'Phase 2', 'Phase 3'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

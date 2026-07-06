@@ -103,6 +103,20 @@ function resolveVite() {
 const vite = resolveVite();
 console.log(`> using vite at: ${vite}`);
 
+// ── Pre-publish content check ─────────────────────────────────────────────────
+// Verify all required content JSON files exist and have the correct shape
+// before spending time on the Vite build. Fails fast with a clear message.
+console.log('> pre-publish-check');
+const checkCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'pre-publish-check.mjs')],
+  {},
+);
+if (checkCode !== 0) {
+  console.error('pre-publish-check failed — fix content files before building.');
+  process.exit(checkCode);
+}
+
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,          // node

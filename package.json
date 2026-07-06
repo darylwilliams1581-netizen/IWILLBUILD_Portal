@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/pre-publish-check.mjs",
     "build": "node scripts/publish-build.mjs",
     "build:app": "npm run build:app:client && npm run build:app:ssr",
     "build:app:client": "NODE_OPTIONS=--max-old-space-size=1024 vite build",
