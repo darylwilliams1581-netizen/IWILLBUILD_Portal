@@ -27,6 +27,18 @@ function isHarmlessSandboxWarn(line) {
   );
 }
 
+// ── Global heartbeat ──────────────────────────────────────────────────────────
+// The publish pipeline monitors stdout for activity. If no bytes arrive for
+// more than ~30s the pipeline's HTTP connection is dropped ("socket hang up").
+// This global heartbeat fires every 5s for the ENTIRE duration of the script —
+// covering pre-build steps, subprocess startup gaps, and Vite's silent phases.
+// The per-subprocess heartbeat (3s) handles the Vite/Rollup render phase;
+// this global one is a belt-and-braces fallback for everything else.
+// The dots are printed to stdout so the pipeline sees them.
+const _globalHeartbeat = setInterval(() => process.stdout.write('.'), 5_000);
+// Ensure the interval doesn't prevent the process from exiting naturally.
+_globalHeartbeat.unref();
+
 /**
  * Run a command, filter its stderr, and resolve with the exit code.
  *
@@ -106,6 +118,10 @@ import { readFileSync, existsSync, accessSync, constants as fsConstants } from '
 import { createRequire } from 'node:module';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Emit immediately so the pipeline knows the build script is alive.
+// This fires before any async work, preventing a silent gap at startup.
+process.stdout.write('> publish-build starting\n');
 
 // Resolve the vite binary robustly:
 //   1. Try node_modules/.bin/vite (symlink — works in dev, may break in publish container)
