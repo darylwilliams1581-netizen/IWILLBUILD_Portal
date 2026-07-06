@@ -40,6 +40,9 @@ function SwmsLibraryTab() {
   const [seedMsg, setSeedMsg] = useState('');
   const [printing, setPrinting] = useState<SwmsTemplate | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: number; title: string } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/safety/swms', { credentials: 'include' })
@@ -55,18 +58,38 @@ function SwmsLibraryTab() {
       const r = await fetch('/api/safety/swms/seed', { method: 'POST', credentials: 'include' });
       const d = await r.json();
       if (r.ok) {
-        setSeedMsg(d.message ?? 'Templates added.');
-        // Reload list
+        setSeedMsg(d.message ?? 'Starter template added.');
         const r2 = await fetch('/api/safety/swms', { credentials: 'include' });
         const d2 = await r2.json();
         setSwmsList(d2.swms ?? []);
       } else {
-        setSeedMsg(d.error ?? 'Failed to seed templates.');
+        setSeedMsg(d.error ?? 'Failed to seed template.');
       }
     } catch {
-      setSeedMsg('Failed to seed templates.');
+      setSeedMsg('Failed to seed template.');
     } finally {
       setSeeding(false);
+    }
+  }
+
+  async function handleImportDocx(file: File) {
+    setImporting(true); setImportMsg('');
+    try {
+      const form = new FormData();
+      form.append('docx', file);
+      const r = await fetch('/api/safety/swms/import-docx', { method: 'POST', credentials: 'include', body: form });
+      const d = await r.json();
+      if (r.ok && d.swms) {
+        setSwmsList((prev) => [d.swms, ...prev]);
+        setImportMsg(`"${d.swms.title}" imported successfully. Review and activate when ready.`);
+      } else {
+        setImportMsg(d.error ?? 'Import failed.');
+      }
+    } catch {
+      setImportMsg('Import failed.');
+    } finally {
+      setImporting(false);
+      if (importRef.current) importRef.current.value = '';
     }
   }
 
@@ -103,6 +126,15 @@ function SwmsLibraryTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Hidden file input for DOCX import */}
+      <input
+        ref={importRef}
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportDocx(f); }}
+      />
+
       <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -110,13 +142,13 @@ function SwmsLibraryTab() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={handleSeed}
-            disabled={seeding}
+            onClick={() => importRef.current?.click()}
+            disabled={importing}
             className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            title="Load 6 industry-standard SWMS templates"
+            title="Import a SWMS from a .docx file"
           >
-            {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
-            <span className="hidden sm:inline">Load Templates</span>
+            {importing ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+            <span className="hidden sm:inline">Import DOCX</span>
           </button>
           <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
             <Plus size={15} /><span className="hidden sm:inline">New SWMS</span>
@@ -124,9 +156,9 @@ function SwmsLibraryTab() {
         </div>
       </div>
 
-      {seedMsg && (
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2 text-sm">
-          <Check size={14} className="shrink-0" />{seedMsg}
+      {(importMsg || seedMsg) && (
+        <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${importMsg.includes('failed') || importMsg.includes('Failed') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+          <Check size={14} className="shrink-0" />{importMsg || seedMsg}
         </div>
       )}
 
@@ -136,16 +168,19 @@ function SwmsLibraryTab() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldAlert size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No SWMS templates yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create reusable Safe Work Method Statements, or load 6 industry-standard templates to get started quickly.</p>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Import your existing SWMS from a Word document, or create one from scratch.</p>
           <div className="flex items-center gap-3">
-            <button onClick={handleSeed} disabled={seeding} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
-              {seeding ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
-              Load Templates
+            <button onClick={() => importRef.current?.click()} disabled={importing} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
+              {importing ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+              Import DOCX
             </button>
             <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
               <Plus size={15} />Create SWMS
             </button>
           </div>
+          <button onClick={handleSeed} disabled={seeding} className="mt-3 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors disabled:opacity-50">
+            {seeding ? 'Loading…' : 'Or load a starter template'}
+          </button>
         </div>
       )}
 
