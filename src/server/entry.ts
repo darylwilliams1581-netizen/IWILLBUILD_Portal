@@ -595,9 +595,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ── Body size limits ──────────────────────────────────────────────────────────
 // Tighten JSON / urlencoded body limits to prevent large-payload DoS.
-// File uploads use multer (memoryStorage) with its own 20 MB limit.
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+// File uploads use busboy (parseMultipartForm) with its own per-handler limit.
+// IMPORTANT: skip JSON / urlencoded parsing for multipart requests so busboy
+// can read the raw stream — express.json() drains the body before busboy sees it.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const ct = req.headers['content-type'] ?? '';
+  if (ct.startsWith('multipart/form-data')) return next();
+  express.json({ limit: '2mb' })(req, res, next);
+});
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const ct = req.headers['content-type'] ?? '';
+  if (ct.startsWith('multipart/form-data')) return next();
+  express.urlencoded({ extended: true, limit: '2mb' })(req, res, next);
+});
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response, next: NextFunction) => {
