@@ -1,0 +1,59 @@
+{
+  "swms": [
+    {
+      "title": "General Site Safety — High Risk Construction Work",
+      "workActivity": "General construction site activities including earthworks, structural work, fit-out, and site establishment.",
+      "hazards": "• Falls from height\n• Being struck by plant or equipment\n• Manual handling injuries\n• Electrical hazards\n• Silica dust exposure\n• Noise\n• UV radiation\n• Slips, trips and falls",
+      "risks": "• Fall from height — HIGH\n• Struck by plant — HIGH\n• Manual handling injury — MEDIUM\n• Electric shock — HIGH\n• Silicosis — HIGH",
+      "controls": "• Implement fall prevention measures (guardrails, safety mesh, harness systems) for all work at height above 2 metres\n• Establish exclusion zones around operating plant\n• Use mechanical aids for heavy lifts\n• Isolate electrical hazards before work commences\n• Use wet cutting methods and on-tool extraction for silica-generating tasks\n• Provide and enforce use of appropriate PPE\n• Conduct daily pre-start briefings\n• Maintain site induction records for all workers",
+      "ppe": "• Safety helmet\n• High-visibility vest\n• Steel-capped safety boots\n• Safety glasses\n• Hearing protection (where required)\n• P2 respirator (for dust-generating tasks)\n• Gloves (task-appropriate)",
+      "plantEquipment": "• Scaffolding and elevated work platforms\n• Excavators, loaders, and site vehicles\n• Power tools and hand tools\n• Lifting equipment",
+      "trainingCompetency": "• Site induction\n• Working at heights training\n• Plant operator licences (where applicable)\n• First aid (at least one trained first aider on site)",
+      "emergencyControls": "• Emergency contacts displayed at site entry\n• First aid kit accessible at all times\n• Emergency assembly point established and communicated\n• Incident reporting procedure communicated to all workers",
+      "environmentalControls": "• Contain and manage spills immediately\n• Install sediment controls where required\n• Dispose of waste in accordance with applicable regulations",
+      "signOffRequirements": "All workers must sign on to this SWMS prior to commencing work.",
+      "revisionNumber": "1",
+      "status": "active"
+    },
+    {
+      "title": "Working at Heights",
+      "workActivity": "Any work performed at a height of 2 metres or more above ground or floor level, including roof work, scaffolding, elevated platforms, and ladder use.",
+      "hazards": "• Falls from height\n• Falling objects striking workers below\n• Unstable or inadequate work platforms\n• Ladder misuse or failure\n• Adverse weather conditions\n• Fatigue at height",
+      "risks": "• Fatal or serious injury from fall — CRITICAL\n• Struck by falling object — HIGH\n• Ladder fall — HIGH",
+      "controls": "• Eliminate work at height where possible through design or pre-fabrication at ground level\n• Use scaffolding with full guardrail systems (top rail, mid rail, kickboard) for sustained work at height\n• Use elevated work platforms (EWP) for mobile or short-duration tasks\n• Use fall arrest harness systems where collective protection is not practicable\n• Inspect all scaffolding and EWPs before use\n• Establish exclusion zones below work at height areas\n• Secure all tools and materials to prevent falling\n• Do not work at height in high winds or adverse weather\n• Ensure ladders are secured, on stable footing, and at correct angle (1:4 ratio)\n• Maintain three points of contact on ladders at all times",
+      "ppe": "• Safety helmet\n• Full-body harness and lanyard (where required)\n• Safety footwear\n• High-visibility vest\n• Gloves",
+      "plantEquipment": "• Scaffolding systems\n• Elevated work platforms (scissor lifts, boom lifts)\n• Extension ladders and step ladders\n• Safety nets and catch platforms",
+      "trainingCompetency": "• Working at heights training (nationally recognised)\n• EWP operator training (where applicable)\n• Scaffolding licence (where applicable)\n• Site induction",
+      "emergencyControls": "• Emergency rescue plan for suspended workers\n• First aid kit accessible at all times\n• Emergency contacts displayed at site entry\n• Call 000 immediately for any fall incident",
+      "environmentalControls": "• Secure materials to prevent wind-blown debris\n• Collect and dispose of waste from elevated areas safely",
+      "signOffRequirements": "All workers must sign on to this SWMS prior to commencing any work at height.",
+      "revisionNumber": "1",
+      "status": "active"
+    },
+    {
+      "title": "Excavation and Trenching",
+      "workActivity": "Excavation, trenching, and earthworks activities including machine excavation, hand digging, and installation of services in trenches.",
+      "hazards": "• Trench collapse and engulfment\n• Underground services (gas, electrical, water, telecommunications)\n• Plant and vehicle movement near excavations\n• Falls into excavations\n• Flooding or water ingress\n• Unstable spoil heaps\n• Confined space conditions in deep excavations",
+      "risks": "• Engulfment from trench collapse — CRITICAL\n• Utility strike — CRITICAL\n• Fall into excavation — HIGH\n• Struck by plant — HIGH",
+      "controls": "• Conduct Dial Before You Dig (DBYD) search and obtain service plans before any excavation\n• Use cable/service locator to identify underground services before and during excavation\n• Hand dig within 300mm of identified services\n• Implement trench support (shoring, battering, or benching) for excavations deeper than 1.5 metres\n• Inspect trench walls daily and after rain or vibration events\n• Establish exclusion zones around excavations; barricade open excavations\n• Position spoil heaps at least 1 metre from trench edge\n• Provide safe means of entry and exit (ladder) for all trenches deeper than 1.5 metres\n• Monitor for hazardous atmospheres in deep excavations\n• Manage surface water to prevent flooding",
+      "ppe": "• Safety helmet\n• High-visibility vest\n• Safety footwear\n• Safety glasses\n• Gloves",
+      "plantEquipment": "• Excavators and backhoes (licensed operators)\n• Trench shoring systems\n• Cable/service locators\n• Pumps for dewatering",
+      "trainingCompetency": "• Excavator operator licence (where applicable)\n• Trenching and excavation safety training\n• DBYD awareness\n• Site induction",
+      "emergencyControls": "• Emergency rescue plan for trench collapse\n• Call 000 immediately for any engulfment or utility strike\n• First aid kit accessible at all times\n• Emergency contacts displayed at site entry",
+      "environmentalControls": "• Manage sediment and erosion from excavations\n• Prevent spoil and water from entering stormwater drains\n• Dispose of contaminated soil in accordance with applicable regulations",
+      "signOffRequirements": "All workers must sign on to this SWMS prior to commencing any excavation or trenching work.",
+      "revisionNumber": "1",
+      "status": "active"
+    }
+  ],
+  "safetyPlan": {
+    "title": "Site Safety Management Plan — Starter Template",
+    "isPrincipalContractor": true,
+    "siteRules": "All workers must complete a site induction before entering the work area.\nPPE (hard hat, hi-vis vest, steel-capped boots) must be worn at all times.\nNo alcohol or drugs on site.\nAll hazards and incidents must be reported to the site supervisor immediately.\nMobile phones must not be used while operating plant or equipment.",
+    "emergencyProcedures": "In an emergency: call 000 immediately.\nEvacuate to the designated assembly point.\nDo not re-enter the site until the all-clear is given.\nNotify the site supervisor and complete an incident report.",
+    "firstAidArrangements": "A first aid kit is maintained on site at all times.\nAt least one trained first aider must be present on site during work hours.\nThe nearest hospital and emergency services are identified in the site induction.",
+    "incidentReporting": "All incidents, near misses, and hazards must be reported to the site supervisor immediately.\nComplete an Incident Report form for all incidents.\nSerious incidents must be reported to the relevant WHS regulator.",
+    "hazardManagement": "Conduct a Job Safety Analysis (JSA) or SWMS for all high-risk construction work.\nConduct daily pre-start briefings to identify and address hazards.\nAll workers are empowered to stop work if they identify an unsafe condition.",
+    "status": "active"
+  }
+}

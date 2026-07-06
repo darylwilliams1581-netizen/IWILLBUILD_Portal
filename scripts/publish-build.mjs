@@ -231,4 +231,23 @@ try {
   console.warn('  WARNING: could not copy seed data:', e.message);
 }
 
+// ── Stage SSR artifacts so the next git commit includes them ─────────────────
+// The publish platform skips npm run build when it finds server.bundle.mjs
+// already committed in the repo. Staging here ensures every publish commit
+// ships the freshly-built bundle so the platform always has a current artifact.
+console.log('> git add dist artifacts');
+try {
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('git', [
+    'add', '-f',
+    'dist/server.bundle.mjs',
+    'dist/entry.mjs',
+    'dist/server/',
+  ], { cwd: root, stdio: 'inherit' });
+  console.log('  dist artifacts staged.');
+} catch (e) {
+  // Non-fatal in CI environments where git may not be available
+  console.warn('  WARNING: could not stage dist artifacts:', e.message);
+}
+
 process.exit(0);
