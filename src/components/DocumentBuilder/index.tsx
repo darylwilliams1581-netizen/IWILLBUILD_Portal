@@ -106,6 +106,36 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     reorderBlocks(blocks);
   };
 
+  /** Auto-save before DOCX import when templateId is null. Returns the saved id or null on failure. */
+  const handleSaveFirst = useCallback(async (): Promise<number | null> => {
+    if (templateId) return templateId;
+    if (isSaving) return null;
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      const payload = getSerialised();
+      const res = await fetch('/api/document-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json() as { id?: number; ok?: boolean; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      const savedId = data.id!;
+      markSaved(savedId);
+      setSaveStatus('saved');
+      onSaved?.(savedId);
+      setTimeout(() => setSaveStatus('idle'), 2500);
+      return savedId;
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [templateId, isSaving, getSerialised, markSaved, onSaved]);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
@@ -193,6 +223,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             templateId={templateId}
             onClose={() => setShowDocxImporter(false)}
             onImported={handleDocxImported}
+            onSaveFirst={handleSaveFirst}
           />
         )}
       </AnimatePresence>

@@ -13,14 +13,18 @@ interface Props {
   templateId: number | null;
   onClose: () => void;
   onImported: (blocks: DocumentBlock[], docxName: string) => void;
+  /** Called when templateId is null — should save the template and return the new id, or null on failure */
+  onSaveFirst: () => Promise<number | null>;
 }
 
-export default function DocxImporter({ templateId, onClose, onImported }: Props) {
+export default function DocxImporter({ templateId, onClose, onImported, onSaveFirst }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ blocks: DocumentBlock[]; name: string; warnings: string[] } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Resolved id — may be updated by auto-save when templateId is null
+  const [resolvedId, setResolvedId] = useState<number | null>(templateId);
 
   const handleFile = (f: File) => {
     if (!f.name.endsWith('.docx')) {
@@ -40,16 +44,25 @@ export default function DocxImporter({ templateId, onClose, onImported }: Props)
 
   const handleParse = async () => {
     if (!file) return;
-    if (!templateId) {
-      setError('Please save the template first before importing a DOCX.');
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
+      // If no template has been saved yet, auto-save first to get an id
+      let id = resolvedId;
+      if (!id) {
+        setError(null);
+        const saved = await onSaveFirst();
+        if (!saved) {
+          setError('Could not save the template — please try saving manually first.');
+          setLoading(false);
+          return;
+        }
+        id = saved;
+        setResolvedId(saved);
+      }
       const formData = new FormData();
       formData.append('docx', file);
-      const res = await fetch(`/api/document-templates/${templateId}/import-docx`, {
+      const res = await fetch(`/api/document-templates/${id}/import-docx`, {
         method: 'POST',
         body: formData,
       });
@@ -147,7 +160,7 @@ export default function DocxImporter({ templateId, onClose, onImported }: Props)
                 disabled={!file || loading}
                 className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 size={14} className="animate-spin" /> Parsing...</> : 'Parse Document'}
+                {loading ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing...' : 'Saving & Parsing...'}</> : 'Parse Document'}
               </button>
             </>
           )}
