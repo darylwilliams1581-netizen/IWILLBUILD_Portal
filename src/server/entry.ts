@@ -10,12 +10,14 @@ import { requirePlatformOwner } from './lib/platform-owner-guard.js';
 // Imported here so Rollup includes them in the single server.bundle entry
 // (no separate rollupOptions.input entries needed — single-entry build uses
 // far less peak memory than a 7-entry parallel build).
-import { register as registerJobsRoutes } from './routes-jobs.js';
-import { register as registerSafetyRoutes } from './routes-safety.js';
-import { register as registerDeveloperRoutes } from './routes-developer.js';
-import { register as registerIntegrationsRoutes } from './routes-integrations.js';
-import { register as registerSettingsRoutes } from './routes-settings.js';
-import { register as registerFleetRoutes } from './routes-fleet.js';
+// Using namespace imports (import * as X) so the named `register` export
+// is accessible regardless of how Vite's SSR module runner wraps the module.
+import * as _routesJobs from './routes-jobs.js';
+import * as _routesSafety from './routes-safety.js';
+import * as _routesDeveloper from './routes-developer.js';
+import * as _routesIntegrations from './routes-integrations.js';
+import * as _routesSettings from './routes-settings.js';
+import * as _routesFleet from './routes-fleet.js';
 
 // <api-imports>
 import _h_active_ping_post_0 from "./api/active-ping/POST";
@@ -1397,12 +1399,12 @@ app.get("/api/usage", _h_usage_get_407);
 // Register route group slices (jobs, safety, fleet, developer, integrations, settings).
 // These were split into separate files to keep entry.ts manageable; they are
 // imported statically above so Rollup includes them in the single bundle.
-registerJobsRoutes(app);
-registerSafetyRoutes(app);
-registerDeveloperRoutes(app);
-registerIntegrationsRoutes(app);
-registerSettingsRoutes(app);
-registerFleetRoutes(app);
+_routesJobs.register(app);
+_routesSafety.register(app);
+_routesDeveloper.register(app);
+_routesIntegrations.register(app);
+_routesSettings.register(app);
+_routesFleet.register(app);
 
 // </api-registrations>
 

@@ -197,19 +197,18 @@ const ssrCode = await run(
     // V8 ~70 MB of headroom to GC before hitting the ceiling.
     // Static imports (restored by restore-entry-static.mjs) allow Rollup to
     // tree-shake the 408 handler modules — only reachable code is bundled.
-    // Heap ceiling: 3000 MB. The publish container has 128 GB RAM available
-    // (confirmed via /proc/meminfo). Previous builds OOM-killed at 1066 MB
-    // against a 1100 MB ceiling — the ceiling was the bottleneck, not the
-    // container. Raising to 3000 MB gives Rollup's render phase ample headroom
-    // while still capping runaway allocations well below the container limit.
-    // --max-semi-space-size=2 keeps the nursery small → frequent minor GCs →
-    // lower old-gen accumulation during Rollup's transform phase.
-    // Additional SSR memory savings applied in vite.config.ts:
-    //   - date-fns-jalali (15.5 MB) aliased to browser-only-stub
-    //   - jsdom (11.2 MB) aliased to browser-only-stub
-    //   - lucide-react + @heroicons aliased to icon-stub (~53 MB)
-    //   - 169 duplicate handler imports removed from entry.ts (dedup-entry-routes)
-    '--max-old-space-size=3000',
+    // Heap ceiling: 1200 MB.
+    // Architecture: single Rollup entry point (server.bundle only).
+    // Route group files are imported statically from entry.ts via
+    // register() calls — no separate rollupOptions.input entries.
+    // This means Rollup builds ONE module graph sequentially instead of
+    // 7 in parallel, reducing peak RSS from ~1.1 GB to ~600-800 MB.
+    // Additional SSR memory savings in vite.config.ts:
+    //   - date-fns-jalali (15.5 MB) → browser-only-stub
+    //   - jsdom (11.2 MB) → browser-only-stub
+    //   - lucide-react + @heroicons → icon-stub (~53 MB)
+    // 1200 MB ceiling gives ~400 MB headroom above expected peak.
+    '--max-old-space-size=1200',
     '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],

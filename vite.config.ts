@@ -270,8 +270,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // The entry point is still server.bundle.mjs; heavy deps land in bin/.
       output: {
         format: "es",
-        // Use [name].mjs for entry points so server.bundle stays server.bundle.mjs
-        // and route group entries get their own named files (routes-jobs.mjs etc.)
+        // Use [name].mjs for entry points so server.bundle stays server.bundle.mjs.
+        // Route group files are no longer separate entry points — they are
+        // imported statically from entry.ts and bundled as regular chunks.
         entryFileNames: "[name].mjs",
         chunkFileNames: "bin/[name]-[hash].js",
         banner: "import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);",
