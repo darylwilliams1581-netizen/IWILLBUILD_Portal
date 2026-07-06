@@ -23,7 +23,7 @@ export default function PlanManagerPage() {
   }, [tab, loadDrawings]);
 
   // ── CRUD helpers ──────────────────────────────────────────────────────────
-  const handleCreate = useCallback(async (title: string): Promise<number | null> => {
+  const handleCreate = useCallback(async (title: string, file?: File): Promise<number | null> => {
     try {
       const res = await fetch('/api/plan-manager/drawings', {
         method: 'POST',
@@ -31,11 +31,18 @@ export default function PlanManagerPage() {
         body: JSON.stringify({ title }),
       });
       const data = await res.json() as { id?: number; error?: string };
-      if (!res.ok) return null;
+      if (!res.ok || !data.id) return null;
+      const id = data.id;
+
+      // If a PDF was selected, upload it immediately before opening the viewer
+      if (file) {
+        await hook.uploadPdf(id, file);
+      }
+
       await loadDrawings(tab);
-      return data.id ?? null;
+      return id;
     } catch { return null; }
-  }, [tab, loadDrawings]);
+  }, [tab, loadDrawings, hook]);
 
   const handleOpen = useCallback(async (id: number) => {
     await loadDrawing(id);

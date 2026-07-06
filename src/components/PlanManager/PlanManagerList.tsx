@@ -1,11 +1,11 @@
 /**
- * PlanManagerList — drawings list with create, upload, archive, and search.
+ * PlanManagerList — drawings list with upload, archive, and search.
  */
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   Plus, Search, FileText, MoreHorizontal, Archive, RotateCcw,
-  Trash2, Lock, Loader2, Upload, GitBranch, Clock,
+  Trash2, Lock, Loader2, Upload, GitBranch, Clock, X, FilePlus2,
 } from 'lucide-react';
 import type { Drawing } from './types';
 
@@ -14,7 +14,7 @@ interface Props {
   loading: boolean;
   tab: 'active' | 'archived';
   onOpen: (id: number) => void;
-  onCreate: (title: string) => Promise<number | null>;
+  onCreate: (title: string, file?: File) => Promise<number | null>;
   onArchive: (id: number) => Promise<void>;
   onRestore: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -31,21 +31,58 @@ export default function PlanManagerList({
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
   const [menuId, setMenuId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = drawings.filter(d =>
     d.title.toLowerCase().includes(search.toLowerCase())
   );
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfFile(file);
+    // Auto-fill title from filename if empty
+    if (!newTitle.trim()) {
+      setNewTitle(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
+    }
+  }
+
+  function handleDropZoneClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setPdfFile(file);
+      if (!newTitle.trim()) {
+        setNewTitle(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
+      }
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function closeModal() {
+    setShowCreate(false);
+    setNewTitle('');
+    setPdfFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   async function handleCreate() {
     if (!newTitle.trim()) return;
     setCreating(true);
-    const id = await onCreate(newTitle.trim());
+    const id = await onCreate(newTitle.trim(), pdfFile ?? undefined);
     setCreating(false);
     if (id) {
-      setShowCreate(false);
-      setNewTitle('');
+      closeModal();
       onOpen(id);
     }
   }
@@ -69,7 +106,7 @@ export default function PlanManagerList({
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
           >
-            <Plus size={15} /> New Drawing
+            <Upload size={15} /> Drawing Upload
           </button>
         )}
       </div>
@@ -90,9 +127,9 @@ export default function PlanManagerList({
             {!search && tab === 'active' && (
               <button
                 onClick={() => setShowCreate(true)}
-                className="mt-2 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+                className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
               >
-                Create your first drawing
+                <Upload size={14} /> Upload your first drawing
               </button>
             )}
           </div>
@@ -192,35 +229,98 @@ export default function PlanManagerList({
         )}
       </div>
 
-      {/* Create modal */}
+      {/* Upload / Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <h3 className="text-sm font-bold text-slate-100 mb-4">New Drawing</h3>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Drawing title (e.g. Ground Floor Plan)"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              className="w-full px-3 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500 mb-4"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setShowCreate(false); setNewTitle(''); }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-sm hover:bg-slate-700 transition-colors"
-              >
-                Cancel
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                  <FilePlus2 size={15} className="text-orange-400" />
+                </div>
+                <p className="text-sm font-bold text-slate-100">Drawing Upload</p>
+              </div>
+              <button onClick={closeModal} className="text-slate-500 hover:text-slate-300 transition-colors">
+                <X size={18} />
               </button>
-              <button
-                onClick={handleCreate}
-                disabled={!newTitle.trim() || creating}
-                className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-              >
-                {creating && <Loader2 size={13} className="animate-spin" />}
-                Create
-              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-4">
+              {/* PDF drop zone */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-2 block">PDF Drawing</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <div
+                  onClick={handleDropZoneClick}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className={[
+                    'w-full rounded-xl border-2 border-dashed cursor-pointer transition-colors flex flex-col items-center justify-center gap-2 py-8',
+                    pdfFile
+                      ? 'border-orange-500/60 bg-orange-500/5'
+                      : 'border-slate-600 hover:border-orange-500/50 hover:bg-slate-700/30',
+                  ].join(' ')}
+                >
+                  {pdfFile ? (
+                    <>
+                      <FileText size={28} className="text-orange-400" />
+                      <p className="text-sm font-semibold text-slate-100 text-center px-4 truncate max-w-full">{pdfFile.name}</p>
+                      <p className="text-xs text-slate-500">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB · Click to change</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={28} className="text-slate-500" />
+                      <p className="text-sm font-semibold text-slate-300">Click to select PDF</p>
+                      <p className="text-xs text-slate-500">or drag and drop here</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-2 block">Drawing Title</label>
+                <input
+                  autoFocus={!pdfFile}
+                  type="text"
+                  placeholder="e.g. Ground Floor Plan"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  className="w-full px-3 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-sm hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreate}
+                  disabled={!newTitle.trim() || creating}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      {pdfFile ? 'Uploading…' : 'Creating…'}
+                    </>
+                  ) : (
+                    <>{pdfFile ? 'Upload & Open' : 'Create'}</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
