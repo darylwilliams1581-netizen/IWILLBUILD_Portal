@@ -8,6 +8,7 @@ import {
   ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import CustomerSelector from '@/components/CustomerSelector';
@@ -591,6 +592,22 @@ export default function InvoiceBuilderPage() {
                     <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
                       <Printer size={13} />Print / PDF
                     </button>
+                  )}
+                  {/* Send via Outlook */}
+                  {!isNew && invoice && (
+                    <OutlookEmailButton
+                      context={{
+                        kind: 'invoice',
+                        invoiceNumber: invoice.invoiceNumber ?? `#${invoice.id}`,
+                        customerName: invoice.customerName ?? undefined,
+                        totalAmount: fmtMoney(Number(invoice.totalAmount ?? 0)),
+                        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+                        status: STATUS_LABELS[invoice.status as InvoiceStatus] ?? invoice.status,
+                        link: `${window.location.origin}/view/invoice/${invoice.id}`,
+                      }}
+                      size="sm"
+                      showCopy
+                    />
                   )}
                   {!isNew && canEdit && (
                     <button

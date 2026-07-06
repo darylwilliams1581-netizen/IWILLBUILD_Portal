@@ -7,6 +7,7 @@ import {
   Edit2, X, Check, Loader2, AlertTriangle, Share2, Camera,
   ChevronDown, ExternalLink, Copy,
 } from 'lucide-react';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 
 interface Asset { id: number; name: string; acronym: string | null; }
 interface Inspection {
@@ -36,7 +37,7 @@ export default function AMInspectionsTab() {
   const [expandId, setExpandId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [shareResult, setShareResult] = useState<{ id: number; url: string } | null>(null);
+  const [shareResult, setShareResult] = useState<{ id: number; url: string; inspection?: Inspection } | null>(null);
   const [error, setError] = useState('');
   const [uploadingFor, setUploadingFor] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -101,7 +102,10 @@ export default function AMInspectionsTab() {
       body: JSON.stringify({ expires_days: 30 }),
     });
     const d = await r.json() as { shareUrl?: string };
-    if (d.shareUrl) setShareResult({ id, url: `${window.location.origin}${d.shareUrl}` });
+    if (d.shareUrl) {
+      const insp = inspections.find((i) => i.id === id);
+      setShareResult({ id, url: `${window.location.origin}${d.shareUrl}`, inspection: insp });
+    }
   }
 
   async function handlePhotoUpload(inspectionId: number, file: File) {
@@ -150,9 +154,9 @@ export default function AMInspectionsTab() {
 
       {/* Share result */}
       {shareResult && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center gap-3">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
           <Share2 size={14} className="text-emerald-400 flex-shrink-0" />
-          <p className="text-xs text-emerald-300 flex-1 truncate">{shareResult.url}</p>
+          <p className="text-xs text-emerald-300 flex-1 truncate min-w-0">{shareResult.url}</p>
           <button onClick={() => { void navigator.clipboard.writeText(shareResult.url); }}
             className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 rounded text-xs text-emerald-300 hover:bg-emerald-500/30 transition-colors">
             <Copy size={11} />Copy
@@ -161,6 +165,22 @@ export default function AMInspectionsTab() {
             className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 rounded text-xs text-emerald-300 hover:bg-emerald-500/30 transition-colors">
             <ExternalLink size={11} />Open
           </a>
+          {shareResult.inspection && (
+            <OutlookEmailButton
+              context={{
+                kind: 'asset',
+                assetName: shareResult.inspection.asset_name,
+                assetAcronym: shareResult.inspection.asset_acronym ?? undefined,
+                inspectionTitle: shareResult.inspection.report_title ?? shareResult.inspection.report_no ?? undefined,
+                inspectionDate: shareResult.inspection.inspection_date
+                  ? new Date(shareResult.inspection.inspection_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : undefined,
+                link: shareResult.url,
+              }}
+              size="xs"
+              variant="ghost"
+            />
+          )}
           <button onClick={() => setShareResult(null)}><X size={13} className="text-slate-500" /></button>
         </div>
       )}

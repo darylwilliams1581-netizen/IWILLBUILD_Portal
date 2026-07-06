@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Share2, Copy, Check, X, Link, Calendar } from 'lucide-react';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 
 interface Props {
   drawingId: number;
@@ -111,6 +112,18 @@ export default function ShareModal({ drawingId, drawingTitle, revisionId, onClos
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
+
+              <OutlookEmailButton
+                context={{
+                  kind: 'plan',
+                  drawingTitle,
+                  link: result.url,
+                }}
+                size="sm"
+                variant="outline"
+                showCopy={false}
+                className="w-full justify-center [&>button]:w-full [&>button]:justify-center"
+              />
 
               <button
                 onClick={() => setResult(null)}

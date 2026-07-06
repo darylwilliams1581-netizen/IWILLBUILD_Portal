@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Printer, X, Loader2, AlertTriangle, Receipt } from 'lucide-react';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
   fetchInvoice, fmtMoney, STATUS_LABELS, STATUS_COLORS,
-  type Invoice,
+  type Invoice, type InvoiceStatus,
 } from '@/lib/invoices-api';
 
 export default function ViewInvoicePage() {
@@ -60,6 +61,19 @@ export default function ViewInvoicePage() {
                 <Printer size={13} />
                 Print
               </button>
+              <OutlookEmailButton
+                context={{
+                  kind: 'invoice',
+                  invoiceNumber: invoice.invoiceNumber ?? `#${invoice.id}`,
+                  customerName: invoice.customerName ?? undefined,
+                  totalAmount: fmtMoney(Number(invoice.totalAmount ?? 0)),
+                  dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
+                  status: STATUS_LABELS[invoice.status as InvoiceStatus] ?? invoice.status,
+                  link: window.location.href,
+                }}
+                size="sm"
+                showCopy
+              />
               <a
                 href={`/invoices/${invoice.id}`}
                 className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"

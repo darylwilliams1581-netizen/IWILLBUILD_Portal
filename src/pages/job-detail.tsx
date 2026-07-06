@@ -23,13 +23,13 @@ import {
   CheckSquare,
   TrendingUp,
   Upload,
+  Mail,
   ClipboardList,
   ShieldAlert,
   Receipt,
   Clock,
   UserCheck,
   Phone,
-  Mail,
   ExternalLink,
   DollarSign,
   Users,
@@ -38,6 +38,7 @@ import {
   Layers,
   Image,
 } from 'lucide-react';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import JobPhotos from '@/components/JobPhotos';
@@ -312,6 +313,19 @@ export default function JobDetailPage() {
           <div className="flex items-center gap-2 shrink-0">
             <FleetHeaderIcon />
           {job && !editing && (
+            <>
+              <OutlookEmailButton
+                context={{
+                  kind: 'job',
+                  jobNumber: job.jobNumber ?? `#${job.id}`,
+                  jobName: job.name,
+                  status: job.status,
+                  customerName: job.customerName ?? undefined,
+                  siteAddress: job.siteAddress ?? undefined,
+                  link: `${window.location.origin}/jobs/${job.id}`,
+                }}
+                size="sm"
+              />
             <button
               onClick={() => setEditing(true)}
               className="flex items-center gap-2 text-sm font-semibold text-primary hover:bg-orange-50 px-3 py-1.5 rounded-lg transition-colors shrink-0"
@@ -319,6 +333,7 @@ export default function JobDetailPage() {
               <Edit2 size={14} />
               <span className="hidden sm:inline">Edit</span>
             </button>
+            </>
           )}
           {editing && (
             <div className="flex items-center gap-2 shrink-0">

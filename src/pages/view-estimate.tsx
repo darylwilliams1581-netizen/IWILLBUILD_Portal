@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Printer, Download, X, Loader2, AlertTriangle, FileText } from 'lucide-react';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
   fetchEstimate, estimateTotals, lineCalc, getEstimateStatusStyle,
   type Estimate, type EstimateLine,
@@ -71,6 +72,17 @@ export default function ViewEstimatePage() {
                 <Printer size={13} />
                 Print
               </button>
+              <OutlookEmailButton
+                context={{
+                  kind: 'estimate',
+                  estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
+                  customerName: estimate.customerName ?? undefined,
+                  status: estimate.status,
+                  link: window.location.href,
+                }}
+                size="sm"
+                showCopy
+              />
               <a
                 href={`/estimates/${estimate.id}`}
                 className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"

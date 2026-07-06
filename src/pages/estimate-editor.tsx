@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
+import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
   estimateTotals, lineCalc, ESTIMATE_STATUSES, GST_MODES,
@@ -447,6 +448,23 @@ export default function EstimateEditorPage() {
               <Printer size={14} />
               <span className="hidden sm:inline">Print</span>
             </button>
+
+            {/* Send via Outlook */}
+            {estimate && (
+              <OutlookEmailButton
+                context={{
+                  kind: 'estimate',
+                  estimateNumber: estimate.estimateNumber ?? `#${estimate.id}`,
+                  jobName: job?.name,
+                  customerName: estimate.customerName ?? undefined,
+                  totalAmount: (() => { const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST'); return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); })(),
+                  status: estimate.status,
+                  link: `${window.location.origin}/view/estimate/${estimate.id}`,
+                }}
+                size="sm"
+                showCopy
+              />
+            )}
 
             {/* Export PDF */}
             <button
