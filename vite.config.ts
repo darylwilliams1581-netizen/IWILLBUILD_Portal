@@ -93,9 +93,20 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // During SSR build, redirect browser-only packages to an empty stub so
       // they are not bundled into server.bundle.mjs. This saves ~400 kB of
       // uncompressed JS and reduces peak Rollup memory by ~200 MB.
+      // NOTE: use a customResolver so subpath imports (e.g. react-pdf/dist/Page/AnnotationLayer.css)
+      // are also intercepted — a plain regex replacement would concatenate the stub path
+      // with the subpath suffix, producing a broken file path.
       ...(isSsrBuild ? [
-        { find: /^react-pdf($|\/)/, replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts') },
-        { find: /^pdfjs-dist($|\/)/, replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts') },
+        {
+          find: /^react-pdf(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^pdfjs-dist(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },
