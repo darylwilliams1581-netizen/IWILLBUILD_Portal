@@ -7,8 +7,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   CalendarDays, Clock, DollarSign, Plus, ChevronLeft, ChevronRight,
-  Loader2, AlertCircle, Check, X, Download, Filter, Edit2, Trash2,
-  CheckCircle2, XCircle, Clock3, Users, MoreHorizontal, RefreshCw,
+  Loader2, AlertCircle, Check, X, Download, Edit2, Trash2,
+  CheckCircle2, XCircle, Users, RefreshCw,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -106,7 +106,7 @@ const STATUS_SHIFT: Record<string, { label: string; color: string; bg: string; d
 };
 
 const STATUS_TIME: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pending:  { label: 'Pending',  color: 'text-amber-600',   icon: Clock3 },
+  pending:  { label: 'Pending',  color: 'text-amber-600',   icon: Clock },
   approved: { label: 'Approved', color: 'text-emerald-600', icon: CheckCircle2 },
   rejected: { label: 'Rejected', color: 'text-red-500',     icon: XCircle },
 };
@@ -738,7 +738,7 @@ export default function TeamSchedulePage() {
                   <span className="text-sm font-bold text-emerald-600">${totalPay.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock3 size={14} className="text-amber-400" />
+                  <Clock size={14} className="text-amber-400" />
                   <span className="text-xs text-slate-500">Pending:</span>
                   <span className="text-sm font-bold text-amber-600">{timeEntries.filter(e => e.status === 'pending').length}</span>
                 </div>
