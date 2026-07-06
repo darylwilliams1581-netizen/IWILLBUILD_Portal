@@ -335,7 +335,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
-    minify: 'esbuild',
+    // SSR bundle runs server-side — minification saves no bytes at runtime
+    // and costs ~5–8 s of esbuild time. Disable it to stay under the pipeline
+    // build timeout.
+    minify: false,
     // ssr: true enables SSR mode (noExternal, CJS interop) without overriding
     // rollupOptions.input. When ssr is a string, Vite replaces input with that
     // string — using `true` lets us declare multiple entry points below so
