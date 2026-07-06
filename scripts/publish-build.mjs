@@ -29,15 +29,23 @@ function isHarmlessSandboxWarn(line) {
 
 /**
  * Run a command, filter its stderr, and resolve with the exit code.
- * stdout is always inherited (passed through untouched).
- * heartbeatMs: if set, emit a "." to stdout every N ms while the process runs.
- * This prevents the pipeline's HTTP idle-timeout from dropping the connection
- * during long silent phases (e.g. Rollup's render phase in the SSR build).
+ *
+ * stdout handling:
+ *   The child's stdout is piped (not inherited) so we can interleave heartbeat
+ *   dots with the child's own output on the same stream. This ensures the
+ *   pipeline sees activity on stdout even during Vite/Rollup's silent phases.
+ *
+ * heartbeatMs: emit a "." to stdout every N ms while the process runs.
+ *   This prevents the pipeline's HTTP idle-timeout from dropping the connection
+ *   during long silent phases (e.g. Rollup's render phase in the SSR build,
+ *   which is completely silent for ~50 s).
  */
 function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
-      stdio: ['inherit', 'inherit', 'pipe'],
+      // Pipe both stdout and stderr so we control what reaches the pipeline.
+      // stdin is still inherited (build tools don't need it but it's harmless).
+      stdio: ['inherit', 'pipe', 'pipe'],
       shell: false,
       env: { ...process.env, ...env },
     });
@@ -47,8 +55,18 @@ function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
       heartbeat = setInterval(() => process.stdout.write('.'), heartbeatMs);
     }
 
-    let buf = '';
+    // Forward child stdout verbatim
+    child.stdout.on('data', (chunk) => {
+      if (heartbeat) {
+        // Flush a newline before child output so dots don't run into log lines
+        process.stdout.write('\n');
+        clearInterval(heartbeat);
+        heartbeat = setInterval(() => process.stdout.write('.'), heartbeatMs);
+      }
+      process.stdout.write(chunk);
+    });
 
+    let buf = '';
     child.stderr.on('data', (chunk) => {
       buf += chunk.toString();
       const lines = buf.split('\n');
@@ -69,7 +87,7 @@ function run(cmd, args, env = {}, { heartbeatMs = 0 } = {}) {
     child.on('close', (code, signal) => {
       if (heartbeat) {
         clearInterval(heartbeat);
-        process.stdout.write('\n'); // newline after the dots
+        process.stdout.write('\n'); // newline after the final dots
       }
       if (signal) {
         process.stderr.write(`[publish-build] process killed by signal: ${signal}\n`);
@@ -225,7 +243,7 @@ const clientCode = await run(
   process.execPath,
   ['--max-old-space-size=896', vite, 'build'],
   {},
-  { heartbeatMs: 10_000 },
+  { heartbeatMs: 3_000 },
 );
 
 if (clientCode !== 0) {
@@ -269,12 +287,12 @@ const ssrCode = await run(
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
-  // Emit a heartbeat dot every 10 s during the SSR build.
+  // Emit a heartbeat dot every 3 s during the SSR build.
   // Rollup's render phase is completely silent on stdout for ~50 s, which
   // causes the publish pipeline's HTTP idle-timeout to drop the connection
-  // ("socket hang up"). The dots keep the connection alive without polluting
-  // the build log with fake progress lines.
-  { heartbeatMs: 10_000 },
+  // ("socket hang up"). Piping stdout (not inheriting) lets us interleave
+  // dots with Vite's own output so the pipeline always sees activity.
+  { heartbeatMs: 3_000 },
 );
 
 if (ssrCode !== 0) {
