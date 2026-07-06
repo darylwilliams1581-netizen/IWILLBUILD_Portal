@@ -24,6 +24,7 @@ import {
   Bot,
   Layers,
   Map,
+  Building2,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -61,9 +62,10 @@ function buildNavItems(_workPlural: string) {
     { label: 'Stakeholders', icon: UserCheck,       href: '/customers',   permKey: 'jobs' },
     { label: 'Files',        icon: FolderOpen,      href: '/files',       permKey: 'files' },
     { label: 'Forms',        icon: ClipboardList,   href: '/forms',       permKey: null },
-    { label: 'Studio',       icon: Layers,          href: '/studio',        permKey: null },
-    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',  permKey: null },
-    { label: 'Schedule',     icon: CalendarDays,    href: '/team/schedule', permKey: null },
+    { label: 'Studio',       icon: Layers,          href: '/studio',              permKey: null },
+    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',        permKey: null },
+    { label: 'Asset Manager',icon: Building2,       href: '/studio/asset-manager',permKey: null },
+    { label: 'Schedule',     icon: CalendarDays,    href: '/team/schedule',       permKey: null },
     { label: 'Ledger',       icon: Receipt,         href: '/invoices',      permKey: 'invoices' },
     { label: 'Dazza AI',     icon: Bot,             href: '/dazza-ai',    permKey: null },
   ] as const;

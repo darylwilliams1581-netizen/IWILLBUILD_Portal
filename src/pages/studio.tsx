@@ -8,7 +8,7 @@ import {
   ClipboardList, Truck, Users, BarChart2, Wrench,
   Package, Map, Camera, BookOpen, Zap, Star,
   ChevronRight, Plus, Clock, CheckCircle2, Lock,
-  FilePlus2, MoreHorizontal,
+  FilePlus2, MoreHorizontal, Building2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -41,6 +41,9 @@ interface StudioModule {
 // ── Module definitions ────────────────────────────────────────────────────────
 
 const MODULES: StudioModule[] = [
+  // ── Standalone Modules (navigate to dedicated pages) ──────────────────────
+  { id: 'asset-manager',      label: 'Asset Manager',         description: 'Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents',  icon: Building2,     status: 'available',   category: 'Planning',   color: '#06b6d4' },
+  { id: 'plan-manager',       label: 'Plan Manager',          description: 'Upload drawings, annotate with redlines, manage revisions and share view-only links',       icon: Map,           status: 'available',   category: 'Planning',   color: '#6366f1' },
   // Documents & Contracts
   { id: 'quote-builder',       label: 'Quote Builder',         description: 'Professional quotes with line items, markup and GST',         icon: Calculator,    status: 'coming_soon', category: 'Documents',  color: '#f97316' },
   { id: 'contract-builder',    label: 'Contract Builder',      description: 'Build and send contracts with e-signature ready blocks',       icon: FileText,      status: 'coming_soon', category: 'Documents',  color: '#f97316' },
@@ -107,6 +110,8 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
 
   function handleClick() {
     if (isAvailable) {
+      if (mod.id === 'asset-manager') { navigate('/studio/asset-manager'); return; }
+      if (mod.id === 'plan-manager')  { navigate('/plan-manager'); return; }
       navigate(`/studio/builder/new?type=${mod.id}`);
     }
   }

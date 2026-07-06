@@ -175,6 +175,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/portal\// },
   // Push notifications — VAPID public key is not sensitive
   { method: 'GET',  pattern: /^\/api\/push\/vapid-key$/ },
+  // Asset Manager — public share report (token-validated)
+  { method: 'GET',  pattern: /^\/api\/asset-manager\/reports\/[^/]+$/ },
 ];
 
 /**

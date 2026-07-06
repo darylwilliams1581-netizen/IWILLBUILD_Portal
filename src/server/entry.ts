@@ -465,6 +465,33 @@ import usage_get_423 from "./api/usage/GET";
 import push_vapid_key_get from "./api/push/vapid-key/GET";
 import push_subscribe_post from "./api/push/subscribe/POST";
 import push_subscribe_delete from "./api/push/subscribe/DELETE";
+// Asset Manager
+import am_assets_get from "./api/asset-manager/assets/GET";
+import am_assets_post from "./api/asset-manager/assets/POST";
+import am_assets_id_get from "./api/asset-manager/assets/[id]/GET";
+import am_assets_id_patch from "./api/asset-manager/assets/[id]/PATCH";
+import am_assets_id_archive_post from "./api/asset-manager/assets/[id]/archive/POST";
+import am_assets_id_restore_post from "./api/asset-manager/assets/[id]/restore/POST";
+import am_assets_id_permanent_delete from "./api/asset-manager/assets/[id]/permanent/DELETE";
+import am_inspections_get from "./api/asset-manager/inspections/GET";
+import am_inspections_post from "./api/asset-manager/inspections/POST";
+import am_inspections_id_get from "./api/asset-manager/inspections/[id]/GET";
+import am_inspections_id_patch from "./api/asset-manager/inspections/[id]/PATCH";
+import am_inspections_id_archive_post from "./api/asset-manager/inspections/[id]/archive/POST";
+import am_inspections_id_restore_post from "./api/asset-manager/inspections/[id]/restore/POST";
+import am_inspections_id_permanent_delete from "./api/asset-manager/inspections/[id]/permanent/DELETE";
+import am_inspections_id_report_share_post from "./api/asset-manager/inspections/[id]/report/share/POST";
+import am_inspections_id_photos_post, { middleware as am_photos_middleware } from "./api/asset-manager/inspections/[id]/photos/POST";
+import am_inspections_id_defects_post from "./api/asset-manager/inspections/[id]/defects/POST";
+import am_defects_id_patch from "./api/asset-manager/defects/[id]/PATCH";
+import am_defects_id_archive_post from "./api/asset-manager/defects/[id]/archive/POST";
+import am_inspections_id_tenders_post from "./api/asset-manager/inspections/[id]/tenders/POST";
+import am_tenders_id_patch from "./api/asset-manager/tenders/[id]/PATCH";
+import am_tenders_id_contracts_post from "./api/asset-manager/tenders/[id]/contracts/POST";
+import am_tenders_id_complete_post from "./api/asset-manager/tenders/[id]/complete/POST";
+import am_inspections_id_closeout_post, { middleware as am_closeout_middleware } from "./api/asset-manager/inspections/[id]/closeout/POST";
+import am_reports_token_get from "./api/asset-manager/reports/[shareToken]/GET";
+import am_monitoring_get from "./api/asset-manager/monitoring/GET";
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
@@ -1046,6 +1073,16 @@ async function runStartupMigrations() {
     { name: 'drawing_audit_log', ddl: "CREATE TABLE IF NOT EXISTS drawing_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, revision_id INT NULL, actor_id VARCHAR(36) NULL, action VARCHAR(60) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_drawing (drawing_id), INDEX idx_created (drawing_id, created_at))" },
     // ── PWA Push Subscriptions ────────────────────────────────────────────────
     { name: 'push_subscriptions', ddl: "CREATE TABLE IF NOT EXISTS push_subscriptions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, endpoint TEXT NOT NULL, p256dh VARCHAR(255) NOT NULL, auth VARCHAR(255) NOT NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY uq_endpoint (endpoint(512)), INDEX idx_user (user_id), INDEX idx_company (company_id))" },
+    // ── Asset Manager ─────────────────────────────────────────────────────────
+    { name: 'am_assets', ddl: "CREATE TABLE IF NOT EXISTS am_assets (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, acronym VARCHAR(50) NULL, address TEXT NULL, asset_type VARCHAR(60) NOT NULL DEFAULT 'facility', status VARCHAR(40) NOT NULL DEFAULT 'active', created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_company (company_id), INDEX idx_status (company_id, status))" },
+    { name: 'am_inspections', ddl: "CREATE TABLE IF NOT EXISTS am_inspections (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, company_id INT NOT NULL, report_no VARCHAR(100) NULL, inspection_date DATE NULL, report_title VARCHAR(255) NULL, auditor_id VARCHAR(36) NULL, overall_status VARCHAR(40) NOT NULL DEFAULT 'draft', notes TEXT NULL, photos_json LONGTEXT NULL, signed_link_slug VARCHAR(100) NULL, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
+    { name: 'am_defects', ddl: "CREATE TABLE IF NOT EXISTS am_defects (id INT AUTO_INCREMENT PRIMARY KEY, inspection_id INT NOT NULL, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, severity VARCHAR(20) NOT NULL DEFAULT 'med', location VARCHAR(255) NULL, description TEXT NULL, action_owner_id VARCHAR(36) NULL, due_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'open', created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_inspection (inspection_id), INDEX idx_company (company_id))" },
+    { name: 'am_tender_cycles', ddl: "CREATE TABLE IF NOT EXISTS am_tender_cycles (id INT AUTO_INCREMENT PRIMARY KEY, inspection_id INT NULL, asset_id INT NOT NULL, company_id INT NOT NULL, code VARCHAR(100) NULL, quote_requested_at DATE NULL, quote_due_at DATE NULL, contractor_name VARCHAR(255) NULL, quote_amount DECIMAL(12,2) NULL, award_status VARCHAR(30) NOT NULL DEFAULT 'draft', notes TEXT NULL, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_inspection (inspection_id), INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
+    { name: 'am_contract_submissions', ddl: "CREATE TABLE IF NOT EXISTS am_contract_submissions (id INT AUTO_INCREMENT PRIMARY KEY, tender_cycle_id INT NOT NULL, company_id INT NOT NULL, contractor_name VARCHAR(255) NULL, submitted_at DATETIME NULL, documents_json LONGTEXT NULL, status VARCHAR(40) NOT NULL DEFAULT 'received', received_by VARCHAR(36) NULL, notes TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_tender (tender_cycle_id))" },
+    { name: 'am_closeout_forms', ddl: "CREATE TABLE IF NOT EXISTS am_closeout_forms (id INT AUTO_INCREMENT PRIMARY KEY, inspection_id INT NOT NULL, company_id INT NOT NULL, form_type VARCHAR(30) NOT NULL DEFAULT 'completion', source_file_path VARCHAR(1000) NULL, extracted_json LONGTEXT NULL, reviewed_by VARCHAR(36) NULL, completed_at DATETIME NULL, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_inspection (inspection_id))" },
+    { name: 'am_media', ddl: "CREATE TABLE IF NOT EXISTS am_media (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, inspection_id INT NULL, company_id INT NOT NULL, category VARCHAR(40) NOT NULL DEFAULT 'site_photo', file_path VARCHAR(1000) NOT NULL, file_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NULL, uploaded_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_asset (asset_id), INDEX idx_inspection (inspection_id))" },
+    { name: 'am_audit_log', ddl: "CREATE TABLE IF NOT EXISTS am_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, entity_type VARCHAR(40) NOT NULL, entity_id INT NOT NULL, action VARCHAR(80) NOT NULL, actor_id VARCHAR(36) NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_entity (entity_type, entity_id), INDEX idx_actor (actor_id))" },
+    { name: 'am_report_shares', ddl: "CREATE TABLE IF NOT EXISTS am_report_shares (id INT AUTO_INCREMENT PRIMARY KEY, inspection_id INT NOT NULL, company_id INT NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, scope VARCHAR(30) NOT NULL DEFAULT 'read', expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token_hash), INDEX idx_inspection (inspection_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1795,6 +1832,33 @@ app.get("/api/usage", usage_get_423);
 app.get("/api/push/vapid-key", push_vapid_key_get);
 app.post("/api/push/subscribe", push_subscribe_post);
 app.delete("/api/push/subscribe", push_subscribe_delete);
+// Asset Manager routes
+app.get("/api/asset-manager/assets", am_assets_get);
+app.post("/api/asset-manager/assets", am_assets_post);
+app.get("/api/asset-manager/assets/:id", am_assets_id_get);
+app.patch("/api/asset-manager/assets/:id", am_assets_id_patch);
+app.post("/api/asset-manager/assets/:id/archive", am_assets_id_archive_post);
+app.post("/api/asset-manager/assets/:id/restore", am_assets_id_restore_post);
+app.delete("/api/asset-manager/assets/:id/permanent", am_assets_id_permanent_delete);
+app.get("/api/asset-manager/inspections", am_inspections_get);
+app.post("/api/asset-manager/inspections", am_inspections_post);
+app.get("/api/asset-manager/inspections/:id", am_inspections_id_get);
+app.patch("/api/asset-manager/inspections/:id", am_inspections_id_patch);
+app.post("/api/asset-manager/inspections/:id/archive", am_inspections_id_archive_post);
+app.post("/api/asset-manager/inspections/:id/restore", am_inspections_id_restore_post);
+app.delete("/api/asset-manager/inspections/:id/permanent", am_inspections_id_permanent_delete);
+app.post("/api/asset-manager/inspections/:id/report/share", am_inspections_id_report_share_post);
+app.post("/api/asset-manager/inspections/:id/photos", am_photos_middleware, am_inspections_id_photos_post);
+app.post("/api/asset-manager/inspections/:id/defects", am_inspections_id_defects_post);
+app.patch("/api/asset-manager/defects/:id", am_defects_id_patch);
+app.post("/api/asset-manager/defects/:id/archive", am_defects_id_archive_post);
+app.post("/api/asset-manager/inspections/:id/tenders", am_inspections_id_tenders_post);
+app.patch("/api/asset-manager/tenders/:id", am_tenders_id_patch);
+app.post("/api/asset-manager/tenders/:id/contracts", am_tenders_id_contracts_post);
+app.post("/api/asset-manager/tenders/:id/complete", am_tenders_id_complete_post);
+app.post("/api/asset-manager/inspections/:id/closeout", am_closeout_middleware, am_inspections_id_closeout_post);
+app.get("/api/asset-manager/reports/:shareToken", am_reports_token_get);
+app.get("/api/asset-manager/monitoring", am_monitoring_get);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

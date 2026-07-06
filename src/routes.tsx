@@ -53,6 +53,8 @@ const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
 const PlanManagerPage      = lazy(() => import('./pages/plan-manager'));
 const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
+const AssetManagerPage     = lazy(() => import('./pages/asset-manager'));
+const AssetReportSharePage = lazy(() => import('./pages/asset-report-share'));
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -169,6 +171,9 @@ export const routes: RouteObject[] = [
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
   { path: '/plan-manager',              element: protect(<PlanManagerPage />),      errorElement: routeError },
   { path: '/plan-manager/share/:token', element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
+  // Asset Manager
+  { path: '/studio/asset-manager',      element: protect(<AssetManagerPage />),     errorElement: routeError },
+  { path: '/share/asset-report/:token', element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
   // Primary module short-paths — redirect to canonical portal routes
   { path: '/studio/jobs',      element: <Navigate to="/jobs" replace /> },
   { path: '/studio/estimates', element: <Navigate to="/estimating" replace /> },
