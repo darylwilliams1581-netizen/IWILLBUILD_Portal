@@ -203,12 +203,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         // the npm packages themselves — Rollup resolves named imports statically
         // and the stub would fail to satisfy them. These packages are small
         // enough (~3 MB combined) that the memory saving is not worth the risk.
-        // @tanstack/react-query — client-side data fetching, never used server-side.
-        {
-          find: /^@tanstack(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
+        //
+        // @tanstack/react-query — NOT stubbed. entry-server.tsx calls
+        // `new QueryClient()` at SSR render time, so the real class must be
+        // present in the SSR bundle. The package is ~2 MB — acceptable cost.
+        //
         // date-fns — 38 MB of locale/format modules, never imported server-side.
         {
           find: /^date-fns(\/.*)?$/,

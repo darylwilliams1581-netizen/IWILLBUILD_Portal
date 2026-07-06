@@ -37,16 +37,12 @@ export const I18nextProvider = null;
 // ── Generic no-op exports for other stubbed packages ─────────────────────
 // These cover any named import that might be pulled in transitively from
 // @babel, drizzle-kit, es-abstract, html-to-image, react-markdown,
-// @lexical, @tanstack/react-query, etc.
+// @lexical, etc.
 export const createEditor = null;
 export const $getRoot = null;
 export const $getSelection = null;
 export const $createParagraphNode = null;
 export const $createTextNode = null;
-export const useQuery = null;
-export const useMutation = null;
-export const QueryClient = null;
-export const QueryClientProvider = null;
 export const toPng = null;
 export const toJpeg = null;
 export const toBlob = null;
