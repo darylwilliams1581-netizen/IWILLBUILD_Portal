@@ -5,8 +5,9 @@ import {
   Receipt, ArrowLeft, Save, Send, Printer, Copy, Trash2,
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
-  ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download,
+  ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
 } from 'lucide-react';
+import ShareLinkModal from '@/components/ShareLinkModal';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import CustomerSelector from '@/components/CustomerSelector';
@@ -235,6 +236,7 @@ export default function InvoiceBuilderPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [xeroSyncing, setXeroSyncing] = useState(false);
   const [xeroMsg, setXeroMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
@@ -601,6 +603,16 @@ export default function InvoiceBuilderPage() {
                       Download PDF
                     </button>
                   )}
+                  {!isNew && (
+                    <button
+                      onClick={() => setShowShare(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                      title="Share link"
+                    >
+                      <Share2 size={13} />
+                      Share
+                    </button>
+                  )}
                   {!isNew && canEdit && status === 'draft' && (
                     <button onClick={handleMarkSent} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 border border-blue-200 bg-blue-50 rounded-lg text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50">
                       <Send size={13} />Mark Sent
@@ -926,6 +938,15 @@ export default function InvoiceBuilderPage() {
           />
         )}
       </AnimatePresence>
+      {showShare && invoice && (
+        <ShareLinkModal
+          open={showShare}
+          onClose={() => setShowShare(false)}
+          targetType="invoice"
+          targetId={String(invoice.id)}
+          title={invoice.title ?? `Invoice #${invoice.invoiceNumber ?? invoice.id}`}
+        />
+      )}
     </div>
   );
 }

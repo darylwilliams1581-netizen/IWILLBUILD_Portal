@@ -7,8 +7,9 @@ import {
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  HardHat, ChevronLeft, DollarSign, ChefHat,
+  HardHat, ChevronLeft, DollarSign, ChefHat, Share2,
 } from 'lucide-react';
+import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
@@ -39,6 +40,7 @@ function SwmsLibraryTab() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
   const [printing, setPrinting] = useState<SwmsTemplate | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ id: number; title: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/safety/swms', { credentials: 'include' })
@@ -167,6 +169,9 @@ function SwmsLibraryTab() {
                 <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Duplicate">
                   {duplicating === s.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                 </button>
+                <button onClick={() => setShareTarget({ id: s.id, title: s.title })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Share link">
+                  <Share2 size={14} />
+                </button>
                 <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
                   <Printer size={14} />
                 </button>
@@ -201,6 +206,15 @@ function SwmsLibraryTab() {
         )}
         {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
       </AnimatePresence>
+      {shareTarget && (
+        <ShareLinkModal
+          open={!!shareTarget}
+          onClose={() => setShareTarget(null)}
+          targetType="swms"
+          targetId={String(shareTarget.id)}
+          title={shareTarget.title}
+        />
+      )}
     </div>
   );
 }

@@ -4,8 +4,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
-  Upload, Download,
+  Upload, Download, Share2,
 } from 'lucide-react';
+import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
@@ -45,6 +46,7 @@ export default function EstimateEditorPage() {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [showCostPicker, setShowCostPicker] = useState(false);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
@@ -455,6 +457,17 @@ export default function EstimateEditorPage() {
             >
               {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            {/* Share link */}
+            <button
+              onClick={() => setShowShare(true)}
+              disabled={!estimate}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors disabled:opacity-50"
+              title="Share link"
+            >
+              <Share2 size={14} />
+              <span className="hidden sm:inline">Share</span>
             </button>
 
             {/* Duplicate */}
@@ -918,6 +931,15 @@ export default function EstimateEditorPage() {
           lockedMessage="This estimate is Approved and locked. Change the status before importing."
           onSuccess={handleCsvImportSuccess}
           onClose={() => setShowCsvImport(false)}
+        />
+      )}
+      {showShare && estimate && (
+        <ShareLinkModal
+          open={showShare}
+          onClose={() => setShowShare(false)}
+          targetType="estimate"
+          targetId={String(estimate.id)}
+          title={estimate.title ?? `Estimate #${estimate.id}`}
         />
       )}
     </div>
