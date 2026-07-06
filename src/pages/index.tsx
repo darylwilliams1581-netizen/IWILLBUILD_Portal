@@ -1,5 +1,4 @@
 import { home } from 'virtual:content';
-import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
 import {
@@ -28,16 +27,7 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
         { label: 'Carpark Drainage — CBD',           status: 'Closed',      color: '#64748b' },
       ];
 
-// ── Animation variants ────────────────────────────────────────────────────────
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.42, ease: 'easeOut' as const } },
-} as const;
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07 } },
-} as const;
+// ── Animation variants removed — landing page is static for SSR performance ──
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const features = [
@@ -364,17 +354,17 @@ export default function HomePage() {
           alignItems: 'center',
         }} className="hero-grid">
           {/* Left copy */}
-          <motion.div initial="hidden" animate="visible" variants={stagger}>
-            <motion.div variants={fadeUp} style={{
+          <div>
+            <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 22,
             }}>
               <Star size={13} color="#f97316" fill="#f97316" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>30-day free trial — no credit card needed</span>
-            </motion.div>
+            </div>
 
-            <motion.div variants={fadeUp} style={{
+            <div style={{
               fontSize: 'clamp(32px,4.8vw,58px)',
               lineHeight: 1.04, letterSpacing: '-0.04em',
               color: '#fff', margin: '0 0 20px',
@@ -382,16 +372,16 @@ export default function HomePage() {
               <h1 style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit', color: 'inherit', margin: 0 }}>
                 Construction job management — jobs, forms, fleet, safety and files in one clean portal.
               </h1>
-            </motion.div>
+            </div>
 
-            <motion.p variants={fadeUp} style={{
+            <p style={{
               color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
               margin: '0 0 32px', maxWidth: 600,
             }}>
               IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. As the platform grows, accounting integrations help approved invoices, customers and supporting documents flow into Xero, QuickBooks and MYOB.
-            </motion.p>
+            </p>
 
-            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: '#f97316', borderRadius: 9, color: '#fff',
@@ -410,22 +400,17 @@ export default function HomePage() {
               }}>
                 Sign in
               </Link>
-            </motion.div>
+            </div>
 
-            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
+            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
               No setup fee. Cancel anytime. View-only access keeps your records available if you cancel.
-            </motion.p>
-          </motion.div>
+            </p>
+          </div>
 
           {/* Right: portal mockup */}
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.25, ease: 'easeOut' as const }}
-            style={{ display: 'flex', justifyContent: 'center' }}
-          >
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <PortalMockup />
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -478,21 +463,19 @@ export default function HomePage() {
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
       <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
-          <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+        <div>
+          <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
             Construction job management software built for the field
-          </motion.h2>
-          <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
+          </h2>
+          <p style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
             Projects, estimates, forms, photos, safety, fleet, files and scheduling — in one clean portal built around the way construction work actually moves.
-          </motion.p>
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
             {features.map((f) => {
               const Icon = f.icon;
               return (
-                <motion.div
+                <div
                   key={f.title}
-                  variants={fadeUp}
-                  whileHover={{ y: -3, boxShadow: '0 16px 36px rgba(15,23,42,.1)' }}
                   style={{
                     background: '#fff', border: '1px solid #e2e8f0',
                     borderRadius: 10, padding: '22px 20px',
@@ -508,28 +491,27 @@ export default function HomePage() {
                   </div>
                   <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{f.title}</h3>
                   <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{f.desc}</p>
-                </motion.div>
+                </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ── How it works ───────────────────────────────────────────────────── */}
       <section id="how" style={{ background: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+          <div>
+            <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
               Up and running in minutes
-            </motion.h2>
-            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
+            </h2>
+            <p style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
               No complicated setup. Start with a free trial and add your team as you go.
-            </motion.p>
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
               {howItWorks.map((w) => (
-                <motion.div
+                <div
                   key={w.n}
-                  variants={fadeUp}
                   style={{
                     background: '#f8fafc', border: '1px solid #e2e8f0',
                     borderRadius: 10, padding: '24px 20px',
@@ -544,22 +526,22 @@ export default function HomePage() {
                   }}>{w.n}</div>
                   <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{w.title}</h3>
                   <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{w.desc}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* ── Pricing ────────────────────────────────────────────────────────── */}
       <section id="pricing" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
-          <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
+        <div>
+          <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
             Simple, honest pricing
-          </motion.h2>
-          <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
+          </h2>
+          <p style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 600 }}>
             All plans include a 30-day free trial. No credit card required to start.
-          </motion.p>
+          </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 20, alignItems: 'start' }}>
             {plans.map((plan) => {
@@ -567,9 +549,8 @@ export default function HomePage() {
               const isGhost   = plan.ctaStyle === 'ghost';
               const href = plan.href ?? `/signup?plan=${plan.id}`;
               return (
-                <motion.div
+                <div
                   key={plan.id}
-                  variants={fadeUp}
                   style={{
                     background: isPrimary ? '#0f172a' : '#fff',
                     border: isPrimary ? '2px solid #f97316' : '1.5px solid #e2e8f0',
@@ -639,11 +620,11 @@ export default function HomePage() {
                       <ArrowRight size={15} />
                     </Link>
                   )}
-                </motion.div>
+                </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
@@ -652,23 +633,23 @@ export default function HomePage() {
           maxWidth: 1180, margin: '0 auto', padding: '72px 22px',
           display: 'grid', gap: 48, alignItems: 'center',
         }} className="dazza-grid">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
-            <motion.div variants={fadeUp} style={{
+          <div>
+            <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 20,
             }}>
               <FolderOpen size={13} color="#f97316" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Built for construction</span>
-            </motion.div>
+            </div>
 
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#fff' }}>
+            <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#fff' }}>
               Everything in one place — no spreadsheets, no paper
-            </motion.h2>
-            <motion.p variants={fadeUp} style={{ color: '#94a3b8', fontSize: 17, lineHeight: 1.6, margin: '0 0 28px', maxWidth: 560 }}>
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: 17, lineHeight: 1.6, margin: '0 0 28px', maxWidth: 560 }}>
               IWILLBUILD brings your projects, estimates, forms, photos, safety docs, fleet and scheduling into a single clean portal. Your team works from site, your office stays across everything.
-            </motion.p>
-            <motion.div variants={fadeUp}>
+            </p>
+            <div>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: '#f97316', borderRadius: 8, color: '#fff',
@@ -678,15 +659,11 @@ export default function HomePage() {
                 Start your free 30-day trial
                 <ArrowRight size={15} />
               </Link>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
           {/* Feature highlights */}
-          <motion.div
-            initial={{ opacity: 0, x: 24 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.45, ease: 'easeOut' as const }}
+          <div
             style={{
               background: '#1e293b', borderRadius: 12, padding: 20,
               border: '1px solid #334155',
@@ -722,21 +699,21 @@ export default function HomePage() {
                 <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{row.value}</span>
               </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* ── Final CTA ──────────────────────────────────────────────────────── */}
       <section style={{ background: '#fff', borderTop: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 22px', textAlign: 'center' }}>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
-            <motion.h2 variants={fadeUp} style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0f172a' }}>
+          <div>
+            <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0f172a' }}>
               Ready to clean up your job paperwork?
-            </motion.h2>
-            <motion.p variants={fadeUp} style={{ color: '#64748b', fontSize: 17, margin: '0 0 32px' }}>
+            </h2>
+            <p style={{ color: '#64748b', fontSize: 17, margin: '0 0 32px' }}>
               Start your 30-day free trial today. No credit card. No setup fee. Cancel anytime.
-            </motion.p>
-            <motion.div variants={fadeUp} style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: '#f97316', borderRadius: 9, color: '#fff',
@@ -755,8 +732,8 @@ export default function HomePage() {
               }}>
                 Sign in
               </Link>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
       </section>
 

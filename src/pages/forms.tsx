@@ -3,15 +3,13 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
-  LayoutTemplate, Clock, FileUp, Link2, Copy, CheckCircle2, Inbox,
+  Clock, Link2, Copy, CheckCircle2, Inbox,
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
-import DocumentBuilder from '@/components/DocumentBuilder';
-import type { DocumentTemplate } from '@/components/DocumentBuilder/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -593,11 +591,8 @@ export default function FormsPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
 
-  // ── Document Builder state ─────────────────────────────────────────────────
-  const [pageTab, setPageTab] = useState<'forms' | 'documents' | 'submissions'>('forms');
-  const [docTemplates, setDocTemplates] = useState<DocumentTemplate[]>([]);
-  const [docLoading, setDocLoading] = useState(false);
-  const [openDocBuilder, setOpenDocBuilder] = useState<DocumentTemplate | null | 'new'>(null);
+  // ── Document Builder state removed — Documents tab moved to Studio ───────────
+  const [pageTab, setPageTab] = useState<'forms' | 'submissions'>('forms');
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -612,19 +607,7 @@ export default function FormsPage() {
     }
   }, []);
 
-  const fetchDocTemplates = useCallback(async () => {
-    setDocLoading(true);
-    try {
-      const res = await fetch('/api/document-templates', { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json() as { templates: DocumentTemplate[] };
-      setDocTemplates(data.templates ?? []);
-    } catch { /* non-fatal */ }
-    finally { setDocLoading(false); }
-  }, []);
-
   useEffect(() => { void fetchTemplates(); }, [fetchTemplates]);
-  useEffect(() => { if (pageTab === 'documents') void fetchDocTemplates(); }, [pageTab, fetchDocTemplates]);
 
   const handleCreate = async (form: ReturnType<typeof blankForm>) => {
     setSaving(true); setError(null);
@@ -700,17 +683,6 @@ export default function FormsPage() {
     );
   }
 
-  // ── Document Builder full-screen ───────────────────────────────────────────
-  if (openDocBuilder !== null) {
-    return (
-      <DocumentBuilder
-        template={openDocBuilder === 'new' ? null : openDocBuilder}
-        onClose={() => { setOpenDocBuilder(null); void fetchDocTemplates(); }}
-        onSaved={() => { void fetchDocTemplates(); }}
-      />
-    );
-  }
-
   // ── Template list view ──────────────────────────────────────────────────────
 
   return (
@@ -741,41 +713,31 @@ export default function FormsPage() {
               <FileText size={16} className="text-primary" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-base text-slate-900 leading-tight">Forms & Documents</h1>
+              <h1 className="font-heading font-bold text-base text-slate-900 leading-tight">Forms</h1>
               {!loading && (
-                <p className="text-[11px] text-slate-400">{templates.length} form {templates.length === 1 ? 'template' : 'templates'} · {docTemplates.length} document {docTemplates.length === 1 ? 'template' : 'templates'}</p>
+                <p className="text-[11px] text-slate-400">{templates.length} form {templates.length === 1 ? 'template' : 'templates'}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <FleetHeaderIcon />
-            {pageTab === 'forms' && (
-              <>
-                <button
-                  onClick={handleSeed}
-                  disabled={seeding}
-                  title="Load 7 industry-standard form templates"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
-                  {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
-                  <span className="hidden sm:inline">Load Templates</span>
-                </button>
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
-                >
-                  <Plus size={15} /> New Form
-                </button>
-              </>
-            )}
-            {pageTab === 'documents' && (
+            <>
               <button
-                onClick={() => setOpenDocBuilder('new')}
+                onClick={handleSeed}
+                disabled={seeding}
+                title="Load 7 industry-standard form templates"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
+                <span className="hidden sm:inline">Load Templates</span>
+              </button>
+              <button
+                onClick={() => setShowCreate(true)}
                 className="inline-flex items-center gap-2 text-sm font-bold text-white px-4 py-2 rounded-xl transition-all hover:brightness-110 bg-primary"
               >
-                <Plus size={15} /> New Document
+                <Plus size={15} /> New Form
               </button>
-            )}
+            </>
           </div>
         </header>
 
@@ -783,7 +745,6 @@ export default function FormsPage() {
         <div className="flex border-b border-slate-200 bg-white px-6 gap-1">
           {([
             { key: 'forms', label: 'Forms', icon: FileText },
-            { key: 'documents', label: 'Smart Documents', icon: LayoutTemplate },
             { key: 'submissions', label: 'Submissions', icon: Inbox },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
@@ -797,9 +758,6 @@ export default function FormsPage() {
             >
               <Icon size={13} />
               {label}
-              {key === 'documents' && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-orange-100 text-primary text-[10px] font-bold">NEW</span>
-              )}
             </button>
           ))}
         </div>
@@ -822,7 +780,7 @@ export default function FormsPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {pageTab === 'forms' ? (
+          {pageTab === 'forms' && (
             <>
               {loading ? (
                 <div className="flex items-center justify-center h-48">
@@ -882,54 +840,6 @@ export default function FormsPage() {
                 </motion.div>
               )}
             </>
-          ) : (
-            /* ── Documents tab ─────────────────────────────────────────────── */
-            <>
-              {docLoading ? (
-                <div className="flex items-center justify-center h-48">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : docTemplates.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center justify-center h-full min-h-[400px] text-center"
-                >
-                  <div className="relative mb-6">
-                    <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-orange-50 border border-orange-100">
-                      <LayoutTemplate size={32} className="text-primary" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <Plus size={11} className="text-white" />
-                    </div>
-                  </div>
-                  <h2 className="font-heading font-bold text-xl text-slate-900 mb-2">No document templates yet</h2>
-                  <p className="text-slate-500 text-sm max-w-sm mb-7 leading-relaxed">
-                    Build SWMS, policies, toolbox talks, pre-starts, inspection forms and more — with a visual canvas, system field tokens, and DOCX import.
-                  </p>
-                  <button
-                    onClick={() => setOpenDocBuilder('new')}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-white px-6 py-3 rounded-xl transition-all hover:brightness-110 bg-primary"
-                  >
-                    <Plus size={15} /> Create Document Template
-                  </button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-                >
-                  {docTemplates.map((dt) => (
-                    <DocTemplateCard
-                      key={dt.id}
-                      template={dt}
-                      onOpen={() => setOpenDocBuilder(dt)}
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </>
           )}
 
           {/* ── Submissions tab ── */}
@@ -962,55 +872,5 @@ export default function FormsPage() {
   );
 }
 
-// ── Document Template Card ────────────────────────────────────────────────────
-
-const TYPE_LABELS: Record<string, string> = {
-  document: 'Document', swms: 'SWMS', policy: 'Policy',
-  toolbox_talk: 'Toolbox Talk', pre_start: 'Pre-Start',
-  inspection: 'Inspection', register: 'Register', completion_report: 'Completion Report',
-};
-
-function DocTemplateCard({ template, onOpen }: { template: DocumentTemplate; onOpen: () => void }) {
-  const typeLabel = TYPE_LABELS[template.templateType ?? 'document'] ?? 'Document';
-  const updatedAt = template.updatedAt ? new Date(template.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-3 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group"
-      onClick={onOpen}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center flex-shrink-0">
-            <LayoutTemplate size={16} className="text-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
-            <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 mt-0.5">{typeLabel}</span>
-          </div>
-        </div>
-        {template.sourceDocxName && (
-          <div title={`Source: ${template.sourceDocxName}`} className="flex-shrink-0">
-            <FileUp size={12} className="text-slate-300" />
-          </div>
-        )}
-      </div>
-      <div className="flex items-center justify-between">
-        {updatedAt && (
-          <span className="flex items-center gap-1 text-[10px] text-slate-400">
-            <Clock size={10} />
-            {updatedAt}
-          </span>
-        )}
-        <button
-          onClick={(e) => { e.stopPropagation(); onOpen(); }}
-          className="ml-auto flex items-center gap-1 text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          Open <ChevronRight size={12} />
-        </button>
-      </div>
-    </motion.div>
-  );
-}
+// ── Document Template Card (moved to Studio) ─────────────────────────────────
+// DocTemplateCard removed — Documents tab lives in Studio, not Forms.

@@ -7,14 +7,13 @@ import {
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  HardHat, ChevronLeft, DollarSign, ChefHat, Share2,
+  HardHat, ChevronLeft, Share2,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
-import { CostGuideTab, RecipesTab } from '@/pages/estimating';
 import SwmsFormModal from '@/components/safety/SwmsFormModal';
 import PlanFormModal from '@/components/safety/PlanFormModal';
 import DazzaAiTab from '@/components/safety/DazzaAiTab';
@@ -727,8 +726,6 @@ const TABS = [
   { id: 'plans',      label: 'Safety Plans', icon: ClipboardList },
   { id: 'policies',   label: 'Policies',     icon: BookOpen },
   { id: 'posters',    label: 'Posters',      icon: Image },
-  { id: 'cost-guide', label: 'Cost Guide',   icon: DollarSign },
-  { id: 'recipes',    label: 'Recipes',      icon: ChefHat },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -811,8 +808,6 @@ export default function SafetyPage() {
             {activeTab === 'plans'      && <SafetyPlansTab />}
             {activeTab === 'policies'   && <PoliciesTab />}
             {activeTab === 'posters'    && <PostersTab />}
-            {activeTab === 'cost-guide' && <CostGuideTab />}
-            {activeTab === 'recipes'    && <RecipesTab />}
           </motion.div>
         </div>
       </div>
