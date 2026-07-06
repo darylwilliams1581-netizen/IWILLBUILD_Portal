@@ -117,6 +117,22 @@ if (checkCode !== 0) {
   process.exit(checkCode);
 }
 
+// ── Restore static imports in entry.ts ───────────────────────────────────────
+// Previous build attempts converted all 408 handler imports to dynamic
+// await import() wrappers. This prevents Rollup tree-shaking and forces it
+// to hold the entire module graph in memory — making OOM *worse*, not better.
+// This step converts them back to static imports so Rollup can tree-shake.
+console.log('> restore-entry-static');
+const restoreCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'restore-entry-static.mjs')],
+  {},
+);
+if (restoreCode !== 0) {
+  console.error('restore-entry-static failed — aborting build.');
+  process.exit(restoreCode);
+}
+
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,          // node
@@ -162,8 +178,14 @@ const ssrCode = await run(
     // tested working configuration (900 MB + 4 MB semi-space → ~1.02 GB RSS).
     // The icon stub reduces the working set by ~44 MB (874 → 830 MB), giving
     // V8 ~70 MB of headroom to GC before hitting the ceiling.
-    '--max-old-space-size=900',
-    '--max-semi-space-size=4',
+    // Static imports (restored by restore-entry-static.mjs) allow Rollup to
+    // tree-shake the 408 handler modules — only reachable code is bundled.
+    // Heap ceiling raised to 1100 MB: static imports reduce peak working set
+    // vs dynamic imports, and the extra headroom prevents OOM on large builds.
+    // --max-semi-space-size=2 keeps the nursery small → frequent minor GCs →
+    // lower old-gen accumulation during Rollup's transform phase.
+    '--max-old-space-size=1100',
+    '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],
   {},
