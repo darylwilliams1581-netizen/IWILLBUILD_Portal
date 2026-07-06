@@ -88,8 +88,22 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
 
   resolve: {
+    // Prefer the ESM export condition over the CJS `node` condition.
+    // react-router-dom exports:
+    //   "node"   → dist/index.js  (CJS — causes "module is not defined" in ssrLoadModule)
+    //   "import" → dist/index.mjs (ESM — correct for Vite SSR)
+    // Listing "import" before "node" ensures ssrLoadModule gets the ESM build.
+    conditions: ['import', 'module', 'browser', 'default'],
     dedupe: ["react", "react-dom", "react-router-dom"],
     alias: [
+      // Hard-alias react-router-dom to its ESM build so Vite's ssrLoadModule
+      // never falls through to the CJS dist/index.js (which uses `module.exports`
+      // and throws "module is not defined" in an ESM evaluator context).
+      // This alias applies in both dev SSR and SSR build modes.
+      {
+        find: 'react-router-dom',
+        replacement: path.resolve(__dirname, 'node_modules/react-router-dom/dist/index.mjs'),
+      },
       // During SSR build, redirect browser-only packages to an empty stub so
       // they are not bundled into server.bundle.mjs. This saves ~400 kB of
       // uncompressed JS and reduces peak Rollup memory by ~200 MB.
