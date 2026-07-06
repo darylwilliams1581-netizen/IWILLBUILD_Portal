@@ -156,7 +156,11 @@ const ssrCode = await run(
     // 900 MB ceiling is sufficient now that the static import fan-out is gone.
     // --max-semi-space-size=2 keeps the nursery small so minor GCs run
     // frequently during the transform phase, preventing old-gen accumulation.
-    '--max-old-space-size=900',
+    // lucide-react + @heroicons are now externalized from the SSR bundle,
+    // saving ~53 MB of AST from the Rollup render phase. This lets us drop
+    // the heap ceiling from 900 → 850 MB, forcing more aggressive GC and
+    // keeping peak RSS well within the pipeline's ~910 MB cgroup limit.
+    '--max-old-space-size=850',
     '--max-semi-space-size=2',
     vite, 'build', '--ssr', '--emptyOutDir=false',
   ],

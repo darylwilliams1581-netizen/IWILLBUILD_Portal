@@ -107,6 +107,22 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
+        // lucide-react and @heroicons are icon libraries — they are never used
+        // in server-side logic, only in React component render output.
+        // Aliasing them to an icon-stub during SSR build replaces their ~53 MB
+        // of source with a tiny proxy that returns null-rendering React components.
+        // This saves ~53 MB of AST from Rollup's render phase without breaking
+        // SSR (the stub satisfies all named imports as no-op components).
+        {
+          find: /^lucide-react(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'); },
+        },
+        {
+          find: /^@heroicons(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/icon-stub.ts'); },
+        },
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },
@@ -139,6 +155,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       '@napi-rs',
       '@napi-rs/canvas',
       'canvas',
+      // NOTE: lucide-react and @heroicons are NOT externalized here — they are
+      // aliased to a stub in resolve.alias (below) during SSR build so they
+      // compile to near-zero bytes rather than their full ~53 MB on disk.
+      // Externalizing them would break SSR rendering in the publish container
+      // (which has no node_modules).
     ],
   },
 
@@ -216,6 +237,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // logic skips them. The Rollup-level external below is a belt-and-braces
       // fallback for any sub-path imports (e.g. pdfjs-dist/build/pdf.worker.mjs)
       // that Vite resolves to absolute paths before Rollup sees them.
+      // lucide-react and @heroicons are handled via resolve.alias stubs — they
+      // compile to near-zero bytes rather than being externalized, so SSR
+      // rendering still works in the publish container (no node_modules).
       external: (id: string) => {
         return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
       },
@@ -275,6 +299,8 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // Splitting it into its own chunk prevents Rollup from holding its
           // entire AST in memory alongside the entry bundle during rendering.
           if (id.includes('node_modules/date-fns')) return 'date-fns';
+          // date-fns-jalali is 15 MB — split separately from date-fns core.
+          if (id.includes('node_modules/date-fns-jalali')) return 'date-fns-jalali';
           // @opentelemetry is pulled in by better-auth/mysql2 tracing hooks.
           // 14 MB on disk — split it to keep the better-auth chunk smaller.
           if (id.includes('node_modules/@opentelemetry')) return 'opentelemetry';
@@ -288,6 +314,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // undici is the fetch implementation used by openai/stripe — split it
           // so it doesn't inflate the entry bundle.
           if (id.includes('node_modules/undici')) return 'undici';
+          // jsdom is pulled in by mammoth/docx for HTML parsing — 11 MB, self-contained.
+          if (id.includes('node_modules/jsdom')) return 'jsdom';
+          // es-abstract is a large polyfill collection used by jsdom/mammoth — 10 MB.
+          if (id.includes('node_modules/es-abstract') || id.includes('node_modules/es-define-property') || id.includes('node_modules/es-errors') || id.includes('node_modules/es-object-atoms') || id.includes('node_modules/es-set-tostringtag') || id.includes('node_modules/es-to-primitive')) return 'es-abstract';
           return undefined;
         },
       }
