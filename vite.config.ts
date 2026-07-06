@@ -198,33 +198,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
-        // embla-carousel, react-day-picker, input-otp, vaul, cmdk — UI widgets,
-        // client-only. Combined ~3 MB of AST.
-        {
-          find: /^embla-carousel(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
-        {
-          find: /^react-day-picker(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
-        {
-          find: /^input-otp(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
-        {
-          find: /^vaul(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
-        {
-          find: /^cmdk(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
+        // embla-carousel, react-day-picker, input-otp, vaul, cmdk — UI widgets
+        // that ARE imported by src/components/ui/*.tsx wrappers. Do NOT stub
+        // the npm packages themselves — Rollup resolves named imports statically
+        // and the stub would fail to satisfy them. These packages are small
+        // enough (~3 MB combined) that the memory saving is not worth the risk.
         // @tanstack/react-query — client-side data fetching, never used server-side.
         {
           find: /^@tanstack(\/.*)?$/,
