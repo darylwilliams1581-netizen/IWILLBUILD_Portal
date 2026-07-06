@@ -24,7 +24,6 @@ import {
   Map,
   Building2,
   Calculator,
-  Download,
   UserCircle,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
@@ -68,7 +67,6 @@ function buildNavItems(_workPlural: string) {
     { label: 'Plan Manager',  icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Asset Manager', icon: Building2,       href: '/studio/asset-manager', permKey: null },
     { label: 'Team',          icon: UserCircle,      href: '/team',                 permKey: null },
-    { label: 'Downloads',     icon: Download,        href: '/downloads',            permKey: null },
     { label: 'Dazza AI',      icon: Bot,             href: '/dazza-ai',             permKey: null },
   ] as const;
 }

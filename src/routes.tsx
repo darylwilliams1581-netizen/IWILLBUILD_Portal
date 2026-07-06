@@ -32,7 +32,6 @@ const DazzaAIPage        = lazy(() => import('./pages/dazza-ai'));
 const StudioPage         = lazy(() => import('./pages/studio'));
 const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const AnnettePage        = lazy(() => import('./pages/annette'));
-const DownloadsPage      = lazy(() => import('./pages/downloads'));
 const TeamPage           = lazy(() => import('./pages/team'));
 const TeamSchedulePage   = lazy(() => import('./pages/team-schedule'));
 const SettingsPage       = lazy(() => import('./pages/settings'));
@@ -164,7 +163,6 @@ export const routes: RouteObject[] = [
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
-  { path: '/downloads',     element: protect(<DownloadsPage />),       errorElement: routeError },
   { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
   { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
@@ -210,7 +208,6 @@ export type Path =
   | '/forms'
   | '/files'
   | '/estimating'
-  | '/downloads'
   | '/dazza-ai'
   | '/team'
   | '/settings';
