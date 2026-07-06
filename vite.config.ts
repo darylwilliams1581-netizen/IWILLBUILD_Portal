@@ -230,6 +230,18 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/motion-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/motion-stub.ts'); },
         },
+        // better-auth/react — client-side auth hooks (useSession, createAuthClient).
+        // Imported by src/lib/auth/auth-client.tsx → routes.tsx → entry-server.
+        // This causes better-auth to appear in BOTH the static API handler graph
+        // (via auth.ts) AND the dynamic entry-server chunk, forcing Rollup to
+        // create 2-3 duplicate better-auth chunks (~500 KB each) during render.
+        // Stubbing better-auth/react eliminates the duplicate chunks and saves
+        // ~1 MB of AST from the SSR render phase.
+        {
+          find: /^better-auth\/react(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/better-auth-client-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/better-auth-client-stub.ts'); },
+        },
         // @heroicons/react — icon library, client-only (already covered by icon-stub
         // above but belt-and-braces for any subpath imports not caught by that alias).
       ] : []),
@@ -446,6 +458,16 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (id.includes('node_modules/html-to-image')) return 'html-to-image';
           // react-markdown + remark/rehype pipeline — frontend rendering only.
           if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark') || id.includes('node_modules/rehype') || id.includes('node_modules/unified') || id.includes('node_modules/micromark') || id.includes('node_modules/mdast') || id.includes('node_modules/hast')) return 'markdown';
+          // ── Phase 2 splits: reduce entry-server chunk size ────────────────────
+          // express + its deps are large and self-contained — split them out
+          // so they don't inflate the server.bundle entry chunk.
+          if (id.includes('node_modules/express') || id.includes('node_modules/body-parser') || id.includes('node_modules/finalhandler') || id.includes('node_modules/send') || id.includes('node_modules/serve-static') || id.includes('node_modules/router') || id.includes('node_modules/depd') || id.includes('node_modules/on-finished') || id.includes('node_modules/qs') || id.includes('node_modules/range-parser') || id.includes('node_modules/raw-body')) return 'express';
+          // multer is used for file uploads — split it out.
+          if (id.includes('node_modules/multer') || id.includes('node_modules/busboy') || id.includes('node_modules/streamsearch')) return 'multer';
+          // sharp/canvas alternatives — jimp deps that are large.
+          if (id.includes('node_modules/@thi.ng') || id.includes('node_modules/tinycolor2')) return 'jimp-deps';
+          // nanoid is small but used everywhere — keep in main bundle.
+          // sharp is not installed (we use jimp) — no split needed.
           return undefined;
         },
       }

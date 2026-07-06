@@ -68,17 +68,38 @@ function lazify(filePath, targetVarPrefixes) {
     const importPath = lazyMap.get(varname);
     // Add .js extension for ESM compatibility in the built bundle
     const importPathJs = importPath.endsWith('.js') ? importPath : importPath + '.js';
-    return `${m[1]}async (req, res, next) => { const { default: h } = await import("${importPathJs}"); return h(req, res, next); }${m[3]}`;
+    return `${m[1]}/* @vite-ignore */ async (req, res, next) => { try { const _m = await import("${importPathJs}"); return _m.default(req, res, next); } catch(_e) { next(_e); } }${m[3]}`;
   });
 
   writeFileSync(filePath, result.join('\n'), 'utf8');
   return lazyMap.size;
 }
 
-// entry.ts: lazify dazza/chat, form-templates/seed, all migrate-*
+// entry.ts: lazify the heaviest handlers that are never on the hot render path
+// dazza_chat_post_       — 84 KB, AI chat (not SSR-critical)
+// dazza_annette_post_    — 10 KB, AI annette (not SSR-critical)
+// dazza_chat_v2_post_    — AI chat v2 non-streaming
+// dazza_chat_v2_stream_  — AI chat v2 streaming
+// form_templates_seed_   — 34 KB, admin seed (one-time op)
+// migrate_               — 28 × ~5 KB each, one-time migration ops
+// owner_console_system_  — 10 KB, platform-owner only
+// notifications_alerts_  — 12 KB, polling endpoint
+// jobs_id_purchase_orders_idPo_pdf_ — 14 KB, PDF generation
+// jobs_id_ledger_sync_   — 10 KB, accounting sync
 const entryCount = lazify(
   join(root, 'src/server/entry.ts'),
-  ['dazza_chat_post_', 'form_templates_seed_post_', 'migrate_'],
+  [
+    'dazza_chat_post_',
+    'dazza_annette_post_',
+    'dazza_chat_v2_post_',
+    'dazza_chat_v2_stream_post_',
+    'form_templates_seed_post_',
+    'migrate_',
+    'owner_console_system_ai_',
+    'notifications_alerts_get_',
+    'jobs_id_purchase_orders_',
+    'jobs_id_ledger_sync_',
+  ],
 );
 
 // routes-safety.ts: lazify seed endpoints

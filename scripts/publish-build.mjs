@@ -150,6 +150,31 @@ if (dedupCode !== 0) {
   process.exit(dedupCode);
 }
 
+// ── Lazify heavy handlers before SSR build ────────────────────────────────────
+// Converts the ~40 heaviest handler imports (dazza/chat 84KB, 28 migrate ops,
+// seed endpoints, AI streaming, PDF generation, ledger sync) from static
+// top-level imports to dynamic await import() wrappers. This removes ~200KB
+// of handler AST from Rollup's static module graph during the SSR build,
+// reducing peak RSS by ~80–120 MB.
+//
+// IMPORTANT: This is SELECTIVE lazification — only the heaviest non-hot-path
+// handlers. Full lazification (all 400+ handlers) makes OOM worse because
+// Rollup must resolve all dynamic imports simultaneously during rendering.
+// Selective lazification keeps the static graph small while avoiding that trap.
+//
+// The restore-entry-static step below reverses this after the SSR build so
+// the source files are not left in a modified state.
+console.log('> lazify-handlers');
+const lazifyCode = await run(
+  process.execPath,
+  [join(root, 'scripts', 'lazify-handlers.mjs')],
+  {},
+);
+if (lazifyCode !== 0) {
+  console.error('lazify-handlers failed — aborting build.');
+  process.exit(lazifyCode);
+}
+
 console.log('> build:app:client');
 const clientCode = await run(
   process.execPath,          // node
@@ -202,8 +227,17 @@ const ssrCode = await run(
 
 if (ssrCode !== 0) {
   console.error(`build:app:ssr failed with exit code ${ssrCode}`);
+  // Restore static imports even on failure so source is not left modified
+  await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
   process.exit(ssrCode);
 }
+
+// ── Restore static imports after SSR build ────────────────────────────────────
+// Reverses the lazify-handlers step so entry.ts and routes-safety.ts are
+// restored to their original static-import form. This keeps the source tree
+// clean and ensures dev-server restarts work normally.
+console.log('> restore-entry-static (post-SSR)');
+await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
 
 // ── Copy seed JSON files into dist so the server can read them at runtime ──
 // src/server/seed/starter-packs/default/*.json

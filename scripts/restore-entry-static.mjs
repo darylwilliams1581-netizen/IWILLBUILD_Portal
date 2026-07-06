@@ -76,12 +76,16 @@ src = src.replace(dynRe, (match, method, path, modulePath) => {
 
 console.log(`[restore-entry-static] Replaced ${converted} dynamic wrappers with static references.`);
 
-// Third pass: replace the <api-imports> placeholder comment with real static imports
+// Third pass: insert the restored static imports into the <api-imports> block
+// WITHOUT replacing the existing imports already in the block.
+// The lazify step removed the import lines but left the block markers intact,
+// so we just need to append the new imports inside the existing block.
 const importBlock = imports.join('\n');
 if (src.includes('// <api-imports>')) {
+  // Insert the new imports right after the opening marker line
   src = src.replace(
-    /\/\/ <api-imports>[\s\S]*?\/\/ <\/api-imports>/,
-    `// <api-imports>\n${importBlock}\n// </api-imports>`
+    '// <api-imports>\n',
+    `// <api-imports>\n${importBlock}\n`
   );
   console.log(`[restore-entry-static] Inserted ${imports.length} static imports into <api-imports> block.`);
 } else {
