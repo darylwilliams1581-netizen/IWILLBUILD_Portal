@@ -104,16 +104,32 @@ console.log(`> using vite at: ${vite}`);
 
 // ── Fast-path: skip build if dist artifacts are already current ───────────────
 // The publish platform always runs `npm run build` even when pre-built artifacts
-// are committed. We detect "already built for this commit" by writing a stamp
-// file (dist/.build-stamp) containing the current git HEAD SHA after a
-// successful build. On the next publish run, if the stamp matches HEAD and
-// dist/server.bundle.mjs exists, we skip both Vite builds entirely (~100s saved).
+// are committed. We detect "already built" by hashing the source files that
+// feed the build (src/, vite.config.ts, package.json, tsconfig*.json).
+// Using a SOURCE hash (not git HEAD SHA) means the stamp survives the
+// platform's auto-commit that wraps the dist artifacts — git HEAD changes
+// every publish even when source is unchanged, but the source hash stays stable.
 import { readFileSync as _readFileSync, writeFileSync as _writeFileSync, existsSync as _existsSync } from 'node:fs';
 import { execSync as _execSync } from 'node:child_process';
+import { createHash as _createHash } from 'node:crypto';
 
-function getCurrentGitSha() {
+function getSourceHash() {
   try {
-    return _execSync('git rev-parse HEAD', { cwd: root, encoding: 'utf8' }).trim();
+    // Hash the git tree of source files — fast, deterministic, order-stable.
+    // `git ls-files` lists tracked files; we hash src/ + key config files.
+    const files = _execSync(
+      'git ls-files src/ vite.config.ts package.json tsconfig.json tsconfig.node.json 2>/dev/null',
+      { cwd: root, encoding: 'utf8' }
+    ).trim().split('\n').filter(Boolean).sort();
+
+    const h = _createHash('sha256');
+    for (const f of files) {
+      try {
+        h.update(f + '\n');
+        h.update(_readFileSync(join(root, f)));
+      } catch { /* skip unreadable files */ }
+    }
+    return h.digest('hex').slice(0, 16);
   } catch {
     return null;
   }
@@ -126,19 +142,19 @@ function readStamp() {
   try { return _readFileSync(stampFile, 'utf8').trim(); } catch { return null; }
 }
 
-const currentSha = getCurrentGitSha();
-const stampSha = readStamp();
+const sourceHash = getSourceHash();
+const stampHash  = readStamp();
 
 if (
-  currentSha &&
-  stampSha === currentSha &&
+  sourceHash &&
+  stampHash === sourceHash &&
   _existsSync(bundleFile)
 ) {
-  console.log(`> dist artifacts are current for ${currentSha.slice(0, 8)} — skipping build.`);
+  console.log(`> source hash ${sourceHash} matches stamp — dist artifacts are current, skipping build.`);
   process.exit(0);
 }
 
-console.log(`> build stamp: ${stampSha ? stampSha.slice(0, 8) : 'none'} → HEAD: ${currentSha ? currentSha.slice(0, 8) : 'unknown'}`);
+console.log(`> source hash: ${sourceHash ?? 'unknown'}  stamp: ${stampHash ?? 'none'} — running full build.`);
 
 // ── Pre-publish content check ─────────────────────────────────────────────────
 console.log('> pre-publish-check');
@@ -258,12 +274,12 @@ console.log('> restore-entry-static (post-SSR)');
 await run(process.execPath, [join(root, 'scripts', 'restore-entry-static.mjs')], {});
 
 // ── Write build stamp ─────────────────────────────────────────────────────────
-// Records the git HEAD SHA so the next publish run can skip the build if
-// the artifacts are already current.
-if (currentSha) {
+// Records the source hash so the next publish run can skip the build if
+// src/ and config files haven't changed.
+if (sourceHash) {
   try {
-    _writeFileSync(stampFile, currentSha + '\n', 'utf8');
-    console.log(`> build stamp written: ${currentSha.slice(0, 8)}`);
+    _writeFileSync(stampFile, sourceHash + '\n', 'utf8');
+    console.log(`> build stamp written: ${sourceHash}`);
   } catch (e) {
     console.warn('  WARNING: could not write build stamp:', e.message);
   }
