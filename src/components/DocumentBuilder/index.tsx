@@ -12,14 +12,16 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Edit3, Loader2, CheckCircle,
-  AlertCircle, FileText, ChevronDown,
+  AlertCircle, FileText, FileOutput,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import BlockCanvas from './BlockCanvas';
 import BlockLibrarySidebar from './BlockLibrarySidebar';
 import BlockInspector from './BlockInspector';
 import DocxImporter from './DocxImporter';
-import type { DocumentTemplate, DocumentBlock } from './types';
+import DocumentPdfTab from './DocumentPdfTab';
+import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings } from './types';
+import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
 
 interface Props {
   /** Pass an existing template to edit, or null to create new */
@@ -37,13 +39,19 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
   const [showDocxImporter, setShowDocxImporter] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [activeTab, setActiveTab] = useState<BuilderTab>('content');
+  const [pdfSettings, setPdfSettings] = useState<TemplatePdfSettings>(
+    template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
+  );
 
   // Load template on mount
   useEffect(() => {
     if (template) {
       loadTemplate(template);
+      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS, ...(template.pdfSettings ?? {}) });
     } else {
       resetToBlank();
+      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS });
     }
   }, [template?.id]);
 
@@ -72,7 +80,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     setIsSaving(true);
     setSaveStatus('idle');
     try {
-      const payload = getSerialised();
+      const payload = { ...getSerialised(), pdfSettings };
       let res: Response;
       if (templateId) {
         res = await fetch(`/api/document-templates/${templateId}`, {
@@ -100,7 +108,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, templateId, getSerialised, markSaved, onSaved]);
+  }, [isSaving, templateId, getSerialised, markSaved, onSaved, pdfSettings]);
 
   const handleDocxImported = (blocks: DocumentBlock[], _docxName: string) => {
     reorderBlocks(blocks);
@@ -113,7 +121,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     setIsSaving(true);
     setSaveStatus('idle');
     try {
-      const payload = getSerialised();
+      const payload = { ...getSerialised(), pdfSettings };
       const res = await fetch('/api/document-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -134,7 +142,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     } finally {
       setIsSaving(false);
     }
-  }, [templateId, isSaving, getSerialised, markSaved, onSaved]);
+  }, [templateId, isSaving, getSerialised, markSaved, onSaved, pdfSettings]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
@@ -155,45 +163,69 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
         </div>
 
+        {/* ── Tab switcher ─────────────────────────────────────────────────── */}
+        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-3">
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              activeTab === 'content' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Edit3 size={11} /> Content
+          </button>
+          <button
+            onClick={() => setActiveTab('pdf_output')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              activeTab === 'pdf_output' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <FileOutput size={11} /> PDF Output
+          </button>
+        </div>
+
         <div className="flex-1" />
 
-        {/* Undo / redo */}
-        <button
-          onClick={undo}
-          disabled={!canUndo()}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="Undo (⌘Z)"
-        >
-          <Undo2 size={14} />
-        </button>
-        <button
-          onClick={redo}
-          disabled={!canRedo()}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="Redo (⌘Y)"
-        >
-          <Redo2 size={14} />
-        </button>
-
-        {/* Mode switcher */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-          {(['edit', 'preview', 'fill'] as const).map((m) => (
+        {/* Undo / redo — only shown in content tab */}
+        {activeTab === 'content' && (
+          <>
             <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${
-                mode === m ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
+              onClick={undo}
+              disabled={!canUndo()}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Undo (⌘Z)"
             >
-              {m === 'edit' ? <><Edit3 size={11} className="inline mr-1" />Edit</> : m === 'preview' ? <><Eye size={11} className="inline mr-1" />Preview</> : 'Fill'}
+              <Undo2 size={14} />
             </button>
-          ))}
-        </div>
+            <button
+              onClick={redo}
+              disabled={!canRedo()}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Redo (⌘Y)"
+            >
+              <Redo2 size={14} />
+            </button>
+
+            {/* Mode switcher */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+              {(['edit', 'preview', 'fill'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${
+                    mode === m ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {m === 'edit' ? <><Edit3 size={11} className="inline mr-1" />Edit</> : m === 'preview' ? <><Eye size={11} className="inline mr-1" />Preview</> : 'Fill'}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Save */}
         <button
           onClick={handleSave}
-          disabled={isSaving || (!isDirty && !!templateId)}
+          disabled={isSaving || (!isDirty && !!templateId && activeTab === 'content')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
             saveStatus === 'saved' ? 'bg-green-500 text-white' :
             saveStatus === 'error' ? 'bg-red-500 text-white' :
@@ -210,11 +242,26 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       </div>
 
       {/* ── Main layout ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-        <BlockLibrarySidebar onImportDocx={() => setShowDocxImporter(true)} />
-        <BlockCanvas />
-        <BlockInspector />
-      </div>
+      {activeTab === 'content' ? (
+        <div className="flex flex-1 overflow-hidden">
+          <BlockLibrarySidebar onImportDocx={() => setShowDocxImporter(true)} />
+          <BlockCanvas />
+          <BlockInspector />
+        </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden bg-slate-50">
+          {/* PDF Output tab — centred scrollable panel */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto py-6 px-4">
+              <DocumentPdfTab
+                settings={pdfSettings}
+                onChange={(next) => { setPdfSettings(next); }}
+                templateName={templateName}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── DOCX Importer modal ───────────────────────────────────────────────── */}
       <AnimatePresence>

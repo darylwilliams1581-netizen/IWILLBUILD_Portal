@@ -22,7 +22,7 @@ export default async function handler(req: Request, res: Response) {
     const [profile] = await db.select().from(profiles).where(eq(profiles.userId, session.user.id)).limit(1);
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments } = req.body as {
+    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -30,6 +30,7 @@ export default async function handler(req: Request, res: Response) {
       blocks?: unknown;
       systemFields?: unknown;
       sourceAttachments?: unknown;
+      pdfSettings?: unknown;
     };
 
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
@@ -37,11 +38,12 @@ export default async function handler(req: Request, res: Response) {
     const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [] });
     const pageLayoutJson = JSON.stringify(pageLayout ?? {});
     const themeJson = JSON.stringify(theme ?? {});
+    const pdfSettingsJson = pdfSettings ? JSON.stringify(pdfSettings) : null;
     const tType = templateType ?? 'document';
 
     const [result] = await db.execute(sql.raw(
-      `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, is_active, created_by_user_id)
-       VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)}, ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, 1, ${JSON.stringify(session.user.id)})`
+      `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json, is_active, created_by_user_id)
+       VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)}, ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'}, 1, ${JSON.stringify(session.user.id)})`
     )) as unknown as [{ insertId: number }, unknown];
 
     return res.status(201).json({ id: result.insertId, ok: true });

@@ -40,6 +40,9 @@ export default async function handler(req: Request, res: Response) {
     let theme: unknown = {};
     try { theme = JSON.parse(String(row.theme_json ?? '{}')); } catch { /* ignore */ }
 
+    let pdfSettings: unknown = null;
+    try { pdfSettings = row.pdf_settings_json ? JSON.parse(String(row.pdf_settings_json)) : null; } catch { /* ignore */ }
+
     return res.json({
       template: {
         id: row.id,
@@ -51,6 +54,7 @@ export default async function handler(req: Request, res: Response) {
         sourceAttachments: builderData.sourceAttachments ?? [],
         pageLayout,
         theme,
+        pdfSettings,
         sourceDocxPath: row.source_docx_path,
         sourceDocxName: row.source_docx_name,
         isActive: Boolean(row.is_active),

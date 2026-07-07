@@ -330,16 +330,34 @@ interface UploadModalProps {
   onUploaded: (f: CompanyFile) => void;
 }
 
-function UploadModal({ jobId, fleetAssetId, onClose, onUploaded }: UploadModalProps) {
+function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [label, setLabel] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState<number | undefined>(initialJobId);
+  const [jobs, setJobs] = useState<Array<{ id: number; jobNumber: string; name: string }>>([]);
   const [category, setCategory] = useState<string>(
-    jobId ? 'Job' : fleetAssetId ? 'Fleet' : 'Other'
+    initialJobId ? 'Job' : fleetAssetId ? 'Fleet' : 'Other'
   );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load jobs for picker (only when not already scoped to a job)
+  useEffect(() => {
+    if (initialJobId) return;
+    fetch('/api/jobs?limit=200', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : { jobs: [] })
+      .then((d: { jobs?: Array<Record<string, unknown>> }) => {
+        const mapped = (d.jobs ?? []).map((j) => ({
+          id: Number(j.id),
+          jobNumber: String(j.jobNumber ?? j.job_number ?? ''),
+          name: String(j.name ?? ''),
+        }));
+        setJobs(mapped);
+      })
+      .catch(() => { /* silent */ });
+  }, [initialJobId]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -356,7 +374,7 @@ function UploadModal({ jobId, fleetAssetId, onClose, onUploaded }: UploadModalPr
     setUploading(true);
     setError('');
     try {
-      const saved = await uploadFile({ file, fileCategory: category, label: label.trim() || undefined, notes: notes.trim() || undefined, jobId, fleetAssetId });
+      const saved = await uploadFile({ file, fileCategory: category, label: label.trim() || undefined, notes: notes.trim() || undefined, jobId: selectedJobId, fleetAssetId });
       onUploaded(saved);
       onClose();
     } catch (err) {
@@ -410,6 +428,32 @@ function UploadModal({ jobId, fleetAssetId, onClose, onUploaded }: UploadModalPr
               </SelectContent>
             </Select>
           </div>
+
+          {/* Job picker — only shown on main Files page (not scoped to a job) */}
+          {!initialJobId && jobs.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="up-job" className="text-xs font-semibold text-slate-600">Link to Job <span className="font-normal text-slate-400">(optional)</span></Label>
+              <Select
+                value={selectedJobId ? String(selectedJobId) : 'none'}
+                onValueChange={(v) => {
+                  setSelectedJobId(v === 'none' ? undefined : Number(v));
+                  if (v !== 'none') setCategory('Job');
+                }}
+              >
+                <SelectTrigger id="up-job" className="h-9 text-sm">
+                  <SelectValue placeholder="No job" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No job</SelectItem>
+                  {jobs.map((j) => (
+                    <SelectItem key={j.id} value={String(j.id)}>
+                      #{j.jobNumber} — {j.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="up-notes" className="text-xs font-semibold text-slate-600">Notes</Label>
@@ -778,7 +822,13 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
                     <span className="text-xs text-slate-400">{formatBytes(f.sizeBytes)}</span>
                     <span className="text-slate-300">·</span>
                     <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-medium">{f.fileCategory}</span>
-                    {f.jobId && <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-full font-semibold">Job #{f.jobId}</span>}
+                    {f.jobId && (
+                      <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-full font-semibold">
+                        {f.jobName
+                          ? `${f.jobNumber ? `#${f.jobNumber} ` : ''}${f.jobName}`
+                          : `Job #${f.jobId}`}
+                      </span>
+                    )}
                     {f.fleetAssetId && <span className="text-xs bg-purple-50 text-purple-600 border border-purple-200 px-1.5 py-0.5 rounded-full font-semibold">Fleet #{f.fleetAssetId}</span>}
                     {f.uploaderName && <><span className="text-slate-300">·</span><span className="text-xs text-slate-400">{f.uploaderName}</span></>}
                   </div>

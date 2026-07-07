@@ -31,7 +31,7 @@ export default async function handler(req: Request, res: Response) {
     )) as unknown as [Array<{ id: number }>, unknown];
     if (!rows?.[0]) return res.status(404).json({ error: 'Template not found' });
 
-    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments } = req.body as {
+    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -39,17 +39,20 @@ export default async function handler(req: Request, res: Response) {
       blocks?: unknown;
       systemFields?: unknown;
       sourceAttachments?: unknown;
+      pdfSettings?: unknown;
     };
 
     const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [] });
     const pageLayoutJson = JSON.stringify(pageLayout ?? {});
     const themeJson = JSON.stringify(theme ?? {});
+    const pdfSettingsJson = pdfSettings ? JSON.stringify(pdfSettings) : null;
 
     const setParts: string[] = [
       `builder_json = ${JSON.stringify(builderJson)}`,
       `page_layout_json = ${JSON.stringify(pageLayoutJson)}`,
       `theme_json = ${JSON.stringify(themeJson)}`,
     ];
+    if (pdfSettingsJson !== null) setParts.push(`pdf_settings_json = ${JSON.stringify(pdfSettingsJson)}`);
     if (name?.trim()) setParts.push(`name = ${JSON.stringify(name.trim())}`);
     if (templateType) setParts.push(`template_type = ${JSON.stringify(templateType)}`);
 

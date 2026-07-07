@@ -88,6 +88,7 @@ export const FileImage = NullIcon;
 export const FilePlus2 = NullIcon;
 export const FileSpreadsheet = NullIcon;
 export const FileText = NullIcon;
+export const FileOutput = NullIcon;
 export const FileUp = NullIcon;
 export const FileX = NullIcon;
 export const Filter = NullIcon;

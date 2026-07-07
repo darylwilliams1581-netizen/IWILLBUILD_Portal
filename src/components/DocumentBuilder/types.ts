@@ -549,11 +549,69 @@ export interface DocumentTemplate {
    * serialised form and is what the logic engine reads.
    */
   logicRules?: LogicRule[];
+  pdfSettings?: TemplatePdfSettings;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
   sourceDocxName?: string;
 }
+
+// ── PDF Output Settings (per-template overlay) ────────────────────────────────
+
+/**
+ * Per-template PDF output settings stored in document_templates.pdf_settings_json.
+ * Each field is optional — null/undefined means "inherit from company Settings → PDF".
+ */
+export interface TemplatePdfSettings {
+  // ── Cover page ──────────────────────────────────────────────────────────────
+  coverPageEnabled: boolean;
+  /** Override template name as cover title */
+  coverTitle: string;
+  coverSubtitle: string;
+  /** 'auto' = today's date at render time */
+  coverDate: 'auto' | 'none' | string;
+  coverLogoPosition: 'top-left' | 'top-center' | 'top-right';
+  /** Job fields to show on cover page */
+  coverShowJobNumber: boolean;
+  coverShowJobName: boolean;
+  coverShowClientName: boolean;
+  coverShowSiteAddress: boolean;
+
+  // ── Header ──────────────────────────────────────────────────────────────────
+  /** null = inherit company default */
+  headerTextOverride: string | null;
+  /** null = inherit company default */
+  showLogoOverride: boolean | null;
+
+  // ── Footer + Disclaimer ─────────────────────────────────────────────────────
+  /** null = inherit company default */
+  footerTextOverride: string | null;
+  /** null = inherit company default */
+  disclaimerOverride: string | null;
+  /** null = inherit company default */
+  showFooterOverride: boolean | null;
+
+  // ── Display ─────────────────────────────────────────────────────────────────
+  showPageNumbers: boolean;
+}
+
+export const DEFAULT_TEMPLATE_PDF_SETTINGS: TemplatePdfSettings = {
+  coverPageEnabled: false,
+  coverTitle: '',
+  coverSubtitle: '',
+  coverDate: 'auto',
+  coverLogoPosition: 'top-left',
+  coverShowJobNumber: true,
+  coverShowJobName: true,
+  coverShowClientName: true,
+  coverShowSiteAddress: false,
+  headerTextOverride: null,
+  showLogoOverride: null,
+  footerTextOverride: null,
+  disclaimerOverride: null,
+  showFooterOverride: null,
+  showPageNumbers: true,
+};
 
 // ── Builder UI State ──────────────────────────────────────────────────────────
 
@@ -563,6 +621,9 @@ export interface BuilderSelection {
 }
 
 export type BuilderMode = 'edit' | 'preview' | 'fill';
+
+/** Which top-level tab is active in the builder */
+export type BuilderTab = 'content' | 'pdf_output';
 
 /** Which tab is active in the BlockInspector right panel */
 export type InspectorTab = 'settings' | 'logic';
