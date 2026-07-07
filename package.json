@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/server/entry.ts",
+    "build": "node scripts/publish-build.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
