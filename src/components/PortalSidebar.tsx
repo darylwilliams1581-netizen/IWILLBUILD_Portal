@@ -55,11 +55,11 @@ function useSubscriptionStatus() {
 function buildNavItems(_workPlural: string) {
   return [
     { label: 'Dashboard',            icon: LayoutDashboard, href: '/dashboard',            permKey: null },
+    { label: 'Scheduler',            icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Fleet Manager',        icon: Truck,           href: '/fleet',                permKey: 'fleet' },
     { label: 'Asset Manager',        icon: Building2,       href: '/studio/asset-manager', permKey: null },
     { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
-    { label: 'Scheduler',            icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
     { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
