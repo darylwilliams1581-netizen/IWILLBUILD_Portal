@@ -25,10 +25,9 @@ interface ModuleCard {
   label: string;
   description: string;
   icon: React.ElementType;
-  color: string;        // Tailwind bg class for icon bg
-  iconColor: string;    // Tailwind text class for icon
+  color: string;
+  iconColor: string;
   standaloneUrl: string;
-  sameTabAction?: () => void; // if undefined, uses standaloneUrl in same tab
   sameTabUrl?: string;
 }
 

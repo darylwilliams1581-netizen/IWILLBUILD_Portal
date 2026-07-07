@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  HardHat, X, ExternalLink, MapPin, User, Hash,
+  HardHat, X, ExternalLink, MapPin, User,
   ChevronUp, ChevronDown, Briefcase,
 } from 'lucide-react';
 
