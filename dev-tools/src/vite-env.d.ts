@@ -16,7 +16,6 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-declare module 'virtual:media-versions' {
-  export function getVersions(): Record<string, string>;
-  export function onVersionsUpdate(cb: (versions: Record<string, string>) => void): () => void;
+interface Window {
+  __airoEditModeActive?: boolean
 }
