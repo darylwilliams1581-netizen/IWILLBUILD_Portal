@@ -1,13 +1,18 @@
 /**
- * Smart Document Builder — DOCX Importer
+ * Smart Document Builder — Document Importer
  * ─────────────────────────────────────────────────────────────────────────────
- * Upload flow: user selects a .docx → server parses → preview blocks → confirm.
+ * Supports importing both .docx (Word) and .pdf files into builder blocks.
+ *
+ * DOCX → parsed server-side with mammoth → heading/text/table/list blocks
+ * PDF  → parsed server-side with pdfjs   → image blocks (one per page)
+ *         falls back to text extraction if canvas is unavailable
  */
 
 import { useState, useRef } from 'react';
-import { FileUp, Loader2, AlertCircle, CheckCircle, X, FileText } from 'lucide-react';
-import { useDocumentStore } from './useDocumentStore';
+import { FileUp, Loader2, AlertCircle, CheckCircle, X, FileText, File } from 'lucide-react';
 import type { DocumentBlock } from './types';
+
+type ImportMode = 'docx' | 'pdf';
 
 interface Props {
   templateId: number | null;
@@ -18,17 +23,25 @@ interface Props {
 }
 
 export default function DocxImporter({ templateId, onClose, onImported, onSaveFirst }: Props) {
+  const [mode, setMode] = useState<ImportMode>('docx');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ blocks: DocumentBlock[]; name: string; warnings: string[] } | null>(null);
+  const [preview, setPreview] = useState<{ blocks: DocumentBlock[]; name: string; warnings: string[]; pageCount?: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Resolved id — may be updated by auto-save when templateId is null
   const [resolvedId, setResolvedId] = useState<number | null>(templateId);
 
+  const acceptAttr = mode === 'docx' ? '.docx' : '.pdf';
+  const modeLabel = mode === 'docx' ? 'Word (.docx)' : 'PDF (.pdf)';
+
   const handleFile = (f: File) => {
-    if (!f.name.endsWith('.docx')) {
-      setError('Only .docx files are supported.');
+    const name = f.name.toLowerCase();
+    if (mode === 'docx' && !name.endsWith('.docx')) {
+      setError('Only .docx files are supported in DOCX mode.');
+      return;
+    }
+    if (mode === 'pdf' && !name.endsWith('.pdf')) {
+      setError('Only .pdf files are supported in PDF mode.');
       return;
     }
     setFile(f);
@@ -47,10 +60,8 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
     setLoading(true);
     setError(null);
     try {
-      // If no template has been saved yet, auto-save first to get an id
       let id = resolvedId;
       if (!id) {
-        setError(null);
         const saved = await onSaveFirst();
         if (!saved) {
           setError('Could not save the template — please try saving manually first.');
@@ -60,23 +71,36 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
         id = saved;
         setResolvedId(saved);
       }
+
       const formData = new FormData();
-      formData.append('docx', file);
-      const res = await fetch(`/api/document-templates/${id}/import-docx`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json() as { blocks?: DocumentBlock[]; sourceDocxName?: string; warnings?: string[]; error?: string };
+      const endpoint = mode === 'docx'
+        ? `/api/document-templates/${id}/import-docx`
+        : `/api/document-templates/${id}/import-pdf`;
+      const fieldName = mode === 'docx' ? 'docx' : 'pdf';
+      formData.append(fieldName, file);
+
+      const res = await fetch(endpoint, { method: 'POST', body: formData, credentials: 'include' });
+      const data = await res.json() as {
+        blocks?: DocumentBlock[];
+        sourceDocxName?: string;
+        sourceFileName?: string;
+        warnings?: string[];
+        pageCount?: number;
+        error?: string;
+      };
+
       if (!res.ok || data.error) {
-        setError(data.error ?? 'Failed to parse DOCX');
+        setError(data.error ?? 'Failed to parse file');
         return;
       }
+
       setPreview({
         blocks: data.blocks ?? [],
-        name: data.sourceDocxName ?? file.name,
+        name: data.sourceDocxName ?? data.sourceFileName ?? file.name,
         warnings: data.warnings ?? [],
+        pageCount: data.pageCount,
       });
-    } catch (err) {
+    } catch {
       setError('Network error — please try again.');
     } finally {
       setLoading(false);
@@ -89,9 +113,16 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
     onClose();
   };
 
+  const handleModeChange = (m: ImportMode) => {
+    setMode(m);
+    setFile(null);
+    setError(null);
+    setPreview(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -99,8 +130,8 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
               <FileUp size={15} className="text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">Import DOCX Template</p>
-              <p className="text-xs text-slate-400">Convert a Word document into builder blocks</p>
+              <p className="text-sm font-bold text-slate-800">Import Document</p>
+              <p className="text-xs text-slate-400">Convert a Word or PDF file into builder blocks</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors">
@@ -109,6 +140,30 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          {/* Mode toggle */}
+          {!preview && (
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+              <button
+                onClick={() => handleModeChange('docx')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  mode === 'docx' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <FileText size={13} />
+                Word (.docx)
+              </button>
+              <button
+                onClick={() => handleModeChange('pdf')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  mode === 'pdf' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <File size={13} className="text-red-500" />
+                PDF (.pdf)
+              </button>
+            </div>
+          )}
+
           {/* Upload zone */}
           {!preview && (
             <>
@@ -118,7 +173,10 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                 onClick={() => inputRef.current?.click()}
                 className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary hover:bg-orange-50/30 transition-colors"
               >
-                <FileText size={32} className="text-slate-300" />
+                {mode === 'docx'
+                  ? <FileText size={32} className="text-slate-300" />
+                  : <File size={32} className="text-red-300" />
+                }
                 {file ? (
                   <div className="text-center">
                     <p className="text-sm font-semibold text-slate-700">{file.name}</p>
@@ -126,14 +184,14 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-slate-600">Drop your .docx file here</p>
+                    <p className="text-sm font-semibold text-slate-600">Drop your {modeLabel} file here</p>
                     <p className="text-xs text-slate-400">or click to browse</p>
                   </div>
                 )}
                 <input
                   ref={inputRef}
                   type="file"
-                  accept=".docx"
+                  accept={acceptAttr}
                   className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
                 />
@@ -146,21 +204,37 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                 </div>
               )}
 
+              {/* What gets imported */}
               <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 space-y-1">
-                <p className="font-semibold text-slate-600">What gets imported:</p>
-                <p>• Headings (H1–H4) → Heading blocks</p>
-                <p>• Paragraphs → Text or Rich Text blocks</p>
-                <p>• Tables → Table blocks (static mode)</p>
-                <p>• Lists → Rich Text blocks with bullets</p>
-                <p>• Horizontal rules → Divider blocks</p>
+                {mode === 'docx' ? (
+                  <>
+                    <p className="font-semibold text-slate-600">What gets imported from DOCX:</p>
+                    <p>• Headings (H1–H4) → Heading blocks</p>
+                    <p>• Paragraphs → Text or Rich Text blocks</p>
+                    <p>• Tables → Table blocks (static mode)</p>
+                    <p>• Lists → Rich Text blocks with bullets</p>
+                    <p>• Horizontal rules → Divider blocks</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-slate-600">What gets imported from PDF:</p>
+                    <p>• Each page → Image block (rendered at 1.5× scale)</p>
+                    <p>• Text fallback if image rendering is unavailable</p>
+                    <p>• Maximum 20 pages per import</p>
+                    <p className="text-amber-600">• PDF import is best-effort — complex layouts may vary</p>
+                  </>
+                )}
               </div>
 
               <button
-                onClick={handleParse}
+                onClick={() => void handleParse()}
                 disabled={!file || loading}
                 className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing...' : 'Saving & Parsing...'}</> : 'Parse Document'}
+                {loading
+                  ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing…' : 'Saving & Parsing…'}</>
+                  : `Import ${mode === 'docx' ? 'DOCX' : 'PDF'}`
+                }
               </button>
             </>
           )}
@@ -170,7 +244,12 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
             <>
               <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700">
                 <CheckCircle size={13} />
-                <span>Parsed <strong>{preview.blocks.length} blocks</strong> from <strong>{preview.name}</strong></span>
+                <span>
+                  Parsed <strong>{preview.blocks.length} block{preview.blocks.length !== 1 ? 's' : ''}</strong> from <strong>{preview.name}</strong>
+                  {preview.pageCount !== undefined && preview.pageCount !== preview.blocks.length
+                    ? ` (${preview.pageCount} pages)`
+                    : ''}
+                </span>
               </div>
 
               {preview.warnings.length > 0 && (
@@ -194,6 +273,7 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                           : b.type === 'text' ? b.content
                           : b.type === 'rich_text' ? b.html.replace(/<[^>]+>/g, '').slice(0, 50)
                           : b.type === 'table' ? `${b.columns.length} cols × ${b.rows.length} rows`
+                          : b.type === 'image' ? (b.alt ?? b.src ?? 'image')
                           : b.type === 'divider' ? '—'
                           : ''}
                       </span>

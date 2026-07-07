@@ -32,8 +32,8 @@ export default async function handler(req: Request, res: Response) {
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
 
     const [result] = await db.execute(sql`
-      INSERT INTO project_drawings (company_id, project_id, title, description, status, created_by)
-      VALUES (${profile.companyId}, ${projectId ?? null}, ${title.trim()}, ${description?.trim() ?? null}, 'active', ${session.user.id})
+      INSERT INTO project_drawings (company_id, project_id, name, title, description, status, created_by)
+      VALUES (${profile.companyId}, ${projectId ?? null}, ${title.trim()}, ${title.trim()}, ${description?.trim() ?? null}, 'active', ${session.user.id})
     `) as unknown as [{ insertId: number }];
 
     const drawingId = (result as unknown as { insertId: number }).insertId;

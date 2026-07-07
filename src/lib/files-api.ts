@@ -3,6 +3,9 @@ export interface CompanyFile {
   uploadedByUserId: string; uploaderName: string | null; originalName: string;
   storedName: string; mimeType: string; sizeBytes: number; fileCategory: string;
   label: string | null; notes: string | null; createdAt: string;
+  /** Resolved from jobs table — populated by GET /api/files */
+  jobName?: string | null;
+  jobNumber?: string | null;
 }
 export const FILE_CATEGORIES = ['Job','Fleet','Company','Forms','Photos','Reports','Templates','Other'] as const;
 export type FileCategory = typeof FILE_CATEGORIES[number];
