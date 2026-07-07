@@ -62,10 +62,10 @@ function buildNavItems(_workPlural: string) {
     { label: 'Scheduler',            icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
     { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
+    { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },
     { label: 'Customers',            icon: Users,           href: '/customers',            permKey: 'jobs' },
     { label: 'Estimating Settings',  icon: Calculator,      href: '/estimating',           permKey: null },
-    { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Team',                 icon: UserCircle,      href: '/team',                 permKey: null },
     { label: 'Dazza AI',             icon: Bot,             href: '/dazza-ai',             permKey: null, ownerOnly: true },
   ] as const;
