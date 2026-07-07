@@ -67,15 +67,15 @@ function buildNavItems(_workPlural: string) {
     { label: 'Customers',            icon: Users,           href: '/customers',            permKey: 'jobs' },
     { label: 'Estimating Settings',  icon: Calculator,      href: '/estimating',           permKey: null },
     { label: 'Team',                 icon: UserCircle,      href: '/team',                 permKey: null },
-    { label: 'Dazza AI',             icon: Bot,             href: '/dazza-ai',             permKey: null, ownerOnly: true },
   ] as const;
 }
 
 // ── Manage group ──────────────────────────────────────────────────────────────
 const adminItems = [
-  { label: 'Safety',       icon: ShieldCheck, href: '/safety',   adminOnly: false, permKey: null as string | null },
-  { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, permKey: null as string | null },
-  { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, permKey: null as string | null },
+  { label: 'Safety',       icon: ShieldCheck, href: '/safety',   adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'Dazza AI',     icon: Bot,         href: '/dazza-ai', adminOnly: false, ownerOnly: true,  permKey: null as string | null },
 ] as const;
 
 // ─── User strip sub-component ─────────────────────────────────────────────────
@@ -229,15 +229,21 @@ function SidebarContent({
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
+            if (!permsLoading && (item as { ownerOnly?: boolean }).ownerOnly && !isPlatformOwner) return null;
             const Icon   = item.icon;
             const active = isActive(item.href);
+            const isDazza = item.href === '/dazza-ai';
             return (
               <div key={item.href}>
                 <Link
                   to={item.href}
                   onClick={onClose}
                   title={collapsed ? item.label : undefined}
-                  className={linkClass(active)}
+                  className={
+                    isDazza
+                      ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-300 hover:bg-white/8 hover:text-violet-200'}`
+                      : linkClass(active)
+                  }
                 >
                   <Icon size={17} className="shrink-0" />
                   {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
