@@ -6,7 +6,7 @@
  * Redirects to default language if invalid language code is provided.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isLanguageSupported, getLanguage, defaultLanguage } from '../lib/i18n/config';
