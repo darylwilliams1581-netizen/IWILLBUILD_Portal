@@ -1,36 +1,3 @@
-node_modules
 .git
-.gitignore
-.gitattributes
-
-# Source — bundled into dist/server.bundle.mjs at build time
-src
-
-# Dev tooling — not needed at runtime
-dev-tools
-source-mapper
-content-lib
-content-plugin
-drizzle
-scripts
-airo-secrets
-
-# Config files — not needed at runtime
-vite.config.ts
-vite.config.js
-tsconfig.json
-tsconfig.*.json
-tailwind.config.*
-postcss.config.*
-eslint.config.*
-drizzle.config.*
-vitest.config.*
-format-overrides-plugin.ts
-fullstory-plugin.ts
-IWILLBUILD_SYSTEM_MAP.md
-README.md
-
-# Logs and OS junk
-*.log
-.DS_Store
-Thumbs.db
+node_modules
+dist
