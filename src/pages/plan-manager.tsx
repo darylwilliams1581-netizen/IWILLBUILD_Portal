@@ -1,7 +1,7 @@
 /**
  * /plan-manager — Plan Manager module page.
- * Tabs: Active drawings | Archived
- * Opens DrawingViewer in full-screen overlay when a drawing is selected.
+ * Drawings are grouped by job (file manager view).
+ * No direct upload here — drawings are added via the job's Drawings tab.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -10,64 +10,80 @@ import PortalSidebar from '@/components/PortalSidebar';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
 import DrawingViewer from '@/components/PlanManager/DrawingViewer';
 import { usePlanManager } from '@/components/PlanManager/usePlanManager';
+import type { Drawing } from '@/components/PlanManager/types';
 
 type Tab = 'active' | 'archived';
 
+interface JobGroup {
+  jobId: number;
+  jobName: string;
+  jobNumber: string;
+  jobStatus: string;
+  drawings: Drawing[];
+}
+
 export default function PlanManagerPage() {
   const [tab, setTab] = useState<Tab>('active');
+  const [jobs, setJobs] = useState<JobGroup[]>([]);
+  const [unassigned, setUnassigned] = useState<Drawing[]>([]);
+  const [listLoading, setListLoading] = useState(true);
   const hook = usePlanManager();
-  const { state, loadDrawings, loadDrawing, closeDrawing } = hook;
+  const { state, loadDrawing, closeDrawing } = hook;
+
+  const loadAll = useCallback(async (t: Tab) => {
+    setListLoading(true);
+    try {
+      const res = await fetch(`/api/plan-manager/jobs-with-drawings?status=${t}`, { credentials: 'include' });
+      const data = await res.json() as { jobs?: JobGroup[]; unassigned?: Drawing[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load');
+      setJobs(data.jobs ?? []);
+      setUnassigned(data.unassigned ?? []);
+    } catch {
+      setJobs([]);
+      setUnassigned([]);
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadDrawings(tab);
-  }, [tab, loadDrawings]);
-
-  // ── CRUD helpers ──────────────────────────────────────────────────────────
-  const handleCreate = useCallback(async (title: string, file?: File): Promise<number | null> => {
-    try {
-      const res = await fetch('/api/plan-manager/drawings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
-      });
-      const data = await res.json() as { id?: number; error?: string };
-      if (!res.ok || !data.id) return null;
-      const id = data.id;
-
-      // If a PDF was selected, upload it immediately before opening the viewer
-      if (file) {
-        await hook.uploadPdf(id, file);
-      }
-
-      await loadDrawings(tab);
-      return id;
-    } catch { return null; }
-  }, [tab, loadDrawings, hook]);
+    void loadAll(tab);
+  }, [tab, loadAll]);
 
   const handleOpen = useCallback(async (id: number) => {
     await loadDrawing(id);
   }, [loadDrawing]);
 
   const handleArchive = useCallback(async (id: number) => {
-    await fetch(`/api/plan-manager/drawings/${id}/archive`, { method: 'POST' });
-    await loadDrawings(tab);
-  }, [tab, loadDrawings]);
+    await fetch(`/api/plan-manager/drawings/${id}/archive`, { method: 'POST', credentials: 'include' });
+    await loadAll(tab);
+  }, [tab, loadAll]);
 
   const handleRestore = useCallback(async (id: number) => {
-    await fetch(`/api/plan-manager/drawings/${id}/restore`, { method: 'POST' });
-    await loadDrawings(tab);
-  }, [tab, loadDrawings]);
+    await fetch(`/api/plan-manager/drawings/${id}/restore`, { method: 'POST', credentials: 'include' });
+    await loadAll(tab);
+  }, [tab, loadAll]);
 
   const handleDelete = useCallback(async (id: number) => {
     if (!confirm('Permanently delete this drawing? This cannot be undone.')) return;
-    await fetch(`/api/plan-manager/drawings/${id}/permanent`, { method: 'DELETE' });
-    await loadDrawings(tab);
-  }, [tab, loadDrawings]);
+    await fetch(`/api/plan-manager/drawings/${id}/permanent`, { method: 'DELETE', credentials: 'include' });
+    await loadAll(tab);
+  }, [tab, loadAll]);
+
+  const handleReorder = useCallback(async (drawingId: number, direction: 'up' | 'down', jobId?: number) => {
+    await fetch(`/api/plan-manager/drawings/${drawingId}/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ direction, jobId }),
+    });
+    await loadAll(tab);
+  }, [tab, loadAll]);
 
   const handleViewerClose = useCallback(async () => {
     closeDrawing();
-    await loadDrawings(tab);
-  }, [closeDrawing, tab, loadDrawings]);
+    await loadAll(tab);
+  }, [closeDrawing, tab, loadAll]);
 
   return (
     <>
@@ -88,7 +104,7 @@ export default function PlanManagerPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-100">Plan Manager</h1>
-              <p className="text-xs text-slate-500">Upload, annotate and share construction drawings</p>
+              <p className="text-xs text-slate-500">Browse and manage drawings across all jobs</p>
             </div>
 
             <div className="flex-1" />
@@ -118,14 +134,15 @@ export default function PlanManagerPage() {
 
           {/* List */}
           <PlanManagerList
-            drawings={state.drawings}
-            loading={state.listLoading}
+            jobs={jobs}
+            unassigned={unassigned}
+            loading={listLoading}
             tab={tab}
             onOpen={handleOpen}
-            onCreate={handleCreate}
             onArchive={handleArchive}
             onRestore={handleRestore}
             onDelete={handleDelete}
+            onReorder={handleReorder}
           />
         </div>
       </div>

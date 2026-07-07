@@ -53,7 +53,7 @@ import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
-import DrawingsTab from '@/components/drawings/DrawingsTab';
+import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
@@ -864,7 +864,7 @@ export default function JobDetailPage() {
                   {activeTab === 'photos' && <JobPhotos jobId={job.id} />}
 
                   {/* ── Drawings ── */}
-                  {activeTab === 'drawings' && <DrawingsTab jobId={job.id} />}
+                  {activeTab === 'drawings' && <JobPlanManagerTab jobId={job.id} jobName={job.name} />}
 
                   {/* ── To-do ── */}
                   {activeTab === 'todos' && <JobTodos jobId={job.id} />}
