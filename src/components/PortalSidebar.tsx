@@ -54,20 +54,20 @@ function useSubscriptionStatus() {
 // ── Main nav items ────────────────────────────────────────────────────────────
 function buildNavItems(_workPlural: string) {
   return [
-    { label: 'Dashboard',     icon: LayoutDashboard, href: '/dashboard',            permKey: null },
-    { label: 'Jobs',          icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
-    { label: 'Scheduler',     icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
-    { label: 'Fleet',         icon: Truck,           href: '/fleet',                permKey: 'fleet' },
-    { label: 'Customers',     icon: Users,           href: '/customers',            permKey: 'jobs' },
-    { label: 'Estimating',    icon: Calculator,      href: '/estimating',           permKey: null },
-    { label: 'Invoices',      icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
-    { label: 'Files',         icon: FolderOpen,      href: '/files',                permKey: 'files' },
-    { label: 'Forms',         icon: ClipboardList,   href: '/forms',                permKey: null },
-    { label: 'Studio',        icon: Layers,          href: '/studio',               permKey: null },
-    { label: 'Plan Manager',  icon: Map,             href: '/plan-manager',         permKey: null },
-    { label: 'Asset Manager', icon: Building2,       href: '/studio/asset-manager', permKey: null },
-    { label: 'Team',          icon: UserCircle,      href: '/team',                 permKey: null },
-    { label: 'Dazza AI',      icon: Bot,             href: '/dazza-ai',             permKey: null, ownerOnly: true },
+    { label: 'Dashboard',            icon: LayoutDashboard, href: '/dashboard',            permKey: null },
+    { label: 'Fleet Manager',        icon: Truck,           href: '/fleet',                permKey: 'fleet' },
+    { label: 'Asset Manager',        icon: Building2,       href: '/studio/asset-manager', permKey: null },
+    { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
+    { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
+    { label: 'Scheduler',            icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
+    { label: 'Customers',            icon: Users,           href: '/customers',            permKey: 'jobs' },
+    { label: 'Estimating Settings',  icon: Calculator,      href: '/estimating',           permKey: null },
+    { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
+    { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },
+    { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
+    { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Team',                 icon: UserCircle,      href: '/team',                 permKey: null },
+    { label: 'Dazza AI',             icon: Bot,             href: '/dazza-ai',             permKey: null, ownerOnly: true },
   ] as const;
 }
 
