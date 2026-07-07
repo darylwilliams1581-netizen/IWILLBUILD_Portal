@@ -1,0 +1,183 @@
+[
+  {
+    "name": "Daily Prestart",
+    "formType": "Fleet",
+    "category": "Fleet",
+    "description": "Daily vehicle and equipment prestart check.",
+    "onJobs": false,
+    "onFleet": true,
+    "onDashboard": true,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Operator Name", "fieldType": "short_text", "required": true },
+      { "label": "Vehicle / Equipment", "fieldType": "short_text", "required": true },
+      { "label": "Odometer / Hours", "fieldType": "short_text" },
+      { "label": "Brakes OK", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Lights OK", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Tyres OK", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Fluids OK (oil, water, fuel)", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Any defects or issues?", "fieldType": "long_text" },
+      { "label": "Safe to operate?", "fieldType": "single_choice", "required": true, "options": ["Yes — safe to operate", "No — take out of service"] },
+      { "label": "Operator Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Toolbox Talk",
+    "formType": "Job",
+    "category": "Safety",
+    "description": "Record toolbox talk / safety briefing attendance and topics.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Conducted By", "fieldType": "short_text", "required": true },
+      { "label": "Topics Discussed", "fieldType": "long_text", "required": true },
+      { "label": "Actions Required", "fieldType": "long_text" },
+      { "label": "Attendee 1 — Name", "fieldType": "short_text" },
+      { "label": "Attendee 1 — Signature", "fieldType": "signature" },
+      { "label": "Attendee 2 — Name", "fieldType": "short_text" },
+      { "label": "Attendee 2 — Signature", "fieldType": "signature" },
+      { "label": "Attendee 3 — Name", "fieldType": "short_text" },
+      { "label": "Attendee 3 — Signature", "fieldType": "signature" },
+      { "label": "Attendee 4 — Name", "fieldType": "short_text" },
+      { "label": "Attendee 4 — Signature", "fieldType": "signature" },
+      { "label": "Supervisor Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Incident / Injury / Near Miss Report",
+    "formType": "Job",
+    "category": "Safety",
+    "description": "Record incidents, injuries, near misses, and hazard reports on site.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date of Incident", "fieldType": "date", "required": true },
+      { "label": "Time of Incident", "fieldType": "short_text", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Location on Site", "fieldType": "short_text", "required": true },
+      { "label": "Reported By", "fieldType": "short_text", "required": true },
+      { "label": "Incident Type", "fieldType": "single_choice", "required": true, "options": ["Injury / Illness", "Near Miss", "Property Damage", "Hazard Report", "Vehicle / Plant Incident", "Environmental Incident", "Other"] },
+      { "label": "Description of Incident", "fieldType": "long_text", "required": true },
+      { "label": "Persons Involved", "fieldType": "long_text" },
+      { "label": "Immediate Actions Taken", "fieldType": "long_text", "required": true },
+      { "label": "Corrective Actions Required", "fieldType": "long_text" },
+      { "label": "Photos / Evidence", "fieldType": "photo" },
+      { "label": "Reported to Supervisor?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
+      { "label": "Reporter Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Site Inspection",
+    "formType": "Job",
+    "category": "Safety",
+    "description": "Regular site safety and compliance inspection checklist.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Inspected By", "fieldType": "short_text", "required": true },
+      { "label": "PPE being worn correctly?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Housekeeping satisfactory?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Walkways and access clear?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Plant and equipment in good condition?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "First aid kit accessible and stocked?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Emergency contacts displayed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "SWMS available and signed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "N/A"] },
+      { "label": "Hazards identified", "fieldType": "long_text" },
+      { "label": "Actions required", "fieldType": "long_text" },
+      { "label": "Photos", "fieldType": "photo" },
+      { "label": "Inspector Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Worker Sign On / Attendance Register",
+    "formType": "Job",
+    "category": "Safety",
+    "description": "Daily worker sign-on and attendance register for site induction and attendance tracking.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": true,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Site Supervisor", "fieldType": "short_text", "required": true },
+      { "label": "Worker Name", "fieldType": "short_text", "required": true },
+      { "label": "Company", "fieldType": "short_text" },
+      { "label": "Role / Trade", "fieldType": "short_text" },
+      { "label": "White Card Number", "fieldType": "short_text" },
+      { "label": "Site induction completed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
+      { "label": "Time In", "fieldType": "short_text", "required": true },
+      { "label": "Time Out", "fieldType": "short_text" },
+      { "label": "Worker Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Photo Record",
+    "formType": "Job",
+    "category": "General",
+    "description": "Capture and label site photos for progress, defects, or documentation.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Recorded By", "fieldType": "short_text", "required": true },
+      { "label": "Photo Category", "fieldType": "single_choice", "options": ["Progress", "Defect / Issue", "Before", "After", "Safety", "Damage", "Other"] },
+      { "label": "Description", "fieldType": "long_text", "required": true },
+      { "label": "Photos", "fieldType": "photo", "required": true },
+      { "label": "Notes", "fieldType": "long_text" }
+    ]
+  },
+  {
+    "name": "Variation Request",
+    "formType": "Job",
+    "category": "Commercial",
+    "description": "Document and approve variations to scope, cost, or programme.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Variation Number", "fieldType": "short_text", "required": true },
+      { "label": "Requested By", "fieldType": "short_text", "required": true },
+      { "label": "Description of Variation", "fieldType": "long_text", "required": true },
+      { "label": "Reason for Variation", "fieldType": "long_text", "required": true },
+      { "label": "Estimated Cost Impact", "fieldType": "short_text" },
+      { "label": "Estimated Time Impact", "fieldType": "short_text" },
+      { "label": "Supporting Photos / Documents", "fieldType": "photo" },
+      { "label": "Client Approval", "fieldType": "single_choice", "options": ["Approved", "Rejected", "Pending"] },
+      { "label": "Client Signature", "fieldType": "signature" },
+      { "label": "Contractor Signature", "fieldType": "signature", "required": true }
+    ]
+  },
+  {
+    "name": "Completion Sign Off",
+    "formType": "Job",
+    "category": "General",
+    "description": "Practical completion and handover sign-off record.",
+    "onJobs": true,
+    "onFleet": false,
+    "onDashboard": false,
+    "fields": [
+      { "label": "Date", "fieldType": "date", "required": true },
+      { "label": "Project / Job", "fieldType": "short_text", "required": true },
+      { "label": "Completed By", "fieldType": "short_text", "required": true },
+      { "label": "Scope of Works Completed", "fieldType": "long_text", "required": true },
+      { "label": "Outstanding Items / Defects", "fieldType": "long_text" },
+      { "label": "Site clean and tidy?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
+      { "label": "All waste removed?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No"] },
+      { "label": "Client satisfied with works?", "fieldType": "single_choice", "required": true, "options": ["Yes", "No", "Pending review"] },
+      { "label": "Completion Photos", "fieldType": "photo" },
+      { "label": "Client Signature", "fieldType": "signature", "required": true },
+      { "label": "Contractor Signature", "fieldType": "signature", "required": true }
+    ]
+  }
+]
