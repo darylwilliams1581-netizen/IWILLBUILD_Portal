@@ -18,6 +18,11 @@ interface LanguageWrapperProps {
 export default function LanguageWrapper({ children }: LanguageWrapperProps) {
   const { lang } = useParams<{ lang: string }>();
   const { i18n } = useTranslation();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (lang && isLanguageSupported(lang)) {
@@ -31,7 +36,8 @@ export default function LanguageWrapper({ children }: LanguageWrapperProps) {
     }
   }, [lang, i18n]);
 
-  if (lang && !isLanguageSupported(lang)) {
+  // Only redirect on the client — <Navigate> during SSR has no router context
+  if (mounted && lang && !isLanguageSupported(lang)) {
     return <Navigate to={`/${defaultLanguage}`} replace />;
   }
 
