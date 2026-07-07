@@ -37,6 +37,7 @@ import {
   CalendarClock,
   Layers,
   Image,
+  Rocket,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -54,11 +55,12 @@ import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
+import JobLaunchTab from '@/components/job/JobLaunchTab';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -89,6 +91,12 @@ const NAV_GROUPS = [
       { key: 'costs'     as Tab, label: 'Costs',      icon: Receipt },
       { key: 'invoices'  as Tab, label: 'Invoices',   icon: DollarSign },
       { key: 'files'     as Tab, label: 'Files',      icon: FolderOpen },
+    ],
+  },
+  {
+    label: 'Open',
+    items: [
+      { key: 'launch' as Tab, label: 'Launch', icon: Rocket },
     ],
   },
 ] as const;
@@ -906,6 +914,11 @@ export default function JobDetailPage() {
                     <div className="bg-white rounded-xl border border-border">
                       <FilePanel jobId={job.id} />
                     </div>
+                  )}
+
+                  {/* ── Launch ── */}
+                  {activeTab === 'launch' && (
+                    <JobLaunchTab job={job} />
                   )}
 
                 </div>

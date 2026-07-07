@@ -8,6 +8,7 @@ import { FolderOpen, Menu } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FilePanel from '@/components/FilePanel';
+import JobContextTab from '@/components/JobContextTab';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
 
 export default function FilesPage() {
@@ -31,6 +32,7 @@ export default function FilesPage() {
   }
 
   return (
+    <>
     <div className="portal-page">
       <Helmet>
         <title>Files — IWILLBUILD Portal</title>
@@ -101,5 +103,7 @@ export default function FilesPage() {
         </div>
       </div>
     </div>
+    <JobContextTab />
+    </>
   );
 }

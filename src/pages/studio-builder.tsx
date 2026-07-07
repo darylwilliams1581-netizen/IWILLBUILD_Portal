@@ -10,6 +10,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
+import JobContextTab from '@/components/JobContextTab';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
 
 // Map URL ?type= param → StudioDocumentType + default name
@@ -160,6 +161,7 @@ export default function StudioBuilderPage() {
         onClose={handleClose}
         onSaved={handleSaved}
       />
+      <JobContextTab />
     </>
   );
 }

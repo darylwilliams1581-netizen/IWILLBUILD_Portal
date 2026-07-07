@@ -11,6 +11,7 @@ import ShareLinkModal from '@/components/ShareLinkModal';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+import JobContextTab from '@/components/JobContextTab';
 import CustomerSelector from '@/components/CustomerSelector';
 import { usePermissions } from '@/lib/usePermissions';
 import {
@@ -964,6 +965,7 @@ export default function InvoiceBuilderPage() {
           title={invoice.title ?? `Invoice #${invoice.invoiceNumber ?? invoice.id}`}
         />
       )}
+      <JobContextTab />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Map, Archive, Layers } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import JobContextTab from '@/components/JobContextTab';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
 import DrawingViewer from '@/components/PlanManager/DrawingViewer';
 import { usePlanManager } from '@/components/PlanManager/usePlanManager';
@@ -155,6 +156,7 @@ export default function PlanManagerPage() {
           onClose={handleViewerClose}
         />
       )}
+      <JobContextTab />
     </>
   );
 }

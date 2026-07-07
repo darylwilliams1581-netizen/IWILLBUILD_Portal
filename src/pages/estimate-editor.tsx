@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
+import JobContextTab from '@/components/JobContextTab';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
   fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle,
@@ -960,6 +961,7 @@ export default function EstimateEditorPage() {
           title={estimate.title ?? `Estimate #${estimate.id}`}
         />
       )}
+      <JobContextTab />
     </div>
   );
 }
