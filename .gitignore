@@ -89,7 +89,9 @@ pids
 # The app never reads from content/ at runtime.
 # Runtime seed data lives in src/server/seed/ (copied to dist/server/seed/ at build time).
 # Source DOCX files and the full content/ authoring tree are stored in /private/iwillbuild-dev-assets/.
-content/
+# NOTE: only the ROOT-LEVEL content/ directory is ignored — NOT src/content/ which
+# contains virtual:content JSON files that ARE required at build time.
+/content/
 
 # Internal platform reports — not needed at runtime
 .airo/security-report.json
