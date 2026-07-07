@@ -441,6 +441,12 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           // Splitting it into its own chunk prevents Rollup from holding its
           // entire AST in memory alongside the entry bundle during rendering.
           if (id.includes('node_modules/date-fns')) return 'date-fns';
+          // react-dom is 7 MB — split it so it doesn't inflate the entry bundle.
+          if (id.includes('node_modules/react-dom')) return 'react-dom';
+          // react-router pulls in a large history/routing tree — split it.
+          if (id.includes('node_modules/react-router') && !id.includes('react-router-dom')) return 'react-router';
+          // @radix-ui is 6.8 MB of UI primitives — split into its own chunk.
+          if (id.includes('node_modules/@radix-ui')) return 'radix-ui';
           // @opentelemetry is pulled in by better-auth/mysql2 tracing hooks.
           // 14 MB on disk — split it to keep the better-auth chunk smaller.
           if (id.includes('node_modules/@opentelemetry')) return 'opentelemetry';

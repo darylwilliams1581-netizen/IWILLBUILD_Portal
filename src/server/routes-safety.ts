@@ -1,42 +1,5 @@
 import type { Express } from 'express';
 
-import safety_ai_draft_post_315 from "./api/safety/ai/draft/POST";
-import safety_documents_get_316 from "./api/safety/documents/GET";
-import safety_documents_post_317 from "./api/safety/documents/POST";
-import safety_documents_id_delete_318 from "./api/safety/documents/[id]/DELETE";
-import safety_documents_id_download_get_319 from "./api/safety/documents/[id]/download/GET";
-import safety_generated_posters_get_320 from "./api/safety/generated-posters/GET";
-import safety_generated_posters_post_321 from "./api/safety/generated-posters/POST";
-import safety_generated_posters_id_delete_322 from "./api/safety/generated-posters/[id]/DELETE";
-import safety_job_safety_plans_get_323 from "./api/safety/job-safety-plans/GET";
-import safety_job_safety_plans_post_324 from "./api/safety/job-safety-plans/POST";
-import safety_job_safety_plans_id_delete_325 from "./api/safety/job-safety-plans/[id]/DELETE";
-import safety_job_safety_plans_id_put_326 from "./api/safety/job-safety-plans/[id]/PUT";
-import safety_job_swms_get_327 from "./api/safety/job-swms/GET";
-import safety_job_swms_post_328 from "./api/safety/job-swms/POST";
-import safety_job_swms_id_delete_329 from "./api/safety/job-swms/[id]/DELETE";
-import safety_job_swms_id_get_330 from "./api/safety/job-swms/[id]/GET";
-import safety_job_swms_id_put_331 from "./api/safety/job-swms/[id]/PUT";
-import safety_job_swms_id_share_token_post_332 from "./api/safety/job-swms/[id]/share-token/POST";
-import safety_job_swms_id_signoffs_get_333 from "./api/safety/job-swms/[id]/signoffs/GET";
-import safety_job_swms_id_signoffs_post_334 from "./api/safety/job-swms/[id]/signoffs/POST";
-import safety_job_swms_id_signoffs_signoffId_delete_335 from "./api/safety/job-swms/[id]/signoffs/[signoffId]/DELETE";
-import safety_plans_get_336 from "./api/safety/plans/GET";
-import safety_plans_post_337 from "./api/safety/plans/POST";
-import safety_plans_id_delete_339 from "./api/safety/plans/[id]/DELETE";
-import safety_plans_id_put_340 from "./api/safety/plans/[id]/PUT";
-import safety_plans_id_export_get_341 from "./api/safety/plans/[id]/export/GET";
-import safety_plans_id_pack_get_342 from "./api/safety/plans/[id]/pack/GET";
-import safety_posters_get_343 from "./api/safety/posters/GET";
-import safety_posters_post_344 from "./api/safety/posters/POST";
-import safety_posters_id_delete_345 from "./api/safety/posters/[id]/DELETE";
-import safety_swms_get_346 from "./api/safety/swms/GET";
-import safety_swms_post_347 from "./api/safety/swms/POST";
-import safety_swms_id_delete_349 from "./api/safety/swms/[id]/DELETE";
-import safety_swms_id_get_350 from "./api/safety/swms/[id]/GET";
-import safety_swms_id_put_351 from "./api/safety/swms/[id]/PUT";
-import safety_swms_id_duplicate_post_352 from "./api/safety/swms/[id]/duplicate/POST";
-import safety_swms_id_export_get_353 from "./api/safety/swms/[id]/export/GET";
 
 export function register(app: Express): void {
   app.post("/api/safety/ai/draft", safety_ai_draft_post_315);
