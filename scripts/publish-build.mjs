@@ -110,25 +110,33 @@ console.log(`> using vite at: ${vite}`);
 // Using a SOURCE hash (not git HEAD SHA) means the stamp survives the
 // platform's auto-commit that wraps the dist artifacts — git HEAD changes
 // every publish even when source is unchanged, but the source hash stays stable.
-import { readFileSync as _readFileSync, writeFileSync as _writeFileSync, existsSync as _existsSync } from 'node:fs';
-import { execSync as _execSync } from 'node:child_process';
+import { readFileSync as _readFileSync, writeFileSync as _writeFileSync, existsSync as _existsSync, readdirSync as _readdirSync, statSync as _statSync } from 'node:fs';
 import { createHash as _createHash } from 'node:crypto';
+
+// Filesystem-walk hash — identical algorithm to the launcher's getSourceHash()
+// so the stamp written here is always accepted by the launcher's fast-path check.
+function _hashDir(dir, h) {
+  let entries;
+  try { entries = _readdirSync(dir).sort(); } catch { return; }
+  for (const e of entries) {
+    if (e === 'node_modules' || e === '.git' || e === 'dist') continue;
+    const full = join(dir, e);
+    let st;
+    try { st = _statSync(full); } catch { continue; }
+    if (st.isDirectory()) {
+      _hashDir(full, h);
+    } else {
+      try { h.update(full + '\n'); h.update(_readFileSync(full)); } catch { /* skip */ }
+    }
+  }
+}
 
 function getSourceHash() {
   try {
-    // Hash the git tree of source files — fast, deterministic, order-stable.
-    // `git ls-files` lists tracked files; we hash src/ + key config files.
-    const files = _execSync(
-      'git ls-files src/ vite.config.ts package.json tsconfig.json tsconfig.node.json 2>/dev/null',
-      { cwd: root, encoding: 'utf8' }
-    ).trim().split('\n').filter(Boolean).sort();
-
     const h = _createHash('sha256');
-    for (const f of files) {
-      try {
-        h.update(f + '\n');
-        h.update(_readFileSync(join(root, f)));
-      } catch { /* skip unreadable files */ }
+    _hashDir(join(root, 'src'), h);
+    for (const f of ['vite.config.ts', 'package.json', 'tsconfig.json', 'tsconfig.node.json']) {
+      try { h.update(f + '\n'); h.update(_readFileSync(join(root, f))); } catch { /* skip */ }
     }
     return h.digest('hex').slice(0, 16);
   } catch {
@@ -146,20 +154,10 @@ function readStamp() {
 const sourceHash = getSourceHash();
 const stampHash  = readStamp();
 
-// Detect whether we are running inside the publish platform container.
-// The platform extracts a tar.gz archive to /app — there is no .git directory.
-// In the dev/preview environment, .git is always present.
-// When running on the platform, we must NEVER skip the build — the platform
-// overlays archives without cleaning, so stale dist/ files from previous deploys
-// persist unless we overwrite them with a fresh build.
-import { existsSync as _existsSync2 } from 'node:fs';
-const isPublishPlatform = !_existsSync2(join(root, '.git'));
-if (isPublishPlatform) {
-  console.log('> running on publish platform (no .git) — fast-path disabled, forcing full build.');
-}
-
+// Fast-path: if stamp matches source hash and bundle exists, skip the build.
+// Works in both dev (with .git) and on the publish platform (no .git) because
+// the stamp is committed alongside dist/ artifacts and the hash is filesystem-based.
 if (
-  !isPublishPlatform &&
   sourceHash &&
   stampHash === sourceHash &&
   _existsSync(bundleFile)

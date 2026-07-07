@@ -1,0 +1,1 @@
+function c(n,o=!1){const r=new Blob([n],{type:"text/html;charset=utf-8"}),t=URL.createObjectURL(r),e=window.open(t,"_blank","width=900,height=700");return e?(e.addEventListener("load",()=>{URL.revokeObjectURL(t),o&&(e.focus(),e.print())},{once:!0}),e):(URL.revokeObjectURL(t),null)}export{c as o};
