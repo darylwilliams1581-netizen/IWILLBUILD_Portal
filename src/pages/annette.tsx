@@ -33,7 +33,11 @@ function renderReport(text: string): React.ReactNode[] {
     // H2 heading
     if (line.startsWith('## ')) {
       const content = line.slice(3);
-      const emoji = content.slice(0, 8).match(/^([\u{1F300}-\u{1FFFF}]|[\u2600-\u27BF]|\u{1F004}|\u{1F0CF})/u)?.[0] ?? '';
+      // Slice to 8 chars before regex — bounding invariant prevents catastrophic backtracking.
+      // The pattern uses a simple character-class union with no alternation between overlapping
+      // branches, so backtracking is not possible on this bounded input.
+      const contentHead = content.slice(0, 8);
+      const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
       const rest = emoji ? content.slice(emoji.length).trim() : content;
       nodes.push(
         <div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">

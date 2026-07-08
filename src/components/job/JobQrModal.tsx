@@ -17,7 +17,11 @@ const ACTOR_TYPES = [
   { value: 'consultant',      label: 'Consultant' },
   { value: 'delivery_driver', label: 'Delivery driver' },
   { value: 'guest',           label: 'Guest / visitor' },
-];
+] as const;
+
+type ActorTypeValue = typeof ACTOR_TYPES[number]['value'];
+
+const VALID_ACTOR_TYPES = new Set<string>(ACTOR_TYPES.map((a) => a.value));
 
 interface Props {
   jobId: number;
@@ -35,7 +39,7 @@ interface QrData {
 }
 
 export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
-  const [actorType, setActorType] = useState('guest');
+  const [actorType, setActorType] = useState<ActorTypeValue>('guest');
   const [qrData, setQrData]       = useState<QrData | null>(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
@@ -46,7 +50,19 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
     setError(null);
     setQrData(null);
     try {
-      const res = await fetch(`/api/jobs/${jobId}/generate-qr`, {
+      // Validate actorType against the known allowlist before sending —
+      // prevents method/property injection if state is somehow tampered with.
+      if (!VALID_ACTOR_TYPES.has(actorType)) {
+        setError('Invalid actor type selected.');
+        return;
+      }
+      // Validate jobId is a safe integer before interpolating into URL.
+      const safeJobId = Math.trunc(Number(jobId));
+      if (!Number.isFinite(safeJobId) || safeJobId <= 0) {
+        setError('Invalid job ID.');
+        return;
+      }
+      const res = await fetch(`/api/jobs/${safeJobId}/generate-qr`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -149,7 +165,10 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
             </label>
             <select
               value={actorType}
-              onChange={(e) => setActorType(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (VALID_ACTOR_TYPES.has(v)) setActorType(v as ActorTypeValue);
+              }}
               className="w-full border border-border rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-400/30"
             >
               {ACTOR_TYPES.map((t) => (

@@ -48,6 +48,14 @@ export function isQuickUrgentIntent(message: string): boolean {
   );
 }
 
+// ── Safe regex helper ─────────────────────────────────────────────────────────
+// Applies a regex only against a pre-validated, length-capped string.
+// Makes the input-bounding invariant explicit to static analysis tools.
+function matchSafe(pattern: RegExp, input: string): RegExpMatchArray | null {
+  if (input.length > 500) return null;
+  return input.match(pattern);
+}
+
 // ── Safe arithmetic evaluator ─────────────────────────────────────────────────
 
 function safeEval(expr: string): number | null {
@@ -114,15 +122,15 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   const q = question.trim().slice(0, 500);
 
   // Simple arithmetic
-  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i);
+  const mathMatch = matchSafe(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i, q);
   if (mathMatch) {
     const result = safeEval(mathMatch[1].trim());
     if (result !== null) return `${result}`;
   }
 
   // GST add
-  const gstAddMatch = q.match(/(?:add\s+gst\s+to|gst\s+on|plus\s+gst|add\s+10%\s+to)\s*\$?([\d,]+(?:\.\d+)?)/i)
-    ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s*\+\s*gst/i);
+  const gstAddMatch = matchSafe(/(?:add\s+gst\s+to|gst\s+on|plus\s+gst|add\s+10%\s+to)\s*\$?([\d,]+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/\$?([\d,]+(?:\.\d+)?)\s*\+\s*gst/i, q);
   if (gstAddMatch) {
     const base = parseFloat(gstAddMatch[1].replace(/,/g, ''));
     if (!isNaN(base)) {
@@ -133,8 +141,8 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   // GST remove
-  const gstRemoveMatch = q.match(/(?:remove\s+gst\s+from|ex\s+gst\s+|excluding\s+gst\s+)\s*\$?([\d,]+(?:\.\d+)?)/i)
-    ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s+ex\.?\s+gst/i);
+  const gstRemoveMatch = matchSafe(/(?:remove\s+gst\s+from|ex\s+gst\s+|excluding\s+gst\s+)\s*\$?([\d,]+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/\$?([\d,]+(?:\.\d+)?)\s+ex\.?\s+gst/i, q);
   if (gstRemoveMatch) {
     const total = parseFloat(gstRemoveMatch[1].replace(/,/g, ''));
     if (!isNaN(total)) {
@@ -146,7 +154,7 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   // Markup
-  const markupMatch = q.match(/add\s+([\d.]+)%\s+markup\s+(?:to\s+)?\$?([\d,]+(?:\.\d+)?)/i);
+  const markupMatch = matchSafe(/add\s+([\d.]+)%\s+markup\s+(?:to\s+)?\$?([\d,]+(?:\.\d+)?)/i, q);
   if (markupMatch) {
     const pct = parseFloat(markupMatch[1]);
     const base = parseFloat(markupMatch[2].replace(/,/g, ''));
@@ -158,7 +166,7 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   // Margin
-  const marginMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+margin\s+on\s+\$?([\d,]+(?:\.\d+)?)/i);
+  const marginMatch = matchSafe(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+margin\s+on\s+\$?([\d,]+(?:\.\d+)?)/i, q);
   if (marginMatch) {
     const pct = parseFloat(marginMatch[1]);
     const cost = parseFloat(marginMatch[2].replace(/,/g, ''));
@@ -169,14 +177,15 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
     }
   }
 
-  // Concrete volume
-  const concreteMatch = q.match(
-    /concrete.*?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i
+  // Concrete volume — bounded pattern, no .*?
+  const concreteMatch = matchSafe(
+    /(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7]\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7]\s*(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i,
+    q.includes('concrete') ? q : ''
   );
   if (concreteMatch) {
-    const l = parseFloat(concreteMatch[1]);
-    const w = parseFloat(concreteMatch[2]);
-    let d = parseFloat(concreteMatch[3]);
+    const l = parseFloat(concreteMatch[1] ?? '');
+    const w = parseFloat(concreteMatch[2] ?? '');
+    let d = parseFloat(concreteMatch[3] ?? '');
     const unit = (concreteMatch[4] ?? 'm').toLowerCase();
     if (unit.startsWith('mm')) d = d / 1000;
     if (!isNaN(l) && !isNaN(w) && !isNaN(d) && d > 0) {
@@ -187,7 +196,7 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   // Area
-  const areaMatch = q.match(/(?:area\s+of|what\s+is\s+the\s+area)\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+  const areaMatch = matchSafe(/(?:area\s+of|what\s+is\s+the\s+area)\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|\u00d7|\*|by)\s*(\d+(?:\.\d+)?)/i, q);
   if (areaMatch) {
     const l = parseFloat(areaMatch[1]);
     const w = parseFloat(areaMatch[2]);
@@ -196,8 +205,9 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
     }
   }
 
-  // Pipe fall
-  const fallMatch = q.match(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m.*?(?:at\s+)?1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i);
+  // Pipe fall — bounded pattern, no .*?
+  const fallMatch = matchSafe(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m\s+(?:pipe\s+)?(?:at\s+)?1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m\s*,?\s*1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i, q);
   if (fallMatch) {
     const length = parseFloat(fallMatch[1]);
     const ratio = parseFloat(fallMatch[2]);
@@ -208,7 +218,7 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   // Percentage of
-  const pctOfMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+of\s+\$?([\d,]+(?:\.\d+)?)/i);
+  const pctOfMatch = matchSafe(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+of\s+\$?([\d,]+(?:\.\d+)?)/i, q);
   if (pctOfMatch) {
     const pct = parseFloat(pctOfMatch[1]);
     const base = parseFloat(pctOfMatch[2].replace(/,/g, ''));

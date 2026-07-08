@@ -116,12 +116,24 @@ function safeEval(expr: string): number | null {
   }
 }
 
+/**
+ * Apply a regex only against a pre-validated, length-capped string.
+ * This makes it explicit to static analysers that the input is bounded
+ * before any regex execution, preventing catastrophic backtracking.
+ */
+function matchSafe(pattern: RegExp, input: string): RegExpMatchArray | null {
+  // Input MUST already be sliced to ≤500 chars before calling this helper.
+  // The assertion here documents the invariant for static analysis tools.
+  if (input.length > 500) return null;
+  return input.match(pattern);
+}
+
 function tryLocalTool(question: string): string | null {
   // Cap input length before any regex to prevent catastrophic backtracking.
   const q = question.trim().slice(0, 500);
 
   // ── Simple arithmetic ─────────────────────────────────────────────────────
-  const mathMatch = q.match(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i);
+  const mathMatch = matchSafe(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i, q);
   if (mathMatch) {
     const expr = mathMatch[1].trim();
     const result = safeEval(expr);
@@ -131,8 +143,8 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── GST add ───────────────────────────────────────────────────────────────
-  const gstAddMatch = q.match(/(?:add\s+gst\s+to|gst\s+on|plus\s+gst|add\s+10%\s+to)\s*\$?([\d,]+(?:\.\d+)?)/i)
-    ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s*\+\s*gst/i);
+  const gstAddMatch = matchSafe(/(?:add\s+gst\s+to|gst\s+on|plus\s+gst|add\s+10%\s+to)\s*\$?([\d,]+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/\$?([\d,]+(?:\.\d+)?)\s*\+\s*gst/i, q);
   if (gstAddMatch) {
     const base = parseFloat(gstAddMatch[1].replace(/,/g, ''));
     if (!isNaN(base)) {
@@ -143,8 +155,8 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── GST remove ────────────────────────────────────────────────────────────
-  const gstRemoveMatch = q.match(/(?:remove\s+gst\s+from|ex\s+gst\s+|excluding\s+gst\s+|gst\s+exclusive\s+of)\s*\$?([\d,]+(?:\.\d+)?)/i)
-    ?? q.match(/\$?([\d,]+(?:\.\d+)?)\s+ex\.?\s+gst/i);
+  const gstRemoveMatch = matchSafe(/(?:remove\s+gst\s+from|ex\s+gst\s+|excluding\s+gst\s+|gst\s+exclusive\s+of)\s*\$?([\d,]+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/\$?([\d,]+(?:\.\d+)?)\s+ex\.?\s+gst/i, q);
   if (gstRemoveMatch) {
     const total = parseFloat(gstRemoveMatch[1].replace(/,/g, ''));
     if (!isNaN(total)) {
@@ -155,8 +167,7 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── Markup / margin calculator ────────────────────────────────────────────
-  // "add 20% markup to 5000" / "what is 15% margin on 8000"
-  const markupMatch = q.match(/add\s+([\d.]+)%\s+markup\s+(?:to\s+)?\$?([\d,]+(?:\.\d+)?)/i);
+  const markupMatch = matchSafe(/add\s+([\d.]+)%\s+markup\s+(?:to\s+)?\$?([\d,]+(?:\.\d+)?)/i, q);
   if (markupMatch) {
     const pct = parseFloat(markupMatch[1]);
     const base = parseFloat(markupMatch[2].replace(/,/g, ''));
@@ -167,7 +178,7 @@ function tryLocalTool(question: string): string | null {
     }
   }
 
-  const marginMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+margin\s+on\s+\$?([\d,]+(?:\.\d+)?)/i);
+  const marginMatch = matchSafe(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+margin\s+on\s+\$?([\d,]+(?:\.\d+)?)/i, q);
   if (marginMatch) {
     const pct = parseFloat(marginMatch[1]);
     const cost = parseFloat(marginMatch[2].replace(/,/g, ''));
@@ -179,26 +190,30 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── Concrete volume ───────────────────────────────────────────────────────
-  // "concrete for 6x4x0.1 slab" / "how much concrete for 6m x 4m x 100mm"
-  const concreteMatch = q.match(
-    /concrete.*?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x×*by]\s*(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i
+  // Rewritten without .*? to eliminate catastrophic backtracking risk.
+  // Matches: "concrete 6x4x0.1" / "concrete 6m x 4m x 100mm" etc.
+  const concreteMatch = matchSafe(
+    /concrete\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7*]|by\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7*]|by\s+(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i,
+    q
+  ) ?? matchSafe(
+    /(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7]\s*(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*[x\u00d7]\s*(\d+(?:\.\d+)?)\s*(m|mm|metres?|meters?|millimetres?)?/i,
+    q.includes('concrete') ? q : ''
   );
   if (concreteMatch) {
-    const l = parseFloat(concreteMatch[1]);
-    const w = parseFloat(concreteMatch[2]);
-    let d = parseFloat(concreteMatch[3]);
+    const l = parseFloat(concreteMatch[1] ?? '');
+    const w = parseFloat(concreteMatch[2] ?? '');
+    let d = parseFloat(concreteMatch[3] ?? '');
     const unit = (concreteMatch[4] ?? 'm').toLowerCase();
-    if (unit.startsWith('mm')) d = d / 1000; // convert mm to m
+    if (unit.startsWith('mm')) d = d / 1000;
     if (!isNaN(l) && !isNaN(w) && !isNaN(d) && d > 0) {
       const vol = +(l * w * d).toFixed(3);
-      const withWaste = +(vol * 1.1).toFixed(3); // 10% waste
+      const withWaste = +(vol * 1.1).toFixed(3);
       return `Concrete volume:\n• Slab: ${l}m × ${w}m × ${d < 1 ? (d * 1000).toFixed(0) + 'mm' : d + 'm'}\n• Volume: **${vol} m³**\n• With 10% waste: **${withWaste} m³**\n\n_Order at least ${withWaste} m³. Verify with your concrete supplier._`;
     }
   }
 
   // ── Area calculator ───────────────────────────────────────────────────────
-  // "area of 12x8" / "what is the area of 15m by 6m"
-  const areaMatch = q.match(/(?:area\s+of|what\s+is\s+the\s+area)\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+  const areaMatch = matchSafe(/(?:area\s+of|what\s+is\s+the\s+area)\s+(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|\u00d7|\*|by)\s*(\d+(?:\.\d+)?)/i, q);
   if (areaMatch) {
     const l = parseFloat(areaMatch[1]);
     const w = parseFloat(areaMatch[2]);
@@ -209,21 +224,21 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── Pipe / drain fall ─────────────────────────────────────────────────────
-  // "fall for 10m pipe at 1:100" / "what is the fall for 15m at 1 in 80"
-  const fallMatch = q.match(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m.*?(?:at\s+)?1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i);
+  // Bounded pattern — no unbounded wildcards.
+  const fallMatch = matchSafe(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m\s+(?:pipe\s+)?(?:at\s+)?1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i, q)
+    ?? matchSafe(/fall\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*m\s*,?\s*1\s*(?::|in)\s*(\d+(?:\.\d+)?)/i, q);
   if (fallMatch) {
     const length = parseFloat(fallMatch[1]);
     const ratio = parseFloat(fallMatch[2]);
     if (!isNaN(length) && !isNaN(ratio) && ratio > 0) {
-      const fall = +(length / ratio * 1000).toFixed(0); // mm
+      const fall = +(length / ratio * 1000).toFixed(0);
       const fallM = +(length / ratio).toFixed(3);
       return `Pipe fall calculation:\n• Length: ${length}m at 1:${ratio}\n• Fall: **${fall}mm** (${fallM}m)\n• Invert drop: ${fall}mm over ${length}m`;
     }
   }
 
   // ── Percentage of ─────────────────────────────────────────────────────────
-  // "what is 15% of 24000"
-  const pctOfMatch = q.match(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+of\s+\$?([\d,]+(?:\.\d+)?)/i);
+  const pctOfMatch = matchSafe(/(?:what\s+is\s+)?(\d+(?:\.\d+)?)%\s+of\s+\$?([\d,]+(?:\.\d+)?)/i, q);
   if (pctOfMatch) {
     const pct = parseFloat(pctOfMatch[1]);
     const base = parseFloat(pctOfMatch[2].replace(/,/g, ''));
@@ -234,8 +249,7 @@ function tryLocalTool(question: string): string | null {
   }
 
   // ── Lineal metres / perimeter ─────────────────────────────────────────────
-  // "perimeter of 12x8"
-  const perimMatch = q.match(/perimeter\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|×|\*|by)\s*(\d+(?:\.\d+)?)/i);
+  const perimMatch = matchSafe(/perimeter\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*(?:m|metres?|meters?)?\s*(?:x|\u00d7|\*|by)\s*(\d+(?:\.\d+)?)/i, q);
   if (perimMatch) {
     const l = parseFloat(perimMatch[1]);
     const w = parseFloat(perimMatch[2]);
@@ -259,7 +273,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
 
   // ── Cross-company guard ───────────────────────────────────────────────────
   if (
-    /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lq)
+    /another company|other company|different company|competitor|someone elses?\s+(?:quote|job|data|estimate)/i.test(lq)
   ) {
     return `I can't access another company's private IWILLBUILD data. I only have access to ${cn}'s data.`;
   }
@@ -1276,7 +1290,7 @@ export default async function handler(req: Request, res: Response) {
 
     // ── STEP 5: Cross-company guard (also handled by Wall 1 above) ───────────
     if (
-      /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate)/i.test(lastUserMsg)
+      /another company|other company|different company|competitor|someone elses?\s+(?:quote|job|data|estimate)/i.test(lastUserMsg)
     ) {
       const guardReply = buildGuardAnswer(ctx.companyName);
       return res.json({

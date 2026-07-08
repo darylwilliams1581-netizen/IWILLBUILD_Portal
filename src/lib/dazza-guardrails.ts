@@ -80,8 +80,10 @@ export function withSource(answer: string, module: string): string {
  */
 export function stripDollars(text: string): string {
   // Cap length before regex to prevent catastrophic backtracking on adversarial input.
+  // The 10,000-char cap is the bounding invariant — the regex runs only on this safe slice.
   const safe = text.length > 10_000 ? text.slice(0, 10_000) : text;
-  return safe.replace(/\$[\d,]+(\.\d{1,2})?/g, '[amount hidden]');
+  // Bounded quantifier {1,15} prevents catastrophic backtracking on long digit/comma runs.
+  return safe.replace(/\$[\d,]{1,15}(\.\d{1,2})?/g, '[amount hidden]');
 }
 
 /**
