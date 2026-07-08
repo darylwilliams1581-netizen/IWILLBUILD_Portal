@@ -8,6 +8,9 @@ import {
 
 interface Inspection { id: number; report_title: string | null; report_no: string | null; asset_name: string; }
 
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30';
+const LABEL = 'block text-xs font-semibold text-slate-500 mb-1';
+
 export default function AMSharedReportsTab() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,9 +67,9 @@ export default function AMSharedReportsTab() {
   return (
     <div className="p-6 flex flex-col gap-5">
       {/* Generate panel */}
-      <div className="bg-slate-800 border border-slate-700/60 rounded-xl p-5 flex flex-col gap-4">
-        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-          <Share2 size={15} className="text-cyan-400" />
+      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4">
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <Share2 size={15} className="text-orange-500" />
           Generate Shared Report Link
         </h3>
         <p className="text-xs text-slate-500">
@@ -76,17 +79,15 @@ export default function AMSharedReportsTab() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Inspection</label>
-            <select value={selectedInspection} onChange={(e) => setSelectedInspection(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+            <label className={LABEL}>Inspection</label>
+            <select value={selectedInspection} onChange={(e) => setSelectedInspection(e.target.value)} className={SELECT}>
               <option value="">Select inspection…</option>
               {inspections.map((i) => <option key={i.id} value={i.id}>{i.report_title || i.report_no || `#${i.id}`} — {i.asset_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Expires in (days)</label>
-            <select value={expireDays} onChange={(e) => setExpireDays(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+            <label className={LABEL}>Expires in (days)</label>
+            <select value={expireDays} onChange={(e) => setExpireDays(e.target.value)} className={SELECT}>
               <option value="7">7 days</option>
               <option value="14">14 days</option>
               <option value="30">30 days</option>
@@ -97,14 +98,14 @@ export default function AMSharedReportsTab() {
         </div>
 
         <button onClick={() => void handleGenerate()} disabled={generating || !selectedInspection}
-          className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 self-start">
+          className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 self-start">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           Generate link
         </button>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400">
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">
           <AlertTriangle size={14} />{error}
           <button onClick={() => setError('')} className="ml-auto"><X size={13} /></button>
         </div>
@@ -113,11 +114,11 @@ export default function AMSharedReportsTab() {
       {/* Generated links */}
       {shareLinks.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Generated this session</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Generated this session</h3>
           {shareLinks.map((link) => (
-            <div key={link.url} className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 flex flex-col gap-2">
+            <div key={link.url} className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-emerald-300 truncate">{link.label}</p>
+                <p className="text-xs font-semibold text-emerald-700 truncate">{link.label}</p>
                 {link.expiresAt && (
                   <span className="text-[10px] text-slate-500 flex-shrink-0">
                     Expires {new Date(link.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -125,14 +126,14 @@ export default function AMSharedReportsTab() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs text-slate-400 bg-slate-900 rounded-lg px-3 py-1.5 truncate font-mono">{link.url}</code>
+                <code className="flex-1 text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5 truncate font-mono">{link.url}</code>
                 <button onClick={() => copyLink(link.url)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold rounded-lg transition-colors flex-shrink-0">
-                  {copied === link.url ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors flex-shrink-0">
+                  {copied === link.url ? <CheckCircle2 size={11} className="text-emerald-600" /> : <Copy size={11} />}
                   {copied === link.url ? 'Copied' : 'Copy'}
                 </button>
                 <a href={link.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold rounded-lg transition-colors flex-shrink-0">
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors flex-shrink-0">
                   <ExternalLink size={11} />
                   Open
                 </a>
@@ -143,14 +144,14 @@ export default function AMSharedReportsTab() {
       )}
 
       {loading && (
-        <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-slate-500" /></div>
+        <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-slate-400" /></div>
       )}
 
       {!loading && shareLinks.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Share2 size={28} className="text-slate-600 mb-2" />
+          <Share2 size={28} className="text-slate-300 mb-2" />
           <p className="text-sm text-slate-500">No shared links generated yet</p>
-          <p className="text-xs text-slate-600 mt-1">Select an inspection above and click Generate link</p>
+          <p className="text-xs text-slate-400 mt-1">Select an inspection above and click Generate link</p>
         </div>
       )}
     </div>
