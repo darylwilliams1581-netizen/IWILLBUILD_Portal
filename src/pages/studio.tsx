@@ -13,6 +13,7 @@ import {
   ShieldCheck, ClipboardList, BookOpen,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import { toast } from 'sonner';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
@@ -113,8 +114,15 @@ function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onD
     e.stopPropagation();
     try {
       const r = await fetch(`/api/document-templates/${doc.id}/duplicate`, { method: 'POST', credentials: 'include' });
-      if (r.ok) window.location.reload();
-    } catch { /* silent */ }
+      if (r.ok) {
+        toast.success('Document duplicated');
+        window.location.reload();
+      } else {
+        toast.error('Could not duplicate document. Please try again.');
+      }
+    } catch {
+      toast.error('Network error — could not duplicate document.');
+    }
   }
 
   function handleExportPdf(e: React.MouseEvent) {
@@ -129,7 +137,12 @@ function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onD
 
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
-    try { await navigator.clipboard.writeText(`${window.location.origin}/studio/builder/${doc.id}`); } catch { /* silent */ }
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/studio/builder/${doc.id}`);
+      toast.success('Link copied to clipboard');
+    } catch {
+      toast.error('Could not copy link — please copy the URL manually.');
+    }
   }
 
   return (

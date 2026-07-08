@@ -69,7 +69,7 @@ const ViewFilePage       = lazy(() => import('./pages/view-file'));
 const ViewEstimatePage   = lazy(() => import('./pages/view-estimate'));
 const ViewInvoicePage    = lazy(() => import('./pages/view-invoice'));
 
-const NotFoundPage = import.meta.env.DEV
+const NotFoundPage = import.meta.env.DEV ? ProdNotFoundPage : ProdNotFoundPage;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Inline error element — renders inside the layout so header/sidebar stay mounted
