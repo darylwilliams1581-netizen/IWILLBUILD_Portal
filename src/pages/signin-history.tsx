@@ -136,10 +136,19 @@ export default function SignInHistoryPage() {
   return (
     <>
       <Helmet>
-        <title>Sign-In History — IWILLBUILD</title>
+        <title>Sign-In History — IWILLBUILD Portal</title>
         <meta name="description" content="Unified sign-in and sign-out history across all jobs and fleet assets for your company." />
         <link rel="canonical" href="https://iwillbuild.com/signin-history" />
         <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Sign-In History — IWILLBUILD Portal" />
+        <meta property="og:description" content="Unified sign-in and sign-out history across all jobs and fleet assets for your company." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/signin-history" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Sign-In History — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Unified sign-in and sign-out history across all jobs and fleet assets for your company." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">

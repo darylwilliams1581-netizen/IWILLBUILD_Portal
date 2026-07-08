@@ -525,10 +525,19 @@ export default function TeamSchedulePage() {
   return (
     <>
       <Helmet>
-        <title>Team Schedule — IWILLBUILD</title>
-        <meta name="description" content="Shift scheduling, time tracking and payroll export for your team." />
-        <link rel="canonical" href="https://iwillbuild.com/team/schedule" />
+        <title>Team Schedule — IWILLBUILD Portal</title>
+        <meta name="description" content="Shift scheduling, time tracking and payroll export for your field service team." />
+        <link rel="canonical" href="https://iwillbuild.com/team-schedule" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Team Schedule — IWILLBUILD Portal" />
+        <meta property="og:description" content="Shift scheduling, time tracking and payroll export for your field service team." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/team-schedule" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Team Schedule — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Shift scheduling, time tracking and payroll export for your field service team." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <div className="flex h-screen bg-slate-50 overflow-hidden">

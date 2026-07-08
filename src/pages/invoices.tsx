@@ -142,19 +142,19 @@ export default function InvoicesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Ledger — IWILLBUILD Portal</title>
-        <meta name="description" content="Financial register — invoices, costs and payments linked to projects." />
+        <title>Invoices — IWILLBUILD Portal</title>
+        <meta name="description" content="Create, manage and track invoices linked to jobs. Export to Xero, QuickBooks and MYOB." />
         <link rel="canonical" href="https://iwillbuild.com/invoices" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Ledger — IWILLBUILD Portal" />
-        <meta property="og:description" content="Financial register — invoices, costs and payments linked to projects." />
+        <meta property="og:title" content="Invoices — IWILLBUILD Portal" />
+        <meta property="og:description" content="Create, manage and track invoices linked to jobs. Export to Xero, QuickBooks and MYOB." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/invoices" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Ledger — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Financial register — invoices, costs and payments linked to projects." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:title" content="Invoices — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Create, manage and track invoices linked to jobs. Export to Xero, QuickBooks and MYOB." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

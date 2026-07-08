@@ -106,11 +106,11 @@ export default function JobsPage() {
         <meta property="og:description" content="Manage and track all construction projects." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/jobs" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Projects — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Manage and track all construction projects." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

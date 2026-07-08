@@ -780,19 +780,19 @@ export default function SafetyPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Admin — IWILLBUILD Portal</title>
-        <meta name="description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
+        <title>Safety &amp; Compliance — IWILLBUILD Portal</title>
+        <meta name="description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Admin — IWILLBUILD Portal" />
-        <meta property="og:description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
+        <meta property="og:title" content="Safety &amp; Compliance — IWILLBUILD Portal" />
+        <meta property="og:description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/safety" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Admin — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Admin hub — SWMS, safety plans, policies, posters, cost guide and recipes." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:title" content="Safety &amp; Compliance — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

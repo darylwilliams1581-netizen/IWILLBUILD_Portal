@@ -808,19 +808,19 @@ export default function EstimatingPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Tools — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
+        <title>Estimating — IWILLBUILD Portal</title>
+        <meta name="description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
         <link rel="canonical" href="https://iwillbuild.com/estimating" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Tools — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
+        <meta property="og:title" content="Estimating — IWILLBUILD Portal" />
+        <meta property="og:description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/estimating" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Tools — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage your cost guide and recipe assemblies for the IWILLBUILD estimating engine." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:title" content="Estimating — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
       <PortalSidebar />
       <div className="portal-main">

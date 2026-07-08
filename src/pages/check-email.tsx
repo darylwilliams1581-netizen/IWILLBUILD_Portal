@@ -45,11 +45,11 @@ export default function CheckEmailPage() {
         <meta property="og:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/check-email" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Check Your Email — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'WebPage',

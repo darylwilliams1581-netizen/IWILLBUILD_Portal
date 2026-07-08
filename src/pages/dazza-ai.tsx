@@ -767,11 +767,11 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
         <meta property="og:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/dazza-ai" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Dazza AI — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

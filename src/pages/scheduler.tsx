@@ -1109,11 +1109,11 @@ export default function SchedulerPage() {
         <meta property="og:description" content="View and manage job schedules, timelines and upcoming work." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/scheduler" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Scheduler — IWILLBUILD" />
         <meta name="twitter:description" content="View and manage job schedules, timelines and upcoming work." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

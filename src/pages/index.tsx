@@ -242,6 +242,19 @@ export default function HomePage() {
         url: `${site}/`,
       },
       {
+        '@type': 'Organization',
+        '@id': `${site}/#organization`,
+        name: 'IWILLBUILD',
+        url: `${site}/`,
+        logo: {
+          '@type': 'ImageObject',
+          url: `${site}/airo-assets/images/logo/primary`,
+        },
+        sameAs: [
+          `${site}/`,
+        ],
+      },
+      {
         '@type': 'SoftwareApplication',
         '@id': `${site}/#app`,
         name: 'IWILLBUILD',
@@ -249,6 +262,8 @@ export default function HomePage() {
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         description: 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
+        keywords: 'field service management software, trades management app, job management software Australia, fleet management for tradies, safety forms software, construction job management, SWMS, site safety, QR attendance',
+        publisher: { '@id': `${site}/#organization` },
         offers: [
           {
             '@type': 'Offer',
@@ -281,8 +296,9 @@ export default function HomePage() {
         description,
         isPartOf: { '@id': `${site}/#website` },
         about: { '@id': `${site}/#app` },
+        publisher: { '@id': `${site}/#organization` },
         datePublished: '2026-06-25',
-        dateModified: '2026-06-30',
+        dateModified: '2026-07-08',
       },
     ],
   };

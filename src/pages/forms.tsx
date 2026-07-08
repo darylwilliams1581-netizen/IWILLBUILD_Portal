@@ -696,11 +696,11 @@ export default function FormsPage() {
         <meta property="og:description" content="Manage form templates for jobs, fleet and compliance." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/forms" />
-        <meta property="og:image" content="https://iwillbuild.com/og-image.png" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Forms — IWILLBUILD Portal" />
         <meta name="twitter:description" content="Manage form templates for jobs, fleet and compliance." />
-        <meta name="twitter:image" content="https://iwillbuild.com/og-image.png" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <PortalSidebar />

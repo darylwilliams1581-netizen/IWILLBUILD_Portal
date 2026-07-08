@@ -237,6 +237,15 @@ export default function LibraryPage() {
         <meta name="description" content="Browse and install developer-managed content templates into your company." />
         <link rel="canonical" href="https://iwillbuild.com/library" />
         <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Content Library — IWILLBUILD Portal" />
+        <meta property="og:description" content="Browse and install developer-managed content templates into your company." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/library" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Content Library — IWILLBUILD Portal" />
+        <meta name="twitter:description" content="Browse and install developer-managed content templates into your company." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <div className="flex h-screen overflow-hidden bg-[#0F1117]">
