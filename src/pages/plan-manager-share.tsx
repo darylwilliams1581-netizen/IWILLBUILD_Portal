@@ -15,8 +15,8 @@ import {
 import AnnotationCanvas from '@/components/PlanManager/AnnotationCanvas';
 import type { Annotation } from '@/components/PlanManager/types';
 
-// Versioned filename forces cache-bust — must match installed pdfjs-dist version
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.6.1.200.min.mjs';
+// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
 
 interface ShareData {
   drawing: {
