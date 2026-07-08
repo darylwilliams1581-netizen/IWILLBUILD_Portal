@@ -180,6 +180,12 @@ import fleet_post_147 from "./api/fleet/POST";
 import fleet_driver_sessions_post_148 from "./api/fleet/driver-sessions/POST";
 import fleet_driver_sessions_active_get_149 from "./api/fleet/driver-sessions/active/GET";
 import fleet_driver_sessions_id_stop_post_150 from "./api/fleet/driver-sessions/[id]/stop/POST";
+// Fleet analytics
+import fleet_analytics_settings_get from "./api/fleet/analytics-settings/GET.js";
+import fleet_analytics_settings_put from "./api/fleet/analytics-settings/PUT.js";
+import fleet_driver_sessions_id_telemetry_post from "./api/fleet/driver-sessions/[id]/telemetry/POST.js";
+import fleet_driver_sessions_id_summary_get from "./api/fleet/driver-sessions/[id]/summary/GET.js";
+import migrate_fleet_analytics_post from "./api/migrate-fleet-analytics/POST.js";
 import fleet_flags_get_151 from "./api/fleet/flags/GET";
 import fleet_service_logs_logId_delete_152 from "./api/fleet/service-logs/[logId]/DELETE";
 import fleet_service_logs_logId_patch_153 from "./api/fleet/service-logs/[logId]/PATCH";
@@ -1632,6 +1638,12 @@ app.post("/api/fleet", fleet_post_147);
 app.post("/api/fleet/driver-sessions", fleet_driver_sessions_post_148);
 app.get("/api/fleet/driver-sessions/active", fleet_driver_sessions_active_get_149);
 app.post("/api/fleet/driver-sessions/:id/stop", fleet_driver_sessions_id_stop_post_150);
+// Fleet analytics routes
+app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get);
+app.put("/api/fleet/analytics-settings", fleet_analytics_settings_put);
+app.post("/api/fleet/driver-sessions/:id/telemetry", fleet_driver_sessions_id_telemetry_post);
+app.get("/api/fleet/driver-sessions/:id/summary", fleet_driver_sessions_id_summary_get);
+app.post("/api/migrate-fleet-analytics", migrate_fleet_analytics_post);
 app.get("/api/fleet/flags", fleet_flags_get_151);
 app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_logId_delete_152);
 app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_logId_patch_153);

@@ -238,6 +238,8 @@ export const Palette = NullIcon;
 export const ZoomInIcon = NullIcon;
 export const ZoomOutIcon = NullIcon;
 export const RotateCcwIcon = NullIcon;
+// ── Fleet analytics icons ─────────────────────────────────────────────────────
+export const Route = NullIcon;
 export const RotateCwIcon = NullIcon;
 export const FlipHorizontal = NullIcon;
 export const FlipVertical = NullIcon;

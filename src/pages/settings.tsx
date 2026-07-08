@@ -15,6 +15,7 @@ import {
   Receipt,
   ShieldCheck,
   User,
+  Truck,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -29,6 +30,7 @@ import AccountingTab from '@/components/settings/AccountingTab';
 import SecurityTab from '@/components/settings/SecurityTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import CompanyTab from '@/components/settings/CompanyTab';
+import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -41,7 +43,8 @@ const tabs = [
   { id: 'banner',       label: 'Dashboard Banner',   icon: Megaphone },
   { id: 'notifications',label: 'Notifications',      icon: Bell },
   { id: 'integrations', label: 'Integrations',       icon: Plug },
-  { id: 'data',         label: 'Data & Backup',      icon: Database },
+  { id: 'fleet',        label: 'Fleet Analytics',     icon: Truck },
+  { id: 'data',         label: 'Data & Backup',       icon: Database },
 ];
 
 interface Company {
@@ -154,6 +157,7 @@ export default function SettingsPage() {
               {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
               {activeTab === 'notifications' && <NotificationsTab />}
               {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
+              {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
               {activeTab === 'data' && (
                 <DataBackupTab isAdmin={isAdmin} />
               )}
