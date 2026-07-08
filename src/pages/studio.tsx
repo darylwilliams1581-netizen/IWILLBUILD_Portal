@@ -166,8 +166,8 @@ function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onD
           )}
         </div>
 
-        {/* Toolbar — fades in on hover */}
-        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        {/* Toolbar — always visible */}
+        <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <ToolBtn icon={Copy}       label="Duplicate"   onClick={handleDuplicate} />
           <ToolBtn icon={Share2}     label="Copy link"   onClick={handleShare} />
           <ToolBtn icon={Printer}    label="Print"       onClick={handleExportPdf} />
@@ -184,8 +184,7 @@ function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onD
           </button>
         </div>
 
-        {/* Resting chevron */}
-        <ChevronRight size={14} className="text-slate-300 group-hover:opacity-0 transition-opacity flex-shrink-0 -ml-1" />
+
       </div>
 
       {/* Expanded detail */}
