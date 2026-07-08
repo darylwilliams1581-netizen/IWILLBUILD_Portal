@@ -93,7 +93,7 @@ function StatusBadge({ status }: { status: ModuleStatus }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 border border-slate-600/30">
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
       <Lock size={9} />
       Plan upgrade
     </span>
@@ -125,10 +125,10 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
       className={[
         'group relative flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200',
         isAvailable
-          ? 'border-slate-700/60 bg-slate-800/60 hover:border-orange-500/50 hover:bg-slate-800 cursor-pointer hover:shadow-lg hover:shadow-orange-500/5'
+          ? 'border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50/30 cursor-pointer hover:shadow-md hover:shadow-orange-500/5'
           : isLocked
-          ? 'border-slate-700/30 bg-slate-800/30 opacity-50 cursor-not-allowed'
-          : 'border-slate-700/50 bg-slate-800/50 cursor-default',
+          ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+          : 'border-slate-200 bg-slate-50/80 cursor-default',
       ].join(' ')}
     >
       {/* Icon */}
@@ -142,7 +142,7 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
       {/* Text */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className={`text-sm font-semibold leading-tight ${isLocked ? 'text-slate-500' : 'text-slate-100'}`}>
+          <h3 className={`text-sm font-semibold leading-tight ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
             {mod.label}
           </h3>
         </div>
@@ -153,7 +153,7 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
       <div className="flex items-center justify-between">
         <StatusBadge status={mod.status} />
         {isAvailable && (
-          <ChevronRight size={14} className="text-slate-600 group-hover:text-orange-400 transition-colors" />
+          <ChevronRight size={14} className="text-slate-300 group-hover:text-orange-500 transition-colors" />
         )}
       </div>
     </motion.div>
@@ -199,7 +199,7 @@ export default function StudioPage() {
   const comingSoonCount = MODULES.filter((m) => m.status === 'coming_soon').length;
 
   return (
-    <div className="flex h-screen bg-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
       <Helmet>
         <title>Studio — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD Studio — build quotes, contracts, safety documents and more." />
@@ -213,14 +213,14 @@ export default function StudioPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm px-6 py-4">
+        <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-orange-500/15 border border-orange-500/25 flex items-center justify-center">
-                <Layers size={18} className="text-orange-400" />
+              <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                <Layers size={18} className="text-orange-500" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-100 leading-tight">IWILLBUILD Studio</h1>
+                <h1 className="text-lg font-bold text-slate-900 leading-tight">IWILLBUILD Studio</h1>
                 <p className="text-xs text-slate-500">Build documents, forms and packs for your jobs</p>
               </div>
             </div>
@@ -236,23 +236,23 @@ export default function StudioPage() {
 
           {/* Stats row */}
           <div className="flex items-center gap-6 mt-4">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-              <span><span className="text-slate-200 font-semibold">{availableCount}</span> ready now</span>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              <span><span className="text-slate-700 font-semibold">{availableCount}</span> ready now</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
               <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
-              <span><span className="text-slate-200 font-semibold">{comingSoonCount}</span> coming soon</span>
+              <span><span className="text-slate-700 font-semibold">{comingSoonCount}</span> coming soon</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-slate-600 inline-block" />
-              <span><span className="text-slate-200 font-semibold">{MODULES.length}</span> total modules</span>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+              <span><span className="text-slate-700 font-semibold">{MODULES.length}</span> total modules</span>
             </div>
           </div>
         </div>
 
         {/* Category filter */}
-        <div className="flex-shrink-0 px-6 py-3 border-b border-slate-700/30 flex items-center gap-2 overflow-x-auto">
+        <div className="flex-shrink-0 px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-2 overflow-x-auto">
           {studioCategories.map((cat) => (
             <button
               key={cat}
@@ -261,7 +261,7 @@ export default function StudioPage() {
                 'flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
                 activeCategory === cat
                   ? 'bg-orange-500 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700',
+                  : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200',
               ].join(' ')}
             >
               {cat}
@@ -280,11 +280,11 @@ export default function StudioPage() {
           {/* Recent documents */}
           <div className="mt-8 mb-2">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-400">Recent documents</h2>
+              <h2 className="text-sm font-semibold text-slate-500">Recent documents</h2>
               {recentDocs.length > 0 && (
                 <button
                   onClick={() => navigate('/studio/builder/new')}
-                  className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-orange-500 hover:text-orange-600 transition-colors"
                 >
                   <FilePlus2 size={13} />
                   New
@@ -293,31 +293,31 @@ export default function StudioPage() {
             </div>
 
             {recentLoading ? (
-              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-6 text-center">
-                <div className="w-5 h-5 border-2 border-slate-600 border-t-orange-400 rounded-full animate-spin mx-auto" />
+              <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
+                <div className="w-5 h-5 border-2 border-slate-200 border-t-orange-400 rounded-full animate-spin mx-auto" />
               </div>
             ) : recentDocs.length === 0 ? (
-              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-8 text-center">
-                <Layers size={28} className="text-slate-600 mx-auto mb-2" />
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+                <Layers size={28} className="text-slate-300 mx-auto mb-2" />
                 <p className="text-sm text-slate-500">No documents yet</p>
-                <p className="text-xs text-slate-600 mt-1">Documents you create will appear here</p>
+                <p className="text-xs text-slate-400 mt-1">Documents you create will appear here</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-700/40 bg-slate-800/30 overflow-hidden divide-y divide-slate-700/30">
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
                 {recentDocs.map((doc) => (
                   <button
                     key={doc.id}
                     onClick={() => navigate(`/studio/builder/${doc.id}`)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/30 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left group"
                   >
                     <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
-                      <FileText size={14} className="text-orange-400" />
+                      <FileText size={14} className="text-orange-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-200 truncate">{doc.name}</p>
+                      <p className="text-sm font-semibold text-slate-800 truncate">{doc.name}</p>
                       <p className="text-xs text-slate-500">{typeLabel(doc.template_type)} · {formatDate(doc.updated_at)}</p>
                     </div>
-                    <MoreHorizontal size={15} className="text-slate-600 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
+                    <MoreHorizontal size={15} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 transition-colors" />
                   </button>
                 ))}
               </div>

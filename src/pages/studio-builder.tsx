@@ -85,14 +85,14 @@ export default function StudioBuilderPage() {
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[#F4F5F7] flex items-center justify-center z-50">
         <Helmet>
           <title>Loading — IWILLBUILD Studio</title>
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="text-orange-400 animate-spin" />
-          <p className="text-sm text-slate-400">Loading document…</p>
+          <Loader2 size={28} className="text-orange-500 animate-spin" />
+          <p className="text-sm text-slate-500">Loading document…</p>
         </div>
       </div>
     );
@@ -101,22 +101,22 @@ export default function StudioBuilderPage() {
   // ── Error state ────────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[#F4F5F7] flex items-center justify-center z-50">
         <Helmet>
           <title>Error — IWILLBUILD Studio</title>
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="flex flex-col items-center gap-4 text-center max-w-sm px-6">
-          <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-            <AlertCircle size={22} className="text-red-400" />
+          <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center">
+            <AlertCircle size={22} className="text-red-500" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-200 mb-1">Could not load document</h1>
+            <h1 className="text-base font-bold text-slate-800 mb-1">Could not load document</h1>
             <p className="text-sm text-slate-500">{error}</p>
           </div>
           <button
             onClick={handleClose}
-            className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold transition-colors"
+            className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition-colors"
           >
             Back to Studio
           </button>

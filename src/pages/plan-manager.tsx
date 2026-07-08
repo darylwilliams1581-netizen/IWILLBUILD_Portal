@@ -95,29 +95,29 @@ export default function PlanManagerPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      <div className="flex h-screen bg-[#F4F5F7] text-slate-900 overflow-hidden">
         <PortalSidebar />
 
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Page header */}
-          <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-700/50 flex-shrink-0 bg-slate-900">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-              <Map size={18} className="text-indigo-400" />
+          <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Map size={18} className="text-orange-500" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-100">Plan Manager</h1>
+              <h1 className="text-lg font-bold text-slate-900">Plan Manager</h1>
               <p className="text-xs text-slate-500">Browse and manage drawings across all jobs</p>
             </div>
 
             <div className="flex-1" />
 
             {/* Tabs */}
-            <div className="flex items-center gap-1 bg-slate-800 rounded-xl p-1 border border-slate-700">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
               <button
                 onClick={() => setTab('active')}
                 className={[
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  tab === 'active' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-slate-200',
+                  tab === 'active' ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-slate-700',
                 ].join(' ')}
               >
                 <Layers size={12} /> Active
@@ -126,7 +126,7 @@ export default function PlanManagerPage() {
                 onClick={() => setTab('archived')}
                 className={[
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  tab === 'archived' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-slate-200',
+                  tab === 'archived' ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-slate-700',
                 ].join(' ')}
               >
                 <Archive size={12} /> Archived

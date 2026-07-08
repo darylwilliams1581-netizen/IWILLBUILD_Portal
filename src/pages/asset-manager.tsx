@@ -50,7 +50,7 @@ export default function AssetManagerPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-screen bg-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
       <Helmet>
         <title>Asset Manager — IWILLBUILD</title>
         <meta name="description" content="Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents." />
@@ -60,27 +60,27 @@ export default function AssetManagerPage() {
       <PortalSidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm px-6 py-4">
+        <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/studio')}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mr-1"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors mr-1"
             >
               <ChevronLeft size={14} />
               Studio
             </button>
-            <div className="w-9 h-9 rounded-lg bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
-              <Building2 size={18} className="text-cyan-400" />
+            <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <Building2 size={18} className="text-cyan-600" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-100 leading-tight">Asset Manager</h1>
+              <h1 className="text-lg font-bold text-slate-900 leading-tight">Asset Manager</h1>
               <p className="text-xs text-slate-500">Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents</p>
             </div>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex-shrink-0 border-b border-slate-700/30 bg-slate-900 px-6 flex items-center gap-1 overflow-x-auto">
+        <div className="flex-shrink-0 border-b border-slate-200 bg-white px-6 flex items-center gap-1 overflow-x-auto">
           {asset_manager.TABS.map((t, _airoIdx) => {
             const Icon = TABSMeta[_airoIdx].icon;
             const active = tab === t.id;
@@ -91,8 +91,8 @@ export default function AssetManagerPage() {
                 className={[
                   'flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap',
                   active
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-500 hover:text-slate-300',
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700',
                 ].join(' ')}
               >
                 <Icon size={13} />
