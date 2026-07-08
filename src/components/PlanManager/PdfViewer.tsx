@@ -28,12 +28,14 @@ interface Props {
   activeStyle: AnnotationStyle;
   isLocked: boolean;
   annotations: Map<number, Annotation[]>;
+  undoTrigger: number;
   onPageChange: (page: number) => void;
   onScaleChange: (scale: number) => void;
   onRotate: (delta: 90 | -90) => void;
   onFitWidth: (fit: boolean) => void;
   onTotalPages: (n: number) => void;
   onAnnotationsChange: (pageNo: number, anns: Annotation[]) => void;
+  onUndoAvailableChange: (available: boolean) => void;
 }
 
 const SCALE_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
@@ -46,8 +48,9 @@ function nextScale(current: number, dir: 1 | -1) {
 
 export default function PdfViewer({
   fileUrl, currentPage, totalPages, scale, rotation, fitWidth,
-  activeTool, activeStyle, isLocked, annotations,
-  onPageChange, onScaleChange, onRotate, onFitWidth, onTotalPages, onAnnotationsChange,
+  activeTool, activeStyle, isLocked, annotations, undoTrigger,
+  onPageChange, onScaleChange, onRotate, onFitWidth, onTotalPages,
+  onAnnotationsChange, onUndoAvailableChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pageWidth, setPageWidth] = useState(0);
@@ -231,7 +234,9 @@ export default function PdfViewer({
                     activeTool={activeTool}
                     activeStyle={activeStyle}
                     isLocked={isLocked}
+                    externalUndo={undoTrigger}
                     onAnnotationsChange={(anns) => onAnnotationsChange(currentPage, anns)}
+                    onUndoAvailableChange={onUndoAvailableChange}
                   />
                 )}
               </div>

@@ -6,8 +6,8 @@
 import React, { useState } from 'react';
 import {
   MousePointer2, Hand, Minus, ArrowRight, Square, Circle,
-  PenLine, Type, Highlighter, Stamp, Ruler, Trash2,
-  ChevronDown,
+  PenLine, Type, Highlighter, Stamp, Ruler,
+  ChevronDown, Undo2,
 } from 'lucide-react';
 import type { ToolType, AnnotationStyle, StampTemplate } from './types';
 
@@ -15,8 +15,10 @@ interface Props {
   activeTool: ToolType;
   activeStyle: AnnotationStyle;
   isLocked: boolean;
+  canUndo: boolean;
   onToolChange: (tool: ToolType) => void;
   onStyleChange: (style: Partial<AnnotationStyle>) => void;
+  onUndo: () => void;
 }
 
 const TOOLS: { tool: ToolType; icon: React.ElementType; label: string; group: 'nav' | 'draw' }[] = [
@@ -43,11 +45,23 @@ const STAMP_TEMPLATES: { value: StampTemplate; label: string }[] = [
   { value: 'CHANGES_NOTE',   label: 'Changes Note' },
 ];
 
-export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, onToolChange, onStyleChange }: Props) {
+export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, canUndo, onToolChange, onStyleChange, onUndo }: Props) {
   const [showStampMenu, setShowStampMenu] = useState(false);
 
   return (
     <div className="flex flex-col gap-1 bg-slate-900 border border-slate-700 rounded-xl p-2 shadow-xl select-none">
+      {/* Undo */}
+      <button
+        title="Undo (Ctrl+Z)"
+        disabled={!canUndo || isLocked}
+        onClick={onUndo}
+        className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors text-slate-400 hover:text-slate-100 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <Undo2 size={16} />
+      </button>
+
+      <div className="w-full h-px bg-slate-700 my-0.5" />
+
       {/* Nav tools */}
       <div className="flex flex-col gap-0.5">
         {TOOLS.filter(t => t.group === 'nav').map(({ tool, icon: Icon, label }) => (

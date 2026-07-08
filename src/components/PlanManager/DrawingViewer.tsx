@@ -1,9 +1,9 @@
 /**
  * DrawingViewer — full-screen viewer shell combining PdfViewer, AnnotationToolbar,
  * RevisionPanel, and ShareModal for a single drawing.
+ * Revision panel is collapsible to maximise PDF viewing area.
  */
-import React, { useState, useEffect, useCallback } from 'react';
-import { X, Share2, Upload, AlertCircle, Loader2, Lock } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
 import PdfViewer from './PdfViewer';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
@@ -42,7 +42,14 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const [activeStyle, setActiveStyle] = useState<AnnotationStyle>(DEFAULT_STYLE);
   const [showShare, setShowShare] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [revPanelOpen, setRevPanelOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Undo: undoTrigger increments to signal the canvas to pop its history
+  const [undoTrigger, setUndoTrigger] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+
+  const handleUndo = useCallback(() => setUndoTrigger(n => n + 1), []);
 
   const isLocked = Boolean(
     revisions.find(r => r.id === drawing.current_revision_id)?.locked
@@ -68,7 +75,6 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
     if ('error' in result) {
       setUploadError(result.error);
     } else {
-      // Reload drawing detail to get new source_file_path
       await hook.loadDrawing(drawing.id);
     }
     e.target.value = '';
@@ -133,6 +139,21 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
         >
           <Share2 size={13} /> Share
         </button>
+
+        {/* Revision panel toggle */}
+        <button
+          onClick={() => setRevPanelOpen(s => !s)}
+          title={revPanelOpen ? 'Hide revisions' : 'Show revisions'}
+          className={[
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
+            revPanelOpen
+              ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
+              : 'border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
+          ].join(' ')}
+        >
+          {revPanelOpen ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          Revisions
+        </button>
       </div>
 
       {uploadError && (
@@ -149,8 +170,10 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             activeTool={activeTool}
             activeStyle={activeStyle}
             isLocked={isLocked}
+            canUndo={canUndo}
             onToolChange={setActiveTool}
             onStyleChange={handleStyleChange}
+            onUndo={handleUndo}
           />
         </div>
 
@@ -167,12 +190,14 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             activeStyle={activeStyle}
             isLocked={isLocked}
             annotations={annotations}
+            undoTrigger={undoTrigger}
             onPageChange={setPage}
             onScaleChange={setScale}
             onRotate={rotate}
             onFitWidth={setFitWidth}
             onTotalPages={setTotalPages}
             onAnnotationsChange={setPageAnnotations}
+            onUndoAvailableChange={setCanUndo}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500">
@@ -188,19 +213,21 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
           </div>
         )}
 
-        {/* Revision panel (right) */}
-        <RevisionPanel
-          drawingId={drawing.id}
-          revisions={revisions}
-          auditLog={auditLog}
-          currentRevisionId={drawing.current_revision_id}
-          isDirty={dirtyPages.size > 0}
-          saving={saving}
-          isLocked={isLocked}
-          onSave={saveAnnotations}
-          onNewRevision={handleNewRevision}
-          onLock={handleLock}
-        />
+        {/* Revision panel (right) — collapsible */}
+        {revPanelOpen && (
+          <RevisionPanel
+            drawingId={drawing.id}
+            revisions={revisions}
+            auditLog={auditLog}
+            currentRevisionId={drawing.current_revision_id}
+            isDirty={dirtyPages.size > 0}
+            saving={saving}
+            isLocked={isLocked}
+            onSave={saveAnnotations}
+            onNewRevision={handleNewRevision}
+            onLock={handleLock}
+          />
+        )}
       </div>
 
       {/* Share modal */}
