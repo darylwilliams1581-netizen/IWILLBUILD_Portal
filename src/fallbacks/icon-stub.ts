@@ -151,6 +151,7 @@ export const Minus = NullIcon;
 export const Monitor = NullIcon;
 export const MonitorSmartphone = NullIcon;
 export const MoreHorizontal = NullIcon;
+export const MoreVertical = NullIcon;
 export const Mountain = NullIcon;
 export const Navigation = NullIcon;
 export const Package = NullIcon;
