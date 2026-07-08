@@ -1069,10 +1069,17 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_docx_path',    definition: 'VARCHAR(500) NULL' },
     { table: 'document_templates', column: 'source_docx_name',    definition: 'VARCHAR(255) NULL' },
     // ── project_drawings: columns added after initial table creation ──────────
-    { table: 'project_drawings', column: 'source_file_path',  definition: 'VARCHAR(1000) NULL' },
-    { table: 'project_drawings', column: 'source_file_name',  definition: 'VARCHAR(500) NULL' },
-    { table: 'project_drawings', column: 'page_count',        definition: 'INT NOT NULL DEFAULT 1' },
-    { table: 'project_drawings', column: 'current_revision_id', definition: 'INT NULL' },
+    { table: 'project_drawings', column: 'source_file_path',      definition: 'VARCHAR(1000) NULL' },
+    { table: 'project_drawings', column: 'source_file_name',      definition: 'VARCHAR(500) NULL' },
+    { table: 'project_drawings', column: 'page_count',            definition: 'INT NOT NULL DEFAULT 1' },
+    { table: 'project_drawings', column: 'current_revision_id',   definition: 'INT NULL' },
+    { table: 'project_drawings', column: 'sort_order',            definition: 'INT NOT NULL DEFAULT 0' },
+    // ── job_drawing_links: columns added after initial table creation ─────────
+    { table: 'job_drawing_links', column: 'sort_order',           definition: 'INT NOT NULL DEFAULT 0' },
+    { table: 'job_drawing_links', column: 'context_note',         definition: 'TEXT NULL' },
+    { table: 'job_drawing_links', column: 'created_by',           definition: 'VARCHAR(36) NULL' },
+    // ── drawing_audit_log: revision_id column ────────────────────────────────
+    { table: 'drawing_audit_log', column: 'revision_id',          definition: 'INT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
