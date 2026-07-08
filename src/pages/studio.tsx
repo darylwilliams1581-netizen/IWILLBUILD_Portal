@@ -4,11 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Layers, FileText, HardHat, ShieldCheck, Calculator,
-  ClipboardList, Truck, Users, BarChart2, Wrench,
-  Package, Map, Camera, BookOpen, Zap, Star,
-  ChevronRight, Plus, Clock, CheckCircle2, Lock,
-  Building2,
+  Layers, ChevronRight, Plus, Lock, Building2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -31,40 +27,8 @@ interface StudioModule {
   color: string;
 }
 
-// ── Module definitions ────────────────────────────────────────────────────────
-
-const MODULES: StudioModule[] = [
-  // ── Standalone Modules (navigate to dedicated pages) ──────────────────────
-  { id: 'asset-manager',      label: 'Asset Manager',         description: 'Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents',  icon: Building2,     status: 'available',   category: 'Planning',   color: '#06b6d4' },
-  { id: 'plan-manager',       label: 'Plan Manager',          description: 'Upload drawings, annotate with redlines, manage revisions and share view-only links',       icon: Map,           status: 'available',   category: 'Planning',   color: '#6366f1' },
-  // Documents & Contracts
-  { id: 'quote-builder',       label: 'Quote Builder',         description: 'Professional quotes with line items, markup and GST',         icon: Calculator,    status: 'coming_soon', category: 'Documents',  color: '#f97316' },
-  { id: 'contract-builder',    label: 'Contract Builder',      description: 'Build and send contracts with e-signature ready blocks',       icon: FileText,      status: 'coming_soon', category: 'Documents',  color: '#f97316' },
-  { id: 'variation-order',     label: 'Variation Orders',      description: 'Scope change documentation with approval workflow',            icon: ClipboardList, status: 'coming_soon', category: 'Documents',  color: '#f97316' },
-  { id: 'progress-claim',      label: 'Progress Claims',       description: 'Milestone-based payment claims tied to job stages',            icon: BarChart2,     status: 'coming_soon', category: 'Documents',  color: '#f97316' },
-  // Safety
-  { id: 'swms-builder',        label: 'SWMS Builder',          description: 'Safe Work Method Statements with hazard and control blocks',   icon: ShieldCheck,   status: 'available',   category: 'Safety',     color: '#10b981' },
-  { id: 'site-safety-plan',    label: 'Site Safety Plan',      description: 'Full project safety plan with emergency and induction info',   icon: HardHat,       status: 'coming_soon', category: 'Safety',     color: '#10b981' },
-  { id: 'incident-report',     label: 'Incident Report',       description: 'Structured incident capture with photo attachments',           icon: Camera,        status: 'coming_soon', category: 'Safety',     color: '#10b981' },
-  { id: 'toolbox-talk',        label: 'Toolbox Talk',          description: 'Pre-start meeting templates with sign-off capture',            icon: Users,         status: 'coming_soon', category: 'Safety',     color: '#10b981' },
-  // Site & Planning
-  { id: 'site-plan',           label: 'Site Plan',             description: 'Annotated site layout with zones, access and services',        icon: Map,           status: 'coming_soon', category: 'Planning',   color: '#6366f1' },
-  { id: 'project-schedule',    label: 'Project Schedule',      description: 'Gantt-style milestone and task planner per job',               icon: Clock,         status: 'coming_soon', category: 'Planning',   color: '#6366f1' },
-  { id: 'material-schedule',   label: 'Material Schedule',     description: 'Structured materials list with quantities and suppliers',       icon: Package,       status: 'coming_soon', category: 'Planning',   color: '#6366f1' },
-  { id: 'subcontractor-pack',  label: 'Subcontractor Pack',    description: 'Scope, conditions and induction pack for subbies',             icon: Wrench,        status: 'coming_soon', category: 'Planning',   color: '#6366f1' },
-  // Fleet & Equipment
-  { id: 'plant-register',      label: 'Plant Register',        description: 'Asset register with service history and compliance status',    icon: Truck,         status: 'coming_soon', category: 'Fleet',      color: '#0ea5e9' },
-  { id: 'pre-start-check',     label: 'Pre-Start Checklist',   description: 'Daily plant and vehicle pre-start inspection forms',           icon: CheckCircle2,  status: 'coming_soon', category: 'Fleet',      color: '#0ea5e9' },
-  // Knowledge & Training
-  { id: 'induction-pack',      label: 'Induction Pack',        description: 'Site induction with acknowledgement and sign-off',             icon: BookOpen,      status: 'coming_soon', category: 'Training',   color: '#a855f7' },
-  { id: 'procedure-library',   label: 'Procedure Library',     description: 'Standard operating procedures and work instructions',          icon: Layers,        status: 'coming_soon', category: 'Training',   color: '#a855f7' },
-  // Custom
-  { id: 'custom-document',     label: 'Custom Document',       description: 'Start from a blank canvas with any block combination',         icon: Zap,           status: 'available',   category: 'Custom',     color: '#f97316' },
-  { id: 'custom-form',         label: 'Custom Form',           description: 'Build data-capture forms with conditional logic',              icon: Star,          status: 'available',   category: 'Custom',     color: '#f97316' },
-  // Locked (future plans)
-  { id: 'tender-pack',         label: 'Tender Pack',           description: 'Full tender submission package — Business plan and above',     icon: FileText,      status: 'locked',      category: 'Documents',  color: '#94a3b8' },
-  { id: 'handover-pack',       label: 'Handover Pack',         description: 'Project completion and handover documentation',                icon: CheckCircle2,  status: 'locked',      category: 'Documents',  color: '#94a3b8' },
-];
+// ── Module definitions — populated from library by developer ─────────────────
+const MODULES: StudioModule[] = [];
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -237,16 +201,26 @@ export default function StudioPage() {
 
         {/* Module list */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <motion.div
-            variants={{ visible: { transition: { staggerChildren: 0.02 } } }}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-col gap-2"
-          >
-            {filtered.map((mod, i) => (
-              <ModuleTile key={mod.id} mod={mod} index={i} />
-            ))}
-          </motion.div>
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
+                <Layers size={22} className="text-slate-400" />
+              </div>
+              <p className="text-sm font-semibold text-slate-600">No templates yet</p>
+              <p className="text-xs text-slate-400 mt-1">Templates will appear here once loaded from the library</p>
+            </div>
+          ) : (
+            <motion.div
+              variants={{ visible: { transition: { staggerChildren: 0.02 } } }}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-col gap-2"
+            >
+              {filtered.map((mod, i) => (
+                <ModuleTile key={mod.id} mod={mod} index={i} />
+              ))}
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
