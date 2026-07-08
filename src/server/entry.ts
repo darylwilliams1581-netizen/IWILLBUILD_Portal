@@ -1491,6 +1491,11 @@ async function runStartupMigrations() {
   }
 }
 
+// ── Run migrations at module load time (covers dev HMR + production) ─────────
+void runStartupMigrations().catch((e) =>
+  console.error('[startup-migration] fatal:', e)
+);
+
 // ── Startup checks ────────────────────────────────────────────────────────────
 const openAiKey = getSecret('OPENAI_API_KEY');
 if (!openAiKey || openAiKey.trim().length === 0) {
