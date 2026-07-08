@@ -8,7 +8,7 @@ interface Props {
   columnId?: string;
 }
 
-const VARIANT_STYLES: Record<Exclude<BannerVariant, 'safety_first'>, { bg: string; border: string; icon: React.ElementType; iconColor: string }> = {
+const VARIANT_STYLES: Record<Exclude<BannerVariant, 'safety_first' | 'first_aid'>, { bg: string; border: string; icon: React.ElementType; iconColor: string }> = {
   info:    { bg: 'bg-blue-50',   border: 'border-blue-300',   icon: Info,          iconColor: 'text-blue-500' },
   warning: { bg: 'bg-amber-50',  border: 'border-amber-300',  icon: AlertTriangle, iconColor: 'text-amber-500' },
   danger:  { bg: 'bg-red-50',    border: 'border-red-300',    icon: AlertOctagon,  iconColor: 'text-red-500' },
@@ -136,6 +136,132 @@ function SafetyFirstBanner({ block, update }: { block: BannerBlock; update: (p: 
   );
 }
 
+// ── First Aid Banner ──────────────────────────────────────────────────────────
+// Professional medical-grade look: white background, bold red cross SVG,
+// strong red/white typography, thick red border. No cartoons.
+function FirstAidBanner({ block, update }: { block: BannerBlock; update: (p: Partial<BannerBlock>) => void }) {
+  const { mode } = useDocumentStore();
+
+  const titleSize  = block.size === 'compact' ? 26 : block.size === 'large' ? 52 : 38;
+  const bodySize   = block.size === 'compact' ? 9  : block.size === 'large' ? 14 : 11;
+  const crossSize  = block.size === 'compact' ? 44 : block.size === 'large' ? 88 : 64;
+  const padV       = block.size === 'compact' ? 10 : block.size === 'large' ? 22 : 14;
+  const padH       = block.size === 'compact' ? 14 : block.size === 'large' ? 32 : 22;
+  const borderW    = block.size === 'compact' ? 4  : block.size === 'large' ? 8  : 6;
+
+  // Red cross SVG — clean ISO-style plus symbol
+  const RedCross = () => (
+    <svg
+      width={crossSize}
+      height={crossSize}
+      viewBox="0 0 60 60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ flexShrink: 0 }}
+    >
+      {/* White circle background */}
+      <circle cx="30" cy="30" r="29" fill="#fff" stroke="#cc0000" strokeWidth="2" />
+      {/* Red cross */}
+      <rect x="22" y="8"  width="16" height="44" rx="3" fill="#cc0000" />
+      <rect x="8"  y="22" width="44" height="16" rx="3" fill="#cc0000" />
+    </svg>
+  );
+
+  return (
+    <div
+      className="my-1 w-full"
+      style={{
+        background: '#fff',
+        border: `${borderW}px solid #cc0000`,
+        borderRadius: 6,
+        display: 'flex',
+        alignItems: 'center',
+        gap: block.size === 'compact' ? 12 : block.size === 'large' ? 24 : 18,
+        padding: `${padV}px ${padH}px`,
+        boxShadow: '0 2px 8px rgba(204,0,0,0.12)',
+      }}
+    >
+      {/* Left: red cross icon */}
+      <RedCross />
+
+      {/* Centre: text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {mode === 'edit' ? (
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => update({ title: e.currentTarget.textContent ?? '' })}
+            style={{
+              fontSize: titleSize,
+              fontWeight: 900,
+              color: '#cc0000',
+              letterSpacing: '0.04em',
+              lineHeight: 1,
+              fontFamily: 'Arial Black, Arial, Helvetica, sans-serif',
+              textTransform: 'uppercase',
+              outline: 'none',
+              cursor: 'text',
+            }}
+            dangerouslySetInnerHTML={{ __html: block.title }}
+          />
+        ) : (
+          <p style={{
+            fontSize: titleSize,
+            fontWeight: 900,
+            color: '#cc0000',
+            letterSpacing: '0.04em',
+            lineHeight: 1,
+            fontFamily: 'Arial Black, Arial, Helvetica, sans-serif',
+            textTransform: 'uppercase',
+            margin: 0,
+          }}>
+            {block.title || 'FIRST AID'}
+          </p>
+        )}
+
+        {mode === 'edit' ? (
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => update({ body: e.currentTarget.textContent ?? '' })}
+            style={{
+              fontSize: bodySize,
+              fontWeight: 600,
+              color: '#555',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              marginTop: 4,
+              outline: 'none',
+              cursor: 'text',
+            }}
+            dangerouslySetInnerHTML={{ __html: block.body }}
+          />
+        ) : (
+          block.body && (
+            <p style={{
+              fontSize: bodySize,
+              fontWeight: 600,
+              color: '#555',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              marginTop: 4,
+              margin: 0,
+              marginBlockStart: 4,
+            }}>
+              {block.body}
+            </p>
+          )
+        )}
+      </div>
+
+      {/* Right: mirrored red cross */}
+      <RedCross />
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function BannerBlockView({ block, columnsBlockId, columnId }: Props) {
   const { mode, updateBlock, updateBlockInColumn } = useDocumentStore();
@@ -148,13 +274,18 @@ export default function BannerBlockView({ block, columnsBlockId, columnId }: Pro
     }
   };
 
-  // ── Safety First variant — completely different render ──────────────────────
+  // ── Safety First variant ───────────────────────────────────────────────────
   if (block.variant === 'safety_first') {
     return <SafetyFirstBanner block={block} update={update} />;
   }
 
+  // ── First Aid variant ──────────────────────────────────────────────────────
+  if (block.variant === 'first_aid') {
+    return <FirstAidBanner block={block} update={update} />;
+  }
+
   // ── Standard variants ──────────────────────────────────────────────────────
-  const variantStyle = VARIANT_STYLES[block.variant as Exclude<BannerVariant, 'safety_first'>] ?? VARIANT_STYLES.info;
+  const variantStyle = VARIANT_STYLES[block.variant as Exclude<BannerVariant, 'safety_first' | 'first_aid'>] ?? VARIANT_STYLES.info;
   const sizeStyle = SIZE_MAP[block.size] ?? SIZE_MAP.standard;
   const Icon = variantStyle.icon;
 

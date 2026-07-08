@@ -263,6 +263,7 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
               { value: 'success',      label: 'Success' },
               { value: 'safety',       label: 'Safety' },
               { value: 'safety_first', label: 'Safety First (Hazard Stripe)' },
+              { value: 'first_aid',    label: 'First Aid' },
               { value: 'custom',       label: 'Custom' },
             ].map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>

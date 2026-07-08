@@ -91,6 +91,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'banner', label: 'First Aid Banner', icon: Shield, description: 'Professional first aid header',
+        factory: () => ({
+          id: newId(), type: 'banner', variant: 'first_aid',
+          title: 'FIRST AID',
+          body: 'IN AN EMERGENCY CALL 000',
+          size: 'standard', align: 'left', showOnExport: true,
+        }),
+      },
+      {
         type: 'safety_badge_row', label: 'Safety Badges', icon: ShieldCheck, description: 'PPE / safety icons',
         factory: () => ({
           id: newId(), type: 'safety_badge_row', size: 'md', align: 'left',
