@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Briefcase, FileText, Camera, Truck, LayoutDashboard,
   ShieldCheck, Users, CheckCircle, ArrowRight,
-  Star, ChevronRight, Calendar, FolderOpen,
+  Star, ChevronRight, Calendar, FolderOpen, Siren,
 } from 'lucide-react';
 import ContactForm from '@/components/ContactForm';
 import Header from '@/layouts/parts/Header';
@@ -38,6 +38,7 @@ const features = [
   { icon: Truck,       title: 'Fleet prestarts',          desc: 'Daily prestart checks, service dates, rego reminders and dashboard flags for attention.' },
   { icon: Calendar,    title: 'Scheduler',                desc: 'Gantt and table views, job timelines, crew scheduling and progress tracking.' },
   { icon: ShieldCheck, title: 'Safety and compliance',    desc: 'SWMS library, site safety plans, policies, posters and safety pack export.' },
+  { icon: Siren,       title: 'Emergency Beacon',         desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.' },
   { icon: Users,       title: 'Team permissions',         desc: 'Role-based access, invite users, control what each person can see and do.' },
 ];
 
