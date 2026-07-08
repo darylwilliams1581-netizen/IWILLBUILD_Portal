@@ -28,6 +28,10 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
+import { lazy, Suspense } from 'react';
+import { Navigation } from 'lucide-react';
+
+const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
@@ -274,6 +278,7 @@ export default function FleetPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
   const [successName, setSuccessName] = useState('');
+  const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
 
   function openMobileMenu() {
@@ -368,9 +373,48 @@ export default function FleetPage() {
             <span className="hidden sm:inline">Add Asset</span>
             <span className="sm:hidden">Add</span>
           </button>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
+            <button
+              onClick={() => setView('assets')}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+              ].join(' ')}
+            >
+              <Truck size={12} />
+              <span className="hidden sm:inline">Assets</span>
+            </button>
+            <button
+              onClick={() => setView('live-map')}
+              className={[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+              ].join(' ')}
+            >
+              <Navigation size={12} />
+              <span className="hidden sm:inline">Live Map</span>
+            </button>
+          </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* ── Live Map view ── */}
+          {view === 'live-map' && (
+            <Suspense fallback={
+              <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
+                <Loader2 size={20} className="animate-spin" />
+                <span className="text-sm">Loading map…</span>
+              </div>
+            }>
+              <FleetLiveMap />
+            </Suspense>
+          )}
+
+          {/* ── Assets view ── */}
+          {view === 'assets' && (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
 
           {/* Success banner */}
           <AnimatePresence>
@@ -541,6 +585,8 @@ export default function FleetPage() {
                 </motion.div>
               )}
             </>
+          )}
+        </div>
           )}
         </div>
       </div>
