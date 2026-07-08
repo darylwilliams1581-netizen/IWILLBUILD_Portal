@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Helmet } from '@dr.pogodin/react-helmet';
+import { Navigate } from 'react-router-dom';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
@@ -7,7 +7,6 @@ import {
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 
@@ -577,7 +576,7 @@ function SubmissionsInbox({ templates }: { templates: FormTemplate[] }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function FormsPage() {
+export function FormsPage() {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -670,15 +669,8 @@ export default function FormsPage() {
 
   if (builderTemplateId !== null) {
     return (
-      <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
-        <Helmet>
-          <title>Form Builder — IWILLBUILD Portal</title>
-          <meta name="robots" content="noindex" />
-        </Helmet>
-        <PortalSidebar />
-        <div className="flex-1 overflow-y-auto">
-          <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
-        </div>
+      <div className="flex-1 overflow-y-auto">
+        <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
       </div>
     );
   }
@@ -686,26 +678,8 @@ export default function FormsPage() {
   // ── Template list view ──────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
-      <Helmet>
-        <title>Forms — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage form templates for jobs, fleet and compliance." />
-        <link rel="canonical" href="https://iwillbuild.com/forms" />
-        <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Forms — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage form templates for jobs, fleet and compliance." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://iwillbuild.com/forms" />
-        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Forms — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage form templates for jobs, fleet and compliance." />
-        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-      </Helmet>
-
-      <PortalSidebar />
-
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <>
+    <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-6 shrink-0 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
@@ -868,9 +842,14 @@ export default function FormsPage() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
-// ── Document Template Card (moved to Studio) ─────────────────────────────────
-// DocTemplateCard removed — Documents tab lives in Studio, not Forms.
+// ── Named export for Studio embedding ─────────────────────────────────────────
+export { FormsPage as FormsContent };
+
+// ── /forms route — redirect to Studio Forms tab ───────────────────────────────
+export default function FormsRedirect() {
+  return <Navigate to="/studio?tab=forms" replace />;
+}

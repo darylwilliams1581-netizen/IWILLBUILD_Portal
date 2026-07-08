@@ -6,8 +6,7 @@
  * Installing creates a company-scoped editable copy.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Helmet } from '@dr.pogodin/react-helmet';
-import PortalSidebar from '@/components/PortalSidebar';
+import { Navigate } from 'react-router-dom';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2,
   Filter, ChevronDown, Star, RefreshCw, BookMarked,
@@ -114,7 +113,7 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function LibraryPage() {
+export function LibraryPage() {
   // ── Browse state ─────────────────────────────────────────────────────────
   const [items, setItems]           = useState<LibraryItem[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, limit: 20, pages: 0 });
@@ -231,28 +230,9 @@ export default function LibraryPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <>
-      <Helmet>
-        <title>Content Library — IWILLBUILD Portal</title>
-        <meta name="description" content="Browse and install developer-managed content templates into your company." />
-        <link rel="canonical" href="https://iwillbuild.com/library" />
-        <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Content Library — IWILLBUILD Portal" />
-        <meta property="og:description" content="Browse and install developer-managed content templates into your company." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://iwillbuild.com/library" />
-        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Content Library — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Browse and install developer-managed content templates into your company." />
-        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-      </Helmet>
-
-      <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
-        <PortalSidebar />
-
-        <main className="flex-1 overflow-y-auto portal-main">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -548,8 +528,13 @@ export default function LibraryPage() {
             )}
 
           </div>
-        </main>
+        </div>
       </div>
-    </>
   );
+}
+export { LibraryPage as LibraryContent };
+
+// ── /library route — redirect to Studio Library tab ──────────────────────────
+export default function LibraryRedirect() {
+  return <Navigate to="/studio?tab=library" replace />;
 }

@@ -10,12 +10,14 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck,
+  ShieldCheck, ClipboardList, BookOpen,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
-// Lazy-load the safety content so it doesn't bloat the studio bundle
+// Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
+import { FormsPage as FormsContent } from '@/pages/forms';
+import { LibraryPage as LibraryContent } from '@/pages/library';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,8 +60,10 @@ const TYPE_COLORS: Record<string, string> = {
 // ── Top-level studio tabs ─────────────────────────────────────────────────────
 
 const STUDIO_TABS = [
-  { id: 'documents', label: 'Documents',  icon: Layers },
-  { id: 'safety',    label: 'Safety',     icon: ShieldCheck },
+  { id: 'documents', label: 'Documents', icon: Layers },
+  { id: 'forms',     label: 'Forms',     icon: ClipboardList },
+  { id: 'library',   label: 'Library',   icon: BookOpen },
+  { id: 'safety',    label: 'Safety',    icon: ShieldCheck },
 ] as const;
 
 type StudioTabId = typeof STUDIO_TABS[number]['id'];
@@ -346,8 +350,9 @@ export default function StudioPage() {
 
   // Read tab from ?tab= query param so direct links and sidebar work
   const tabParam = searchParams.get('tab');
+  const validTabs: StudioTabId[] = ['documents', 'forms', 'library', 'safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(
-    tabParam === 'safety' ? 'safety' : 'documents'
+    validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'documents'
   );
 
   function switchTab(id: StudioTabId) {
@@ -357,8 +362,8 @@ export default function StudioPage() {
 
   // Sync if URL param changes externally (e.g. sidebar link)
   useEffect(() => {
-    const p = searchParams.get('tab');
-    if (p === 'safety' && activeTab !== 'safety') setActiveTab('safety');
+    const p = searchParams.get('tab') as StudioTabId | null;
+    if (p && validTabs.includes(p) && p !== activeTab) setActiveTab(p);
     if (!p && activeTab !== 'documents') setActiveTab('documents');
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -424,6 +429,8 @@ export default function StudioPage() {
         {/* ── Tab content ── */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'forms'     && <FormsContent />}
+          {activeTab === 'library'   && <LibraryContent />}
           {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>

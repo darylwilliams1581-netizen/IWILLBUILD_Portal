@@ -66,9 +66,9 @@ function buildNavItems(_workPlural: string) {
     { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Forms',                icon: ClipboardList,   href: '/studio?tab=forms',     permKey: null },
+    { label: 'Library',              icon: BookOpen,        href: '/studio?tab=library',   permKey: null },
     { label: 'Safety',               icon: ShieldCheck,     href: '/studio?tab=safety',    permKey: null },
-    { label: 'Library',              icon: BookOpen,        href: '/library',              permKey: null },
-    { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },
     { label: 'Stakeholders',            icon: Users,           href: '/customers',            permKey: 'jobs' },
@@ -155,8 +155,7 @@ function SidebarContent({
     // For /studio (no query param), only active when NOT on a tab
     if (href === '/studio') {
       return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
-    }
-    return location.pathname === href || location.pathname.startsWith(href + '/');
+    }    return location.pathname === href || location.pathname.startsWith(href + '/');
   };
 
   async function handleLogout() {
