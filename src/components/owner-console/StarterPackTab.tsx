@@ -1,7 +1,13 @@
 /**
  * Owner Console → Starter Pack tab
- * Lets the platform owner manually trigger or re-run the starter pack
- * for any company. Shows per-company status and run history.
+ *
+ * Developer/platform-owner tool to manually trigger legacy starter pack seeding
+ * for a specific company. This is a developer-only utility — new companies no
+ * longer receive auto-seeded content on signup (library-first model).
+ *
+ * Note: Auto-seeding on signup has been removed. Content is now installed
+ * on-demand by company users from the developer-controlled Content Library.
+ * This panel remains for manual/legacy use only.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -109,9 +115,22 @@ export default function StarterPackTab({ companies }: Props) {
           <Package size={18} className="text-orange-600" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Company Starter Pack</h2>
+          <h2 className="text-lg font-bold text-slate-900">Legacy Starter Pack</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Auto-loads when a new company signs up. Use this panel to manually trigger or re-run seeding for any company.
+            Developer-only tool. New companies no longer receive auto-seeded content — content is installed on-demand from the Content Library.
+            Use this panel to manually trigger legacy seeding for a specific company if needed.
+          </p>
+        </div>
+      </div>
+
+      {/* Library model notice */}
+      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <AlertTriangle size={15} className="text-blue-500 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-blue-800">Library-first model active</p>
+          <p className="text-xs text-blue-600 mt-0.5">
+            Auto-seeding on signup is disabled. Users install templates from the Content Library at <code className="bg-blue-100 px-1 rounded">/library</code>.
+            No community publishing — all library items are developer/admin managed.
           </p>
         </div>
       </div>

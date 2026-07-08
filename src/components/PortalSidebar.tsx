@@ -27,6 +27,7 @@ import {
   UserCircle,
   MoreHorizontal,
   History,
+  BookOpen,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -65,6 +66,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Library',              icon: BookOpen,        href: '/library',              permKey: null },
     { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },

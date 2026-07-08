@@ -37,6 +37,7 @@ export const BarChart2 = NullIcon;
 export const BarChart3 = NullIcon;
 export const Bell = NullIcon;
 export const BookOpen = NullIcon;
+export const BookMarked = NullIcon;
 export const Bot = NullIcon;
 export const Brain = NullIcon;
 export const Briefcase = NullIcon;

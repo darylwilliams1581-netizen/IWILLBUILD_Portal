@@ -5,7 +5,6 @@ import { user, profiles, companies } from '@/server/db/schema';
 import { getAuth } from '@/lib/auth/auth';
 import { sendVerificationEmail } from '../../lib/email-verification.js';
 import { checkSignupRate } from '../../lib/signup-rate-limiter.js';
-import { seedStarterPack } from '../../lib/seed-starter-pack.js';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo:       1,
@@ -172,12 +171,8 @@ export default async function handler(req: Request, res: Response) {
         console.error('[signup] VERIFICATION EMAIL FAILED:', e);
       });
 
-    // ── Seed starter pack (fire-and-forget — don't fail signup if seeding fails) ──
-    if (companyId) {
-      seedStarterPack(companyId, userId)
-        .then((r) => console.log(`[signup] starter pack seeded for company ${companyId}`, r.sections))
-        .catch((e) => console.error('[signup] STARTER PACK SEED FAILED:', e));
-    }
+    // ── Library model: new companies start empty — no auto-seeding ──
+    // Content is installed on-demand from the developer-controlled library.
 
     return res.status(201).json({
       ok: true,

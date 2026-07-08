@@ -46,6 +46,7 @@ const InvoicesPage       = lazy(() => import('./pages/invoices'));
 const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
+const LibraryPage        = lazy(() => import('./pages/library'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
@@ -159,6 +160,7 @@ export const routes: RouteObject[] = [
   { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
   { path: '/safety',        element: protect(<SafetyPage />),          errorElement: routeError },
+  { path: '/library',       element: protect(<LibraryPage />),         errorElement: routeError },
   { path: '/customers',     element: protect(<CustomersPage />),       errorElement: routeError },
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },

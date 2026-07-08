@@ -11,7 +11,6 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../../../db/client.js';
 import { user, profiles, companies } from '../../../db/schema.js';
 import { getAuth } from '../../../../lib/auth/auth.js';
-import { seedStarterPack } from '../../../lib/seed-starter-pack.js';
 
 const PLAN_MAX_USERS: Record<string, number> = {
   solo: 1, team: 5, pro: 10, enterprise: 999,
@@ -101,12 +100,8 @@ export default async function handler(req: Request, res: Response) {
       permDeleteRecords: true,
     });
 
-    // Seed starter pack
-    if (companyId) {
-      seedStarterPack(companyId, authUser.id)
-        .then((r) => console.log(`[resume-signup] starter pack seeded for company ${companyId}`, r.sections))
-        .catch((e) => console.error('[resume-signup] STARTER PACK SEED FAILED:', e));
-    }
+    // ── Library model: new companies start empty — no auto-seeding ──
+    // Content is installed on-demand from the developer-controlled library.
 
     console.log(`[resume-signup] completed for user=${authUser.email} company=${companyName} plan=${resolvedPlan}`);
 
