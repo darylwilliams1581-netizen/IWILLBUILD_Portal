@@ -260,11 +260,11 @@ const ssrCode = await run(
     //     react-markdown, embla-carousel, vaul,
     //     cmdk, input-otp, react-day-picker             (~8 MB saved)
     // Total estimated savings: ~262 MB of AST.
-    // Heap ceiling: 1600 MB — raised from 1400 MB after SIGKILL in publish pipeline.
+    // Heap ceiling: 1800 MB — raised from 1600 MB to prevent intermittent SIGKILL.
     // --optimize-for-size: instructs V8 to prefer smaller memory footprint over speed.
     // --max-semi-space-size=1: minimise the young-generation heap (default 8 MB)
     //   so GC runs more frequently and keeps old-gen pressure lower.
-    '--max-old-space-size=1600',
+    '--max-old-space-size=1800',
     '--max-semi-space-size=1',
     '--optimize-for-size',
     vite, 'build', '--ssr', '--emptyOutDir=false',

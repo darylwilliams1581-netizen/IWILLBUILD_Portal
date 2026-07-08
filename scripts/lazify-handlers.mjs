@@ -104,6 +104,7 @@ const entryCount = lazify(
     '_h_notifications_alerts_get_',
     '_h_jobs_id_purchase_orders_',
     '_h_jobs_id_ledger_sync_',
+    '_h_document_templates_id_export_',
     // Legacy naming (non-_h_ block) — kept for safety in case any of these
     // were regenerated outside the <api-imports> block
     'dazza_chat_post_',
@@ -116,6 +117,7 @@ const entryCount = lazify(
     'notifications_alerts_get_',
     'jobs_id_purchase_orders_',
     'jobs_id_ledger_sync_',
+    'document_templates_id_export_',
   ],
 );
 
