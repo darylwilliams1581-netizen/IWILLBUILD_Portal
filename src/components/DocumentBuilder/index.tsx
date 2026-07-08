@@ -86,12 +86,14 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         res = await fetch(`/api/document-templates/${templateId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
       } else {
         res = await fetch('/api/document-templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
       }
@@ -125,6 +127,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       const res = await fetch('/api/document-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       const data = await res.json() as { id?: number; ok?: boolean; error?: string };
