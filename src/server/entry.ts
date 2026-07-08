@@ -1069,11 +1069,16 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_docx_path',    definition: 'VARCHAR(500) NULL' },
     { table: 'document_templates', column: 'source_docx_name',    definition: 'VARCHAR(255) NULL' },
     // ── project_drawings: columns added after initial table creation ──────────
+    { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
+    { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
+    { table: 'project_drawings', column: 'description',           definition: 'TEXT NULL' },
+    { table: 'project_drawings', column: 'project_id',            definition: 'INT NULL' },
     { table: 'project_drawings', column: 'source_file_path',      definition: 'VARCHAR(1000) NULL' },
     { table: 'project_drawings', column: 'source_file_name',      definition: 'VARCHAR(500) NULL' },
     { table: 'project_drawings', column: 'page_count',            definition: 'INT NOT NULL DEFAULT 1' },
     { table: 'project_drawings', column: 'current_revision_id',   definition: 'INT NULL' },
     { table: 'project_drawings', column: 'sort_order',            definition: 'INT NOT NULL DEFAULT 0' },
+    { table: 'project_drawings', column: 'created_by',            definition: 'VARCHAR(36) NULL' },
     // ── job_drawing_links: columns added after initial table creation ─────────
     { table: 'job_drawing_links', column: 'sort_order',           definition: 'INT NOT NULL DEFAULT 0' },
     { table: 'job_drawing_links', column: 'context_note',         definition: 'TEXT NULL' },
@@ -2450,20 +2455,22 @@ if (import.meta.env.PROD) {
 		// ── Run the full self-healing migration suite (safetyTables loop etc.) ──
 		await runStartupMigrations();
 
-		// ── project_drawings ──────────────────────────────────────────────────
+		// ── project_drawings (full canonical schema) ──────────────────────────
 		try {
 			await _db.execute(_sql.raw(
 				"CREATE TABLE IF NOT EXISTS project_drawings (" +
 				"  id INT AUTO_INCREMENT PRIMARY KEY," +
 				"  company_id INT NOT NULL," +
 				"  project_id INT NULL," +
-				"  title VARCHAR(500) NOT NULL," +
+				"  name VARCHAR(500) NOT NULL DEFAULT ''," +
+				"  title VARCHAR(500) NOT NULL DEFAULT ''," +
 				"  description TEXT NULL," +
 				"  source_file_path VARCHAR(1000) NULL," +
 				"  source_file_name VARCHAR(500) NULL," +
 				"  page_count INT NOT NULL DEFAULT 1," +
 				"  current_revision_id INT NULL," +
 				"  status VARCHAR(30) NOT NULL DEFAULT 'active'," +
+				"  sort_order INT NOT NULL DEFAULT 0," +
 				"  created_by VARCHAR(36) NULL," +
 				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
 				"  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
@@ -2477,7 +2484,7 @@ if (import.meta.env.PROD) {
 			console.warn('[startup] project_drawings migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
-		// ── job_drawing_links ─────────────────────────────────────────────────
+		// ── job_drawing_links (full canonical schema) ─────────────────────────
 		try {
 			await _db.execute(_sql.raw(
 				"CREATE TABLE IF NOT EXISTS job_drawing_links (" +
@@ -2485,6 +2492,7 @@ if (import.meta.env.PROD) {
 				"  job_id INT NOT NULL," +
 				"  drawing_id INT NOT NULL," +
 				"  context_note TEXT NULL," +
+				"  sort_order INT NOT NULL DEFAULT 0," +
 				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
 				"  created_by VARCHAR(36) NULL," +
 				"  UNIQUE KEY uq_jdl_job_drawing (job_id, drawing_id)," +
@@ -2497,7 +2505,7 @@ if (import.meta.env.PROD) {
 			console.warn('[startup] job_drawing_links migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
-		// ── document_templates ───────────────────────────────────────────────
+		// ── document_templates (full canonical schema) ───────────────────────
 		try {
 			await _db.execute(_sql.raw(
 				"CREATE TABLE IF NOT EXISTS document_templates (" +
@@ -2525,18 +2533,19 @@ if (import.meta.env.PROD) {
 			console.warn('[startup] document_templates migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
-		// ── drawing_audit_log ─────────────────────────────────────────────────
+		// ── drawing_audit_log (full canonical schema) ─────────────────────────
 		try {
 			await _db.execute(_sql.raw(
 				"CREATE TABLE IF NOT EXISTS drawing_audit_log (" +
 				"  id INT AUTO_INCREMENT PRIMARY KEY," +
 				"  drawing_id INT NOT NULL," +
-				"  actor_id VARCHAR(36) NOT NULL," +
+				"  revision_id INT NULL," +
+				"  actor_id VARCHAR(36) NULL," +
 				"  action VARCHAR(60) NOT NULL," +
 				"  details_json TEXT NULL," +
 				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
 				"  INDEX idx_dal_drawing (drawing_id)," +
-				"  INDEX idx_dal_actor (actor_id)" +
+				"  INDEX idx_dal_created (drawing_id, created_at)" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 			));
 			console.log('[startup] drawing_audit_log table ready');
