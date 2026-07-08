@@ -10,9 +10,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2,
-  Filter, ChevronDown, Star, Tag, RefreshCw, BookMarked,
+  Filter, ChevronDown, Star, RefreshCw, BookMarked,
   FileText, Shield, ClipboardList, Wrench, Calculator,
-  Package, AlertCircle, ExternalLink,
+  Package, AlertCircle,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -78,20 +78,20 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  policy:          'bg-blue-500/15 text-blue-300',
-  procedure:       'bg-purple-500/15 text-purple-300',
-  swms:            'bg-red-500/15 text-red-300',
-  form:            'bg-green-500/15 text-green-300',
-  recipe:          'bg-amber-500/15 text-amber-300',
-  estimate_recipe: 'bg-orange-500/15 text-orange-300',
-  scope_line:      'bg-teal-500/15 text-teal-300',
+  policy:          'bg-blue-500/10 text-blue-600',
+  procedure:       'bg-purple-500/10 text-purple-600',
+  swms:            'bg-red-500/10 text-red-600',
+  form:            'bg-emerald-500/10 text-emerald-600',
+  recipe:          'bg-amber-500/10 text-amber-600',
+  estimate_recipe: 'bg-orange-500/10 text-orange-600',
+  scope_line:      'bg-teal-500/10 text-teal-600',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function TypeBadge({ type }: { type: string }) {
   const Icon = TYPE_ICONS[type] ?? BookOpen;
-  const color = TYPE_COLORS[type] ?? 'bg-slate-500/15 text-slate-300';
+  const color = TYPE_COLORS[type] ?? 'bg-slate-100 text-slate-500';
   const label = ITEM_TYPES.find((t) => t.value === type)?.label ?? type;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
@@ -102,12 +102,12 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 function StarRating({ avg, count }: { avg: number; count: number }) {
-  if (count === 0) return <span className="text-xs text-white/30">No ratings</span>;
+  if (count === 0) return <span className="text-xs text-slate-400">No ratings</span>;
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-amber-400">
+    <span className="inline-flex items-center gap-1 text-xs text-amber-500">
       <Star size={11} fill="currentColor" />
       {avg.toFixed(1)}
-      <span className="text-white/30">({count})</span>
+      <span className="text-slate-400">({count})</span>
     </span>
   );
 }
@@ -248,7 +248,7 @@ export default function LibraryPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <div className="flex h-screen overflow-hidden bg-[#0F1117]">
+      <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
         <PortalSidebar />
 
         <main className="flex-1 overflow-y-auto portal-main">
@@ -257,12 +257,12 @@ export default function LibraryPage() {
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                  <BookOpen size={20} className="text-orange-400" />
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={20} className="text-orange-500" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white">Content Library</h1>
-                  <p className="text-sm text-white/50 mt-0.5">
+                  <h1 className="text-xl font-bold text-slate-900">Content Library</h1>
+                  <p className="text-sm text-slate-500 mt-0.5">
                     Browse and install templates into your company. Your installed copies are fully editable.
                   </p>
                 </div>
@@ -270,7 +270,7 @@ export default function LibraryPage() {
             </div>
 
             {/* ── Tabs ───────────────────────────────────────────────────── */}
-            <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
+            <div className="flex gap-1 bg-slate-100 border border-slate-200 rounded-xl p-1 w-fit">
               {(['browse', 'installed'] as const).map((t) => (
                 <button
                   key={t}
@@ -280,8 +280,8 @@ export default function LibraryPage() {
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     tab === t
-                      ? 'bg-orange-500 text-white'
-                      : 'text-white/50 hover:text-white'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   {t === 'browse' ? (
@@ -291,7 +291,7 @@ export default function LibraryPage() {
                       <BookMarked size={14} />
                       Installed
                       {installedIds.size > 0 && (
-                        <span className="bg-orange-500/20 text-orange-300 text-xs px-1.5 py-0.5 rounded-full">
+                        <span className="bg-orange-100 text-orange-600 text-xs px-1.5 py-0.5 rounded-full">
                           {installedIds.size}
                         </span>
                       )}
@@ -308,36 +308,36 @@ export default function LibraryPage() {
                 <div className="flex flex-wrap gap-3">
                   {/* Search */}
                   <div className="relative flex-1 min-w-[200px]">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="Search title, summary, tags…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40"
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
                     />
                   </div>
 
                   {/* Type filter */}
                   <div className="relative">
-                    <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                    <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
-                      className="appearance-none bg-white/5 border border-white/10 rounded-lg pl-8 pr-7 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+                      className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
                     >
                       {ITEM_TYPES.map((t) => (
-                        <option key={t.value} value={t.value} className="bg-[#1a1d27]">{t.label}</option>
+                        <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
                     </select>
-                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
 
                   {/* Refresh */}
                   <button
                     onClick={() => void fetchItems({ search, type: typeFilter, category: catFilter, page })}
                     disabled={loading}
-                    className="flex items-center gap-1.5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
                   >
                     {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                   </button>
@@ -345,7 +345,7 @@ export default function LibraryPage() {
 
                 {/* Error */}
                 {error && (
-                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
                     <AlertCircle size={15} />
                     {error}
                   </div>
@@ -353,7 +353,7 @@ export default function LibraryPage() {
 
                 {/* Results count */}
                 {!loading && !error && (
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-slate-400">
                     {pagination.total === 0
                       ? 'No items found'
                       : `${pagination.total} item${pagination.total !== 1 ? 's' : ''} — page ${pagination.page} of ${pagination.pages}`}
@@ -362,20 +362,19 @@ export default function LibraryPage() {
 
                 {/* Loading skeleton */}
                 {loading && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-white/5 border border-white/8 rounded-xl p-4 animate-pulse">
-                        <div className="h-4 bg-white/10 rounded w-3/4 mb-2" />
-                        <div className="h-3 bg-white/8 rounded w-1/2 mb-3" />
-                        <div className="h-3 bg-white/6 rounded w-full" />
+                      <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 animate-pulse">
+                        <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-slate-100 rounded w-1/2" />
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Items grid */}
+                {/* Items list */}
                 {!loading && items.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
                     {items.map((item) => {
                       const isInstalled = installedIds.has(item.id);
                       const isInstalling = installing === item.id;
@@ -384,56 +383,36 @@ export default function LibraryPage() {
                       return (
                         <div
                           key={item.id}
-                          className="bg-white/4 border border-white/8 rounded-xl p-4 flex flex-col gap-3 hover:border-white/15 transition-colors"
+                          className="bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm transition-all duration-150"
                         >
-                          {/* Top row */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <TypeBadge type={item.type} />
-                                {item.category && (
-                                  <span className="text-xs text-white/40">{item.category}</span>
-                                )}
-                              </div>
-                              <h3 className="text-sm font-semibold text-white leading-snug">{item.title}</h3>
-                            </div>
+                          {/* Type icon */}
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-100 border border-slate-200">
+                            {(() => { const Icon = TYPE_ICONS[item.type] ?? BookOpen; return <Icon size={14} className="text-slate-500" />; })()}
                           </div>
 
-                          {/* Summary */}
-                          {item.summary && (
-                            <p className="text-xs text-white/50 leading-relaxed line-clamp-2">{item.summary}</p>
-                          )}
-
-                          {/* Tags */}
-                          {item.tags && (
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <Tag size={10} className="text-white/25 flex-shrink-0" />
-                              {item.tags.split(',').slice(0, 4).map((tag) => (
-                                <span
-                                  key={tag}
-                                  onClick={() => setCatFilter(tag.trim())}
-                                  className="text-xs text-white/35 bg-white/5 rounded px-1.5 py-0.5 cursor-pointer hover:text-white/60 hover:bg-white/10 transition-colors"
-                                >
-                                  {tag.trim()}
-                                </span>
-                              ))}
+                          {/* Title + meta */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-slate-800 truncate">{item.title}</span>
+                              <TypeBadge type={item.type} />
+                              {item.category && (
+                                <span className="text-xs text-slate-400 hidden sm:inline">{item.category}</span>
+                              )}
                             </div>
-                          )}
+                            {item.summary && (
+                              <p className="text-xs text-slate-500 truncate mt-0.5">{item.summary}</p>
+                            )}
+                          </div>
 
-                          {/* Footer */}
-                          <div className="flex items-center justify-between gap-2 mt-auto pt-1 border-t border-white/6">
-                            <div className="flex items-center gap-3">
-                              <StarRating avg={Number(item.avg_rating)} count={item.rating_count} />
-                              <span className="text-xs text-white/30 flex items-center gap-1">
-                                <Download size={10} />
-                                {item.install_count}
-                              </span>
-                              <span className="text-xs text-white/25">v{item.version}</span>
-                            </div>
+                          {/* Right: rating + install */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <StarRating avg={Number(item.avg_rating)} count={item.rating_count} />
+                            <span className="text-xs text-slate-400 hidden md:flex items-center gap-1">
+                              <Download size={10} />{item.install_count}
+                            </span>
 
-                            {/* Install button */}
                             {isInstalled ? (
-                              <span className="flex items-center gap-1 text-xs text-green-400 font-semibold">
+                              <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
                                 <CheckCircle2 size={13} />
                                 Installed
                               </span>
@@ -455,7 +434,7 @@ export default function LibraryPage() {
 
                           {/* Install message */}
                           {msg && (
-                            <p className={`text-xs px-2 py-1 rounded ${msg.ok ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'}`}>
+                            <p className={`text-xs px-2 py-1 rounded ${msg.ok ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
                               {msg.msg}
                             </p>
                           )}
@@ -468,12 +447,12 @@ export default function LibraryPage() {
                 {/* Empty state */}
                 {!loading && !error && items.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                    <BookOpen size={36} className="text-white/15" />
-                    <p className="text-white/40 text-sm">No library items found.</p>
+                    <BookOpen size={36} className="text-slate-300" />
+                    <p className="text-slate-500 text-sm">No library items found.</p>
                     {(search || typeFilter) && (
                       <button
                         onClick={() => { setSearch(''); setTypeFilter(''); }}
-                        className="text-xs text-orange-400 hover:text-orange-300 underline"
+                        className="text-xs text-orange-500 hover:text-orange-600 underline"
                       >
                         Clear filters
                       </button>
@@ -487,17 +466,17 @@ export default function LibraryPage() {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1 || loading}
-                      className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white/60 hover:text-white disabled:opacity-30 transition-colors"
+                      className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
                     >
                       Previous
                     </button>
-                    <span className="text-xs text-white/40">
+                    <span className="text-xs text-slate-400">
                       Page {pagination.page} of {pagination.pages}
                     </span>
                     <button
                       onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                       disabled={page >= pagination.pages || loading}
-                      className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-white/60 hover:text-white disabled:opacity-30 transition-colors"
+                      className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
                     >
                       Next
                     </button>
@@ -510,7 +489,7 @@ export default function LibraryPage() {
             {tab === 'installed' && (
               <div className="space-y-4">
                 {installedLoading && (
-                  <div className="flex items-center gap-2 text-sm text-white/40">
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
                     <Loader2 size={14} className="animate-spin" />
                     Loading installed items…
                   </div>
@@ -518,11 +497,11 @@ export default function LibraryPage() {
 
                 {!installedLoading && installed.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                    <BookMarked size={36} className="text-white/15" />
-                    <p className="text-white/40 text-sm">No items installed yet.</p>
+                    <BookMarked size={36} className="text-slate-300" />
+                    <p className="text-slate-500 text-sm">No items installed yet.</p>
                     <button
                       onClick={() => setTab('browse')}
-                      className="text-xs text-orange-400 hover:text-orange-300 underline"
+                      className="text-xs text-orange-500 hover:text-orange-600 underline"
                     >
                       Browse the library
                     </button>
@@ -530,35 +509,36 @@ export default function LibraryPage() {
                 )}
 
                 {!installedLoading && installed.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
                     {installed.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-white/4 border border-white/8 rounded-xl p-4 flex flex-col gap-2 hover:border-white/15 transition-colors"
+                        className="bg-white border border-border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm transition-all duration-150"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <TypeBadge type={item.type} />
-                              {item.update_available ? (
-                                <span className="text-xs bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-full font-semibold">
-                                  Update available
-                                </span>
-                              ) : (
-                                <span className="text-xs text-white/25">v{item.source_version}</span>
-                              )}
-                            </div>
-                            <h3 className="text-sm font-semibold text-white leading-snug">{item.title}</h3>
-                            {item.category && (
-                              <p className="text-xs text-white/40 mt-0.5">{item.category}</p>
-                            )}
-                          </div>
-                          <CheckCircle2 size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-100 border border-slate-200">
+                          {(() => { const Icon = TYPE_ICONS[item.type] ?? BookOpen; return <Icon size={14} className="text-slate-500" />; })()}
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/6 text-xs text-white/30">
-                          <span>Installed {new Date(item.installed_at).toLocaleDateString('en-AU')}</span>
-                          <span>Updated {new Date(item.updated_at).toLocaleDateString('en-AU')}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-800 truncate">{item.title}</span>
+                            <TypeBadge type={item.type} />
+                            {item.update_available ? (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
+                                Update available
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">v{item.source_version}</span>
+                            )}
+                          </div>
+                          {item.category && (
+                            <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 flex-shrink-0 text-xs text-slate-400">
+                          <span className="hidden sm:block">Installed {new Date(item.installed_at).toLocaleDateString('en-AU')}</span>
+                          <CheckCircle2 size={15} className="text-emerald-500" />
                         </div>
                       </div>
                     ))}
