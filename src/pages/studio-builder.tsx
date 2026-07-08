@@ -61,7 +61,7 @@ export default function StudioBuilderPage() {
     if (!numId) { setError('Invalid document ID'); setLoading(false); return; }
 
     setLoading(true);
-    fetch(`/api/document-templates/${numId}`)
+    fetch(`/api/document-templates/${numId}`, { credentials: 'include' })
       .then((r) => r.json() as Promise<TemplateResponse & { error?: string }>)
       .then((data) => {
         if (data.error) throw new Error(data.error);

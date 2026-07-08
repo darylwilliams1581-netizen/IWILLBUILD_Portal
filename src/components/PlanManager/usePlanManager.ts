@@ -63,7 +63,7 @@ export function usePlanManager() {
   const loadDrawings = useCallback(async (status: 'active' | 'archived' = 'active') => {
     setState(s => ({ ...s, listLoading: true, listError: null }));
     try {
-      const res = await fetch(`/api/plan-manager/drawings?status=${status}`);
+      const res = await fetch(`/api/plan-manager/drawings?status=${status}`, { credentials: 'include' });
       const data = await res.json() as { drawings?: Drawing[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to load');
       setState(s => ({ ...s, drawings: data.drawings ?? [], listLoading: false }));
@@ -76,7 +76,7 @@ export function usePlanManager() {
   const loadDrawing = useCallback(async (id: number) => {
     setState(s => ({ ...s, detailLoading: true, annotations: new Map(), dirtyPages: new Set(), viewer: DEFAULT_VIEWER }));
     try {
-      const res = await fetch(`/api/plan-manager/drawings/${id}`);
+      const res = await fetch(`/api/plan-manager/drawings/${id}`, { credentials: 'include' });
       const data = await res.json() as DrawingDetail & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to load drawing');
       setState(s => ({
@@ -98,7 +98,7 @@ export function usePlanManager() {
   const loadPageAnnotations = useCallback(async (drawingId: number, pageNo: number, revisionId?: number) => {
     const qs = revisionId ? `?revisionId=${revisionId}` : '';
     try {
-      const res = await fetch(`/api/plan-manager/drawings/${drawingId}/pages/${pageNo}/annotations${qs}`);
+      const res = await fetch(`/api/plan-manager/drawings/${drawingId}/pages/${pageNo}/annotations${qs}`, { credentials: 'include' });
       const data = await res.json() as { annotations?: Array<Record<string, unknown>>; error?: string };
       if (!res.ok) return;
       const anns: Annotation[] = (data.annotations ?? []).map((a) => ({
@@ -151,6 +151,7 @@ export function usePlanManager() {
         const res = await fetch(`/api/plan-manager/drawings/${selected.drawing.id}/annotations`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ pageNo, revisionId, annotations: payload }),
         });
         if (!res.ok) {
@@ -186,19 +187,19 @@ export function usePlanManager() {
   }, []);
 
   // ── Upload ────────────────────────────────────────────────────────────────
-  const uploadPdf = useCallback(async (drawingId: number, file: File): Promise<{ url: string } | null> => {
+  const uploadPdf = useCallback(async (drawingId: number, file: File): Promise<{ url: string } | { error: string }> => {
     setState(s => ({ ...s, uploading: true, uploadProgress: 0 }));
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`/api/plan-manager/drawings/${drawingId}/upload`, { method: 'POST', body: form });
+      const res = await fetch(`/api/plan-manager/drawings/${drawingId}/upload`, { method: 'POST', credentials: 'include', body: form });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
       setState(s => ({ ...s, uploading: false, uploadProgress: 100 }));
       return { url: data.url! };
-    } catch {
+    } catch (err) {
       setState(s => ({ ...s, uploading: false }));
-      return null;
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   }, []);
 
@@ -208,6 +209,7 @@ export function usePlanManager() {
       const res = await fetch(`/api/plan-manager/drawings/${drawingId}/revisions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name }),
       });
       if (!res.ok) return false;
@@ -220,6 +222,7 @@ export function usePlanManager() {
     try {
       const res = await fetch(`/api/plan-manager/drawings/${drawingId}/revisions/${revisionId}/finalize`, {
         method: 'POST',
+        credentials: 'include',
       });
       if (!res.ok) return false;
       await loadDrawing(drawingId);
@@ -233,6 +236,7 @@ export function usePlanManager() {
       const res = await fetch('/api/plan-manager/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ drawingId, revisionId, expiryDays }),
       });
       const data = await res.json() as { token?: string; url?: string; expiresAt?: string; error?: string };

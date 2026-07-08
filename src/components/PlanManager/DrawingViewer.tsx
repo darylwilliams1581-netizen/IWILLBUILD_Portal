@@ -65,8 +65,9 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
     if (!file) return;
     setUploadError(null);
     const result = await uploadPdf(drawing.id, file);
-    if (!result) setUploadError('Upload failed — please try again.');
-    else {
+    if ('error' in result) {
+      setUploadError(result.error);
+    } else {
       // Reload drawing detail to get new source_file_path
       await hook.loadDrawing(drawing.id);
     }
