@@ -1782,10 +1782,10 @@ app.get("/api/jobs/:id/purchase-orders/:poId", _h_jobs_id_purchase_orders_poid_g
 app.put("/api/jobs/:id/purchase-orders/:poId", _h_jobs_id_purchase_orders_poid_put_12);
 app.get("/api/jobs/:id/purchase-orders/:poId/pdf", _h_jobs_id_purchase_orders_poid_pdf_get_13);
 app.post("/api/jobs/:id/signin", jobs_id_signin_post_277);
-app.post("/api/jobs/:id/signin-qr", jobs_id_signin_qr_post_278);
+// signin-qr already registered before auth guard (public endpoint) — no duplicate needed
 app.get("/api/jobs/:id/signin-status", jobs_id_signin_status_get_279);
 app.post("/api/jobs/:id/signout", jobs_id_signout_post_280);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_281);
+// signout-qr already registered before auth guard (public endpoint) — no duplicate needed
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_282);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_283);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_284);
