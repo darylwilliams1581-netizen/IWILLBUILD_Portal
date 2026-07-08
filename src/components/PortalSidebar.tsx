@@ -70,7 +70,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },
-    { label: 'Customers',            icon: Users,           href: '/customers',            permKey: 'jobs' },
+    { label: 'Stakeholders',            icon: Users,           href: '/customers',            permKey: 'jobs' },
     { label: 'Estimating Settings',  icon: Calculator,      href: '/estimating',           permKey: null },
     { label: 'Team',                 icon: UserCircle,      href: '/team',                 permKey: null },
   ] as const;
