@@ -700,75 +700,65 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Site Escape Arcade ─────────────────────────────────────────────── */}
+      {/* ── Site Escape Arcade — compact icon link ──────────────────────────── */}
       <section id="arcade" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 60%, #0f172a 100%)', position: 'relative', overflow: 'hidden' }}>
-        {/* Grid texture */}
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.05,
           backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
           backgroundSize: '48px 48px', pointerEvents: 'none',
         }} />
-        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', padding: '48px 22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <a
+            href="/site-escape.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 16,
+              background: 'rgba(255,255,255,.05)',
+              border: '2px solid rgba(255,212,71,0.45)',
+              borderRadius: 20,
+              padding: '18px 28px',
+              textDecoration: 'none',
+              boxShadow: '0 8px 32px rgba(0,0,0,.45), 0 0 32px rgba(249,115,22,.12)',
+              transition: 'transform .15s ease, box-shadow .15s ease',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)';
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 14px 40px rgba(0,0,0,.5), 0 0 48px rgba(249,115,22,.22)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 8px 32px rgba(0,0,0,.45), 0 0 32px rgba(249,115,22,.12)';
+            }}
+          >
+            {/* Bobcat icon */}
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
-              borderRadius: 20, padding: '5px 14px', marginBottom: 18,
+              width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+              background: 'linear-gradient(135deg, #1e3a5f, #0f172a)',
+              border: '2px solid rgba(255,212,71,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26,
             }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>IWILLBUILD ARCADE</span>
+              🚜
             </div>
-            <h2 style={{
-              fontSize: 'clamp(28px,4vw,46px)', letterSpacing: '-0.04em',
-              margin: '0 0 14px', color: '#fff', lineHeight: 1.1,
-            }}>
-              Site Escape
-            </h2>
-            <p style={{ color: '#94a3b8', fontSize: 17, margin: '0 auto', maxWidth: 560 }}>
-              Dodge workers, cones, mud and invoices. Collect powerups. Outrun the safety officer. Survive 90 seconds to escape the site.
-            </p>
-          </div>
-
-          {/* Game iframe */}
-          <div style={{
-            position: 'relative',
-            borderRadius: 20,
-            overflow: 'hidden',
-            border: '2px solid rgba(255,212,71,0.4)',
-            boxShadow: '0 32px 80px rgba(0,0,0,.6), 0 0 60px rgba(249,115,22,.15)',
-            maxWidth: 900,
-            margin: '0 auto',
-            aspectRatio: '16/9',
-          }}>
-            <iframe
-              src="/site-escape.html"
-              title="Site Escape — IWILLBUILD Arcade"
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-              allow="autoplay"
-            />
-          </div>
-
-          {/* Controls hint */}
-          <div style={{
-            display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
-            marginTop: 24,
-          }}>
-            {[
-              { key: '← →  /  A D', label: 'Change lane' },
-              { key: '↑  /  W  /  Space', label: 'Hop' },
-              { key: 'P  /  Esc', label: 'Pause' },
-              { key: 'Tap left / right', label: 'Mobile lanes' },
-            ].map((c) => (
-              <div key={c.key} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)',
-                borderRadius: 8, padding: '7px 14px',
-              }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#fde047' }}>{c.key}</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>{c.label}</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em' }}>Site Escape</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                  background: 'rgba(249,115,22,.2)', border: '1px solid rgba(249,115,22,.4)',
+                  color: '#fb923c', borderRadius: 6, padding: '2px 7px',
+                }}>ARCADE</span>
+                {/* external link arrow */}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
               </div>
-            ))}
-          </div>
+              <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+                Dodge workers &amp; outrun the safety officer
+              </p>
+            </div>
+          </a>
         </div>
       </section>
 
