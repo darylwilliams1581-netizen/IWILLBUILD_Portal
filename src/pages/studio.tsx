@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Layers, ChevronRight, Plus, Lock, Building2,
+  Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -35,82 +36,137 @@ const MODULES: StudioModule[] = [];
 function StatusBadge({ status }: { status: ModuleStatus }) {
   if (status === 'available') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-        Ready
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+        Active
       </span>
     );
   }
   if (status === 'coming_soon') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
-        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
         Coming soon
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
       <Lock size={9} />
-      Plan upgrade
+      Locked
     </span>
   );
 }
 
-// ── Module tile (compact row) ─────────────────────────────────────────────────
+// ── Toolbar icon button ───────────────────────────────────────────────────────
+
+function ToolBtn({
+  icon: Icon, label, onClick, className = '',
+}: {
+  icon: React.ElementType; label: string; onClick?: (e: React.MouseEvent) => void; className?: string;
+}) {
+  return (
+    <button
+      title={label}
+      onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+      className={`p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0 ${className}`}
+    >
+      <Icon size={14} />
+    </button>
+  );
+}
+
+// ── Module tile — reference layout ────────────────────────────────────────────
+// Layout mirrors the reference: status badge + rev label | bold title + description | icon toolbar
 
 function ModuleTile({ mod, index }: { mod: StudioModule; index: number }) {
   const navigate = useNavigate();
-  const Icon = mod.icon;
+  const [expanded, setExpanded] = useState(false);
   const isAvailable = mod.status === 'available';
   const isLocked = mod.status === 'locked';
 
-  function handleClick() {
-    if (isAvailable) {
-      if (mod.id === 'asset-manager') { navigate('/studio/asset-manager'); return; }
-      if (mod.id === 'plan-manager')  { navigate('/plan-manager'); return; }
-      navigate(`/studio/builder/new?type=${mod.id}`);
-    }
+  function openDoc() {
+    if (!isAvailable) return;
+    if (mod.id === 'asset-manager') { navigate('/studio/asset-manager'); return; }
+    if (mod.id === 'plan-manager')  { navigate('/plan-manager'); return; }
+    navigate(`/studio/builder/new?type=${mod.id}`);
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, delay: index * 0.02, ease: 'easeOut' }}
-      onClick={handleClick}
+      transition={{ duration: 0.16, delay: index * 0.02, ease: 'easeOut' }}
       className={[
-        'group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150',
-        isAvailable
-          ? 'border-border bg-white hover:border-primary/40 hover:shadow-sm cursor-pointer'
-          : isLocked
-          ? 'border-border bg-slate-50 opacity-50 cursor-not-allowed'
-          : 'border-border bg-white cursor-default',
+        'group rounded-xl border bg-white transition-all duration-150 overflow-hidden',
+        isAvailable ? 'border-border hover:border-primary/40 hover:shadow-sm' : '',
+        isLocked ? 'border-border opacity-50' : '',
+        !isAvailable && !isLocked ? 'border-border' : '',
       ].join(' ')}
     >
-      {/* Icon */}
+      {/* ── Main row ── */}
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${mod.color}15`, border: `1px solid ${mod.color}28` }}
+        className={`flex items-center gap-3 px-4 py-3 ${isAvailable ? 'cursor-pointer' : isLocked ? 'cursor-not-allowed' : 'cursor-default'}`}
+        onClick={openDoc}
       >
-        <Icon size={15} style={{ color: isLocked ? '#94a3b8' : mod.color }} />
-      </div>
+        {/* Left: status badge + revision */}
+        <div className="flex items-center gap-2 flex-shrink-0 w-36">
+          <StatusBadge status={mod.status} />
+          <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Rev 1</span>
+        </div>
 
-      {/* Name + description */}
-      <div className="flex-1 min-w-0 flex items-center gap-3">
-        <span className={`text-sm font-semibold whitespace-nowrap ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
-          {mod.label}
-        </span>
-        <span className="text-xs text-muted-foreground truncate hidden sm:block">{mod.description}</span>
-      </div>
+        {/* Centre: title + description */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-bold leading-tight ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
+            {mod.label}
+          </p>
+          <p className="text-xs text-slate-500 truncate mt-0.5 hidden sm:block">{mod.description}</p>
+        </div>
 
-      {/* Badge + chevron */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <StatusBadge status={mod.status} />
+        {/* Right: action toolbar — visible on hover (or always on touch) */}
+        <div
+          className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ToolBtn icon={Copy}       label="Duplicate" />
+          <ToolBtn icon={Share2}     label="Share" />
+          <ToolBtn icon={Printer}    label="Print" />
+          <ToolBtn icon={FileDown}   label="Export PDF" />
+          <ToolBtn icon={FileOutput} label="Export DOCX" />
+          <ToolBtn icon={Pencil}     label="Edit" onClick={openDoc} className="hover:text-orange-500" />
+          <button
+            title={expanded ? 'Collapse' : 'Expand'}
+            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0"
+          >
+            <ChevronDown size={14} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Fallback chevron when toolbar is hidden (non-hover) */}
         {isAvailable && (
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
+          <ChevronRight size={14} className="text-slate-300 group-hover:opacity-0 transition-opacity flex-shrink-0 -ml-1" />
         )}
       </div>
+
+      {/* ── Expanded detail panel ── */}
+      {expanded && (
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 flex flex-col gap-2">
+          <p className="text-xs text-slate-600">{mod.description}</p>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-slate-400">Category: <span className="text-slate-600 font-medium">{mod.category}</span></span>
+          </div>
+          {isAvailable && (
+            <button
+              onClick={openDoc}
+              className="self-start mt-1 flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              <Pencil size={11} />
+              Open in builder
+            </button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
