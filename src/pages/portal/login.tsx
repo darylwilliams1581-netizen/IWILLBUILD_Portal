@@ -59,6 +59,7 @@ export default function PortalLoginPage() {
       <Helmet>
         <title>Client Portal — IWILLBUILD</title>
         <meta name="description" content="Access your IWILLBUILD client portal to view jobs, estimates, and invoices shared by your contractor." />
+        <link rel="canonical" href="https://iwillbuild.com/portal/login" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

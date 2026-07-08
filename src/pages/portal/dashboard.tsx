@@ -96,6 +96,7 @@ export default function PortalDashboardPage() {
       <Helmet>
         <title>My Portal — IWILLBUILD</title>
         <meta name="description" content="View your jobs, estimates, and invoices in the IWILLBUILD client portal." />
+        <link rel="canonical" href="https://iwillbuild.com/portal/dashboard" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

@@ -528,6 +528,7 @@ export default function TeamSchedulePage() {
         <title>Team Schedule — IWILLBUILD</title>
         <meta name="description" content="Shift scheduling, time tracking and payroll export for your team." />
         <link rel="canonical" href="https://iwillbuild.com/team/schedule" />
+        <meta name="robots" content="noindex" />
       </Helmet>
 
       <div className="flex h-screen bg-slate-50 overflow-hidden">
