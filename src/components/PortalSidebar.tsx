@@ -18,7 +18,6 @@ import {
   CalendarDays,
   Users,
   Receipt,
-  ClipboardList,
   Bot,
   Layers,
   Map,
@@ -27,7 +26,6 @@ import {
   UserCircle,
   MoreHorizontal,
   History,
-  BookOpen,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -66,9 +64,6 @@ function buildNavItems(_workPlural: string) {
     { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
-    { label: 'Forms',                icon: ClipboardList,   href: '/studio?tab=forms',     permKey: null },
-    { label: 'Library',              icon: BookOpen,        href: '/studio?tab=library',   permKey: null },
-    { label: 'Safety',               icon: ShieldCheck,     href: '/studio?tab=safety',    permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Files',                icon: FolderOpen,      href: '/files',                permKey: 'files' },
     { label: 'Stakeholders',            icon: Users,           href: '/customers',            permKey: 'jobs' },

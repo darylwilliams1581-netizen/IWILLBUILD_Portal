@@ -36,18 +36,18 @@ const AnnettePage        = lazy(() => import('./pages/annette'));
 const TeamPage           = lazy(() => import('./pages/team'));
 const TeamSchedulePage   = lazy(() => import('./pages/team-schedule'));
 const SettingsPage       = lazy(() => import('./pages/settings'));
-const FormsPage          = lazy(() => import('./pages/forms'));
+// FormsPage, SafetyPage, LibraryPage removed — now served as Studio tabs (/studio?tab=*)
 const FilesPage          = lazy(() => import('./pages/files'));
 const EstimatingPage     = lazy(() => import('./pages/estimating'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
-const SafetyPage         = lazy(() => import('./pages/safety'));
+
 const CustomersPage      = lazy(() => import('./pages/customers'));
 const CustomerDetailPage = lazy(() => import('./pages/customer-detail'));
 const InvoicesPage       = lazy(() => import('./pages/invoices'));
 const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
-const LibraryPage        = lazy(() => import('./pages/library'));
+
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
@@ -162,12 +162,12 @@ export const routes: RouteObject[] = [
   { path: '/scheduler',     element: protect(<SchedulerPage />),       errorElement: routeError },
   { path: '/fleet',         element: protect(<FleetPage />),           errorElement: routeError },
   { path: '/fleet/:id',     element: protect(<FleetDetailPage />),     errorElement: routeError },
-  { path: '/forms',         element: protect(<FormsPage />),           errorElement: routeError },
+  { path: '/forms',         element: <Navigate to="/studio?tab=forms"   replace />,  errorElement: routeError },
   { path: '/files',         element: protect(<FilesPage />),           errorElement: routeError },
   { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
-  { path: '/safety',        element: protect(<SafetyPage />),          errorElement: routeError },
-  { path: '/library',       element: protect(<LibraryPage />),         errorElement: routeError },
+  { path: '/safety',        element: <Navigate to="/studio?tab=safety"  replace />,  errorElement: routeError },
+  { path: '/library',       element: <Navigate to="/studio?tab=library" replace />,  errorElement: routeError },
   { path: '/customers',     element: protect(<CustomersPage />),       errorElement: routeError },
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
