@@ -256,8 +256,16 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
         <Section title="Banner">
           <label className={lbl}>Variant</label>
           <select value={block.variant} onChange={(e) => upd({ variant: e.target.value as BannerVariant })} className={sel}>
-            {['info','warning','danger','success','safety','custom'].map((v) => (
-              <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
+            {[
+              { value: 'info',         label: 'Info' },
+              { value: 'warning',      label: 'Warning' },
+              { value: 'danger',       label: 'Danger' },
+              { value: 'success',      label: 'Success' },
+              { value: 'safety',       label: 'Safety' },
+              { value: 'safety_first', label: 'Safety First (Hazard Stripe)' },
+              { value: 'custom',       label: 'Custom' },
+            ].map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
           <label className={`${lbl} mt-2`}>Size</label>

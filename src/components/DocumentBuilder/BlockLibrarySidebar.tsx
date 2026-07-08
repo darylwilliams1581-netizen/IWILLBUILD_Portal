@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import {
   Type, AlignLeft, Heading, Minus, Space, FileText, Columns,
-  AlertTriangle, ShieldCheck, Table, Image, Hash, Calendar,
+  AlertTriangle, ShieldCheck, Shield, Table, Image, Hash, Calendar,
   ToggleLeft, CheckSquare, Circle, List, Camera, PenLine, MapPin,
   SlidersHorizontal, Star, Upload, Zap, Briefcase, User, Building2,
   Truck, ChevronDown, ChevronRight, FileUp, BarChart2,
@@ -79,6 +79,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
         factory: () => ({
           id: newId(), type: 'banner', variant: 'info', title: 'Important Notice',
           body: 'Enter banner content here.', size: 'standard', align: 'left', showOnExport: true,
+        }),
+      },
+      {
+        type: 'banner', label: 'Safety First Banner', icon: Shield, description: 'Hazard-stripe safety poster',
+        factory: () => ({
+          id: newId(), type: 'banner', variant: 'safety_first',
+          title: 'SAFETY FIRST',
+          body: 'ARRIVE SAFE • WORK SAFE • GO HOME SAFE',
+          size: 'standard', align: 'center', showOnExport: true,
         }),
       },
       {

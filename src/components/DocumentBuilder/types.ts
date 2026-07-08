@@ -338,7 +338,7 @@ export interface ColumnsBlock extends BlockBase {
 
 // ── Banner Block ──────────────────────────────────────────────────────────────
 
-export type BannerVariant = 'info' | 'warning' | 'danger' | 'success' | 'safety' | 'custom';
+export type BannerVariant = 'info' | 'warning' | 'danger' | 'success' | 'safety' | 'safety_first' | 'custom';
 
 // ── Risk Matrix Block ─────────────────────────────────────────────────────────
 
