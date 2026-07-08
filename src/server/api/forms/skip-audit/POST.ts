@@ -4,7 +4,8 @@
  * Called by FormRunner when a skip rule fires.
  */
 import type { Request, Response } from 'express';
-import { getDb } from '@/server/db/config.js';
+import { db } from '../../../db/client.js';
+import { sql } from 'drizzle-orm';
 import type { SkipAuditEntry } from '@/lib/skip-logic-types.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -21,48 +22,49 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const db = getDb();
-
-    // Ensure table exists (idempotent guard)
-    await db.run(`
+    // Ensure table exists (idempotent guard — MySQL syntax)
+    await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS form_skip_audit_log (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        submission_id    INTEGER NOT NULL,
-        template_id      INTEGER NOT NULL,
-        job_id           INTEGER,
-        user_id          INTEGER,
-        rule_id          TEXT    NOT NULL,
-        source_field_id  INTEGER NOT NULL,
-        source_field_label TEXT  NOT NULL DEFAULT '',
-        trigger_value    TEXT    NOT NULL DEFAULT '',
-        target_type      TEXT    NOT NULL DEFAULT 'field',
-        target_field_id  INTEGER,
-        target_field_label TEXT,
-        triggered_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+        id                 INT AUTO_INCREMENT PRIMARY KEY,
+        submission_id      INT          NOT NULL,
+        template_id        INT          NOT NULL,
+        job_id             INT,
+        user_id            INT,
+        rule_id            VARCHAR(255) NOT NULL,
+        source_field_id    INT          NOT NULL,
+        source_field_label VARCHAR(255) NOT NULL DEFAULT '',
+        trigger_value      TEXT         NOT NULL,
+        target_type        VARCHAR(50)  NOT NULL DEFAULT 'field',
+        target_field_id    INT,
+        target_field_label VARCHAR(255),
+        triggered_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `)).catch(() => {/* table already exists */});
 
-    await db.run(
+    const triggeredAt = entry.triggeredAt
+      ? new Date(entry.triggeredAt).toISOString().slice(0, 19).replace('T', ' ')
+      : new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    await db.execute(sql.raw(
       `INSERT INTO form_skip_audit_log
          (submission_id, template_id, job_id, user_id, rule_id,
           source_field_id, source_field_label, trigger_value,
           target_type, target_field_id, target_field_label, triggered_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        entry.submissionId,
-        entry.templateId,
-        entry.jobId ?? null,
-        entry.userId ?? null,
-        entry.ruleId,
-        entry.sourceFieldId,
-        entry.sourceFieldLabel ?? '',
-        entry.triggerValue ?? '',
-        entry.targetType ?? 'field',
-        entry.targetFieldId ?? null,
-        entry.targetFieldLabel ?? null,
-        entry.triggeredAt ?? new Date().toISOString(),
-      ],
-    );
+       VALUES (
+         ${entry.submissionId},
+         ${entry.templateId},
+         ${entry.jobId ?? 'NULL'},
+         ${entry.userId ?? 'NULL'},
+         ${JSON.stringify(entry.ruleId)},
+         ${entry.sourceFieldId},
+         ${JSON.stringify(entry.sourceFieldLabel ?? '')},
+         ${JSON.stringify(entry.triggerValue ?? '')},
+         ${JSON.stringify(entry.targetType ?? 'field')},
+         ${entry.targetFieldId ?? 'NULL'},
+         ${entry.targetFieldLabel ? JSON.stringify(entry.targetFieldLabel) : 'NULL'},
+         ${JSON.stringify(triggeredAt)}
+       )`
+    ));
 
     res.json({ ok: true });
   } catch (err) {
