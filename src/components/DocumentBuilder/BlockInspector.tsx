@@ -252,37 +252,7 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
       );
 
     case 'banner':
-      return (
-        <Section title="Banner">
-          <label className={lbl}>Variant</label>
-          <select value={block.variant} onChange={(e) => upd({ variant: e.target.value as BannerVariant })} className={sel}>
-            {[
-              { value: 'info',         label: 'Info' },
-              { value: 'warning',      label: 'Warning' },
-              { value: 'danger',       label: 'Danger' },
-              { value: 'success',      label: 'Success' },
-              { value: 'safety',       label: 'Safety' },
-              { value: 'safety_first', label: 'Safety First (Hazard Stripe)' },
-              { value: 'first_aid',    label: 'First Aid' },
-              { value: 'custom',       label: 'Custom' },
-            ].map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <label className={`${lbl} mt-2`}>Size</label>
-          <select value={block.size} onChange={(e) => upd({ size: e.target.value as BannerBlock['size'] })} className={sel}>
-            <option value="compact">Compact</option>
-            <option value="standard">Standard</option>
-            <option value="large">Large</option>
-          </select>
-          <label className={`${lbl} mt-2`}>Align</label>
-          <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
-          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-2">
-            <input type="checkbox" checked={block.showOnExport} onChange={(e) => upd({ showOnExport: e.target.checked })} className="accent-primary" />
-            Show on export
-          </label>
-        </Section>
-      );
+      return <BannerInspector block={block} upd={upd} />;
 
     case 'image':
       return <ImageInspector block={block} upd={upd} />;
@@ -490,6 +460,103 @@ const BADGE_TYPE_OPTIONS: { value: SafetyBadgeType; label: string; emoji: string
   { value: 'fall_arrest',       label: 'Fall Arrest',       emoji: '🪝' },
   { value: 'custom',            label: 'Custom',            emoji: '🛡️' },
 ];
+
+function BannerInspector({ block, upd }: { block: BannerBlock; upd: (p: Partial<BannerBlock>) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('name', file.name);
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      const data = await res.json() as { file?: { id: number }; error?: string };
+      if (!res.ok || !data.file?.id) throw new Error(data.error ?? 'Upload failed');
+      const src = ['/api/files', String(data.file.id), 'download'].join('/') + '?inline=1';
+      upd({ customImageUrl: src });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Section title="Banner">
+      <label className={lbl}>Variant</label>
+      <select value={block.variant} onChange={(e) => upd({ variant: e.target.value as BannerVariant })} className={sel}>
+        {[
+          { value: 'info',          label: 'Info' },
+          { value: 'warning',       label: 'Warning' },
+          { value: 'danger',        label: 'Danger' },
+          { value: 'success',       label: 'Success' },
+          { value: 'safety',        label: 'Safety' },
+          { value: 'safety_first',  label: 'Safety First (Hazard Stripe)' },
+          { value: 'first_aid',     label: 'First Aid' },
+          { value: 'image_banner',  label: 'Image Banner' },
+          { value: 'custom',        label: 'Custom' },
+        ].map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {/* Image upload — only shown for image_banner variant */}
+      {block.variant === 'image_banner' && (
+        <div className="mt-3 flex flex-col gap-2">
+          <label className={lbl}>Image</label>
+          {block.customImageUrl && (
+            <div className="relative rounded overflow-hidden border border-slate-200">
+              <img src={block.customImageUrl} alt="Banner" className="w-full object-contain max-h-24" />
+              <button
+                onClick={() => upd({ customImageUrl: undefined })}
+                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-black/80"
+                title="Remove image"
+              >✕</button>
+            </div>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 disabled:opacity-50 transition-colors"
+          >
+            {uploading ? 'Uploading…' : block.customImageUrl ? 'Replace image' : 'Upload image'}
+          </button>
+          {uploadError && <p className="text-[10px] text-red-500">{uploadError}</p>}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }}
+          />
+        </div>
+      )}
+
+      {/* Size / align / export — hidden for image_banner (not relevant) */}
+      {block.variant !== 'image_banner' && (
+        <>
+          <label className={`${lbl} mt-2`}>Size</label>
+          <select value={block.size} onChange={(e) => upd({ size: e.target.value as BannerBlock['size'] })} className={sel}>
+            <option value="compact">Compact</option>
+            <option value="standard">Standard</option>
+            <option value="large">Large</option>
+          </select>
+          <label className={`${lbl} mt-2`}>Align</label>
+          <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
+        </>
+      )}
+
+      <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer mt-2">
+        <input type="checkbox" checked={block.showOnExport} onChange={(e) => upd({ showOnExport: e.target.checked })} className="accent-primary" />
+        Show on export
+      </label>
+    </Section>
+  );
+}
 
 function RiskMatrixInspector({ block, upd }: { block: RiskMatrixBlock; upd: (p: Partial<RiskMatrixBlock>) => void }) {
   return (

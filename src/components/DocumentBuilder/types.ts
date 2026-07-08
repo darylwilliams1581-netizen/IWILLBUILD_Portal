@@ -346,6 +346,7 @@ export type BannerVariant =
   | 'safety'
   | 'safety_first'
   | 'first_aid'
+  | 'image_banner'
   | 'no_entry'
   | 'emergency'
   | 'electrical'
@@ -371,12 +372,13 @@ export interface BannerBlock extends BlockBase {
   variant: BannerVariant;
   title: string;
   body: string;
-  icon?: string; // lucide icon name
+  icon?: string;
   size: BannerSize;
   align: 'left' | 'center';
   showOnExport: boolean;
   customBgColor?: string;
   customBorderColor?: string;
+  customImageUrl?: string;
 }
 
 // ── Safety Badge Row ──────────────────────────────────────────────────────────

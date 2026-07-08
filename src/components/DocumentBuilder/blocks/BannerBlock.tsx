@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, CheckCircle, ShieldAlert, Shield, AlertOctagon } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, ShieldAlert, Shield, AlertOctagon, ImageIcon } from 'lucide-react';
 import { useDocumentStore } from '../useDocumentStore';
 import type { BannerBlock, BannerVariant } from '../types';
 
@@ -262,6 +262,34 @@ function FirstAidBanner({ block, update }: { block: BannerBlock; update: (p: Par
   );
 }
 
+// ── Image Banner ──────────────────────────────────────────────────────────────
+// Simple full-width image — no text overlay, no interaction. Upload via inspector.
+function ImageBannerView({ block }: { block: BannerBlock }) {
+  const { mode } = useDocumentStore();
+
+  if (!block.customImageUrl) {
+    if (mode !== 'edit') return null;
+    return (
+      <div className="my-1 w-full border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center gap-2 text-slate-400">
+        <ImageIcon size={28} />
+        <p className="text-xs font-medium text-slate-500">Image Banner</p>
+        <p className="text-[10px] text-center text-slate-400">Select this block, then use the inspector panel on the right to upload an image.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-1 w-full">
+      <img
+        src={block.customImageUrl}
+        alt={block.title || 'Banner image'}
+        className="w-full rounded"
+        style={{ display: 'block', objectFit: 'contain' }}
+      />
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function BannerBlockView({ block, columnsBlockId, columnId }: Props) {
   const { mode, updateBlock, updateBlockInColumn } = useDocumentStore();
@@ -282,6 +310,11 @@ export default function BannerBlockView({ block, columnsBlockId, columnId }: Pro
   // ── First Aid variant ──────────────────────────────────────────────────────
   if (block.variant === 'first_aid') {
     return <FirstAidBanner block={block} update={update} />;
+  }
+
+  // ── Image Banner variant ───────────────────────────────────────────────────
+  if (block.variant === 'image_banner') {
+    return <ImageBannerView block={block} />;
   }
 
   // ── Standard variants ──────────────────────────────────────────────────────

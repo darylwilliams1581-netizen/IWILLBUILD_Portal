@@ -100,6 +100,13 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'banner', label: 'Image Banner', icon: Image, description: 'Upload any image as a full-width banner',
+        factory: () => ({
+          id: newId(), type: 'banner', variant: 'image_banner',
+          title: '', body: '', size: 'standard', align: 'left', showOnExport: true,
+        }),
+      },
+      {
         type: 'safety_badge_row', label: 'Safety Badges', icon: ShieldCheck, description: 'PPE / safety icons',
         factory: () => ({
           id: newId(), type: 'safety_badge_row', size: 'md', align: 'left',
