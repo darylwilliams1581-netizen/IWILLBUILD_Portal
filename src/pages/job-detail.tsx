@@ -48,6 +48,7 @@ import JobPhotos from '@/components/JobPhotos';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import JobNotes from '@/components/job/JobNotes';
+import NotesPanel from '@/components/notes/NotesPanel';
 import JobTodos from '@/components/job/JobTodos';
 import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
@@ -887,7 +888,14 @@ export default function JobDetailPage() {
                   {activeTab === 'delays' && <JobDelays jobId={job.id} />}
 
                   {/* ── Notes ── */}
-                  {activeTab === 'notes' && <JobNotes jobId={job.id} initialNotes={job.notes ?? null} />}
+                  {activeTab === 'notes' && (
+                    <NotesPanel
+                      entityType="job"
+                      entityId={job.id}
+                      entityLabel={job.name}
+                      userRole={userRole}
+                    />
+                  )}
 
                   {/* ── Estimates ── */}
                   {activeTab === 'estimates' && <JobEstimates jobId={job.id} />}

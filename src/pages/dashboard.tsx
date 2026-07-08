@@ -28,6 +28,7 @@ import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
+import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
 import { AnimatePresence } from 'motion/react';
@@ -68,7 +69,7 @@ interface DashTodo {
 export default function DashboardPage() {
   const { user } = useSession();
   const { workSingular, workPlural, addWorkLabel } = useTerminology();
-  const { can, isAdmin, isOwner, loading: permLoading } = usePermissions();
+  const { can, isAdmin, isOwner, role, loading: permLoading } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
@@ -338,6 +339,9 @@ export default function DashboardPage() {
 
           {/* ── KPI Widgets ── */}
           <KpiWidgets />
+
+          {/* ── My Tasks ── */}
+          <MyTasksPanel userRole={role ?? ''} />
 
           {/* ── Fleet Flags ── */}
           {fleetFlags && fleetFlags.totalFlags > 0 && (

@@ -34,6 +34,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
 import FleetUsagePanel from '@/components/fleet/FleetUsagePanel';
+import NotesPanel from '@/components/notes/NotesPanel';
 import {
   fetchAsset,
   updateAsset,
@@ -48,7 +49,7 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 
-type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'usage';
+type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'usage' | 'notes';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -621,7 +622,7 @@ function formatDuration(start: string, end: string | null): string {
 export default function FleetDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, isOwner } = usePermissions();
+  const { isAdmin, isOwner, role: userRole } = usePermissions();
 
   const [asset, setAsset] = useState<FleetAsset | null>(null);
   const [prestarts, setPrestarts] = useState<FleetPrestart[]>([]);
@@ -863,6 +864,7 @@ export default function FleetDetailPage() {
                   { key: 'history',     label: 'Driver Log',  icon: Car },
                   { key: 'usage',       label: 'Usage',       icon: LogIn },
                   { key: 'files',       label: 'Files',       icon: FolderOpen },
+                  { key: 'notes',       label: 'Notes',       icon: Bell },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
@@ -1253,6 +1255,25 @@ export default function FleetDetailPage() {
             className="p-4 md:p-6"
           >
             <FleetUsagePanel fleetId={asset.id} assetName={asset.name} />
+          </motion.div>
+        )}
+
+        {/* ── Notes tab ── */}
+        {activeTab === 'notes' && asset && (
+          <motion.div
+            key="notes"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 md:p-6"
+          >
+            <NotesPanel
+              entityType="fleet"
+              entityId={asset.id}
+              entityLabel={asset.name}
+              userRole={userRole ?? ''}
+            />
           </motion.div>
         )}
       </div>
