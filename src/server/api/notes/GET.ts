@@ -3,36 +3,61 @@
  * Returns notes + tasks + comments for a job or fleet asset.
  */
 import type { Request, Response } from 'express';
-import { getDb } from '@/server/db/config.js';
 import { getAuth } from '@/lib/auth/auth.js';
-import { db as drizzleDb } from '../../db/client.js';
+import { db } from '../../db/client.js';
 import { profiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
-async function ensureTables(rawDb: ReturnType<typeof getDb>) {
-  await rawDb.run(`CREATE TABLE IF NOT EXISTS entity_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
-    entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL, entity_label TEXT,
-    note_type TEXT NOT NULL DEFAULT 'note', body TEXT NOT NULL,
-    author_user_id TEXT NOT NULL, author_name TEXT NOT NULL DEFAULT '',
-    mentions_json TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
-  await rawDb.run(`CREATE TABLE IF NOT EXISTS note_tag_tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
-    note_id INTEGER NOT NULL, entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL,
-    entity_label TEXT, note_type TEXT NOT NULL DEFAULT 'todo', note_body TEXT NOT NULL DEFAULT '',
-    created_by_user_id TEXT NOT NULL, created_by_name TEXT NOT NULL DEFAULT '',
-    assignee_user_id TEXT NOT NULL, assignee_name TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'open', due_date TEXT,
-    completed_at TEXT, completed_by_user_id TEXT, completed_by_name TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
-  await rawDb.run(`CREATE TABLE IF NOT EXISTS note_comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, note_id INTEGER NOT NULL,
-    company_id INTEGER NOT NULL, author_user_id TEXT NOT NULL,
-    author_name TEXT NOT NULL DEFAULT '', body TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
+async function ensureTables() {
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS entity_notes (
+      id              INT AUTO_INCREMENT PRIMARY KEY,
+      company_id      INT          NOT NULL,
+      entity_type     VARCHAR(20)  NOT NULL,
+      entity_id       INT          NOT NULL,
+      entity_label    VARCHAR(255),
+      note_type       VARCHAR(20)  NOT NULL DEFAULT 'note',
+      body            TEXT         NOT NULL,
+      author_user_id  VARCHAR(255) NOT NULL,
+      author_name     VARCHAR(255) NOT NULL DEFAULT '',
+      mentions_json   TEXT         NOT NULL,
+      created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS note_tag_tasks (
+      id                    INT AUTO_INCREMENT PRIMARY KEY,
+      company_id            INT          NOT NULL,
+      note_id               INT          NOT NULL,
+      entity_type           VARCHAR(20)  NOT NULL,
+      entity_id             INT          NOT NULL,
+      entity_label          VARCHAR(255),
+      note_type             VARCHAR(20)  NOT NULL DEFAULT 'todo',
+      note_body             TEXT         NOT NULL,
+      created_by_user_id    VARCHAR(255) NOT NULL,
+      created_by_name       VARCHAR(255) NOT NULL DEFAULT '',
+      assignee_user_id      VARCHAR(255) NOT NULL,
+      assignee_name         VARCHAR(255) NOT NULL DEFAULT '',
+      status                VARCHAR(20)  NOT NULL DEFAULT 'open',
+      due_date              VARCHAR(30),
+      completed_at          DATETIME,
+      completed_by_user_id  VARCHAR(255),
+      completed_by_name     VARCHAR(255),
+      created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS note_comments (
+      id              INT AUTO_INCREMENT PRIMARY KEY,
+      note_id         INT          NOT NULL,
+      company_id      INT          NOT NULL,
+      author_user_id  VARCHAR(255) NOT NULL,
+      author_name     VARCHAR(255) NOT NULL DEFAULT '',
+      body            TEXT         NOT NULL,
+      created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `));
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -42,34 +67,39 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const profile = await drizzleDb.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const { entityType, entityId } = req.query;
     if (!entityType || !entityId) return res.status(400).json({ error: 'entityType and entityId required' });
 
-    const rawDb = getDb();
-    await ensureTables(rawDb);
+    await ensureTables();
 
-    const notes = await rawDb.all<Record<string, unknown>[]>(
-      `SELECT * FROM entity_notes WHERE company_id=? AND entity_type=? AND entity_id=? ORDER BY created_at DESC`,
-      [profile.companyId, entityType, Number(entityId)],
-    );
+    const companyId = profile.companyId;
+    const eType = String(entityType);
+    const eId = Number(entityId);
 
+    const [notesRows] = await db.execute(sql.raw(
+      `SELECT * FROM entity_notes WHERE company_id=${companyId} AND entity_type='${eType}' AND entity_id=${eId} ORDER BY created_at DESC`
+    )) as unknown as [Record<string, unknown>[], unknown];
+
+    const notes: Record<string, unknown>[] = Array.isArray(notesRows) ? notesRows : [];
     const noteIds = notes.map((n) => n.id as number);
+
     let tasks: Record<string, unknown>[] = [];
     let comments: Record<string, unknown>[] = [];
 
     if (noteIds.length > 0) {
-      const placeholders = noteIds.map(() => '?').join(',');
-      tasks = await rawDb.all<Record<string, unknown>[]>(
-        `SELECT * FROM note_tag_tasks WHERE note_id IN (${placeholders}) ORDER BY created_at DESC`,
-        noteIds,
-      );
-      comments = await rawDb.all<Record<string, unknown>[]>(
-        `SELECT * FROM note_comments WHERE note_id IN (${placeholders}) ORDER BY created_at ASC`,
-        noteIds,
-      );
+      const idList = noteIds.join(',');
+      const [taskRows] = await db.execute(sql.raw(
+        `SELECT * FROM note_tag_tasks WHERE note_id IN (${idList}) ORDER BY created_at DESC`
+      )) as unknown as [Record<string, unknown>[], unknown];
+      tasks = Array.isArray(taskRows) ? taskRows : [];
+
+      const [commentRows] = await db.execute(sql.raw(
+        `SELECT * FROM note_comments WHERE note_id IN (${idList}) ORDER BY created_at ASC`
+      )) as unknown as [Record<string, unknown>[], unknown];
+      comments = Array.isArray(commentRows) ? commentRows : [];
     }
 
     // Assemble notes with nested tasks + comments

@@ -4,11 +4,11 @@
  * automatically creates a tag_task for each mentioned user.
  */
 import type { Request, Response } from 'express';
-import { getDb } from '@/server/db/config.js';
 import { getAuth } from '@/lib/auth/auth.js';
-import { db as drizzleDb } from '../../db/client.js';
+import { db } from '../../db/client.js';
 import { profiles, user } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { parseMentions } from '@/lib/notes-types.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -18,11 +18,11 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const profile = await drizzleDb.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     // Get author name
-    const authorUser = await drizzleDb.query.user.findFirst({ where: eq(user.id, session.user.id) });
+    const authorUser = await db.query.user.findFirst({ where: eq(user.id, session.user.id) });
     const authorName = authorUser?.name ?? session.user.email ?? 'Unknown';
 
     const { entityType, entityId, entityLabel, noteType, body, dueDate } = req.body as {
@@ -40,10 +40,8 @@ export default async function handler(req: Request, res: Response) {
     if (!['job', 'fleet'].includes(entityType)) return res.status(400).json({ error: 'Invalid entityType' });
     if (!['note', 'todo', 'action'].includes(noteType ?? 'note')) return res.status(400).json({ error: 'Invalid noteType' });
 
-    const rawDb = getDb();
-
     // Fetch all company members for mention resolution
-    const memberRows = await drizzleDb
+    const memberRows = await db
       .select({ userId: profiles.userId, name: user.name })
       .from(profiles)
       .innerJoin(user, eq(profiles.userId, user.id))
@@ -52,35 +50,41 @@ export default async function handler(req: Request, res: Response) {
     const members = memberRows.map((r) => ({ userId: r.userId, name: r.name ?? 'Unknown' }));
     const mentions = parseMentions(body, members);
 
-    // Insert note
-    const result = await rawDb.run(
-      `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        profile.companyId, entityType, entityId, entityLabel ?? null,
-        noteType ?? 'note', body.trim(), session.user.id, authorName,
-        JSON.stringify(mentions),
-      ],
-    );
+    const companyId = profile.companyId;
+    const eType = entityType.replace(/'/g, "''");
+    const eId = Number(entityId);
+    const eLabel = entityLabel ? `'${entityLabel.replace(/'/g, "''")}'` : 'NULL';
+    const nType = (noteType ?? 'note').replace(/'/g, "''");
+    const bodyEsc = body.trim().replace(/'/g, "''");
+    const authorIdEsc = session.user.id.replace(/'/g, "''");
+    const authorNameEsc = authorName.replace(/'/g, "''");
+    const mentionsJson = JSON.stringify(mentions).replace(/'/g, "''");
 
-    const noteId = (result as { lastID?: number }).lastID ?? 0;
+    // Insert note
+    const [insertResult] = await db.execute(sql.raw(
+      `INSERT INTO entity_notes (company_id, entity_type, entity_id, entity_label, note_type, body, author_user_id, author_name, mentions_json)
+       VALUES (${companyId}, '${eType}', ${eId}, ${eLabel}, '${nType}', '${bodyEsc}', '${authorIdEsc}', '${authorNameEsc}', '${mentionsJson}')`
+    )) as unknown as [{ insertId?: number }, unknown];
+
+    const noteId = (insertResult as { insertId?: number })?.insertId ?? 0;
 
     // Create tag tasks for each mentioned user (only for todo/action types)
     const createdTasks: Record<string, unknown>[] = [];
     if ((noteType === 'todo' || noteType === 'action') && mentions.length > 0) {
       for (const mention of mentions) {
-        const taskResult = await rawDb.run(
+        const assigneeIdEsc = mention.userId.replace(/'/g, "''");
+        const assigneeNameEsc = mention.name.replace(/'/g, "''");
+        const dueDateVal = dueDate ? `'${dueDate}'` : 'NULL';
+
+        const [taskResult] = await db.execute(sql.raw(
           `INSERT INTO note_tag_tasks
              (company_id, note_id, entity_type, entity_id, entity_label, note_type, note_body,
               created_by_user_id, created_by_name, assignee_user_id, assignee_name, status, due_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)`,
-          [
-            profile.companyId, noteId, entityType, entityId, entityLabel ?? null,
-            noteType, body.trim(), session.user.id, authorName,
-            mention.userId, mention.name, dueDate ?? null,
-          ],
-        );
-        const taskId = (taskResult as { lastID?: number }).lastID ?? 0;
+           VALUES (${companyId}, ${noteId}, '${eType}', ${eId}, ${eLabel}, '${nType}', '${bodyEsc}',
+                   '${authorIdEsc}', '${authorNameEsc}', '${assigneeIdEsc}', '${assigneeNameEsc}', 'open', ${dueDateVal})`
+        )) as unknown as [{ insertId?: number }, unknown];
+
+        const taskId = (taskResult as { insertId?: number })?.insertId ?? 0;
         createdTasks.push({
           id: taskId, noteId, entityType, entityId, entityLabel: entityLabel ?? null,
           noteType, noteBody: body.trim(),

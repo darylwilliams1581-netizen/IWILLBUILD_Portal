@@ -9,11 +9,10 @@
  *   ?page=1&limit=30
  */
 import type { Request, Response } from 'express';
-import { getDb } from '@/server/db/config.js';
 import { getAuth } from '@/lib/auth/auth.js';
-import { db as drizzleDb } from '../../db/client.js';
+import { db } from '../../db/client.js';
 import { profiles } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -22,22 +21,32 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const profile = await drizzleDb.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const rawDb = getDb();
-
     // Ensure table exists
-    await rawDb.run(`CREATE TABLE IF NOT EXISTS note_tag_tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
-      note_id INTEGER NOT NULL, entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL,
-      entity_label TEXT, note_type TEXT NOT NULL DEFAULT 'todo', note_body TEXT NOT NULL DEFAULT '',
-      created_by_user_id TEXT NOT NULL, created_by_name TEXT NOT NULL DEFAULT '',
-      assignee_user_id TEXT NOT NULL, assignee_name TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'open', due_date TEXT,
-      completed_at TEXT, completed_by_user_id TEXT, completed_by_name TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )`);
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS note_tag_tasks (
+        id                    INT AUTO_INCREMENT PRIMARY KEY,
+        company_id            INT          NOT NULL,
+        note_id               INT          NOT NULL,
+        entity_type           VARCHAR(20)  NOT NULL,
+        entity_id             INT          NOT NULL,
+        entity_label          VARCHAR(255),
+        note_type             VARCHAR(20)  NOT NULL DEFAULT 'todo',
+        note_body             TEXT         NOT NULL,
+        created_by_user_id    VARCHAR(255) NOT NULL,
+        created_by_name       VARCHAR(255) NOT NULL DEFAULT '',
+        assignee_user_id      VARCHAR(255) NOT NULL,
+        assignee_name         VARCHAR(255) NOT NULL DEFAULT '',
+        status                VARCHAR(20)  NOT NULL DEFAULT 'open',
+        due_date              VARCHAR(30),
+        completed_at          DATETIME,
+        completed_by_user_id  VARCHAR(255),
+        completed_by_name     VARCHAR(255),
+        created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `));
 
     const mine = req.query.mine === 'true';
     const status = (req.query.status as string) ?? 'all';
@@ -48,35 +57,37 @@ export default async function handler(req: Request, res: Response) {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 30)));
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ['company_id = ?'];
-    const params: (string | number)[] = [profile.companyId];
+    const companyId = profile.companyId;
+    const conditions: string[] = [`company_id = ${companyId}`];
 
-    if (mine) { conditions.push('assignee_user_id = ?'); params.push(session.user.id); }
-    if (status !== 'all') { conditions.push('status = ?'); params.push(status); }
-    if (entityType) { conditions.push('entity_type = ?'); params.push(entityType); }
-    if (entityId) { conditions.push('entity_id = ?'); params.push(entityId); }
+    if (mine) conditions.push(`assignee_user_id = '${session.user.id.replace(/'/g, "''")}'`);
+    if (status !== 'all') conditions.push(`status = '${status.replace(/'/g, "''")}'`);
+    if (entityType) conditions.push(`entity_type = '${entityType.replace(/'/g, "''")}'`);
+    if (entityId) conditions.push(`entity_id = ${entityId}`);
     if (search) {
-      conditions.push('(note_body LIKE ? OR assignee_name LIKE ? OR entity_label LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      const s = search.replace(/'/g, "''");
+      conditions.push(`(note_body LIKE '%${s}%' OR assignee_name LIKE '%${s}%' OR entity_label LIKE '%${s}%')`);
     }
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
-    const countRow = await rawDb.get<{ total: number }>(
-      `SELECT COUNT(*) as total FROM note_tag_tasks ${where}`, params,
-    );
-    const total = countRow?.total ?? 0;
+    const [countRows] = await db.execute(sql.raw(
+      `SELECT COUNT(*) as total FROM note_tag_tasks ${where}`
+    )) as unknown as [Array<{ total: number }>, unknown];
+    const total = Array.isArray(countRows) && countRows[0] ? Number(countRows[0].total) : 0;
 
-    const rows = await rawDb.all<Record<string, unknown>[]>(
-      `SELECT * FROM note_tag_tasks ${where} ORDER BY
+    const [rows] = await db.execute(sql.raw(
+      `SELECT * FROM note_tag_tasks ${where}
+       ORDER BY
          CASE status WHEN 'open' THEN 0 ELSE 1 END,
          CASE WHEN due_date IS NOT NULL THEN 0 ELSE 1 END,
          due_date ASC, created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset],
-    );
+       LIMIT ${limit} OFFSET ${offset}`
+    )) as unknown as [Record<string, unknown>[], unknown];
 
-    const tasks = rows.map((t) => ({
+    const safeRows: Record<string, unknown>[] = Array.isArray(rows) ? rows : [];
+
+    const tasks = safeRows.map((t) => ({
       id: t.id, noteId: t.note_id, entityType: t.entity_type, entityId: t.entity_id,
       entityLabel: t.entity_label, noteType: t.note_type, noteBody: t.note_body,
       createdByUserId: t.created_by_user_id, createdByName: t.created_by_name,

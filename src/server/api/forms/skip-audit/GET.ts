@@ -4,7 +4,8 @@
  * Also returns aggregated skip metrics per source field.
  */
 import type { Request, Response } from 'express';
-import { getDb } from '@/server/db/config.js';
+import { db } from '../../../db/client.js';
+import { sql } from 'drizzle-orm';
 
 interface SkipAuditRow {
   id: number;
@@ -31,43 +32,39 @@ interface SkipMetric {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const db = getDb();
-
-    // Ensure table exists
-    await db.run(`
+    // Ensure table exists (idempotent DDL)
+    await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS form_skip_audit_log (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        submission_id    INTEGER NOT NULL,
-        template_id      INTEGER NOT NULL,
-        job_id           INTEGER,
-        user_id          INTEGER,
-        rule_id          TEXT    NOT NULL,
-        source_field_id  INTEGER NOT NULL,
-        source_field_label TEXT  NOT NULL DEFAULT '',
-        trigger_value    TEXT    NOT NULL DEFAULT '',
-        target_type      TEXT    NOT NULL DEFAULT 'field',
-        target_field_id  INTEGER,
-        target_field_label TEXT,
-        triggered_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+        id                 INT AUTO_INCREMENT PRIMARY KEY,
+        submission_id      INT         NOT NULL,
+        template_id        INT         NOT NULL,
+        job_id             INT,
+        user_id            INT,
+        rule_id            VARCHAR(255) NOT NULL,
+        source_field_id    INT         NOT NULL,
+        source_field_label VARCHAR(255) NOT NULL DEFAULT '',
+        trigger_value      VARCHAR(255) NOT NULL DEFAULT '',
+        target_type        VARCHAR(50)  NOT NULL DEFAULT 'field',
+        target_field_id    INT,
+        target_field_label VARCHAR(255),
+        triggered_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `));
 
-    const templateId = req.query.templateId ? Number(req.query.templateId) : null;
+    const templateId  = req.query.templateId  ? Number(req.query.templateId)  : null;
     const submissionId = req.query.submissionId ? Number(req.query.submissionId) : null;
 
-    // Build query
+    // Build WHERE clause
     const conditions: string[] = [];
-    const params: (number | null)[] = [];
-
-    if (templateId) { conditions.push('template_id = ?'); params.push(templateId); }
-    if (submissionId) { conditions.push('submission_id = ?'); params.push(submissionId); }
-
+    if (templateId)   conditions.push(`template_id = ${templateId}`);
+    if (submissionId) conditions.push(`submission_id = ${submissionId}`);
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const rows = await db.all<SkipAuditRow[]>(
-      `SELECT * FROM form_skip_audit_log ${where} ORDER BY triggered_at DESC LIMIT 500`,
-      params,
-    );
+    const [rows] = await db.execute(sql.raw(
+      `SELECT * FROM form_skip_audit_log ${where} ORDER BY triggered_at DESC LIMIT 500`
+    )) as unknown as [SkipAuditRow[], unknown];
+
+    const safeRows: SkipAuditRow[] = Array.isArray(rows) ? rows : [];
 
     // Build metrics: total skips per source field + top trigger values
     const metricsMap = new Map<number, {
@@ -76,7 +73,7 @@ export default async function handler(req: Request, res: Response) {
       valueCounts: Map<string, number>;
     }>();
 
-    for (const row of rows) {
+    for (const row of safeRows) {
       const existing = metricsMap.get(row.source_field_id);
       if (!existing) {
         metricsMap.set(row.source_field_id, {
@@ -103,7 +100,7 @@ export default async function handler(req: Request, res: Response) {
         .slice(0, 5),
     }));
 
-    res.json({ entries: rows, metrics });
+    res.json({ entries: safeRows, metrics });
   } catch (err) {
     console.error('[skip-audit GET]', err);
     res.status(500).json({ error: 'Failed to fetch skip audit data' });
