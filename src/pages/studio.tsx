@@ -260,9 +260,16 @@ function DocumentsTab() {
 
   async function handleDelete(id: number) {
     try {
-      await fetch(`/api/document-templates/${id}`, { method: 'DELETE', credentials: 'include' });
-      setTemplates((prev) => prev.filter((t) => t.id !== id));
-    } catch { /* silent */ }
+      const r = await fetch(`/api/document-templates/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (r.ok) {
+        setTemplates((prev) => prev.filter((t) => t.id !== id));
+        toast.success('Document deleted');
+      } else {
+        toast.error('Could not delete document. Please try again.');
+      }
+    } catch {
+      toast.error('Network error — could not delete document.');
+    }
   }
 
   const filtered = templates.filter((t) => {

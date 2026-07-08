@@ -34,17 +34,17 @@ export default async function handler(req: Request, res: Response) {
     if (!id) return res.status(400).json({ error: 'Invalid ID' });
 
     const [rows] = await db.execute(sql.raw(
-      `SELECT id, name, content_json, company_id FROM document_templates WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
+      `SELECT id, name, builder_json, company_id FROM document_templates WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     const doc = Array.isArray(rows) ? rows[0] : null;
     if (!doc) return res.status(404).json({ error: 'Document not found' });
 
     // Return a minimal print-ready HTML page that the browser can print to PDF.
-    // The content_json blocks are serialised into a data attribute so the page
+    // The builder_json blocks are serialised into a data attribute so the page
     // can render them without a separate API call.
     const name = String(doc.name ?? 'Document');
-    const contentJson = JSON.stringify(doc.content_json ?? {});
+    const contentJson = JSON.stringify(doc.builder_json ?? {});
 
     const html = `<!DOCTYPE html>
 <html lang="en">

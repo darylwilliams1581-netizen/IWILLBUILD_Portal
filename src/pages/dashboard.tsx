@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <Link
-                to="/settings?tab=data-backup"
+                to="/settings?tab=data"
                 className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
                   usageWarning.hasBlocked
                     ? 'bg-red-600 hover:bg-red-700 text-white'

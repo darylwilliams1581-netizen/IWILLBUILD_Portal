@@ -226,7 +226,7 @@ export default async function handler(req: Request, res: Response) {
     if (!id) return res.status(400).json({ error: 'Invalid ID' });
 
     const [rows] = await db.execute(sql.raw(
-      `SELECT id, name, content_json FROM document_templates WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
+      `SELECT id, name, builder_json FROM document_templates WHERE id = ${id} AND company_id = ${profile.companyId} LIMIT 1`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     const doc = Array.isArray(rows) ? rows[0] : null;
@@ -235,9 +235,9 @@ export default async function handler(req: Request, res: Response) {
     const name = String(doc.name ?? 'Document');
     let blocks: Block[] = [];
     try {
-      const parsed = typeof doc.content_json === 'string'
-        ? JSON.parse(doc.content_json)
-        : doc.content_json;
+      const parsed = typeof doc.builder_json === 'string'
+        ? JSON.parse(doc.builder_json)
+        : doc.builder_json;
       blocks = Array.isArray(parsed?.blocks) ? parsed.blocks : [];
     } catch { /* use empty blocks */ }
 
