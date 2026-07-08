@@ -700,6 +700,78 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Site Escape Arcade ─────────────────────────────────────────────── */}
+      <section id="arcade" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 60%, #0f172a 100%)', position: 'relative', overflow: 'hidden' }}>
+        {/* Grid texture */}
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.05,
+          backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
+          backgroundSize: '48px 48px', pointerEvents: 'none',
+        }} />
+        <div style={{ position: 'relative', maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
+              borderRadius: 20, padding: '5px 14px', marginBottom: 18,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>IWILLBUILD ARCADE</span>
+            </div>
+            <h2 style={{
+              fontSize: 'clamp(28px,4vw,46px)', letterSpacing: '-0.04em',
+              margin: '0 0 14px', color: '#fff', lineHeight: 1.1,
+            }}>
+              Site Escape
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: 17, margin: '0 auto', maxWidth: 560 }}>
+              Dodge workers, cones, mud and invoices. Collect powerups. Outrun the safety officer. Survive 90 seconds to escape the site.
+            </p>
+          </div>
+
+          {/* Game iframe */}
+          <div style={{
+            position: 'relative',
+            borderRadius: 20,
+            overflow: 'hidden',
+            border: '2px solid rgba(255,212,71,0.4)',
+            boxShadow: '0 32px 80px rgba(0,0,0,.6), 0 0 60px rgba(249,115,22,.15)',
+            maxWidth: 900,
+            margin: '0 auto',
+            aspectRatio: '16/9',
+          }}>
+            <iframe
+              src="/site-escape.html"
+              title="Site Escape — IWILLBUILD Arcade"
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+              allow="autoplay"
+            />
+          </div>
+
+          {/* Controls hint */}
+          <div style={{
+            display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
+            marginTop: 24,
+          }}>
+            {[
+              { key: '← →  /  A D', label: 'Change lane' },
+              { key: '↑  /  W  /  Space', label: 'Hop' },
+              { key: 'P  /  Esc', label: 'Pause' },
+              { key: 'Tap left / right', label: 'Mobile lanes' },
+            ].map((c) => (
+              <div key={c.key} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)',
+                borderRadius: 8, padding: '7px 14px',
+              }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#fde047' }}>{c.key}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>{c.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Final CTA ──────────────────────────────────────────────────────── */}
       <section style={{ background: '#fff', borderTop: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 22px', textAlign: 'center' }}>
