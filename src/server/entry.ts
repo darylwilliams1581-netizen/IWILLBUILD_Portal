@@ -91,6 +91,8 @@ import asset_manager_assets_id_permanent_delete_6 from "./api/asset-manager/asse
 import asset_manager_assets_id_restore_post_7 from "./api/asset-manager/assets/[id]/restore/POST";
 import asset_manager_defects_id_patch_8 from "./api/asset-manager/defects/[id]/PATCH";
 import asset_manager_defects_id_archive_post_9 from "./api/asset-manager/defects/[id]/archive/POST";
+import asset_manager_defects_get from "./api/asset-manager/defects/GET";
+import asset_manager_tenders_get from "./api/asset-manager/tenders/GET";
 import asset_manager_inspections_get_10 from "./api/asset-manager/inspections/GET";
 import asset_manager_inspections_post_11 from "./api/asset-manager/inspections/POST";
 import asset_manager_inspections_id_get_12 from "./api/asset-manager/inspections/[id]/GET";
@@ -1566,6 +1568,8 @@ app.delete("/api/asset-manager/assets/:id/permanent", asset_manager_assets_id_pe
 app.post("/api/asset-manager/assets/:id/restore", asset_manager_assets_id_restore_post_7);
 app.patch("/api/asset-manager/defects/:id", asset_manager_defects_id_patch_8);
 app.post("/api/asset-manager/defects/:id/archive", asset_manager_defects_id_archive_post_9);
+app.get("/api/asset-manager/defects", asset_manager_defects_get);
+app.get("/api/asset-manager/tenders", asset_manager_tenders_get);
 app.get("/api/asset-manager/inspections", asset_manager_inspections_get_10);
 app.post("/api/asset-manager/inspections", asset_manager_inspections_post_11);
 app.get("/api/asset-manager/inspections/:id", asset_manager_inspections_id_get_12);

@@ -86,7 +86,7 @@ function AssetForm({ initial, onSave, onCancel, saving }: {
   );
 }
 
-export default function AMAssetsTab() {
+export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset?: (id: number) => void }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -224,18 +224,23 @@ export default function AMAssetsTab() {
                 />
               ) : (
                 <div className="flex items-center gap-3 bg-white border border-border rounded-xl px-4 py-3 group hover:border-primary/40 hover:shadow-sm transition-all duration-150">
-                  <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
-                    <Building2 size={16} className="text-orange-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-slate-800">{asset.name}</span>
-                      {asset.acronym && <span className="text-xs text-slate-400 font-mono">({asset.acronym})</span>}
-                      <TypeBadge type={asset.asset_type} />
+                  <button
+                    onClick={() => onSelectAsset?.(asset.id)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
+                      <Building2 size={16} className="text-orange-500" />
                     </div>
-                    {asset.address && <p className="text-xs text-slate-500 mt-0.5 truncate">{asset.address}</p>}
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600 transition-colors">{asset.name}</span>
+                        {asset.acronym && <span className="text-xs text-slate-400 font-mono">({asset.acronym})</span>}
+                        <TypeBadge type={asset.asset_type} />
+                      </div>
+                      {asset.address && <p className="text-xs text-slate-500 mt-0.5 truncate">{asset.address}</p>}
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     {!asset.archived_at ? (
                       <>
                         <button onClick={() => setEditId(asset.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Edit">
