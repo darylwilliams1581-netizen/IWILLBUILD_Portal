@@ -40,18 +40,20 @@ export async function authHandler(req: Request, res: Response) {
   const ua = getUserAgent(req as unknown as { headers: Record<string, string | string[] | undefined> });
 
   // Rate-limit login attempts before hitting BetterAuth
-  if (isSignIn && !checkLoginRate(ip)) {
+  if (isSignIn) {
     const emailAttempted = (req.body as Record<string, unknown>)?.email as string | undefined;
-    void logActivity({
-      eventType: 'rate_limited_login',
-      success: false,
-      email: emailAttempted ?? null,
-      ipAddress: ip,
-      userAgent: ua,
-      reason: 'Too many login attempts from this IP',
-    });
-    res.status(429).json({ error: 'Too many login attempts. Please wait a few minutes before trying again.' });
-    return;
+    if (!checkLoginRate(ip, emailAttempted)) {
+      void logActivity({
+        eventType: 'rate_limited_login',
+        success: false,
+        email: emailAttempted ?? null,
+        ipAddress: ip,
+        userAgent: ua,
+        reason: 'Too many login attempts from this IP',
+      });
+      res.status(429).json({ error: 'Too many login attempts. Please wait a few minutes before trying again.' });
+      return;
+    }
   }
 
   // Log the auth action (safe — no passwords or tokens)

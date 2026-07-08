@@ -54,17 +54,31 @@ export const DBSYSTEMVALUES_POSTGRESQL = 'postgresql';
 export const DBSYSTEMVALUES_SQLITE = 'sqlite';
 
 // @opentelemetry/api — no-op tracer/context/propagation
+const NOOP_SPAN = { end: () => {}, setAttribute: () => {}, setStatus: () => {}, recordException: () => {}, isRecording: () => false };
+
 export const trace = {
   getTracer: () => ({
-    startSpan: () => ({ end: () => {}, setAttribute: () => {}, setStatus: () => {}, recordException: () => {} }),
-    startActiveSpan: (_name: string, fn: (span: unknown) => unknown) => fn({ end: () => {}, setAttribute: () => {}, setStatus: () => {}, recordException: () => {} }),
+    startSpan: () => NOOP_SPAN,
+    // better-auth calls startActiveSpan with 2 or 3 args:
+    //   startActiveSpan(name, fn)
+    //   startActiveSpan(name, options, fn)
+    startActiveSpan: (_name: string, optionsOrFn: unknown, maybeFn?: unknown) => {
+      const fn = typeof maybeFn === 'function' ? maybeFn : optionsOrFn;
+      if (typeof fn === 'function') return (fn as (span: unknown) => unknown)(NOOP_SPAN);
+    },
   }),
   getActiveSpan: () => null,
   setSpan: (_ctx: unknown, _span: unknown) => ({}),
+  getSpan: () => null,
 };
 export const context = {
   active: () => ({}),
-  with: (_ctx: unknown, fn: () => unknown) => fn(),
+  // better-auth calls context.with(ctx, fn, thisArg?, ...args)
+  with: (_ctx: unknown, fn: (...a: unknown[]) => unknown, thisArg?: unknown, ...args: unknown[]) => {
+    return fn.apply(thisArg, args);
+  },
+  bind: (_ctx: unknown, fn: unknown) => fn,
+  disable: () => {},
 };
 export const propagation = {
   inject: () => {},

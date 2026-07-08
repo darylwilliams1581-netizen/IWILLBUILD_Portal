@@ -66,9 +66,20 @@ export function checkChangeEmailRate(ip: string): boolean {
   return check(ip, 'changeemail', 3, 15 * 60 * 1000);
 }
 
-/** Returns true if the login attempt is allowed (10 per IP per 15 min) */
-export function checkLoginRate(ip: string): boolean {
-  return check(ip, 'login', 10, 15 * 60 * 1000);
+/**
+ * Returns true if the login attempt is allowed.
+ * IP limit: 30 per 15 min (generous for shared corporate NAT/proxies).
+ * Per-email limit: 10 per 15 min (tighter, keyed by email not IP).
+ * Pass email when available for the per-email check.
+ */
+export function checkLoginRate(ip: string, email?: string): boolean {
+  // Per-email check (tighter) — only when email is known
+  if (email) {
+    const emailKey = email.toLowerCase().trim();
+    if (!check(emailKey, 'login_email', 10, 15 * 60 * 1000)) return false;
+  }
+  // Per-IP check (generous to handle shared NAT/proxies)
+  return check(ip, 'login', 30, 15 * 60 * 1000);
 }
 
 // Prune stale buckets every 30 minutes to avoid unbounded memory growth
