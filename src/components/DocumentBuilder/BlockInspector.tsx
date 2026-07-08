@@ -13,7 +13,7 @@ import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
 import LogicPanel from './LogicPanel';
 import type {
   DocumentBlock, HeadingBlock, TextBlock, RichTextBlock, DividerBlock,
-  SpacerBlock, BannerBlock, SafetyBadgeRowBlock, TableBlock, ImageBlock,
+  SpacerBlock, BannerBlock, SafetyBadgeRowBlock, RiskMatrixBlock, TableBlock, ImageBlock,
   FieldBlock, SystemFieldBlock, SafetyBadgeType, BannerVariant,
   InspectorTab,
 } from './types';
@@ -351,6 +351,8 @@ function BlockSpecificSettings({ block }: { block: DocumentBlock }) {
 
     case 'safety_badge_row':
       return <SafetyBadgeInspector block={block} upd={upd} />;
+    case 'risk_matrix':
+      return <RiskMatrixInspector block={block} upd={upd} />;
 
     default:
       return null;
@@ -479,6 +481,43 @@ const BADGE_TYPE_OPTIONS: { value: SafetyBadgeType; label: string; emoji: string
   { value: 'fall_arrest',       label: 'Fall Arrest',       emoji: '🪝' },
   { value: 'custom',            label: 'Custom',            emoji: '🛡️' },
 ];
+
+function RiskMatrixInspector({ block, upd }: { block: RiskMatrixBlock; upd: (p: Partial<RiskMatrixBlock>) => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <label className={lbl}>Title</label>
+        <input
+          className={inp}
+          value={block.title}
+          onChange={(e) => upd({ title: e.target.value })}
+          placeholder="Risk Assessment Matrix"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className={lbl} style={{ marginBottom: 0 }}>Show legend</span>
+        <button
+          onClick={() => upd({ showLegend: !block.showLegend })}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${block.showLegend ? 'bg-primary' : 'bg-slate-200'}`}
+        >
+          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${block.showLegend ? 'translate-x-4' : 'translate-x-1'}`} />
+        </button>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className={lbl} style={{ marginBottom: 0 }}>Show on export</span>
+        <button
+          onClick={() => upd({ showOnExport: !block.showOnExport })}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${block.showOnExport ? 'bg-primary' : 'bg-slate-200'}`}
+        >
+          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${block.showOnExport ? 'translate-x-4' : 'translate-x-1'}`} />
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-400 leading-relaxed">
+        Standard AS/NZS 5×5 risk matrix — Likelihood (A–E) × Consequence (1–5). Cells are colour-coded: green (Low), yellow (Medium), orange (High), red (Extreme).
+      </p>
+    </div>
+  );
+}
 
 function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd: (p: Partial<SafetyBadgeRowBlock>) => void }) {
   const [uploadingId, setUploadingId] = useState<string | null>(null);

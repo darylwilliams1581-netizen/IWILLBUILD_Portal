@@ -17,6 +17,7 @@ import PageBreakBlockView from './blocks/PageBreakBlock';
 import ColumnsBlockView from './blocks/ColumnsBlock';
 import BannerBlockView from './blocks/BannerBlock';
 import SafetyBadgeRowView from './blocks/SafetyBadgeRow';
+import RiskMatrixBlockView from './blocks/RiskMatrixBlock';
 import TableBlockView from './blocks/TableBlock';
 import ImageBlockView from './blocks/ImageBlock';
 import FieldBlockView from './blocks/FieldBlock';
@@ -83,6 +84,7 @@ export function BlockRenderer({
       case 'columns':        return <ColumnsBlockView block={effectiveBlock} />;
       case 'banner':         return <BannerBlockView block={effectiveBlock} columnsBlockId={columnsBlockId} columnId={columnId} />;
       case 'safety_badge_row': return <SafetyBadgeRowView block={effectiveBlock} columnsBlockId={columnsBlockId} columnId={columnId} />;
+      case 'risk_matrix':   return <RiskMatrixBlockView block={effectiveBlock} columnsBlockId={columnsBlockId} columnId={columnId} />;
       case 'table':          return <TableBlockView block={effectiveBlock} columnsBlockId={columnsBlockId} columnId={columnId} />;
       case 'image':          return <ImageBlockView block={effectiveBlock} columnsBlockId={columnsBlockId} columnId={columnId} />;
       case 'field':          return (

@@ -339,6 +339,17 @@ export interface ColumnsBlock extends BlockBase {
 // ── Banner Block ──────────────────────────────────────────────────────────────
 
 export type BannerVariant = 'info' | 'warning' | 'danger' | 'success' | 'safety' | 'custom';
+
+// ── Risk Matrix Block ─────────────────────────────────────────────────────────
+
+export type RiskRating = 'low' | 'medium' | 'high' | 'extreme';
+
+export interface RiskMatrixBlock extends BlockBase {
+  type: 'risk_matrix';
+  title: string;
+  showLegend: boolean;
+  showOnExport: boolean;
+}
 export type BannerSize = 'compact' | 'standard' | 'large';
 
 export interface BannerBlock extends BlockBase {
@@ -495,6 +506,7 @@ export type DocumentBlock =
   | ColumnsBlock
   | BannerBlock
   | SafetyBadgeRowBlock
+  | RiskMatrixBlock
   | TableBlock
   | ImageBlock
   | FieldBlock

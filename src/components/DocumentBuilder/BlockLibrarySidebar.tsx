@@ -10,7 +10,7 @@ import {
   AlertTriangle, ShieldCheck, Table, Image, Hash, Calendar,
   ToggleLeft, CheckSquare, Circle, List, Camera, PenLine, MapPin,
   SlidersHorizontal, Star, Upload, Zap, Briefcase, User, Building2,
-  Truck, ChevronDown, ChevronRight, FileUp,
+  Truck, ChevronDown, ChevronRight, FileUp, BarChart2,
 } from 'lucide-react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import type { DocumentBlock } from './types';
@@ -89,6 +89,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
             { id: newId(), badgeType: 'helmet', label: 'Safety Helmet', required: true },
             { id: newId(), badgeType: 'hi_vis', label: 'Hi-Vis Clothing', required: true },
           ],
+        }),
+      },
+      {
+        type: 'risk_matrix', label: 'Risk Matrix', icon: BarChart2, description: '5×5 AS/NZS risk rating matrix',
+        factory: () => ({
+          id: newId(), type: 'risk_matrix',
+          title: 'Risk Assessment Matrix',
+          showLegend: true,
+          showOnExport: true,
         }),
       },
       {
