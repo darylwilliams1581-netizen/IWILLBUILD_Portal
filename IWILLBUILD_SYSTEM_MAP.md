@@ -1,6 +1,6 @@
 # IWILLBUILD Portal — System Map / Product Bible
 
-> **Last updated:** June 2026  
+> **Last updated:** July 2026  
 > **Purpose:** Developer and admin reference. Describes the full platform architecture, module inventory, permission model, data model, API surface, and known constraints. Keep this document updated as the platform evolves.
 
 ---
@@ -22,12 +22,22 @@
 13. [Annette Core / Brain Architecture](#13-annette-core--brain-architecture)
 14. [Safety Module](#14-safety-module)
 15. [Forms System](#15-forms-system)
-16. [Industry Mode](#16-industry-mode)
-17. [Template Pack System (Direction)](#17-template-pack-system-direction)
-18. [Owner Console](#18-owner-console)
-19. [Known Issues / Incomplete Areas](#19-known-issues--incomplete-areas)
-20. [Critical "Do Not Break" Workflows](#20-critical-do-not-break-workflows)
-21. [Future Migration Notes](#21-future-migration-notes)
+16. [Studio Module](#16-studio-module)
+17. [Attendance & QR Sign-In](#17-attendance--qr-sign-in)
+18. [Fleet Sign-On/Off & Analytics](#18-fleet-sign-onoff--analytics)
+19. [Emergency Beacon](#19-emergency-beacon)
+20. [Session Timeout System](#20-session-timeout-system)
+21. [Note Tagging & Tag Tasks](#21-note-tagging--tag-tasks)
+22. [Skip Logic (Forms)](#22-skip-logic-forms)
+23. [PWA (Progressive Web App)](#23-pwa-progressive-web-app)
+24. [Sign-In History](#24-sign-in-history)
+25. [Document Builder](#25-document-builder)
+26. [Industry Mode](#26-industry-mode)
+27. [Template Pack System (Direction)](#27-template-pack-system-direction)
+28. [Owner Console](#28-owner-console)
+29. [Known Issues / Incomplete Areas](#29-known-issues--incomplete-areas)
+30. [Critical "Do Not Break" Workflows](#30-critical-do-not-break-workflows)
+31. [Future Migration Notes](#31-future-migration-notes)
 
 ---
 
@@ -37,13 +47,17 @@ IWILLBUILD is a SaaS construction management portal for small-to-medium construc
 
 **Core value proposition:**
 - Job management with estimates, costs, progress, photos, files, forms, and safety
-- Fleet management with prestarts and maintenance tracking
-- Digital forms with conditional logic, multi-signer, GPS, and photo capture
+- Fleet management with prestarts, maintenance tracking, sign-on/off, and GPS analytics
+- Digital forms with conditional logic, skip logic, multi-signer, GPS, and photo capture
 - Safety module: SWMS, site safety plans, policies, posters, and AI-assisted drafting
+- Studio: multi-tab hub for Documents, Forms, Library, and Safety content
+- Attendance & QR sign-in for jobs and fleet assets
+- Emergency beacon with offline queue and audit trail
 - Dazza AI: a construction-aware AI assistant that reads live portal data
 - Estimating library and cost guide
 - Team management with role-based access
 - Stripe-powered subscription billing with trial, plan limits, and view-only enforcement
+- PWA: installable on iOS and Android, works offline
 
 **Deployment:**
 - Live at: `iwillbuild.com`
@@ -82,6 +96,15 @@ IWILLBUILD is a SaaS construction management portal for small-to-medium construc
 - MySQL DDL: **NEVER use `DEFAULT '{}'`** — use `DEFAULT NULL`
 - `company_settings` table: **raw SQL only**, not in Drizzle schema
 - JSX strings with apostrophes: use `&apos;` or escaped quotes
+- `uuid` not installed — use `crypto.randomUUID()`
+- `noExternal: true` SSR build — new lucide-react icons must be added to `src/fallbacks/icon-stub.ts`
+- Sequential builds only; heap: client `--max-old-space-size=896`, SSR `--max-old-space-size=1800`
+- All AI calls use `fetch()` directly — `openai` npm SDK is never imported
+- `pdf-lib` and `stripe` are lazily loaded via dynamic import — not in static Rollup graph
+- Document export uses `builder_json` column (NOT `content_json`)
+
+**SSR stubs** (in `src/fallbacks/`):
+- `date-fns`, `react-pdf`, `pdfjs-dist`, `@opentelemetry` (named-export stub — must correctly implement `context.with(ctx, fn, thisArg, ...args)` and `startActiveSpan` overloads), `@jimp`/`jimp`, `gifwrap`, `docx`, `openai` npm SDK, `@aws-sdk`
 
 ---
 
@@ -98,15 +121,20 @@ IWILLBUILD is a SaaS construction management portal for small-to-medium construc
 | `/estimate-editor/:id` | Estimate editor | `canEstimating` |
 | `/fleet` | Fleet list | `canFleet` |
 | `/fleet/:id` | Fleet detail | `canFleet` |
-| `/forms` | Forms list | `canForms` |
-| `/safety` | Safety module | `canSafety` |
+| `/studio` | Studio (Documents/Forms/Library/Safety) | `canForms` / `canSafety` |
 | `/files` | Files | `canFiles` |
 | `/team` | Team management | `canTeam` |
 | `/scheduler` | Scheduler | All |
+| `/signin-history` | Sign-in history | `isAdmin` |
 | `/dazza-ai` | Dazza AI chat | `canDazzaAi` |
 | `/billing` | Billing | Always accessible |
 | `/settings` | Settings | All |
 | `/owner-console` | Owner Console | `isOwner` only |
+
+**Removed from sidebar** (redirected to Studio tabs):
+- `/forms` → `/studio?tab=forms`
+- `/library` → `/studio?tab=library`
+- `/safety` → `/studio?tab=safety`
 
 ### Auth routes (unauthenticated)
 
@@ -116,9 +144,18 @@ IWILLBUILD is a SaaS construction management portal for small-to-medium construc
 
 `/checkout/success`, `/checkout/cancel`
 
+### Public / token-validated routes
+
+`/forms/fill/:token` — Public form fill page  
+`/safety/sign/:token` — Safety sign deep-link
+
+### SEO redirect routes (noindex)
+
+`/forms`, `/library`, `/safety` — each redirects to `/studio?tab=*` with `noindex` Helmet block
+
 ### Job detail tabs
 
-Details · Estimates · Costs · Progress · To-do · Photos · Files · Forms · Notes · Safety
+Details · Estimates · Costs · Progress · To-do · Photos · Files · Forms · Notes · Safety · Attendance
 
 ---
 
@@ -357,6 +394,8 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `fleet_prestarts` | id, company_id, vehicle_id, user_id, date, status, items_json, notes |
 | `fleet_files` | id, company_id, vehicle_id, filename, originalName, size, mimeType |
 | `fleet_flags` | id, company_id, vehicle_id, flagType, description, resolved |
+| `fleet_sessions` | id, company_id, vehicle_id, user_id, actor_type, signed_on_at, signed_off_at, start_meter, end_meter, notes, status |
+| `fleet_gps_telemetry` | id, company_id, session_id, vehicle_id, lat, lng, speed, heading, accuracy, recorded_at |
 
 ### Forms
 
@@ -365,6 +404,8 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `form_templates` | id, company_id, name, description, industry, fields_json, logic_json, signers_json, status |
 | `form_fields` | id, template_id, company_id, fieldType, label, required, options_json, order |
 | `job_forms` | id, company_id, job_id, template_id, title, status, submitted_by, submitted_at, data_json, signers_json |
+
+> **Skip logic** is stored in the existing `logic_json` column of `form_templates` — no schema migration required. See [§22 Skip Logic](#22-skip-logic-forms).
 
 ### Safety
 
@@ -376,6 +417,32 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `safety_posters` | id, company_id, posterType, title, file_path, generated_at |
 | `safety_generated_posters` | id, company_id, posterType, title, content_json, pdf_path, docx_path |
 | `safety_registers` | id, company_id, register_type, title, data_json |
+
+### Attendance
+
+| Table | Key columns |
+|---|---|
+| `job_attendance` | id, company_id, job_id, user_id, actor_type, signed_in_at, signed_out_at, qr_token, status, notes |
+
+### Emergency Beacon
+
+| Table | Key columns |
+|---|---|
+| `emergency_alerts` | id, company_id, triggered_by, reason, note, location, status, triggered_at, acknowledged_by, acknowledged_at, resolved_by, resolved_at |
+
+### Notes / Tag Tasks
+
+| Table | Key columns |
+|---|---|
+| `entity_notes` | id, company_id, entity_type, entity_id, note_type, body, mentions, created_by, created_at |
+| `note_tag_tasks` | id, company_id, note_id, assignee, created_by, completed_by, status, due_date, created_at, updated_at |
+| `note_comments` | id, company_id, note_id, body, created_by, created_at |
+
+### Documents (Studio)
+
+| Table | Key columns |
+|---|---|
+| `document_templates` | id, company_id, name, template_type, builder_json, page_layout_json, theme_json, source_docx_path |
 
 ### Dazza AI / Brain
 
@@ -477,6 +544,9 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `GET` | `/api/jobs/:id/forms` | List job forms |
 | `POST` | `/api/jobs/:id/forms` | Attach form to job |
 | `GET` | `/api/jobs/:id/swms` | List SWMS for job |
+| `GET` | `/api/jobs/:id/attendance` | List attendance records |
+| `POST` | `/api/jobs/:id/signin-qr` | QR sign-in (public, token-validated) |
+| `POST` | `/api/jobs/:id/signout-qr` | QR sign-out (public, token-validated) |
 | `GET` | `/api/files/:id/download` | Download file |
 
 ### Estimating
@@ -513,7 +583,13 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `POST` | `/api/fleet/:id/prestarts` | Submit prestart |
 | `GET` | `/api/fleet/:id/files` | List vehicle files |
 | `POST` | `/api/fleet/:id/files` | Upload vehicle file |
+| `GET` | `/api/fleet/:id/sessions` | List sign-on/off sessions |
+| `POST` | `/api/fleet/:id/sessions/signin` | Sign on to vehicle |
+| `POST` | `/api/fleet/:id/sessions/signoff` | Sign off vehicle |
+| `POST` | `/api/fleet/:id/sessions/:sessionId/force-close` | Force-close stale session (admin) |
+| `POST` | `/api/fleet/:id/telemetry` | Batch GPS telemetry upload |
 | `GET` | `/api/fleet/flags` | List fleet flags |
+| `GET` | `/api/fleet/analytics` | Fleet usage analytics (admin/owner only) |
 
 ### Forms
 
@@ -562,6 +638,43 @@ When a company is in `trial_expired`, `cancelled`, `past_due`, or `suspended` st
 | `GET` | `/api/safety/generated-posters/:id` | Get generated poster |
 | `DELETE` | `/api/safety/generated-posters/:id` | Delete generated poster |
 | `POST` | `/api/safety/ai/draft` | AI-assisted SWMS/plan draft |
+
+### Studio / Document Templates
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/document-templates` | List templates for authenticated company |
+| `POST` | `/api/document-templates/:id/duplicate` | Duplicate a document template |
+| `GET` | `/api/document-templates/:id/export/pdf` | Print-ready HTML (triggers `window.print()`) |
+| `GET` | `/api/document-templates/:id/export/docx` | Streams `.docx` download |
+
+### Notes / Tag Tasks
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/notes` | List entity notes (filtered by entity_type + entity_id) |
+| `POST` | `/api/notes` | Create note (auto-spawns tag tasks for todo/action types) |
+| `PUT` | `/api/notes/:id` | Update note |
+| `DELETE` | `/api/notes/:id` | Delete note |
+| `GET` | `/api/notes/:id/comments` | List comments on a note |
+| `POST` | `/api/notes/:id/comments` | Add comment |
+| `GET` | `/api/tag-tasks` | List tag tasks for current user |
+| `PUT` | `/api/tag-tasks/:id` | Update tag task (complete, reassign, etc.) |
+
+### Emergency Beacon
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/emergency/trigger` | Trigger emergency alert |
+| `GET` | `/api/emergency/alerts` | List emergency alerts |
+| `POST` | `/api/emergency/alerts/:id/acknowledge` | Acknowledge alert |
+| `POST` | `/api/emergency/alerts/:id/resolve` | Resolve alert |
+
+### Sign-In History
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/signin-history` | Unified job + fleet history, paginated, filterable, CSV export |
 
 ### Dazza AI
 
@@ -806,11 +919,6 @@ Annette is the intelligence layer behind Dazza. It implements a structured answe
 - `POST /api/safety/ai/draft` — generates SWMS/plan content via OpenAI
 - Uses company industry context from `industry-config.ts`
 
-### Direction
-
-- SWMS templates seeded per industry (see Industry Mode)
-- Future: digital sign-off workflow, QR code site access, incident reporting integration
-
 ---
 
 ## 15. Forms System
@@ -822,6 +930,7 @@ Short text, Long text, Number, Date, Date & time, Yes/No, Checkbox, Single choic
 ### Features
 
 - **Conditional logic** — show/hide fields based on answers
+- **Skip logic** — advanced rule-based field skipping (see §22)
 - **Multi-signer** — multiple signature fields with named signers
 - **100-field limit** per template
 - **7 seeded templates** (industry-aware)
@@ -835,7 +944,363 @@ Short text, Long text, Number, Date, Date & time, Yes/No, Checkbox, Single choic
 
 ---
 
-## 16. Industry Mode
+## 16. Studio Module
+
+### Overview
+
+Studio (`/studio`) is a multi-tab hub consolidating Documents, Forms, Library, and Safety content. It replaces the previous top-level `/forms`, `/library`, and `/safety` routes (those now redirect with `noindex`).
+
+### Tabs
+
+| Tab | URL param | Description |
+|---|---|---|
+| Documents | `?tab=documents` (default) | Document template management |
+| Forms | `?tab=forms` | Form template management |
+| Library | `?tab=library` | Community/shared library |
+| Safety | `?tab=safety` | Safety content |
+
+### Documents tab features
+
+- API-driven rows with green "Active" badge + revision number
+- Bold title + template type pill
+- Icon toolbar per row: duplicate, share, print, export PDF, export DOCX, edit, delete
+- Export PDF: `window.open('/api/document-templates/:id/export/pdf')` — print-ready HTML
+- Export DOCX: `window.open('/api/document-templates/:id/export/docx')` — streams `.docx`
+- Duplicate: `POST /api/document-templates/:id/duplicate` — toast feedback
+- Delete: inline confirm, toast feedback
+- URL sync: tab state persisted in query param
+
+### Sidebar `isActive` logic
+
+- Studio nav item highlights when path is `/studio` with no tab param, or `tab=documents`
+- Does **not** highlight for `tab=forms`, `tab=library`, `tab=safety` (those have their own sub-items)
+
+---
+
+## 17. Attendance & QR Sign-In
+
+### Overview
+
+Job attendance tracking with QR code sign-in/out for workers and guests at job sites.
+
+### Components
+
+- **`JobAttendanceTab`** — tab on job detail page; shows live sessions, stale session amber alert, supervisor force-close, "Stale" badge, CSV export
+- **`JobQrModal`** — displays QR code for a job; `actorType` validated against `VALID_ACTOR_TYPES` Set
+
+### Security
+
+- All SQL queries parameterised
+- Duplicate session detection (prevents double sign-in)
+- `qrAttendanceLimiter` — rate limiter on QR endpoints
+- QR public endpoints registered **BEFORE** auth guard middleware in `entry.ts`
+- `actorType` validated against `VALID_ACTOR_TYPES` Set in handler
+
+### Stale session handling
+
+- Sessions open >12h flagged as stale
+- Amber alert shown to supervisor in `JobAttendanceTab`
+- Supervisor can force-close stale sessions
+- "Stale" badge displayed on affected rows
+
+### CSV export
+
+- Attendance records exportable as CSV from `JobAttendanceTab`
+
+---
+
+## 18. Fleet Sign-On/Off & Analytics
+
+### Sign-On/Off Flow
+
+- Workers sign on/off individual fleet assets
+- Sessions stored in `fleet_sessions` table
+- Meter readings captured at sign-on and sign-off
+- Meter validation: sign-off reading must be ≥ sign-on reading
+- Stale session warning shown in `FleetUsagePanel` for sessions open >12h
+- Admin/owner can force-close stale sessions via inline confirm dialog (not `window.confirm`)
+
+### GPS Telemetry
+
+- Batch telemetry upload: `POST /api/fleet/:id/telemetry`
+- Stored in `fleet_gps_telemetry` table (lat, lng, speed, heading, accuracy, recorded_at)
+- Haversine distance calculation for total distance per session
+- Drive time, average speed, and max speed derived from telemetry
+
+### Session Summary
+
+- **`SessionSummaryCard`** — post-session modal shown after sign-off
+- Displays: distance, drive time, avg/max speed, collision events
+
+### Fleet Analytics
+
+- **`FleetAnalyticsTab`** — admin/owner only
+- Aggregated usage stats across all vehicles and sessions
+- Collision event tracking
+
+### CSV export
+
+- Fleet usage records exportable as CSV from `FleetUsagePanel`
+
+---
+
+## 19. Emergency Beacon
+
+### Overview
+
+Two-step emergency alert flow with offline support and full audit trail.
+
+### Trigger flow
+
+1. **Confirmation gate** — user must confirm intent before proceeding
+2. **Detail form** — reason selection + optional note + location capture
+3. **3-second hold-to-confirm** — prevents accidental triggers; button must be held for 3 seconds
+
+### Offline queue
+
+- Alerts queued in `localStorage` when device is offline
+- Auto-syncs to server on reconnect
+- Prevents lost alerts in poor connectivity environments
+
+### `EmergencyAlertLog`
+
+- Full audit trail of all emergency alerts
+- Pulsing red "Active" badge on unresolved alerts
+- Acknowledge and resolve actions with timestamp + actor recorded
+- History of ack/resolve events per alert
+
+### Database
+
+- `emergency_alerts` table: triggered_by, reason, note, location, status, triggered_at, acknowledged_by, acknowledged_at, resolved_by, resolved_at
+
+---
+
+## 20. Session Timeout System
+
+### Overview
+
+Automatic session expiry to enforce security, particularly for shared/site devices.
+
+### Expiry calculation (`calcSessionExpiry`)
+
+```
+expiry = min(signIn + 14h, next 06:00 AEST)
+```
+
+- Sessions never last more than 14 hours from sign-in
+- Sessions always expire by 06:00 AEST the following morning (clean daily reset)
+
+### Components
+
+- **`useSessionTimeout`** hook — tracks time remaining, fires warning and expiry events
+- **`SessionExpiredBanner`** — orange toast notification shown when session expires; prompts re-login
+
+### Behaviour
+
+- Warning shown before expiry (configurable lead time)
+- On expiry: user is shown the banner and redirected to login
+- Designed for shared site tablets where workers may leave sessions open overnight
+
+---
+
+## 21. Note Tagging & Tag Tasks
+
+### Overview
+
+Rich note system with @mention support, automatic task spawning, and threaded comments. Wired into Job detail Notes tab, Fleet detail Notes tab, and Dashboard My Tasks panel.
+
+### Note types
+
+| Type | Behaviour |
+|---|---|
+| `general` | Plain note, no task spawned |
+| `todo` | Auto-spawns a tag task for the mentioned user |
+| `action` | Auto-spawns a tag task for the mentioned user |
+| `observation` | Plain note, no task spawned |
+| `hazard` | Plain note, no task spawned |
+
+### @mention system
+
+- Live dropdown appears as user types `@`
+- Dropdown shows team members matching the typed prefix
+- Mentions stored as JSON array in `entity_notes.mentions`
+- Mentioned users receive a tag task if note type is `todo` or `action`
+
+### Tag tasks
+
+- Stored in `note_tag_tasks` table
+- Assignee, created_by, status, due_date, completion tracking
+- Surfaced in **Dashboard → My Tasks panel** for the assigned user
+- Status: `pending` → `completed`
+
+### Threaded comments
+
+- Comments stored in `note_comments` table
+- Attached to a parent note via `note_id`
+
+### Entity scoping
+
+- `entity_type`: `job` | `fleet_vehicle` (extensible)
+- `entity_id`: the ID of the parent entity
+- All queries scoped to `company_id`
+
+---
+
+## 22. Skip Logic (Forms)
+
+### Overview
+
+Advanced rule-based field skipping in the form runner. Allows form designers to define conditions under which fields are automatically skipped (hidden and unrequired).
+
+### Data model
+
+Skip rules stored in the existing `logic_json` column of `form_templates` — **zero schema migration required**.
+
+```typescript
+interface SkipRule {
+  id: string;
+  conditions: SkipCondition[];   // one or more conditions
+  conditionMode: 'AND' | 'OR';   // how conditions combine
+  action: SkipAction;            // what to do when conditions match
+}
+
+interface SkipCondition {
+  fieldId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains'
+           | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty';
+  value: string;
+}
+
+interface SkipAction {
+  type: 'skip_field' | 'skip_to_field' | 'skip_to_end';
+  targetFieldId?: string;
+}
+```
+
+### Runtime behaviour
+
+- Rules evaluated immediately on field value change
+- Skipped fields are automatically unrequired (cannot block form submission)
+- Orange toast shown when a skip is triggered
+- Back-stack maintained so users can navigate back through skipped sections
+
+### Cycle detection
+
+- DFS cycle detection runs at rule-save time
+- Prevents infinite skip loops
+
+### Analytics
+
+- **`SkipMetricsPanel`** — shows skips per field, top trigger values, recent skip events
+
+---
+
+## 23. PWA (Progressive Web App)
+
+### Overview
+
+IWILLBUILD is installable as a PWA on iOS and Android. No app store required.
+
+### Manifest (`public/manifest.json`)
+
+- `name`: IWILLBUILD
+- `short_name`: IWILLBUILD
+- `theme_color`: `#ff6b00`
+- `display`: `standalone`
+- Icons provided for all standard sizes
+
+### Install prompts
+
+Two complementary install surfaces:
+
+#### `PwaInstallPrompt` (bottom banner)
+
+- Appears on any page for users who haven't installed
+- **X button** = snooze 3 days (`localStorage` key: `iwb_pwa_install_snooze`)
+- **"Don't show again"** link = permanent dismiss (`localStorage` key: `iwb_pwa_install_dismissed`)
+- Android/Chrome: uses `beforeinstallprompt` event → native install dialog
+- iOS Safari: shows Share → Add to Home Screen instructions
+- Hides automatically when running in `standalone` display mode
+
+#### `DashboardInstallCallout` (dashboard card)
+
+- Compact callout shown on the dashboard between KPI widgets and My Tasks
+- Same snooze/dismiss localStorage keys as `PwaInstallPrompt` — they share state
+- Android/Chrome: inline "Install" button triggers native prompt
+- iOS Safari: "How to install" link + Share icon instruction
+- Hides when already installed (standalone mode) or dismissed/snoozed
+
+### Snooze / dismiss logic
+
+| Key | Behaviour |
+|---|---|
+| `iwb_pwa_install_dismissed` | Permanent — never show again |
+| `iwb_pwa_install_snooze` | Timestamp — hide until `Date.now() > value` (3-day snooze) |
+| `iwb_pwa_dash_dismissed` | Permanent dismiss for dashboard callout |
+| `iwb_pwa_dash_snooze` | 3-day snooze for dashboard callout |
+
+### Offline support
+
+- Emergency beacon alerts queued in `localStorage` when offline, auto-synced on reconnect
+- Service worker caches static assets for offline shell rendering
+
+---
+
+## 24. Sign-In History
+
+### Overview
+
+Unified view of all job attendance and fleet sign-on/off events for a company.
+
+### Endpoint
+
+`GET /api/signin-history` — unified job + fleet history, paginated, filterable, CSV export
+
+### Page
+
+`/signin-history` — accessible to admin/owner roles
+
+### Features
+
+- Unified timeline of job attendance + fleet sessions
+- Filters: date range, entity type (job/fleet), user, status
+- Pagination
+- CSV export of filtered results
+
+---
+
+## 25. Document Builder
+
+### Overview
+
+Rich document builder for creating safety documents, toolbox talks, and other structured documents. Accessed via Studio → Documents tab.
+
+### Block types
+
+#### Content blocks
+- **Banner blocks**: Info, Warning, Danger, Success, Safety, Custom
+- **Safety-specific banners**: Safety First, First Aid, Image Banner, No Entry, Emergency Evacuation, Electrical Hazard, Confined Space, Environmental, Toolbox Talk
+- **Risk Matrix Block**: 5×5 AS/NZS colour-coded grid, toggleable legend
+- **Safety Badges**: 9 PPE icon types
+- **RichTextBlock**: DOM-based HTML sanitiser with allowlist
+
+#### Import
+- **PDF Import**: renders PDF pages to PNG via `pdfjs-dist` with graceful fallback
+
+### Export
+
+- **PDF export**: browser-print approach (no puppeteer) — `GET /api/document-templates/:id/export/pdf`
+- **DOCX export**: pure-JS ZIP + Open XML (no jszip) — `GET /api/document-templates/:id/export/docx`
+
+### Data model
+
+- Content stored in `document_templates.builder_json` (NOT `content_json`)
+- Page layout in `document_templates.page_layout_json`
+- Theme in `document_templates.theme_json`
+
+---
+
+## 26. Industry Mode
 
 ### Source of truth: `src/lib/industry-config.ts`
 
@@ -873,7 +1338,7 @@ Each industry defines:
 
 ---
 
-## 17. Template Pack System (Direction)
+## 27. Template Pack System (Direction)
 
 > Not yet implemented — this is the planned direction.
 
@@ -892,7 +1357,7 @@ Template Packs are curated bundles of forms, SWMS, safety plans, and cost guide 
 
 ---
 
-## 18. Owner Console
+## 28. Owner Console
 
 ### Access
 
@@ -920,7 +1385,7 @@ Template Packs are curated bundles of forms, SWMS, safety plans, and cost guide 
 
 ---
 
-## 19. Known Issues / Incomplete Areas
+## 29. Known Issues / Incomplete Areas
 
 | Area | Issue | Priority |
 |---|---|---|
@@ -935,10 +1400,16 @@ Template Packs are curated bundles of forms, SWMS, safety plans, and cost guide 
 | Forms | Multi-signer workflow incomplete | Medium |
 | Safety | Digital sign-off workflow not implemented | Low |
 | Template Packs | Not yet implemented | Low |
+| Jobs | No delete/archive UI — status-change only | Low |
+| Scheduler | No pre-save conflict warning (overlap detection is display-only) | Low |
+| Plan Manager | No PDF export of annotated drawings; share failure is silent to user | Low |
+| Community Library | No uninstall/remove UI (API exists, no button) | Low |
+| Invoice | Delete/void uses `window.confirm()` — inconsistent with rest of app | Low |
+| Security | 6 SCA medium advisories: `better-auth`, `drizzle-kit`, `esbuild`, `js-yaml` — monitor for upstream patches | Medium |
 
 ---
 
-## 20. Critical "Do Not Break" Workflows
+## 30. Critical "Do Not Break" Workflows
 
 These workflows are core to the platform and must not be broken by any change:
 
@@ -975,6 +1446,7 @@ These workflows are core to the platform and must not be broken by any change:
 - `getAuth()` returns the auth instance
 - Session headers must be forwarded correctly in all API handlers
 - PIN login uses bcryptjs (not bcrypt) — Alpine-safe
+- OpenTelemetry stub: `context.with(ctx, fn, thisArg, ...args)` must correctly forward thisArg/args; `startActiveSpan` must handle both 2-arg and 3-arg overloads — incorrect stub crashes better-auth on every sign-in
 
 ### 6. Dazza AI security
 
@@ -994,10 +1466,23 @@ These workflows are core to the platform and must not be broken by any change:
 
 - Specific routes MUST be registered before wildcard/parameterised routes
 - e.g., `GET /api/fleet/flags` must come before `GET /api/fleet/:id`
+- QR attendance public endpoints (`/api/jobs/:id/signin-qr`, `/api/jobs/:id/signout-qr`) must be registered **before** the auth guard middleware
+
+### 9. SSR icon stub
+
+- `noExternal: true` SSR build means all lucide-react icons must be exported from `src/fallbacks/icon-stub.ts`
+- Any new icon used in a component that renders server-side must be added to the stub
+- Missing stub entry = SSR build crash
+
+### 10. Rate limiter
+
+- Global API rate limit: IP-based, 30 requests / 15 min
+- Auth sub-limit: per-email, 10 requests / 15 min (prevents corporate NAT lockouts)
+- Do not lower the IP limit below 30 — corporate NAT means many users share one IP
 
 ---
 
-## 21. Future Migration Notes
+## 31. Future Migration Notes
 
 ### Database: MySQL → Supabase (PostgreSQL)
 
