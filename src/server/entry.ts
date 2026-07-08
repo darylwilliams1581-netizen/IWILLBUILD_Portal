@@ -1064,6 +1064,15 @@ async function runStartupMigrations() {
     { table: 'platform_activity_log', column: 'reason',               definition: 'VARCHAR(500) NULL' },
     { table: 'platform_activity_log', column: 'metadata_json',        definition: 'TEXT NULL' },
     { table: 'platform_activity_log', column: 'created_at',           definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP' },
+    // ── document_templates: columns added after initial table creation ────────
+    { table: 'document_templates', column: 'pdf_settings_json',   definition: 'LONGTEXT NULL' },
+    { table: 'document_templates', column: 'source_docx_path',    definition: 'VARCHAR(500) NULL' },
+    { table: 'document_templates', column: 'source_docx_name',    definition: 'VARCHAR(255) NULL' },
+    // ── project_drawings: columns added after initial table creation ──────────
+    { table: 'project_drawings', column: 'source_file_path',  definition: 'VARCHAR(1000) NULL' },
+    { table: 'project_drawings', column: 'source_file_name',  definition: 'VARCHAR(500) NULL' },
+    { table: 'project_drawings', column: 'page_count',        definition: 'INT NOT NULL DEFAULT 1' },
+    { table: 'project_drawings', column: 'current_revision_id', definition: 'INT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
