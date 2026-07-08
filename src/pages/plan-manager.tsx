@@ -29,7 +29,7 @@ export default function PlanManagerPage() {
   const [unassigned, setUnassigned] = useState<Drawing[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const hook = usePlanManager();
-  const { state, loadDrawing, closeDrawing } = hook;
+  const { state, loadDrawing, closeDrawing, createShareToken } = hook;
 
   const loadAll = useCallback(async (t: Tab) => {
     setListLoading(true);
@@ -145,6 +145,7 @@ export default function PlanManagerPage() {
             onRestore={handleRestore}
             onDelete={handleDelete}
             onReorder={handleReorder}
+            onCreateShareToken={createShareToken}
           />
         </div>
       </div>
