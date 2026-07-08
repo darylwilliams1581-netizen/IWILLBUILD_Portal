@@ -70,9 +70,9 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     const settings = settingsRows[0] ?? {};
-    const trackDistance  = !!settings.track_distance  ?? true;
-    const trackSpeed     = !!settings.track_speed     ?? true;
-    const trackCollision = !!settings.enable_collision_alerts ?? false;
+    const trackDistance  = settings.track_distance  !== undefined ? !!settings.track_distance  : true;
+    const trackSpeed     = settings.track_speed     !== undefined ? !!settings.track_speed     : true;
+    const trackCollision = settings.enable_collision_alerts !== undefined ? !!settings.enable_collision_alerts : false;
 
     // If no tracking is enabled at all, skip storage
     if (!trackDistance && !trackSpeed && !trackCollision) {
