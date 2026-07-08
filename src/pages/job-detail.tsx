@@ -39,6 +39,7 @@ import {
   Image,
   Rocket,
   LogIn,
+  Siren,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -58,11 +59,12 @@ import CustomerSelector from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import JobLaunchTab from '@/components/job/JobLaunchTab';
 import JobAttendanceTab from '@/components/job/JobAttendanceTab';
+import JobEmergencyTab from '@/components/job/JobEmergencyTab';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance' | 'emergency';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -86,6 +88,7 @@ const NAV_GROUPS = [
       { key: 'forms'      as Tab, label: 'Forms',      icon: ClipboardList },
       { key: 'safety'     as Tab, label: 'Safety',     icon: ShieldAlert },
       { key: 'attendance' as Tab, label: 'Attendance', icon: LogIn },
+      { key: 'emergency'  as Tab, label: 'Emergency',  icon: Siren },
     ],
   },
   {
@@ -132,7 +135,7 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'emergency') return t as Tab;
     return 'details';
   });
 
@@ -927,6 +930,11 @@ export default function JobDetailPage() {
                   {/* ── Attendance ── */}
                   {activeTab === 'attendance' && (
                     <JobAttendanceTab jobId={job.id} jobName={job.name} />
+                  )}
+
+                  {/* ── Emergency ── */}
+                  {activeTab === 'emergency' && (
+                    <JobEmergencyTab jobId={job.id} userRole={userRole} />
                   )}
 
                 </div>

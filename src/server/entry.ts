@@ -186,6 +186,11 @@ import fleet_analytics_settings_put from "./api/fleet/analytics-settings/PUT.js"
 import fleet_driver_sessions_id_telemetry_post from "./api/fleet/driver-sessions/[id]/telemetry/POST.js";
 import fleet_driver_sessions_id_summary_get from "./api/fleet/driver-sessions/[id]/summary/GET.js";
 import migrate_fleet_analytics_post from "./api/migrate-fleet-analytics/POST.js";
+// Emergency alerts
+import emergency_alerts_post from "./api/emergency-alerts/POST.js";
+import emergency_alerts_get from "./api/emergency-alerts/GET.js";
+import emergency_alerts_id_put from "./api/emergency-alerts/[id]/PUT.js";
+import migrate_emergency_alerts_post from "./api/migrate-emergency-alerts/POST.js";
 import fleet_flags_get_151 from "./api/fleet/flags/GET";
 import fleet_service_logs_logId_delete_152 from "./api/fleet/service-logs/[logId]/DELETE";
 import fleet_service_logs_logId_patch_153 from "./api/fleet/service-logs/[logId]/PATCH";
@@ -1644,6 +1649,11 @@ app.put("/api/fleet/analytics-settings", fleet_analytics_settings_put);
 app.post("/api/fleet/driver-sessions/:id/telemetry", fleet_driver_sessions_id_telemetry_post);
 app.get("/api/fleet/driver-sessions/:id/summary", fleet_driver_sessions_id_summary_get);
 app.post("/api/migrate-fleet-analytics", migrate_fleet_analytics_post);
+// Emergency alert routes
+app.post("/api/emergency-alerts", emergency_alerts_post);
+app.get("/api/emergency-alerts", emergency_alerts_get);
+app.put("/api/emergency-alerts/:id", emergency_alerts_id_put);
+app.post("/api/migrate-emergency-alerts", migrate_emergency_alerts_post);
 app.get("/api/fleet/flags", fleet_flags_get_151);
 app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_logId_delete_152);
 app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_logId_patch_153);

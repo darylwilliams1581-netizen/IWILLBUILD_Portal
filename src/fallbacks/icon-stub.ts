@@ -240,6 +240,9 @@ export const ZoomOutIcon = NullIcon;
 export const RotateCcwIcon = NullIcon;
 // ── Fleet analytics icons ─────────────────────────────────────────────────────
 export const Route = NullIcon;
+// ── Emergency beacon icons ────────────────────────────────────────────────────
+export const Siren    = NullIcon;
+export const MapPinOff = NullIcon;
 export const RotateCwIcon = NullIcon;
 export const FlipHorizontal = NullIcon;
 export const FlipVertical = NullIcon;
