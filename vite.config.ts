@@ -257,6 +257,54 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         },
         // @heroicons/react — icon library, client-only (already covered by icon-stub
         // above but belt-and-braces for any subpath imports not caught by that alias).
+        //
+        // @opentelemetry — 14.3 MB transitive dep (pulled in by better-auth / openai).
+        // better-auth imports named constants from @opentelemetry/semantic-conventions
+        // for its optional instrumentation layer. We use a dedicated stub that exports
+        // those named constants as empty strings so Rollup's named-export resolution
+        // succeeds without bundling the full 14 MB package.
+        {
+          find: /^@opentelemetry(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/opentelemetry-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/opentelemetry-stub.ts'); },
+        },
+        // @jimp — 8.3 MB image-processing library, transitive dep, never used server-side.
+        {
+          find: /^@jimp(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        {
+          find: /^jimp(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // gifwrap — 6.2 MB GIF processing library, transitive dep, never used server-side.
+        {
+          find: /^gifwrap(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // docx — 7.2 MB Word document generation library, transitive dep.
+        // Our DOCX export handler uses pure-JS ZIP (no docx package).
+        {
+          find: /^docx(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // openai — 17 MB npm SDK, never directly imported in our server code.
+        // All AI calls use fetch() directly. This is a transitive dep only.
+        {
+          find: /^openai(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
+        // @aws-sdk — 10.9 MB, only referenced in commented-out code in s3Provider.ts.
+        {
+          find: /^@aws-sdk(\/.*)?$/,
+          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+        },
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },

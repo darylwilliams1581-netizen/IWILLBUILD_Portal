@@ -259,7 +259,14 @@ const ssrCode = await run(
     //   - html-to-image, i18next, react-i18next,
     //     react-markdown, embla-carousel, vaul,
     //     cmdk, input-otp, react-day-picker             (~8 MB saved)
-    // Total estimated savings: ~262 MB of AST.
+    //   - date-fns                                      (~38 MB saved)
+    //   - @opentelemetry                                (~14 MB saved)
+    //   - @jimp + jimp                                  (~8 MB saved)
+    //   - gifwrap                                       (~6 MB saved)
+    //   - docx                                          (~7 MB saved)
+    //   - openai (npm SDK, transitive)                  (~17 MB saved)
+    //   - @aws-sdk (commented-out code only)            (~11 MB saved)
+    // Total estimated savings: ~363 MB of AST.
     // Heap ceiling: 1800 MB — raised from 1600 MB to prevent intermittent SIGKILL.
     // --optimize-for-size: instructs V8 to prefer smaller memory footprint over speed.
     // --max-semi-space-size=1: minimise the young-generation heap (default 8 MB)
