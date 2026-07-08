@@ -1,5 +1,5 @@
 import { studio } from 'virtual:content';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -8,7 +8,7 @@ import {
   ClipboardList, Truck, Users, BarChart2, Wrench,
   Package, Map, Camera, BookOpen, Zap, Star,
   ChevronRight, Plus, Clock, CheckCircle2, Lock,
-  FilePlus2, MoreHorizontal, Building2,
+  Building2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 
@@ -18,13 +18,6 @@ const studioCategories: string[] = Array.isArray(studio?.CATEGORIES) && studio.C
   : ['All', 'Documents', 'Safety', 'Planning', 'Fleet', 'Training', 'Custom'];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface RecentTemplate {
-  id: number;
-  name: string;
-  template_type: string;
-  updated_at: string;
-}
 
 type ModuleStatus = 'available' | 'coming_soon' | 'locked';
 
@@ -100,9 +93,9 @@ function StatusBadge({ status }: { status: ModuleStatus }) {
   );
 }
 
-// ── Module card ───────────────────────────────────────────────────────────────
+// ── Module tile (compact row) ─────────────────────────────────────────────────
 
-function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
+function ModuleTile({ mod, index }: { mod: StudioModule; index: number }) {
   const navigate = useNavigate();
   const Icon = mod.icon;
   const isAvailable = mod.status === 'available';
@@ -118,42 +111,40 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.03, ease: 'easeOut' }}
+      transition={{ duration: 0.18, delay: index * 0.02, ease: 'easeOut' }}
       onClick={handleClick}
       className={[
-        'group relative flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200',
+        'group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-150',
         isAvailable
-          ? 'border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50/30 cursor-pointer hover:shadow-md hover:shadow-orange-500/5'
+          ? 'border-border bg-white hover:border-primary/40 hover:shadow-sm cursor-pointer'
           : isLocked
-          ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
-          : 'border-slate-200 bg-slate-50/80 cursor-default',
+          ? 'border-border bg-slate-50 opacity-50 cursor-not-allowed'
+          : 'border-border bg-white cursor-default',
       ].join(' ')}
     >
       {/* Icon */}
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${mod.color}18`, border: `1px solid ${mod.color}30` }}
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: `${mod.color}15`, border: `1px solid ${mod.color}28` }}
       >
-        <Icon size={18} style={{ color: isLocked ? '#64748b' : mod.color }} />
+        <Icon size={15} style={{ color: isLocked ? '#94a3b8' : mod.color }} />
       </div>
 
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className={`text-sm font-semibold leading-tight ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
-            {mod.label}
-          </h3>
-        </div>
-        <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{mod.description}</p>
+      {/* Name + description */}
+      <div className="flex-1 min-w-0 flex items-center gap-3">
+        <span className={`text-sm font-semibold whitespace-nowrap ${isLocked ? 'text-slate-400' : 'text-slate-800'}`}>
+          {mod.label}
+        </span>
+        <span className="text-xs text-muted-foreground truncate hidden sm:block">{mod.description}</span>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between">
+      {/* Badge + chevron */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         <StatusBadge status={mod.status} />
         {isAvailable && (
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-orange-500 transition-colors" />
+          <ChevronRight size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
         )}
       </div>
     </motion.div>
@@ -165,31 +156,6 @@ function ModuleCard({ mod, index }: { mod: StudioModule; index: number }) {
 export default function StudioPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const navigate = useNavigate();
-  const [recentDocs, setRecentDocs] = useState<RecentTemplate[]>([]);
-  const [recentLoading, setRecentLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/document-templates')
-      .then((r) => r.json() as Promise<{ templates?: RecentTemplate[] }>)
-      .then((d) => setRecentDocs((d.templates ?? []).slice(0, 8)))
-      .catch(() => setRecentDocs([]))
-      .finally(() => setRecentLoading(false));
-  }, []);
-
-  function formatDate(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-
-  function typeLabel(t: string) {
-    const map: Record<string, string> = {
-      quote_scope: 'Quote', swms: 'SWMS', safety_plan: 'Safety Plan',
-      toolbox_talk: 'Toolbox Talk', pre_start: 'Pre-Start', register: 'Register',
-      procedure: 'Procedure', user_form: 'Form', handover: 'Handover',
-      custom: 'Document', document: 'Document',
-    };
-    return map[t] ?? t;
-  }
 
   const filtered = MODULES.filter(
     (m) => activeCategory === 'All' || m.category === activeCategory
@@ -269,60 +235,18 @@ export default function StudioPage() {
           ))}
         </div>
 
-        {/* Module grid */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* Module list */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <motion.div
+            variants={{ visible: { transition: { staggerChildren: 0.02 } } }}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col gap-2"
+          >
             {filtered.map((mod, i) => (
-              <ModuleCard key={mod.id} mod={mod} index={i} />
+              <ModuleTile key={mod.id} mod={mod} index={i} />
             ))}
-          </div>
-
-          {/* Recent documents */}
-          <div className="mt-8 mb-2">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-500">Recent documents</h2>
-              {recentDocs.length > 0 && (
-                <button
-                  onClick={() => navigate('/studio/builder/new')}
-                  className="flex items-center gap-1.5 text-xs text-orange-500 hover:text-orange-600 transition-colors"
-                >
-                  <FilePlus2 size={13} />
-                  New
-                </button>
-              )}
-            </div>
-
-            {recentLoading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
-                <div className="w-5 h-5 border-2 border-slate-200 border-t-orange-400 rounded-full animate-spin mx-auto" />
-              </div>
-            ) : recentDocs.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-                <Layers size={28} className="text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No documents yet</p>
-                <p className="text-xs text-slate-400 mt-1">Documents you create will appear here</p>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
-                {recentDocs.map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => navigate(`/studio/builder/${doc.id}`)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
-                      <FileText size={14} className="text-orange-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{doc.name}</p>
-                      <p className="text-xs text-slate-500">{typeLabel(doc.template_type)} · {formatDate(doc.updated_at)}</p>
-                    </div>
-                    <MoreHorizontal size={15} className="text-slate-400 group-hover:text-slate-600 flex-shrink-0 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
