@@ -28,48 +28,62 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ id: number }>, unknown];
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
-    // ── Current user status ───────────────────────────────────────────────
-    const [countRows] = await db.execute(
-      sql.raw(`
-        SELECT
-          SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
-          SUM(CASE WHEN action = 'signout' THEN 1 ELSE 0 END) AS outs,
-          MAX(created_at) AS last_action_at,
-          (SELECT action FROM job_attendance
-           WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
-           ORDER BY created_at DESC LIMIT 1) AS last_action
-        FROM job_attendance
-        WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
-      `)
-    ) as unknown as [Array<{
-      ins: number; outs: number;
-      last_action_at: string | null; last_action: string | null;
-    }>, unknown];
+    // ── Current user status — find the latest open session ───────────────
+    const [openRows] = await db.execute(
+      sql`SELECT id, created_at
+          FROM job_attendance
+          WHERE job_id = ${jobId}
+            AND user_id = ${userId}
+            AND action = 'signin'
+            AND id > COALESCE(
+              (SELECT MAX(id) FROM job_attendance
+               WHERE job_id = ${jobId} AND user_id = ${userId} AND action = 'signout'),
+              0
+            )
+          ORDER BY created_at DESC
+          LIMIT 1`
+    ) as unknown as [Array<{ id: number; created_at: string }>, unknown];
 
-    const row = countRows?.[0];
-    const ins  = Number(row?.ins  ?? 0);
-    const outs = Number(row?.outs ?? 0);
-    const signedIn = ins > outs;
+    const openSession = openRows?.[0] ?? null;
+    const signedIn    = !!openSession;
 
-    // ── Recent log (all users, this job) ─────────────────────────────────
+    // Last action for display
+    const [lastRows] = await db.execute(
+      sql`SELECT action, created_at
+          FROM job_attendance
+          WHERE job_id = ${jobId} AND user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 1`
+    ) as unknown as [Array<{ action: string; created_at: string }>, unknown];
+
+    const lastRow = lastRows?.[0] ?? null;
+
+    // ── Recent log (all users, this job) — include signed_out_at ─────────
     const [logRows] = await db.execute(
-      sql.raw(`
-        SELECT
-          ja.id, ja.action, ja.source, ja.actor_type, ja.notes, ja.created_at,
-          u.name AS user_name, u.email AS user_email
-        FROM job_attendance ja
-        LEFT JOIN users u ON u.id = ja.user_id
-        WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
-        ORDER BY ja.created_at DESC
-        LIMIT 20
-      `)
+      sql`SELECT
+            ja.id, ja.action, ja.source, ja.actor_type, ja.notes, ja.created_at,
+            u.name  AS user_name,
+            u.email AS user_email,
+            (SELECT MAX(ja2.created_at)
+             FROM job_attendance ja2
+             WHERE ja2.job_id = ja.job_id
+               AND ja2.user_id = ja.user_id
+               AND ja2.action = 'signout'
+               AND ja2.id > ja.id
+            ) AS signed_out_at
+          FROM job_attendance ja
+          LEFT JOIN users u ON u.id = ja.user_id
+          WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
+          ORDER BY ja.created_at DESC
+          LIMIT 20`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     return res.json({
       ok: true,
       signedIn,
-      lastAction: row?.last_action ?? null,
-      lastActionAt: row?.last_action_at ?? null,
+      openSessionId: openSession?.id ?? null,
+      lastAction:   lastRow?.action   ?? null,
+      lastActionAt: lastRow?.created_at ?? null,
       recentLog: logRows ?? [],
     });
   } catch (err) {

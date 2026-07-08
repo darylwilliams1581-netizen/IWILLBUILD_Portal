@@ -41,6 +41,10 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     const activeSession = activeRows[0] ?? null;
+    // Stale warning: session open > 12 hours
+    const staleWarning = activeSession
+      ? Number(activeSession.elapsed_minutes ?? 0) >= 720
+      : false;
 
     // Today totals (AEST = UTC+10, no DST)
     const [todayRows] = await db.execute(
@@ -86,6 +90,7 @@ export default async function handler(req: Request, res: Response) {
       ok: true,
       asset: assetRows[0],
       activeSession,
+      staleWarning,
       today: {
         sessionCount: Number(todayRows[0]?.session_count ?? 0),
         totalMinutes: Number(todayRows[0]?.total_minutes ?? 0),

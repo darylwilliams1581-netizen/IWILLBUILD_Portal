@@ -511,6 +511,10 @@ import team_id_delete_478 from "./api/team/[id]/DELETE";
 import team_id_put_479 from "./api/team/[id]/PUT";
 import usage_get_480 from "./api/usage/GET";
 // </api-imports>
+// New endpoints — sign-in history, fleet usage export, supervisor force-close
+import signin_history_get from "./api/signin-history/GET.js";
+import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";
+import jobs_id_attendance_close_post from "./api/jobs/[id]/attendance/[attendanceId]/close/POST.js";
 // Asset Manager
 
 import { seoRoutes } from "../lib/seo-routes";
@@ -705,8 +709,8 @@ app.use('/api/auth', authApiLimiter);
 
 // ── QR attendance — public endpoints (registered BEFORE auth guard) ───────────
 // Token-validated inside the handler; guests do not need a portal session.
-app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post);
+app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_263);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_266);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
@@ -1602,12 +1606,13 @@ app.put("/api/documents/:id", documents_id_put_122);
 app.get("/api/documents/:id/events", documents_id_events_get_123);
 app.delete("/api/documents/:id/share", documents_id_share_delete_124);
 app.post("/api/documents/:id/share", documents_id_share_post_125);
-app.get("/api/drawings", drawings_get_126);
-app.post("/api/drawings", drawings_post_127);
-app.post("/api/drawings/upload", drawings_upload_post_128);
-app.delete("/api/drawings/:id", drawings_id_delete_129);
-app.patch("/api/drawings/:id", drawings_id_patch_130);
-app.post("/api/drawings/:id/markup", drawings_id_markup_post_131);
+  // ── /api/drawings — RETIRED (replaced by Plan Manager) ──────────────────
+  // app.get("/api/drawings", drawings_get_126);
+  // app.post("/api/drawings", drawings_post_127);
+  // app.post("/api/drawings/upload", drawings_upload_post_128);
+  // app.delete("/api/drawings/:id", drawings_id_delete_129);
+  // app.patch("/api/drawings/:id", drawings_id_patch_130);
+  // app.post("/api/drawings/:id/markup", drawings_id_markup_post_131);
 app.get("/api/estimates", estimates_get_132);
 app.post("/api/estimates", estimates_post_133);
 app.delete("/api/estimates/:id", estimates_id_delete_134);
@@ -1644,6 +1649,11 @@ app.post("/api/fleet/:id/signin", fleet_id_signin_post_164);
 app.post("/api/fleet/:id/signout", fleet_id_signout_post_165);
 app.get("/api/fleet/:id/usage-status", fleet_id_usage_status_get_166);
 app.get("/api/fleet/:id/usage-summary", fleet_id_usage_summary_get_167);
+app.get("/api/fleet/:id/usage-export", fleet_id_usage_export_get);
+// Unified sign-in history
+app.get("/api/signin-history", signin_history_get);
+// Supervisor force-close of open attendance session
+app.post("/api/jobs/:id/attendance/:attendanceId/close", jobs_id_attendance_close_post);
 app.get("/api/form-templates", form_templates_get_168);
 app.post("/api/form-templates", form_templates_post_169);
 app.post("/api/form-templates/seed", form_templates_seed_post_170);

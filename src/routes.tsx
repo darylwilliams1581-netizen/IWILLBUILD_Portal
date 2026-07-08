@@ -51,10 +51,14 @@ const LibraryPage        = lazy(() => import('./pages/library'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage       = lazy(() => import('./pages/form-fill'));
-const PlanManagerPage      = lazy(() => import('./pages/plan-manager'));
-const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
-const AssetManagerPage     = lazy(() => import('./pages/asset-manager'));
-const AssetReportSharePage = lazy(() => import('./pages/asset-report-share'));
+const PlanManagerPage        = lazy(() => import('./pages/plan-manager'));
+const PlanManagerSharePage   = lazy(() => import('./pages/plan-manager-share'));
+const PlanManagerDrawingPage = lazy(() => import('./pages/plan-manager-drawing'));
+const AssetManagerPage       = lazy(() => import('./pages/asset-manager'));
+const AssetManagerDetailPage = lazy(() => import('./pages/asset-manager-detail'));
+const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
+const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
+const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -171,11 +175,17 @@ export const routes: RouteObject[] = [
   { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
   { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
-  { path: '/plan-manager',              element: protect(<PlanManagerPage />),      errorElement: routeError },
-  { path: '/plan-manager/share/:token', element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
+  { path: '/plan-manager',                element: protect(<PlanManagerPage />),        errorElement: routeError },
+  { path: '/plan-manager/share/:token',   element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
+  { path: '/plan-manager/:drawingId',     element: protect(<PlanManagerDrawingPage />), errorElement: routeError },
   // Asset Manager
-  { path: '/studio/asset-manager',      element: protect(<AssetManagerPage />),     errorElement: routeError },
-  { path: '/share/asset-report/:token', element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
+  { path: '/studio/asset-manager',           element: protect(<AssetManagerPage />),       errorElement: routeError },
+  { path: '/studio/asset-manager/:assetId',  element: protect(<AssetManagerDetailPage />), errorElement: routeError },
+  { path: '/share/asset-report/:token',      element: <Suspense fallback={<PageLoader />}><AssetReportSharePage /></Suspense>, errorElement: routeError },
+  // Sign-in history
+  { path: '/signin-history',             element: protect(<SignInHistoryPage />),       errorElement: routeError },
+  // Standalone form instance
+  { path: '/forms/:id',                  element: protect(<FormDetailPage />),          errorElement: routeError },
   // Primary module short-paths — redirect to canonical portal routes (SSR-safe loader redirects)
   { path: '/studio/jobs',      loader: () => redirect('/jobs') },
   { path: '/studio/estimates', loader: () => redirect('/estimating') },
