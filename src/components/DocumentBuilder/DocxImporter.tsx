@@ -64,8 +64,7 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
       if (!id) {
         const saved = await onSaveFirst();
         if (!saved) {
-          setError('Could not save the template — please try saving manually first.');
-          setLoading(false);
+          setError('Could not save the document first — please try saving manually (Ctrl+S) then retry.');
           return;
         }
         id = saved;
@@ -79,7 +78,21 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
       const fieldName = mode === 'docx' ? 'docx' : 'pdf';
       formData.append(fieldName, file);
 
-      const res = await fetch(endpoint, { method: 'POST', body: formData, credentials: 'include' });
+      // 60-second timeout — mammoth/pdfjs can be slow on large files
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+      let res: Response;
+      try {
+        res = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
       const data = await res.json() as {
         blocks?: DocumentBlock[];
         sourceDocxName?: string;
@@ -100,8 +113,12 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
         warnings: data.warnings ?? [],
         pageCount: data.pageCount,
       });
-    } catch {
-      setError('Network error — please try again.');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Upload timed out — the file may be too large or the server is busy. Try a smaller file.');
+      } else {
+        setError('Network error — please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,9 +181,10 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
             </div>
           )}
 
-          {/* Upload zone */}
+          {/* Upload zone + actions */}
           {!preview && (
             <>
+              {/* Drop zone */}
               <div
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
@@ -197,12 +215,25 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                 />
               </div>
 
+              {/* Error — shown prominently above the button */}
               {error && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-                  <AlertCircle size={13} />
-                  {error}
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                  <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
                 </div>
               )}
+
+              {/* Import button */}
+              <button
+                onClick={() => void handleParse()}
+                disabled={!file || loading}
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {loading
+                  ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing…' : 'Saving & Parsing…'}</>
+                  : `Import ${mode === 'docx' ? 'DOCX' : 'PDF'}`
+                }
+              </button>
 
               {/* What gets imported */}
               <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-500 space-y-1">
@@ -225,17 +256,6 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                   </>
                 )}
               </div>
-
-              <button
-                onClick={() => void handleParse()}
-                disabled={!file || loading}
-                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {loading
-                  ? <><Loader2 size={14} className="animate-spin" /> {resolvedId ? 'Parsing…' : 'Saving & Parsing…'}</>
-                  : `Import ${mode === 'docx' ? 'DOCX' : 'PDF'}`
-                }
-              </button>
             </>
           )}
 

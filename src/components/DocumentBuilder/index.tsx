@@ -119,7 +119,21 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   /** Auto-save before DOCX import when templateId is null. Returns the saved id or null on failure. */
   const handleSaveFirst = useCallback(async (): Promise<number | null> => {
     if (templateId) return templateId;
-    if (isSaving) return null;
+    // If a save is already in flight, wait for it to finish (up to 8 s) then return the id
+    if (isSaving) {
+      const start = Date.now();
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => {
+          if (!useDocumentStore.getState().isSaving || Date.now() - start > 8000) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 100);
+      });
+      // If a save completed and gave us an id, use it
+      const currentId = useDocumentStore.getState().templateId;
+      if (currentId) return currentId;
+    }
     setIsSaving(true);
     setSaveStatus('idle');
     try {
