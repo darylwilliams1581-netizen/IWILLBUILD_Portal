@@ -1,3 +1,14 @@
 {
-  "CATEGORIES": ["All", "Documents", "Safety", "Estimating", "Site", "Compliance", "Reports"]
+  "ALL_TYPES": [
+    "All",
+    "swms",
+    "policy",
+    "procedure",
+    "form",
+    "contract",
+    "quote",
+    "report",
+    "induction",
+    "custom"
+  ]
 }
