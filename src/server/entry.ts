@@ -264,6 +264,14 @@ import jobs_id_delays_delayId_put_231 from "./api/jobs/[id]/delays/[delayId]/PUT
 import jobs_id_files_get_232 from "./api/jobs/[id]/files/GET";
 import jobs_id_forms_get_233 from "./api/jobs/[id]/forms/GET";
 import jobs_id_forms_post_234 from "./api/jobs/[id]/forms/POST";
+// ── Attendance routes ─────────────────────────────────────────────────────────
+import jobs_id_signin_post from "./api/jobs/[id]/signin/POST";
+import jobs_id_signout_post from "./api/jobs/[id]/signout/POST";
+import jobs_id_signin_status_get from "./api/jobs/[id]/signin-status/GET";
+import jobs_id_generate_qr_post from "./api/jobs/[id]/generate-qr/POST";
+import jobs_id_signin_qr_post from "./api/jobs/[id]/signin-qr/POST";
+import jobs_id_signout_qr_post from "./api/jobs/[id]/signout-qr/POST";
+import migrate_attendance_post from "./api/migrate-attendance/POST";
 import jobs_id_ledger_get_235 from "./api/jobs/[id]/ledger/GET";
 import jobs_id_ledger_post_236 from "./api/jobs/[id]/ledger/POST";
 import jobs_id_ledger_export_get_237 from "./api/jobs/[id]/ledger/export/GET";
@@ -691,6 +699,11 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 app.use('/api', globalApiLimiter);
 app.use('/api/auth', authApiLimiter);
 
+// ── QR attendance — public endpoints (registered BEFORE auth guard) ───────────
+// Token-validated inside the handler; guests do not need a portal session.
+app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post);
+
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
 // whitelist (auth routes, signup, Stripe webhook, health check).
@@ -699,6 +712,11 @@ app.use('/api/auth', authApiLimiter);
 app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
   // Let public routes through immediately
   if (isPublicRoute(req.method, req.path.startsWith('/') ? `/api${req.path}` : `/api/${req.path}`)) {
+    return next();
+  }
+  // QR attendance — token-validated, unauthenticated guests allowed
+  // req.path here is relative to /api mount (e.g. /jobs/1/signin-qr)
+  if (req.method === 'POST' && /^\/jobs\/[0-9]+\/(signin|signout)-qr$/.test(req.path)) {
     return next();
   }
   // Customer portal routes are token-validated inside their own handlers
@@ -1689,6 +1707,13 @@ app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_231);
 app.get("/api/jobs/:id/files", jobs_id_files_get_232);
 app.get("/api/jobs/:id/forms", jobs_id_forms_get_233);
 app.post("/api/jobs/:id/forms", jobs_id_forms_post_234);
+// ── Attendance ────────────────────────────────────────────────────────────────
+app.post("/api/jobs/:id/signin", jobs_id_signin_post);
+app.post("/api/jobs/:id/signout", jobs_id_signout_post);
+app.get("/api/jobs/:id/signin-status", jobs_id_signin_status_get);
+app.post("/api/jobs/:id/generate-qr", jobs_id_generate_qr_post);
+// signin-qr and signout-qr are registered before the auth guard (public endpoints)
+app.post("/api/migrate-attendance", migrate_attendance_post);
 app.get("/api/jobs/:id/ledger", jobs_id_ledger_get_235);
 app.post("/api/jobs/:id/ledger", jobs_id_ledger_post_236);
 app.get("/api/jobs/:id/ledger/export", jobs_id_ledger_export_get_237);

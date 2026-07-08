@@ -38,6 +38,7 @@ import {
   Layers,
   Image,
   Rocket,
+  LogIn,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -56,11 +57,12 @@ import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import JobLaunchTab from '@/components/job/JobLaunchTab';
+import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -79,10 +81,11 @@ const NAV_GROUPS = [
   {
     label: 'Work / Compliance',
     items: [
-      { key: 'estimates' as Tab, label: 'Estimates',  icon: Calculator },
-      { key: 'progress'  as Tab, label: 'Progress',   icon: TrendingUp },
-      { key: 'forms'     as Tab, label: 'Forms',      icon: ClipboardList },
-      { key: 'safety'    as Tab, label: 'Safety',     icon: ShieldAlert },
+      { key: 'estimates'  as Tab, label: 'Estimates',  icon: Calculator },
+      { key: 'progress'   as Tab, label: 'Progress',   icon: TrendingUp },
+      { key: 'forms'      as Tab, label: 'Forms',      icon: ClipboardList },
+      { key: 'safety'     as Tab, label: 'Safety',     icon: ShieldAlert },
+      { key: 'attendance' as Tab, label: 'Attendance', icon: LogIn },
     ],
   },
   {
@@ -129,7 +132,7 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance') return t as Tab;
     return 'details';
   });
 
@@ -919,6 +922,11 @@ export default function JobDetailPage() {
                   {/* ── Launch ── */}
                   {activeTab === 'launch' && (
                     <JobLaunchTab job={job} />
+                  )}
+
+                  {/* ── Attendance ── */}
+                  {activeTab === 'attendance' && (
+                    <JobAttendanceTab jobId={job.id} jobName={job.name} />
                   )}
 
                 </div>

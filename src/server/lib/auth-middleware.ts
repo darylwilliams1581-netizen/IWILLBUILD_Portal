@@ -219,6 +219,10 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/push\/vapid-key$/ },
   // Asset Manager — public share report (token-validated)
   { method: 'GET',  pattern: /^\/api\/asset-manager\/reports\/[^/]+$/ },
+
+  // QR attendance — token-validated, unauthenticated guests allowed
+  { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signin-qr$/ },
+  { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signout-qr$/ },
 ];
 
 /**
