@@ -18,8 +18,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
-import { resolveEffectiveCompany } from '../../lib/dazza-context.js';
+import { profiles } from '../../db/schema.js';
 import { generateShareToken, hashToken } from '../../lib/share-tokens.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -32,7 +33,8 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const { companyId } = await resolveEffectiveCompany(req, session.user.id);
+    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
+    const companyId = profile?.companyId;
     if (!companyId) return res.status(400).json({ error: 'No company' });
 
     const {

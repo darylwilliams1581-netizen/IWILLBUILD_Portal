@@ -6,7 +6,7 @@
  *
  * No login required for the recipient — they just open the link.
  *
- * Usage:
+ * Usage (flat props — legacy):
  *   <ShareLinkModal
  *     open={showShare}
  *     onClose={() => setShowShare(false)}
@@ -14,17 +14,36 @@
  *     targetId={String(estimate.id)}
  *     title={estimate.title}
  *   />
+ *
+ * Usage (target object — preferred):
+ *   <ShareLinkModal
+ *     open={showShare}
+ *     onClose={() => setShowShare(false)}
+ *     target={{ type: 'job_swms', id: '42', title: 'SWMS #1', linkType: 'swms_signon', defaultPermissions: ['view','sign'] }}
+ *   />
  */
 import { useState, useEffect, useRef } from 'react';
 import { X, Link2, Copy, Check, Loader2, QrCode, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+/** Structured target descriptor — used by JobSafety and other callers */
+export interface ShareTarget {
+  type: string;
+  id: string;
+  title: string;
+  linkType?: string;
+  defaultPermissions?: string[];
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  targetType: 'estimate' | 'invoice' | 'swms' | 'report' | 'safety_plan';
-  targetId: string;
-  title: string;
+  /** Preferred: pass a ShareTarget object */
+  target?: ShareTarget;
+  /** Legacy flat props — used when target is not provided */
+  targetType?: 'estimate' | 'invoice' | 'swms' | 'report' | 'safety_plan' | string;
+  targetId?: string;
+  title?: string;
 }
 
 const EXPIRY_OPTIONS = [
@@ -40,9 +59,17 @@ const TYPE_LABELS: Record<string, string> = {
   swms:        'SWMS',
   report:      'Report',
   safety_plan: 'Safety Plan',
+  job_swms:    'SWMS',
+  job_form:    'Form',
 };
 
-export default function ShareLinkModal({ open, onClose, targetType, targetId, title }: Props) {
+export default function ShareLinkModal({ open, onClose, target, targetType: legacyType, targetId: legacyId, title: legacyTitle }: Props) {
+  // Resolve props — prefer target object, fall back to legacy flat props
+  const resolvedType  = target?.type  ?? legacyType  ?? '';
+  const resolvedId    = target?.id    ?? legacyId    ?? '';
+  const resolvedTitle = target?.title ?? legacyTitle ?? '';
+  const resolvedLinkType = target?.linkType ?? 'document_view';
+  const resolvedPermissions = target?.defaultPermissions ?? ['view', 'download'];
   const [expiryDays, setExpiryDays] = useState(30);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,11 +104,11 @@ export default function ShareLinkModal({ open, onClose, targetType, targetId, ti
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          linkType: 'document_view',
-          targetType,
-          targetId,
-          permissions: ['view', 'download'],
+          title: resolvedTitle,
+          linkType: resolvedLinkType,
+          targetType: resolvedType,
+          targetId: resolvedId,
+          permissions: resolvedPermissions,
           expiryDays: expiryDays > 0 ? expiryDays : undefined,
         }),
       });
@@ -118,7 +145,7 @@ export default function ShareLinkModal({ open, onClose, targetType, targetId, ti
     if (!qrRef.current) return;
     const a = document.createElement('a');
     a.href = qrRef.current.toDataURL('image/png');
-    a.download = `share-qr-${targetType}-${targetId}.png`;
+    a.download = `share-qr-${resolvedType}-${resolvedId}.png`;
     a.click();
   }
 
@@ -152,8 +179,8 @@ export default function ShareLinkModal({ open, onClose, targetType, targetId, ti
                   <Link2 size={16} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-800">Share {TYPE_LABELS[targetType] ?? targetType}</p>
-                  <p className="text-xs text-slate-400 truncate max-w-[220px]">{title}</p>
+                  <p className="text-sm font-bold text-slate-800">Share {TYPE_LABELS[resolvedType] ?? resolvedType}</p>
+                  <p className="text-xs text-slate-400 truncate max-w-[220px]">{resolvedTitle}</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">

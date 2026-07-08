@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, Loader2, AlertCircle, Copy, Trash2, ChevronRight,
-  ChevronDown, Check, Lock, ExternalLink,
+  ChevronDown, Check, Lock, ExternalLink, Mail, Share2,
 } from 'lucide-react';
 import {
   fetchEstimates, createEstimate, deleteEstimate, patchEstimateStatus,
   getEstimateStatusStyle, ESTIMATE_STATUSES, type Estimate,
 } from '@/lib/estimates-api';
 import { usePermissions } from '@/lib/usePermissions';
+import ShareLinkModal from '@/components/ShareLinkModal';
+import { composeOutlookEmail } from '@/lib/messaging/outlook';
 
 interface Props {
   jobId: number;
@@ -32,6 +34,7 @@ export default function JobEstimates({ jobId }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [statusOpenId, setStatusOpenId] = useState<number | null>(null);
   const [statusSaving, setStatusSaving] = useState<number | null>(null);
+  const [shareEst, setShareEst] = useState<Estimate | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [jobId]);
@@ -128,6 +131,20 @@ export default function JobEstimates({ jobId }: Props) {
     } finally {
       setStatusSaving(null);
     }
+  }
+
+  function handleSend(est: Estimate) {
+    composeOutlookEmail({
+      kind: 'estimate',
+      estimateNumber: (est as Estimate & { estimateNumber?: string }).estimateNumber ?? `#${est.id}`,
+      jobName: undefined,
+      customerName: (est as Estimate & { customerName?: string }).customerName ?? undefined,
+      totalAmount: est.total !== undefined
+        ? est.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+        : undefined,
+      status: est.status,
+      link: `${window.location.origin}/view/estimate/${est.id}`,
+    });
   }
 
   if (loading) {
@@ -315,6 +332,20 @@ export default function JobEstimates({ jobId }: Props) {
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      onClick={() => handleSend(est)}
+                      title="Send via email"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Mail size={14} />
+                    </button>
+                    <button
+                      onClick={() => setShareEst(est)}
+                      title="Share link"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                    >
+                      <Share2 size={14} />
+                    </button>
+                    <button
                       onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
                       title="Open in new tab"
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
@@ -369,6 +400,17 @@ export default function JobEstimates({ jobId }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Share link modal */}
+      {shareEst && (
+        <ShareLinkModal
+          open={true}
+          onClose={() => setShareEst(null)}
+          targetType="estimate"
+          targetId={String(shareEst.id)}
+          title={shareEst.title}
+        />
       )}
     </div>
   );
