@@ -2426,6 +2426,103 @@ if (import.meta.env.PROD) {
 			console.warn('[startup] developer_audit_log migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
+		// ── Run the full self-healing migration suite (safetyTables loop etc.) ──
+		await runStartupMigrations();
+
+		// ── project_drawings ──────────────────────────────────────────────────
+		try {
+			await _db.execute(_sql.raw(
+				"CREATE TABLE IF NOT EXISTS project_drawings (" +
+				"  id INT AUTO_INCREMENT PRIMARY KEY," +
+				"  company_id INT NOT NULL," +
+				"  project_id INT NULL," +
+				"  title VARCHAR(500) NOT NULL," +
+				"  description TEXT NULL," +
+				"  source_file_path VARCHAR(1000) NULL," +
+				"  source_file_name VARCHAR(500) NULL," +
+				"  page_count INT NOT NULL DEFAULT 1," +
+				"  current_revision_id INT NULL," +
+				"  status VARCHAR(30) NOT NULL DEFAULT 'active'," +
+				"  created_by VARCHAR(36) NULL," +
+				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+				"  INDEX idx_pd_company (company_id)," +
+				"  INDEX idx_pd_project (company_id, project_id)," +
+				"  INDEX idx_pd_status (company_id, status)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] project_drawings table ready');
+		} catch (e) {
+			console.warn('[startup] project_drawings migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── job_drawing_links ─────────────────────────────────────────────────
+		try {
+			await _db.execute(_sql.raw(
+				"CREATE TABLE IF NOT EXISTS job_drawing_links (" +
+				"  id INT AUTO_INCREMENT PRIMARY KEY," +
+				"  job_id INT NOT NULL," +
+				"  drawing_id INT NOT NULL," +
+				"  context_note TEXT NULL," +
+				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  created_by VARCHAR(36) NULL," +
+				"  UNIQUE KEY uq_jdl_job_drawing (job_id, drawing_id)," +
+				"  INDEX idx_jdl_job (job_id)," +
+				"  INDEX idx_jdl_drawing (drawing_id)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] job_drawing_links table ready');
+		} catch (e) {
+			console.warn('[startup] job_drawing_links migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── document_templates ───────────────────────────────────────────────
+		try {
+			await _db.execute(_sql.raw(
+				"CREATE TABLE IF NOT EXISTS document_templates (" +
+				"  id INT AUTO_INCREMENT PRIMARY KEY," +
+				"  company_id INT NOT NULL," +
+				"  name VARCHAR(255) NOT NULL," +
+				"  template_type VARCHAR(50) NOT NULL DEFAULT 'document'," +
+				"  builder_json LONGTEXT NULL," +
+				"  page_layout_json TEXT NULL," +
+				"  theme_json TEXT NULL," +
+				"  pdf_settings_json LONGTEXT NULL," +
+				"  source_docx_path VARCHAR(500) NULL," +
+				"  source_docx_name VARCHAR(255) NULL," +
+				"  is_active TINYINT(1) NOT NULL DEFAULT 1," +
+				"  created_by_user_id VARCHAR(36) NULL," +
+				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+				"  INDEX idx_dt_company (company_id)," +
+				"  INDEX idx_dt_type (company_id, template_type)," +
+				"  INDEX idx_dt_active (company_id, is_active)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] document_templates table ready');
+		} catch (e) {
+			console.warn('[startup] document_templates migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── drawing_audit_log ─────────────────────────────────────────────────
+		try {
+			await _db.execute(_sql.raw(
+				"CREATE TABLE IF NOT EXISTS drawing_audit_log (" +
+				"  id INT AUTO_INCREMENT PRIMARY KEY," +
+				"  drawing_id INT NOT NULL," +
+				"  actor_id VARCHAR(36) NOT NULL," +
+				"  action VARCHAR(60) NOT NULL," +
+				"  details_json TEXT NULL," +
+				"  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  INDEX idx_dal_drawing (drawing_id)," +
+				"  INDEX idx_dal_actor (actor_id)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] drawing_audit_log table ready');
+		} catch (e) {
+			console.warn('[startup] drawing_audit_log migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
 		// ── All migrations done — now start accepting requests ─────────────────
 		const server = app.listen(port, host, () => {
 			console.log(`Server listening on http://${host}:${port}`);
