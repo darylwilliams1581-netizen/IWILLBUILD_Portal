@@ -113,7 +113,9 @@ export default function DashboardPage() {
     fetch('/api/usage', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
-        if (d && (d.hasWarnings || d.hasBlocked)) {
+        // Never show usage warnings to owner/enterprise/developer plans — they have no meaningful limits
+        const unlimitedPlans = ['owner', 'enterprise', 'developer'];
+        if (d && (d.hasWarnings || d.hasBlocked) && !unlimitedPlans.includes(d.plan)) {
           setUsageWarning({ hasWarnings: d.hasWarnings, hasBlocked: d.hasBlocked, warnings: d.warnings ?? [] });
         }
       })

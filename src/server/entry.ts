@@ -1510,6 +1510,27 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] platform_activity_log create failed:', msg);
     }
   }
+
+  // ── Permanently set developer/platform-owner accounts to 'owner' plan ────────
+  // These emails are the platform developers and should never be on trial limits.
+  const developerEmails = ['darylwilliams1581@gmail.com'];
+  for (const email of developerEmails) {
+    try {
+      await db.execute(sql`
+        UPDATE companies c
+        JOIN profiles p ON p.company_id = c.id
+        JOIN users u ON u.id = p.user_id
+        SET c.plan = 'owner',
+            c.subscription_status = 'active',
+            c.trial_ends_at = DATE_ADD(NOW(), INTERVAL 100 YEAR)
+        WHERE u.email = ${email}
+          AND (c.plan != 'owner' OR c.subscription_status != 'active')
+      `);
+      console.log(`[startup-migration] Developer plan ensured for ${email}`);
+    } catch (e: unknown) {
+      console.warn(`[startup-migration] Developer plan fix failed for ${email}:`, String((e as Error)?.message ?? e));
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
