@@ -25,6 +25,8 @@ import {
   Building2,
   Calculator,
   UserCircle,
+  MoreHorizontal,
+  History,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -391,7 +393,7 @@ export default function PortalSidebar() {
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} navItems={navItems} />
       </motion.aside>
 
-      {/* ── Mobile overlay drawer ── */}
+      {/* ── Mobile overlay drawer (full sidebar, opened via More or hamburger) ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -419,6 +421,9 @@ export default function PortalSidebar() {
         )}
       </AnimatePresence>
 
+      {/* ── Mobile bottom tab bar ── */}
+      <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
+
       <MobileMenuTrigger onOpen={() => setMobileOpen(true)} />
     </>
   );
@@ -432,4 +437,86 @@ function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
     return () => window.removeEventListener('portal:open-menu', handler);
   }, [onOpen]);
   return null;
+}
+
+// ─── Mobile bottom tab bar ────────────────────────────────────────────────────
+// Shown only on mobile (<768px). Provides one-thumb access to primary routes.
+// "More" opens the full sidebar drawer.
+const MOBILE_TAB_ITEMS = [
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
+  { label: 'Fleet',     icon: Truck,            href: '/fleet' },
+  { label: 'Studio',    icon: Layers,           href: '/studio' },
+  { label: 'History',   icon: History,          href: '/scheduler' },
+] as const;
+
+function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
+  const location = useLocation();
+
+  const isActive = (href: string) =>
+    location.pathname === href || location.pathname.startsWith(href + '/');
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#1A1D23] border-t border-white/10"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      aria-label="Mobile navigation"
+    >
+      <div className="flex items-stretch">
+        {MOBILE_TAB_ITEMS.map((item) => {
+          const Icon   = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+              style={{
+                color: active ? '#f97316' : 'rgba(255,255,255,0.45)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              aria-current={active ? 'page' : undefined}
+            >
+              {active && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
+              )}
+              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: active ? 700 : 500,
+                  letterSpacing: '0.01em',
+                  lineHeight: 1,
+                }}
+              >
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* More — opens full sidebar drawer */}
+        <button
+          onClick={onMoreClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+          style={{
+            color: 'rgba(255,255,255,0.45)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          } as React.CSSProperties}
+          aria-label="More navigation options"
+        >
+          <MoreHorizontal size={20} strokeWidth={1.8} />
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>
+            More
+          </span>
+        </button>
+      </div>
+    </nav>
+  );
 }
