@@ -340,61 +340,66 @@ export default function FleetPage() {
 
       <div className="portal-main">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <button
               onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
               aria-label="Open menu"
             >
               <Menu size={20} />
             </button>
             <Truck size={18} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base md:text-lg">Fleet</h1>
+            <h1 className="font-heading font-bold text-base md:text-lg truncate">Fleet</h1>
             {!loading && (
-              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
+              <span className="hidden sm:inline text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
                 {assets.length} asset{assets.length !== 1 ? 's' : ''}
               </span>
             )}
             {attentionCount > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+              <span className="hidden md:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
                 <AlertTriangle size={10} />
                 {attentionCount} need attention
               </span>
             )}
           </div>
-          <button
-            onClick={() => !isViewOnly && setShowModal(true)}
-            disabled={isViewOnly}
-            title={isViewOnly ? 'Subscribe to continue' : undefined}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={15} />
-            <span className="hidden sm:inline">Add Asset</span>
-            <span className="sm:hidden">Add</span>
-          </button>
 
-          {/* View toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
+          {/* Right-side controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* View toggle */}
+            <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
+              <button
+                onClick={() => setView('assets')}
+                title="Assets list"
+                className={[
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                ].join(' ')}
+              >
+                <Truck size={12} />
+                <span className="hidden sm:inline">Assets</span>
+              </button>
+              <button
+                onClick={() => setView('live-map')}
+                title="Live GPS map"
+                className={[
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                ].join(' ')}
+              >
+                <Navigation size={12} />
+                <span className="hidden sm:inline">Live Map</span>
+              </button>
+            </div>
+
             <button
-              onClick={() => setView('assets')}
-              className={[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
-              ].join(' ')}
+              onClick={() => !isViewOnly && setShowModal(true)}
+              disabled={isViewOnly}
+              title={isViewOnly ? 'Subscribe to continue' : undefined}
+              className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 md:px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Truck size={12} />
-              <span className="hidden sm:inline">Assets</span>
-            </button>
-            <button
-              onClick={() => setView('live-map')}
-              className={[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
-              ].join(' ')}
-            >
-              <Navigation size={12} />
-              <span className="hidden sm:inline">Live Map</span>
+              <Plus size={15} />
+              <span className="hidden sm:inline">Add Asset</span>
             </button>
           </div>
         </header>

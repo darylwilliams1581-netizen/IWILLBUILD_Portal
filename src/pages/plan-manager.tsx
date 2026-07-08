@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Map, Archive, Layers } from 'lucide-react';
+import { Map, Archive, Layers, Menu } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobContextTab from '@/components/JobContextTab';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
@@ -95,18 +95,25 @@ export default function PlanManagerPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="flex h-screen bg-[#F4F5F7] text-slate-900 overflow-hidden">
+      <div className="portal-page bg-[#F4F5F7] text-slate-900">
         <PortalSidebar />
 
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="portal-main">
           {/* Page header */}
-          <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+          <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
+            <button
+              onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
+              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
               <Map size={18} className="text-orange-500" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">Plan Manager</h1>
-              <p className="text-xs text-slate-500">Browse and manage drawings across all jobs</p>
+              <h1 className="text-base md:text-lg font-bold text-slate-900">Plan Manager</h1>
+              <p className="text-xs text-slate-500 hidden sm:block">Browse and manage drawings across all jobs</p>
             </div>
 
             <div className="flex-1" />

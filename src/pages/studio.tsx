@@ -10,7 +10,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen,
+  ShieldCheck, ClipboardList, BookOpen, Menu,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { toast } from 'sonner';
@@ -387,7 +387,7 @@ export default function StudioPage() {
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Studio — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD Studio — build quotes, contracts, safety documents and more." />
@@ -397,18 +397,25 @@ export default function StudioPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="portal-main">
 
         {/* ── Header ── */}
-        <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 py-4">
+        <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <button
+                onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
+                className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu size={20} />
+              </button>
+              <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
                 <Layers size={18} className="text-orange-500" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">IWILLBUILD Studio</h1>
-                <p className="text-xs text-slate-500">Build documents, forms and packs for your jobs</p>
+                <h1 className="text-base md:text-lg font-bold text-slate-900 leading-tight">IWILLBUILD Studio</h1>
+                <p className="text-xs text-slate-500 hidden sm:block">Build documents, forms and packs for your jobs</p>
               </div>
             </div>
 
@@ -425,8 +432,8 @@ export default function StudioPage() {
         </div>
 
         {/* ── Top-level tab bar ── */}
-        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6">
-          <div className="flex gap-0.5 py-2">
+        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
+          <div className="flex gap-0.5 py-2 min-w-max">
             {STUDIO_TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}

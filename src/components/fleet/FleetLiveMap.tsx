@@ -303,14 +303,14 @@ export default function FleetLiveMap() {
   return (
     <div className="flex flex-col h-full">
       {/* Header bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shrink-0">
+      <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
             <Navigation size={13} className="text-orange-500" />
           </div>
           <div>
             <p className="text-sm font-bold text-slate-800">Live GPS Tracking</p>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 hidden sm:block">
               {sessions.length} active driver{sessions.length !== 1 ? 's' : ''} · refreshes every 15s
             </p>
           </div>
@@ -319,13 +319,13 @@ export default function FleetLiveMap() {
         <div className="flex-1" />
 
         {/* Stats pills */}
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
             <MapPin size={10} />
             {withGps.length} on map
           </span>
           {noGps.length > 0 && (
-            <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
+            <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
               <AlertCircle size={10} />
               {noGps.length} no GPS
             </span>
@@ -336,17 +336,17 @@ export default function FleetLiveMap() {
           onClick={() => void fetchSessions()}
           disabled={loading}
           title="Refresh now"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-          Refresh
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
       {/* Body: sidebar + map */}
       <div className="flex flex-1 min-h-0">
-        {/* Driver sidebar */}
-        <div className="w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex flex-col overflow-hidden">
+        {/* Driver sidebar — hidden on very small phones, shown from sm: */}
+        <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-200 bg-white">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Users size={10} />

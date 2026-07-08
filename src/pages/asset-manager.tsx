@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Building2, ClipboardCheck, AlertTriangle, FileText,
-  Activity, BookOpen, Share2, ChevronLeft,
+  Activity, BookOpen, Share2, ChevronLeft, Menu,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -62,7 +62,7 @@ export default function AssetManagerPage() {
   }, [searchParams]);
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="portal-page">
       <Helmet>
         <title>Asset Manager — IWILLBUILD</title>
         <meta name="description" content="Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents." />
@@ -70,7 +70,7 @@ export default function AssetManagerPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <PortalSidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="portal-main">
 
         {/* ── Asset detail panel (replaces tab content when an asset is selected) ── */}
         {selectedAssetId !== null ? (
@@ -81,27 +81,34 @@ export default function AssetManagerPage() {
         ) : (
           <>
             {/* Header */}
-            <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 py-4">
+            <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
+                  className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu size={20} />
+                </button>
                 <button
                   onClick={() => navigate('/studio')}
                   className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors mr-1"
                 >
                   <ChevronLeft size={14} />
-                  Studio
+                  <span className="hidden sm:inline">Studio</span>
                 </button>
-                <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                   <Building2 size={18} className="text-cyan-600" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-slate-900 leading-tight">Asset Manager</h1>
-                  <p className="text-xs text-slate-500">Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents</p>
+                  <h1 className="text-base md:text-lg font-bold text-slate-900 leading-tight">Asset Manager</h1>
+                  <p className="text-xs text-slate-500 hidden sm:block">Inspect and manage assets, defects, photos, tenders, contracts, and closeout documents</p>
                 </div>
               </div>
             </div>
 
             {/* Tab bar */}
-            <div className="flex-shrink-0 border-b border-slate-200 bg-white px-6 flex items-center gap-1 overflow-x-auto">
+            <div className="flex-shrink-0 border-b border-slate-200 bg-white px-4 md:px-6 flex items-center gap-1 overflow-x-auto">
               {asset_manager.TABS.map((t, _airoIdx) => {
                 const Icon = TABSMeta[_airoIdx].icon;
                 const active = tab === t.id;

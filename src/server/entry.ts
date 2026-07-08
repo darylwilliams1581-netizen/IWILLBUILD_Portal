@@ -740,8 +740,8 @@ app.use('/api/auth', authApiLimiter);
 
 // ── QR attendance — public endpoints (registered BEFORE auth guard) ───────────
 // Token-validated inside the handler; guests do not need a portal session.
-app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_278);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_281);
+app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_282);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_285);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
@@ -1840,10 +1840,8 @@ app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get_
 app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put_279);
 app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get_280);
 app.post("/api/jobs/:id/signin", jobs_id_signin_post_281);
-app.post("/api/jobs/:id/signin-qr", jobs_id_signin_qr_post_282);
 app.get("/api/jobs/:id/signin-status", jobs_id_signin_status_get_283);
 app.post("/api/jobs/:id/signout", jobs_id_signout_post_284);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_285);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_286);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_287);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_288);
