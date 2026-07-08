@@ -187,16 +187,22 @@ export function usePlanManager() {
   }, []);
 
   // ── Upload ────────────────────────────────────────────────────────────────
-  const uploadPdf = useCallback(async (drawingId: number, file: File): Promise<{ url: string } | { error: string }> => {
+  const uploadPdf = useCallback(async (drawingId: number, file: File): Promise<{ url: string; pageCount: number } | { error: string }> => {
     setState(s => ({ ...s, uploading: true, uploadProgress: 0 }));
     try {
       const form = new FormData();
       form.append('file', file);
       const res = await fetch(`/api/plan-manager/drawings/${drawingId}/upload`, { method: 'POST', credentials: 'include', body: form });
-      const data = await res.json() as { url?: string; error?: string };
+      const data = await res.json() as { url?: string; pageCount?: number; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      setState(s => ({ ...s, uploading: false, uploadProgress: 100 }));
-      return { url: data.url! };
+      const pageCount = data.pageCount ?? 1;
+      setState(s => ({
+        ...s,
+        uploading: false,
+        uploadProgress: 100,
+        viewer: { ...s.viewer, totalPages: pageCount, currentPage: 1 },
+      }));
+      return { url: data.url!, pageCount };
     } catch (err) {
       setState(s => ({ ...s, uploading: false }));
       return { error: err instanceof Error ? err.message : String(err) };

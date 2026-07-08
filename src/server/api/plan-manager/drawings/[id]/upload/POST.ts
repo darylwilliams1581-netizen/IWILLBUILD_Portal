@@ -60,9 +60,25 @@ export default async function handler(req: Request, res: Response) {
 
     const publicUrl = `/airo-assets/uploads/drawings/${safeName}`;
 
+    // Detect page count from the PDF buffer
+    let pageCount = 1;
+    try {
+      const { PDFDocument } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.load(file.buffer, { ignoreEncryption: true });
+      pageCount = pdfDoc.getPageCount();
+    } catch {
+      // If pdf-lib can't parse it, fall back to a quick regex scan of the raw bytes
+      try {
+        const text = file.buffer.toString('latin1');
+        const match = text.match(/\/N\s+(\d+)|\/Count\s+(\d+)/);
+        if (match) pageCount = parseInt(match[1] ?? match[2] ?? '1', 10) || 1;
+      } catch { /* keep pageCount = 1 */ }
+    }
+
     await db.execute(sql`
       UPDATE project_drawings
-      SET source_file_path = ${publicUrl}, source_file_name = ${file.originalname}, updated_at = NOW()
+      SET source_file_path = ${publicUrl}, source_file_name = ${file.originalname},
+          page_count = ${pageCount}, updated_at = NOW()
       WHERE id = ${id}
     `);
 
@@ -72,7 +88,7 @@ export default async function handler(req: Request, res: Response) {
               ${JSON.stringify({ fileName: file.originalname, url: publicUrl, sizeBytes: file.size })})
     `);
 
-    res.json({ url: publicUrl, fileName: file.originalname, sizeBytes: file.size });
+    res.json({ url: publicUrl, fileName: file.originalname, sizeBytes: file.size, pageCount });
   } catch (err) {
     console.error('POST /api/plan-manager/drawings/:id/upload error:', err);
     res.status(500).json({ error: 'Failed to upload file' });
