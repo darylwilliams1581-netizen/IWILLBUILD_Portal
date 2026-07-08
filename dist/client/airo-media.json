@@ -58,5 +58,18 @@
       "/airo-assets/uploads/debug-publish-failure-screenshot-3dc4be94.jpg": "f38wenbvln_1783011343405_file_4sCoYv2esK.jpg"
     },
     "uploadContentHash": "6a95c8cac48c25741aa3f6211f868eb20cd551c40817926888cc991e18f6d33c"
+  },
+  "safety-badges/icons-sheet": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-08T04:52:19.912Z",
+    "lastUpdated": "2026-07-08T04:52:19.912Z",
+    "uploadSources": {
+      "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png"
+    },
+    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
   }
 }

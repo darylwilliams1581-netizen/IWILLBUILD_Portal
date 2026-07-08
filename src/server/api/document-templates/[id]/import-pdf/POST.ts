@@ -96,8 +96,11 @@ export default async function handler(req: Request, res: Response) {
             const viewport = page.getViewport({ scale: 1.5 });
 
             // Use pdfjs node canvas if available, otherwise skip rendering
-            // and store a placeholder text block
-            const { createCanvas } = await import('canvas' as string).catch(() => ({ createCanvas: null }));
+            // and store a placeholder text block.
+            // NOTE: 'canvas' is an optional native addon — import via a runtime-only
+            // path so Rollup never tries to resolve it at build time.
+            const canvasPkg = 'canvas';
+            const { createCanvas } = await import(/* @vite-ignore */ canvasPkg).catch(() => ({ createCanvas: null }));
 
             if (createCanvas) {
               const canvas = (createCanvas as (w: number, h: number) => { getContext: (t: string) => unknown; toBuffer: (t: string) => Buffer })(
