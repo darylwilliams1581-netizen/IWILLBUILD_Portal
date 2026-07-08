@@ -755,97 +755,13 @@ function SafetyDashboardTab() {
   );
 }
 
-const TABS = [
-  { id: 'dashboard',  label: 'Dashboard',    icon: ShieldCheck },
-  { id: 'swms',       label: 'SWMS Library', icon: ShieldAlert },
-  { id: 'plans',      label: 'Safety Plans', icon: ClipboardList },
-  { id: 'policies',   label: 'Policies',     icon: BookOpen },
-  { id: 'posters',    label: 'Posters',      icon: Image },
-] as const;
+// ── Named exports for SafetyContent ──────────────────────────────────────────
+// SafetyContent.tsx imports these to embed the tabs inside Studio.
+export { SafetyDashboardTab, SwmsLibraryTab, SafetyPlansTab, PoliciesTab, PostersTab };
 
-type TabId = typeof TABS[number]['id'];
+// ── /safety route — redirect to Studio Safety tab ────────────────────────────
+import { Navigate } from 'react-router-dom';
 
 export default function SafetyPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
-  // Run migration on mount
-  useEffect(() => {
-    fetch('/api/migrate-safety', { method: 'POST', credentials: 'include' }).catch(() => {});
-  }, []);
-
-  return (
-    <div className="portal-page">
-      <Helmet>
-        <title>Safety &amp; Compliance — IWILLBUILD Portal</title>
-        <meta name="description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
-        <link rel="canonical" href="https://iwillbuild.com/safety" />
-        <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Safety &amp; Compliance — IWILLBUILD Portal" />
-        <meta property="og:description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://iwillbuild.com/safety" />
-        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Safety &amp; Compliance — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="SWMS library, site safety plans, policies, safety posters and compliance pack export for trades and field service teams." />
-        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
-      </Helmet>
-
-      <PortalSidebar />
-
-      <div className="portal-main">
-        {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Open menu">
-              <Menu size={20} />
-            </button>
-            <ShieldAlert size={18} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base md:text-lg">Admin</h1>
-          </div>
-          <FleetHeaderIcon />
-        </header>
-
-        {/* Tab bar */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-6 shrink-0">
-          <div className="scroll-x-hide flex gap-1 py-2">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                  activeTab === id
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Icon size={13} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'dashboard'  && <SafetyDashboardTab />}
-            {activeTab === 'swms'       && <SwmsLibraryTab />}
-            {activeTab === 'plans'      && <SafetyPlansTab />}
-            {activeTab === 'policies'   && <PoliciesTab />}
-            {activeTab === 'posters'    && <PostersTab />}
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
+  return <Navigate to="/studio?tab=safety" replace />;
 }

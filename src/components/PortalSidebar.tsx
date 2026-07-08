@@ -66,6 +66,7 @@ function buildNavItems(_workPlural: string) {
     { label: 'Jobs',                 icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager',         icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',               icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Safety',               icon: ShieldCheck,     href: '/studio?tab=safety',    permKey: null },
     { label: 'Library',              icon: BookOpen,        href: '/library',              permKey: null },
     { label: 'Forms',                icon: ClipboardList,   href: '/forms',                permKey: null },
     { label: 'Invoices',             icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
@@ -78,7 +79,6 @@ function buildNavItems(_workPlural: string) {
 
 // ── Manage group ──────────────────────────────────────────────────────────────
 const adminItems = [
-  { label: 'Safety',       icon: ShieldCheck, href: '/safety',   adminOnly: false, ownerOnly: false, permKey: null as string | null },
   { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, ownerOnly: false, permKey: null as string | null },
   { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, ownerOnly: false, permKey: null as string | null },
   { label: 'Dazza AI',     icon: Bot,         href: '/dazza-ai', adminOnly: false, ownerOnly: true,  permKey: null as string | null },
@@ -140,7 +140,24 @@ function SidebarContent({
   const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
   const subInfo   = useSubscriptionStatus();
 
-  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
+  const isActive = (href: string) => {
+    // Handle query-param tabs like /studio?tab=safety
+    if (href.includes('?')) {
+      const [hPath, hQuery] = href.split('?');
+      const hParams = new URLSearchParams(hQuery);
+      const locParams = new URLSearchParams(location.search);
+      if (location.pathname !== hPath) return false;
+      for (const [k, v] of hParams.entries()) {
+        if (locParams.get(k) !== v) return false;
+      }
+      return true;
+    }
+    // For /studio (no query param), only active when NOT on a tab
+    if (href === '/studio') {
+      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
+    }
+    return location.pathname === href || location.pathname.startsWith(href + '/');
+  };
 
   async function handleLogout() {
     try {
@@ -463,8 +480,22 @@ const MOBILE_TAB_ITEMS = [
 function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
   const location = useLocation();
 
-  const isActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
+  const isActive = (href: string) => {
+    if (href.includes('?')) {
+      const [hPath, hQuery] = href.split('?');
+      const hParams = new URLSearchParams(hQuery);
+      const locParams = new URLSearchParams(location.search);
+      if (location.pathname !== hPath) return false;
+      for (const [k, v] of hParams.entries()) {
+        if (locParams.get(k) !== v) return false;
+      }
+      return true;
+    }
+    if (href === '/studio') {
+      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
+    }
+    return location.pathname === href || location.pathname.startsWith(href + '/');
+  };
 
   return (
     <nav

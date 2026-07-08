@@ -1,17 +1,21 @@
 import { studio } from 'virtual:content';
 /**
- * /studio — Document template list, API-driven
- * Row layout: status badge + rev | bold title + type | icon toolbar (duplicate, share, print, export PDF, export DOCX, edit, chevron)
+ * /studio — Document template list + Safety tab
+ * Row layout: status badge + rev | bold title + type | icon toolbar
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
+  ShieldCheck,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+
+// Lazy-load the safety content so it doesn't bloat the studio bundle
+import SafetyContent from '@/components/safety/SafetyContent';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,16 +55,20 @@ const TYPE_COLORS: Record<string, string> = {
   custom:    'bg-slate-100 text-slate-600 border-slate-200',
 };
 
+// ── Top-level studio tabs ─────────────────────────────────────────────────────
+
+const STUDIO_TABS = [
+  { id: 'documents', label: 'Documents',  icon: Layers },
+  { id: 'safety',    label: 'Safety',     icon: ShieldCheck },
+] as const;
+
+type StudioTabId = typeof STUDIO_TABS[number]['id'];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function typeLabel(t: string | null) {
-  return t ? (TYPE_LABELS[t] ?? t) : 'Custom';
-}
-function typeColor(t: string | null) {
-  return t ? (TYPE_COLORS[t] ?? TYPE_COLORS.custom) : TYPE_COLORS.custom;
-}
+function typeLabel(t: string | null) { return t ? (TYPE_LABELS[t] ?? t) : 'Custom'; }
+function typeColor(t: string | null) { return t ? (TYPE_COLORS[t] ?? TYPE_COLORS.custom) : TYPE_COLORS.custom; }
 function revLabel(updatedAt: string) {
-  // Simple revision counter based on date — placeholder until real versioning
   const d = new Date(updatedAt);
   return `Rev ${d.getFullYear() % 100}`;
 }
@@ -89,50 +97,35 @@ function ToolBtn({
 
 // ── Document row ──────────────────────────────────────────────────────────────
 
-function DocRow({
-  doc, index, onDelete,
-}: {
-  doc: DocTemplate; index: number; onDelete: (id: number) => void;
-}) {
+function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onDelete: (id: number) => void }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const isActive = Boolean(doc.is_active);
 
-  function openBuilder() {
-    navigate(`/studio/builder/${doc.id}`);
-  }
+  function openBuilder() { navigate(`/studio/builder/${doc.id}`); }
 
   async function handleDuplicate(e: React.MouseEvent) {
     e.stopPropagation();
     try {
-      const r = await fetch(`/api/document-templates/${doc.id}/duplicate`, {
-        method: 'POST', credentials: 'include',
-      });
+      const r = await fetch(`/api/document-templates/${doc.id}/duplicate`, { method: 'POST', credentials: 'include' });
       if (r.ok) window.location.reload();
     } catch { /* silent */ }
   }
 
-  async function handleExportPdf(e: React.MouseEvent) {
+  function handleExportPdf(e: React.MouseEvent) {
     e.stopPropagation();
     window.open(`/api/document-templates/${doc.id}/export/pdf`, '_blank');
   }
 
-  async function handleExportDocx(e: React.MouseEvent) {
+  function handleExportDocx(e: React.MouseEvent) {
     e.stopPropagation();
     window.open(`/api/document-templates/${doc.id}/export/docx`, '_blank');
   }
 
-  function handlePrint(e: React.MouseEvent) {
-    e.stopPropagation();
-    window.open(`/api/document-templates/${doc.id}/export/pdf`, '_blank');
-  }
-
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/studio/builder/${doc.id}`);
-    } catch { /* silent */ }
+    try { await navigator.clipboard.writeText(`${window.location.origin}/studio/builder/${doc.id}`); } catch { /* silent */ }
   }
 
   return (
@@ -142,50 +135,38 @@ function DocRow({
       transition={{ duration: 0.14, delay: index * 0.018, ease: 'easeOut' }}
       className="group rounded-xl border border-border bg-white hover:border-primary/40 hover:shadow-sm transition-all duration-150 overflow-hidden"
     >
-      {/* ── Main row ── */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-        onClick={openBuilder}
-      >
-        {/* Left: status badge + revision */}
+      {/* Main row */}
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={openBuilder}>
+        {/* Status + revision */}
         <div className="flex items-center gap-2 flex-shrink-0 w-40">
           {isActive ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              Active
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Active
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-              <Lock size={9} />
-              Inactive
+              <Lock size={9} />Inactive
             </span>
           )}
-          <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
-            {revLabel(doc.updated_at)}
-          </span>
+          <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{revLabel(doc.updated_at)}</span>
         </div>
 
-        {/* Centre: title + type badge */}
+        {/* Title + type */}
         <div className="flex-1 min-w-0 flex items-center gap-2.5">
           <p className="text-sm font-bold text-slate-800 truncate leading-tight">{doc.name}</p>
           <span className={`hidden sm:inline-flex flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${typeColor(doc.template_type)}`}>
             {typeLabel(doc.template_type)}
           </span>
           {doc.source_docx_name && (
-            <span className="hidden md:inline text-[10px] text-slate-400 truncate max-w-[160px]">
-              {doc.source_docx_name}
-            </span>
+            <span className="hidden md:inline text-[10px] text-slate-400 truncate max-w-[160px]">{doc.source_docx_name}</span>
           )}
         </div>
 
-        {/* Right: action toolbar — fades in on hover */}
-        <div
-          className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
+        {/* Toolbar — fades in on hover */}
+        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           <ToolBtn icon={Copy}       label="Duplicate"   onClick={handleDuplicate} />
           <ToolBtn icon={Share2}     label="Copy link"   onClick={handleShare} />
-          <ToolBtn icon={Printer}    label="Print"       onClick={handlePrint} />
+          <ToolBtn icon={Printer}    label="Print"       onClick={handleExportPdf} />
           <ToolBtn icon={FileDown}   label="Export PDF"  onClick={handleExportPdf} />
           <ToolBtn icon={FileOutput} label="Export DOCX" onClick={handleExportDocx} />
           <ToolBtn icon={Pencil}     label="Edit"        onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
@@ -199,11 +180,11 @@ function DocRow({
           </button>
         </div>
 
-        {/* Resting chevron (hidden when toolbar shows) */}
+        {/* Resting chevron */}
         <ChevronRight size={14} className="text-slate-300 group-hover:opacity-0 transition-opacity flex-shrink-0 -ml-1" />
       </div>
 
-      {/* ── Expanded detail ── */}
+      {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
@@ -212,54 +193,35 @@ function DocRow({
             <span>Updated: <span className="text-slate-700 font-medium">{new Date(doc.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span></span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={openBuilder}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              <Pencil size={11} />
-              Open in builder
+            <button onClick={openBuilder} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
+              <Pencil size={11} />Open in builder
             </button>
-            <button
-              onClick={handleExportPdf}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
-            >
-              <FileDown size={11} />
-              Export PDF
+            <button onClick={handleExportPdf} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
+              <FileDown size={11} />Export PDF
             </button>
-            <button
-              onClick={handleExportDocx}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
-            >
-              <FileOutput size={11} />
-              Export DOCX
+            <button onClick={handleExportDocx} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
+              <FileOutput size={11} />Export DOCX
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Delete confirm ── */}
+      {/* Delete confirm */}
       {confirmDel && (
         <div className="border-t border-red-100 bg-red-50 px-4 py-3 flex items-center gap-3">
           <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
           <p className="text-xs text-red-700 flex-1">Delete <strong>{doc.name}</strong>? This cannot be undone.</p>
-          <button
-            onClick={() => { setConfirmDel(false); onDelete(doc.id); }}
-            className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            Delete
-          </button>
-          <button onClick={() => setConfirmDel(false)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={13} />
-          </button>
+          <button onClick={() => { setConfirmDel(false); onDelete(doc.id); }} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors">Delete</button>
+          <button onClick={() => setConfirmDel(false)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors"><X size={13} /></button>
         </div>
       )}
     </motion.div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Documents tab content ─────────────────────────────────────────────────────
 
-export default function StudioPage() {
+function DocumentsTab() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,18 +230,14 @@ export default function StudioPage() {
   const [typeFilter, setTypeFilter] = useState('All');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const r = await fetch('/api/document-templates', { credentials: 'include' });
       if (!r.ok) throw new Error('Failed to load');
       const d = await r.json() as { templates?: DocTemplate[] };
       setTemplates(d.templates ?? []);
-    } catch {
-      setError('Could not load templates. Please refresh.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('Could not load templates. Please refresh.'); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -298,6 +256,111 @@ export default function StudioPage() {
   });
 
   const activeCount = templates.filter((t) => Boolean(t.is_active)).length;
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      {/* Sub-toolbar */}
+      <div className="flex-shrink-0 px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-3 overflow-x-auto">
+        <div className="relative flex-shrink-0 w-56">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search documents…"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          {studio.ALL_TYPES.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={[
+                'flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
+                typeFilter === t ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200',
+              ].join(' ')}
+            >
+              {t === 'All' ? 'All' : TYPE_LABELS[t] ?? t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div className="flex-shrink-0 px-6 py-2 flex items-center gap-6 border-b border-slate-100 bg-white">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          <span><span className="text-slate-700 font-semibold">{activeCount}</span> active</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+          <span><span className="text-slate-700 font-semibold">{templates.length}</span> total</span>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
+            <AlertTriangle size={14} />{error}
+          </div>
+        )}
+        {loading ? (
+          <div className="flex items-center justify-center py-24"><Loader2 size={22} className="animate-spin text-slate-400" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
+              <Layers size={22} className="text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">{templates.length === 0 ? 'No documents yet' : 'No results'}</p>
+            <p className="text-xs text-slate-400 mt-1">
+              {templates.length === 0 ? 'Click "New document" to create your first template' : 'Try a different search or filter'}
+            </p>
+            {templates.length === 0 && (
+              <button onClick={() => navigate('/studio/builder/new')} className="mt-4 flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                <Plus size={14} />New document
+              </button>
+            )}
+          </div>
+        ) : (
+          <motion.div
+            variants={{ visible: { transition: { staggerChildren: 0.015 } } }}
+            initial="hidden" animate="visible"
+            className="flex flex-col gap-2"
+          >
+            {filtered.map((doc, i) => (
+              <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} />
+            ))}
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function StudioPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read tab from ?tab= query param so direct links and sidebar work
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<StudioTabId>(
+    tabParam === 'safety' ? 'safety' : 'documents'
+  );
+
+  function switchTab(id: StudioTabId) {
+    setActiveTab(id);
+    setSearchParams(id === 'documents' ? {} : { tab: id }, { replace: true });
+  }
+
+  // Sync if URL param changes externally (e.g. sidebar link)
+  useEffect(() => {
+    const p = searchParams.get('tab');
+    if (p === 'safety' && activeTab !== 'safety') setActiveTab('safety');
+    if (!p && activeTab !== 'documents') setActiveTab('documents');
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
@@ -325,107 +388,43 @@ export default function StudioPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => navigate('/studio/builder/new')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors flex-shrink-0"
-            >
-              <Plus size={15} />
-              New document
-            </button>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center gap-6 mt-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span><span className="text-slate-700 font-semibold">{activeCount}</span> active</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
-              <span><span className="text-slate-700 font-semibold">{templates.length}</span> total</span>
-            </div>
+            {activeTab === 'documents' && (
+              <button
+                onClick={() => navigate('/studio/builder/new')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors flex-shrink-0"
+              >
+                <Plus size={15} />
+                New document
+              </button>
+            )}
           </div>
         </div>
 
-        {/* ── Toolbar: search + type filter ── */}
-        <div className="flex-shrink-0 px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-3 overflow-x-auto">
-          {/* Search */}
-          <div className="relative flex-shrink-0 w-56">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documents…"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
-            />
-          </div>
-
-          {/* Type filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {studio.ALL_TYPES.map((t) => (
+        {/* ── Top-level tab bar ── */}
+        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6">
+          <div className="flex gap-1 py-2">
+            {STUDIO_TABS.map(({ id, label, icon: Icon }) => (
               <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
+                key={id}
+                onClick={() => switchTab(id)}
                 className={[
-                  'flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
-                  typeFilter === t
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap',
+                  activeTab === id
                     ? 'bg-orange-500 text-white'
-                    : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200',
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100',
                 ].join(' ')}
               >
-                {t === 'All' ? 'All' : TYPE_LABELS[t] ?? t}
+                <Icon size={13} />
+                {label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Document list ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
-              <AlertTriangle size={14} />{error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 size={22} className="animate-spin text-slate-400" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
-                <Layers size={22} className="text-slate-400" />
-              </div>
-              <p className="text-sm font-semibold text-slate-600">
-                {templates.length === 0 ? 'No documents yet' : 'No results'}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {templates.length === 0
-                  ? 'Click "New document" to create your first template'
-                  : 'Try a different search or filter'}
-              </p>
-              {templates.length === 0 && (
-                <button
-                  onClick={() => navigate('/studio/builder/new')}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  <Plus size={14} />
-                  New document
-                </button>
-              )}
-            </div>
-          ) : (
-            <motion.div
-              variants={{ visible: { transition: { staggerChildren: 0.015 } } }}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-col gap-2"
-            >
-              {filtered.map((doc, i) => (
-                <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} />
-              ))}
-            </motion.div>
-          )}
+        {/* ── Tab content ── */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>
     </div>
