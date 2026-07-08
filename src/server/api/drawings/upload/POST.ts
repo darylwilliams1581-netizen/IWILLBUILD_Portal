@@ -12,18 +12,9 @@ const DRAWING_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
 const ALLOWED_DRAWING_MIMES: Record<string, boolean> = {
   'application/pdf': true,
-  'application/acad': true,
-  'application/x-acad': true,
-  'application/autocad_dwg': true,
-  'image/vnd.dwg': true,
-  'image/x-dwg': true,
-  'application/dwg': true,
-  'application/dxf': true,
-  'application/x-dxf': true,
-  'application/octet-stream': true,
 };
 
-const ALLOWED_DRAWING_EXTS = ['.pdf', '.dwg', '.dxf'];
+const ALLOWED_DRAWING_EXTS = ['.pdf'];
 
 export default async function handler(req: Request, res: Response) {
   let parsed;
@@ -91,7 +82,7 @@ export default async function handler(req: Request, res: Response) {
     const header = result[0] as unknown as ResultSetHeader;
     const record = await db.query.companyFiles.findFirst({ where: eq(companyFiles.id, header.insertId) });
 
-    res.status(201).json({ file: record, isPdf: ext === '.pdf', isDwg: ext === '.dwg' || ext === '.dxf' });
+    res.status(201).json({ file: record, isPdf: true, isDwg: false });
   } catch (err) {
     console.error('POST /api/drawings/upload error:', err);
     res.status(500).json({ error: 'Failed to upload drawing' });

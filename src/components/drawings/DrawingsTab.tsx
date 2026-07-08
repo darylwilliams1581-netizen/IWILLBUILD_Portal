@@ -103,12 +103,12 @@ function UploadModal({ jobId, onClose, onSaved }: { jobId: number; onClose: () =
               ) : (
                 <div className="flex flex-col items-center gap-1.5">
                   <Upload size={20} className="text-slate-400" />
-                  <p className="text-sm text-slate-500">Click to select PDF, DWG or DXF</p>
+                  <p className="text-sm text-slate-500">Click to select PDF</p>
                   <p className="text-xs text-slate-400">Max 50 MB</p>
                 </div>
               )}
             </div>
-            <input ref={fileRef} type="file" accept=".pdf,.dwg,.dxf" className="hidden"
+            <input ref={fileRef} type="file" accept=".pdf" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); if (!title) setTitle(f.name.replace(/\.[^.]+$/, '')); } }} />
           </div>
 
@@ -440,7 +440,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
         <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-800">
-            <span className="font-bold">DWG/DXF files</span> — preview not available. Download the DWG or upload a PDF version to open in the viewer.
+            Preview not available for this file. Download to open in your viewer.
           </p>
         </div>
       )}
