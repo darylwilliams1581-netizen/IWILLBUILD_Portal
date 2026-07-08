@@ -468,10 +468,10 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
 // ── Safety Badge Inspector (per-badge upload + edit) ──────────────────────────
 
 const BADGE_TYPE_OPTIONS: { value: SafetyBadgeType; label: string; emoji: string }[] = [
-  { value: 'helmet',            label: 'Safety Helmet',     emoji: '⛑️' },
-  { value: 'hi_vis',            label: 'Hi-Vis Clothing',   emoji: '🟡' },
-  { value: 'ppe',               label: 'PPE',               emoji: '🦺' },
-  { value: 'footwear',          label: 'Safety Footwear',   emoji: '👢' },
+  { value: 'helmet',            label: 'Safety Helmet',     emoji: '🪖' },
+  { value: 'hi_vis',            label: 'Hi-Vis Clothing',   emoji: '🦺' },
+  { value: 'ppe',               label: 'PPE',               emoji: '🛡️' },
+  { value: 'footwear',          label: 'Safety Footwear',   emoji: '🥾' },
   { value: 'eye_protection',    label: 'Eye Protection',    emoji: '🥽' },
   { value: 'gloves',            label: 'Gloves',            emoji: '🧤' },
   { value: 'electrical_gloves', label: 'Electrical Gloves', emoji: '⚡' },
