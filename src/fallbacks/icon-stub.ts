@@ -189,6 +189,7 @@ export const Smartphone = NullIcon;
 export const Space = NullIcon;
 export const Sparkles = NullIcon;
 export const SplitSquareHorizontal = NullIcon;
+export const SkipForward = NullIcon;
 export const Square = NullIcon;
 export const Star = NullIcon;
 export const StickyNote = NullIcon;

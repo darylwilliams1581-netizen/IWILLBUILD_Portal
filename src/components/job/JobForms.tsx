@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormRunner from './FormRunner';
+import SkipMetricsPanel from './SkipMetricsPanel';
 import type { Job } from '@/lib/jobs-api';
 import { FormSharePanel } from '@/components/jobs/FormSharePanel';
 
@@ -577,6 +578,11 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
           />
         )}
       </AnimatePresence>
+
+      {/* Skip logic analytics — shown per template that has submissions */}
+      {templates.filter((t) => (submissionsByTemplate[t.id] ?? []).length > 0).map((t) => (
+        <SkipMetricsPanel key={t.id} templateId={t.id} />
+      ))}
     </>
   );
 }

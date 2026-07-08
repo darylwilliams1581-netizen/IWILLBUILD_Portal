@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LIMITS } from '@/lib/limits';
+import SkipLogicEditor from '@/components/job/SkipLogicEditor';
 import {
   ChevronLeft,
   Plus,
@@ -548,7 +549,15 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
 
   async function saveLogic(newLogic: FieldLogic) {
     setLogic(newLogic);
-    await onUpdate({ logicJson: JSON.stringify(newLogic) });
+    // Preserve existing skipRules when saving show/hide logic
+    let base: Record<string, unknown> = {};
+    try { base = JSON.parse(field.logicJson ?? '{}') as Record<string, unknown>; } catch { /* ignore */ }
+    const merged = { ...base, ...newLogic };
+    await onUpdate({ logicJson: JSON.stringify(merged) });
+  }
+
+  async function saveSkipLogicJson(newLogicJson: string) {
+    await onUpdate({ logicJson: newLogicJson });
   }
 
   const currentDef = getTypeDef(fieldType);
@@ -767,9 +776,18 @@ function FieldCard({ field, index, total, allFields, onMoveUp, onMoveDown, onDel
                     </div>
                   )}
 
-                  {/* Divider + logic */}
+                  {/* Divider + show/hide logic */}
                   <div className="border-t border-slate-100" />
                   <LogicEditor fieldId={field.id} logic={logic} allFields={allFields} onChange={saveLogic} />
+
+                  {/* Skip logic — only for non-layout fields */}
+                  {!isLayout && (
+                    <SkipLogicEditor
+                      field={field}
+                      allFields={allFields}
+                      onChange={(newLogicJson) => void saveSkipLogicJson(newLogicJson)}
+                    />
+                  )}
                 </div>
               </motion.div>
             )}
