@@ -6,6 +6,10 @@ import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
+import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interceptor';
+
+// Install session expiry header interceptor before any fetch calls are made
+installSessionFetchInterceptor();
 
 if (import.meta.env.MODE === 'development') {
   const meta = document.createElement('meta');

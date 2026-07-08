@@ -34,6 +34,8 @@ import NotificationBell from '@/components/NotificationBell';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
+import { useSessionTimeout } from '@/lib/auth/useSessionTimeout';
+import SessionExpiredBanner from '@/components/auth/SessionExpiredBanner';
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
@@ -373,6 +375,9 @@ export default function PortalSidebar() {
   const { workPlural } = useTerminology();
   const navItems    = buildNavItems(workPlural);
 
+  // ── Session timeout enforcement ───────────────────────────────────────────
+  const { isExpired } = useSessionTimeout();
+
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   useEffect(() => {
@@ -383,6 +388,9 @@ export default function PortalSidebar() {
 
   return (
     <>
+      {/* ── Session expired banner (shown above everything) ── */}
+      {isExpired && <SessionExpiredBanner />}
+
       {/* ── Desktop sidebar ── */}
       <motion.aside
         animate={{ width: collapsed ? 72 : 240 }}

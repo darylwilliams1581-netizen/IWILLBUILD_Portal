@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound,
 import { signIn, useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
+import { stampSessionExpiry } from '@/lib/auth/session-timeout';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -58,6 +59,7 @@ export default function LoginPage() {
 
   // Just-verified banner — shown when redirected from email verification
   const [justVerified, setJustVerified] = useState(false);
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,12 +67,15 @@ export default function LoginPage() {
 
   // ── All hooks must be declared before any conditional return ──────────────
 
-  // Detect ?verified=1 query param and show banner
+  // Detect ?verified=1 and ?reason=expired query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('verified') === '1') {
       setJustVerified(true);
-      // Clean the URL without a page reload
+      navigate('/login', { replace: true });
+    }
+    if (params.get('reason') === 'expired') {
+      setSessionExpiredNotice(true);
       navigate('/login', { replace: true });
     }
   }, [location.search, navigate]);
@@ -177,6 +182,8 @@ export default function LoginPage() {
         setMustChangePassword(true);
         return;
       }
+      // ── Stamp session expiry (14h / 06:00 AEST cutoff) ───────────────────
+      stampSessionExpiry();
       // Check if 2FA is required
       const tfaRes = await fetch('/api/me/2fa/status', { credentials: 'include' });
       const tfaData = await tfaRes.json() as { enabled?: boolean };
@@ -317,6 +324,17 @@ export default function LoginPage() {
               Internal access only
             </p>
           </div>
+
+          {/* ── Session expired notice ─────────────────────────────────── */}
+          {sessionExpiredNotice && (
+            <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/25 rounded-xl px-4 py-3 mx-0">
+              <ShieldCheck size={16} className="text-orange-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-orange-300 text-sm font-semibold">Session expired — please sign in again</p>
+                <p className="text-orange-400/70 text-xs mt-0.5">Your session reached its daily security limit.</p>
+              </div>
+            </div>
+          )}
 
           {/* ── Email just-verified banner ─────────────────────────────── */}
           {justVerified && (

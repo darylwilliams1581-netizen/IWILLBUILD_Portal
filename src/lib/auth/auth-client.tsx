@@ -14,6 +14,7 @@ import {
   claimSessionRecovery,
   clearSessionRecovery,
 } from './session-recovery';
+import { clearSessionExpiry } from './session-timeout';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 // Logs only non-sensitive fields. Never logs passwords or tokens.
@@ -203,6 +204,7 @@ export function LogoutButton({
   async function handleLogout() {
     setIsLoading(true);
     try {
+      clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       await signOut();
       window.location.href = '/login';
     } catch (error) {
