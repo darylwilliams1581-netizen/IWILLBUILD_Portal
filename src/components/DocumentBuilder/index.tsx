@@ -34,7 +34,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const {
     mode, setMode, isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName,
-    undo, redo, canUndo, canRedo, reorderBlocks,
+    undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
   } = useDocumentStore();
 
   const [showDocxImporter, setShowDocxImporter] = useState(false);
@@ -112,15 +112,24 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     }
   }, [isSaving, templateId, getSerialised, markSaved, onSaved, pdfSettings]);
 
-  const handleDocxImported = (blocks: DocumentBlock[], _docxName: string) => {
-    reorderBlocks(blocks);
+  const handleDocxImported = (importedBlocks: DocumentBlock[], _docxName: string, insertMode: 'replace' | 'prepend' | 'append') => {
+    if (insertMode === 'prepend') {
+      prependBlocks(importedBlocks);
+    } else if (insertMode === 'append') {
+      appendBlocks(importedBlocks);
+    } else {
+      reorderBlocks(importedBlocks);
+    }
   };
 
   /** Auto-save before DOCX import when templateId is null. Returns the saved id or null on failure. */
   const handleSaveFirst = useCallback(async (): Promise<number | null> => {
-    if (templateId) return templateId;
+    // Always read live state — never rely on closure values which may be stale
+    const liveId = useDocumentStore.getState().templateId;
+    if (liveId) return liveId;
+
     // If a save is already in flight, wait for it to finish (up to 8 s) then return the id
-    if (isSaving) {
+    if (useDocumentStore.getState().isSaving) {
       const start = Date.now();
       await new Promise<void>(resolve => {
         const check = setInterval(() => {
@@ -130,10 +139,10 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           }
         }, 100);
       });
-      // If a save completed and gave us an id, use it
       const currentId = useDocumentStore.getState().templateId;
       if (currentId) return currentId;
     }
+
     setIsSaving(true);
     setSaveStatus('idle');
     try {
@@ -159,7 +168,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     } finally {
       setIsSaving(false);
     }
-  }, [templateId, isSaving, getSerialised, markSaved, onSaved, pdfSettings]);
+  }, [getSerialised, markSaved, onSaved, pdfSettings]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
@@ -285,6 +294,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         {showDocxImporter && (
           <DocxImporter
             templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
             onClose={() => setShowDocxImporter(false)}
             onImported={handleDocxImported}
             onSaveFirst={handleSaveFirst}

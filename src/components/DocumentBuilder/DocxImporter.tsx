@@ -9,25 +9,29 @@
  */
 
 import { useState, useRef } from 'react';
-import { FileUp, Loader2, AlertCircle, CheckCircle, X, FileText, File } from 'lucide-react';
+import { FileUp, Loader2, AlertCircle, CheckCircle, X, FileText, File, ArrowDownToLine, ArrowUpToLine, RefreshCw } from 'lucide-react';
 import type { DocumentBlock } from './types';
+
+type InsertMode = 'replace' | 'prepend' | 'append';
 
 type ImportMode = 'docx' | 'pdf';
 
 interface Props {
   templateId: number | null;
+  hasExistingBlocks: boolean;
   onClose: () => void;
-  onImported: (blocks: DocumentBlock[], docxName: string) => void;
+  onImported: (blocks: DocumentBlock[], docxName: string, insertMode: InsertMode) => void;
   /** Called when templateId is null — should save the template and return the new id, or null on failure */
   onSaveFirst: () => Promise<number | null>;
 }
 
-export default function DocxImporter({ templateId, onClose, onImported, onSaveFirst }: Props) {
+export default function DocxImporter({ templateId, hasExistingBlocks, onClose, onImported, onSaveFirst }: Props) {
   const [mode, setMode] = useState<ImportMode>('docx');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ blocks: DocumentBlock[]; name: string; warnings: string[]; pageCount?: number } | null>(null);
+  const [insertMode, setInsertMode] = useState<InsertMode>('replace');
   const inputRef = useRef<HTMLInputElement>(null);
   const [resolvedId, setResolvedId] = useState<number | null>(templateId);
 
@@ -126,7 +130,7 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
 
   const handleConfirm = () => {
     if (!preview) return;
-    onImported(preview.blocks, preview.name);
+    onImported(preview.blocks, preview.name, insertMode);
     onClose();
   };
 
@@ -302,6 +306,45 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                 </div>
               </div>
 
+              {/* Insert mode — only shown when there are existing blocks */}
+              {hasExistingBlocks && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500">
+                    How to insert into existing content
+                  </div>
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    {([
+                      { value: 'replace', icon: RefreshCw,       label: 'Replace all',      desc: 'Delete existing blocks and replace with imported content' },
+                      { value: 'prepend', icon: ArrowUpToLine,   label: 'Insert at top',    desc: 'Add imported blocks above your existing content' },
+                      { value: 'append',  icon: ArrowDownToLine, label: 'Insert at bottom', desc: 'Add imported blocks below your existing content' },
+                    ] as const).map(({ value, icon: Icon, label, desc }) => (
+                      <button
+                        key={value}
+                        onClick={() => setInsertMode(value)}
+                        className={`flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                          insertMode === value ? 'bg-orange-50' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          insertMode === value ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          <Icon size={13} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-xs font-semibold ${insertMode === value ? 'text-primary' : 'text-slate-700'}`}>{label}</p>
+                          <p className="text-[11px] text-slate-400 leading-tight">{desc}</p>
+                        </div>
+                        <div className={`ml-auto w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                          insertMode === value ? 'border-primary bg-primary' : 'border-slate-300'
+                        }`}>
+                          {insertMode === value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <button
                   onClick={() => { setPreview(null); setFile(null); }}
@@ -311,9 +354,13 @@ export default function DocxImporter({ templateId, onClose, onImported, onSaveFi
                 </button>
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+                  className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors ${
+                    insertMode === 'replace' && hasExistingBlocks
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-primary hover:bg-orange-600'
+                  }`}
                 >
-                  Apply to Canvas
+                  {insertMode === 'replace' && hasExistingBlocks ? 'Replace & Apply' : 'Apply to Canvas'}
                 </button>
               </div>
             </>

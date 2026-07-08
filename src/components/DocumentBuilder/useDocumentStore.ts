@@ -86,6 +86,8 @@ interface DocumentStore {
   removeBlockFromColumn: (columnsBlockId: BlockId, columnId: string, blockId: BlockId) => void;
   moveBlock: (id: BlockId, direction: 'up' | 'down') => void;
   reorderBlocks: (newOrder: DocumentBlock[]) => void;
+  prependBlocks: (incoming: DocumentBlock[]) => void;
+  appendBlocks: (incoming: DocumentBlock[]) => void;
 
   // ── Actions: logic rules ──────────────────────────────────────────────────
   addLogicRule: (rule: LogicRule) => void;
@@ -270,6 +272,16 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   reorderBlocks: (newOrder) => {
     (get() as unknown as { _pushHistory: () => void })._pushHistory();
     set({ blocks: newOrder, isDirty: true });
+  },
+
+  prependBlocks: (incoming) => {
+    (get() as unknown as { _pushHistory: () => void })._pushHistory();
+    set((s) => ({ blocks: [...incoming, ...s.blocks], isDirty: true }));
+  },
+
+  appendBlocks: (incoming) => {
+    (get() as unknown as { _pushHistory: () => void })._pushHistory();
+    set((s) => ({ blocks: [...s.blocks, ...incoming], isDirty: true }));
   },
 
   // ── Logic rules ───────────────────────────────────────────────────────────
