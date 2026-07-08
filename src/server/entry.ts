@@ -2310,9 +2310,12 @@ if (import.meta.env.PROD) {
 	// ── Run migrations then start listening — wrapped in async IIFE so
 	// top-level await is not needed (publish esbuild target doesn't support it)
 	void (async () => {
+			// Hoist db/sql imports once — avoids 5 redundant dynamic module
+			// evaluations and keeps Rollup's chunk graph clean.
+			const { db: _db } = await import('./db/client.js');
+			const { sql: _sql } = await import('drizzle-orm');
+
 			try {
-				const { db: _db } = await import('./db/client.js');
-				const { sql: _sql } = await import('drizzle-orm');
 				await _db.execute(_sql`
 					CREATE TABLE IF NOT EXISTS dazza_knowledge (
 						id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -2336,8 +2339,6 @@ if (import.meta.env.PROD) {
 
 			// ── fleet_driver_sessions ─────────────────────────────────────────
 			try {
-				const { db: _db } = await import('./db/client.js');
-				const { sql: _sql } = await import('drizzle-orm');
 				await _db.execute(_sql`
 					CREATE TABLE IF NOT EXISTS fleet_driver_sessions (
 						id INT PRIMARY KEY AUTO_INCREMENT,
@@ -2363,8 +2364,6 @@ if (import.meta.env.PROD) {
 
 			// ── starter_pack_runs + companies columns ─────────────────────────
 			try {
-				const { db: _db } = await import('./db/client.js');
-				const { sql: _sql } = await import('drizzle-orm');
 				await _db.execute(_sql`
 					CREATE TABLE IF NOT EXISTS starter_pack_runs (
 						id INT PRIMARY KEY AUTO_INCREMENT,
@@ -2381,8 +2380,6 @@ if (import.meta.env.PROD) {
 				console.warn('[startup] starter_pack_runs migration skipped:', (e as Error)?.message?.slice(0, 120));
 			}
 			try {
-				const { db: _db } = await import('./db/client.js');
-				const { sql: _sql } = await import('drizzle-orm');
 				// Use INFORMATION_SCHEMA check — ADD COLUMN IF NOT EXISTS not supported on all MySQL versions
 				const [spCols] = await _db.execute(
 					_sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME IN ('starter_pack_loaded', 'starter_pack_loaded_at')`
@@ -2404,8 +2401,6 @@ if (import.meta.env.PROD) {
 
 		// ── developer_audit_log table ─────────────────────────────────────────
 		try {
-			const { db: _db } = await import('./db/client.js');
-			const { sql: _sql } = await import('drizzle-orm');
 			await _db.execute(_sql`
 				CREATE TABLE IF NOT EXISTS developer_audit_log (
 					id INT AUTO_INCREMENT PRIMARY KEY,

@@ -73,12 +73,10 @@ if (sourceHash && stampHash === sourceHash && existsSync(distBundle)) {
 }
 
 function runBuild() {
-  // Ensure node_modules are present
-  try {
-    execFileSync(process.execPath, [join(root, 'node_modules', '.bin', 'vite'), '--version'], {
-      cwd: root, stdio: 'ignore',
-    });
-  } catch {
+  // Ensure node_modules are present — check for vite binary without spawning
+  const viteBin = join(root, 'node_modules', '.bin', 'vite');
+  const viteJs  = join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+  if (!existsSync(viteBin) && !existsSync(viteJs)) {
     console.log('[launcher] node_modules missing — running npm install ...');
     execFileSync('npm', ['install', '--prefer-offline', '--no-audit', '--no-fund'], {
       cwd: root, stdio: 'inherit', shell: false,
