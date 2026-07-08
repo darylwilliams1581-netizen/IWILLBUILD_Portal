@@ -27,6 +27,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
+import DashboardInstallCallout from '@/components/dashboard/DashboardInstallCallout';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import { useTerminology } from '@/lib/useTerminology';
@@ -332,6 +333,9 @@ export default function DashboardPage() {
 
           {/* ── KPI Widgets ── */}
           <KpiWidgets />
+
+          {/* ── PWA Install Callout ── */}
+          <DashboardInstallCallout />
 
           {/* ── My Tasks ── */}
           <MyTasksPanel userRole={role ?? ''} />

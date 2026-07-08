@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   User,
   Truck,
+  Smartphone,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -31,6 +32,7 @@ import SecurityTab from '@/components/settings/SecurityTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import CompanyTab from '@/components/settings/CompanyTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
+import InstallAppTab from '@/components/settings/InstallAppTab';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -45,6 +47,7 @@ const tabs = [
   { id: 'integrations', label: 'Integrations',       icon: Plug },
   { id: 'fleet',        label: 'Fleet Analytics',     icon: Truck },
   { id: 'data',         label: 'Data & Backup',       icon: Database },
+  { id: 'install',      label: 'Install App',          icon: Smartphone },
 ];
 
 interface Company {
@@ -161,6 +164,7 @@ export default function SettingsPage() {
               {activeTab === 'data' && (
                 <DataBackupTab isAdmin={isAdmin} />
               )}
+              {activeTab === 'install' && <InstallAppTab />}
             </div>
 
           </div>

@@ -53,6 +53,7 @@ export const Car = NullIcon;
 export const Check = NullIcon;
 export const CheckCheck = NullIcon;
 export const CheckCircle = NullIcon;
+export const Chrome = NullIcon;
 export const CheckCircle2 = NullIcon;
 export const CheckSquare = NullIcon;
 export const ChefHat = NullIcon;

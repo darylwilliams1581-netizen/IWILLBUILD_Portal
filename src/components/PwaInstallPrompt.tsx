@@ -18,6 +18,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISSED_KEY = 'iwb_pwa_install_dismissed';
+const SNOOZE_KEY    = 'iwb_pwa_install_snooze';
+const SNOOZE_MS     = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
@@ -43,9 +45,13 @@ export default function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Don't show if already installed or previously dismissed
+    // Don't show if already installed or permanently dismissed
     if (isStandalone()) return;
     if (localStorage.getItem(DISMISSED_KEY)) return;
+
+    // Respect snooze
+    const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
+    if (snoozeUntil && Date.now() < Number(snoozeUntil)) return;
 
     // iOS Safari — no beforeinstallprompt, show manual instructions
     if (isIos() && isSafari()) {
@@ -71,6 +77,12 @@ export default function PwaInstallPrompt() {
   }, []);
 
   function handleDismiss() {
+    // X button = snooze 3 days (not permanent)
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+    setVisible(false);
+  }
+
+  function handleNeverShow() {
     localStorage.setItem(DISMISSED_KEY, '1');
     setVisible(false);
   }
@@ -130,14 +142,22 @@ export default function PwaInstallPrompt() {
           )}
         </div>
 
-        {/* Dismiss */}
-        <button
-          onClick={handleDismiss}
-          aria-label="Dismiss install prompt"
-          className="text-gray-500 hover:text-gray-300 transition-colors shrink-0 mt-0.5"
-        >
-          <X size={16} />
-        </button>
+        {/* Dismiss (snooze) */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <button
+            onClick={handleDismiss}
+            aria-label="Remind me later"
+            className="text-gray-500 hover:text-gray-300 transition-colors mt-0.5"
+          >
+            <X size={16} />
+          </button>
+          <button
+            onClick={handleNeverShow}
+            className="text-gray-600 hover:text-gray-400 text-[10px] underline underline-offset-2 transition-colors whitespace-nowrap"
+          >
+            Don't show again
+          </button>
+        </div>
       </div>
     </div>
   );
