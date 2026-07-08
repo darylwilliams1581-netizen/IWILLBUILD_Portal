@@ -13,11 +13,8 @@ import {
   Type, ArrowUpRight, Square, Highlighter, Pen,
 } from 'lucide-react';
 
-// Worker from node_modules (Vite resolves this at build time)
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Use the worker copied to public/ — avoids version mismatch with CDN/cached workers
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 type ToolType = 'none' | 'text' | 'arrow' | 'rect' | 'highlight' | 'pen';
 

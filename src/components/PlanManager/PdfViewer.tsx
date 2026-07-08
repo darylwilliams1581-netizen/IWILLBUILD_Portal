@@ -14,11 +14,8 @@ import {
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
 
-// Use the bundled worker from pdfjs-dist
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Use the worker copied to public/ — avoids version mismatch with CDN/cached workers
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface Props {
   fileUrl: string;
