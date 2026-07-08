@@ -322,6 +322,12 @@ import migrate_estimating_library_post_281 from "./api/migrate-estimating-librar
 import migrate_files_post_282 from "./api/migrate-files/POST";
 import migrate_fleet_post_283 from "./api/migrate-fleet/POST";
 import migrate_fleet_driver_sessions_post_284 from "./api/migrate-fleet-driver-sessions/POST";
+// ── Fleet usage logging ───────────────────────────────────────────────────────
+import fleet_id_usage_status_get from "./api/fleet/[id]/usage-status/GET";
+import fleet_id_signin_post from "./api/fleet/[id]/signin/POST";
+import fleet_id_signout_post from "./api/fleet/[id]/signout/POST";
+import fleet_id_usage_summary_get from "./api/fleet/[id]/usage-summary/GET";
+import migrate_fleet_usage_post from "./api/migrate-fleet-usage/POST";
 import migrate_form_fields_post_285 from "./api/migrate-form-fields/POST";
 import migrate_form_logic_post_286 from "./api/migrate-form-logic/POST";
 import migrate_form_templates_post_287 from "./api/migrate-form-templates/POST";
@@ -1764,6 +1770,12 @@ app.post("/api/migrate-estimating-library", migrate_estimating_library_post_281)
 app.post("/api/migrate-files", migrate_files_post_282);
 app.post("/api/migrate-fleet", migrate_fleet_post_283);
 app.post("/api/migrate-fleet-driver-sessions", migrate_fleet_driver_sessions_post_284);
+// ── Fleet usage logging ───────────────────────────────────────────────────────
+app.get("/api/fleet/:id/usage-status",  fleet_id_usage_status_get);
+app.post("/api/fleet/:id/signin",       fleet_id_signin_post);
+app.post("/api/fleet/:id/signout",      fleet_id_signout_post);
+app.get("/api/fleet/:id/usage-summary", fleet_id_usage_summary_get);
+app.post("/api/migrate-fleet-usage",    migrate_fleet_usage_post);
 app.post("/api/migrate-form-fields", migrate_form_fields_post_285);
 app.post("/api/migrate-form-logic", migrate_form_logic_post_286);
 app.post("/api/migrate-form-templates", migrate_form_templates_post_287);

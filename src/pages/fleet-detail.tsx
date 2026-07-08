@@ -28,10 +28,12 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
+  LogIn,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
+import FleetUsagePanel from '@/components/fleet/FleetUsagePanel';
 import {
   fetchAsset,
   updateAsset,
@@ -46,7 +48,7 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 
-type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files';
+type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'usage';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -859,6 +861,7 @@ export default function FleetDetailPage() {
                   { key: 'prestarts',   label: 'Prestarts',   icon: ClipboardList },
                   { key: 'maintenance', label: 'Maintenance',  icon: Wrench },
                   { key: 'history',     label: 'Driver Log',  icon: Car },
+                  { key: 'usage',       label: 'Usage',       icon: LogIn },
                   { key: 'files',       label: 'Files',       icon: FolderOpen },
                 ] as const).map(({ key, label, icon: Icon }) => (
                   <button
@@ -1238,6 +1241,20 @@ export default function FleetDetailPage() {
             </motion.div>
           )}
         </div>
+
+        {/* ── Usage tab ── */}
+        {activeTab === 'usage' && asset && (
+          <motion.div
+            key="usage"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 md:p-6"
+          >
+            <FleetUsagePanel fleetId={asset.id} assetName={asset.name} />
+          </motion.div>
+        )}
       </div>
 
       {/* Modals */}
