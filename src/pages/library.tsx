@@ -7,6 +7,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2,
   Filter, ChevronDown, Star, RefreshCw, BookMarked,
@@ -536,5 +537,15 @@ export { LibraryPage as LibraryContent };
 
 // ── /library route — redirect to Studio Library tab ──────────────────────────
 export default function LibraryRedirect() {
-  return <Navigate to="/studio?tab=library" replace />;
+  return (
+    <>
+      <Helmet>
+        <title>Library — IWILLBUILD</title>
+        <meta name="description" content="Browse and install safety, compliance and document templates for your trades business." />
+        <link rel="canonical" href="https://iwillbuild.com/library" />
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
+      <Navigate to="/studio?tab=library" replace />
+    </>
+  );
 }

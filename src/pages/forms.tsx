@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
+import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
@@ -851,5 +852,15 @@ export { FormsPage as FormsContent };
 
 // ── /forms route — redirect to Studio Forms tab ───────────────────────────────
 export default function FormsRedirect() {
-  return <Navigate to="/studio?tab=forms" replace />;
+  return (
+    <>
+      <Helmet>
+        <title>Forms — IWILLBUILD</title>
+        <meta name="description" content="Manage job, fleet and company forms for your trades business." />
+        <link rel="canonical" href="https://iwillbuild.com/forms" />
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
+      <Navigate to="/studio?tab=forms" replace />
+    </>
+  );
 }

@@ -763,5 +763,19 @@ export { SafetyDashboardTab, SwmsLibraryTab, SafetyPlansTab, PoliciesTab, Poster
 import { Navigate } from 'react-router-dom';
 
 export default function SafetyPage() {
-  return <Navigate to="/studio?tab=safety" replace />;
+  return (
+    <>
+      <Helmet>
+        <title>Safety Management — IWILLBUILD</title>
+        <meta name="description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
+        <link rel="canonical" href="https://iwillbuild.com/safety" />
+        <meta name="robots" content="noindex, follow" />
+        <meta property="og:title" content="Safety Management — IWILLBUILD" />
+        <meta property="og:description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
+        <meta property="og:url" content="https://iwillbuild.com/safety" />
+      </Helmet>
+      <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}>Safety Management</h1>
+      <Navigate to="/studio?tab=safety" replace />
+    </>
+  );
 }
