@@ -13,8 +13,8 @@ import {
   Type, ArrowUpRight, Square, Highlighter, Pen,
 } from 'lucide-react';
 
-// Use the worker copied to public/ — avoids version mismatch with CDN/cached workers
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// Versioned filename forces cache-bust — must match installed pdfjs-dist version
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.6.1.200.min.mjs';
 
 type ToolType = 'none' | 'text' | 'arrow' | 'rect' | 'highlight' | 'pen';
 

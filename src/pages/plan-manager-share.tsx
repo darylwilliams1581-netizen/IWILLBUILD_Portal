@@ -15,8 +15,8 @@ import {
 import AnnotationCanvas from '@/components/PlanManager/AnnotationCanvas';
 import type { Annotation } from '@/components/PlanManager/types';
 
-// Use the worker copied to public/ — avoids version mismatch with CDN/cached workers
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// Versioned filename forces cache-bust — must match installed pdfjs-dist version
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.6.1.200.min.mjs';
 
 interface ShareData {
   drawing: {
