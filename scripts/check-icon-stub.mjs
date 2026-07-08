@@ -1,33 +1,31 @@
-import fs from 'fs';
-import path from 'path';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { join } from 'path';
 
-function walk(dir) {
-  const results = [];
-  for (const f of fs.readdirSync(dir)) {
-    const full = path.join(dir, f);
-    if (fs.statSync(full).isDirectory()) results.push(...walk(full));
-    else if (f.endsWith('.tsx') || f.endsWith('.ts')) results.push(full);
+function walk(dir, files = []) {
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    try {
+      if (statSync(p).isDirectory()) walk(p, files);
+      else if (p.endsWith('.tsx') || p.endsWith('.ts')) files.push(p);
+    } catch {}
   }
-  return results;
+  return files;
 }
 
-const files = walk('src');
-const icons = new Set();
-for (const f of files) {
-  const src = fs.readFileSync(f, 'utf8');
-  const matches = src.match(/import\s*\{([^}]+)\}\s*from\s*'lucide-react'/g);
-  if (!matches) continue;
-  for (const imp of matches) {
-    const inner = imp.replace(/import\s*\{/, '').replace(/\}\s*from.*/, '');
-    for (const part of inner.split(',')) {
-      // Strip alias: "Archive as _Archive" → "Archive" (the exported name, not the local alias)
-      const name = part.trim().replace(/\s+as\s+\S+/, '').trim();
-      if (name) icons.add(name);
-    }
+const used = new Set();
+for (const f of walk('src')) {
+  const src = readFileSync(f, 'utf8');
+  const re = /import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const names = m[1].matchAll(/\b([A-Z][a-zA-Z0-9]+)\b/g);
+    for (const n of names) used.add(n[1]);
   }
 }
 
-const stub = fs.readFileSync('src/fallbacks/icon-stub.ts', 'utf8');
-const missing = [...icons].filter(i => !stub.includes('export const ' + i)).sort();
-console.log('MISSING:', JSON.stringify(missing));
-console.log('TOTAL USED:', icons.size, '| MISSING:', missing.length);
+const stub = readFileSync('src/fallbacks/icon-stub.ts', 'utf8');
+const exported = new Set();
+for (const m of stub.matchAll(/^export const ([A-Z][a-zA-Z0-9]+)/gm)) exported.add(m[1]);
+
+const missing = [...used].filter(n => !exported.has(n)).sort();
+console.log('MISSING:', missing.length ? missing.join(', ') : '(none)');

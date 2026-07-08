@@ -198,6 +198,7 @@ export const Sun = NullIcon;
 export const Table = NullIcon;
 export const Tag = NullIcon;
 export const Terminal = NullIcon;
+export const Timer = NullIcon;
 export const ToggleLeft = NullIcon;
 export const ToggleRight = NullIcon;
 export const Trash2 = NullIcon;
