@@ -1,9 +1,0 @@
-import{createRequire as a}from"module";import{d as n}from"../server.bundle.mjs";import{s as d}from"./drizzle-Bu3hp1FF.js";import"./express-WU0_rYSr.js";import"tty";import"os";import"util";import"path";import"./iconv-DatUeE_T.js";import"buffer";import"string_decoder";import"node:zlib";import"./es-abstract-B57Whf45.js";import"url";import"node:fs";import"node:path";import"fs";import"crypto";import"node:http";import"node:buffer";import"node:querystring";import"node:net";import"stream";import"node:events";import"./mysql2-BJ7xsy_S.js";import"net";import"events";import"process";import"timers";import"tls";import"zlib";import"node:process";import"./better-auth-CQVzbiZe.js";import"./kysely-9kO2vj_T.js";import"node:crypto";import"./noble-DY0vnRA-.js";import"./opentelemetry-MOfsRXlr.js";import"node:fs/promises";import"node:os";import"./multer-DNTYjcWN.js";import"fs/promises";import"http";import"https";import"assert";const c=a(import.meta.url);async function ir(l,s){const r=[];async function o(t,e){try{await n.execute(d.raw(e)),r.push(`✓ ${t}`)}catch(i){const p=String((i==null?void 0:i.message)??i);p.includes("already exists")||p.includes("Duplicate column name")||p.includes("ER_DUP_FIELDNAME")?r.push(`~ ${t} (already exists)`):r.push(`✗ ${t}: ${p}`)}}await o("project_drawings.sort_order",`
-    ALTER TABLE project_drawings ADD COLUMN sort_order INT NOT NULL DEFAULT 0
-  `),await o("job_drawing_links.sort_order",`
-    ALTER TABLE job_drawing_links ADD COLUMN sort_order INT NOT NULL DEFAULT 0
-  `),await o("backfill project_drawings sort_order",`
-    UPDATE project_drawings SET sort_order = id WHERE sort_order = 0
-  `),await o("backfill job_drawing_links sort_order",`
-    UPDATE job_drawing_links SET sort_order = id WHERE sort_order = 0
-  `);const m=r.filter(t=>t.startsWith("✗"));return s.status(m.length?500:200).json({results:r,ok:m.length===0})}export{ir as default};

@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// Writes dist/.build-stamp using the same filesystem-walk hash as
-// server.bundle.mjs and publish-build.mjs.
-import { createHash } from 'node:crypto';
-import { readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
+/**
+ * write-stamp.mjs
+ * Computes the current source hash and writes it to dist/.build-stamp.
+ * Used to mark pre-built dist artifacts as current after manual restoration.
+ */
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -16,16 +19,20 @@ function hashDir(dir, h) {
     const full = join(dir, e);
     let st;
     try { st = statSync(full); } catch { continue; }
-    if (st.isDirectory()) hashDir(full, h);
-    else { try { h.update(full + '\n'); h.update(readFileSync(full)); } catch {} }
+    if (st.isDirectory()) {
+      hashDir(full, h);
+    } else {
+      try { h.update(full + '\n'); h.update(readFileSync(full)); } catch { /* skip */ }
+    }
   }
 }
 
 const h = createHash('sha256');
 hashDir(join(root, 'src'), h);
 for (const f of ['vite.config.ts', 'package.json', 'tsconfig.json', 'tsconfig.node.json']) {
-  try { h.update(f + '\n'); h.update(readFileSync(join(root, f))); } catch {}
+  try { h.update(f + '\n'); h.update(readFileSync(join(root, f))); } catch { /* skip */ }
 }
 const hash = h.digest('hex').slice(0, 16);
-writeFileSync(join(root, 'dist', '.build-stamp'), hash + '\n', 'utf8');
-console.log('stamp written:', hash);
+const stampFile = join(root, 'dist', '.build-stamp');
+writeFileSync(stampFile, hash + '\n', 'utf8');
+console.log('Stamp written:', hash);

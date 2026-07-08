@@ -385,6 +385,18 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
       },
       treeshake: {
+        // IMPORTANT: Keep this as `false` — it tells Rollup to treat ALL modules
+        // as side-effect-free, enabling maximum dead-code elimination and keeping
+        // peak SSR build memory under the 1600 MB heap limit.
+        //
+        // The `if (import.meta.env.PROD) { ... app.listen() ... }` block in
+        // entry.ts IS preserved correctly with this setting because Vite replaces
+        // `import.meta.env.PROD` with `true` during the SSR build, making the
+        // block unconditional — Rollup then includes it as live code.
+        //
+        // DO NOT change this to 'no-external' or a function — both cause the SSR
+        // build to process more module-level code, increasing peak RSS above the
+        // heap limit and causing an OOM kill that leaves the bundle incomplete.
         moduleSideEffects: false,
         propertyReadSideEffects: false,
         // Treat unknown globals as side-effect-free so Rollup can eliminate
