@@ -119,7 +119,12 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         {
           find: /^pdfjs-dist(\/.*)?$/,
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+          customResolver(_source: string, importer?: string) {
+            // Allow pdf-parse to bundle its own pdfjs-dist copy — only stub
+            // direct imports from app code and react-pdf.
+            if (importer && importer.includes('node_modules/pdf-parse')) return null;
+            return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts');
+          },
         },
         {
           find: /^leaflet(\/.*)?$/,
@@ -342,7 +347,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // SSR bundle. With noExternal:true, Vite's ssr.external check uses
       // .includes(id) on the bare specifier — so list exact package names here.
       // Rollup-level regex externals are ignored when noExternal:true.
-      'pdfjs-dist',
+      // NOTE: pdfjs-dist is intentionally NOT listed here — pdf-parse needs to
+      // bundle its own copy for server-side PDF text extraction. The alias and
+      // Rollup external function handle excluding direct app imports of pdfjs-dist.
       'react-pdf',
       '@napi-rs',
       '@napi-rs/canvas',
@@ -434,7 +441,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       // lucide-react and @heroicons are handled via resolve.alias stubs — they
       // compile to near-zero bytes rather than being externalized, so SSR
       // rendering still works in the publish container (no node_modules).
-      external: (id: string) => {
+      external: (id: string, importer?: string) => {
+        // Exclude pdfjs-dist and react-pdf from the bundle — EXCEPT when
+        // imported by pdf-parse, which needs its own bundled pdfjs-dist copy
+        // for server-side PDF text extraction.
+        if (importer && importer.includes('node_modules/pdf-parse')) return false;
         return id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/react-pdf');
       },
       treeshake: {
