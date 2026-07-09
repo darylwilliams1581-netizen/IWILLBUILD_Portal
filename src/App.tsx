@@ -12,7 +12,7 @@ import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
-import DazzaWidget from '@/components/DazzaWidget';
+// DazzaWidget removed — Dazza AI is accessible via the sidebar nav link
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 
 const CookieBanner = lazy(() =>
@@ -33,7 +33,7 @@ const rootElement = (
     <RootLayout>
       <Outlet />
     </RootLayout>
-    <DazzaWidget />
+    
   </Suspense>
 );
 
