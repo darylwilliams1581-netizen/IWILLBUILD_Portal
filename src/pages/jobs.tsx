@@ -13,7 +13,7 @@ import {
   AlertCircle,
   UserCheck,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
@@ -68,6 +68,14 @@ export default function JobsPage() {
     setJobs((prev) => [job, ...prev]);
     setShowNewJob(false);
     navigate(`/jobs/${job.id}`);
+  }
+
+  /** Open a path in a new tab on plain left-click; let browser handle everything else. */
+  function openInNewTab(path: string, e: React.MouseEvent) {
+    // Middle-click, ctrl/cmd/shift/alt-click → let browser do its thing natively
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    window.open(path, '_blank', 'noopener,noreferrer');
   }
 
   const filtered = jobs.filter((j) => {
@@ -263,8 +271,11 @@ export default function JobsPage() {
                 const s = getStatusStyle(job.status);
                 return (
                   <motion.div key={job.id} variants={fadeUp}>
-                    <Link
-                      to={`/jobs/${job.id}`}
+                    <a
+                      href={`/jobs/${job.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => openInNewTab(`/jobs/${job.id}`, e)}
                       className="block bg-white border border-border rounded-xl p-4 md:p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-150 group"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -301,7 +312,7 @@ export default function JobsPage() {
                           {job.notes}
                         </p>
                       )}
-                    </Link>
+                    </a>
                   </motion.div>
                 );
               })}
