@@ -91,6 +91,7 @@ export const FileJson = NullIcon;
 export const FilePlus2 = NullIcon;
 export const FileSpreadsheet = NullIcon;
 export const FileText = NullIcon;
+export const FileType2 = NullIcon;
 export const FileOutput = NullIcon;
 export const FileUp = NullIcon;
 export const FileX = NullIcon;

@@ -8,10 +8,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
   AlertCircle, FileText, FileOutput, Library, LayoutTemplate, Layers,
+  ChevronDown, FileType2,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import PageEditor from './PageEditor';
@@ -23,6 +24,335 @@ import DocumentPdfTab from './DocumentPdfTab';
 import { usePermissions } from '@/lib/usePermissions';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
+
+interface Props {
+  template?: DocumentTemplate | null;
+  onClose: () => void;
+  onSaved?: (id: number) => void;
+}
+
+type EditorMode = 'page' | 'structure';
+
+// Document type labels for the toolbar badge
+const DOC_TYPE_LABELS: Record<string, string> = {
+  swms:      'SWMS',
+  procedure: 'Procedure',
+  policy:    'Policy',
+  form:      'Form',
+  inspection:'Inspection',
+  checklist: 'Checklist',
+  report:    'Report',
+  toolbox:   'Toolbox Talk',
+  prestart:  'Pre-Start',
+  handover:  'Handover',
+};
+
+export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
+  const {
+    isDirty, isSaving, setIsSaving, markSaved,
+    loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
+    undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
+  } = useDocumentStore();
+
+  const [showDocxImporter, setShowDocxImporter]   = useState(false);
+  const [showBlocksImporter, setShowBlocksImporter] = useState(false);
+  const [saveStatus, setSaveStatus]               = useState<'idle' | 'saved' | 'error'>('idle');
+  const [activeTab, setActiveTab]                 = useState<BuilderTab>('content');
+  const [editorMode, setEditorMode]               = useState<EditorMode>('page');
+  const [pdfSettings, setPdfSettings]             = useState<TemplatePdfSettings>(
+    template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
+  );
+  const [leftCollapsed, setLeftCollapsed]         = useState(false);
+  const [showPublishModal, setShowPublishModal]   = useState(false);
+  const [showDocTypeMenu, setShowDocTypeMenu]     = useState(false);
+  const { isPlatformOwner } = usePermissions();
+
+  // Load template on mount
+  useEffect(() => {
+    if (template) {
+      loadTemplate(template);
+      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS, ...(template.pdfSettings ?? {}) });
+    } else {
+      resetToBlank();
+      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS });
+    }
+  }, [template?.id]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); void handleSave(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      const payload = { ...getSerialised(), pdfSettings };
+      let res: Response;
+      if (templateId) {
+        res = await fetch(`/api/document-templates/${templateId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch('/api/document-templates', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', body: JSON.stringify(payload),
+        });
+      }
+      const data = await res.json() as { id?: number; ok?: boolean; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      const savedId = data.id ?? templateId!;
+      markSaved(savedId);
+      setSaveStatus('saved');
+      onSaved?.(savedId);
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaving, templateId, getSerialised, markSaved, onSaved, pdfSettings]);
+
+  const handleDocxImported = (importedBlocks: DocumentBlock[], _docxName: string, insertMode: 'replace' | 'prepend' | 'append') => {
+    if (insertMode === 'prepend') prependBlocks(importedBlocks);
+    else if (insertMode === 'append') appendBlocks(importedBlocks);
+    else reorderBlocks(importedBlocks);
+  };
+
+  const handleSaveFirst = useCallback(async (): Promise<number | null> => {
+    const liveId = useDocumentStore.getState().templateId;
+    if (liveId) return liveId;
+    if (useDocumentStore.getState().isSaving) {
+      const start = Date.now();
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => {
+          if (!useDocumentStore.getState().isSaving || Date.now() - start > 8000) {
+            clearInterval(check); resolve();
+          }
+        }, 100);
+      });
+      const currentId = useDocumentStore.getState().templateId;
+      if (currentId) return currentId;
+    }
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      const payload = { ...getSerialised(), pdfSettings };
+      const res = await fetch('/api/document-templates', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify(payload),
+      });
+      const data = await res.json() as { id?: number; ok?: boolean; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      const savedId = data.id!;
+      markSaved(savedId);
+      setSaveStatus('saved');
+      onSaved?.(savedId);
+      setTimeout(() => setSaveStatus('idle'), 2500);
+      return savedId;
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [getSerialised, markSaved, onSaved, pdfSettings]);
+
+  const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-white" onClick={() => setShowDocTypeMenu(false)}>
+      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+          title="Close"
+        >
+          <X size={15} />
+        </button>
+
+        {/* Document type badge + title */}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Doc type pill */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-colors"
+              title="Change document type"
+            >
+              <FileType2 size={10} />
+              {docTypeLabel}
+              <ChevronDown size={9} />
+            </button>
+            {showDocTypeMenu && (
+              <div
+                className="absolute top-7 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[140px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']);
+                      setShowDocTypeMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                      templateType === key
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <FileText size={13} className="text-slate-400 flex-shrink-0" />
+          <span className="text-sm font-semibold text-slate-700 truncate max-w-[220px]">{templateName}</span>
+          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
+        </div>
+
+        {/* Tab switcher: Content / PDF Output */}
+        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-2 flex-shrink-0">
+          <TabBtn active={activeTab === 'content'}    onClick={() => setActiveTab('content')}    icon={<FileText size={11} />}   label="Content" />
+          <TabBtn active={activeTab === 'pdf_output'} onClick={() => setActiveTab('pdf_output')} icon={<FileOutput size={11} />} label="PDF Output" />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Undo / Redo + mode switcher */}
+        {activeTab === 'content' && (
+          <>
+            <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)">
+              <Undo2 size={13} />
+            </button>
+            <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)">
+              <Redo2 size={13} />
+            </button>
+
+            {/* Editor mode switcher */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
+              <ModeBtn active={editorMode === 'page'} onClick={() => setEditorMode('page')} icon={<LayoutTemplate size={11} />} label="Page" title="Page editor — click to type" />
+              <ModeBtn active={editorMode === 'structure'} onClick={() => setEditorMode('structure')} icon={<Layers size={11} />} label="Structure" title="Structure mode — advanced block editing" />
+              <ModeBtn active={false} onClick={() => { useDocumentStore.getState().setMode('preview'); setEditorMode('structure'); }} icon={<Eye size={11} />} label="Preview" title="Preview document" />
+            </div>
+          </>
+        )}
+
+        {/* Publish to Library — platform owner only */}
+        {isPlatformOwner && templateId && (
+          <button
+            onClick={() => setShowPublishModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all flex-shrink-0"
+            title="Publish to global library"
+          >
+            <Library size={12} />
+            Publish
+          </button>
+        )}
+
+        {/* Save */}
+        <button
+          onClick={() => void handleSave()}
+          disabled={isSaving || (!isDirty && !!templateId && activeTab === 'content')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all flex-shrink-0 ${
+            saveStatus === 'saved' ? 'bg-green-500 text-white' :
+            saveStatus === 'error' ? 'bg-red-500 text-white' :
+            'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
+          }`}
+          title="Save (⌘S)"
+        >
+          {isSaving ? <Loader2 size={13} className="animate-spin" /> :
+           saveStatus === 'saved' ? <CheckCircle size={13} /> :
+           saveStatus === 'error' ? <AlertCircle size={13} /> :
+           <Save size={13} />}
+          {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+        </button>
+      </div>
+
+      {/* ── Main layout ──────────────────────────────────────────────────────── */}
+      {activeTab === 'content' ? (
+        <div className="flex flex-1 overflow-hidden">
+          <DocSidebar
+            onImportDocx={() => setShowDocxImporter(true)}
+            collapsed={leftCollapsed}
+            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
+          />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {editorMode === 'page' ? (
+              <PageEditor />
+            ) : (
+              <StructurePanel />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden bg-slate-50">
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto py-6 px-4">
+              <DocumentPdfTab
+                settings={pdfSettings}
+                onChange={(next) => setPdfSettings(next)}
+                templateName={templateName}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DOCX Importer modal ───────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showDocxImporter && (
+          <DocxImporter
+            templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
+            onClose={() => setShowDocxImporter(false)}
+            onImported={handleDocxImported}
+            onSaveFirst={handleSaveFirst}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Blocks JSON Importer modal ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showBlocksImporter && (
+          <BlocksJsonImporter
+            templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
+            onClose={() => setShowBlocksImporter(false)}
+            onImported={handleDocxImported}
+            onSaveFirst={handleSaveFirst}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Publish to Library modal ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showPublishModal && templateId && (
+          <PublishToLibraryModal
+            templateId={templateId}
+            templateName={templateName}
+            onClose={() => setShowPublishModal(false)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 interface Props {
   template?: DocumentTemplate | null;
@@ -353,6 +683,20 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+      }`}
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+function ModeBtn({ active, onClick, icon, label, title }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
         active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
       }`}
     >

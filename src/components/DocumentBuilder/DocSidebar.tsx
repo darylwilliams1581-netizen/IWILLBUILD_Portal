@@ -1,20 +1,24 @@
 /**
- * DocSidebar — Document-oriented left sidebar for the page editor
+ * DocSidebar — Document-first left sidebar for the page editor
  * ─────────────────────────────────────────────────────────────────────────────
- * Replaces the block-heavy BlockLibrarySidebar with a document-first tool panel.
+ * Organised around document authoring tasks, not raw block types.
  *
  * Sections:
  *   1. Import (DOCX / PDF)
- *   2. Insert — document-oriented inserts (section, table, signature, photo, etc.)
- *   3. Advanced Blocks — collapsible, for power users
+ *   2. Structure — headings, paragraphs, dividers, page breaks
+ *   3. Tables — blank table, detail grid, SWMS risk table
+ *   4. Form Fields — text, date, signature, photo, yes/no, choice
+ *   5. System Fields — job-bound tokens (job number, client, date, etc.)
+ *   6. Advanced — banner, image, rich text, columns (collapsible)
  */
 
 import { useState } from 'react';
 import {
-  FileUp, Table2, PenLine, Camera, SplitSquareHorizontal,
-  Minus, AlignLeft, ChevronDown, ChevronRight,
-  FileText, Type, Hash, AlertTriangle, Image,
-  PanelLeftClose, PanelLeftOpen,
+  FileUp, Table2, PenLine, Camera, Minus, AlignLeft,
+  ChevronDown, ChevronRight, FileText, Type, Hash,
+  AlertTriangle, Image, PanelLeftClose, PanelLeftOpen,
+  Calendar, CheckSquare, List, LayoutGrid, Briefcase,
+  MapPin, User, Building2, ClipboardList, Zap,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import { nanoid } from 'nanoid';
@@ -26,12 +30,99 @@ interface Props {
   onToggleCollapse: () => void;
 }
 
+// ── System field tokens ───────────────────────────────────────────────────────
+// These insert an inline token that resolves to live job data on export.
+const SYSTEM_FIELD_TOKENS = [
+  { key: 'job.number',       label: 'Job Number',      icon: <Briefcase size={11} /> },
+  { key: 'job.name',         label: 'Job Name',        icon: <Briefcase size={11} /> },
+  { key: 'job.site_address', label: 'Site Address',    icon: <MapPin size={11} /> },
+  { key: 'job.client',       label: 'Client',          icon: <Building2 size={11} /> },
+  { key: 'job.supervisor',   label: 'Supervisor',      icon: <User size={11} /> },
+  { key: 'job.start_date',   label: 'Start Date',      icon: <Calendar size={11} /> },
+  { key: 'company.name',     label: 'Company Name',    icon: <Building2 size={11} /> },
+  { key: 'company.abn',      label: 'Company ABN',     icon: <Building2 size={11} /> },
+  { key: 'user.name',        label: 'Current User',    icon: <User size={11} /> },
+  { key: 'date.today',       label: 'Today\'s Date',   icon: <Calendar size={11} /> },
+  { key: 'doc.number',       label: 'Document Number', icon: <ClipboardList size={11} /> },
+  { key: 'doc.revision',     label: 'Revision',        icon: <ClipboardList size={11} /> },
+];
+
 export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }: Props) {
   const { appendBlocks } = useDocumentStore();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen]     = useState(false);
+  const [sysFieldsOpen, setSysFieldsOpen]   = useState(false);
 
   function insert(block: DocumentBlock) {
     appendBlocks([block]);
+  }
+
+  /** Insert a system field token as an inline rich_text block */
+  function insertSysToken(key: string, label: string) {
+    insert({
+      id: nanoid(10),
+      type: 'rich_text',
+      html: `<p><span class="sys-field-token" data-sys-field="${key}" contenteditable="false">⚙ ${label}</span></p>`,
+    });
+  }
+
+  /** Insert a SWMS-style risk assessment table */
+  function insertSwmsTable() {
+    const cols = [
+      { id: nanoid(8), header: 'Hazard / Risk',       cellType: 'text' as const, width: 2 },
+      { id: nanoid(8), header: 'Who is at Risk',      cellType: 'text' as const, width: 1 },
+      { id: nanoid(8), header: 'Initial Risk Rating', cellType: 'text' as const, width: 1 },
+      { id: nanoid(8), header: 'Control Measures',    cellType: 'text' as const, width: 2 },
+      { id: nanoid(8), header: 'Residual Risk',       cellType: 'text' as const, width: 1 },
+      { id: nanoid(8), header: 'Responsible',         cellType: 'text' as const, width: 1 },
+    ];
+    insert({
+      id: nanoid(10), type: 'table', mode: 'static',
+      columns: cols,
+      rows: Array.from({ length: 3 }, () => ({
+        id: nanoid(8),
+        cells: Object.fromEntries(cols.map((c) => [c.id, ''])),
+      })),
+      stripedRows: true,
+    });
+  }
+
+  /** Insert a detail grid (label: value pairs) as a 2-column table */
+  function insertDetailGrid() {
+    const c1 = nanoid(8); const c2 = nanoid(8);
+    insert({
+      id: nanoid(10), type: 'table', mode: 'static',
+      columns: [
+        { id: c1, header: 'Field',  cellType: 'text' as const, width: 1 },
+        { id: c2, header: 'Value',  cellType: 'text' as const, width: 2 },
+      ],
+      rows: [
+        { id: nanoid(8), cells: { [c1]: 'Job Number',   [c2]: '' } },
+        { id: nanoid(8), cells: { [c1]: 'Client',       [c2]: '' } },
+        { id: nanoid(8), cells: { [c1]: 'Site Address', [c2]: '' } },
+        { id: nanoid(8), cells: { [c1]: 'Date',         [c2]: '' } },
+        { id: nanoid(8), cells: { [c1]: 'Supervisor',   [c2]: '' } },
+      ],
+      stripedRows: false,
+    });
+  }
+
+  /** Insert a sign-off table (name, role, signature, date) */
+  function insertSignOffTable() {
+    const cols = [
+      { id: nanoid(8), header: 'Name',      cellType: 'text' as const, width: 2 },
+      { id: nanoid(8), header: 'Role',      cellType: 'text' as const, width: 1 },
+      { id: nanoid(8), header: 'Signature', cellType: 'text' as const, width: 2 },
+      { id: nanoid(8), header: 'Date',      cellType: 'text' as const, width: 1 },
+    ];
+    insert({
+      id: nanoid(10), type: 'table', mode: 'static',
+      columns: cols,
+      rows: Array.from({ length: 4 }, () => ({
+        id: nanoid(8),
+        cells: Object.fromEntries(cols.map((c) => [c.id, ''])),
+      })),
+      stripedRows: false,
+    });
   }
 
   if (collapsed) {
@@ -49,10 +140,10 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
   }
 
   return (
-    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
+    <div className="w-56 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Document Tools</span>
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 bg-slate-50">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Document Tools</span>
         <button
           onClick={onToggleCollapse}
           className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
@@ -62,32 +153,55 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
 
         {/* ── Import ─────────────────────────────────────────────────────── */}
         <SectionLabel>Import</SectionLabel>
-        <ToolBtn icon={<FileUp size={13} />} label="Import DOCX / PDF" onClick={onImportDocx} primary />
+        <ToolBtn icon={<FileUp size={12} />} label="Import DOCX / PDF" onClick={onImportDocx} primary />
 
-        {/* ── Insert ─────────────────────────────────────────────────────── */}
-        <SectionLabel className="mt-2">Insert</SectionLabel>
-
+        {/* ── Structure ──────────────────────────────────────────────────── */}
+        <SectionLabel className="mt-2">Structure</SectionLabel>
         <ToolBtn
-          icon={<Hash size={13} />}
-          label="Section Heading"
-          onClick={() => insert({
-            id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left',
-          })}
+          icon={<Hash size={12} />}
+          label="Document Title (H1)"
+          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })}
         />
         <ToolBtn
-          icon={<Type size={13} />}
+          icon={<Hash size={12} />}
+          label="Section Heading (H2)"
+          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })}
+        />
+        <ToolBtn
+          icon={<Hash size={12} />}
+          label="Sub-section (H3)"
+          onClick={() => insert({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })}
+        />
+        <ToolBtn
+          icon={<Type size={12} />}
           label="Paragraph"
-          onClick={() => insert({
-            id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left',
-          })}
+          onClick={() => insert({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })}
         />
         <ToolBtn
-          icon={<Table2 size={13} />}
-          label="Table"
+          icon={<List size={12} />}
+          label="Bullet List"
+          onClick={() => insert({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })}
+        />
+        <ToolBtn
+          icon={<Minus size={12} />}
+          label="Section Divider"
+          onClick={() => insert({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })}
+        />
+        <ToolBtn
+          icon={<AlignLeft size={12} />}
+          label="Page Break"
+          onClick={() => insert({ id: nanoid(10), type: 'page_break' })}
+        />
+
+        {/* ── Tables ─────────────────────────────────────────────────────── */}
+        <SectionLabel className="mt-2">Tables</SectionLabel>
+        <ToolBtn
+          icon={<Table2 size={12} />}
+          label="Blank Table"
           onClick={() => {
             const c1 = nanoid(8); const c2 = nanoid(8); const c3 = nanoid(8);
             insert({
@@ -97,102 +211,108 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
                 { id: c2, header: 'Column 2', cellType: 'text', width: 1 },
                 { id: c3, header: 'Column 3', cellType: 'text', width: 1 },
               ],
-              rows: [
-                { id: nanoid(8), cells: { [c1]: '', [c2]: '', [c3]: '' } },
-                { id: nanoid(8), cells: { [c1]: '', [c2]: '', [c3]: '' } },
-              ],
+              rows: Array.from({ length: 3 }, () => ({
+                id: nanoid(8), cells: { [c1]: '', [c2]: '', [c3]: '' },
+              })),
               stripedRows: true,
             });
           }}
         />
         <ToolBtn
-          icon={<PenLine size={13} />}
-          label="Signature Area"
-          onClick={() => insert({
-            id: nanoid(10), type: 'field', fieldType: 'signature',
-            label: 'Signature', required: false,
-          })}
+          icon={<LayoutGrid size={12} />}
+          label="Detail Grid"
+          onClick={insertDetailGrid}
         />
         <ToolBtn
-          icon={<Camera size={13} />}
-          label="Photo / Evidence"
-          onClick={() => insert({
-            id: nanoid(10), type: 'field', fieldType: 'photo',
-            label: 'Photo / Evidence', required: false,
-          })}
+          icon={<Zap size={12} />}
+          label="SWMS Risk Table"
+          onClick={insertSwmsTable}
         />
         <ToolBtn
-          icon={<SplitSquareHorizontal size={13} />}
-          label="Two-Column Grid"
-          onClick={() => {
-            const col1Id = nanoid(8); const col2Id = nanoid(8);
-            insert({
-              id: nanoid(10), type: 'columns',
-              columns: [
-                { id: col1Id, width: 1, blocks: [{ id: nanoid(10), type: 'text', content: 'Left column', align: 'left' }] },
-                { id: col2Id, width: 1, blocks: [{ id: nanoid(10), type: 'text', content: 'Right column', align: 'left' }] },
-              ],
-              gap: 'md',
-            });
-          }}
-        />
-        <ToolBtn
-          icon={<Minus size={13} />}
-          label="Divider"
-          onClick={() => insert({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })}
-        />
-        <ToolBtn
-          icon={<AlignLeft size={13} />}
-          label="Page Break"
-          onClick={() => insert({ id: nanoid(10), type: 'page_break' })}
+          icon={<PenLine size={12} />}
+          label="Sign-Off Table"
+          onClick={insertSignOffTable}
         />
 
         {/* ── Form Fields ────────────────────────────────────────────────── */}
         <SectionLabel className="mt-2">Form Fields</SectionLabel>
         <ToolBtn
-          icon={<FileText size={13} />}
-          label="Short Text Field"
+          icon={<FileText size={12} />}
+          label="Short Text"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'short_text', label: 'Text Field', required: false })}
         />
         <ToolBtn
-          icon={<FileText size={13} />}
-          label="Long Text Field"
+          icon={<FileText size={12} />}
+          label="Long Text"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'long_text', label: 'Long Text', required: false })}
         />
         <ToolBtn
-          icon={<FileText size={13} />}
+          icon={<CheckSquare size={12} />}
           label="Yes / No"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'yes_no', label: 'Yes / No', required: false })}
         />
         <ToolBtn
-          icon={<FileText size={13} />}
+          icon={<Calendar size={12} />}
           label="Date"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'date', label: 'Date', required: false })}
         />
         <ToolBtn
-          icon={<FileText size={13} />}
+          icon={<List size={12} />}
           label="Choice / Dropdown"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'single_choice', label: 'Choice', required: false, options: ['Option A', 'Option B', 'Option C'] })}
         />
         <ToolBtn
-          icon={<FileText size={13} />}
+          icon={<PenLine size={12} />}
+          label="Signature"
+          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'signature', label: 'Signature', required: false })}
+        />
+        <ToolBtn
+          icon={<Camera size={12} />}
+          label="Photo / Evidence"
+          onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'photo', label: 'Photo / Evidence', required: false })}
+        />
+        <ToolBtn
+          icon={<FileText size={12} />}
           label="File Upload"
           onClick={() => insert({ id: nanoid(10), type: 'field', fieldType: 'file_upload', label: 'File Upload', required: false })}
         />
 
-        {/* ── Advanced Blocks (collapsible) ──────────────────────────────── */}
+        {/* ── System Fields ──────────────────────────────────────────────── */}
+        <button
+          onClick={() => setSysFieldsOpen((v) => !v)}
+          className="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-700 transition-colors"
+        >
+          {sysFieldsOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+          System Fields
+        </button>
+        {sysFieldsOpen && (
+          <div className="flex flex-col gap-0.5">
+            <p className="px-2 pb-1 text-[9px] text-slate-400 leading-tight">
+              Inserts a live data token — resolves to job data on export.
+            </p>
+            {SYSTEM_FIELD_TOKENS.map((f) => (
+              <ToolBtn
+                key={f.key}
+                icon={f.icon}
+                label={f.label}
+                onClick={() => insertSysToken(f.key, f.label)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Advanced Blocks ────────────────────────────────────────────── */}
         <button
           onClick={() => setAdvancedOpen((v) => !v)}
-          className="flex items-center gap-1.5 w-full mt-3 px-2 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+          className="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
         >
-          {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-          Advanced Blocks
+          {advancedOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+          Advanced
         </button>
-
         {advancedOpen && (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             <ToolBtn
-              icon={<AlertTriangle size={13} />}
+              icon={<AlertTriangle size={12} />}
               label="Banner / Callout"
               onClick={() => insert({
                 id: nanoid(10), type: 'banner', variant: 'info',
@@ -200,19 +320,35 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
               })}
             />
             <ToolBtn
-              icon={<Image size={13} />}
+              icon={<Image size={12} />}
               label="Image"
-              onClick={() => insert({
-                id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'left', preserveAspectRatio: true,
-              })}
+              onClick={() => insert({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'left', preserveAspectRatio: true })}
             />
             <ToolBtn
-              icon={<FileText size={13} />}
+              icon={<FileText size={12} />}
               label="Rich Text Block"
               onClick={() => insert({ id: nanoid(10), type: 'rich_text', html: '<p>Enter rich text…</p>' })}
             />
+            <ToolBtn
+              icon={<LayoutGrid size={12} />}
+              label="Two-Column Grid"
+              onClick={() => {
+                const c1 = nanoid(8); const c2 = nanoid(8);
+                insert({
+                  id: nanoid(10), type: 'columns',
+                  columns: [
+                    { id: c1, width: 1, blocks: [{ id: nanoid(10), type: 'text', content: 'Left column', align: 'left' }] },
+                    { id: c2, width: 1, blocks: [{ id: nanoid(10), type: 'text', content: 'Right column', align: 'left' }] },
+                  ],
+                  gap: 'md',
+                });
+              }}
+            />
           </div>
         )}
+
+        {/* Bottom padding */}
+        <div className="h-4" />
       </div>
     </div>
   );
@@ -220,7 +356,7 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`px-2 pt-1 pb-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${className}`}>
+    <p className={`px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest ${className}`}>
       {children}
     </p>
   );
@@ -237,14 +373,14 @@ function ToolBtn({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 w-full px-2.5 py-2 rounded-lg text-xs font-medium transition-colors text-left ${
+      className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors text-left ${
         primary
           ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
       }`}
     >
-      <span className={primary ? 'text-primary' : 'text-slate-400'}>{icon}</span>
-      {label}
+      <span className={`flex-shrink-0 ${primary ? 'text-primary' : 'text-slate-400'}`}>{icon}</span>
+      <span className="truncate">{label}</span>
     </button>
   );
 }
