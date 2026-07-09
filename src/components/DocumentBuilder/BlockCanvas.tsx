@@ -208,9 +208,9 @@ export default function BlockCanvas() {
                   </div>
                 )}
 
-                {/* Hover controls (edit mode only) */}
+                {/* Block controls (edit mode only — always visible) */}
                 {mode === 'edit' && (
-                  <div className="absolute -left-8 top-1/2 -translate-y-1/2 hidden group-hover:flex flex-col gap-0.5 z-20">
+                  <div className="absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-20">
                     <button
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
@@ -229,9 +229,9 @@ export default function BlockCanvas() {
                   </div>
                 )}
 
-                {/* Drag handle */}
+                {/* Drag handle — always visible in edit mode */}
                 {mode === 'edit' && (
-                  <div className="absolute -right-7 top-1/2 -translate-y-1/2 hidden group-hover:flex z-20 cursor-grab active:cursor-grabbing">
+                  <div className="absolute -right-7 top-1/2 -translate-y-1/2 flex z-20 cursor-grab active:cursor-grabbing">
                     <div className="w-5 h-8 flex flex-col items-center justify-center gap-0.5">
                       {[0,1,2].map((i) => (
                         <div key={i} className="w-3 h-0.5 bg-slate-300 rounded-full" />
