@@ -10,9 +10,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Building2, ChevronLeft, ClipboardCheck, AlertTriangle,
-  FileText, BookOpen, Edit2, Check, X, Loader2, AlertCircle,
-  Calendar, MapPin, Tag, Activity, Plus, Archive, RotateCcw,
-  Trash2, ExternalLink, Camera,
+  FileText, Edit2, Check, X, Loader2, AlertCircle,
+  Calendar, MapPin, Tag, Activity, Plus,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,21 +23,35 @@ interface Asset {
 }
 
 interface Inspection {
-  id: number; title: string; inspection_type: string; inspection_date: string | null;
-  status: string; inspector_name: string | null; notes: string | null;
-  defect_count?: number; photo_count?: number; created_at: string;
+  id: number;
+  report_title: string | null;
+  report_no: string | null;
+  inspection_date: string | null;
+  overall_status: string;
+  notes: string | null;
+  asset_name: string;
+  asset_acronym: string | null;
+  created_at: string;
 }
 
 interface Defect {
   id: number; title: string; severity: string; status: string;
   description: string | null; location: string | null;
-  inspection_id: number | null; created_at: string; resolved_at: string | null;
+  inspection_id: number | null; due_date: string | null;
+  created_at: string; archived_at: string | null;
 }
 
 interface Tender {
-  id: number; title: string; tender_type: string; status: string;
-  due_date: string | null; awarded_to: string | null;
-  estimated_value: number | null; created_at: string;
+  id: number;
+  code: string | null;
+  contractor_name: string | null;
+  award_status: string;
+  quote_requested_at: string | null;
+  quote_due_at: string | null;
+  quote_amount: number | null;
+  notes: string | null;
+  created_at: string;
+  archived_at: string | null;
 }
 
 // ── Badge helpers ─────────────────────────────────────────────────────────────
@@ -279,16 +292,15 @@ function InspectionsTab({ assetId }: { assetId: number }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-800">{insp.title}</span>
-                  <StatusBadge status={insp.status} />
+                  <span className="text-sm font-semibold text-slate-800">
+                    {insp.report_title || insp.report_no || `Inspection #${insp.id}`}
+                  </span>
+                  <StatusBadge status={insp.overall_status} />
                 </div>
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  <span className="text-xs text-slate-400">{insp.inspection_type}</span>
+                  {insp.report_no && <span className="text-xs font-mono text-slate-400">{insp.report_no}</span>}
                   {insp.inspection_date && <span className="text-xs text-slate-400">{fmt(insp.inspection_date)}</span>}
-                  {insp.inspector_name && <span className="text-xs text-slate-400">by {insp.inspector_name}</span>}
-                  {(insp.defect_count ?? 0) > 0 && (
-                    <span className="text-xs text-red-500 font-semibold">{insp.defect_count} defect{insp.defect_count !== 1 ? 's' : ''}</span>
-                  )}
+                  {insp.notes && <span className="text-xs text-slate-400 italic truncate max-w-[200px]">{insp.notes}</span>}
                 </div>
               </div>
             </div>
@@ -307,8 +319,6 @@ function DefectsTab({ assetId }: { assetId: number }) {
 
   useEffect(() => {
     setLoading(true);
-    // Defects are fetched via the inspections endpoint filtered by asset
-    // We use the global defects endpoint with assetId filter
     fetch(`/api/asset-manager/defects?assetId=${assetId}`, { credentials: 'include' })
       .then(r => r.json() as Promise<{ defects?: Defect[] }>)
       .then(d => setItems(d.defects ?? []))
@@ -318,20 +328,17 @@ function DefectsTab({ assetId }: { assetId: number }) {
 
   if (loading) return <TabLoader />;
 
-  const open = items.filter(d => d.status === 'open' || d.status === 'in-progress');
-  const resolved = items.filter(d => d.status === 'resolved' || d.status === 'closed');
+  const open = items.filter(d => d.status === 'open' || d.status === 'in_progress');
 
   return (
     <div className="p-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h3 className="text-sm font-bold text-slate-700">{items.length} Defect{items.length !== 1 ? 's' : ''}</h3>
-          {open.length > 0 && (
-            <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full border border-red-200">
-              {open.length} open
-            </span>
-          )}
-        </div>
+      <div className="flex items-center gap-3">
+        <h3 className="text-sm font-bold text-slate-700">{items.length} Defect{items.length !== 1 ? 's' : ''}</h3>
+        {open.length > 0 && (
+          <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full border border-red-200">
+            {open.length} open
+          </span>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -342,12 +349,12 @@ function DefectsTab({ assetId }: { assetId: number }) {
             <div key={defect.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-orange-200 hover:shadow-sm transition-all">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                 defect.status === 'open' ? 'bg-red-50 border border-red-100' :
-                defect.status === 'in-progress' ? 'bg-amber-50 border border-amber-100' :
+                defect.status === 'in_progress' ? 'bg-amber-50 border border-amber-100' :
                 'bg-emerald-50 border border-emerald-100'
               }`}>
                 <AlertTriangle size={14} className={
                   defect.status === 'open' ? 'text-red-500' :
-                  defect.status === 'in-progress' ? 'text-amber-500' :
+                  defect.status === 'in_progress' ? 'text-amber-500' :
                   'text-emerald-500'
                 } />
               </div>
@@ -362,8 +369,8 @@ function DefectsTab({ assetId }: { assetId: number }) {
                 )}
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
                   {defect.location && <span className="text-xs text-slate-400">📍 {defect.location}</span>}
+                  {defect.due_date && <span className="text-xs text-amber-600">Due {fmt(defect.due_date)}</span>}
                   <span className="text-xs text-slate-400">Logged {fmt(defect.created_at)}</span>
-                  {defect.resolved_at && <span className="text-xs text-emerald-600">Resolved {fmt(defect.resolved_at)}</span>}
                 </div>
               </div>
             </div>
@@ -391,11 +398,18 @@ function TendersTab({ assetId }: { assetId: number }) {
 
   if (loading) return <TabLoader />;
 
+  const AWARD_COLORS: Record<string, string> = {
+    draft: 'bg-slate-100 text-slate-600 border-slate-200',
+    requested: 'bg-blue-100 text-blue-700 border-blue-200',
+    submitted: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    awarded: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    lost: 'bg-red-100 text-red-700 border-red-200',
+    withdrawn: 'bg-slate-100 text-slate-500 border-slate-200',
+  };
+
   return (
     <div className="p-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-700">{items.length} Tender{items.length !== 1 ? 's' : ''}</h3>
-      </div>
+      <h3 className="text-sm font-bold text-slate-700">{items.length} Tender{items.length !== 1 ? 's' : ''}</h3>
 
       {items.length === 0 ? (
         <EmptyState icon={<FileText size={28} />} label="No tenders yet" sub="Tenders are created from the Tenders tab" />
@@ -408,17 +422,25 @@ function TendersTab({ assetId }: { assetId: number }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-800">{tender.title}</span>
-                  <StatusBadge status={tender.status} />
-                  <span className="text-[10px] text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">{tender.tender_type}</span>
+                  {tender.code && <span className="text-xs font-mono text-slate-400">{tender.code}</span>}
+                  <span className="text-sm font-semibold text-slate-800">
+                    {tender.contractor_name || 'No contractor assigned'}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${AWARD_COLORS[tender.award_status] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    {tender.award_status}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  {tender.due_date && <span className="text-xs text-slate-400">Due {fmt(tender.due_date)}</span>}
-                  {tender.awarded_to && <span className="text-xs text-emerald-600 font-medium">Awarded to {tender.awarded_to}</span>}
-                  {tender.estimated_value != null && (
+                  {tender.quote_amount != null && (
                     <span className="text-xs text-slate-500 font-semibold">
-                      ${Number(tender.estimated_value).toLocaleString('en-AU')}
+                      ${Number(tender.quote_amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                     </span>
+                  )}
+                  {tender.quote_due_at && (
+                    <span className="text-xs text-slate-400">Due {fmt(tender.quote_due_at)}</span>
+                  )}
+                  {tender.award_status === 'awarded' && tender.contractor_name && (
+                    <span className="text-xs text-emerald-600 font-medium">Awarded to {tender.contractor_name}</span>
                   )}
                 </div>
               </div>

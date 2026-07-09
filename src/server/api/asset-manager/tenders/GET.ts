@@ -17,11 +17,10 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     let q = `SELECT t.*
-             FROM am_tenders t
-             LEFT JOIN am_inspections i ON i.id = t.inspection_id
+             FROM am_tender_cycles t
              WHERE t.company_id = ${profile.companyId}`;
-    if (assetId && !isNaN(assetId)) q += ` AND i.asset_id = ${assetId}`;
-    if (status) q += ` AND t.status = '${status.replace(/'/g, "''")}'`;
+    if (assetId && !isNaN(assetId)) q += ` AND t.asset_id = ${assetId}`;
+    if (status) q += ` AND t.award_status = '${status.replace(/'/g, "''")}'`;
     q += ` ORDER BY t.created_at DESC`;
 
     const [rows] = await db.execute(sql.raw(q)) as unknown as [unknown[], unknown];
