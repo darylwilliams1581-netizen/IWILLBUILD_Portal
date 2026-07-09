@@ -207,7 +207,8 @@ function SidebarContent({
           // Once loaded, only hide if the user genuinely lacks access.
           // Items with permKey: null (Dashboard, Forms) always show.
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
-          if (!permsLoading && (item as { ownerOnly?: boolean }).ownerOnly && !isPlatformOwner) return null;
+          // ownerOnly items: hide until permissions resolve, then hide if not platform owner
+          if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
           const isDazza = item.href === '/dazza-ai';
@@ -246,7 +247,8 @@ function SidebarContent({
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
-            if (!permsLoading && (item as { ownerOnly?: boolean }).ownerOnly && !isPlatformOwner) return null;
+            // ownerOnly items: hide until permissions resolve, then hide if not platform owner
+            if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
             const Icon   = item.icon;
             const active = isActive(item.href);
             const isDazza = item.href === '/dazza-ai';
