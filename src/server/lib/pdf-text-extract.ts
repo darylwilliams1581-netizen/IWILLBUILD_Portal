@@ -13,8 +13,8 @@
  *
  * No pdfjs-dist, no pdf-parse, no external dependencies.
  */
-import { inflateRaw, inflate, gunzip } from 'zlib';
-import { promisify } from 'util';
+import { inflateRaw, inflate, gunzip } from 'node:zlib';
+import { promisify } from 'node:util';
 
 const inflateRawAsync = promisify(inflateRaw);
 const inflateAsync    = promisify(inflate);

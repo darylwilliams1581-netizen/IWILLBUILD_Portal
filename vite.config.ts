@@ -351,6 +351,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       'html-to-image',
       // drizzle-kit is a CLI migration tool — never needed at SSR runtime.
       'drizzle-kit',
+      // mammoth is a large DOCX parser (~8 MB). The main DOCX import handler
+      // was rewritten to use JSZip, but two other endpoints still import it
+      // dynamically. Externalising prevents OOM during the SSR Rollup build.
+      // Those endpoints will gracefully handle the missing module at runtime.
+      'mammoth',
       // NOTE: lucide-react and @heroicons are NOT externalized here — they are
       // aliased to a stub in resolve.alias (below) during SSR build so they
       // compile to near-zero bytes rather than their full ~53 MB on disk.
@@ -496,11 +501,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (id.includes('node_modules/jimp') || id.includes('node_modules/@jimp')) return 'jimp';
           if (id.includes('node_modules/docx')) return 'docx';
           if (id.includes('node_modules/jszip')) return 'jszip';
-          // These are only used in lazy-loaded routes (2FA, backup export).
+          if (id.includes('node_modules/mammoth')) return 'mammoth';
           // Splitting them keeps them out of the entry bundle.
           if (id.includes('node_modules/otplib') || id.includes('node_modules/@otplib') || id.includes('node_modules/@scure/base') || id.includes('node_modules/@otplib/plugin-base32-scure') || id.includes('node_modules/@otplib/plugin-crypto-noble')) return 'otplib';
           if (id.includes('node_modules/qrcode') || id.includes('node_modules/dijkstrajs')) return 'qrcode';
-          if (id.includes('node_modules/jszip')) return 'jszip';
           // ── Additional splits to reduce peak Rollup render-phase RSS ──────────
           // date-fns is 38 MB on disk — one of the largest deps in the bundle.
           // Splitting it into its own chunk prevents Rollup from holding its

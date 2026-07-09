@@ -23,8 +23,8 @@
  * Returns: { blocks, sourceFileName, pageCount, warnings }
  */
 import type { Request, Response } from 'express';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq } from 'drizzle-orm';
