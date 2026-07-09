@@ -24,18 +24,21 @@ export interface TelemetryPoint {
   is_collision?: boolean;
 }
 
-const FLUSH_INTERVAL_MS = 30_000;   // flush every 30 seconds
-const WATCH_INTERVAL_MS = 5_000;    // poll GPS every 5 seconds (fallback)
-const MAX_QUEUE_SIZE    = 1_000;    // safety cap
+const FLUSH_INTERVAL_MS  = 30_000;  // flush every 30 seconds
+const FIRST_FLUSH_MS     = 5_000;   // flush first point quickly so map shows driver fast
+const WATCH_INTERVAL_MS  = 5_000;   // poll GPS every 5 seconds (fallback)
+const MAX_QUEUE_SIZE     = 1_000;   // safety cap
 
 export function useSessionTelemetry(
   sessionId: number | null,
   settings: FleetAnalyticsSettings,
 ) {
-  const queueRef     = useRef<TelemetryPoint[]>([]);
-  const watchIdRef   = useRef<number | null>(null);
+  const queueRef      = useRef<TelemetryPoint[]>([]);
+  const watchIdRef    = useRef<number | null>(null);
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sessionIdRef = useRef<number | null>(sessionId);
+  const firstFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushedFirstRef = useRef(false);
+  const sessionIdRef  = useRef<number | null>(sessionId);
 
   // Keep ref in sync so flush closure always has the latest sessionId
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
@@ -46,24 +49,6 @@ export function useSessionTelemetry(
     settings.track_speed ||
     settings.enable_collision_alerts
   );
-
-  const addPoint = useCallback((pos: GeolocationPosition) => {
-    if (!shouldTrack) return;
-    const pt: TelemetryPoint = {
-      recorded_at: new Date(pos.timestamp).toISOString(),
-      lat:         pos.coords.latitude,
-      lng:         pos.coords.longitude,
-      accuracy_m:  pos.coords.accuracy ?? null,
-      heading:     pos.coords.heading  ?? null,
-      // speed from Geolocation API is m/s — convert to km/h
-      speed_kmh:   settings.track_speed && pos.coords.speed != null
-        ? Math.round(pos.coords.speed * 3.6 * 10) / 10
-        : null,
-    };
-    if (queueRef.current.length < MAX_QUEUE_SIZE) {
-      queueRef.current.push(pt);
-    }
-  }, [shouldTrack, settings.track_speed]);
 
   const flush = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -86,6 +71,33 @@ export function useSessionTelemetry(
       queueRef.current.unshift(...batch);
     }
   }, []);
+
+  const addPoint = useCallback((pos: GeolocationPosition) => {
+    if (!shouldTrack) return;
+    const pt: TelemetryPoint = {
+      recorded_at: new Date(pos.timestamp).toISOString(),
+      lat:         pos.coords.latitude,
+      lng:         pos.coords.longitude,
+      accuracy_m:  pos.coords.accuracy ?? null,
+      heading:     pos.coords.heading  ?? null,
+      // speed from Geolocation API is m/s — convert to km/h
+      speed_kmh:   settings.track_speed && pos.coords.speed != null
+        ? Math.round(pos.coords.speed * 3.6 * 10) / 10
+        : null,
+    };
+    if (queueRef.current.length < MAX_QUEUE_SIZE) {
+      queueRef.current.push(pt);
+    }
+    // On the very first GPS point, schedule a fast flush so the live map
+    // shows the driver within seconds rather than waiting 30s.
+    if (!flushedFirstRef.current && firstFlushRef.current === null) {
+      firstFlushRef.current = setTimeout(() => {
+        flushedFirstRef.current = true;
+        firstFlushRef.current = null;
+        void flush();
+      }, FIRST_FLUSH_MS);
+    }
+  }, [shouldTrack, settings.track_speed, flush]);
 
   useEffect(() => {
     if (!sessionId || !shouldTrack) return;
@@ -120,6 +132,11 @@ export function useSessionTelemetry(
           clearInterval(watchIdRef.current);
         }
         watchIdRef.current = null;
+      }
+      // Cancel fast first-flush timer
+      if (firstFlushRef.current !== null) {
+        clearTimeout(firstFlushRef.current);
+        firstFlushRef.current = null;
       }
       // Stop flush timer
       if (flushTimerRef.current !== null) {
