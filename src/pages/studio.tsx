@@ -390,17 +390,20 @@ export default function StudioPage() {
 
   // ── Import DOCX/PDF from Studio page ─────────────────────────────────────
   const [showImporter, setShowImporter] = useState(false);
+  // Pre-created template ID so DocxImporter can POST to the parse endpoint immediately
+  const [importTemplateId, setImportTemplateId] = useState<number | null>(null);
 
-  const handleStudioImported = useCallback(async (blocks: DocumentBlock[], docxName: string) => {
+  const handleOpenImporter = useCallback(async () => {
+    // Create a blank placeholder template first so the parse endpoint has a valid ID
     try {
       const res = await fetch('/api/document-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          name: docxName.replace(/\.(docx|pdf)$/i, '') || 'Imported Document',
+          name: 'Imported Document',
           templateType: 'custom',
-          blocks,
+          blocks: [],
           pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' },
           theme: { backgroundColor: '#ffffff', accentColor: '#f97316', textColor: '#1e293b', tableHeaderColor: '#1e293b', tableHeaderTextColor: '#ffffff' },
           systemFields: [],
@@ -408,10 +411,32 @@ export default function StudioPage() {
         }),
       });
       const data = await res.json() as { id?: number; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
-      navigate(`/studio/builder/${data.id!}`);
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Could not create document');
+      setImportTemplateId(data.id!);
+      setShowImporter(true);
     } catch (e) {
-      toast.error('Import failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
+      toast.error('Could not start import: ' + (e instanceof Error ? e.message : 'Unknown error'));
+    }
+  }, []);
+
+  const handleStudioImported = useCallback(async (blocks: DocumentBlock[], docxName: string, templateId: number) => {
+    // Update the placeholder template with the real name and parsed blocks
+    try {
+      const res = await fetch(`/api/document-templates/${templateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: docxName.replace(/\.(docx|pdf)$/i, '') || 'Imported Document',
+          blocks,
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      navigate(`/studio/builder/${templateId}`);
+    } catch (e) {
+      // Even if rename fails, navigate to the builder — the content is already there
+      navigate(`/studio/builder/${templateId}`);
     }
   }, [navigate]);
 
@@ -451,7 +476,7 @@ export default function StudioPage() {
             {activeTab === 'documents' && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={() => setShowImporter(true)}
+                  onClick={() => void handleOpenImporter()}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors"
                 >
                   <FileUp size={14} />
@@ -503,16 +528,16 @@ export default function StudioPage() {
       </div>
 
       {/* ── Import DOCX/PDF modal ── */}
-      {showImporter && (
+      {showImporter && importTemplateId !== null && (
         <DocxImporter
-          templateId={null}
+          templateId={importTemplateId}
           hasExistingBlocks={false}
-          onClose={() => setShowImporter(false)}
+          onClose={() => { setShowImporter(false); setImportTemplateId(null); }}
           onImported={(blocks, name) => {
             setShowImporter(false);
-            void handleStudioImported(blocks, name);
+            void handleStudioImported(blocks, name, importTemplateId);
           }}
-          onSaveFirst={async () => null}
+          onSaveFirst={async () => importTemplateId}
         />
       )}
     </div>
