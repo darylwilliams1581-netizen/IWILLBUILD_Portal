@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Edit3, Loader2, CheckCircle,
-  AlertCircle, FileText, FileOutput,
+  AlertCircle, FileText, FileOutput, Library,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import BlockCanvas from './BlockCanvas';
@@ -21,6 +21,7 @@ import BlockInspector from './BlockInspector';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
+import { usePermissions } from '@/lib/usePermissions';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
 
@@ -47,6 +48,8 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   );
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const { isPlatformOwner } = usePermissions();
 
   // Load template on mount
   useEffect(() => {
@@ -252,6 +255,18 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           </>
         )}
 
+        {/* Publish to Library — platform owner only */}
+        {isPlatformOwner && templateId && (
+          <button
+            onClick={() => setShowPublishModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+            title="Publish this template to the global library"
+          >
+            <Library size={13} />
+            Publish to Library
+          </button>
+        )}
+
         {/* Save */}
         <button
           onClick={handleSave}
@@ -326,6 +341,165 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Publish to Library modal ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showPublishModal && templateId && (
+          <PublishToLibraryModal
+            templateId={templateId}
+            templateName={templateName}
+            onClose={() => setShowPublishModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ── Publish to Library Modal ──────────────────────────────────────────────────
+
+const LIBRARY_TYPES = ['form', 'procedure', 'policy', 'swms', 'recipe'] as const;
+type LibraryType = typeof LIBRARY_TYPES[number];
+
+function PublishToLibraryModal({
+  templateId,
+  templateName,
+  onClose,
+}: {
+  templateId: number;
+  templateName: string;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(templateName);
+  const [type, setType] = useState<LibraryType>('form');
+  const [category, setCategory] = useState('');
+  const [discipline, setDiscipline] = useState('');
+  const [summary, setSummary] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handlePublish = async () => {
+    if (!title.trim()) return;
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/document-templates/${templateId}/publish-to-library`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title: title.trim(), type, category, discipline, summary }),
+      });
+      const data = await res.json() as { ok?: boolean; libraryItemId?: number; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Publish failed');
+      setStatus('success');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Publish failed');
+      setStatus('error');
+    }
+  };
+
+  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center">
+              <Library size={15} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">Publish to Global Library</p>
+              <p className="text-xs text-slate-400">Available to all companies immediately</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {status === 'success' ? (
+          <div className="p-8 flex flex-col items-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
+              <CheckCircle size={28} className="text-green-500" />
+            </div>
+            <p className="text-base font-bold text-slate-800">Published!</p>
+            <p className="text-sm text-slate-500">
+              <strong>{title}</strong> is now live in the global library and available to all companies.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <div className="p-5 flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} placeholder="Document title" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
+                <select value={type} onChange={(e) => setType(e.target.value as LibraryType)} className={`${inp} appearance-none`}>
+                  {LIBRARY_TYPES.map((t) => (
+                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+                <input value={category} onChange={(e) => setCategory(e.target.value)} className={inp} placeholder="e.g. Safety" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Discipline</label>
+              <input value={discipline} onChange={(e) => setDiscipline(e.target.value)} className={inp} placeholder="e.g. Construction, Electrical" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary <span className="font-normal text-slate-400">(optional)</span></label>
+              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={2} className={`${inp} resize-none`} placeholder="Brief description shown in the library" />
+            </div>
+
+            {status === 'error' && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                <AlertCircle size={13} />
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => void handlePublish()}
+                disabled={!title.trim() || status === 'loading'}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Publishing…</> : <><Library size={13} /> Publish</>}
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   );
 }

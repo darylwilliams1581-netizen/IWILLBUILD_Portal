@@ -143,9 +143,11 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
   }
   const body = bodyMatch[1];
 
+  // Expand content controls (w:sdt) at the body level before splitting
+  const expandedBody = expandSdtElements(body);
+
   // Split into top-level elements: paragraphs and tables
-  // We'll collect consecutive list paragraphs into a single list block
-  const elements = splitBodyElements(body);
+  const elements = splitBodyElements(expandedBody);
 
   let i = 0;
   while (i < elements.length) {
@@ -160,7 +162,6 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
         const isOrdered = orderedNumIds.has(numId);
         const items: string[] = [para.text];
 
-        // Collect following paragraphs with the same numId
         while (i + 1 < elements.length) {
           const next = elements[i + 1];
           if (next.type !== 'paragraph') break;
@@ -195,7 +196,6 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
 
       // Regular paragraph — skip empty
       if (para.text.trim()) {
-        // Preserve inline formatting as rich_text if there's bold/italic/underline
         if (para.hasFormatting) {
           blocks.push({ id: newId(), type: 'rich_text', html: `<p>${para.innerHtml}</p>` });
         } else {
@@ -221,6 +221,14 @@ function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: str
   }
 
   return blocks;
+}
+
+/** Expand top-level w:sdt content controls into their inner content */
+function expandSdtElements(body: string): string {
+  return body.replace(/<w:sdt[ >]([\s\S]*?)<\/w:sdt>/g, (_, inner) => {
+    const contentMatch = /<w:sdtContent>([\s\S]*?)<\/w:sdtContent>/.exec(inner);
+    return contentMatch ? contentMatch[1] : '';
+  });
 }
 
 // ── Split body into paragraph/table elements ──────────────────────────────────
@@ -339,35 +347,72 @@ function extractPlainText(xml: string): string {
 // ── Table parser ──────────────────────────────────────────────────────────────
 
 function parseTableXml(xml: string): DocumentBlock | null {
-  const rows: string[][] = [];
+  const rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>> = [];
 
   const rowRe = /<w:tr[ >]([\s\S]*?)<\/w:tr>/g;
   let rowMatch: RegExpExecArray | null;
   while ((rowMatch = rowRe.exec(xml)) !== null) {
-    const cells: string[] = [];
+    const cells: Array<{ text: string; colSpan: number; isVMerge: boolean }> = [];
+
+    // Include both <w:tc> and <w:sdt> (content controls) inside cells
     const cellRe = /<w:tc[ >]([\s\S]*?)<\/w:tc>/g;
     let cellMatch: RegExpExecArray | null;
     while ((cellMatch = cellRe.exec(rowMatch[1])) !== null) {
-      cells.push(extractPlainText(cellMatch[1]));
+      const cellXml = cellMatch[1];
+
+      // Horizontal span
+      const gridSpanMatch = /<w:gridSpan\s+w:val="(\d+)"/.exec(cellXml);
+      const colSpan = gridSpanMatch ? parseInt(gridSpanMatch[1], 10) : 1;
+
+      // Vertical merge continuation — skip these cells (they are covered by the cell above)
+      const vMergeMatch = /<w:vMerge(?:\s+w:val="([^"]*)")?/.exec(cellXml);
+      const isVMerge = !!vMergeMatch && vMergeMatch[1] !== 'restart';
+
+      const text = extractCellText(cellXml);
+      cells.push({ text, colSpan, isVMerge });
     }
     if (cells.length > 0) rows.push(cells);
   }
 
   if (rows.length === 0) return null;
 
+  // Detect if this is a "form layout" table (label+field pairs, mostly 2-col,
+  // many cells are empty or short labels) vs a data table with a real header row.
+  const isFormTable = detectFormTable(rows);
+
+  if (isFormTable) {
+    // Render as a static HTML-style rich_text so the layout is preserved
+    return buildFormTableBlock(rows);
+  }
+
+  // Data table — first row = headers
   const headerRow = rows[0];
   const dataRows = rows.slice(1);
 
-  const columns = headerRow.map((h) => ({
-    id: newId(),
-    header: h,
-    cellType: 'text' as const,
-    width: 1,
-  }));
+  // Build column list from header row, expanding colSpans
+  const columns: Array<{ id: string; header: string; cellType: 'text'; width: number }> = [];
+  for (const cell of headerRow) {
+    const span = cell.colSpan || 1;
+    columns.push({ id: newId(), header: cell.text, cellType: 'text', width: span });
+    // Add placeholder columns for spanned cells
+    for (let s = 1; s < span; s++) {
+      columns.push({ id: newId(), header: '', cellType: 'text', width: 1 });
+    }
+  }
 
   const tableRows = dataRows.map((cells) => {
     const cellMap: Record<string, string> = {};
-    columns.forEach((col, i) => { cellMap[col.id] = cells[i] ?? ''; });
+    let colIdx = 0;
+    for (const cell of cells) {
+      if (cell.isVMerge) { colIdx++; continue; }
+      if (columns[colIdx]) cellMap[columns[colIdx].id] = cell.text;
+      const span = cell.colSpan || 1;
+      for (let s = 1; s < span; s++) {
+        colIdx++;
+        if (columns[colIdx]) cellMap[columns[colIdx].id] = '';
+      }
+      colIdx++;
+    }
     return { id: newId(), cells: cellMap };
   });
 
@@ -379,6 +424,97 @@ function parseTableXml(xml: string): DocumentBlock | null {
     rows: tableRows,
     stripedRows: true,
   };
+}
+
+/** Detect whether a table is a form-layout table (label+field pairs) vs a data table */
+function detectFormTable(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>>): boolean {
+  if (rows.length === 0) return false;
+  // If first row has a single cell spanning all columns → likely a section header → form table
+  if (rows[0].length === 1 && rows[0][0].colSpan > 1) return true;
+  // If more than 40% of cells are empty → form table (fields waiting to be filled)
+  let total = 0; let empty = 0;
+  for (const row of rows) {
+    for (const cell of row) {
+      total++;
+      if (!cell.text.trim()) empty++;
+    }
+  }
+  if (total > 0 && empty / total > 0.35) return true;
+  // If most rows have exactly 2 columns → label+value form
+  const twoColRows = rows.filter((r) => r.filter((c) => !c.isVMerge).length === 2).length;
+  if (rows.length > 2 && twoColRows / rows.length > 0.5) return true;
+  return false;
+}
+
+/** Render a form-layout table as a rich_text block with an HTML table */
+function buildFormTableBlock(rows: Array<Array<{ text: string; colSpan: number; isVMerge: boolean }>>): DocumentBlock {
+  const tableStyle = 'width:100%;border-collapse:collapse;font-size:12px;';
+  const labelStyle = 'background:#f1f5f9;font-weight:600;padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;white-space:nowrap;';
+  const valueStyle = 'padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;min-height:24px;';
+  const headerStyle = 'background:#1e293b;color:#fff;font-weight:700;padding:6px 8px;border:1px solid #334155;text-align:left;';
+  const spanStyle = 'padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;';
+
+  let html = `<table style="${tableStyle}">`;
+  for (const row of rows) {
+    const visibleCells = row.filter((c) => !c.isVMerge);
+    if (visibleCells.length === 0) continue;
+
+    // Single full-width cell → section header
+    const isSectionHeader = visibleCells.length === 1 && visibleCells[0].colSpan > 1;
+    // All cells have text → likely all-label or all-header row
+    const allHaveText = visibleCells.every((c) => c.text.trim().length > 0);
+    // First cell is a label (short, ends with colon or is clearly a label)
+    const firstIsLabel = visibleCells.length >= 2 && isLabelCell(visibleCells[0].text);
+
+    html += '<tr>';
+    for (const cell of visibleCells) {
+      const span = cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
+      const text = escapeHtml(cell.text);
+
+      if (isSectionHeader) {
+        html += `<th${span} style="${headerStyle}">${text}</th>`;
+      } else if (firstIsLabel && cell === visibleCells[0]) {
+        html += `<td${span} style="${labelStyle}">${text}</td>`;
+      } else if (allHaveText && !firstIsLabel) {
+        html += `<td${span} style="${spanStyle}">${text}</td>`;
+      } else {
+        html += `<td${span} style="${valueStyle}">${text || '&nbsp;'}</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+
+  return { id: newId(), type: 'rich_text', html };
+}
+
+function isLabelCell(text: string): boolean {
+  if (!text.trim()) return false;
+  // Short text (under 40 chars), ends with colon, or is a known label pattern
+  if (text.trim().endsWith(':')) return true;
+  if (text.trim().length < 40 && /^[A-Z]/.test(text.trim())) return true;
+  return false;
+}
+
+/** Extract all text from a table cell, including content controls and checkboxes */
+function extractCellText(cellXml: string): string {
+  // Handle Word content controls (w:sdt) — extract their display text
+  const withSdtExpanded = cellXml.replace(/<w:sdt[ >]([\s\S]*?)<\/w:sdt>/g, (_, inner) => {
+    // Try to get the alias/tag name for the field
+    const aliasMatch = /<w:alias\s+w:val="([^"]+)"/.exec(inner);
+    const alias = aliasMatch ? aliasMatch[1] : '';
+    // Get the actual text content inside w:sdtContent
+    const contentMatch = /<w:sdtContent>([\s\S]*?)<\/w:sdtContent>/.exec(inner);
+    const contentText = contentMatch ? extractPlainText(contentMatch[1]) : '';
+    return contentText || alias;
+  });
+
+  // Handle checkboxes — w14:checkbox or legacy checkbox SDTs
+  const withCheckboxes = withSdtExpanded.replace(/<w14:checked\s+w14:val="(\d+)"[^/]*\/>/g, (_, val) => {
+    return val === '1' ? '☑ ' : '☐ ';
+  });
+
+  return extractPlainText(withCheckboxes);
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────

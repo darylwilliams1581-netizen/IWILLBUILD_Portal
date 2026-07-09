@@ -200,6 +200,7 @@ import document_templates_id_duplicate_post_118 from "./api/document-templates/[
 import document_templates_id_import_blocks_post_121 from "./api/document-templates/[id]/import-blocks/POST";
 import document_templates_id_import_docx_post_122 from "./api/document-templates/[id]/import-docx/POST";
 import document_templates_id_import_pdf_post_123 from "./api/document-templates/[id]/import-pdf/POST";
+import document_templates_id_publish_to_library_post_124 from "./api/document-templates/[id]/publish-to-library/POST";
 import documents_get_124 from "./api/documents/GET";
 import documents_share_token_get_125 from "./api/documents/share/[token]/GET";
 import documents_share_token_post_126 from "./api/documents/share/[token]/POST";
@@ -1687,6 +1688,7 @@ app.get("/api/document-templates/:id/export/pdf", _h_document_templates_id_expor
 app.post("/api/document-templates/:id/import-blocks", document_templates_id_import_blocks_post_121);
 app.post("/api/document-templates/:id/import-docx", document_templates_id_import_docx_post_122);
 app.post("/api/document-templates/:id/import-pdf", document_templates_id_import_pdf_post_123);
+app.post("/api/document-templates/:id/publish-to-library", document_templates_id_publish_to_library_post_124);
 app.get("/api/documents", documents_get_124);
 app.get("/api/documents/share/:token", documents_share_token_get_125);
 app.post("/api/documents/share/:token", documents_share_token_post_126);
