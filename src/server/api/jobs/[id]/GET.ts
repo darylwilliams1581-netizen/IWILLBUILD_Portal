@@ -29,7 +29,13 @@ export default async function handler(req: Request, res: Response) {
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (job.companyId !== profile.companyId) return res.status(403).json({ error: 'Forbidden' });
 
-    res.json({ job });
+    // Fetch asset_id via raw SQL (added via colsToEnsure, not in Drizzle schema)
+    const [rawRows] = await db.execute(
+      sql`SELECT asset_id, customer_id FROM jobs WHERE id = ${jobId}`
+    ) as unknown as [Array<{ asset_id: number | null; customer_id: number | null }>, unknown];
+    const extra = rawRows[0] ?? {};
+
+    res.json({ job: { ...job, assetId: extra.asset_id ?? null, customerId: extra.customer_id ?? null } });
   } catch (error) {
     console.error('GET /api/jobs/:id error:', error);
     res.status(500).json({ error: 'Failed to fetch job' });

@@ -12,7 +12,12 @@ import {
   Building2, ChevronLeft, ClipboardCheck, AlertTriangle,
   FileText, Edit2, Check, X, Loader2, AlertCircle,
   Calendar, MapPin, Tag, Activity, Plus, Paperclip, Download,
+  StickyNote, CheckSquare, Camera, Briefcase,
 } from 'lucide-react';
+import AssetTodos from './AssetTodos';
+import AssetNotes from './AssetNotes';
+import AssetPhotos from './AssetPhotos';
+import AssetLinkedJobs from './AssetLinkedJobs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -557,13 +562,17 @@ function EmptyState({ icon, label, sub }: { icon: React.ReactNode; label: string
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'inspections' | 'defects' | 'tenders';
+type Tab = 'overview' | 'inspections' | 'defects' | 'tenders' | 'todos' | 'notes' | 'photos' | 'jobs';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview',    label: 'Overview',    icon: <Building2 size={13} /> },
   { id: 'inspections', label: 'Inspections', icon: <ClipboardCheck size={13} /> },
   { id: 'defects',     label: 'Defects',     icon: <AlertTriangle size={13} /> },
   { id: 'tenders',     label: 'Tenders',     icon: <FileText size={13} /> },
+  { id: 'todos',       label: 'Tasks',       icon: <CheckSquare size={13} /> },
+  { id: 'notes',       label: 'Notes',       icon: <StickyNote size={13} /> },
+  { id: 'photos',      label: 'Photos',      icon: <Camera size={13} /> },
+  { id: 'jobs',        label: 'Linked Jobs', icon: <Briefcase size={13} /> },
 ];
 
 interface Props {
@@ -691,6 +700,10 @@ export default function AssetDetailPanel({ assetId, onBack, onAssetUpdated }: Pr
         {tab === 'inspections' && <InspectionsTab assetId={assetId} />}
         {tab === 'defects'     && <DefectsTab assetId={assetId} />}
         {tab === 'tenders'     && <TendersTab assetId={assetId} />}
+        {tab === 'todos'       && <AssetTodos assetId={assetId} />}
+        {tab === 'notes'       && <AssetNotes assetId={assetId} />}
+        {tab === 'photos'      && <AssetPhotos assetId={assetId} />}
+        {tab === 'jobs'        && <AssetLinkedJobs assetId={assetId} />}
       </div>
     </div>
   );

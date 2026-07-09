@@ -20,6 +20,14 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.json({ jobs: [] });
 
     const customerId = req.query.customerId ? Number(req.query.customerId) : null;
+    const assetId = req.query.assetId ? Number(req.query.assetId) : null;
+
+    if (assetId) {
+      const [rows] = await db.execute(
+        sql`SELECT * FROM jobs WHERE company_id = ${profile.companyId} AND asset_id = ${assetId} ORDER BY created_at DESC`
+      ) as unknown as [Array<Record<string, unknown>>, unknown];
+      return res.json({ jobs: rows ?? [] });
+    }
 
     if (customerId) {
       // Filter by customer_id via raw SQL (column added via migration)

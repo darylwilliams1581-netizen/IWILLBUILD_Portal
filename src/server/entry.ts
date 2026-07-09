@@ -61,6 +61,17 @@ import asset_manager_tenders_id_contracts_post_28 from "./api/asset-manager/tend
 import asset_manager_tenders_id_attachments_get from "./api/asset-manager/tenders/[id]/attachments/GET";
 import asset_manager_tenders_id_attachments_post from "./api/asset-manager/tenders/[id]/attachments/POST";
 import asset_manager_tenders_id_attachments_fileId_delete from "./api/asset-manager/tenders/[id]/attachments/[fileId]/DELETE";
+// ── Asset Manager: per-asset todos / notes / photos ──────────────────────────
+import am_assets_id_todos_get from "./api/asset-manager/assets/[id]/todos/GET";
+import am_assets_id_todos_post from "./api/asset-manager/assets/[id]/todos/POST";
+import am_assets_id_todos_todoId_put from "./api/asset-manager/assets/[id]/todos/[todoId]/PUT";
+import am_assets_id_todos_todoId_delete from "./api/asset-manager/assets/[id]/todos/[todoId]/DELETE";
+import am_assets_id_notes_get from "./api/asset-manager/assets/[id]/notes/GET";
+import am_assets_id_notes_post from "./api/asset-manager/assets/[id]/notes/POST";
+import am_assets_id_notes_noteId_delete from "./api/asset-manager/assets/[id]/notes/[noteId]/DELETE";
+import am_assets_id_photos_get from "./api/asset-manager/assets/[id]/photos/GET";
+import am_assets_id_photos_post from "./api/asset-manager/assets/[id]/photos/POST";
+import am_assets_id_photos_photoId_delete from "./api/asset-manager/assets/[id]/photos/[photoId]/DELETE";
 import auth_change_email_post_29 from "./api/auth/change-email/POST";
 import auth_change_password_post_30 from "./api/auth/change-password/POST";
 import auth_check_signup_status_post_31 from "./api/auth/check-signup-status/POST";
@@ -1102,6 +1113,10 @@ async function runStartupMigrations() {
     { table: 'job_drawing_links', column: 'created_by',           definition: 'VARCHAR(36) NULL' },
     // ── drawing_audit_log: revision_id column ────────────────────────────────
     { table: 'drawing_audit_log', column: 'revision_id',          definition: 'INT NULL' },
+    // ── jobs: asset link ─────────────────────────────────────────────────────
+    { table: 'jobs', column: 'asset_id', definition: 'INT NULL' },
+    // ── am_tender_cycles: job link ───────────────────────────────────────────
+    { table: 'am_tender_cycles', column: 'job_id', definition: 'INT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -1221,6 +1236,10 @@ async function runStartupMigrations() {
     { name: 'am_media', ddl: "CREATE TABLE IF NOT EXISTS am_media (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, inspection_id INT NULL, company_id INT NOT NULL, category VARCHAR(40) NOT NULL DEFAULT 'site_photo', file_path VARCHAR(1000) NOT NULL, file_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NULL, uploaded_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_asset (asset_id), INDEX idx_inspection (inspection_id))" },
     { name: 'am_audit_log', ddl: "CREATE TABLE IF NOT EXISTS am_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, entity_type VARCHAR(40) NOT NULL, entity_id INT NOT NULL, action VARCHAR(80) NOT NULL, actor_id VARCHAR(36) NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_entity (entity_type, entity_id), INDEX idx_actor (actor_id))" },
     { name: 'am_report_shares', ddl: "CREATE TABLE IF NOT EXISTS am_report_shares (id INT AUTO_INCREMENT PRIMARY KEY, inspection_id INT NOT NULL, company_id INT NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, scope VARCHAR(30) NOT NULL DEFAULT 'read', expires_at DATETIME NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_token (token_hash), INDEX idx_inspection (inspection_id))" },
+    // ── Asset Manager: per-asset todos, notes, photos ─────────────────────────
+    { name: 'am_asset_todos', ddl: "CREATE TABLE IF NOT EXISTS am_asset_todos (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, company_id INT NOT NULL, title VARCHAR(500) NOT NULL, due_date DATE NULL, status VARCHAR(20) NOT NULL DEFAULT 'Open', notes TEXT NULL, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
+    { name: 'am_asset_notes', ddl: "CREATE TABLE IF NOT EXISTS am_asset_notes (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, company_id INT NOT NULL, body TEXT NOT NULL, created_by VARCHAR(36) NULL, created_by_name VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
+    { name: 'am_asset_photos', ddl: "CREATE TABLE IF NOT EXISTS am_asset_photos (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, company_id INT NOT NULL, file_path VARCHAR(1000) NOT NULL, file_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NULL, caption TEXT NULL, uploaded_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
   ];
   for (const { name, ddl } of safetyTables) {
     try {
@@ -1602,6 +1621,17 @@ app.post("/api/asset-manager/tenders/:id/contracts", asset_manager_tenders_id_co
 app.get("/api/asset-manager/tenders/:id/attachments", asset_manager_tenders_id_attachments_get);
 app.post("/api/asset-manager/tenders/:id/attachments", asset_manager_tenders_id_attachments_post);
 app.delete("/api/asset-manager/tenders/:id/attachments/:fileId", asset_manager_tenders_id_attachments_fileId_delete);
+// ── Asset Manager: per-asset todos / notes / photos ──────────────────────────
+app.get("/api/asset-manager/assets/:id/todos", am_assets_id_todos_get);
+app.post("/api/asset-manager/assets/:id/todos", am_assets_id_todos_post);
+app.put("/api/asset-manager/assets/:id/todos/:todoId", am_assets_id_todos_todoId_put);
+app.delete("/api/asset-manager/assets/:id/todos/:todoId", am_assets_id_todos_todoId_delete);
+app.get("/api/asset-manager/assets/:id/notes", am_assets_id_notes_get);
+app.post("/api/asset-manager/assets/:id/notes", am_assets_id_notes_post);
+app.delete("/api/asset-manager/assets/:id/notes/:noteId", am_assets_id_notes_noteId_delete);
+app.get("/api/asset-manager/assets/:id/photos", am_assets_id_photos_get);
+app.post("/api/asset-manager/assets/:id/photos", am_assets_id_photos_post);
+app.delete("/api/asset-manager/assets/:id/photos/:photoId", am_assets_id_photos_photoId_delete);
 app.post("/api/auth/change-email", auth_change_email_post_29);
 app.post("/api/auth/change-password", auth_change_password_post_30);
 app.post("/api/auth/check-signup-status", auth_check_signup_status_post_31);

@@ -3,6 +3,8 @@
 export const JOB_STATUSES = [
   'New',
   'Quoting',
+  'Tender Request',
+  'Tender Awarded',
   'Submitted',
   'Awaiting Approval',
   'Works Approved',
@@ -26,6 +28,7 @@ export interface Job {
   status: string;
   notes: string | null;
   customerId: number | null;
+  assetId: number | null;
   // Scheduler v2 fields
   scheduledStartDate: string | null;
   expectedCompletionDate: string | null;
@@ -40,6 +43,8 @@ export interface Job {
 export const STATUS_STYLE: Record<string, { color: string; bg: string; dot: string }> = {
   'New':                   { color: 'text-slate-700',   bg: 'bg-slate-100 border-slate-200',     dot: 'bg-slate-400' },
   'Quoting':               { color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200',      dot: 'bg-amber-400' },
+  'Tender Request':        { color: 'text-violet-700',  bg: 'bg-violet-50 border-violet-200',    dot: 'bg-violet-400' },
+  'Tender Awarded':        { color: 'text-indigo-700',  bg: 'bg-indigo-50 border-indigo-200',    dot: 'bg-indigo-500' },
   'Submitted':             { color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200',        dot: 'bg-blue-400' },
   'Awaiting Approval':     { color: 'text-purple-700',  bg: 'bg-purple-50 border-purple-200',    dot: 'bg-purple-400' },
   'Works Approved':        { color: 'text-teal-700',    bg: 'bg-teal-50 border-teal-200',        dot: 'bg-teal-400' },
@@ -126,6 +131,7 @@ export async function updateJob(id: number, payload: Partial<{
   notes: string;
   jobNumber: string;
   customerId: number | null;
+  assetId: number | null;
   scheduledStartDate: string | null;
   expectedCompletionDate: string | null;
   actualStartDate: string | null;

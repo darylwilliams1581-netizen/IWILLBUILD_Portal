@@ -40,6 +40,7 @@ import {
   Rocket,
   LogIn,
   Siren,
+  Building2,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -61,6 +62,7 @@ import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import JobLaunchTab from '@/components/job/JobLaunchTab';
 import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import JobEmergencyTab from '@/components/job/JobEmergencyTab';
+import AssetSelector from '@/components/AssetManager/AssetSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
@@ -132,6 +134,9 @@ export default function JobDetailPage() {
   const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [teamMembers, setTeamMembers] = useState<Array<{ userId: string; name: string; role: string }>>([]);
+  const [linkedAssetId, setLinkedAssetId] = useState<number | null>(null);
+  const [linkedAssetName, setLinkedAssetName] = useState<string>('');
+  const [editingAssetId, setEditingAssetId] = useState<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
@@ -198,6 +203,16 @@ export default function JobDetailPage() {
         assignedSupervisorUserId: data.assignedSupervisorUserId ?? '',
         assignedTeamLabel: data.assignedTeamLabel ?? '',
       });
+      // Load asset link (asset_id returned via raw SQL in GET handler)
+      const assetId = (data as Record<string, unknown>).assetId as number | null ?? null;
+      setLinkedAssetId(assetId);
+      setEditingAssetId(assetId);
+      if (assetId) {
+        fetch(`/api/asset-manager/assets/${assetId}`, { credentials: 'include' })
+          .then(r => r.json() as Promise<{ asset?: { name: string } }>)
+          .then(d => { if (d.asset) setLinkedAssetName(d.asset.name); })
+          .catch(() => {});
+      }
       if (data.customerId) {
         fetchCustomer(data.customerId)
           .then(({ customer }) => { setLinkedCustomer(customer); setEditingCustomer(customer); })
@@ -227,6 +242,7 @@ export default function JobDetailPage() {
         status: form.status,
         notes: form.notes.trim() || undefined,
         customerId: editingCustomer?.id ?? null,
+        assetId: editingAssetId ?? null,
         scheduledStartDate: form.scheduledStartDate || null,
         expectedCompletionDate: form.expectedCompletionDate || null,
         actualStartDate: form.actualStartDate || null,
@@ -236,6 +252,7 @@ export default function JobDetailPage() {
       });
       setJob(updated);
       setLinkedCustomer(editingCustomer);
+      setLinkedAssetId(editingAssetId);
       setEditing(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
@@ -261,6 +278,7 @@ export default function JobDetailPage() {
       assignedTeamLabel: job.assignedTeamLabel ?? '',
     });
     setEditingCustomer(linkedCustomer);
+    setEditingAssetId(linkedAssetId);
     setSaveError('');
     setEditing(false);
   }
@@ -664,6 +682,13 @@ export default function JobDetailPage() {
                               />
                             </div>
                             <div>
+                              <label className="block text-xs font-semibold mb-1.5">Link Asset <span className="text-muted-foreground font-normal">(optional)</span></label>
+                              <AssetSelector
+                                value={editingAssetId}
+                                onChange={(id, name) => { setEditingAssetId(id); if (name) setLinkedAssetName(name); }}
+                              />
+                            </div>
+                            <div>
                               <label className="block text-xs font-semibold mb-1.5">Client Name</label>
                               <input
                                 type="text"
@@ -762,6 +787,14 @@ export default function JobDetailPage() {
                             <DetailRow icon={HardHat} label="Job Title" value={job.name} />
                             {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
                             {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
+                            {linkedAssetId && linkedAssetName && (
+                              <DetailRow
+                                icon={Building2}
+                                label="Linked Asset"
+                                value={linkedAssetName}
+                                href={`/asset-manager?assetId=${linkedAssetId}`}
+                              />
+                            )}
                             {job.address && (
                               <DetailRow
                                 icon={MapPin}

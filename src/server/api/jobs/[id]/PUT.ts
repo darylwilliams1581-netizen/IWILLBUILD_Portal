@@ -28,7 +28,7 @@ export default async function handler(req: Request, res: Response) {
     if (existing.companyId !== profile.companyId) return res.status(403).json({ error: 'Forbidden' });
 
     const {
-      name, client, address, status, notes, jobNumber, customerId,
+      name, client, address, status, notes, jobNumber, customerId, assetId,
       scheduledStartDate, expectedCompletionDate,
       actualStartDate, actualCompletionDate,
       assignedSupervisorUserId, assignedTeamLabel,
@@ -40,6 +40,7 @@ export default async function handler(req: Request, res: Response) {
       notes?: string;
       jobNumber?: string;
       customerId?: number | null;
+      assetId?: number | null;
       scheduledStartDate?: string | null;
       expectedCompletionDate?: string | null;
       actualStartDate?: string | null;
@@ -75,6 +76,13 @@ export default async function handler(req: Request, res: Response) {
     if (customerId !== undefined) {
       await db.execute(
         sql`UPDATE jobs SET customer_id = ${customerId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+
+    // asset_id via raw SQL (added via colsToEnsure, not in Drizzle schema)
+    if (assetId !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET asset_id = ${assetId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
       );
     }
 
