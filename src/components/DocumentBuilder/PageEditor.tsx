@@ -55,6 +55,8 @@ export default function PageEditor({ onChange }: Props) {
 
   // Number of A4 sheets currently rendered
   const [pageCount, setPageCount] = useState(1);
+  // Mirror of editor innerHTML for rendering continuation sheets
+  const [editorHtml, setEditorHtml] = useState('');
 
   // Floating toolbar state
   const [toolbar, setToolbar] = useState<{ top: number; left: number; visible: boolean }>({
@@ -93,6 +95,7 @@ export default function PageEditor({ onChange }: Props) {
       const contentH = editorRef.current.scrollHeight;
       const needed   = Math.max(1, Math.ceil(contentH / pageH));
       setPageCount((prev) => (needed !== prev ? needed : prev));
+      setEditorHtml(editorRef.current.innerHTML);
     }, 150);
   }, [pageH]);
 
@@ -262,18 +265,14 @@ export default function PageEditor({ onChange }: Props) {
     }
   }, []);
 
-  // ── Page ruler lines (visual guides at each A4 boundary) ─────────────────
-  const pageRulers = Array.from({ length: pageCount - 1 }, (_, i) => (i + 1) * pageH);
-
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-300 flex flex-col items-center py-8 px-4 gap-0">
+    <div className="flex-1 overflow-y-auto bg-slate-300 flex flex-col items-center py-8 px-4 gap-6">
 
       {/* ── Print/PDF styles ── */}
       <style>{`
         @page { size: ${isLandscape ? 'A4 landscape' : 'A4 portrait'}; margin: ${margin}; }
 
-        /* Page sheet shadows in editor */
-        .page-sheet { box-shadow: 0 2px 12px 0 rgba(0,0,0,0.13); }
+        .page-sheet { box-shadow: 0 2px 16px 0 rgba(0,0,0,0.15); }
 
         /* Page-break ruler lines inside the editor */
         .page-ruler {
@@ -281,12 +280,11 @@ export default function PageEditor({ onChange }: Props) {
           border-top: 2px dashed #94a3b8;
           pointer-events: none; z-index: 10;
         }
-        .page-ruler::before {
-          content: 'Page break';
-          position: absolute; right: 8px; top: -18px;
+        .page-ruler::after {
+          content: 'Page ' attr(data-page);
+          position: absolute; right: 10px; top: 4px;
           font-size: 10px; color: #94a3b8; letter-spacing: 0.05em;
           font-family: ui-sans-serif, system-ui, sans-serif;
-          background: white; padding: 0 4px;
         }
 
         /* Editor typography */
@@ -327,81 +325,111 @@ export default function PageEditor({ onChange }: Props) {
           padding: 1px 4px; font-family: ui-monospace, monospace; font-size: 12px;
         }
 
-        /* Print: hide page-ruler lines, show real page breaks */
         @media print {
           .page-ruler { display: none; }
-          .page-sheet { box-shadow: none; page-break-after: always; break-after: page; }
-          .page-sheet:last-child { page-break-after: avoid; break-after: avoid; }
+          .page-sheet { box-shadow: none; }
         }
       `}</style>
 
-      {/* ── A4 page sheet ── */}
-      <div
-        className="page-sheet relative bg-white"
-        style={{ width: pageW, maxWidth: '100%' }}
-      >
-        {/* Floating formatting toolbar */}
-        {toolbar.visible && (
+      {/* ── Render one discrete A4 sheet per page ── */}
+      {Array.from({ length: pageCount }, (_, pageIdx) => {
+        const isFirst = pageIdx === 0;
+        // For pages after the first, we render a continuation sheet.
+        // The single contenteditable lives in the first sheet; subsequent
+        // sheets are visual-only placeholders that show the grey gutter.
+        return (
           <div
-            className="absolute z-20 flex items-center gap-0.5 bg-slate-800 rounded-lg px-1.5 py-1 shadow-xl pointer-events-auto"
-            style={{ top: toolbar.top, left: toolbar.left }}
-            onMouseDown={(e) => e.preventDefault()}
+            key={pageIdx}
+            className="page-sheet relative bg-white flex-shrink-0"
+            style={{
+              width: pageW,
+              height: pageH,
+              maxWidth: '100%',
+              overflow: 'hidden',
+            }}
           >
-            <ToolbarBtn title="Bold (⌘B)"      onClick={() => exec('bold')}><Bold size={13} /></ToolbarBtn>
-            <ToolbarBtn title="Italic (⌘I)"    onClick={() => exec('italic')}><Italic size={13} /></ToolbarBtn>
-            <ToolbarBtn title="Underline (⌘U)" onClick={() => exec('underline')}><Underline size={13} /></ToolbarBtn>
-            <div className="w-px h-4 bg-slate-600 mx-0.5" />
-            <ToolbarBtn title="Bullet list"    onClick={() => exec('insertUnorderedList')}><List size={13} /></ToolbarBtn>
-            <ToolbarBtn title="Numbered list"  onClick={() => exec('insertOrderedList')}><ListOrdered size={13} /></ToolbarBtn>
-            <div className="w-px h-4 bg-slate-600 mx-0.5" />
-            <ToolbarBtn title="Align left"     onClick={() => exec('justifyLeft')}><AlignLeft size={13} /></ToolbarBtn>
-            <ToolbarBtn title="Align center"   onClick={() => exec('justifyCenter')}><AlignCenter size={13} /></ToolbarBtn>
-            <ToolbarBtn title="Align right"    onClick={() => exec('justifyRight')}><AlignRight size={13} /></ToolbarBtn>
-            <div className="w-px h-4 bg-slate-600 mx-0.5" />
-            <ToolbarBtn title="Heading 1"  onClick={() => exec('formatBlock', 'h1')} label="H1" />
-            <ToolbarBtn title="Heading 2"  onClick={() => exec('formatBlock', 'h2')} label="H2" />
-            <ToolbarBtn title="Heading 3"  onClick={() => exec('formatBlock', 'h3')} label="H3" />
-            <ToolbarBtn title="Paragraph"  onClick={() => exec('formatBlock', 'p')}  label="P"  />
-            <div className="w-px h-4 bg-slate-600 mx-0.5" />
-            <ToolbarBtn title="Horizontal rule" onClick={() => exec('insertHorizontalRule')}><Minus size={13} /></ToolbarBtn>
+            {isFirst ? (
+              <>
+                {/* Floating formatting toolbar — only on first sheet */}
+                {toolbar.visible && (
+                  <div
+                    className="absolute z-20 flex items-center gap-0.5 bg-slate-800 rounded-lg px-1.5 py-1 shadow-xl pointer-events-auto"
+                    style={{ top: toolbar.top, left: toolbar.left }}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    <ToolbarBtn title="Bold (⌘B)"      onClick={() => exec('bold')}><Bold size={13} /></ToolbarBtn>
+                    <ToolbarBtn title="Italic (⌘I)"    onClick={() => exec('italic')}><Italic size={13} /></ToolbarBtn>
+                    <ToolbarBtn title="Underline (⌘U)" onClick={() => exec('underline')}><Underline size={13} /></ToolbarBtn>
+                    <div className="w-px h-4 bg-slate-600 mx-0.5" />
+                    <ToolbarBtn title="Bullet list"    onClick={() => exec('insertUnorderedList')}><List size={13} /></ToolbarBtn>
+                    <ToolbarBtn title="Numbered list"  onClick={() => exec('insertOrderedList')}><ListOrdered size={13} /></ToolbarBtn>
+                    <div className="w-px h-4 bg-slate-600 mx-0.5" />
+                    <ToolbarBtn title="Align left"     onClick={() => exec('justifyLeft')}><AlignLeft size={13} /></ToolbarBtn>
+                    <ToolbarBtn title="Align center"   onClick={() => exec('justifyCenter')}><AlignCenter size={13} /></ToolbarBtn>
+                    <ToolbarBtn title="Align right"    onClick={() => exec('justifyRight')}><AlignRight size={13} /></ToolbarBtn>
+                    <div className="w-px h-4 bg-slate-600 mx-0.5" />
+                    <ToolbarBtn title="Heading 1"  onClick={() => exec('formatBlock', 'h1')} label="H1" />
+                    <ToolbarBtn title="Heading 2"  onClick={() => exec('formatBlock', 'h2')} label="H2" />
+                    <ToolbarBtn title="Heading 3"  onClick={() => exec('formatBlock', 'h3')} label="H3" />
+                    <ToolbarBtn title="Paragraph"  onClick={() => exec('formatBlock', 'p')}  label="P"  />
+                    <div className="w-px h-4 bg-slate-600 mx-0.5" />
+                    <ToolbarBtn title="Horizontal rule" onClick={() => exec('insertHorizontalRule')}><Minus size={13} /></ToolbarBtn>
+                  </div>
+                )}
+
+                {/* Single contenteditable — overflows downward, clipped by overflow:hidden */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  spellCheck
+                  onInput={handleInput}
+                  onPaste={handlePaste}
+                  onKeyDown={handleKeyDown}
+                  className="outline-none w-full absolute top-0 left-0"
+                  style={{
+                    padding: margin,
+                    minHeight: pageH,
+                    fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
+                    fontSize: '13px',
+                    lineHeight: '1.6',
+                    color: theme.textColor,
+                    // Allow content to grow beyond the sheet — overflow:hidden on
+                    // the parent clips it visually; subsequent sheets show the rest
+                    zIndex: 1,
+                  }}
+                  data-placeholder="Click here to start typing your document…"
+                />
+              </>
+            ) : (
+              /* Continuation sheet — shows the overflow content via negative margin trick */
+              <div
+                className="outline-none w-full absolute top-0 left-0 pointer-events-none select-none"
+                style={{
+                  padding: margin,
+                  fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                  color: theme.textColor,
+                  // Shift content up by (pageIdx * pageH) so this sheet shows
+                  // the correct slice of the full document
+                  transform: `translateY(-${pageIdx * pageH}px)`,
+                  height: (pageCount * pageH),
+                }}
+                dangerouslySetInnerHTML={{ __html: editorHtml }}
+              />
+            )}
+
+            {/* Page number footer */}
+            <div
+              className="absolute bottom-2 right-3 text-[10px] text-slate-300 font-mono select-none pointer-events-none"
+              style={{ zIndex: 5 }}
+            >
+              {pageIdx + 1} / {pageCount}
+            </div>
           </div>
-        )}
-
-        {/* Visual page-break ruler lines */}
-        {pageRulers.map((y) => (
-          <div key={y} className="page-ruler" style={{ top: y }} />
-        ))}
-
-        {/* Editable content area — grows freely; rulers show page boundaries */}
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          spellCheck
-          onInput={handleInput}
-          onPaste={handlePaste}
-          onKeyDown={handleKeyDown}
-          className="outline-none w-full"
-          style={{
-            padding: margin,
-            minHeight: pageH,
-            fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
-            fontSize: '13px',
-            lineHeight: '1.6',
-            color: theme.textColor,
-          }}
-          data-placeholder="Click here to start typing your document…"
-        />
-
-        {/* Page counter badge */}
-        {pageCount > 1 && (
-          <div
-            className="absolute bottom-2 right-3 text-[10px] text-slate-400 font-mono select-none pointer-events-none"
-          >
-            {pageCount} pages
-          </div>
-        )}
-      </div>
+        );
+      })}
 
       {/* Paste mode modal */}
       <AnimatePresence>
