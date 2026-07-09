@@ -46,11 +46,18 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No DOCX file uploaded. Upload a .docx file in the "docx" field.' });
     }
 
-    // Parse with mammoth
-    const mammoth = await import('mammoth');
-    const result = await mammoth.convertToHtml({ buffer: docxFile.buffer });
+    // Parse with mammoth — handle both CJS default export and named export
+    // (Rollup wraps CJS modules differently in dev vs prod SSR bundle)
+    const mammothMod = await import('mammoth');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mammoth = (mammothMod as any).default ?? mammothMod;
+    if (typeof mammoth.convertToHtml !== 'function') {
+      console.error('[import-docx] mammoth.convertToHtml not found. Module keys:', Object.keys(mammothMod));
+      return res.status(500).json({ error: 'DOCX parser not available — please try again.' });
+    }
+    const result = await mammoth.convertToHtml({ buffer: docxFile.buffer }) as { value: string; messages: Array<{ message: string }> };
     const html = result.value;
-    const warnings = result.messages.map((m) => m.message);
+    const warnings = result.messages.map((m: { message: string }) => m.message);
 
     // Convert HTML → builder blocks
     const blocks = htmlToBuilderBlocks(html);
@@ -68,7 +75,8 @@ export default async function handler(req: Request, res: Response) {
     });
   } catch (err) {
     console.error('POST /api/document-templates/:id/import-docx error:', err);
-    return res.status(500).json({ error: 'Failed to parse DOCX file' });
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ error: `Failed to parse DOCX file: ${msg}` });
   }
 }
 
