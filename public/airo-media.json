@@ -71,5 +71,44 @@
       "/airo-assets/uploads/safety-badges-icons-sheet-ff13a3c9.png": "f38wenbvln_1783486300702_file_56AQGF9z5W.png"
     },
     "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
+  },
+  "reference/screenshot-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-09T11:55:16.522Z",
+    "lastUpdated": "2026-07-09T11:55:16.522Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg": "f38wenbvln_1783594061277_file_vzt_7l38GG.jpg"
+    },
+    "uploadContentHash": "c1a68dc98faee8f150aa7983d979ccea1531d44fc3f480c4ab0ab9362e432a66"
+  },
+  "reference/screenshot-2": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-09T11:55:22.380Z",
+    "lastUpdated": "2026-07-09T11:55:22.380Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg": "f38wenbvln_1783594193977_file_raBuSs8RYT.jpg"
+    },
+    "uploadContentHash": "861f6573e82e37df720be4eafa0a45da842b89725ea0bc36bacbbdca6f376d8c"
+  },
+  "reference/screenshot-3": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-09T11:55:25.438Z",
+    "lastUpdated": "2026-07-09T11:55:25.438Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg"
+    },
+    "uploadContentHash": "5166a0cbaff30338512c95ceca4928f3b2a6c4268327a59225c7000b67fd3016"
   }
 }
