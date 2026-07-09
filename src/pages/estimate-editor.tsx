@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
