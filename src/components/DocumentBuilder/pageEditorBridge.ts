@@ -403,7 +403,21 @@ export function sanitisePastedHtml(raw: string, mode: PasteMode = 'keep'): strin
     }
   });
 
-  // ── 8. Clean up tables ────────────────────────────────────────────────────
+  // ── 8. Strip external images (http/https src) ────────────────────────────
+  // Word pastes often embed external image URLs that render as broken tokens.
+  // Replace them with a readable placeholder span so the document stays clean.
+  container.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src') ?? '';
+    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('file://')) {
+      const alt = img.getAttribute('alt') || src.split('/').pop() || 'image';
+      const chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-block;padding:2px 8px;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:4px;color:#94a3b8;font-size:11px;font-family:ui-monospace,monospace;';
+      chip.textContent = `[image: ${alt}]`;
+      img.replaceWith(chip);
+    }
+  });
+
+  // ── 9. Clean up tables ────────────────────────────────────────────────────
   container.querySelectorAll('table').forEach((tbl) => {
     tbl.removeAttribute('style');
     tbl.removeAttribute('class');
