@@ -461,7 +461,7 @@ export default function EstimateEditorPage() {
                   customerName: estimate.customerName ?? undefined,
                   totalAmount: (() => { const t = estimateTotals(lines, estimate.markupPercent ?? '0', estimate.gstMode ?? 'No GST'); return t.total.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); })(),
                   status: estimate.status,
-                  link: `${window.location.origin}/view/estimate/${estimate.id}`,
+                  link: `${typeof window !== 'undefined' ? window.location.origin : 'https://iwillbuild.com'}/view/estimate/${estimate.id}`,
                 }}
                 size="sm"
                 showCopy
