@@ -14,15 +14,17 @@
 
 import { useState } from 'react';
 import {
-  FileUp, Table2, PenLine, Camera, Minus, AlignLeft,
+  FileUp, Table2, PenLine, Camera, Minus,
   ChevronDown, ChevronRight, FileText, Type, Hash,
   AlertTriangle, Image, PanelLeftClose, PanelLeftOpen,
   Calendar, CheckSquare, List, LayoutGrid, Briefcase,
   MapPin, User, Building2, ClipboardList, Zap,
+  Info, CheckCircle, ShieldAlert, Shield, AlertOctagon,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import { nanoid } from 'nanoid';
-import type { DocumentBlock } from './types';
+import type { DocumentBlock, BannerVariant } from './types';
 
 interface Props {
   onImportDocx: () => void;
@@ -46,6 +48,93 @@ const SYSTEM_FIELD_TOKENS = [
   { key: 'doc.number',       label: 'Document Number', icon: <ClipboardList size={11} /> },
   { key: 'doc.revision',     label: 'Revision',        icon: <ClipboardList size={11} /> },
 ];
+
+// ── Banner variant definitions ────────────────────────────────────────────────
+const BANNER_VARIANTS: {
+  variant: string;
+  label: string;
+  defaultTitle: string;
+  defaultBody: string;
+  icon: React.ReactNode;
+  accent?: string;
+}[] = [
+  { variant: 'info',         label: 'Info',         defaultTitle: 'Note',          defaultBody: 'Enter information here.',   icon: <Info size={12} />,          accent: 'blue' },
+  { variant: 'warning',      label: 'Warning',       defaultTitle: 'Warning',       defaultBody: 'Enter warning here.',       icon: <AlertTriangle size={12} />, accent: 'amber' },
+  { variant: 'danger',       label: 'Danger',        defaultTitle: 'Danger',        defaultBody: 'Enter danger notice here.', icon: <AlertOctagon size={12} />,  accent: 'red' },
+  { variant: 'success',      label: 'Success',       defaultTitle: 'Complete',      defaultBody: 'Enter success note here.',  icon: <CheckCircle size={12} />,   accent: 'green' },
+  { variant: 'safety',       label: 'Safety',        defaultTitle: 'Safety Notice', defaultBody: 'Enter safety info here.',   icon: <Shield size={12} />,        accent: 'orange' },
+  { variant: 'safety_first', label: 'Safety First',  defaultTitle: 'SAFETY FIRST',  defaultBody: 'THINK SAFE. WORK SAFE.',    icon: <ShieldAlert size={12} />,   accent: 'yellow' },
+  { variant: 'first_aid',    label: 'First Aid',     defaultTitle: 'FIRST AID',     defaultBody: 'KNOW YOUR NEAREST KIT',     icon: <ShieldAlert size={12} />,   accent: 'red' },
+  { variant: 'custom',       label: 'Custom',        defaultTitle: 'Custom Banner',  defaultBody: 'Enter text here.',         icon: <ShieldAlert size={12} /> },
+];
+
+// ── Image insert panel ────────────────────────────────────────────────────────
+function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => void }) {
+  const [size, setSize]   = useState<'small' | 'medium' | 'large' | 'full'>('medium');
+  const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
+
+  const SIZE_LABELS = { small: 'Small', medium: 'Medium', large: 'Large', full: 'Full width' };
+
+  return (
+    <div className="mx-2 mb-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 flex flex-col gap-2">
+      {/* Size selector */}
+      <div>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Size</p>
+        <div className="grid grid-cols-2 gap-1">
+          {(Object.keys(SIZE_LABELS) as (keyof typeof SIZE_LABELS)[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSize(s)}
+              className={`py-1 rounded text-[10px] font-semibold transition-colors ${
+                size === s
+                  ? 'bg-primary text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
+              }`}
+            >
+              {SIZE_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Align selector */}
+      <div>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Align</p>
+        <div className="flex gap-1">
+          {(['left', 'center', 'right'] as const).map((a) => (
+            <button
+              key={a}
+              onClick={() => setAlign(a)}
+              title={a.charAt(0).toUpperCase() + a.slice(1)}
+              className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${
+                align === a
+                  ? 'bg-primary text-white'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'
+              }`}
+            >
+              {a === 'left'   && <AlignLeft size={12} />}
+              {a === 'center' && <AlignCenter size={12} />}
+              {a === 'right'  && <AlignRight size={12} />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Insert button */}
+      <button
+        onClick={() => onInsert({
+          id: nanoid(10), type: 'image',
+          src: '', alt: '', size, align,
+          preserveAspectRatio: true,
+        })}
+        className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+      >
+        <Image size={11} />
+        Insert image
+      </button>
+    </div>
+  );
+}
 
 export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }: Props) {
   const { appendBlocks } = useDocumentStore();
@@ -311,19 +400,29 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
         </button>
         {advancedOpen && (
           <div className="flex flex-col gap-0.5">
-            <ToolBtn
-              icon={<AlertTriangle size={12} />}
-              label="Banner / Callout"
-              onClick={() => insert({
-                id: nanoid(10), type: 'banner', variant: 'info',
-                title: 'Notice', body: 'Enter banner text here.', size: 'standard', align: 'left', showOnExport: true,
-              })}
-            />
-            <ToolBtn
-              icon={<Image size={12} />}
-              label="Image"
-              onClick={() => insert({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'left', preserveAspectRatio: true })}
-            />
+
+            {/* ── Banner / Callout picker ─────────────────────────────────── */}
+            <p className="px-2 pt-1 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Banners</p>
+            {BANNER_VARIANTS.map((bv) => (
+              <ToolBtn
+                key={bv.variant}
+                icon={bv.icon}
+                label={bv.label}
+                onClick={() => insert({
+                  id: nanoid(10), type: 'banner', variant: bv.variant as BannerVariant,
+                  title: bv.defaultTitle, body: bv.defaultBody,
+                  size: 'standard', align: 'left', showOnExport: true,
+                })}
+                accent={bv.accent}
+              />
+            ))}
+
+            {/* ── Image ──────────────────────────────────────────────────── */}
+            <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Image</p>
+            <ImageInsertPanel onInsert={insert} />
+
+            {/* ── Rich Text / Columns ────────────────────────────────────── */}
+            <p className="px-2 pt-2 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Layout</p>
             <ToolBtn
               icon={<FileText size={12} />}
               label="Rich Text Block"
@@ -363,23 +462,36 @@ function SectionLabel({ children, className = '' }: { children: React.ReactNode;
 }
 
 function ToolBtn({
-  icon, label, onClick, primary = false,
+  icon, label, onClick, primary = false, accent,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   primary?: boolean;
+  accent?: string;
 }) {
+  const accentClasses: Record<string, string> = {
+    blue:   'text-blue-600 hover:bg-blue-50',
+    amber:  'text-amber-600 hover:bg-amber-50',
+    red:    'text-red-600 hover:bg-red-50',
+    green:  'text-green-600 hover:bg-green-50',
+    orange: 'text-orange-600 hover:bg-orange-50',
+    yellow: 'text-yellow-700 hover:bg-yellow-50',
+  };
+  const accentCls = accent ? accentClasses[accent] ?? '' : '';
+
   return (
     <button
       onClick={onClick}
       className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors text-left ${
         primary
           ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+          : accentCls
+          ? `text-slate-600 ${accentCls}`
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
       }`}
     >
-      <span className={`flex-shrink-0 ${primary ? 'text-primary' : 'text-slate-400'}`}>{icon}</span>
+      <span className={`flex-shrink-0 ${primary ? 'text-primary' : accentCls ? '' : 'text-slate-400'}`}>{icon}</span>
       <span className="truncate">{label}</span>
     </button>
   );
