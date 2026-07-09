@@ -10,8 +10,10 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen, Menu,
+  ShieldCheck, ClipboardList, BookOpen, Menu, FileUp,
 } from 'lucide-react';
+import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
+import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import PortalSidebar from '@/components/PortalSidebar';
 import { toast } from 'sonner';
 
@@ -386,6 +388,33 @@ export default function StudioPage() {
     if (!p && activeTab !== 'documents') setActiveTab('documents');
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Import DOCX/PDF from Studio page ─────────────────────────────────────
+  const [showImporter, setShowImporter] = useState(false);
+
+  const handleStudioImported = useCallback(async (blocks: DocumentBlock[], docxName: string) => {
+    try {
+      const res = await fetch('/api/document-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: docxName.replace(/\.(docx|pdf)$/i, '') || 'Imported Document',
+          templateType: 'custom',
+          blocks,
+          pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' },
+          theme: { backgroundColor: '#ffffff', accentColor: '#f97316', textColor: '#1e293b', tableHeaderColor: '#1e293b', tableHeaderTextColor: '#ffffff' },
+          systemFields: [],
+          sourceAttachments: [],
+        }),
+      });
+      const data = await res.json() as { id?: number; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      navigate(`/studio/builder/${data.id!}`);
+    } catch (e) {
+      toast.error('Import failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
+    }
+  }, [navigate]);
+
   return (
     <div className="portal-page">
       <Helmet>
@@ -420,13 +449,22 @@ export default function StudioPage() {
             </div>
 
             {activeTab === 'documents' && (
-              <button
-                onClick={() => navigate('/studio/builder/new')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors flex-shrink-0"
-              >
-                <Plus size={15} />
-                New document
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowImporter(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors"
+                >
+                  <FileUp size={14} />
+                  <span className="hidden sm:inline">Import</span>
+                </button>
+                <button
+                  onClick={() => navigate('/studio/builder/new')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+                >
+                  <Plus size={15} />
+                  New document
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -463,6 +501,20 @@ export default function StudioPage() {
           {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>
+
+      {/* ── Import DOCX/PDF modal ── */}
+      {showImporter && (
+        <DocxImporter
+          templateId={null}
+          hasExistingBlocks={false}
+          onClose={() => setShowImporter(false)}
+          onImported={(blocks, name) => {
+            setShowImporter(false);
+            void handleStudioImported(blocks, name);
+          }}
+          onSaveFirst={async () => null}
+        />
+      )}
     </div>
   );
 }
