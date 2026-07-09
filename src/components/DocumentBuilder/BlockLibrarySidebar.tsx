@@ -278,15 +278,7 @@ export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, 
                 <FileUp size={13} />
                 Import DOCX / PDF
               </button>
-              {onImportBlocksJson && (
-                <button
-                  onClick={onImportBlocksJson}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
-                >
-                  <BarChart2 size={13} />
-                  Import .blocks.json
-                </button>
-              )}
+
             </div>
 
             {/* Block groups */}
