@@ -29,7 +29,7 @@ import {
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
 
-function SwmsLibraryTab() {
+export function SwmsLibraryTab() {
   const [swmsList, setSwmsList] = useState<SwmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -255,7 +255,7 @@ function SwmsLibraryTab() {
 
 // ── Safety Plans Tab ──────────────────────────────────────────────────────────
 
-function SafetyPlansTab() {
+export function SafetyPlansTab() {
   const [plans, setPlans] = useState<SafetyPlan[]>([]);
   const [jobs, setJobs] = useState<Array<{ id: number; name: string; jobNumber: string | null }>>([]);
   const [loading, setLoading] = useState(true);
@@ -419,7 +419,7 @@ function SafetyPlansTab() {
 
 // ── Policies & Procedures Tab ─────────────────────────────────────────────────
 
-function PoliciesTab() {
+export function PoliciesTab() {
   const [docs, setDocs] = useState<SafetyDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
@@ -512,7 +512,7 @@ function PoliciesTab() {
 
 // ── Site Posters Tab ──────────────────────────────────────────────────────────
 
-function PostersTab() {
+export function PostersTab() {
   const [posters, setPosters] = useState<SafetyPoster[]>([]);
   const [generated, setGenerated] = useState<GeneratedPoster[]>([]);
   const [loading, setLoading] = useState(true);
@@ -660,7 +660,7 @@ function PostersTab() {
 
 // ── Dashboard Tab ─────────────────────────────────────────────────────────────
 
-function SafetyDashboardTab() {
+export function SafetyDashboardTab() {
   const [stats, setStats] = useState<{
     swmsTotal: number; swmsActive: number; swmsDraft: number;
     plansTotal: number; plansActive: number;
