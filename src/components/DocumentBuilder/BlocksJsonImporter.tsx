@@ -129,18 +129,20 @@ export default function BlocksJsonImporter({
 
   // Block type → friendly label for preview list
   const blockLabel = (b: DocumentBlock): string => {
-    switch (b.type) {
-      case 'heading':     return `H${b.level}: ${b.content.slice(0, 50)}`;
-      case 'text':        return `Text: ${b.content.slice(0, 50)}`;
-      case 'rich_text':   return `Rich text: ${b.html.replace(/<[^>]+>/g, '').slice(0, 50)}`;
-      case 'field':       return `Field (${b.fieldType}): ${b.label}`;
-      case 'table':       return `Table: ${b.columns.length} cols × ${b.rows.length} rows`;
-      case 'risk_matrix': return `Risk Matrix: ${b.title}`;
-      case 'safety_badge_row': return `PPE badges (${b.badges.length})`;
-      case 'banner':      return `Banner (${b.variant}): ${b.title}`;
-      case 'page_break':  return 'Page Break';
-      default:            return b.type;
-    }
+    if (b.type === 'heading')          return `H${b.level}: ${b.content.slice(0, 50)}`;
+    if (b.type === 'text')             return `Text: ${b.content.slice(0, 50)}`;
+    if (b.type === 'rich_text')        return `Rich text: ${b.html.replace(/<[^>]+>/g, '').slice(0, 50)}`;
+    if (b.type === 'field')            return `Field (${b.fieldType}): ${b.label}`;
+    if (b.type === 'table')            return `Table: ${b.columns.length} cols × ${b.rows.length} rows`;
+    if (b.type === 'risk_matrix')      return `Risk Matrix: ${b.title}`;
+    if (b.type === 'safety_badge_row') return `PPE badges (${b.badges.length})`;
+    if (b.type === 'banner')           return `Banner (${b.variant}): ${b.title}`;
+    if (b.type === 'page_break')       return 'Page Break';
+    if (b.type === 'divider')          return 'Divider';
+    if (b.type === 'spacer')           return `Spacer (${b.height}px)`;
+    if (b.type === 'image')            return `Image: ${b.alt || b.src}`;
+    if (b.type === 'system_field')     return `System field: ${b.fieldKey}`;
+    return b.type;
   };
 
   return (

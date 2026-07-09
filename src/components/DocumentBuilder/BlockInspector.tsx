@@ -30,7 +30,7 @@ interface InspectorProps {
 
 export default function BlockInspector({ collapsed = false, onToggleCollapse }: InspectorProps) {
   const {
-    blocks, selection, deselect, logicRules,
+    blocks, selection, deselect, getRulesForBlock,
   } = useDocumentStore();
 
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('settings');
@@ -40,7 +40,7 @@ export default function BlockInspector({ collapsed = false, onToggleCollapse }: 
     : null;
 
   const innerContent = selectedBlock
-    ? <SelectedBlockPanel block={selectedBlock} inspectorTab={inspectorTab} setInspectorTab={setInspectorTab} deselect={deselect} logicRules={logicRules} />
+    ? <SelectedBlockPanel block={selectedBlock} inspectorTab={inspectorTab} setInspectorTab={setInspectorTab} deselect={deselect} getRulesForBlock={getRulesForBlock} />
     : <DocumentInspectorPanel />;
 
   return (
@@ -95,11 +95,11 @@ interface SelectedBlockPanelProps {
   inspectorTab: InspectorTab;
   setInspectorTab: (t: InspectorTab) => void;
   deselect: () => void;
-  logicRules: ReturnType<typeof useDocumentStore>['logicRules'];
+  getRulesForBlock: (id: string) => unknown[];
 }
 
-function SelectedBlockPanel({ block, inspectorTab, setInspectorTab, deselect, logicRules }: SelectedBlockPanelProps) {
-  const ruleCount = logicRules.filter((r) => r.ownerBlockId === block.id).length;
+function SelectedBlockPanel({ block, inspectorTab, setInspectorTab, deselect, getRulesForBlock }: SelectedBlockPanelProps) {
+  const ruleCount = getRulesForBlock(block.id).length;
   return (
     <>
       {/* Header */}
