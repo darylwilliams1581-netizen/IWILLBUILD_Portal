@@ -10,12 +10,15 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen, Menu, FileUp,
+  ShieldCheck, ClipboardList, BookOpen, Menu, FileUp, Library,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import PortalSidebar from '@/components/PortalSidebar';
 import { toast } from 'sonner';
+import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
+import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
+import { AnimatePresence } from 'motion/react';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
@@ -66,6 +69,7 @@ const STUDIO_TABS = [
   { id: 'documents', label: 'Documents', icon: Layers },
   { id: 'forms',     label: 'Forms',     icon: ClipboardList },
   { id: 'library',   label: 'Library',   icon: BookOpen },
+  { id: 'share',     label: 'Share',     icon: Library },
   { id: 'safety',    label: 'Safety',    icon: ShieldCheck },
 ] as const;
 
@@ -104,7 +108,7 @@ function ToolBtn({
 
 // ── Document row ──────────────────────────────────────────────────────────────
 
-function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onDelete: (id: number) => void }) {
+function DocRow({ doc, index, onDelete, onShare }: { doc: DocTemplate; index: number; onDelete: (id: number) => void; onShare: (id: number) => void }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -183,13 +187,14 @@ function DocRow({ doc, index, onDelete }: { doc: DocTemplate; index: number; onD
 
         {/* Toolbar — always visible */}
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <ToolBtn icon={Copy}       label="Duplicate"   onClick={handleDuplicate} />
-          <ToolBtn icon={Share2}     label="Copy link"   onClick={handleShare} />
-          <ToolBtn icon={Printer}    label="Print"       onClick={handleExportPdf} />
-          <ToolBtn icon={FileDown}   label="Export PDF"  onClick={handleExportPdf} />
-          <ToolBtn icon={FileOutput} label="Export DOCX" onClick={handleExportDocx} />
-          <ToolBtn icon={Pencil}     label="Edit"        onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
-          <ToolBtn icon={Trash2}     label="Delete"      onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
+          <ToolBtn icon={Copy}       label="Duplicate"         onClick={handleDuplicate} />
+          <ToolBtn icon={Share2}     label="Copy link"         onClick={handleShare} />
+          <ToolBtn icon={Library}    label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
+          <ToolBtn icon={Printer}    label="Print"             onClick={handleExportPdf} />
+          <ToolBtn icon={FileDown}   label="Export PDF"        onClick={handleExportPdf} />
+          <ToolBtn icon={FileOutput} label="Export DOCX"       onClick={handleExportDocx} />
+          <ToolBtn icon={Pencil}     label="Edit"              onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
+          <ToolBtn icon={Trash2}     label="Delete"            onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button
             title={expanded ? 'Collapse' : 'Expand'}
             onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
@@ -246,6 +251,8 @@ function DocumentsTab() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [shareDocId, setShareDocId] = useState<number | null>(null);
+  const shareDoc = templates.find((t) => t.id === shareDocId);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -354,11 +361,22 @@ function DocumentsTab() {
             className="flex flex-col gap-2"
           >
             {filtered.map((doc, i) => (
-              <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} />
+              <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={(id) => setShareDocId(id)} />
             ))}
           </motion.div>
         )}
       </div>
+
+      {/* Share to Library modal — triggered from DocRow toolbar */}
+      <AnimatePresence>
+        {shareDocId && shareDoc && (
+          <ShareToLibraryModal
+            templateId={shareDocId}
+            templateName={shareDoc.name}
+            onClose={() => setShareDocId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -371,7 +389,7 @@ export default function StudioPage() {
 
   // Read tab from ?tab= query param so direct links and sidebar work
   const tabParam = searchParams.get('tab');
-  const validTabs: StudioTabId[] = ['documents', 'forms', 'library', 'safety'];
+  const validTabs: StudioTabId[] = ['documents', 'forms', 'library', 'share', 'safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(
     validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'documents'
   );
@@ -523,6 +541,7 @@ export default function StudioPage() {
           {activeTab === 'documents' && <DocumentsTab />}
           {activeTab === 'forms'     && <FormsContent />}
           {activeTab === 'library'   && <LibraryContent />}
+          {activeTab === 'share'     && <ShareLibraryTab />}
           {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>

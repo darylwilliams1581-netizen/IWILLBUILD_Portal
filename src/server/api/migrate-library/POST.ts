@@ -111,6 +111,42 @@ export default async function handler(_req: Request, res: Response) {
       ADD FULLTEXT INDEX ft_lib_search (title, summary, tags)
   `);
 
+  // ── 5. builder_json column (stores DocumentBlock[] JSON) ─────────────────
+  await tryExec('Add builder_json to library_items', `
+    ALTER TABLE library_items ADD COLUMN builder_json LONGTEXT NULL
+  `);
+
+  // ── 6. file_path / file_mime / source_file_name for downloads ────────────
+  await tryExec('Add file_path to library_items', `
+    ALTER TABLE library_items ADD COLUMN file_path VARCHAR(500) NULL
+  `);
+  await tryExec('Add file_mime to library_items', `
+    ALTER TABLE library_items ADD COLUMN file_mime VARCHAR(100) NULL
+  `);
+  await tryExec('Add source_file_name to library_items', `
+    ALTER TABLE library_items ADD COLUMN source_file_name VARCHAR(255) NULL
+  `);
+
+  // ── 7. Submission tracking columns ───────────────────────────────────────
+  await tryExec('Add submitted_by_company_id to library_items', `
+    ALTER TABLE library_items ADD COLUMN submitted_by_company_id INT NULL
+  `);
+  await tryExec('Add submitted_by_user_id to library_items', `
+    ALTER TABLE library_items ADD COLUMN submitted_by_user_id VARCHAR(36) NULL
+  `);
+  await tryExec('Add reviewer_notes to library_items', `
+    ALTER TABLE library_items ADD COLUMN reviewer_notes TEXT NULL
+  `);
+  await tryExec('Add reviewed_at to library_items', `
+    ALTER TABLE library_items ADD COLUMN reviewed_at TIMESTAMP NULL
+  `);
+  await tryExec('Add reviewed_by to library_items', `
+    ALTER TABLE library_items ADD COLUMN reviewed_by VARCHAR(36) NULL
+  `);
+  await tryExec('Add index on visibility+status', `
+    ALTER TABLE library_items ADD INDEX idx_lib_vis_status (visibility, status)
+  `);
+
   const ok = results.every((r) => !r.startsWith('❌'));
   res.json({ ok, results });
 }

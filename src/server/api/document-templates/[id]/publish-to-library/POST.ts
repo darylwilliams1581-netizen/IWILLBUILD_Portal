@@ -1,9 +1,10 @@
 /**
  * POST /api/document-templates/:id/publish-to-library
  *
- * Platform-owner only.
- * Copies a document template's builder_json into the global library_items table
- * so it becomes available to all companies via the Library tab.
+ * Any authenticated user can submit a document to the global library.
+ *
+ * - Platform owners  → visibility='public',  status='active'  (live immediately)
+ * - Regular users    → visibility='pending', status='draft'   (queued for review)
  *
  * Body (JSON):
  *   title       — optional override (defaults to template name)
@@ -12,7 +13,7 @@
  *   discipline  — optional
  *   summary     — optional description
  *
- * Returns: { ok: true, libraryItemId: number }
+ * Returns: { ok: true, libraryItemId: number, visibility: 'public'|'pending' }
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
@@ -21,30 +22,33 @@ import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
 
 const ALLOWED_TYPES = new Set([
   'policy', 'procedure', 'swms', 'form', 'recipe', 'estimate_recipe', 'scope_line',
+  'checklist', 'induction', 'report', 'toolbox_talk', 'prestart',
 ]);
 
 export default async function handler(req: Request, res: Response) {
   const auth = await getSessionAndProfile(req, res);
   if (!auth) return;
 
-  // Platform owner only
-  const [ownerCheck] = await db.execute(sql.raw(
+  // Check if platform owner
+  const [ownerRows] = await db.execute(sql.raw(
     `SELECT role FROM profiles WHERE user_id = '${auth.session.user.id}' LIMIT 1`
   )) as unknown as [Array<{ role: string }>, unknown];
-  if (ownerCheck?.[0]?.role !== 'platform_owner') {
-    return res.status(403).json({ error: 'Platform owner access required' });
-  }
+  const isPlatformOwner = ownerRows?.[0]?.role === 'platform_owner';
 
   const templateId = Number(req.params.id);
   if (!templateId) return res.status(400).json({ error: 'Invalid template ID' });
 
-  // Fetch the template
+  // Fetch the template — must belong to the user's company (or any for platform owner)
+  const companyClause = isPlatformOwner
+    ? `id = ${templateId}`
+    : `id = ${templateId} AND company_id = ${auth.profile.company_id ?? 0}`;
+
   const [rows] = await db.execute(sql.raw(
-    `SELECT id, name, builder_json, company_id FROM document_templates WHERE id = ${templateId} LIMIT 1`
+    `SELECT id, name, builder_json, company_id FROM document_templates WHERE ${companyClause} LIMIT 1`
   )) as unknown as [Array<{ id: number; name: string; builder_json: string | null; company_id: number }>, unknown];
 
   const template = rows?.[0];
-  if (!template) return res.status(404).json({ error: 'Template not found' });
+  if (!template) return res.status(404).json({ error: 'Template not found or access denied' });
 
   const body = req.body as {
     title?: string;
@@ -61,19 +65,34 @@ export default async function handler(req: Request, res: Response) {
   const summary    = (body.summary ?? '').trim() || null;
   const builderJson = template.builder_json ?? '{"blocks":[]}';
 
+  // Platform owners publish immediately; regular users go into review queue
+  const visibility = isPlatformOwner ? 'public' : 'pending';
+  const status     = isPlatformOwner ? 'active'  : 'draft';
+
+  // Store submitter info for review queue
+  const submittedByCompany = template.company_id ?? null;
+  const submittedByUser    = auth.session.user.id;
+
   try {
     const [result] = await db.execute(sql.raw(
-      `INSERT INTO library_items (title, type, category, discipline, summary, builder_json, status, visibility, version, created_at, updated_at)
+      `INSERT INTO library_items (
+         title, type, category, discipline, summary, builder_json,
+         status, visibility, version,
+         submitted_by_company_id, submitted_by_user_id,
+         created_at, updated_at
+       )
        VALUES (
          ${JSON.stringify(title)},
          ${JSON.stringify(type)},
-         ${category ? JSON.stringify(category) : 'NULL'},
+         ${category   ? JSON.stringify(category)   : 'NULL'},
          ${discipline ? JSON.stringify(discipline) : 'NULL'},
-         ${summary ? JSON.stringify(summary) : 'NULL'},
+         ${summary    ? JSON.stringify(summary)    : 'NULL'},
          ${JSON.stringify(builderJson)},
-         'active',
-         'public',
+         ${JSON.stringify(status)},
+         ${JSON.stringify(visibility)},
          '1.0',
+         ${submittedByCompany ?? 'NULL'},
+         ${JSON.stringify(submittedByUser)},
          NOW(),
          NOW()
        )`
@@ -81,7 +100,7 @@ export default async function handler(req: Request, res: Response) {
 
     const libraryItemId = (result as unknown as { insertId: number }).insertId;
 
-    return res.json({ ok: true, libraryItemId });
+    return res.json({ ok: true, libraryItemId, visibility });
   } catch (err) {
     console.error('publish-to-library error:', err);
     return res.status(500).json({ error: 'Failed to publish to library' });

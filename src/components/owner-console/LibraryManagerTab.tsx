@@ -14,7 +14,8 @@ import {
   BookOpen, Plus, Search, Loader2, AlertCircle, CheckCircle2,
   Pencil, Trash2, FileText, File, Upload, X, ChevronDown,
   Shield, ClipboardList, Wrench, Calculator, Package, RefreshCw,
-  Eye, EyeOff, Archive, Download,
+  Eye, EyeOff, Archive, Download, Clock, Globe, CheckCircle, XCircle,
+  Building2, User,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -451,6 +452,7 @@ function DeleteModal({ item, onClose, onDeleted }: { item: LibItem; onClose: () 
 // ── Main Tab ──────────────────────────────────────────────────────────────────
 
 export default function LibraryManagerTab() {
+  const [subTab, setSubTab] = useState<'items' | 'submissions'>('items');
   const [items, setItems] = useState<LibItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -520,6 +522,30 @@ export default function LibraryManagerTab() {
 
   return (
     <div className="flex flex-col gap-5 max-w-5xl">
+      {/* Sub-tab switcher */}
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setSubTab('items')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            subTab === 'items' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <BookOpen size={13} />Library Items
+        </button>
+        <button
+          onClick={() => setSubTab('submissions')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            subTab === 'submissions' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Clock size={13} />User Submissions
+        </button>
+      </div>
+
+      {subTab === 'submissions' ? (
+        <SubmissionsPanel />
+      ) : (
+      <>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -714,12 +740,275 @@ export default function LibraryManagerTab() {
           onDeleted={() => { setItems(prev => prev.filter(i => i.id !== deleteItem.id)); showToast('Item deleted.'); setDeleteItem(null); }}
         />
       )}
+      </> /* end items sub-tab */
+      )}
 
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
           {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Submissions review panel ──────────────────────────────────────────────────
+
+interface Submission {
+  id: number;
+  title: string;
+  type: string;
+  category: string | null;
+  discipline: string | null;
+  summary: string | null;
+  visibility: string;
+  status: string;
+  submitted_by_company_id: number | null;
+  submitted_by_user_id: string | null;
+  reviewer_notes: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  company_name: string | null;
+  submitter_name: string | null;
+  submitter_email: string | null;
+}
+
+function SubmissionsPanel() {
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reviewing, setReviewing] = useState<number | null>(null);
+  const [notes, setNotes] = useState('');
+  const [actionStatus, setActionStatus] = useState<Record<number, 'loading' | 'done' | 'error'>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/owner-console/library/submissions', { credentials: 'include' });
+      if (r.ok) {
+        const d = await r.json() as { submissions?: Submission[] };
+        setSubmissions(d.submissions ?? []);
+      }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function handleReview(id: number, action: 'approve' | 'reject') {
+    setActionStatus((prev) => ({ ...prev, [id]: 'loading' }));
+    try {
+      const r = await fetch(`/api/owner-console/library/submissions/${id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action, notes }),
+      });
+      if (!r.ok) throw new Error('Failed');
+      setActionStatus((prev) => ({ ...prev, [id]: 'done' }));
+      setReviewing(null);
+      setNotes('');
+      // Update local state
+      setSubmissions((prev) => prev.map((s) =>
+        s.id === id
+          ? { ...s, visibility: action === 'approve' ? 'public' : 'rejected', status: action === 'approve' ? 'active' : 'draft', reviewer_notes: notes || null }
+          : s
+      ));
+    } catch {
+      setActionStatus((prev) => ({ ...prev, [id]: 'error' }));
+    }
+  }
+
+  const pending  = submissions.filter((s) => s.visibility === 'pending');
+  const reviewed = submissions.filter((s) => s.visibility !== 'pending');
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-heading font-black text-lg text-slate-900">User Submissions</h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Review documents submitted by companies for the global library
+          </p>
+        </div>
+        <button onClick={() => void load()} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors">
+          <RefreshCw size={13} />Refresh
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-slate-400" /></div>
+      ) : (
+        <>
+          {/* Pending */}
+          <section>
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Clock size={12} className="text-amber-500" />
+              Pending review ({pending.length})
+            </h3>
+            {pending.length === 0 ? (
+              <div className="text-center py-10 bg-slate-50 border border-slate-200 rounded-2xl">
+                <CheckCircle size={22} className="text-emerald-400 mx-auto mb-2" />
+                <p className="text-sm text-slate-500">All caught up — no pending submissions</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {pending.map((sub) => (
+                  <SubmissionCard
+                    key={sub.id}
+                    sub={sub}
+                    isReviewing={reviewing === sub.id}
+                    notes={reviewing === sub.id ? notes : ''}
+                    actionStatus={actionStatus[sub.id]}
+                    onStartReview={() => { setReviewing(sub.id); setNotes(''); }}
+                    onCancelReview={() => setReviewing(null)}
+                    onNotesChange={setNotes}
+                    onApprove={() => void handleReview(sub.id, 'approve')}
+                    onReject={() => void handleReview(sub.id, 'reject')}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Reviewed */}
+          {reviewed.length > 0 && (
+            <section>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                Previously reviewed ({reviewed.length})
+              </h3>
+              <div className="flex flex-col gap-2">
+                {reviewed.map((sub) => (
+                  <SubmissionCard
+                    key={sub.id}
+                    sub={sub}
+                    isReviewing={false}
+                    notes=""
+                    actionStatus={actionStatus[sub.id]}
+                    onStartReview={() => { setReviewing(sub.id); setNotes(''); }}
+                    onCancelReview={() => setReviewing(null)}
+                    onNotesChange={setNotes}
+                    onApprove={() => void handleReview(sub.id, 'approve')}
+                    onReject={() => void handleReview(sub.id, 'reject')}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SubmissionCard({
+  sub, isReviewing, notes, actionStatus,
+  onStartReview, onCancelReview, onNotesChange, onApprove, onReject,
+}: {
+  sub: Submission;
+  isReviewing: boolean;
+  notes: string;
+  actionStatus?: 'loading' | 'done' | 'error';
+  onStartReview: () => void;
+  onCancelReview: () => void;
+  onNotesChange: (v: string) => void;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const isPending  = sub.visibility === 'pending';
+  const isApproved = sub.visibility === 'public';
+  const isRejected = sub.visibility === 'rejected';
+
+  const badge = isApproved
+    ? { icon: <Globe size={11} />, label: 'Approved', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+    : isRejected
+    ? { icon: <XCircle size={11} />, label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' }
+    : { icon: <Clock size={11} />, label: 'Pending', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
+
+  return (
+    <div className={`bg-white border rounded-2xl overflow-hidden transition-all ${isPending ? 'border-amber-200 shadow-sm' : 'border-slate-200'}`}>
+      <div className="flex items-start gap-4 p-4">
+        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <FileText size={16} className="text-slate-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-bold text-slate-800">{sub.title}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {sub.type} {sub.category ? `· ${sub.category}` : ''} {sub.discipline ? `· ${sub.discipline}` : ''}
+              </p>
+            </div>
+            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge.cls}`}>
+              {badge.icon}{badge.label}
+            </span>
+          </div>
+          {sub.summary && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{sub.summary}</p>}
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {sub.company_name && (
+              <span className="flex items-center gap-1 text-xs text-slate-400">
+                <Building2 size={11} />{sub.company_name}
+              </span>
+            )}
+            {sub.submitter_email && (
+              <span className="flex items-center gap-1 text-xs text-slate-400">
+                <User size={11} />{sub.submitter_name ?? sub.submitter_email}
+              </span>
+            )}
+            <span className="text-xs text-slate-400">
+              Submitted {new Date(sub.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          {sub.reviewer_notes && (
+            <p className="text-xs text-slate-500 mt-1.5 italic bg-slate-50 rounded-lg px-2.5 py-1.5">
+              Review note: "{sub.reviewer_notes}"
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Review actions */}
+      {isPending && !isReviewing && (
+        <div className="border-t border-slate-100 px-4 py-3 flex items-center gap-2 bg-amber-50/50">
+          <button
+            onClick={onStartReview}
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition-colors"
+          >
+            Review submission
+          </button>
+        </div>
+      )}
+
+      {isReviewing && (
+        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50 flex flex-col gap-3">
+          <textarea
+            value={notes}
+            onChange={(e) => onNotesChange(e.target.value)}
+            rows={2}
+            placeholder="Optional reviewer notes (shown to submitter)…"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onApprove}
+              disabled={actionStatus === 'loading'}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
+            >
+              {actionStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+              Approve & publish
+            </button>
+            <button
+              onClick={onReject}
+              disabled={actionStatus === 'loading'}
+              className="flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
+            >
+              <XCircle size={11} />Reject
+            </button>
+            <button onClick={onCancelReview} className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 transition-colors">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
