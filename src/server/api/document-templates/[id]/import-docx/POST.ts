@@ -16,6 +16,9 @@ import { sql } from 'drizzle-orm';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock } from '../../../../../components/DocumentBuilder/types.js';
+// Static import — Rollup resolves CJS interop at bundle time, preserving
+// Node built-ins (util.promisify etc.) that break under dynamic import().
+import mammothPkg from 'mammoth';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -46,15 +49,10 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No DOCX file uploaded. Upload a .docx file in the "docx" field.' });
     }
 
-    // Parse with mammoth — handle both CJS default export and named export
-    // (Rollup wraps CJS modules differently in dev vs prod SSR bundle)
-    const mammothMod = await import('mammoth');
+    // Use statically-imported mammoth — CJS interop is handled by Rollup at
+    // bundle time so util.promisify and other Node built-ins stay intact.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mammoth = (mammothMod as any).default ?? mammothMod;
-    if (typeof mammoth.convertToHtml !== 'function') {
-      console.error('[import-docx] mammoth.convertToHtml not found. Module keys:', Object.keys(mammothMod));
-      return res.status(500).json({ error: 'DOCX parser not available — please try again.' });
-    }
+    const mammoth = (mammothPkg as any).default ?? mammothPkg;
     const result = await mammoth.convertToHtml({ buffer: docxFile.buffer }) as { value: string; messages: Array<{ message: string }> };
     const html = result.value;
     const warnings = result.messages.map((m: { message: string }) => m.message);
