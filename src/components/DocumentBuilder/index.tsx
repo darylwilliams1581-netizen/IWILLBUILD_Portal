@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
   AlertCircle, FileText, FileOutput, Library, LayoutTemplate, Layers,
@@ -35,16 +35,16 @@ type EditorMode = 'page' | 'structure';
 
 // Document type labels for the toolbar badge
 const DOC_TYPE_LABELS: Record<string, string> = {
-  swms:      'SWMS',
-  procedure: 'Procedure',
-  policy:    'Policy',
-  form:      'Form',
-  inspection:'Inspection',
-  checklist: 'Checklist',
-  report:    'Report',
-  toolbox:   'Toolbox Talk',
-  prestart:  'Pre-Start',
-  handover:  'Handover',
+  swms:       'SWMS',
+  procedure:  'Procedure',
+  policy:     'Policy',
+  form:       'Form',
+  inspection: 'Inspection',
+  checklist:  'Checklist',
+  report:     'Report',
+  toolbox:    'Toolbox Talk',
+  prestart:   'Pre-Start',
+  handover:   'Handover',
 };
 
 export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
@@ -54,17 +54,17 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
   } = useDocumentStore();
 
-  const [showDocxImporter, setShowDocxImporter]   = useState(false);
+  const [showDocxImporter, setShowDocxImporter]     = useState(false);
   const [showBlocksImporter, setShowBlocksImporter] = useState(false);
-  const [saveStatus, setSaveStatus]               = useState<'idle' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab]                 = useState<BuilderTab>('content');
-  const [editorMode, setEditorMode]               = useState<EditorMode>('page');
-  const [pdfSettings, setPdfSettings]             = useState<TemplatePdfSettings>(
+  const [saveStatus, setSaveStatus]                 = useState<'idle' | 'saved' | 'error'>('idle');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>('content');
+  const [editorMode, setEditorMode]                 = useState<EditorMode>('page');
+  const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
-  const [leftCollapsed, setLeftCollapsed]         = useState(false);
-  const [showPublishModal, setShowPublishModal]   = useState(false);
-  const [showDocTypeMenu, setShowDocTypeMenu]     = useState(false);
+  const [leftCollapsed, setLeftCollapsed]           = useState(false);
+  const [showPublishModal, setShowPublishModal]     = useState(false);
+  const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const { isPlatformOwner } = usePermissions();
 
   // Load template on mount
@@ -76,6 +76,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       resetToBlank();
       setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template?.id]);
 
   // Keyboard shortcuts
@@ -87,6 +88,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -122,7 +124,11 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     }
   }, [isSaving, templateId, getSerialised, markSaved, onSaved, pdfSettings]);
 
-  const handleDocxImported = (importedBlocks: DocumentBlock[], _docxName: string, insertMode: 'replace' | 'prepend' | 'append') => {
+  const handleDocxImported = (
+    importedBlocks: DocumentBlock[],
+    _docxName: string,
+    insertMode: 'replace' | 'prepend' | 'append',
+  ) => {
     if (insertMode === 'prepend') prependBlocks(importedBlocks);
     else if (insertMode === 'append') appendBlocks(importedBlocks);
     else reorderBlocks(importedBlocks);
@@ -133,7 +139,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     if (liveId) return liveId;
     if (useDocumentStore.getState().isSaving) {
       const start = Date.now();
-      await new Promise<void>(resolve => {
+      await new Promise<void>((resolve) => {
         const check = setInterval(() => {
           if (!useDocumentStore.getState().isSaving || Date.now() - start > 8000) {
             clearInterval(check); resolve();
@@ -171,7 +177,10 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white" onClick={() => setShowDocTypeMenu(false)}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-white"
+      onClick={() => setShowDocTypeMenu(false)}
+    >
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
         {/* Close */}
@@ -222,14 +231,28 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           </div>
 
           <FileText size={13} className="text-slate-400 flex-shrink-0" />
-          <span className="text-sm font-semibold text-slate-700 truncate max-w-[220px]">{templateName}</span>
-          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
+          <span className="text-sm font-semibold text-slate-700 truncate max-w-[220px]">
+            {templateName}
+          </span>
+          {isDirty && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />
+          )}
         </div>
 
         {/* Tab switcher: Content / PDF Output */}
         <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-2 flex-shrink-0">
-          <TabBtn active={activeTab === 'content'}    onClick={() => setActiveTab('content')}    icon={<FileText size={11} />}   label="Content" />
-          <TabBtn active={activeTab === 'pdf_output'} onClick={() => setActiveTab('pdf_output')} icon={<FileOutput size={11} />} label="PDF Output" />
+          <TabBtn
+            active={activeTab === 'content'}
+            onClick={() => setActiveTab('content')}
+            icon={<FileText size={11} />}
+            label="Content"
+          />
+          <TabBtn
+            active={activeTab === 'pdf_output'}
+            onClick={() => setActiveTab('pdf_output')}
+            icon={<FileOutput size={11} />}
+            label="PDF Output"
+          />
         </div>
 
         <div className="flex-1" />
@@ -237,18 +260,49 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         {/* Undo / Redo + mode switcher */}
         {activeTab === 'content' && (
           <>
-            <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)">
+            <button
+              onClick={undo}
+              disabled={!canUndo()}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Undo (⌘Z)"
+            >
               <Undo2 size={13} />
             </button>
-            <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)">
+            <button
+              onClick={redo}
+              disabled={!canRedo()}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Redo (⌘Y)"
+            >
               <Redo2 size={13} />
             </button>
 
             {/* Editor mode switcher */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
-              <ModeBtn active={editorMode === 'page'} onClick={() => setEditorMode('page')} icon={<LayoutTemplate size={11} />} label="Page" title="Page editor — click to type" />
-              <ModeBtn active={editorMode === 'structure'} onClick={() => setEditorMode('structure')} icon={<Layers size={11} />} label="Structure" title="Structure mode — advanced block editing" />
-              <ModeBtn active={false} onClick={() => { useDocumentStore.getState().setMode('preview'); setEditorMode('structure'); }} icon={<Eye size={11} />} label="Preview" title="Preview document" />
+              <ModeBtn
+                active={editorMode === 'page'}
+                onClick={() => setEditorMode('page')}
+                icon={<LayoutTemplate size={11} />}
+                label="Page"
+                title="Page editor — click to type"
+              />
+              <ModeBtn
+                active={editorMode === 'structure'}
+                onClick={() => setEditorMode('structure')}
+                icon={<Layers size={11} />}
+                label="Structure"
+                title="Structure mode — advanced block editing"
+              />
+              <ModeBtn
+                active={false}
+                onClick={() => {
+                  useDocumentStore.getState().setMode('preview');
+                  setEditorMode('structure');
+                }}
+                icon={<Eye size={11} />}
+                label="Preview"
+                title="Preview document"
+              />
             </div>
           </>
         )}
@@ -270,17 +324,30 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           onClick={() => void handleSave()}
           disabled={isSaving || (!isDirty && !!templateId && activeTab === 'content')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all flex-shrink-0 ${
-            saveStatus === 'saved' ? 'bg-green-500 text-white' :
-            saveStatus === 'error' ? 'bg-red-500 text-white' :
-            'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
+            saveStatus === 'saved'
+              ? 'bg-green-500 text-white'
+              : saveStatus === 'error'
+              ? 'bg-red-500 text-white'
+              : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
           }`}
           title="Save (⌘S)"
         >
-          {isSaving ? <Loader2 size={13} className="animate-spin" /> :
-           saveStatus === 'saved' ? <CheckCircle size={13} /> :
-           saveStatus === 'error' ? <AlertCircle size={13} /> :
-           <Save size={13} />}
-          {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+          {isSaving ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : saveStatus === 'saved' ? (
+            <CheckCircle size={13} />
+          ) : saveStatus === 'error' ? (
+            <AlertCircle size={13} />
+          ) : (
+            <Save size={13} />
+          )}
+          {isSaving
+            ? 'Saving…'
+            : saveStatus === 'saved'
+            ? 'Saved'
+            : saveStatus === 'error'
+            ? 'Error'
+            : 'Save'}
         </button>
       </div>
 
@@ -293,333 +360,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             onToggleCollapse={() => setLeftCollapsed((v) => !v)}
           />
           <div className="flex-1 flex flex-col overflow-hidden">
-            {editorMode === 'page' ? (
-              <PageEditor />
-            ) : (
-              <StructurePanel />
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden bg-slate-50">
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl mx-auto py-6 px-4">
-              <DocumentPdfTab
-                settings={pdfSettings}
-                onChange={(next) => setPdfSettings(next)}
-                templateName={templateName}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── DOCX Importer modal ───────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showDocxImporter && (
-          <DocxImporter
-            templateId={templateId}
-            hasExistingBlocks={blocks.length > 0}
-            onClose={() => setShowDocxImporter(false)}
-            onImported={handleDocxImported}
-            onSaveFirst={handleSaveFirst}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Blocks JSON Importer modal ────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showBlocksImporter && (
-          <BlocksJsonImporter
-            templateId={templateId}
-            hasExistingBlocks={blocks.length > 0}
-            onClose={() => setShowBlocksImporter(false)}
-            onImported={handleDocxImported}
-            onSaveFirst={handleSaveFirst}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Publish to Library modal ──────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showPublishModal && templateId && (
-          <PublishToLibraryModal
-            templateId={templateId}
-            templateName={templateName}
-            onClose={() => setShowPublishModal(false)}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-interface Props {
-  template?: DocumentTemplate | null;
-  onClose: () => void;
-  onSaved?: (id: number) => void;
-}
-
-type EditorMode = 'page' | 'structure';
-
-export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
-  const {
-    isDirty, isSaving, setIsSaving, markSaved,
-    loadTemplate, resetToBlank, getSerialised, templateId, templateName,
-    undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
-  } = useDocumentStore();
-
-  const [showDocxImporter, setShowDocxImporter] = useState(false);
-  const [showBlocksImporter, setShowBlocksImporter] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<BuilderTab>('content');
-  const [editorMode, setEditorMode] = useState<EditorMode>('page');
-  const [pdfSettings, setPdfSettings] = useState<TemplatePdfSettings>(
-    template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
-  );
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [showPublishModal, setShowPublishModal] = useState(false);
-  const { isPlatformOwner } = usePermissions();
-
-  // Load template on mount
-  useEffect(() => {
-    if (template) {
-      loadTemplate(template);
-      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS, ...(template.pdfSettings ?? {}) });
-    } else {
-      resetToBlank();
-      setPdfSettings({ ...DEFAULT_TEMPLATE_PDF_SETTINGS });
-    }
-  }, [template?.id]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        void handleSave();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        redo();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    setSaveStatus('idle');
-    try {
-      const payload = { ...getSerialised(), pdfSettings };
-      let res: Response;
-      if (templateId) {
-        res = await fetch(`/api/document-templates/${templateId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-      } else {
-        res = await fetch('/api/document-templates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-      }
-      const data = await res.json() as { id?: number; ok?: boolean; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
-      const savedId = data.id ?? templateId!;
-      markSaved(savedId);
-      setSaveStatus('saved');
-      onSaved?.(savedId);
-      setTimeout(() => setSaveStatus('idle'), 2500);
-    } catch {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isSaving, templateId, getSerialised, markSaved, onSaved, pdfSettings]);
-
-  const handleDocxImported = (importedBlocks: DocumentBlock[], _docxName: string, insertMode: 'replace' | 'prepend' | 'append') => {
-    if (insertMode === 'prepend') prependBlocks(importedBlocks);
-    else if (insertMode === 'append') appendBlocks(importedBlocks);
-    else reorderBlocks(importedBlocks);
-  };
-
-  const handleSaveFirst = useCallback(async (): Promise<number | null> => {
-    const liveId = useDocumentStore.getState().templateId;
-    if (liveId) return liveId;
-    if (useDocumentStore.getState().isSaving) {
-      const start = Date.now();
-      await new Promise<void>(resolve => {
-        const check = setInterval(() => {
-          if (!useDocumentStore.getState().isSaving || Date.now() - start > 8000) {
-            clearInterval(check); resolve();
-          }
-        }, 100);
-      });
-      const currentId = useDocumentStore.getState().templateId;
-      if (currentId) return currentId;
-    }
-    setIsSaving(true);
-    setSaveStatus('idle');
-    try {
-      const payload = { ...getSerialised(), pdfSettings };
-      const res = await fetch('/api/document-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json() as { id?: number; ok?: boolean; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
-      const savedId = data.id!;
-      markSaved(savedId);
-      setSaveStatus('saved');
-      onSaved?.(savedId);
-      setTimeout(() => setSaveStatus('idle'), 2500);
-      return savedId;
-    } catch {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [getSerialised, markSaved, onSaved, pdfSettings]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          title="Close"
-        >
-          <X size={16} />
-        </button>
-
-        {/* Title */}
-        <div className="flex items-center gap-2 min-w-0">
-          <FileText size={14} className="text-primary flex-shrink-0" />
-          <span className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{templateName}</span>
-          {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
-        </div>
-
-        {/* Tab switcher: Content / PDF Output */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-3">
-          <TabBtn active={activeTab === 'content'} onClick={() => setActiveTab('content')} icon={<FileText size={11} />} label="Content" />
-          <TabBtn active={activeTab === 'pdf_output'} onClick={() => setActiveTab('pdf_output')} icon={<FileOutput size={11} />} label="PDF Output" />
-        </div>
-
-        <div className="flex-1" />
-
-        {/* Undo / Redo */}
-        {activeTab === 'content' && (
-          <>
-            <button onClick={undo} disabled={!canUndo()} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)">
-              <Undo2 size={14} />
-            </button>
-            <button onClick={redo} disabled={!canRedo()} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)">
-              <Redo2 size={14} />
-            </button>
-
-            {/* Editor mode switcher */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-              <button
-                onClick={() => setEditorMode('page')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                  editorMode === 'page' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-                title="Page editor — click to type"
-              >
-                <LayoutTemplate size={11} />
-                Page
-              </button>
-              <button
-                onClick={() => setEditorMode('structure')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                  editorMode === 'structure' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-                title="Structure mode — advanced block editing"
-              >
-                <Layers size={11} />
-                Structure
-              </button>
-              <button
-                onClick={() => {
-                  useDocumentStore.getState().setMode('preview');
-                  setEditorMode('structure');
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
-                title="Preview document"
-              >
-                <Eye size={11} />
-                Preview
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Publish to Library — platform owner only */}
-        {isPlatformOwner && templateId && (
-          <button
-            onClick={() => setShowPublishModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
-            title="Publish to global library"
-          >
-            <Library size={13} />
-            Publish
-          </button>
-        )}
-
-        {/* Save */}
-        <button
-          onClick={() => void handleSave()}
-          disabled={isSaving || (!isDirty && !!templateId && activeTab === 'content')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-            saveStatus === 'saved' ? 'bg-green-500 text-white' :
-            saveStatus === 'error' ? 'bg-red-500 text-white' :
-            'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
-          }`}
-          title="Save (⌘S)"
-        >
-          {isSaving ? <Loader2 size={13} className="animate-spin" /> :
-           saveStatus === 'saved' ? <CheckCircle size={13} /> :
-           saveStatus === 'error' ? <AlertCircle size={13} /> :
-           <Save size={13} />}
-          {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
-        </button>
-      </div>
-
-      {/* ── Main layout ──────────────────────────────────────────────────────── */}
-      {activeTab === 'content' ? (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left sidebar — document tools */}
-          <DocSidebar
-            onImportDocx={() => setShowDocxImporter(true)}
-            collapsed={leftCollapsed}
-            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
-          />
-
-          {/* Centre — page editor or structure view */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {editorMode === 'page' ? (
-              <PageEditor />
-            ) : (
-              <StructurePanel />
-            )}
+            {editorMode === 'page' ? <PageEditor /> : <StructurePanel />}
           </div>
         </div>
       ) : (
@@ -678,7 +419,14 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
-function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function TabBtn({
+  active, onClick, icon, label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -691,7 +439,15 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
   );
 }
 
-function ModeBtn({ active, onClick, icon, label, title }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; title: string }) {
+function ModeBtn({
+  active, onClick, icon, label, title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  title: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -719,13 +475,13 @@ function PublishToLibraryModal({
   templateName: string;
   onClose: () => void;
 }) {
-  const [title, setTitle] = useState(templateName);
-  const [type, setType] = useState<LibraryType>('form');
-  const [category, setCategory] = useState('');
+  const [title, setTitle]         = useState(templateName);
+  const [type, setType]           = useState<LibraryType>('form');
+  const [category, setCategory]   = useState('');
   const [discipline, setDiscipline] = useState('');
-  const [summary, setSummary] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [summary, setSummary]     = useState('');
+  const [status, setStatus]       = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg]   = useState('');
 
   const handlePublish = async () => {
     if (!title.trim()) return;
@@ -784,48 +540,105 @@ function PublishToLibraryModal({
               <CheckCircle size={28} className="text-green-500" />
             </div>
             <p className="text-base font-bold text-slate-800">Published!</p>
-            <p className="text-sm text-slate-500"><strong>{title}</strong> is now live in the global library.</p>
-            <button onClick={onClose} className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors">Done</button>
+            <p className="text-sm text-slate-500">
+              <strong>{title}</strong> is now live in the global library.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+            >
+              Done
+            </button>
           </div>
         ) : (
           <div className="p-5 flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} placeholder="Document title" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Title
+              </label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={inp}
+                placeholder="Document title"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
-                <select value={type} onChange={(e) => setType(e.target.value as LibraryType)} className={`${inp} appearance-none`}>
-                  {LIBRARY_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Type
+                </label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as LibraryType)}
+                  className={`${inp} appearance-none`}
+                >
+                  {LIBRARY_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
-                <input value={category} onChange={(e) => setCategory(e.target.value)} className={inp} placeholder="e.g. Safety" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Category
+                </label>
+                <input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={inp}
+                  placeholder="e.g. Safety"
+                />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Discipline</label>
-              <input value={discipline} onChange={(e) => setDiscipline(e.target.value)} className={inp} placeholder="e.g. Construction" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Discipline
+              </label>
+              <input
+                value={discipline}
+                onChange={(e) => setDiscipline(e.target.value)}
+                className={inp}
+                placeholder="e.g. Construction"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary <span className="font-normal text-slate-400">(optional)</span></label>
-              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={2} className={`${inp} resize-none`} placeholder="Brief description shown in the library" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Summary{' '}
+                <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={2}
+                className={`${inp} resize-none`}
+                placeholder="Brief description shown in the library"
+              />
             </div>
             {status === 'error' && (
               <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-                <AlertCircle size={13} />{errorMsg}
+                <AlertCircle size={13} />
+                {errorMsg}
               </div>
             )}
             <div className="flex gap-2 pt-1">
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => void handlePublish()}
                 disabled={!title.trim() || status === 'loading'}
                 className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
-                {status === 'loading' ? <><Loader2 size={13} className="animate-spin" />Publishing…</> : <><Library size={13} />Publish</>}
+                {status === 'loading' ? (
+                  <><Loader2 size={13} className="animate-spin" />Publishing…</>
+                ) : (
+                  <><Library size={13} />Publish</>
+                )}
               </button>
             </div>
           </div>
