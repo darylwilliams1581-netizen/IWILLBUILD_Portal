@@ -5,7 +5,9 @@
  * Multipart form: field "docx" = the .docx file
  *
  * Returns: { blocks, sourceDocxName, warnings }
- * The caller saves the blocks into the template via PUT.
+ *
+ * Uses JSZip + custom XML parser — no mammoth dependency.
+ * JSZip is pure-JS and bundles cleanly with Rollup/noExternal:true.
  */
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../../lib/auth/auth.js';
@@ -16,9 +18,7 @@ import { sql } from 'drizzle-orm';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock } from '../../../../../components/DocumentBuilder/types.js';
-// Static import — Rollup resolves CJS interop at bundle time, preserving
-// Node built-ins (util.promisify etc.) that break under dynamic import().
-import mammothPkg from 'mammoth';
+import JSZip from 'jszip';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -49,18 +49,10 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'No DOCX file uploaded. Upload a .docx file in the "docx" field.' });
     }
 
-    // Use statically-imported mammoth — CJS interop is handled by Rollup at
-    // bundle time so util.promisify and other Node built-ins stay intact.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mammoth = (mammothPkg as any).default ?? mammothPkg;
-    const result = await mammoth.convertToHtml({ buffer: docxFile.buffer }) as { value: string; messages: Array<{ message: string }> };
-    const html = result.value;
-    const warnings = result.messages.map((m: { message: string }) => m.message);
+    // Parse DOCX using JSZip (pure-JS, bundles cleanly) + custom XML→blocks
+    const { blocks, warnings } = await parseDocxToBlocks(docxFile.buffer);
 
-    // Convert HTML → builder blocks
-    const blocks = htmlToBuilderBlocks(html);
-
-    // Store source DOCX path reference in the template
+    // Store source DOCX reference in the template
     const storedName = `docx-${nanoid(8)}-${docxFile.originalname ?? 'import.docx'}`;
     await db.execute(sql.raw(
       `UPDATE document_templates SET source_docx_name = ${JSON.stringify(docxFile.originalname ?? 'import.docx')}, source_docx_path = ${JSON.stringify(storedName)} WHERE id = ${id}`
@@ -78,130 +70,304 @@ export default async function handler(req: Request, res: Response) {
   }
 }
 
-// ── HTML → Builder Blocks converter ──────────────────────────────────────────
+// ── DOCX → Builder Blocks (pure-JS, no mammoth) ───────────────────────────────
 
 function newId(): string {
   return nanoid(10);
 }
 
-function htmlToBuilderBlocks(html: string): DocumentBlock[] {
-  // Parse the HTML string into a DOM-like structure using regex
-  // (server-side — no DOM available)
+interface ParseResult {
+  blocks: DocumentBlock[];
+  warnings: string[];
+}
+
+async function parseDocxToBlocks(buffer: Buffer): Promise<ParseResult> {
+  const warnings: string[] = [];
+
+  // Unzip the .docx (which is a ZIP archive)
+  const zip = await JSZip.loadAsync(buffer);
+
+  // Read word/document.xml — the main content
+  const docXmlFile = zip.file('word/document.xml');
+  if (!docXmlFile) {
+    throw new Error('Not a valid DOCX file — word/document.xml not found');
+  }
+  const docXml = await docXmlFile.async('string');
+
+  // Read numbering.xml for list styles (optional)
+  const numberingFile = zip.file('word/numbering.xml');
+  const numberingXml = numberingFile ? await numberingFile.async('string') : null;
+
+  // Parse numbering to know which numIds are ordered lists
+  const orderedNumIds = numberingXml ? parseOrderedNumIds(numberingXml) : new Set<string>();
+
+  // Parse the document body
+  const blocks = parseDocumentXml(docXml, orderedNumIds, warnings);
+
+  return { blocks, warnings };
+}
+
+// ── Numbering parser — detect ordered vs unordered lists ─────────────────────
+
+function parseOrderedNumIds(xml: string): Set<string> {
+  const ordered = new Set<string>();
+  // abstractNumId entries with numFmt = decimal/lowerLetter/lowerRoman etc.
+  const abstractRe = /<w:abstractNum\s+w:abstractNumId="(\d+)"[^>]*>([\s\S]*?)<\/w:abstractNum>/g;
+  let m: RegExpExecArray | null;
+  while ((m = abstractRe.exec(xml)) !== null) {
+    const abstractId = m[1];
+    const body = m[2];
+    if (/<w:numFmt\s+w:val="(?:decimal|lowerLetter|upperLetter|lowerRoman|upperRoman)"/.test(body)) {
+      ordered.add(abstractId);
+    }
+  }
+  // Map numId → abstractNumId
+  const numRe = /<w:num\s+w:numId="(\d+)"[^>]*>[\s\S]*?<w:abstractNumId\s+w:val="(\d+)"[^>]*\/>/g;
+  const orderedNumIds = new Set<string>();
+  while ((m = numRe.exec(xml)) !== null) {
+    if (ordered.has(m[2])) orderedNumIds.add(m[1]);
+  }
+  return orderedNumIds;
+}
+
+// ── Document XML parser ───────────────────────────────────────────────────────
+
+function parseDocumentXml(xml: string, orderedNumIds: Set<string>, warnings: string[]): DocumentBlock[] {
   const blocks: DocumentBlock[] = [];
 
-  // Split by block-level tags
-  const tagPattern = /<(h[1-6]|p|table|ul|ol|hr|br)[^>]*>([\s\S]*?)<\/\1>|<(hr|br)\s*\/?>/gi;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  // Extract the body content
+  const bodyMatch = /<w:body>([\s\S]*?)<\/w:body>/.exec(xml);
+  if (!bodyMatch) {
+    warnings.push('Could not find document body');
+    return blocks;
+  }
+  const body = bodyMatch[1];
 
-  const re = new RegExp(tagPattern.source, 'gi');
+  // Split into top-level elements: paragraphs and tables
+  // We'll collect consecutive list paragraphs into a single list block
+  const elements = splitBodyElements(body);
 
-  while ((match = re.exec(html)) !== null) {
-    const tag = (match[1] || match[3] || '').toLowerCase();
-    const inner = match[2] ?? '';
-    const text = stripTags(inner).trim();
+  let i = 0;
+  while (i < elements.length) {
+    const el = elements[i];
 
-    if (tag === 'hr') {
-      blocks.push({ id: newId(), type: 'divider', style: 'solid', thickness: 1 });
-      continue;
-    }
+    if (el.type === 'paragraph') {
+      const para = parseParagraph(el.xml);
 
-    if (tag === 'h1') {
-      blocks.push({ id: newId(), type: 'heading', content: text, level: 1, align: 'left' });
-      continue;
-    }
-    if (tag === 'h2') {
-      blocks.push({ id: newId(), type: 'heading', content: text, level: 2, align: 'left' });
-      continue;
-    }
-    if (tag === 'h3') {
-      blocks.push({ id: newId(), type: 'heading', content: text, level: 3, align: 'left' });
-      continue;
-    }
-    if (tag === 'h4' || tag === 'h5' || tag === 'h6') {
-      blocks.push({ id: newId(), type: 'heading', content: text, level: 4, align: 'left' });
-      continue;
-    }
+      // List paragraph — collect consecutive items with same numId
+      if (para.numId) {
+        const numId = para.numId;
+        const isOrdered = orderedNumIds.has(numId);
+        const items: string[] = [para.text];
 
-    if (tag === 'p' && text) {
-      // Check if it looks like a heading (short, no period, all caps or title case)
-      if (text.length < 80 && /^[A-Z]/.test(text) && !text.includes('.')) {
-        blocks.push({ id: newId(), type: 'heading', content: text, level: 3, align: 'left' });
-      } else {
-        blocks.push({ id: newId(), type: 'text', content: text, align: 'left' });
-      }
-      continue;
-    }
+        // Collect following paragraphs with the same numId
+        while (i + 1 < elements.length) {
+          const next = elements[i + 1];
+          if (next.type !== 'paragraph') break;
+          const nextPara = parseParagraph(next.xml);
+          if (nextPara.numId !== numId) break;
+          items.push(nextPara.text);
+          i++;
+        }
 
-    if (tag === 'ul' || tag === 'ol') {
-      const items = extractListItems(inner);
-      if (items.length > 0) {
-        const listHtml = tag === 'ul'
-          ? `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>`
-          : `<ol>${items.map((i) => `<li>${i}</li>`).join('')}</ol>`;
+        const tag = isOrdered ? 'ol' : 'ul';
+        const listHtml = `<${tag}>${items.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</${tag}>`;
         blocks.push({ id: newId(), type: 'rich_text', html: listHtml });
+        i++;
+        continue;
       }
+
+      // Heading paragraph
+      if (para.headingLevel) {
+        if (para.text) {
+          blocks.push({ id: newId(), type: 'heading', content: para.text, level: para.headingLevel, align: 'left' });
+        }
+        i++;
+        continue;
+      }
+
+      // Horizontal rule
+      if (para.isHr) {
+        blocks.push({ id: newId(), type: 'divider', style: 'solid', thickness: 1 });
+        i++;
+        continue;
+      }
+
+      // Regular paragraph — skip empty
+      if (para.text.trim()) {
+        // Preserve inline formatting as rich_text if there's bold/italic/underline
+        if (para.hasFormatting) {
+          blocks.push({ id: newId(), type: 'rich_text', html: `<p>${para.innerHtml}</p>` });
+        } else {
+          blocks.push({ id: newId(), type: 'text', content: para.text, align: 'left' });
+        }
+      }
+      i++;
       continue;
     }
 
-    if (tag === 'table') {
-      const tableBlock = parseTableBlock(inner);
+    if (el.type === 'table') {
+      const tableBlock = parseTableXml(el.xml);
       if (tableBlock) blocks.push(tableBlock);
+      i++;
       continue;
     }
 
-    lastIndex = re.lastIndex;
+    i++;
   }
 
-  // If nothing was parsed, treat the whole thing as a rich text block
-  if (blocks.length === 0 && html.trim()) {
-    blocks.push({ id: newId(), type: 'rich_text', html: html.trim() });
+  if (blocks.length === 0) {
+    warnings.push('No content blocks found in document');
   }
 
   return blocks;
 }
 
-function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
+// ── Split body into paragraph/table elements ──────────────────────────────────
+
+interface BodyElement {
+  type: 'paragraph' | 'table' | 'other';
+  xml: string;
 }
 
-function extractListItems(html: string): string[] {
-  const items: string[] = [];
-  const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+function splitBodyElements(body: string): BodyElement[] {
+  const elements: BodyElement[] = [];
+  // Match top-level <w:p> and <w:tbl> elements
+  const re = /(<w:p[ >][\s\S]*?<\/w:p>|<w:p\/>|<w:tbl[ >][\s\S]*?<\/w:tbl>)/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const text = stripTags(m[1]).trim();
-    if (text) items.push(text);
+  while ((m = re.exec(body)) !== null) {
+    const xml = m[1];
+    if (xml.startsWith('<w:tbl')) {
+      elements.push({ type: 'table', xml });
+    } else {
+      elements.push({ type: 'paragraph', xml });
+    }
   }
-  return items;
+  return elements;
 }
 
-function parseTableBlock(tableHtml: string): DocumentBlock | null {
-  // Extract header row
-  const headerMatch = /<thead[^>]*>([\s\S]*?)<\/thead>/i.exec(tableHtml);
-  const bodyMatch = /<tbody[^>]*>([\s\S]*?)<\/tbody>/i.exec(tableHtml);
+// ── Paragraph parser ──────────────────────────────────────────────────────────
 
-  const headerCells = extractCells(headerMatch?.[1] ?? '', 'th');
-  const bodyRows = extractRows(bodyMatch?.[1] ?? tableHtml);
+interface ParsedParagraph {
+  text: string;
+  innerHtml: string;
+  headingLevel: number | null;
+  numId: string | null;
+  isHr: boolean;
+  hasFormatting: boolean;
+}
 
-  if (headerCells.length === 0 && bodyRows.length === 0) return null;
+function parseParagraph(xml: string): ParsedParagraph {
+  // Heading style
+  let headingLevel: number | null = null;
+  const styleMatch = /<w:pStyle\s+w:val="([^"]+)"/.exec(xml);
+  if (styleMatch) {
+    const style = styleMatch[1].toLowerCase();
+    if (style === 'heading1' || style === 'title') headingLevel = 1;
+    else if (style === 'heading2' || style === 'subtitle') headingLevel = 2;
+    else if (style === 'heading3') headingLevel = 3;
+    else if (style === 'heading4' || style === 'heading5' || style === 'heading6') headingLevel = 4;
+  }
 
-  // Build columns from header cells (or first row)
-  const colHeaders = headerCells.length > 0 ? headerCells : (bodyRows[0] ?? []);
-  const columns = colHeaders.map((h) => ({
+  // List numId
+  let numId: string | null = null;
+  const numIdMatch = /<w:numId\s+w:val="(\d+)"/.exec(xml);
+  if (numIdMatch && numIdMatch[1] !== '0') numId = numIdMatch[1];
+
+  // Horizontal rule
+  const isHr = /<w:pBdr>[\s\S]*?<w:bottom[\s\S]*?\/>/.test(xml) && !/<w:t/.test(xml);
+
+  // Extract runs with formatting
+  let text = '';
+  let innerHtml = '';
+  let hasFormatting = false;
+
+  const runRe = /<w:r[ >]([\s\S]*?)<\/w:r>/g;
+  let runMatch: RegExpExecArray | null;
+  while ((runMatch = runRe.exec(xml)) !== null) {
+    const runXml = runMatch[1];
+
+    // Get text content (handle xml:space="preserve")
+    const textParts: string[] = [];
+    const textRe = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g;
+    let tMatch: RegExpExecArray | null;
+    while ((tMatch = textRe.exec(runXml)) !== null) {
+      textParts.push(tMatch[1]);
+    }
+    const runText = textParts.join('');
+    if (!runText) continue;
+
+    text += runText;
+
+    // Check formatting
+    const isBold = /<w:b\s*\/>|<w:b>/.test(runXml) && !/<w:bCs\s*\/>/.test(runXml.replace(/<w:b\s*\/>/, ''));
+    const isItalic = /<w:i\s*\/>|<w:i>/.test(runXml) && !/<w:iCs\s*\/>/.test(runXml.replace(/<w:i\s*\/>/, ''));
+    const isUnderline = /<w:u\s+w:val="(?!none)[^"]*"/.test(runXml);
+
+    if (isBold || isItalic || isUnderline) hasFormatting = true;
+
+    let span = escapeHtml(runText);
+    if (isBold) span = `<strong>${span}</strong>`;
+    if (isItalic) span = `<em>${span}</em>`;
+    if (isUnderline) span = `<u>${span}</u>`;
+    innerHtml += span;
+  }
+
+  // Also handle <w:hyperlink> runs
+  const hyperlinkRe = /<w:hyperlink[^>]*>([\s\S]*?)<\/w:hyperlink>/g;
+  let hlMatch: RegExpExecArray | null;
+  while ((hlMatch = hyperlinkRe.exec(xml)) !== null) {
+    const hlText = extractPlainText(hlMatch[1]);
+    if (hlText && !text.includes(hlText)) {
+      text += hlText;
+      innerHtml += `<u>${escapeHtml(hlText)}</u>`;
+      hasFormatting = true;
+    }
+  }
+
+  return { text: text.trim(), innerHtml: innerHtml.trim(), headingLevel, numId, isHr, hasFormatting };
+}
+
+function extractPlainText(xml: string): string {
+  const parts: string[] = [];
+  const re = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) parts.push(m[1]);
+  return parts.join('').trim();
+}
+
+// ── Table parser ──────────────────────────────────────────────────────────────
+
+function parseTableXml(xml: string): DocumentBlock | null {
+  const rows: string[][] = [];
+
+  const rowRe = /<w:tr[ >]([\s\S]*?)<\/w:tr>/g;
+  let rowMatch: RegExpExecArray | null;
+  while ((rowMatch = rowRe.exec(xml)) !== null) {
+    const cells: string[] = [];
+    const cellRe = /<w:tc[ >]([\s\S]*?)<\/w:tc>/g;
+    let cellMatch: RegExpExecArray | null;
+    while ((cellMatch = cellRe.exec(rowMatch[1])) !== null) {
+      cells.push(extractPlainText(cellMatch[1]));
+    }
+    if (cells.length > 0) rows.push(cells);
+  }
+
+  if (rows.length === 0) return null;
+
+  const headerRow = rows[0];
+  const dataRows = rows.slice(1);
+
+  const columns = headerRow.map((h) => ({
     id: newId(),
     header: h,
     cellType: 'text' as const,
     width: 1,
   }));
 
-  // Build rows from body
-  const dataRows = headerCells.length > 0 ? bodyRows : bodyRows.slice(1);
-  const rows = dataRows.map((cells) => {
+  const tableRows = dataRows.map((cells) => {
     const cellMap: Record<string, string> = {};
-    columns.forEach((col, i) => {
-      cellMap[col.id] = cells[i] ?? '';
-    });
+    columns.forEach((col, i) => { cellMap[col.id] = cells[i] ?? ''; });
     return { id: newId(), cells: cellMap };
   });
 
@@ -210,28 +376,17 @@ function parseTableBlock(tableHtml: string): DocumentBlock | null {
     type: 'table',
     mode: 'static',
     columns,
-    rows,
+    rows: tableRows,
     stripedRows: true,
   };
 }
 
-function extractCells(html: string, tag: 'th' | 'td'): string[] {
-  const cells: string[] = [];
-  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    cells.push(stripTags(m[1]).trim());
-  }
-  return cells;
-}
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
-function extractRows(html: string): string[][] {
-  const rows: string[][] = [];
-  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rowMatch: RegExpExecArray | null;
-  while ((rowMatch = rowRe.exec(html)) !== null) {
-    const cells = extractCells(rowMatch[1], 'td');
-    if (cells.length > 0) rows.push(cells);
-  }
-  return rows;
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

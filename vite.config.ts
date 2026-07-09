@@ -495,7 +495,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (id.includes('node_modules/xero-node')) return 'xero';
           if (id.includes('node_modules/jimp') || id.includes('node_modules/@jimp')) return 'jimp';
           if (id.includes('node_modules/docx')) return 'docx';
-          if (id.includes('node_modules/mammoth')) return 'mammoth';
+          if (id.includes('node_modules/jszip')) return 'jszip';
           // These are only used in lazy-loaded routes (2FA, backup export).
           // Splitting them keeps them out of the entry bundle.
           if (id.includes('node_modules/otplib') || id.includes('node_modules/@otplib') || id.includes('node_modules/@scure/base') || id.includes('node_modules/@otplib/plugin-base32-scure') || id.includes('node_modules/@otplib/plugin-crypto-noble')) return 'otplib';
