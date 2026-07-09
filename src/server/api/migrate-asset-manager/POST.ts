@@ -188,6 +188,23 @@ export default async function handler(_req: Request, res: Response) {
     )
   `);
 
+  // ── tender_attachments ─────────────────────────────────────────────────────
+  await run('tender_attachments', `
+    CREATE TABLE IF NOT EXISTS tender_attachments (
+      id              INT AUTO_INCREMENT PRIMARY KEY,
+      tender_id       INT          NOT NULL,
+      company_id      INT          NOT NULL,
+      original_name   VARCHAR(500) NOT NULL,
+      stored_name     VARCHAR(500) NOT NULL,
+      mime_type       VARCHAR(200) NULL,
+      size_bytes      INT          NOT NULL DEFAULT 0,
+      uploaded_by     VARCHAR(36)  NULL,
+      created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_tender  (tender_id),
+      INDEX idx_company (company_id)
+    )
+  `);
+
   // ── am_audit_log ───────────────────────────────────────────────────────────
   await run('am_audit_log', `
     CREATE TABLE IF NOT EXISTS am_audit_log (

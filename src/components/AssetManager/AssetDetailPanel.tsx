@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Building2, ChevronLeft, ClipboardCheck, AlertTriangle,
   FileText, Edit2, Check, X, Loader2, AlertCircle,
-  Calendar, MapPin, Tag, Activity, Plus,
+  Calendar, MapPin, Tag, Activity, Plus, Paperclip, Download,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -381,11 +381,64 @@ function DefectsTab({ assetId }: { assetId: number }) {
   );
 }
 
+// ── Attachment mini-list (read-only, used in AssetDetailPanel TendersTab) ─────
+
+interface AttachmentItem {
+  id: number; original_name: string; stored_name: string;
+  mime_type: string | null; size_bytes: number; created_at: string;
+  url: string; sizeLabel: string;
+}
+
+function AttachmentMiniList({ tenderId }: { tenderId: number }) {
+  const [items, setItems] = useState<AttachmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/asset-manager/tenders/${tenderId}/attachments`, { credentials: 'include' })
+      .then(r => r.json() as Promise<{ attachments?: AttachmentItem[] }>)
+      .then(d => setItems(d.attachments ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [tenderId]);
+
+  if (loading) return (
+    <div className="border-t border-slate-100 px-4 py-2 flex items-center gap-2 text-xs text-slate-400">
+      <Loader2 size={11} className="animate-spin" />Loading files…
+    </div>
+  );
+
+  if (!items.length) return null;
+
+  return (
+    <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 flex flex-col gap-1">
+      {items.map(att => (
+        <div key={att.id} className="flex items-center gap-2">
+          <Paperclip size={11} className="text-slate-400 shrink-0" />
+          <span className="text-xs text-slate-600 truncate flex-1">{att.original_name}</span>
+          <span className="text-[10px] text-slate-400">{att.sizeLabel}</span>
+          <a
+            href={att.url}
+            download={att.original_name}
+            target="_blank"
+            rel="noreferrer"
+            className="text-slate-400 hover:text-orange-500 transition-colors"
+            title="Download"
+          >
+            <Download size={12} />
+          </a>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Tenders tab ───────────────────────────────────────────────────────────────
 
 function TendersTab({ assetId }: { assetId: number }) {
   const [items, setItems] = useState<Tender[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attachCounts, setAttachCounts] = useState<Record<number, number>>({});
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -395,6 +448,20 @@ function TendersTab({ assetId }: { assetId: number }) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [assetId]);
+
+  // Fetch attachment counts for each tender once list loads
+  useEffect(() => {
+    if (!items.length) return;
+    const counts: Record<number, number> = {};
+    Promise.all(
+      items.map(t =>
+        fetch(`/api/asset-manager/tenders/${t.id}/attachments`, { credentials: 'include' })
+          .then(r => r.json() as Promise<{ attachments?: unknown[] }>)
+          .then(d => { counts[t.id] = (d.attachments ?? []).length; })
+          .catch(() => { counts[t.id] = 0; })
+      )
+    ).then(() => setAttachCounts({ ...counts }));
+  }, [items]);
 
   if (loading) return <TabLoader />;
 
@@ -416,34 +483,50 @@ function TendersTab({ assetId }: { assetId: number }) {
       ) : (
         <div className="flex flex-col gap-2">
           {items.map(tender => (
-            <div key={tender.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-orange-200 hover:shadow-sm transition-all">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
-                <FileText size={14} className="text-purple-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {tender.code && <span className="text-xs font-mono text-slate-400">{tender.code}</span>}
-                  <span className="text-sm font-semibold text-slate-800">
-                    {tender.contractor_name || 'No contractor assigned'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${AWARD_COLORS[tender.award_status] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                    {tender.award_status}
-                  </span>
+            <div key={tender.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-orange-200 hover:shadow-sm transition-all">
+              <div className="px-4 py-3 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                  <FileText size={14} className="text-purple-500" />
                 </div>
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  {tender.quote_amount != null && (
-                    <span className="text-xs text-slate-500 font-semibold">
-                      ${Number(tender.quote_amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {tender.code && <span className="text-xs font-mono text-slate-400">{tender.code}</span>}
+                    <span className="text-sm font-semibold text-slate-800">
+                      {tender.contractor_name || 'No contractor assigned'}
                     </span>
-                  )}
-                  {tender.quote_due_at && (
-                    <span className="text-xs text-slate-400">Due {fmt(tender.quote_due_at)}</span>
-                  )}
-                  {tender.award_status === 'awarded' && tender.contractor_name && (
-                    <span className="text-xs text-emerald-600 font-medium">Awarded to {tender.contractor_name}</span>
-                  )}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${AWARD_COLORS[tender.award_status] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      {tender.award_status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {tender.quote_amount != null && (
+                      <span className="text-xs text-slate-500 font-semibold">
+                        ${Number(tender.quote_amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
+                    {tender.quote_due_at && (
+                      <span className="text-xs text-slate-400">Due {fmt(tender.quote_due_at)}</span>
+                    )}
+                    {tender.award_status === 'awarded' && tender.contractor_name && (
+                      <span className="text-xs text-emerald-600 font-medium">Awarded to {tender.contractor_name}</span>
+                    )}
+                    {/* Attachment count badge */}
+                    {(attachCounts[tender.id] ?? 0) > 0 && (
+                      <button
+                        onClick={() => setExpandedId(prev => prev === tender.id ? null : tender.id)}
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-orange-500 transition-colors"
+                      >
+                        <Paperclip size={11} />
+                        {attachCounts[tender.id]} file{attachCounts[tender.id] !== 1 ? 's' : ''}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
+              {/* Inline attachment list when expanded */}
+              {expandedId === tender.id && (
+                <AttachmentMiniList tenderId={tender.id} />
+              )}
             </div>
           ))}
         </div>

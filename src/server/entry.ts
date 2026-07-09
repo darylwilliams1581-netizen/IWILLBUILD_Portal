@@ -58,6 +58,9 @@ import asset_manager_tenders_get_25 from "./api/asset-manager/tenders/GET";
 import asset_manager_tenders_id_patch_26 from "./api/asset-manager/tenders/[id]/PATCH";
 import asset_manager_tenders_id_complete_post_27 from "./api/asset-manager/tenders/[id]/complete/POST";
 import asset_manager_tenders_id_contracts_post_28 from "./api/asset-manager/tenders/[id]/contracts/POST";
+import asset_manager_tenders_id_attachments_get from "./api/asset-manager/tenders/[id]/attachments/GET";
+import asset_manager_tenders_id_attachments_post from "./api/asset-manager/tenders/[id]/attachments/POST";
+import asset_manager_tenders_id_attachments_fileId_delete from "./api/asset-manager/tenders/[id]/attachments/[fileId]/DELETE";
 import auth_change_email_post_29 from "./api/auth/change-email/POST";
 import auth_change_password_post_30 from "./api/auth/change-password/POST";
 import auth_check_signup_status_post_31 from "./api/auth/check-signup-status/POST";
@@ -747,8 +750,8 @@ app.use('/api/auth', authApiLimiter);
 
 // ── QR attendance — public endpoints (registered BEFORE auth guard) ───────────
 // Token-validated inside the handler; guests do not need a portal session.
-app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_283);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_286);
+app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_284);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_287);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
@@ -1596,6 +1599,9 @@ app.get("/api/asset-manager/tenders", asset_manager_tenders_get_25);
 app.patch("/api/asset-manager/tenders/:id", asset_manager_tenders_id_patch_26);
 app.post("/api/asset-manager/tenders/:id/complete", asset_manager_tenders_id_complete_post_27);
 app.post("/api/asset-manager/tenders/:id/contracts", asset_manager_tenders_id_contracts_post_28);
+app.get("/api/asset-manager/tenders/:id/attachments", asset_manager_tenders_id_attachments_get);
+app.post("/api/asset-manager/tenders/:id/attachments", asset_manager_tenders_id_attachments_post);
+app.delete("/api/asset-manager/tenders/:id/attachments/:fileId", asset_manager_tenders_id_attachments_fileId_delete);
 app.post("/api/auth/change-email", auth_change_email_post_29);
 app.post("/api/auth/change-password", auth_change_password_post_30);
 app.post("/api/auth/check-signup-status", auth_check_signup_status_post_31);
