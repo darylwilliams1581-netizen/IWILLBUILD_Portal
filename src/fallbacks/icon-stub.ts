@@ -158,6 +158,7 @@ export const MoreVertical = NullIcon;
 export const Mountain = NullIcon;
 export const Navigation = NullIcon;
 export const Package = NullIcon;
+export const Paperclip = NullIcon;
 export const PanelLeftClose = NullIcon;
 export const PanelLeftOpen = NullIcon;
 export const PanelRightClose = NullIcon;
