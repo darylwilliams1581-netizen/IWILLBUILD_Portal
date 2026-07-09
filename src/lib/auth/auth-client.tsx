@@ -16,6 +16,19 @@ import {
 } from './session-recovery';
 import { clearSessionExpiry } from './session-timeout';
 
+// Reads and consumes the sessionStorage flag set by useSessionTimeout when it
+// initiates a hard redirect to /login?reason=expired. Kept inline to avoid a
+// circular import (auth-client → useSessionTimeout → auth-client).
+function consumeExpiryRedirectFlag(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const key = '__iwb_expiry_redirect__';
+    const val = sessionStorage.getItem(key);
+    if (val) { sessionStorage.removeItem(key); return true; }
+  } catch { /* best-effort */ }
+  return false;
+}
+
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 // Logs only non-sensitive fields. Never logs passwords or tokens.
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -180,6 +193,15 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
+    // If useSessionTimeout already handled the expiry redirect (signOut + navigate
+    // to /login?reason=expired), don't fire a second silent redirect that would
+    // strip the ?reason=expired param. The flag is consumed once so subsequent
+    // unauthenticated checks still redirect normally.
+    const wasExpiryRedirect = consumeExpiryRedirectFlag();
+    if (wasExpiryRedirect) {
+      // Already navigating — render nothing while React Router processes the popstate
+      return null;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

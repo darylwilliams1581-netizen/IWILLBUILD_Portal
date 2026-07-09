@@ -76,7 +76,11 @@ export default function LoginPage() {
     }
     if (params.get('reason') === 'expired') {
       setSessionExpiredNotice(true);
-      navigate('/login', { replace: true });
+      // Keep ?from= in the URL so post-login redirect works — only strip ?reason=
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('reason');
+      const newSearch = newParams.toString();
+      navigate(newSearch ? `/login?${newSearch}` : '/login', { replace: true });
     }
   }, [location.search, navigate]);
 
@@ -85,11 +89,16 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      const params = new URLSearchParams(location.search);
+      const fromParam = params.get('from');
+      const from =
+        (location.state as { from?: { pathname: string } })?.from?.pathname ||
+        (fromParam ? decodeURIComponent(fromParam) : null) ||
+        '/dashboard';
       authLog('already_authenticated', { redirectTo: from });
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location.state]);
+  }, [isAuthenticated, navigate, location.state, location.search]);
 
   // Check if this device has a trusted PIN for the entered email
   useEffect(() => {
@@ -192,7 +201,14 @@ export default function LoginPage() {
         setNeeds2FA(true);
         return;
       }
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      // Prefer ?from= query param (set by session-expiry hard redirect) over
+      // React Router location state (set by ProtectedRoute soft redirect).
+      const params = new URLSearchParams(location.search);
+      const fromParam = params.get('from');
+      const from =
+        (location.state as { from?: { pathname: string } })?.from?.pathname ||
+        (fromParam ? decodeURIComponent(fromParam) : null) ||
+        '/dashboard';
       authLog('redirect', { to: from });
       navigate(from, { replace: true });
     } catch (err) {

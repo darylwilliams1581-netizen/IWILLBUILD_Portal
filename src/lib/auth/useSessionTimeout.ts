@@ -28,15 +28,9 @@ import {
   clearSessionExpiry,
   msUntilExpiry,
 } from '@/lib/auth/session-timeout';
+import { setExpiryRedirectFlag } from '@/lib/auth/expiry-redirect-flag';
 
 export const SESSION_401_EVENT = 'iwb:session:401';
-
-/**
- * A flag written to sessionStorage when we initiate a session-expiry redirect.
- * Prevents the ProtectedRoute from firing a second silent redirect on the same
- * navigation (which would strip the ?reason=expired param).
- */
-const EXPIRY_REDIRECT_KEY = '__iwb_expiry_redirect__';
 
 export function useSessionTimeout() {
   const [isExpired, setIsExpired] = useState(false);
@@ -58,17 +52,13 @@ export function useSessionTimeout() {
     setIsExpired(true);
 
     // Navigate directly to /login?reason=expired, preserving the current path
-    // so the user lands back here after re-login.
+    // so the user lands back here after re-login. Hard redirect because signOut()
+    // has already cleared the BetterAuth session — a soft React Router navigate
+    // would race with ProtectedRoute's own unauthenticated redirect.
     if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem(EXPIRY_REDIRECT_KEY, '1');
-      } catch { /* best-effort */ }
-      const from = window.location.pathname + window.location.search;
-      const loginUrl = `/login?reason=expired`;
-      // Use history.replaceState + dispatchEvent so React Router picks it up
-      // without a full page reload (preserves the `from` state via history state).
-      window.history.replaceState({ from: { pathname: from } }, '', loginUrl);
-      window.dispatchEvent(new PopStateEvent('popstate', { state: { from: { pathname: from } } }));
+      setExpiryRedirectFlag();
+      const from = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?reason=expired&from=${from}`;
     }
   }
 
@@ -103,20 +93,3 @@ export function useSessionTimeout() {
   return { isExpired };
 }
 
-/**
- * Returns true if the current navigation was triggered by a session-expiry
- * redirect (i.e. useSessionTimeout already handled the signOut and redirect).
- * Used by ProtectedRoute to avoid a second silent redirect that strips the
- * ?reason=expired param from the URL.
- */
-export function consumeExpiryRedirectFlag(): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    const val = sessionStorage.getItem(EXPIRY_REDIRECT_KEY);
-    if (val) {
-      sessionStorage.removeItem(EXPIRY_REDIRECT_KEY);
-      return true;
-    }
-  } catch { /* best-effort */ }
-  return false;
-}
