@@ -14,7 +14,7 @@ import {
   BookOpen, Plus, Search, Loader2, AlertCircle, CheckCircle2,
   Pencil, Trash2, FileText, File, Upload, X, ChevronDown,
   Shield, ClipboardList, Wrench, Calculator, Package, RefreshCw,
-  Eye, EyeOff, Archive,
+  Eye, EyeOff, Archive, Download,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ interface LibItem {
   visibility: string;
   install_count: number;
   source_file_name: string | null;
+  file_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -468,6 +469,8 @@ export default function LibraryManagerTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Run migration to ensure file_path/file_mime columns exist
+      await fetch('/api/migrate-library-downloads', { method: 'POST', credentials: 'include' }).catch(() => {});
       // Fetch all items including drafts/archived — owner view
       const params = new URLSearchParams({ limit: '200', status: 'all' });
       const res = await fetch(`/api/library/items?${params}`, { credentials: 'include' });
@@ -604,7 +607,7 @@ export default function LibraryManagerTab() {
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">Type</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16 text-center">Status</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16 text-center">Installs</span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-20 text-right">Actions</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-28 text-right">Actions</span>
             </div>
 
             {filtered.map((item) => {
@@ -612,8 +615,7 @@ export default function LibraryManagerTab() {
               return (
                 <div
                   key={item.id}
-                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 hover:bg-slate-50 transition-colors ${item.status === 'archived' ? 'opacity-60' : ''}`}
-                >
+                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 hover:bg-slate-50 transition-colors ${item.status === 'archived' ? 'opacity-60' : ''}`}                >
                   {/* Title + meta */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
@@ -651,7 +653,7 @@ export default function LibraryManagerTab() {
                   <span className="text-sm font-bold text-slate-600 w-16 text-center">{item.install_count}</span>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 w-20 justify-end">
+                  <div className="flex items-center gap-1 w-28 justify-end">
                     <button
                       onClick={() => setEditItem(item)}
                       title="Edit metadata"
@@ -659,6 +661,16 @@ export default function LibraryManagerTab() {
                     >
                       <Pencil size={13} />
                     </button>
+                    {item.file_path && (
+                      <a
+                        href={`/api/library/items/${item.id}/download`}
+                        download
+                        title={`Download ${item.source_file_name ?? 'file'}`}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      >
+                        <Download size={13} />
+                      </a>
+                    )}
                     <button
                       onClick={() => void handleArchive(item)}
                       title={item.status === 'archived' ? 'Restore' : 'Archive'}

@@ -97,6 +97,8 @@ export default async function handler(req: Request, res: Response) {
           install_count, download_count,
           ROUND(CASE WHEN rating_count > 0 THEN rating_sum / rating_count ELSE 0 END, 1) AS avg_rating,
           rating_count,
+          source_file_name,
+          CASE WHEN file_path IS NOT NULL THEN 1 ELSE 0 END AS has_file,
           created_at, updated_at
         FROM library_items
         ${fullWhere}

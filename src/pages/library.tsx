@@ -30,6 +30,8 @@ interface LibraryItem {
   install_count: number;
   avg_rating: number;
   rating_count: number;
+  source_file_name: string | null;
+  has_file: number;
   updated_at: string;
 }
 
@@ -385,12 +387,26 @@ export function LibraryPage() {
                             )}
                           </div>
 
-                          {/* Right: rating + install */}
-                          <div className="flex items-center gap-3 flex-shrink-0">
+                          {/* Right: rating + install + download */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <StarRating avg={Number(item.avg_rating)} count={item.rating_count} />
                             <span className="text-xs text-slate-400 hidden md:flex items-center gap-1">
                               <Download size={10} />{item.install_count}
                             </span>
+
+                            {/* Download original file if available */}
+                            {!!item.has_file && (
+                              <a
+                                href={`/api/library/items/${item.id}/download`}
+                                download={item.source_file_name ?? undefined}
+                                title={`Download ${item.source_file_name ?? 'original file'}`}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Download size={11} />
+                                <span className="hidden sm:inline">Download</span>
+                              </a>
+                            )}
 
                             {isInstalled ? (
                               <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
