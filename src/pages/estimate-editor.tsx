@@ -5,7 +5,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
   AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
-  Upload, Download, Share2,
+  Upload, Download, Share2, Calculator, BookOpen,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -935,7 +935,7 @@ export default function EstimateEditorPage() {
       </div>
 
       {showPrint && estimate && (
-        <PrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
+        <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
       )}
       {showCostPicker && !isLocked && (
         <CostGuidePicker onInsert={insertCostItem} onClose={() => setShowCostPicker(false)} />
