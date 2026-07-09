@@ -1,4 +1,4 @@
-import{createRequire as a}from"module";import{d as m}from"../server.bundle.mjs";import{s as _}from"./drizzle-CZ2vWAZ3.js";import"./express-C3pMhyZZ.js";import"tty";import"os";import"util";import"path";import"./iconv-DatUeE_T.js";import"buffer";import"string_decoder";import"node:zlib";import"./es-abstract-B57Whf45.js";import"url";import"node:fs";import"node:path";import"fs";import"crypto";import"node:http";import"node:buffer";import"node:querystring";import"node:net";import"stream";import"node:events";import"./radix-ui-Cfam1uum.js";import"./react-router-5dh9OgMp.js";import"./react-dom-CZsMFu04.js";import"async_hooks";import"./zod-B-vvil1C.js";import"node:url";import"./mysql2-HVwznT_d.js";import"net";import"events";import"process";import"timers";import"tls";import"zlib";import"node:process";import"./better-auth-B2r-Xofv.js";import"./kysely-9kO2vj_T.js";import"node:crypto";import"./noble-DY0vnRA-.js";import"node:fs/promises";import"node:os";import"./multer-3TLq-S4Z.js";import"fs/promises";import"./jszip-BZ8kuIwR.js";import"node:util";import"http";import"https";import"assert";const A=a(import.meta.url);async function _i(L,E){const i=[];async function r(t,N){try{await m.execute(_.raw(N)),i.push(`✅ ${t}`)}catch(o){const T=String(o);T.includes("Duplicate")||T.includes("already exists")||T.includes("Multiple primary key")?i.push(`⚠️  ${t}: already exists`):i.push(`❌ ${t}: ${T.slice(0,200)}`)}}await r("Create library_items",`
+import{createRequire as L}from"module";import{d as N}from"../server.bundle.mjs";import{s as m}from"./drizzle-CZ2vWAZ3.js";import"./express-C3pMhyZZ.js";import"tty";import"os";import"util";import"path";import"./iconv-DatUeE_T.js";import"buffer";import"string_decoder";import"node:zlib";import"./es-abstract-B57Whf45.js";import"url";import"node:fs";import"node:path";import"fs";import"crypto";import"node:http";import"node:buffer";import"node:querystring";import"node:net";import"stream";import"node:events";import"./radix-ui-Cfam1uum.js";import"./react-router-5dh9OgMp.js";import"./react-dom-CZsMFu04.js";import"async_hooks";import"./zod-B-vvil1C.js";import"node:url";import"./mysql2-HVwznT_d.js";import"net";import"events";import"process";import"timers";import"tls";import"zlib";import"node:process";import"./better-auth-B2r-Xofv.js";import"./kysely-9kO2vj_T.js";import"node:crypto";import"./noble-DY0vnRA-.js";import"node:fs/promises";import"node:os";import"./multer-3TLq-S4Z.js";import"fs/promises";import"./jszip-BZ8kuIwR.js";import"node:util";import"http";import"https";import"assert";const s=L(import.meta.url);async function mi(A,a){const t=[];async function i(r,E){try{await N.execute(m.raw(E)),t.push(`✅ ${r}`)}catch(_){const e=String(_);e.includes("Duplicate")||e.includes("already exists")||e.includes("Multiple primary key")?t.push(`⚠️  ${r}: already exists`):t.push(`❌ ${r}: ${e.slice(0,200)}`)}}await i("Create library_items",`
     CREATE TABLE IF NOT EXISTS library_items (
       id              INT PRIMARY KEY AUTO_INCREMENT,
       type            VARCHAR(50)  NOT NULL,
@@ -27,7 +27,7 @@ import{createRequire as a}from"module";import{d as m}from"../server.bundle.mjs";
       INDEX idx_lib_owner       (owner_user_id),
       INDEX idx_lib_install_cnt (install_count)
     )
-  `),await r("Create company_library_items",`
+  `),await i("Create company_library_items",`
     CREATE TABLE IF NOT EXISTS company_library_items (
       id                INT PRIMARY KEY AUTO_INCREMENT,
       company_id        INT          NOT NULL,
@@ -50,7 +50,7 @@ import{createRequire as a}from"module";import{d as m}from"../server.bundle.mjs";
       INDEX idx_cli_updated_at (updated_at),
       UNIQUE KEY uq_cli_company_source (company_id, source_item_id)
     )
-  `),await r("Create library_feedback",`
+  `),await i("Create library_feedback",`
     CREATE TABLE IF NOT EXISTS library_feedback (
       id             INT PRIMARY KEY AUTO_INCREMENT,
       item_id        INT          NOT NULL,
@@ -63,7 +63,27 @@ import{createRequire as a}from"module";import{d as m}from"../server.bundle.mjs";
       FOREIGN KEY (company_id) REFERENCES companies(id)     ON DELETE CASCADE,
       UNIQUE KEY uq_feedback_company_item (company_id, item_id)
     )
-  `),await r("Add FULLTEXT index on library_items (title, summary, tags)",`
+  `),await i("Add FULLTEXT index on library_items (title, summary, tags)",`
     ALTER TABLE library_items
       ADD FULLTEXT INDEX ft_lib_search (title, summary, tags)
-  `);const e=i.every(t=>!t.startsWith("❌"));E.json({ok:e,results:i})}export{_i as default};
+  `),await i("Add builder_json to library_items",`
+    ALTER TABLE library_items ADD COLUMN builder_json LONGTEXT NULL
+  `),await i("Add file_path to library_items",`
+    ALTER TABLE library_items ADD COLUMN file_path VARCHAR(500) NULL
+  `),await i("Add file_mime to library_items",`
+    ALTER TABLE library_items ADD COLUMN file_mime VARCHAR(100) NULL
+  `),await i("Add source_file_name to library_items",`
+    ALTER TABLE library_items ADD COLUMN source_file_name VARCHAR(255) NULL
+  `),await i("Add submitted_by_company_id to library_items",`
+    ALTER TABLE library_items ADD COLUMN submitted_by_company_id INT NULL
+  `),await i("Add submitted_by_user_id to library_items",`
+    ALTER TABLE library_items ADD COLUMN submitted_by_user_id VARCHAR(36) NULL
+  `),await i("Add reviewer_notes to library_items",`
+    ALTER TABLE library_items ADD COLUMN reviewer_notes TEXT NULL
+  `),await i("Add reviewed_at to library_items",`
+    ALTER TABLE library_items ADD COLUMN reviewed_at TIMESTAMP NULL
+  `),await i("Add reviewed_by to library_items",`
+    ALTER TABLE library_items ADD COLUMN reviewed_by VARCHAR(36) NULL
+  `),await i("Add index on visibility+status",`
+    ALTER TABLE library_items ADD INDEX idx_lib_vis_status (visibility, status)
+  `);const T=t.every(r=>!r.startsWith("❌"));a.json({ok:T,results:t})}export{mi as default};

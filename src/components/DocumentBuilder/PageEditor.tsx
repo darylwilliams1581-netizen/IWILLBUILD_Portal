@@ -18,7 +18,10 @@ import {
   Bold, Italic, Underline, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Minus,
 } from 'lucide-react';
-import { blocksToHtml, htmlToBlocks, sanitisePastedHtml } from './pageEditorBridge';
+import { AnimatePresence } from 'motion/react';
+import { blocksToHtml, htmlToBlocks, sanitisePastedHtml, isWordPaste } from './pageEditorBridge';
+import type { PasteMode } from './pageEditorBridge';
+import PasteModeModal from './PasteModeModal';
 import { useDocumentStore } from './useDocumentStore';
 import type { DocumentBlock } from './types';
 
@@ -45,6 +48,14 @@ export default function PageEditor({ onChange }: Props) {
   const [toolbar, setToolbar] = useState<{ top: number; left: number; visible: boolean }>({
     top: 0, left: 0, visible: false,
   });
+
+  // Paste mode modal state
+  const [pasteModal, setPasteModal] = useState<{
+    visible: boolean;
+    isWord: boolean;
+    html: string;
+    text: string;
+  }>({ visible: false, isWord: false, html: '', text: '' });
 
   // ── Load blocks into editor ───────────────────────────────────────────────
   useEffect(() => {
@@ -150,12 +161,39 @@ export default function PageEditor({ onChange }: Props) {
     const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
 
-    let insertHtml: string;
+    if (html && isWordPaste(html)) {
+      // Show paste mode picker for Word content
+      setPasteModal({ visible: true, isWord: true, html, text });
+      return;
+    }
+
     if (html) {
-      insertHtml = sanitisePastedHtml(html);
+      // Non-Word rich paste — default to 'keep' silently
+      const insertHtml = sanitisePastedHtml(html, 'keep');
+      document.execCommand('insertHTML', false, insertHtml);
     } else {
       // Plain text — convert newlines to paragraphs
-      insertHtml = text
+      const insertHtml = text
+        .split(/\n\n+/)
+        .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+        .join('');
+      document.execCommand('insertHTML', false, insertHtml);
+    }
+
+    scheduleSync();
+    applyEditorStyles();
+  }, [scheduleSync]);
+
+  // ── Apply paste after mode selection ─────────────────────────────────────
+  const applyPaste = useCallback((mode: PasteMode) => {
+    setPasteModal((m) => ({ ...m, visible: false }));
+    editorRef.current?.focus();
+
+    let insertHtml: string;
+    if (pasteModal.html) {
+      insertHtml = sanitisePastedHtml(pasteModal.html, mode);
+    } else {
+      insertHtml = pasteModal.text
         .split(/\n\n+/)
         .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
         .join('');
@@ -164,7 +202,7 @@ export default function PageEditor({ onChange }: Props) {
     document.execCommand('insertHTML', false, insertHtml);
     scheduleSync();
     applyEditorStyles();
-  }, [scheduleSync]);
+  }, [pasteModal, scheduleSync]);
 
   // ── Handle selection change → show/hide toolbar ───────────────────────────
   const handleSelectionChange = useCallback(() => {
@@ -345,6 +383,17 @@ export default function PageEditor({ onChange }: Props) {
           font-size: 12px;
         }
       `}</style>
+
+      {/* Paste mode modal */}
+      <AnimatePresence>
+        {pasteModal.visible && (
+          <PasteModeModal
+            isWord={pasteModal.isWord}
+            onSelect={applyPaste}
+            onCancel={() => setPasteModal((m) => ({ ...m, visible: false }))}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

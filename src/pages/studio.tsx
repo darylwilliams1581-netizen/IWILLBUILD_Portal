@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
 import { AnimatePresence } from 'motion/react';
+import { usePermissions } from '@/lib/usePermissions';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
@@ -108,7 +109,7 @@ function ToolBtn({
 
 // ── Document row ──────────────────────────────────────────────────────────────
 
-function DocRow({ doc, index, onDelete, onShare }: { doc: DocTemplate; index: number; onDelete: (id: number) => void; onShare: (id: number) => void }) {
+function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTemplate; index: number; onDelete: (id: number) => void; onShare: (id: number) => void; showShareBtn?: boolean }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -189,7 +190,9 @@ function DocRow({ doc, index, onDelete, onShare }: { doc: DocTemplate; index: nu
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <ToolBtn icon={Copy}       label="Duplicate"         onClick={handleDuplicate} />
           <ToolBtn icon={Share2}     label="Copy link"         onClick={handleShare} />
-          <ToolBtn icon={Library}    label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
+          {showShareBtn && (
+            <ToolBtn icon={Library}  label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
+          )}
           <ToolBtn icon={Printer}    label="Print"             onClick={handleExportPdf} />
           <ToolBtn icon={FileDown}   label="Export PDF"        onClick={handleExportPdf} />
           <ToolBtn icon={FileOutput} label="Export DOCX"       onClick={handleExportDocx} />
@@ -246,6 +249,7 @@ function DocRow({ doc, index, onDelete, onShare }: { doc: DocTemplate; index: nu
 
 function DocumentsTab() {
   const navigate = useNavigate();
+  const { isPlatformOwner } = usePermissions();
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -361,7 +365,7 @@ function DocumentsTab() {
             className="flex flex-col gap-2"
           >
             {filtered.map((doc, i) => (
-              <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={(id) => setShareDocId(id)} />
+              <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={(id) => setShareDocId(id)} showShareBtn={isPlatformOwner} />
             ))}
           </motion.div>
         )}
@@ -386,10 +390,14 @@ function DocumentsTab() {
 export default function StudioPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isPlatformOwner } = usePermissions();
 
   // Read tab from ?tab= query param so direct links and sidebar work
   const tabParam = searchParams.get('tab');
-  const validTabs: StudioTabId[] = ['documents', 'forms', 'library', 'share', 'safety'];
+  // Share tab only visible to platform owners (developers)
+  const validTabs: StudioTabId[] = isPlatformOwner
+    ? ['documents', 'forms', 'library', 'share', 'safety']
+    : ['documents', 'forms', 'library', 'safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(
     validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'documents'
   );
@@ -515,7 +523,7 @@ export default function StudioPage() {
         {/* ── Top-level tab bar ── */}
         <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
           <div className="flex gap-0.5 py-2 min-w-max">
-            {STUDIO_TABS.map(({ id, label, icon: Icon }) => (
+            {STUDIO_TABS.filter(({ id }) => id !== 'share' || isPlatformOwner).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => switchTab(id)}

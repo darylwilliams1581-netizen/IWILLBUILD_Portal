@@ -243,55 +243,69 @@ function tableElToBlock(el: HTMLElement, blockId: string): TableBlock | null {
 
 // ── Rich paste sanitiser ──────────────────────────────────────────────────────
 
+export type PasteMode = 'keep' | 'studio' | 'plain';
+
 /**
- * Sanitise pasted HTML from Word / Google Docs / browsers.
- * Strips dangerous tags, preserves useful formatting.
+ * Detect whether clipboard HTML originated from Microsoft Word / Office.
+ * Word embeds a SourceApp comment or mso- style properties.
  */
-export function sanitisePastedHtml(raw: string): string {
+export function isWordPaste(html: string): boolean {
+  return (
+    /urn:schemas-microsoft-com|mso-|MsoNormal|WordDocument|w:WordDocument/i.test(html) ||
+    html.includes('<!--StartFragment-->') && /mso-/i.test(html)
+  );
+}
+
+/**
+ * Full Word-aware HTML sanitiser.
+ *
+ * mode = 'keep'   → preserve headings, bold, italic, underline, lists, tables,
+ *                   text-align, and safe inline colours. Strip all mso-* noise.
+ * mode = 'studio' → same structure but strip all inline colours / font sizes so
+ *                   the document inherits Studio's theme.
+ * mode = 'plain'  → extract plain text only, wrap in <p> tags.
+ */
+export function sanitisePastedHtml(raw: string, mode: PasteMode = 'keep'): string {
   if (typeof document === 'undefined') return '';
+
+  if (mode === 'plain') {
+    return rawToPlainHtml(raw);
+  }
 
   const container = document.createElement('div');
   container.innerHTML = raw;
 
-  // Remove dangerous / noise elements
-  const STRIP_TAGS = ['script', 'style', 'meta', 'link', 'head', 'object', 'embed', 'iframe', 'form', 'input', 'button'];
+  // ── 1. Remove dangerous / noise elements ─────────────────────────────────
+  const STRIP_TAGS = [
+    'script', 'style', 'meta', 'link', 'head', 'object', 'embed',
+    'iframe', 'form', 'input', 'button', 'xml', 'o\\:p',
+  ];
   for (const tag of STRIP_TAGS) {
-    container.querySelectorAll(tag).forEach((el) => el.remove());
+    try { container.querySelectorAll(tag).forEach((el) => el.remove()); } catch { /* namespace tags */ }
   }
 
-  // Strip Word/Office namespace elements (o:p, w:*, etc.)
-  const wordEls = container.querySelectorAll('[class*="Mso"], [style*="mso-"]');
-  wordEls.forEach((el) => {
-    // Keep the text content, just unwrap the element
-    const span = document.createElement('span');
-    span.innerHTML = el.innerHTML;
-    el.replaceWith(span);
-  });
-
-  // Strip all class and id attributes (Word adds tons of noise)
-  container.querySelectorAll('*').forEach((el) => {
-    el.removeAttribute('class');
-    el.removeAttribute('id');
-    el.removeAttribute('lang');
-    el.removeAttribute('xml:lang');
-    // Strip Word-specific style properties but keep useful ones
-    const style = (el as HTMLElement).style;
-    if (style) {
-      const keep: Record<string, string> = {};
-      if (style.fontWeight === 'bold' || style.fontWeight === '700') keep.fontWeight = 'bold';
-      if (style.fontStyle === 'italic') keep.fontStyle = 'italic';
-      if (style.textDecoration?.includes('underline')) keep.textDecoration = 'underline';
-      if (style.textAlign && style.textAlign !== 'left') keep.textAlign = style.textAlign;
-      (el as HTMLElement).removeAttribute('style');
-      Object.assign((el as HTMLElement).style, keep);
+  // Remove XML/Office namespace elements (o:p, w:sdt, etc.) by tag name pattern
+  const allEls = Array.from(container.querySelectorAll('*'));
+  for (const el of allEls) {
+    if (el.tagName.includes(':')) {
+      // Unwrap — keep inner content
+      el.replaceWith(...Array.from(el.childNodes));
     }
+  }
+
+  // ── 2. Remove Word comment / annotation markup ────────────────────────────
+  // Word wraps tracked changes in <ins>/<del> — keep <ins> content, drop <del>
+  container.querySelectorAll('del').forEach((el) => el.remove());
+  container.querySelectorAll('ins').forEach((el) => {
+    el.replaceWith(...Array.from(el.childNodes));
   });
 
-  // Convert <b> → <strong>, <i> → <em>
+  // ── 3. Normalise semantic tags ────────────────────────────────────────────
+  // <b> → <strong>, <i> → <em>
   container.querySelectorAll('b').forEach((el) => {
-    const strong = document.createElement('strong');
-    strong.innerHTML = el.innerHTML;
-    el.replaceWith(strong);
+    const s = document.createElement('strong');
+    s.innerHTML = el.innerHTML;
+    el.replaceWith(s);
   });
   container.querySelectorAll('i').forEach((el) => {
     const em = document.createElement('em');
@@ -299,14 +313,153 @@ export function sanitisePastedHtml(raw: string): string {
     el.replaceWith(em);
   });
 
-  // Collapse empty paragraphs from Word (multiple <p><br></p> etc.)
+  // ── 4. Detect heading level from Word MsoHeading styles ──────────────────
+  // Word often emits headings as <p class="MsoHeading1"> etc.
+  const MSO_HEADING_RE = /MsoHeading(\d)/i;
+  container.querySelectorAll('p, div').forEach((el) => {
+    const cls = el.getAttribute('class') ?? '';
+    const m = MSO_HEADING_RE.exec(cls);
+    if (m) {
+      const level = Math.min(parseInt(m[1], 10), 4);
+      const heading = document.createElement(`h${level}`);
+      heading.innerHTML = el.innerHTML;
+      // Carry text-align if present
+      const ta = (el as HTMLElement).style?.textAlign;
+      if (ta) heading.style.textAlign = ta;
+      el.replaceWith(heading);
+    }
+  });
+
+  // ── 5. Detect list items from Word MsoListParagraph ──────────────────────
+  // Word emits lists as <p class="MsoListParagraph"> with a leading bullet/number span
+  const listGroups: { ordered: boolean; items: string[] }[] = [];
+  let currentGroup: { ordered: boolean; items: string[] } | null = null;
+
+  const listCandidates = Array.from(
+    container.querySelectorAll('p[class*="MsoList"], p[class*="msolist"]')
+  );
+  for (const el of listCandidates) {
+    const inner = el.innerHTML;
+    // Detect ordered: starts with digit+dot or roman numeral
+    const text = el.textContent ?? '';
+    const isOrdered = /^\s*\d+[.)]\s/.test(text) || /^\s*[ivxIVX]+[.)]\s/.test(text);
+    if (!currentGroup || currentGroup.ordered !== isOrdered) {
+      currentGroup = { ordered: isOrdered, items: [] };
+      listGroups.push(currentGroup);
+    }
+    // Strip leading bullet character / number from the text
+    const cleaned = inner.replace(/^[\s\u00b7\u2022\u25cf\u2013\-\d+.)\s]+/, '').trim();
+    currentGroup.items.push(cleaned || inner);
+    el.remove();
+  }
+
+  // ── 6. Per-element style cleaning ────────────────────────────────────────
+  container.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+
+    // Remove noisy attributes
+    el.removeAttribute('class');
+    el.removeAttribute('id');
+    el.removeAttribute('lang');
+    el.removeAttribute('xml:lang');
+    el.removeAttribute('data-contrast');
+    el.removeAttribute('data-ccp-props');
+    el.removeAttribute('xmlns');
+
+    const style = el.style;
+    if (!style) return;
+
+    const keep: Record<string, string> = {};
+
+    // Always preserve structural formatting
+    if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 600) keep.fontWeight = 'bold';
+    if (style.fontStyle === 'italic') keep.fontStyle = 'italic';
+    if (style.textDecoration?.includes('underline')) keep.textDecoration = 'underline';
+    if (style.textDecoration?.includes('line-through')) {
+      keep.textDecoration = (keep.textDecoration ? keep.textDecoration + ' ' : '') + 'line-through';
+    }
+    if (style.textAlign && style.textAlign !== 'left') keep.textAlign = style.textAlign;
+
+    if (mode === 'keep') {
+      // Preserve safe visual properties
+      if (style.color && !isMsoColor(style.color)) keep.color = style.color;
+      if (style.backgroundColor && !isMsoColor(style.backgroundColor)) keep.backgroundColor = style.backgroundColor;
+      // Preserve font-size but clamp to reasonable range (10–36px)
+      if (style.fontSize) {
+        const px = parsePxSize(style.fontSize);
+        if (px >= 10 && px <= 36) keep.fontSize = `${px}px`;
+      }
+    }
+    // mode === 'studio': only structural formatting, no colours/sizes
+
+    el.removeAttribute('style');
+    Object.assign(el.style, keep);
+  });
+
+  // ── 7. Remove empty paragraphs (Word adds many) ───────────────────────────
   container.querySelectorAll('p').forEach((p) => {
-    if (!p.textContent?.trim() && !p.querySelector('img')) {
+    if (!p.textContent?.trim() && !p.querySelector('img, table, br')) {
       p.remove();
     }
   });
 
-  return container.innerHTML;
+  // ── 8. Clean up tables ────────────────────────────────────────────────────
+  container.querySelectorAll('table').forEach((tbl) => {
+    tbl.removeAttribute('style');
+    tbl.removeAttribute('class');
+    tbl.removeAttribute('width');
+    tbl.removeAttribute('cellpadding');
+    tbl.removeAttribute('cellspacing');
+    tbl.removeAttribute('border');
+    // Remove empty rows
+    tbl.querySelectorAll('tr').forEach((tr) => {
+      if (!tr.textContent?.trim()) tr.remove();
+    });
+  });
+
+  // ── 9. Unwrap redundant wrapper divs / spans ──────────────────────────────
+  // Spans with no style left → unwrap
+  container.querySelectorAll('span').forEach((span) => {
+    if (!span.getAttribute('style') && !span.getAttribute('class')) {
+      span.replaceWith(...Array.from(span.childNodes));
+    }
+  });
+
+  // ── 10. Collapse consecutive <br> into paragraph breaks ──────────────────
+  // Replace 2+ consecutive <br> with a paragraph boundary
+  let html = container.innerHTML;
+  html = html.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
+
+  return html;
+}
+
+// ── Plain text fallback ───────────────────────────────────────────────────────
+
+function rawToPlainHtml(raw: string): string {
+  if (typeof document === 'undefined') return '';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = raw;
+  const text = tmp.textContent ?? tmp.innerText ?? '';
+  return text
+    .split(/\n\n+/)
+    .map((para) => `<p>${para.replace(/\n/g, '<br>').trim()}</p>`)
+    .filter((p) => p !== '<p></p>')
+    .join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Returns true for mso- generated colour tokens we should discard */
+function isMsoColor(color: string): boolean {
+  return /windowtext|window|btnface|highlight/i.test(color);
+}
+
+/** Parse a CSS size string to px number (handles pt, em, rem, %) */
+function parsePxSize(size: string): number {
+  const n = parseFloat(size);
+  if (size.endsWith('pt')) return Math.round(n * 1.333);
+  if (size.endsWith('em') || size.endsWith('rem')) return Math.round(n * 13);
+  return Math.round(n); // assume px
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
