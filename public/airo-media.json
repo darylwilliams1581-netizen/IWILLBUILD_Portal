@@ -110,5 +110,31 @@
       "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg"
     },
     "uploadContentHash": "5166a0cbaff30338512c95ceca4928f3b2a6c4268327a59225c7000b67fd3016"
+  },
+  "reference/studio-issue-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-studio-issue-1-f9a5002e.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-09T12:11:14.545Z",
+    "lastUpdated": "2026-07-09T12:11:14.545Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-studio-issue-1-f9a5002e.jpg": "f38wenbvln_1783598461889_file_RkpfNTSFGm.jpg"
+    },
+    "uploadContentHash": "eae7e7f08b89ba2f17a97b0e702f195b8b0e1b3ccdd31344fde974594104c379"
+  },
+  "reference/studio-issue-2": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-studio-issue-2-df4e960d.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-09T12:11:14.941Z",
+    "lastUpdated": "2026-07-09T12:11:14.941Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-studio-issue-2-df4e960d.jpg": "f38wenbvln_1783598576208_file_crKH52b-qZ.jpg"
+    },
+    "uploadContentHash": "03180ac07cd2395a04c8bfc24be275bd66e3e2c8352a8ef4850061463c56a1a8"
   }
 }
