@@ -351,6 +351,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       'html-to-image',
       // drizzle-kit is a CLI migration tool — never needed at SSR runtime.
       'drizzle-kit',
+      // mammoth uses util.promisify internally — Rollup's bundling of Node
+      // built-ins mangles the util module so promisify becomes undefined.
+      // Keep mammoth external so it loads natively from node_modules at runtime.
+      'mammoth',
       // NOTE: lucide-react and @heroicons are NOT externalized here — they are
       // aliased to a stub in resolve.alias (below) during SSR build so they
       // compile to near-zero bytes rather than their full ~53 MB on disk.
