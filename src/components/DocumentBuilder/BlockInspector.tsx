@@ -7,7 +7,8 @@
  */
 
 import { useState, useRef } from 'react';
-import { Settings, Zap, X, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
+import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import { SYSTEM_FIELDS, SYSTEM_FIELD_GROUPS } from './systemFields';
 import LogicPanel from './LogicPanel';
@@ -22,7 +23,12 @@ const inp = 'w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 te
 const sel = `${inp} appearance-none`;
 const lbl = 'block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1';
 
-export default function BlockInspector() {
+interface InspectorProps {
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+export default function BlockInspector({ collapsed = false, onToggleCollapse }: InspectorProps) {
   const {
     blocks, selection, deselect, logicRules,
   } = useDocumentStore();
@@ -33,19 +39,73 @@ export default function BlockInspector() {
     ? findBlock(blocks, selection.blockId)
     : null;
 
-  if (!selectedBlock) {
-    return <DocumentInspector />;
-  }
-
-  // Count rules on this block for the badge
-  const ruleCount = logicRules.filter((r) => r.ownerBlockId === selectedBlock.id).length;
+  const innerContent = selectedBlock
+    ? <SelectedBlockPanel block={selectedBlock} inspectorTab={inspectorTab} setInspectorTab={setInspectorTab} deselect={deselect} logicRules={logicRules} />
+    : <DocumentInspectorPanel />;
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
+    <div className="relative flex-shrink-0 flex">
+      {/* Expanded panel */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.aside
+            key="right-sidebar"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 256, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="flex-shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden"
+            style={{ width: 256 }}
+          >
+            {/* Collapse toggle in header area */}
+            <div className="absolute top-2 left-2 z-10">
+              <button
+                onClick={onToggleCollapse}
+                title="Collapse inspector"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                <PanelRightClose size={13} />
+              </button>
+            </div>
+            {innerContent}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Collapsed strip */}
+      {collapsed && (
+        <div className="w-8 flex-shrink-0 bg-white border-l border-slate-200 flex flex-col items-center pt-3 gap-2">
+          <button
+            onClick={onToggleCollapse}
+            title="Expand inspector"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+          >
+            <PanelRightOpen size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Selected block panel (inner content) ─────────────────────────────────────
+
+interface SelectedBlockPanelProps {
+  block: DocumentBlock;
+  inspectorTab: InspectorTab;
+  setInspectorTab: (t: InspectorTab) => void;
+  deselect: () => void;
+  logicRules: ReturnType<typeof useDocumentStore>['logicRules'];
+}
+
+function SelectedBlockPanel({ block, inspectorTab, setInspectorTab, deselect, logicRules }: SelectedBlockPanelProps) {
+  const ruleCount = logicRules.filter((r) => r.ownerBlockId === block.id).length;
+  return (
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 pl-9">
         <span className="text-xs font-bold text-slate-600 capitalize">
-          {selectedBlock.type.replace(/_/g, ' ')}
+          {block.type.replace(/_/g, ' ')}
         </span>
         <button onClick={deselect} className="text-slate-300 hover:text-slate-500 transition-colors">
           <X size={13} />
@@ -85,26 +145,26 @@ export default function BlockInspector() {
       <div className="flex-1 overflow-y-auto p-3">
         {inspectorTab === 'settings' ? (
           <div className="flex flex-col gap-4">
-            <BlockSpecificSettings block={selectedBlock} />
-            <CommonBlockSettings block={selectedBlock} />
+            <BlockSpecificSettings block={block} />
+            <CommonBlockSettings block={block} />
           </div>
         ) : (
-          <LogicPanel blockId={selectedBlock.id} />
+          <LogicPanel blockId={block.id} />
         )}
       </div>
-    </aside>
+    </>
   );
 }
 
 // ── Document-level inspector (no selection) ───────────────────────────────────
 
-function DocumentInspector() {
+function DocumentInspectorPanel() {
   const { pageLayout, theme, setPageLayout, setTheme, templateName, setTemplateName, templateType, setTemplateType } = useDocumentStore();
   const [tab, setTab] = useState<'layout' | 'theme'>('layout');
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
-      <div className="flex border-b border-slate-100">
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex border-b border-slate-100 pl-8">
         {(['layout', 'theme'] as const).map((t) => (
           <button
             key={t}
@@ -171,7 +231,7 @@ function DocumentInspector() {
           </Section>
         )}
       </div>
-    </aside>
+    </div>
   );
 }
 

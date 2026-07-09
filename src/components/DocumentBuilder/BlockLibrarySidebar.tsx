@@ -10,8 +10,9 @@ import {
   AlertTriangle, ShieldCheck, Shield, Table, Image, Hash, Calendar,
   ToggleLeft, CheckSquare, Circle, List, Camera, PenLine, MapPin,
   SlidersHorizontal, Star, Upload, Zap, Briefcase, User, Building2,
-  Truck, ChevronDown, ChevronRight, FileUp, BarChart2,
+  Truck, ChevronDown, ChevronRight, FileUp, BarChart2, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import type { DocumentBlock } from './types';
 
@@ -186,9 +187,12 @@ const BLOCK_GROUPS: BlockGroup[] = [
 
 interface Props {
   onImportDocx: () => void;
+  onImportBlocksJson?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export default function BlockLibrarySidebar({ onImportDocx }: Props) {
+export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, collapsed = false, onToggleCollapse }: Props) {
   const { addBlock, mode } = useDocumentStore();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Basic', 'Layout', 'Fields']));
   const [search, setSearch] = useState('');
@@ -216,74 +220,122 @@ export default function BlockLibrarySidebar({ onImportDocx }: Props) {
     : BLOCK_GROUPS;
 
   return (
-    <aside className="w-56 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="px-3 pt-3 pb-2 border-b border-slate-100">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Blocks</p>
-        <input
-          type="text"
-          placeholder="Search blocks..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
-        />
-      </div>
+    <div className="relative flex-shrink-0 flex">
+      {/* Collapsed strip — just the toggle button */}
+      {collapsed && (
+        <div className="w-8 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col items-center pt-3 gap-2">
+          <button
+            onClick={onToggleCollapse}
+            title="Expand block library"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+          >
+            <PanelLeftOpen size={14} />
+          </button>
+        </div>
+      )}
 
-      {/* Import DOCX button */}
-      <div className="px-3 py-2 border-b border-slate-100">
-        <button
-          onClick={onImportDocx}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 transition-colors"
-        >
-          <FileUp size={13} />
-          Import DOCX
-        </button>
-      </div>
-
-      {/* Block groups */}
-      <div className="flex-1 overflow-y-auto py-1">
-        {filteredGroups.map((group) => {
-          const isOpen = search.trim() ? true : openGroups.has(group.label);
-          const GroupIcon = group.icon;
-          return (
-            <div key={group.label}>
+      {/* Expanded panel */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.aside
+            key="left-sidebar"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 224, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden"
+            style={{ width: 224 }}
+          >
+            {/* Header */}
+            <div className="px-3 pt-3 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex-1">Blocks</p>
               <button
-                onClick={() => toggleGroup(group.label)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:bg-slate-50 transition-colors"
+                onClick={onToggleCollapse}
+                title="Collapse block library"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
               >
-                <span className="flex items-center gap-1.5">
-                  <GroupIcon size={11} />
-                  {group.label}
-                </span>
-                {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                <PanelLeftClose size={13} />
               </button>
+            </div>
 
-              {isOpen && (
-                <div className="pb-1">
-                  {group.blocks.map((blockDef) => {
-                    const Icon = blockDef.icon;
-                    return (
-                      <button
-                        key={blockDef.type}
-                        onClick={() => addBlock(blockDef.factory())}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-orange-50 hover:text-primary transition-colors group"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100 group-hover:border-orange-200 transition-colors">
-                          <Icon size={13} className="text-slate-500 group-hover:text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-slate-700 group-hover:text-primary truncate">{blockDef.label}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{blockDef.description}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Search */}
+            <div className="px-3 py-2 border-b border-slate-100">
+              <input
+                type="text"
+                placeholder="Search blocks..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
+              />
+            </div>
+
+            {/* Import buttons */}
+            <div className="px-3 py-2 border-b border-slate-100 flex flex-col gap-1.5">
+              <button
+                onClick={onImportDocx}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 transition-colors"
+              >
+                <FileUp size={13} />
+                Import DOCX / PDF
+              </button>
+              {onImportBlocksJson && (
+                <button
+                  onClick={onImportBlocksJson}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
+                >
+                  <BarChart2 size={13} />
+                  Import .blocks.json
+                </button>
               )}
             </div>
-          );
-        })}
-      </div>
-    </aside>
+
+            {/* Block groups */}
+            <div className="flex-1 overflow-y-auto py-1">
+              {filteredGroups.map((group) => {
+                const isOpen = search.trim() ? true : openGroups.has(group.label);
+                const GroupIcon = group.icon;
+                return (
+                  <div key={group.label}>
+                    <button
+                      onClick={() => toggleGroup(group.label)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <GroupIcon size={11} />
+                        {group.label}
+                      </span>
+                      {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                    </button>
+
+                    {isOpen && (
+                      <div className="pb-1">
+                        {group.blocks.map((blockDef) => {
+                          const Icon = blockDef.icon;
+                          return (
+                            <button
+                              key={blockDef.type}
+                              onClick={() => addBlock(blockDef.factory())}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-orange-50 hover:text-primary transition-colors group"
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100 group-hover:border-orange-200 transition-colors">
+                                <Icon size={13} className="text-slate-500 group-hover:text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-slate-700 group-hover:text-primary truncate">{blockDef.label}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{blockDef.description}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

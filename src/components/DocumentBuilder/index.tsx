@@ -19,6 +19,7 @@ import BlockCanvas from './BlockCanvas';
 import BlockLibrarySidebar from './BlockLibrarySidebar';
 import BlockInspector from './BlockInspector';
 import DocxImporter from './DocxImporter';
+import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
 import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
@@ -38,11 +39,14 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   } = useDocumentStore();
 
   const [showDocxImporter, setShowDocxImporter] = useState(false);
+  const [showBlocksImporter, setShowBlocksImporter] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [activeTab, setActiveTab] = useState<BuilderTab>('content');
   const [pdfSettings, setPdfSettings] = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
 
   // Load template on mount
   useEffect(() => {
@@ -270,9 +274,17 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       {/* ── Main layout ──────────────────────────────────────────────────────── */}
       {activeTab === 'content' ? (
         <div className="flex flex-1 overflow-hidden">
-          <BlockLibrarySidebar onImportDocx={() => setShowDocxImporter(true)} />
+          <BlockLibrarySidebar
+            onImportDocx={() => setShowDocxImporter(true)}
+            onImportBlocksJson={() => setShowBlocksImporter(true)}
+            collapsed={leftCollapsed}
+            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
+          />
           <BlockCanvas />
-          <BlockInspector />
+          <BlockInspector
+            collapsed={rightCollapsed}
+            onToggleCollapse={() => setRightCollapsed((v) => !v)}
+          />
         </div>
       ) : (
         <div className="flex flex-1 overflow-hidden bg-slate-50">
@@ -296,6 +308,19 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             templateId={templateId}
             hasExistingBlocks={blocks.length > 0}
             onClose={() => setShowDocxImporter(false)}
+            onImported={handleDocxImported}
+            onSaveFirst={handleSaveFirst}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Blocks JSON Importer modal ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showBlocksImporter && (
+          <BlocksJsonImporter
+            templateId={templateId}
+            hasExistingBlocks={blocks.length > 0}
+            onClose={() => setShowBlocksImporter(false)}
             onImported={handleDocxImported}
             onSaveFirst={handleSaveFirst}
           />
