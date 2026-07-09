@@ -38,7 +38,8 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const [inserted] = await db.insert(estimates).values({
+    const now = new Date();
+    const insertValues = {
       jobId,
       companyId: profile.companyId,
       title: title.trim(),
@@ -46,7 +47,9 @@ export default async function handler(req: Request, res: Response) {
       markupPercent: markupPercent ?? '0',
       gstMode: gstMode ?? 'No GST',
       notes: notes?.trim() ?? null,
-    }).$returningId();
+    };
+
+    const [inserted] = await db.insert(estimates).values(insertValues).$returningId();
 
     // Insert lines if provided (used for duplicate)
     if (lines && lines.length > 0) {
@@ -62,9 +65,14 @@ export default async function handler(req: Request, res: Response) {
       );
     }
 
-    const estimate = await db.query.estimates.findFirst({
-      where: eq(estimates.id, inserted.id),
-    });
+    // Build the estimate object directly from what we inserted — avoids a
+    // second round-trip that can return undefined under load or on mobile.
+    const estimate = {
+      id: inserted.id,
+      ...insertValues,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
 
     // ── Document Engine: create a document record for this estimate ──
     try {

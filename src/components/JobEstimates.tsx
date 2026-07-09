@@ -66,13 +66,15 @@ export default function JobEstimates({ jobId }: Props) {
   async function handleCreate() {
     if (!newTitle.trim()) return;
     setCreating(true);
+    setError('');
     try {
       const est = await createEstimate({ jobId, title: newTitle.trim() });
+      if (!est?.id) throw new Error('No estimate ID returned');
       setShowNew(false);
       setNewTitle('');
       navigate(`/estimates/${est.id}`);
-    } catch {
-      setError('Failed to create estimate.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create estimate.');
     } finally {
       setCreating(false);
     }
