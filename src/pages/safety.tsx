@@ -755,10 +755,6 @@ export function SafetyDashboardTab() {
   );
 }
 
-// ── Named exports for SafetyContent ──────────────────────────────────────────
-// SafetyContent.tsx imports these to embed the tabs inside Studio.
-export { SafetyDashboardTab, SwmsLibraryTab, SafetyPlansTab, PoliciesTab, PostersTab };
-
 // ── /safety route — redirect to Studio Safety tab ────────────────────────────
 import { Navigate } from 'react-router-dom';
 
