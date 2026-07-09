@@ -743,8 +743,8 @@ app.use('/api/auth', authApiLimiter);
 
 // ── QR attendance — public endpoints (registered BEFORE auth guard) ───────────
 // Token-validated inside the handler; guests do not need a portal session.
-app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_282);
-app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_285);
+app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_283);
+app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_286);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
