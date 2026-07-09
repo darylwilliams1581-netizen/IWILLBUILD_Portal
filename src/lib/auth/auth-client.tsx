@@ -184,7 +184,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isPending) {
+  if (isPending || typeof window === 'undefined') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
