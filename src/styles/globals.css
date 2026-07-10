@@ -139,7 +139,8 @@ body {
   min-width: 0;            /* prevent flex children from overflowing */
 }
 
-/* On mobile, reserve space at the bottom for the fixed tab bar (~56px bar + safe area) */
+/* On mobile, reserve space at the bottom for the fixed tab bar (~56px bar + safe area).
+   The top strip is rendered inside portal-main so no top padding needed here. */
 @media (max-width: 767px) {
   .portal-main {
     padding-bottom: calc(56px + env(safe-area-inset-bottom));

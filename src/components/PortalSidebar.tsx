@@ -482,7 +482,7 @@ const MOBILE_TAB_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
   { label: 'Forms',     icon: Layers,          href: '/forms' },
-  { label: 'Fleet',     icon: Truck,           href: '/fleet' },
+  { label: 'Safety',    icon: ShieldCheck,     href: '/safety' },
 ] as const;
 
 function MobileBottomNav({ onMoreClick, onSOSClick }: { onMoreClick: () => void; onSOSClick: () => void }) {

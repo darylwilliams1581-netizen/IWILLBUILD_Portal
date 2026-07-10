@@ -9,7 +9,6 @@ import {
   Bell,
   ChevronRight,
   Plus,
-  Menu,
   AlertTriangle,
   Calendar,
   Wrench,
@@ -139,10 +138,6 @@ export default function DashboardPage() {
     year: 'numeric',
   });
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   return (
     <div className="portal-page">
       <Helmet>
@@ -166,19 +161,11 @@ export default function DashboardPage() {
       {/* ── Main content ── */}
       <div className="portal-main">
 
-        {/* Top bar */}
-        <header className="bg-white border-b border-border shrink-0 print:hidden">
+        {/* Top bar — desktop only */}
+        <header className="hidden md:block bg-white border-b border-border shrink-0 print:hidden">
           {/* Main header row */}
           <div className="h-16 flex items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3 shrink-0">
-              {/* Hamburger — mobile only */}
-              <button
-                onClick={openMobileMenu}
-                className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
-                aria-label="Open menu"
-              >
-                <Menu size={20} />
-              </button>
               <div>
                 <h1 className="font-heading font-bold text-base md:text-lg text-foreground leading-tight">Dashboard</h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
@@ -236,12 +223,38 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-
-          {/* Banner strip — mobile: full width below title row */}
-          <div className="md:hidden px-4 pb-2">
-            <DashboardBanner userId={user?.id ?? 'anon'} />
-          </div>
         </header>
+
+        {/* Mobile top strip — safe-area aware, below phone status bar */}
+        <div
+          className="md:hidden bg-white border-b border-border shrink-0 print:hidden"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
+          <div className="h-12 flex items-center justify-between px-4">
+            <h1 className="font-heading font-bold text-base text-foreground leading-tight">Dashboard</h1>
+            <div className="flex items-center gap-1">
+              {/* Driving badge — most important mobile action */}
+              {!permLoading && canFleet && (
+                driverSession
+                  ? <DrivingSessionBadge session={driverSession} onStopped={refreshDriverSession} />
+                  : (
+                    <button
+                      onClick={() => setShowStartDriving(true)}
+                      title="Start driving"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors"
+                    >
+                      <Car size={14} />
+                      Drive
+                    </button>
+                  )
+              )}
+              {/* Avatar */}
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0 ml-2">
+                {initials}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
