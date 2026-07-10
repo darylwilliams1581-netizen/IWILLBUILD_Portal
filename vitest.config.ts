@@ -43,6 +43,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // #airo/secrets — package.json `imports` subpath maps this to
+      // airo-secrets/src/index.ts in Node/production. Vitest does not honour
+      // package.json `imports` by default, so we alias it explicitly to a
+      // test-safe fallback that reads from process.env instead of /local/config.json.
+      '#airo/secrets': path.resolve(__dirname, './src/fallbacks/airo-secrets.ts'),
       'virtual:format-overrides': path.resolve(__dirname, './src/test/format-overrides-module.ts'),
       '@/': path.resolve(__dirname, './src/'),
       '@/components': path.resolve(__dirname, './src/components'),
