@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 const COOKIE_CONSENT_KEY = 'c2_analytics_consent';
 const COOKIE_CONSENT_EXPIRES_DAYS = 365;
+const BANNER_RESET_KEY = 'airo-banner-reset';
 
 interface CookieConsent {
   analytics: boolean;
@@ -115,6 +116,18 @@ function initC2Tracking(): void {
 export default function CookieBanner() {
   const [showBanner, setShowBanner] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const isEmbedded: boolean = typeof window !== 'undefined' && window.parent !== window;
+  const [hideForBuilderPreview, setHideForBuilderPreview] = useState<boolean>(
+    () => {
+      if (!isEmbedded) return false;
+      try {
+        return sessionStorage.getItem(BANNER_RESET_KEY) !== 'true';
+      } catch (e) {
+        console.warn('CookieBanner: sessionStorage unavailable, banner state will not persist across remounts:', e instanceof Error ? e.message : String(e));
+        return true;
+      }
+    }
+  );
 
   useEffect(function checkConsent() {
     if (typeof window === 'undefined') return;
@@ -165,7 +178,34 @@ export default function CookieBanner() {
     return () => { delete window.revokeAnalyticsConsent; };
   }, []);
 
-  if (!isLoaded || !showBanner) return null;
+  useEffect(function listenForBuilderBuildComplete() {
+    if (typeof window === 'undefined' || window.parent === window) return;
+
+    function handleMessage(event: MessageEvent): void {
+      if (event.source !== window.parent) return;
+      if (event.data?.type === 'INITIAL_BUILD_COMPLETE') {
+        setHideForBuilderPreview(true);
+        try {
+          sessionStorage.removeItem(BANNER_RESET_KEY);
+        } catch (e) {
+          console.warn('CookieBanner: sessionStorage unavailable, could not clear reset flag:', e instanceof Error ? e.message : String(e));
+        }
+      }
+      if (event.data?.type === 'RESET_INITIAL_BUILD_HIDE') {
+        setHideForBuilderPreview(false);
+        try {
+          sessionStorage.setItem(BANNER_RESET_KEY, 'true');
+        } catch (e) {
+          console.warn('CookieBanner: sessionStorage unavailable, reset flag will not persist:', e instanceof Error ? e.message : String(e));
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  if (hideForBuilderPreview || !isLoaded || !showBanner) return null;
 
   return (
     <div
