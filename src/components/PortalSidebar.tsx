@@ -25,7 +25,7 @@ import {
   Calculator,
   UserCircle,
   MoreHorizontal,
-  History,
+  Siren,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -386,6 +386,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
 export default function PortalSidebar() {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sosOpen,    setSOSOpen]    = useState(false);
   const location    = useLocation();
   const { workPlural } = useTerminology();
   const navItems    = buildNavItems(workPlural);
@@ -396,7 +397,9 @@ export default function PortalSidebar() {
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMobileOpen(false); setSOSOpen(false); }
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
@@ -445,7 +448,17 @@ export default function PortalSidebar() {
       </AnimatePresence>
 
       {/* ── Mobile bottom tab bar ── */}
-      <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
+      <MobileBottomNav
+        onMoreClick={() => setMobileOpen(true)}
+        onSOSClick={() => setSOSOpen(true)}
+      />
+
+      {/* ── Global mobile SOS modal ── */}
+      <AnimatePresence>
+        {sosOpen && (
+          <MobileSOSModal onClose={() => setSOSOpen(false)} />
+        )}
+      </AnimatePresence>
 
       <MobileMenuTrigger onOpen={() => setMobileOpen(true)} />
     </>
@@ -468,12 +481,11 @@ function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
 const MOBILE_TAB_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
-  { label: 'Fleet',     icon: Truck,            href: '/fleet' },
-  { label: 'Studio',    icon: Layers,           href: '/studio' },
-  { label: 'History',   icon: History,          href: '/scheduler' },
+  { label: 'Forms',     icon: Layers,          href: '/forms' },
+  { label: 'Fleet',     icon: Truck,           href: '/fleet' },
 ] as const;
 
-function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
+function MobileBottomNav({ onMoreClick, onSOSClick }: { onMoreClick: () => void; onSOSClick: () => void }) {
   const location = useLocation();
 
   const isActive = (href: string) => {
@@ -535,6 +547,25 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           );
         })}
 
+        {/* SOS — emergency beacon, always visible */}
+        <button
+          onClick={onSOSClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            color: '#ef4444',
+          } as React.CSSProperties}
+          aria-label="Emergency SOS"
+        >
+          <Siren size={20} strokeWidth={1.8} />
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.01em', lineHeight: 1 }}>
+            SOS
+          </span>
+        </button>
+
         {/* More — opens full sidebar drawer */}
         <button
           onClick={onMoreClick}
@@ -555,5 +586,82 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
         </button>
       </div>
     </nav>
+  );
+}
+
+// ─── Global mobile SOS modal ──────────────────────────────────────────────────
+// Shown when the user taps SOS in the bottom nav. Provides a quick-access
+// emergency beacon trigger without needing to be inside a specific job.
+function MobileSOSModal({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <motion.div
+        key="sos-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/70 z-[60] md:hidden"
+        aria-hidden="true"
+      />
+      <motion.div
+        key="sos-sheet"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ duration: 0.25, ease: 'easeOut' as const }}
+        className="fixed bottom-0 left-0 right-0 z-[61] md:hidden bg-[#1A1D23] rounded-t-2xl shadow-2xl"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Emergency SOS"
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+        <div className="px-5 pt-2 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <Siren size={18} className="text-red-400" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm leading-tight">Emergency SOS</p>
+                <p className="text-white/40 text-xs">Alert your team immediately</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+              aria-label="Close"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          <button
+            onClick={() => { onClose(); navigate('/jobs'); }}
+            className="w-full flex items-center justify-between px-4 py-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors mb-3"
+            style={{ WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
+          >
+            <div className="flex items-center gap-3">
+              <Siren size={20} className="text-white shrink-0" />
+              <div className="text-left">
+                <p className="text-white font-bold text-sm leading-tight">Trigger Emergency Beacon</p>
+                <p className="text-red-200 text-xs mt-0.5">Select a job to send alert</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-red-200 shrink-0" />
+          </button>
+
+          <p className="text-white/30 text-xs text-center leading-relaxed">
+            Open a job and go to the Emergency tab to send a location-tagged alert to your team.
+          </p>
+        </div>
+      </motion.div>
+    </>
   );
 }

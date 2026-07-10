@@ -6,7 +6,6 @@ import {
   Plus,
   Search,
   MapPin,
-  Calendar,
   ChevronRight,
   Menu,
   Loader2,
@@ -276,39 +275,48 @@ export default function JobsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => openInNewTab(`/jobs/${job.id}`, e)}
-                      className="block bg-white border border-border rounded-xl p-4 md:p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-150 group"
+                      className="block bg-white border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all duration-150 group"
+                      style={{ WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      {/* Main row — min 64px touch target on mobile */}
+                      <div className="flex items-center gap-3 px-4 py-4 min-h-[64px]">
+                        {/* Status dot */}
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.dot}`} aria-hidden="true" />
+
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <h2 className="font-bold text-sm text-foreground truncate">{job.name}</h2>
                             {job.jobNumber && (
-                              <span className="text-xs font-mono text-muted-foreground">{job.jobNumber}</span>
+                              <span className="text-xs font-mono text-muted-foreground shrink-0">{job.jobNumber}</span>
                             )}
-                            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full border ${s.bg} ${s.color}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            <span className={`inline-flex items-center gap-1 font-semibold ${s.color}`}>
                               {job.status}
                             </span>
-                          </div>
-                          <h2 className="font-bold text-sm md:text-base text-foreground truncate">{job.name}</h2>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                             {job.client && (
-                              <span className="truncate max-w-[140px]">{job.client}</span>
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="truncate max-w-[120px]">{job.client}</span>
+                              </>
                             )}
                             {job.address && (
-                              <span className="flex items-center gap-1 truncate max-w-[160px]">
-                                <MapPin size={10} />{job.address}
-                              </span>
+                              <>
+                                <span className="text-border hidden sm:inline">·</span>
+                                <span className="hidden sm:flex items-center gap-1 truncate max-w-[160px]">
+                                  <MapPin size={10} />{job.address}
+                                </span>
+                              </>
                             )}
-                            <span className="flex items-center gap-1">
-                              <Calendar size={10} />
-                              {new Date(job.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
+
+                        <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                       </div>
+
+                      {/* Notes preview — only if present */}
                       {job.notes && (
-                        <p className="mt-2 text-xs text-muted-foreground line-clamp-1 border-t border-border pt-2">
+                        <p className="px-4 pb-3 text-xs text-muted-foreground line-clamp-1 border-t border-border pt-2 -mt-1">
                           {job.notes}
                         </p>
                       )}

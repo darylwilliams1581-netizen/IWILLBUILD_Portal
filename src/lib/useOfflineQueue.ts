@@ -66,9 +66,18 @@ export function useOfflineQueue<T>(
       attempts: 0,
     };
     updateQueue((prev) => [...prev, item]);
-    // Try to sync immediately if online
     if (navigator.onLine) {
       void attemptSync([item]);
+    } else {
+      // Register a background sync so the SW can flush when connectivity returns
+      navigator.serviceWorker?.ready
+        .then((reg) => {
+          if ('sync' in reg) {
+            return (reg as ServiceWorkerRegistration & { sync: { register(tag: string): Promise<void> } })
+              .sync.register('offline-queue-flush');
+          }
+        })
+        .catch(() => {});
     }
     return id;
   }
@@ -100,10 +109,24 @@ export function useOfflineQueue<T>(
       const pending = readQueue();
       if (pending.length > 0) void attemptSync(pending);
     }
+
+    // Listen for SW background-sync flush message
+    function onSwMessage(event: MessageEvent) {
+      if ((event.data as { type?: string })?.type === 'OFFLINE_QUEUE_FLUSH') {
+        onOnline();
+      }
+    }
+
     window.addEventListener('online', onOnline);
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+
     // Also try on mount in case we're already online with stale items
     if (navigator.onLine) onOnline();
-    return () => window.removeEventListener('online', onOnline);
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      navigator.serviceWorker?.removeEventListener('message', onSwMessage);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attemptSync]);
 

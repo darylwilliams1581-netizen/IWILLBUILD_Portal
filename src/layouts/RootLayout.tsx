@@ -4,6 +4,7 @@ import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
 import ViewOnlyBanner from '@/components/ViewOnlyBanner';
+import OfflineBanner from '@/components/OfflineBanner';
 import { Toaster } from '@/components/ui/sonner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <title>IWILLBUILD Portal</title>
         <meta name="description" content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
       </Helmet>
+      <OfflineBanner />
       <PortalBanners />
       <ScrollRestoration />
       <ActivePing />
