@@ -1582,9 +1582,13 @@ async function runStartupMigrations() {
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
-void runStartupMigrations().catch((e) =>
-  console.error('[startup-migration] fatal:', e)
-);
+// Skip in Vitest: the DB stubs are no-ops and the migration IIFE would hit
+// the real MySQL connection, crashing unit tests that have no DB available.
+if (!process.env.VITEST) {
+  void runStartupMigrations().catch((e) =>
+    console.error('[startup-migration] fatal:', e)
+  );
+}
 
 // ── Startup checks ────────────────────────────────────────────────────────────
 const openAiKey = getSecret('OPENAI_API_KEY');
@@ -2246,7 +2250,7 @@ app.get("/sitemap.xml", (req, res) => {
 
 app.get("/llms.txt", llmsTxtHandler);
 
-if (import.meta.env.PROD) {
+if (import.meta.env.PROD && !process.env.VITEST) {
 	const __dirname = dirname(fileURLToPath(import.meta.url));
 	const clientDir = join(__dirname, "client");
 	const adSenseRuntimeConfig = loadAdSenseRuntimeConfig(__dirname);

@@ -46,8 +46,7 @@ vi.mock('@/server/db/config', async () => {
 });
 
 // ── Entry import (after mocks are hoisted) ─────────────────────────────────
-import express from 'express';
-import type { Server } from 'node:http';
+import type { Request, Response } from 'express';
 
 import { renderSsrDocument, registerAdSenseTextRoutes } from './entry';
 
@@ -56,91 +55,103 @@ import { renderSsrDocument, registerAdSenseTextRoutes } from './entry';
 const publisherId = 'ca-pub-1234567890123456';
 const canonicalScript = `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}" crossorigin="anonymous"></script>`;
 
-async function withServer<T>(
-  app: express.Express,
-  run: (baseUrl: string) => Promise<T>,
-): Promise<T> {
-  let server: Server | null = null;
-  try {
-    server = await new Promise<Server>((resolve) => {
-      const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
-    });
-    const address = server.address();
-    if (!address || typeof address === 'string') {
-      throw new Error('Expected TCP listener');
-    }
-    return await run(`http://127.0.0.1:${address.port}`);
-  } finally {
-    if (server) {
-      const listeningServer = server;
-      await new Promise<void>((resolve, reject) => {
-        listeningServer.close((error) => (error ? reject(error) : resolve()));
-      });
-    }
-  }
+/**
+ * Minimal chainable Express res stand-in — same pattern as llms-txt.test.ts.
+ * Records status, content-type, cache-control header, and body so we can
+ * assert on them without spinning up a real TCP server (which is blocked in
+ * the sandbox environment).
+ */
+function mockRes() {
+  const calls: {
+    status?: number;
+    contentType?: string;
+    cacheControl?: string;
+    body?: string;
+  } = {};
+  const res = {
+    status(code: number) { calls.status = code; return res; },
+    type(t: string)      { calls.contentType = t; return res; },
+    set(key: string, value: string) {
+      if (key === 'Cache-Control') calls.cacheControl = value;
+      return res;
+    },
+    send(body: string)   { calls.body = body; return res; },
+  };
+  return { res: res as unknown as Response, calls };
 }
+
+/**
+ * Capture the route handlers registered by registerAdSenseTextRoutes without
+ * a real Express app. Returns a map of path → handler function so tests can
+ * invoke handlers directly.
+ */
+function captureHandlers(config: Parameters<typeof registerAdSenseTextRoutes>[1]) {
+  const handlers: Record<string, (req: Request, res: Response) => void> = {};
+  const fakeApp = {
+    get(path: string, handler: (req: Request, res: Response) => void) {
+      handlers[path] = handler;
+    },
+  };
+  registerAdSenseTextRoutes(fakeApp as never, config);
+  return handlers;
+}
+
+const fakeReq = {} as Request;
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('entry AdSense text routes', () => {
-  it('serves enabled ads.txt as text/plain with no-cache', async () => {
-    const app = express();
-    registerAdSenseTextRoutes(app, {
+  it('serves enabled ads.txt as text/plain with no-cache', () => {
+    const handlers = captureHandlers({
       publisherId: null,
       scriptHtml: '',
       adsTxt: 'google.com, pub-123, DIRECT, f08c47fec0942fa0',
       appAdsTxt: null,
     });
+    const { res, calls } = mockRes();
+    handlers['/ads.txt'](fakeReq, res);
 
-    await withServer(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/ads.txt`);
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get('content-type')).toContain('text/plain');
-      expect(response.headers.get('cache-control')).toBe('no-cache');
-      expect(await response.text()).toBe('google.com, pub-123, DIRECT, f08c47fec0942fa0');
-    });
+    expect(calls.status).toBeUndefined(); // 200 — no explicit status call
+    expect(calls.contentType).toContain('text/plain');
+    expect(calls.cacheControl).toBe('no-cache');
+    expect(calls.body).toBe('google.com, pub-123, DIRECT, f08c47fec0942fa0');
   });
 
-  it('serves enabled app-ads.txt as text/plain with no-cache', async () => {
-    const app = express();
-    registerAdSenseTextRoutes(app, {
+  it('serves enabled app-ads.txt as text/plain with no-cache', () => {
+    const handlers = captureHandlers({
       publisherId: null,
       scriptHtml: '',
       adsTxt: null,
       appAdsTxt: 'google.com, pub-456, DIRECT, f08c47fec0942fa0',
     });
+    const { res, calls } = mockRes();
+    handlers['/app-ads.txt'](fakeReq, res);
 
-    await withServer(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/app-ads.txt`);
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get('content-type')).toContain('text/plain');
-      expect(response.headers.get('cache-control')).toBe('no-cache');
-      expect(await response.text()).toBe('google.com, pub-456, DIRECT, f08c47fec0942fa0');
-    });
+    expect(calls.status).toBeUndefined();
+    expect(calls.contentType).toContain('text/plain');
+    expect(calls.cacheControl).toBe('no-cache');
+    expect(calls.body).toBe('google.com, pub-456, DIRECT, f08c47fec0942fa0');
   });
 
-  it('returns 404 for disabled AdSense text routes', async () => {
-    const app = express();
-    registerAdSenseTextRoutes(app, {
+  it('returns 404 for disabled AdSense text routes', () => {
+    const handlers = captureHandlers({
       publisherId: null,
       scriptHtml: '',
       adsTxt: null,
       appAdsTxt: null,
     });
 
-    await withServer(app, async (baseUrl) => {
-      const adsTxt = await fetch(`${baseUrl}/ads.txt`);
-      const appAdsTxt = await fetch(`${baseUrl}/app-ads.txt`);
+    const { res: resAds, calls: callsAds } = mockRes();
+    handlers['/ads.txt'](fakeReq, resAds);
+    expect(callsAds.status).toBe(404);
+    expect(callsAds.contentType).toContain('text/plain');
+    expect(callsAds.cacheControl).toBe('no-cache');
 
-      expect(adsTxt.status).toBe(404);
-      expect(adsTxt.headers.get('content-type')).toContain('text/plain');
-      expect(adsTxt.headers.get('cache-control')).toBe('no-cache');
-      expect(appAdsTxt.status).toBe(404);
-      expect(appAdsTxt.headers.get('content-type')).toContain('text/plain');
-      expect(appAdsTxt.headers.get('cache-control')).toBe('no-cache');
-    });
+    const { res: resApp, calls: callsApp } = mockRes();
+    handlers['/app-ads.txt'](fakeReq, resApp);
+    expect(callsApp.status).toBe(404);
+    expect(callsApp.contentType).toContain('text/plain');
+    expect(callsApp.cacheControl).toBe('no-cache');
   });
 });
 

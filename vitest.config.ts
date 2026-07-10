@@ -4,6 +4,16 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+
+  // ── Vitest 4: pool options are now top-level (poolOptions was removed) ────
+  // Use forks pool to isolate memory per test file and prevent OOM on large
+  // suites. Each test file runs in a fresh worker process.
+  forks: {
+    minForks: 1,
+    maxForks: 4,
+    isolate: true,
+  },
+
   test: {
     // Only collect unit/component tests under src/ — Playwright e2e tests
     // live in tests/ and are run separately via `npm run test:e2e`.
@@ -18,15 +28,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    // Use forks pool to isolate memory per test file (prevents OOM on large suites)
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        minForks: 1,
-        maxForks: 4,
-        isolate: true,
-      },
-    },
     maxConcurrency: 5,
     coverage: {
       provider: 'v8',
@@ -40,6 +42,23 @@ export default defineConfig({
       ],
     },
   },
+
+  // ── Define: make import.meta.env.PROD false in tests ─────────────────────
+  // entry.ts wraps its entire startup IIFE (migrations + app.listen) in:
+  //   if (import.meta.env.PROD) { ... }
+  // Vitest's default mode is 'test', which sets PROD=true (any mode that is
+  // not 'development' is considered production by Vite). That causes the IIFE
+  // to run during tests, hitting the real DB and starting a real server on
+  // port 3000 — both of which break unit tests.
+  // Setting PROD=false here makes the block dead code so entry.ts can be
+  // imported safely without side-effects.
+  define: {
+    'import.meta.env.PROD': false,
+    'import.meta.env.DEV': false,
+    'import.meta.env.SSR': false,
+    'import.meta.env.MODE': JSON.stringify('test'),
+  },
+
   resolve: {
     alias: [
       // ── #airo/secrets ───────────────────────────────────────────────────────
