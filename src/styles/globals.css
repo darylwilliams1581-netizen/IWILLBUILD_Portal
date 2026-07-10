@@ -152,7 +152,7 @@ body {
   min-width: 0;            /* prevent flex children from overflowing */
   overflow-y: auto;        /* vertical scroll within the content area */
   overflow-x: auto;        /* horizontal scroll reachable — not clipped by page */
-  padding: 1.25rem 1rem;
+  padding: 0.75rem 0.75rem; /* tighter on mobile */
 }
 
 @media (min-width: 1024px) {

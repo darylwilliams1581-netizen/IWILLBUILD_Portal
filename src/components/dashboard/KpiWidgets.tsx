@@ -112,13 +112,13 @@ function UtilBar({ pct }: { pct: number }) {
 
 function KpiSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-border p-4 md:p-5 flex flex-col gap-3 animate-pulse">
+    <div className="bg-white rounded-xl border border-border p-3 md:p-4 flex flex-col gap-2 animate-pulse">
       <div className="flex items-start justify-between">
-        <div className="w-8 h-8 rounded-lg bg-slate-100" />
-        <div className="w-12 h-4 rounded bg-slate-100" />
+        <div className="w-7 h-7 rounded-lg bg-slate-100" />
+        <div className="w-10 h-3.5 rounded bg-slate-100" />
       </div>
-      <div className="w-20 h-7 rounded bg-slate-100" />
-      <div className="w-28 h-3 rounded bg-slate-100" />
+      <div className="w-16 h-6 rounded bg-slate-100" />
+      <div className="w-24 h-2.5 rounded bg-slate-100" />
     </div>
   );
 }
@@ -155,7 +155,7 @@ export default function KpiWidgets() {
 
   if (loading || permLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-3">
         {[0, 1, 2, 3].map((i) => <KpiSkeleton key={i} />)}
       </div>
     );
@@ -244,7 +244,7 @@ export default function KpiWidgets() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-2">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-3">
       {cards.map((card, i) => (
         <motion.div
           key={card.key}
@@ -253,26 +253,26 @@ export default function KpiWidgets() {
           initial="hidden"
           animate="visible"
           whileHover={{ y: -2, boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}
-          className="bg-white rounded-xl border border-border p-4 md:p-5 flex flex-col"
+          className="bg-white rounded-xl border border-border p-3 md:p-4 flex flex-col"
         >
           {/* Icon + trend */}
-          <div className="flex items-start justify-between mb-3">
-            <div className={`p-2 rounded-lg ${card.iconBg}`}>
-              <card.icon size={15} className={card.iconColor} />
+          <div className="flex items-start justify-between mb-2">
+            <div className={`p-1.5 rounded-lg ${card.iconBg}`}>
+              <card.icon size={13} className={card.iconColor} />
             </div>
             <TrendBadge trend={card.trend} />
           </div>
 
           {/* Value */}
-          <p className="font-heading font-bold text-xl md:text-2xl text-foreground leading-none">
+          <p className="font-heading font-bold text-lg md:text-xl text-foreground leading-none">
             {card.value}
           </p>
 
           {/* Label */}
-          <p className="text-xs font-semibold text-muted-foreground mt-1">{card.label}</p>
+          <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">{card.label}</p>
 
           {/* Sub-text */}
-          <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{card.sub}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{card.sub}</p>
 
           {/* Extra (sparkline / bar / badge) */}
           {card.extra}
@@ -280,9 +280,9 @@ export default function KpiWidgets() {
           {/* CTA */}
           <Link
             to={card.href}
-            className="mt-auto pt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+            className="mt-auto pt-2 inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary hover:underline"
           >
-            {card.cta} <ChevronRight size={10} />
+            {card.cta} <ChevronRight size={9} />
           </Link>
         </motion.div>
       ))}

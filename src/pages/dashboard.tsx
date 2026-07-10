@@ -257,41 +257,41 @@ export default function DashboardPage() {
         </div>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-3 md:p-6">
 
           {/* ── Usage warning banner ── */}
           {usageWarning && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 ${
+              className={`mb-3 flex items-start gap-2 rounded-lg border px-3 py-2.5 ${
                 usageWarning.hasBlocked
                   ? 'bg-red-50 border-red-200'
                   : 'bg-amber-50 border-amber-200'
               }`}
             >
               {usageWarning.hasBlocked
-                ? <XCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
-                : <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                ? <XCircle size={14} className="text-red-600 shrink-0 mt-0.5" />
+                : <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
               }
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-bold ${usageWarning.hasBlocked ? 'text-red-800' : 'text-amber-800'}`}>
+                <p className={`text-xs font-bold ${usageWarning.hasBlocked ? 'text-red-800' : 'text-amber-800'}`}>
                   {usageWarning.hasBlocked ? 'Plan limit reached' : 'Storage usage above 80%'}
                 </p>
-                <p className={`text-xs mt-0.5 ${usageWarning.hasBlocked ? 'text-red-700' : 'text-amber-700'}`}>
+                <p className={`text-[11px] mt-0.5 ${usageWarning.hasBlocked ? 'text-red-700' : 'text-amber-700'}`}>
                   {usageWarning.warnings.join(' · ')}
                 </p>
               </div>
               <Link
                 to="/settings?tab=data"
-                className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                className={`shrink-0 flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
                   usageWarning.hasBlocked
                     ? 'bg-red-600 hover:bg-red-700 text-white'
                     : 'bg-amber-600 hover:bg-amber-700 text-white'
                 }`}
               >
-                <BarChart3 size={11} />
-                View Usage
+                <BarChart3 size={10} />
+                Usage
               </Link>
             </motion.div>
           )}
@@ -302,43 +302,43 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' as const }}
-              className="mb-6 rounded-xl bg-[#1A1D23] text-white px-5 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className="mb-3 rounded-xl bg-[#1A1D23] text-white px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
               {isSetup ? (
                 <>
                   <div>
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Today</p>
-                    <h2 className="font-heading font-bold text-lg leading-snug">
+                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">Today</p>
+                    <h2 className="font-heading font-bold text-base leading-snug">
                       Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.
                     </h2>
-                    <p className="text-sm text-white/50 mt-1">
+                    <p className="text-xs text-white/50 mt-0.5 hidden sm:block">
                       Keep your jobs, fleet, forms and files moving from one place.
                     </p>
                   </div>
                   <Link
                     to="/jobs"
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
                   >
-                    <Plus size={15} />
+                    <Plus size={13} />
                     + New {workSingular}
                   </Link>
                 </>
               ) : (
                 <>
                   <div>
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Getting started</p>
-                    <h2 className="font-heading font-bold text-lg leading-snug">
+                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">Getting started</p>
+                    <h2 className="font-heading font-bold text-base leading-snug">
                       Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}. Your portal is ready.
                     </h2>
-                    <p className="text-sm text-white/50 mt-1">
+                    <p className="text-xs text-white/50 mt-0.5 hidden sm:block">
                       Add your first {workSingular.toLowerCase()}, fleet asset, or team member to get started.
                     </p>
                   </div>
                   <Link
                     to="/jobs"
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 shrink-0"
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
                   >
-                    <Plus size={15} />
+                    <Plus size={13} />
                     {addWorkLabel}
                   </Link>
                 </>
@@ -361,42 +361,42 @@ export default function DashboardPage() {
               variants={itemVariants}
               initial="hidden"
               animate="visible"
-              className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col gap-3"
+              className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-col gap-2 mb-3"
             >
               <div className="flex items-center gap-2">
-                <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-                <h2 className="font-heading font-bold text-sm text-amber-800">
-                  Fleet Attention Required — {fleetFlags.totalFlags} flag{fleetFlags.totalFlags !== 1 ? 's' : ''}
+                <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                <h2 className="font-heading font-bold text-xs text-amber-800">
+                  Fleet — {fleetFlags.totalFlags} flag{fleetFlags.totalFlags !== 1 ? 's' : ''}
                 </h2>
-                <Link to="/fleet" className="ml-auto text-xs font-semibold text-amber-700 hover:underline flex items-center gap-1">
-                  View Fleet <ChevronRight size={11} />
+                <Link to="/fleet" className="ml-auto text-[11px] font-semibold text-amber-700 hover:underline flex items-center gap-0.5">
+                  View <ChevronRight size={10} />
                 </Link>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 {fleetFlags.attentionFlags.map((f) => (
                   <Link
                     key={`att-${f.assetId}`}
                     to={`/fleet/${f.assetId}`}
-                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2 hover:border-amber-400 transition-colors group"
                   >
-                    <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-amber-800">{f.assetName} — Issue flagged in prestart</p>
-                      {f.comment && <p className="text-xs text-amber-700 truncate">{f.comment}</p>}
+                      {f.comment && <p className="text-[11px] text-amber-700 truncate">{f.comment}</p>}
                     </div>
-                    <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                    <ChevronRight size={11} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
                   </Link>
                 ))}
                 {fleetFlags.dueDateFlags.map((f) => (
                   <Link
                     key={`due-${f.assetId}-${f.type}`}
                     to={`/fleet/${f.assetId}`}
-                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                    className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2 hover:border-amber-400 transition-colors group"
                   >
                     {f.type === 'service' ? (
-                      <Wrench size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                      <Wrench size={12} className="text-amber-500 shrink-0 mt-0.5" />
                     ) : (
-                      <Calendar size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                      <Calendar size={12} className="text-amber-500 shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-amber-800">
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                         {new Date(f.dueDate) < new Date() ? 'overdue' : `${new Date(f.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`}
                       </p>
                     </div>
-                    <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                    <ChevronRight size={11} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
                   </Link>
                 ))}
               </div>
@@ -417,13 +417,13 @@ export default function DashboardPage() {
               variants={itemVariants}
               initial="hidden"
               animate="visible"
-              className="mb-4 flex flex-col gap-2"
+              className="mb-3 flex flex-col gap-2"
             >
               {overdueTodos.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col gap-2">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle size={15} className="text-red-600 shrink-0" />
-                    <h2 className="font-heading font-bold text-sm text-red-800">
+                    <AlertTriangle size={13} className="text-red-600 shrink-0" />
+                    <h2 className="font-heading font-bold text-xs text-red-800">
                       {overdueTodos.length} Overdue To-do{overdueTodos.length !== 1 ? 's' : ''}
                     </h2>
                   </div>
@@ -431,23 +431,23 @@ export default function DashboardPage() {
                     <Link
                       key={t.id}
                       to={`/jobs/${t.jobId}?tab=todos`}
-                      className="flex items-start gap-2 bg-white border border-red-200 rounded-lg px-3 py-2.5 hover:border-red-400 transition-colors group"
+                      className="flex items-start gap-2 bg-white border border-red-200 rounded-lg px-3 py-2 hover:border-red-400 transition-colors group"
                     >
-                      <CheckSquare size={13} className="text-red-500 shrink-0 mt-0.5" />
+                      <CheckSquare size={12} className="text-red-500 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-red-800 truncate">{t.title}</p>
-                        <p className="text-xs text-red-600 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
+                        <p className="text-[11px] text-red-600 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
                       </div>
-                      <ChevronRight size={12} className="text-red-400 group-hover:text-red-600 shrink-0 mt-0.5" />
+                      <ChevronRight size={11} className="text-red-400 group-hover:text-red-600 shrink-0 mt-0.5" />
                     </Link>
                   ))}
                 </div>
               )}
               {dueTodayTodos.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col gap-2">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
-                    <Clock size={15} className="text-amber-600 shrink-0" />
-                    <h2 className="font-heading font-bold text-sm text-amber-800">
+                    <Clock size={13} className="text-amber-600 shrink-0" />
+                    <h2 className="font-heading font-bold text-xs text-amber-800">
                       {dueTodayTodos.length} To-do{dueTodayTodos.length !== 1 ? 's' : ''} Due Today
                     </h2>
                   </div>
@@ -455,14 +455,14 @@ export default function DashboardPage() {
                     <Link
                       key={t.id}
                       to={`/jobs/${t.jobId}?tab=todos`}
-                      className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2.5 hover:border-amber-400 transition-colors group"
+                      className="flex items-start gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2 hover:border-amber-400 transition-colors group"
                     >
-                      <CheckSquare size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                      <CheckSquare size={12} className="text-amber-500 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-amber-800 truncate">{t.title}</p>
-                        <p className="text-xs text-amber-700 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
+                        <p className="text-[11px] text-amber-700 truncate">{t.jobName}{t.jobNumber ? ` · ${t.jobNumber}` : ''}</p>
                       </div>
-                      <ChevronRight size={12} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
+                      <ChevronRight size={11} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5" />
                     </Link>
                   ))}
                 </div>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── Bottom panels ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
             {/* Recent Jobs — real data */}
             <motion.div
@@ -480,35 +480,35 @@ export default function DashboardPage() {
               animate="visible"
               className="lg:col-span-2 bg-white rounded-lg border border-border"
             >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <h2 className="font-heading font-semibold text-sm text-foreground">Recent Jobs</h2>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <h2 className="font-heading font-semibold text-xs text-foreground">Recent Jobs</h2>
                 <Link
                   to="/jobs"
-                  className="text-xs text-primary font-medium flex items-center gap-1 hover:underline"
+                  className="text-[11px] text-primary font-medium flex items-center gap-0.5 hover:underline"
                 >
-                  View all <ChevronRight size={12} />
+                  View all <ChevronRight size={11} />
                 </Link>
               </div>
 
               {!jobsLoaded ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : recentJobs.length === 0 ? (
                 /* Empty state */
-                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
-                    <HardHat size={22} className="text-primary" />
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
+                    <HardHat size={18} className="text-primary" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground mb-1">No jobs yet</p>
-                  <p className="text-xs text-muted-foreground mb-5 max-w-xs">
+                  <p className="text-xs font-semibold text-foreground mb-1">No jobs yet</p>
+                  <p className="text-[11px] text-muted-foreground mb-4 max-w-xs">
                     Once you add jobs they'll appear here with status.
                   </p>
                   <Link
                     to="/jobs"
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors duration-150"
+                    className="inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
                   >
-                    <Plus size={13} />
+                    <Plus size={12} />
                     Add First Job
                   </Link>
                 </div>
@@ -519,18 +519,18 @@ export default function DashboardPage() {
                     <Link
                       key={job.id}
                       to={`/jobs/${job.id}`}
-                      className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors group"
+                      className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 transition-colors group"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{job.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {job.jobNumber && <span className="font-mono mr-2">{job.jobNumber}</span>}
+                        <p className="text-xs font-semibold text-foreground truncate">{job.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {job.jobNumber && <span className="font-mono mr-1.5">{job.jobNumber}</span>}
                           {job.client ?? 'No client'}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-xs font-semibold text-muted-foreground hidden sm:block">{job.status}</span>
-                        <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                        <span className="text-[11px] font-semibold text-muted-foreground hidden sm:block">{job.status}</span>
+                        <ChevronRight size={13} className="text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
                     </Link>
                   ))}
@@ -545,24 +545,24 @@ export default function DashboardPage() {
               animate="visible"
               className="bg-white rounded-lg border border-border"
             >
-              <div className="px-5 py-4 border-b border-border">
-                <h2 className="font-heading font-semibold text-sm text-foreground">Quick Actions</h2>
+              <div className="px-4 py-3 border-b border-border">
+                <h2 className="font-heading font-semibold text-xs text-foreground">Quick Actions</h2>
               </div>
-              <div className="p-4 flex flex-col gap-2">
+              <div className="p-3 flex flex-col gap-1">
                 {quickActions.map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
-                    className="flex items-center gap-3 p-3 rounded-md hover:bg-muted transition-colors duration-150 group"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-muted transition-colors duration-150 group"
                   >
-                    <div className="p-2 rounded-md bg-muted group-hover:bg-primary/10 transition-colors duration-150 shrink-0">
-                      <item.icon size={15} className="text-muted-foreground group-hover:text-primary transition-colors duration-150" />
+                    <div className="p-1.5 rounded-md bg-muted group-hover:bg-primary/10 transition-colors duration-150 shrink-0">
+                      <item.icon size={13} className="text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
+                      <p className="text-xs font-medium text-foreground">{item.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{item.desc}</p>
                     </div>
-                    <ChevronRight size={14} className="ml-auto text-muted-foreground group-hover:text-primary transition-colors duration-150 shrink-0" />
+                    <ChevronRight size={12} className="ml-auto text-muted-foreground group-hover:text-primary transition-colors duration-150 shrink-0" />
                   </Link>
                 ))}
               </div>
