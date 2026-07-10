@@ -573,6 +573,9 @@ import signin_history_get from "./api/signin-history/GET.js";
 import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";
 import jobs_id_attendance_close_post from "./api/jobs/[id]/attendance/[attendanceId]/close/POST.js";
 // Asset Manager
+import sosGetHandler from "./api/sos/GET.js";
+import sosTriggerPostHandler from "./api/sos/trigger/POST.js";
+import sosAcknowledgePostHandler from "./api/sos/acknowledge/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -1231,6 +1234,8 @@ async function runStartupMigrations() {
     { name: 'drawing_audit_log', ddl: "CREATE TABLE IF NOT EXISTS drawing_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, drawing_id INT NOT NULL, revision_id INT NULL, actor_id VARCHAR(36) NULL, action VARCHAR(60) NOT NULL, details_json TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_drawing (drawing_id), INDEX idx_created (drawing_id, created_at))" },
     // ── PWA Push Subscriptions ────────────────────────────────────────────────
     { name: 'push_subscriptions', ddl: "CREATE TABLE IF NOT EXISTS push_subscriptions (id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(36) NOT NULL, company_id INT NOT NULL, endpoint TEXT NOT NULL, p256dh VARCHAR(255) NOT NULL, auth VARCHAR(255) NOT NULL, revoked TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY uq_endpoint (endpoint(512)), INDEX idx_user (user_id), INDEX idx_company (company_id))" },
+    // ── SOS Emergency Alerts ─────────────────────────────────────────────────
+    { name: 'job_sos_alerts', ddl: "CREATE TABLE IF NOT EXISTS job_sos_alerts (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, triggered_by VARCHAR(36) NOT NULL, triggered_by_name VARCHAR(255) NOT NULL DEFAULT '', job_id INT NULL, lat DECIMAL(10,7) NULL, lng DECIMAL(10,7) NULL, status VARCHAR(20) NOT NULL DEFAULT 'active', acknowledged_by VARCHAR(36) NULL, acknowledged_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_status (company_id, status), INDEX idx_created (company_id, created_at))" },
     // ── Asset Manager ─────────────────────────────────────────────────────────
     { name: 'am_assets', ddl: "CREATE TABLE IF NOT EXISTS am_assets (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, acronym VARCHAR(50) NULL, address TEXT NULL, asset_type VARCHAR(60) NOT NULL DEFAULT 'facility', status VARCHAR(40) NOT NULL DEFAULT 'active', created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_company (company_id), INDEX idx_status (company_id, status))" },
     { name: 'am_inspections', ddl: "CREATE TABLE IF NOT EXISTS am_inspections (id INT AUTO_INCREMENT PRIMARY KEY, asset_id INT NOT NULL, company_id INT NOT NULL, report_no VARCHAR(100) NULL, inspection_date DATE NULL, report_title VARCHAR(255) NULL, auditor_id VARCHAR(36) NULL, overall_status VARCHAR(40) NOT NULL DEFAULT 'draft', notes TEXT NULL, photos_json LONGTEXT NULL, signed_link_slug VARCHAR(100) NULL, created_by VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, archived_at DATETIME NULL, INDEX idx_asset (asset_id), INDEX idx_company (company_id))" },
@@ -2131,6 +2136,10 @@ app.post("/api/team/verify-user", team_verify_user_post_534);
 app.delete("/api/team/:id", team_id_delete_535);
 app.put("/api/team/:id", team_id_put_536);
 app.get("/api/usage", usage_get_537);
+// SOS Emergency
+app.get("/api/sos", sosGetHandler);
+app.post("/api/sos/trigger", sosTriggerPostHandler);
+app.post("/api/sos/acknowledge", sosAcknowledgePostHandler);
 // </api-registrations>
 
 // Error middleware must be registered AFTER the routes it protects; Express

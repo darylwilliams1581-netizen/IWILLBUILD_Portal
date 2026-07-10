@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
+import SOSButton from '@/components/SOSButton';
 import NotificationBell from '@/components/NotificationBell';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
@@ -590,11 +591,9 @@ function MobileBottomNav({ onMoreClick, onSOSClick }: { onMoreClick: () => void;
 }
 
 // ─── Global mobile SOS modal ──────────────────────────────────────────────────
-// Shown when the user taps SOS in the bottom nav. Provides a quick-access
-// emergency beacon trigger without needing to be inside a specific job.
+// Shown when the user taps SOS in the bottom nav.
+// Uses the real SOSButton with hold-to-confirm + audible alarm.
 function MobileSOSModal({ onClose }: { onClose: () => void }) {
-  const navigate = useNavigate();
-
   return (
     <>
       <motion.div
@@ -604,7 +603,7 @@ function MobileSOSModal({ onClose }: { onClose: () => void }) {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/70 z-[60] md:hidden"
+        className="fixed inset-0 bg-black/80 z-[60] md:hidden"
         aria-hidden="true"
       />
       <motion.div
@@ -619,47 +618,34 @@ function MobileSOSModal({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-label="Emergency SOS"
       >
+        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
-        <div className="px-5 pt-2 pb-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center">
-                <Siren size={18} className="text-red-400" />
-              </div>
-              <div>
-                <p className="text-white font-bold text-sm leading-tight">Emergency SOS</p>
-                <p className="text-white/40 text-xs">Alert your team immediately</p>
-              </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-2 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center">
+              <Siren size={18} className="text-red-400" />
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
-              aria-label="Close"
-            >
-              <X size={15} />
-            </button>
+            <div>
+              <p className="text-white font-bold text-sm leading-tight">Emergency SOS</p>
+              <p className="text-white/40 text-xs">Hold button to activate alarm</p>
+            </div>
           </div>
-
           <button
-            onClick={() => { onClose(); navigate('/jobs'); }}
-            className="w-full flex items-center justify-between px-4 py-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors mb-3"
-            style={{ WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+            aria-label="Close"
           >
-            <div className="flex items-center gap-3">
-              <Siren size={20} className="text-white shrink-0" />
-              <div className="text-left">
-                <p className="text-white font-bold text-sm leading-tight">Trigger Emergency Beacon</p>
-                <p className="text-red-200 text-xs mt-0.5">Select a job to send alert</p>
-              </div>
-            </div>
-            <ChevronRight size={16} className="text-red-200 shrink-0" />
+            <X size={15} />
           </button>
+        </div>
 
-          <p className="text-white/30 text-xs text-center leading-relaxed">
-            Open a job and go to the Emergency tab to send a location-tagged alert to your team.
-          </p>
+        {/* Real SOS button */}
+        <div className="px-5 pb-4">
+          <SOSButton onClose={onClose} />
         </div>
       </motion.div>
     </>
