@@ -401,12 +401,19 @@ export default function FleetLiveMap() {
           {/* No GPS overlay — shown when drivers exist but none have GPS */}
           {!loading && sessions.length > 0 && withGps.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="bg-white/90 backdrop-blur-sm border border-amber-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
+              <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
                 <AlertCircle size={28} className="text-amber-400 mx-auto mb-2" />
                 <p className="text-sm font-bold text-slate-700">Waiting for GPS</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active but haven't sent a GPS point yet. The map will update automatically.
+                <p className="text-xs text-slate-500 mt-1 mb-3">
+                  {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active but
+                  {sessions.length !== 1 ? ' haven\'t' : ' hasn\'t'} sent a GPS point yet.
                 </p>
+                <ul className="text-left text-xs text-slate-500 space-y-1 border-t border-slate-100 pt-3">
+                  <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Driver must have the portal open in their browser</li>
+                  <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Browser must grant location permission when prompted</li>
+                  <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>First GPS fix can take up to 30s outdoors</li>
+                  <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Map updates automatically — no refresh needed</li>
+                </ul>
               </div>
             </div>
           )}

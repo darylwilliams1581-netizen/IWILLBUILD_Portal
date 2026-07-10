@@ -5,10 +5,12 @@
  * and batches them to POST /api/fleet/driver-sessions/:id/telemetry every 30s.
  *
  * Rules:
- * - Only runs when sessionId is non-null and settings allow at least one metric.
+ * - Starts GPS as soon as sessionId is non-null — does NOT wait for settings to
+ *   load. This prevents a race where the settings fetch completes after mount,
+ *   flips shouldTrack, tears down the watch, and the driver never gets a GPS fix.
+ * - Settings are read via a ref so they never cause the watch effect to re-run.
  * - Stops cleanly on unmount or when sessionId becomes null.
  * - Queues points locally if the network request fails; retries on next flush.
- * - Never shows speed on the map UI — speed is only sent to the server.
  * - Falls back gracefully if Geolocation is unavailable.
  */
 import { useEffect, useRef, useCallback } from 'react';
@@ -24,37 +26,33 @@ export interface TelemetryPoint {
   is_collision?: boolean;
 }
 
-const FLUSH_INTERVAL_MS  = 30_000;  // flush every 30 seconds
-const FIRST_FLUSH_MS     = 5_000;   // flush first point quickly so map shows driver fast
-const WATCH_INTERVAL_MS  = 5_000;   // poll GPS every 5 seconds (fallback)
-const MAX_QUEUE_SIZE     = 1_000;   // safety cap
+const FLUSH_INTERVAL_MS = 30_000;  // flush every 30 seconds
+const FIRST_FLUSH_MS    = 5_000;   // flush first point quickly so map shows driver fast
+const POLL_INTERVAL_MS  = 5_000;   // fallback poll interval when watchPosition unavailable
+const MAX_QUEUE_SIZE    = 1_000;   // safety cap
 
 export function useSessionTelemetry(
   sessionId: number | null,
   settings: FleetAnalyticsSettings,
 ) {
-  const queueRef      = useRef<TelemetryPoint[]>([]);
-  const watchIdRef    = useRef<number | null>(null);
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const firstFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queueRef        = useRef<TelemetryPoint[]>([]);
+  const watchIdRef      = useRef<number | null>(null);
+  const flushTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const firstFlushRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushedFirstRef = useRef(false);
-  const sessionIdRef  = useRef<number | null>(sessionId);
+  const sessionIdRef    = useRef<number | null>(sessionId);
+  // Keep settings in a ref so changing settings never tears down the GPS watch
+  const settingsRef     = useRef<FleetAnalyticsSettings>(settings);
 
-  // Keep ref in sync so flush closure always has the latest sessionId
+  // Keep refs in sync without triggering the GPS effect
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
-
-  const shouldTrack = !!(
-    settings.track_distance ||
-    settings.track_drive_time ||
-    settings.track_speed ||
-    settings.enable_collision_alerts
-  );
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const flush = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid || queueRef.current.length === 0) return;
 
-    const batch = queueRef.current.splice(0, 200); // send up to 200 at a time
+    const batch = queueRef.current.splice(0, 200);
     try {
       const res = await fetch(`/api/fleet/driver-sessions/${sid}/telemetry`, {
         method: 'POST',
@@ -73,7 +71,7 @@ export function useSessionTelemetry(
   }, []);
 
   const addPoint = useCallback((pos: GeolocationPosition) => {
-    if (!shouldTrack) return;
+    const s = settingsRef.current;
     const pt: TelemetryPoint = {
       recorded_at: new Date(pos.timestamp).toISOString(),
       lat:         pos.coords.latitude,
@@ -81,7 +79,7 @@ export function useSessionTelemetry(
       accuracy_m:  pos.coords.accuracy ?? null,
       heading:     pos.coords.heading  ?? null,
       // speed from Geolocation API is m/s — convert to km/h
-      speed_kmh:   settings.track_speed && pos.coords.speed != null
+      speed_kmh:   s.track_speed && pos.coords.speed != null
         ? Math.round(pos.coords.speed * 3.6 * 10) / 10
         : null,
     };
@@ -97,30 +95,35 @@ export function useSessionTelemetry(
         void flush();
       }, FIRST_FLUSH_MS);
     }
-  }, [shouldTrack, settings.track_speed, flush]);
+  }, [flush]);
 
+  // GPS watch effect — only depends on sessionId, NOT on settings.
+  // Settings are read via settingsRef so they never cause a teardown/restart.
   useEffect(() => {
-    if (!sessionId || !shouldTrack) return;
+    if (!sessionId) return;
+
+    // Reset first-flush state for new session
+    flushedFirstRef.current = false;
 
     // Start GPS watch
     if ('geolocation' in navigator) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         addPoint,
-        (err) => console.warn('Geolocation error:', err.message),
-        { enableHighAccuracy: true, maximumAge: 4_000, timeout: 10_000 },
+        (err) => console.warn('Geolocation error:', err.code, err.message),
+        { enableHighAccuracy: true, maximumAge: 4_000, timeout: 15_000 },
       );
     } else {
       // Fallback: poll at interval (less accurate but still records route)
       const pollId = setInterval(() => {
         navigator.geolocation?.getCurrentPosition(addPoint, undefined, {
           enableHighAccuracy: false,
-          maximumAge: WATCH_INTERVAL_MS,
+          maximumAge: POLL_INTERVAL_MS,
         });
-      }, WATCH_INTERVAL_MS);
+      }, POLL_INTERVAL_MS);
       watchIdRef.current = pollId as unknown as number;
     }
 
-    // Flush timer
+    // Regular flush timer
     flushTimerRef.current = setInterval(() => { void flush(); }, FLUSH_INTERVAL_MS);
 
     return () => {
@@ -146,11 +149,12 @@ export function useSessionTelemetry(
       // Final flush on unmount
       void flush();
     };
-  }, [sessionId, shouldTrack, addPoint, flush]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]); // intentionally omit addPoint/flush — they're stable callbacks
 
   /** Call this when a collision event is detected (e.g. accelerometer spike) */
   function reportCollision() {
-    if (!settings.enable_collision_alerts) return;
+    if (!settingsRef.current.enable_collision_alerts) return;
     navigator.geolocation?.getCurrentPosition((pos) => {
       const pt: TelemetryPoint = {
         recorded_at: new Date().toISOString(),
@@ -160,7 +164,7 @@ export function useSessionTelemetry(
         is_collision: true,
       };
       queueRef.current.push(pt);
-      void flush(); // flush immediately on collision
+      void flush();
     });
   }
 
