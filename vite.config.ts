@@ -2,13 +2,38 @@ import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { URL } from "node:url";
-import sourceMapperPlugin from "./source-mapper/src/index";
-import { devToolsPlugin } from "./dev-tools/src/vite-plugin";
-import { fullStoryPlugin } from "./fullstory-plugin";
-import { errorInterceptorPlugin } from "./dev-tools/src/vite-error-interceptor";
-import { mediaVersionsPlugin } from "./dev-tools/src/vite-media-versions-plugin";
-import { formatOverridesPlugin } from "./format-overrides-plugin";
-import { contentPlugin } from "./content-plugin/src/index";
+import { createRequire } from "module";
+
+// ---------------------------------------------------------------------------
+// Optional platform plugin loader
+// These modules only exist inside the builder sandbox. When running locally
+// (e.g. `npm run dev` or `npm run test:e2e` on a developer machine) the
+// directories are absent and the imports would crash esbuild before Vite even
+// starts. tryLoad() catches the missing-module error and returns null so the
+// rest of the config can guard each usage with a simple truthiness check.
+// ---------------------------------------------------------------------------
+const _require = createRequire(import.meta.url);
+
+function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) | null {
+  try {
+    // resolve relative to this config file so Windows absolute paths work too
+    const resolved = id.startsWith(".") ? path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), id) : id;
+    const mod = _require(resolved);
+    const fn = named ? mod[named] : (mod.default ?? mod);
+    return typeof fn === "function" ? fn : null;
+  } catch {
+    return null;
+  }
+}
+
+// Builder-only plugins — null when running locally (safe to skip)
+const sourceMapperPlugin    = tryLoad("./source-mapper/src/index");
+const devToolsPlugin        = tryLoad("./dev-tools/src/vite-plugin",               "devToolsPlugin");
+const fullStoryPlugin       = tryLoad("./fullstory-plugin",                        "fullStoryPlugin");
+const errorInterceptorPlugin = tryLoad("./dev-tools/src/vite-error-interceptor",   "errorInterceptorPlugin");
+const mediaVersionsPlugin   = tryLoad("./dev-tools/src/vite-media-versions-plugin","mediaVersionsPlugin");
+const formatOverridesPlugin = tryLoad("./format-overrides-plugin",                 "formatOverridesPlugin");
+const contentPlugin         = tryLoad("./content-plugin/src/index",                "contentPlugin");
 
 function extractHostname(value: string): string {
   try {
@@ -69,22 +94,24 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
 
   plugins: [
-  react({
-    babel: {
-      plugins: [sourceMapperPlugin]
-    }
-  }),
-  apiDevPlugin(),
-  formatOverridesPlugin(__dirname),
-  contentPlugin(),
-  ...(mode === "development" ?
-  [
-  devToolsPlugin() as Plugin,
-  fullStoryPlugin(),
-  errorInterceptorPlugin(),
-  mediaVersionsPlugin() as Plugin] :
-
-  [])],
+    react({
+      babel: {
+        // sourceMapperPlugin is a Babel plugin (not a Vite plugin).
+        // Only include it when the builder module is present.
+        plugins: sourceMapperPlugin ? [sourceMapperPlugin] : [],
+      }
+    }),
+    apiDevPlugin(),
+    // Optional builder-only Vite plugins — skipped when null (local dev)
+    formatOverridesPlugin  ? (formatOverridesPlugin as (d: string) => Plugin)(__dirname) : null,
+    contentPlugin          ? (contentPlugin as () => Plugin)()                           : null,
+    ...(mode === "development" ? [
+      devToolsPlugin         ? (devToolsPlugin         as () => Plugin)() : null,
+      fullStoryPlugin        ? (fullStoryPlugin         as () => Plugin)() : null,
+      errorInterceptorPlugin ? (errorInterceptorPlugin  as () => Plugin)() : null,
+      mediaVersionsPlugin    ? (mediaVersionsPlugin     as () => Plugin)() : null,
+    ] : []),
+  ].filter(Boolean) as Plugin[],
 
 
   resolve: {
