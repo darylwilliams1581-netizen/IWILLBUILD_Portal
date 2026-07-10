@@ -277,12 +277,12 @@ describe('element-detection', () => {
     });
 
     it('should allow plain text elements without data-dev-dynamic (with editable marker)', () => {
-      const element = buildElement('<p data-dev-editable="text">Hello World</p>');
+      const element = buildElement('<p data-dev-editable="text" data-dev-file="src/pages/index.tsx">Hello World</p>');
       expect(isTextEditable(element, true)).toBe(true);
     });
 
     it('should allow elements with inline formatting but no data-dev-dynamic (with editable marker)', () => {
-      const element = buildElement('<p data-dev-editable="text"><strong>Bold text</strong></p>');
+      const element = buildElement('<p data-dev-editable="text" data-dev-file="src/pages/index.tsx"><strong>Bold text</strong></p>');
       expect(isTextEditable(element, true)).toBe(true);
     });
 
@@ -311,14 +311,14 @@ describe('element-detection', () => {
 
     it('allows a content-file-backed bound-text element with data-dev-dynamic on itself', () => {
       const parent = buildElement(
-        `<div data-dev-content-file="${CONTENT_FILE}"><p data-dev-dynamic="true" data-dev-bound-text="true">Paragraph text</p></div>`,
+        `<div data-dev-content-file="${CONTENT_FILE}"><p data-dev-dynamic="true" data-dev-bound-text="true" data-dev-file="src/pages/blog.tsx">Paragraph text</p></div>`,
       );
       expect(isTextEditable(parent.querySelector('p') as HTMLElement, true)).toBe(true);
     });
 
     it('allows a content-file-backed bound-text element with inline children', () => {
       const parent = buildElement(
-        `<div data-dev-content-file="${CONTENT_FILE}"><p data-dev-dynamic="true" data-dev-bound-text="true">Text with <em>italic</em> and <strong>bold</strong></p></div>`,
+        `<div data-dev-content-file="${CONTENT_FILE}"><p data-dev-dynamic="true" data-dev-bound-text="true" data-dev-file="src/pages/blog.tsx">Text with <em>italic</em> and <strong>bold</strong></p></div>`,
       );
       expect(isTextEditable(parent.querySelector('p') as HTMLElement, true)).toBe(true);
     });
@@ -365,6 +365,7 @@ describe('element-detection', () => {
     it('non-content text element (with editable marker) is editable regardless of the flag', () => {
       const el = document.createElement('p');
       el.setAttribute('data-dev-editable', 'text');
+      el.setAttribute('data-dev-file', 'src/pages/index.tsx');
       el.textContent = 'Plain text';
       expect(isTextEditable(el, false)).toBe(true);
       expect(isTextEditable(el, true)).toBe(true);
@@ -384,7 +385,7 @@ describe('element-detection', () => {
 
   describe('isTextEditable — authoritative data-dev-editable marker', () => {
     it('a static element WITH the marker is editable', () => {
-      const element = buildElement('<h1 data-dev-editable="text">Hello</h1>');
+      const element = buildElement('<h1 data-dev-editable="text" data-dev-file="src/pages/index.tsx">Hello</h1>');
       expect(isTextEditable(element, true)).toBe(true);
     });
 
@@ -394,7 +395,7 @@ describe('element-detection', () => {
     });
 
     it('inline-formatting element is editable only with the marker', () => {
-      expect(isTextEditable(buildElement('<p data-dev-editable="text"><strong>Bold</strong></p>'), true)).toBe(true);
+      expect(isTextEditable(buildElement('<p data-dev-editable="text" data-dev-file="src/pages/index.tsx"><strong>Bold</strong></p>'), true)).toBe(true);
       expect(isTextEditable(buildElement('<p><strong>Bold</strong></p>'), true)).toBe(false);
     });
 

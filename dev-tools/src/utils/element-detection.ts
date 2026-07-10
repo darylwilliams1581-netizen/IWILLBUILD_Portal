@@ -4,7 +4,10 @@ import { isCommerceManagedContent } from "./commerce-managed-content";
 
 export const HEADING_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
 
-export const INLINE_TEXT_TAGS = new Set(["span", "a", "label"]);
+export const INLINE_TEXT_TAGS = new Set(["span", "a", "label", "button"]);
+
+/** Inline child tags allowed inside a text element (decorative/formatting, not structural). */
+const INLINE_CHILD_TAGS = new Set(["br", "span", "strong", "em", "b", "i", "a", "svg"]);
 
 /** Block-level text: headings + semantic block elements. */
 export const BLOCK_TEXT_TAGS = new Set([...HEADING_TAGS, "p", "li", "blockquote"]);
@@ -36,7 +39,17 @@ export const CONTENT_TAGS = new Set([...TEXT_TAGS, ...LIST_TAGS, ...MEDIA_TAGS, 
  * block-level (p, h1–h6, li, blockquote) tags.
  */
 export function isTextElement(element: HTMLElement): boolean {
-  return TEXT_TAGS.has(element.tagName.toLowerCase());
+  const tag = element.tagName.toLowerCase();
+  if (TEXT_TAGS.has(tag)) return true;
+  // Source-mapped elements with only text/inline content are text elements
+  // (Tailwind patterns use div as text containers).
+  if (element.hasAttribute("data-dev-file") && element.textContent?.trim() &&
+      (element.children.length === 0 || Array.from(element.children).every((c) =>
+        INLINE_CHILD_TAGS.has(c.tagName.toLowerCase())
+      ))) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -142,7 +155,13 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   // Block only when a descendant is dynamic (nested programmatic subtrees).
   const hasBoundText = element.getAttribute("data-dev-bound-text") === "true";
   if (hasBoundText) {
-    if (!element.closest("[data-dev-content-file]")) return false;
+    if (!cmsInlineEditEnabled && !element.closest("[data-dev-content-file]")) return false;
+    if (element.querySelector("[data-dev-dynamic]")) return false;
+  } else if (cmsInlineEditEnabled) {
+    // Permissive mode: allow elements with data-dev-dynamic on themselves (these
+    // are content-bound fields like {bean.name} that the content-edit path or
+    // source-mapper content-key handles). Block only if a DESCENDANT is dynamic
+    // (mixed structural content that can't be edited as a flat string).
     if (element.querySelector("[data-dev-dynamic]")) return false;
   } else {
     if (element.closest("[data-dev-dynamic]") || element.querySelector("[data-dev-dynamic]")) return false;
@@ -156,27 +175,23 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
   const hasOnlyText = isListContainer
     ? Array.from(element.children).every((child) => child.tagName.toLowerCase() === "li")
     : element.children.length === 0 ||
-      Array.from(element.children).every((child) => {
-        const tag = child.tagName.toLowerCase();
-        return tag === "br" || tag === "span" || tag === "strong" || tag === "em" || tag === "b" || tag === "i" || tag === "a";
-      });
+      Array.from(element.children).every((child) =>
+        INLINE_CHILD_TAGS.has(child.tagName.toLowerCase())
+      );
 
-  // Authoritative shut-off: the text-tag (AST/static-literal) edit path requires
-  // the source-mapper's per-node data-dev-editable="text" marker, computed from
-  // the same AST the server inspects on save. This can only REMOVE editability —
-  // it never makes more nodes editable — eliminating the open-then-400 divergence
-  // where the DOM heuristic disagreed with the server's
-  // hasUnsupportedDynamicTextExpression.
-  //
-  // List containers (ul/ol) are exempt: the source-mapper only marks intrinsic
-  // text tags (getIntrinsicTextTagName excludes ul/ol), so requiring the marker
-  // there would regress list editing rather than shut off a server-rejected node.
-  // Bound-text elements use the markdown save path, not the AST path, so the
-  // data-dev-editable="text" marker is irrelevant to whether their save succeeds.
-  // Their guard is the dynamic-descendant check above.
+  // In permissive mode (CMS inline-edit ON), allow any source-mapped element
+  // with text-only content — regardless of tag name. Covers <div> used as text
+  // containers in Tailwind-based designs (cards, stats, tips).
+  if (cmsInlineEditEnabled) {
+    if (!hasText || !hasOnlyText) return false;
+    return element.hasAttribute("data-dev-file");
+  }
+
+  if (!(TEXT_TAGS.has(tagName) || isListContainer) || !hasText || !hasOnlyText) return false;
+
+  // Conservative mode: require the source-mapper's authoritative marker.
   const passesMarkerGate = isListContainer || hasBoundText || element.getAttribute("data-dev-editable") === "text";
-
-  return (TEXT_TAGS.has(tagName) || isListContainer) && hasText && hasOnlyText && passesMarkerGate;
+  return passesMarkerGate;
 }
 
 /**

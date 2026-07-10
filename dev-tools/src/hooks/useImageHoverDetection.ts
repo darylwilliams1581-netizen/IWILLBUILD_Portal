@@ -87,6 +87,9 @@ function resolveHoverableAnchorAtPoint(
 
   const targetTag = target.tagName.toLowerCase();
   if (DIRECT_CONTENT_TAGS.includes(targetTag)) return primary;
+  // Source-mapped divs that resolved to content: return directly.
+  // Non-content divs (overlays) fall through to the stack scan for images beneath.
+  if (targetTag === "div" && primary?.type === "content") return primary;
 
   const stack = document.elementsFromPoint(clientX, clientY);
   for (const el of stack) {

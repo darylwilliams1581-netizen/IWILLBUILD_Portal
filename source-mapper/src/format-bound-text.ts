@@ -31,6 +31,7 @@ const SUPPORTED_TEXT_TAGS = new Set([
   'label',
   'li',
   'blockquote',
+  'button',
 ]);
 const FORMATTED_BOUND_TEXT_IMPORT = '@/components/FormattedBoundText';
 const generate = ((_generate as unknown as { default?: typeof _generate }).default ?? _generate) as typeof _generate;

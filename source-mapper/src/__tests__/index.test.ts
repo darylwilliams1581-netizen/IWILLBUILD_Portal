@@ -852,11 +852,16 @@ describe('jsxSourceMapper — bound text format overrides', () => {
   });
 
   it('does not wrap unsupported tags or mixed children', () => {
-    const unsupported = transform(`const user = { name: 'Ada' }; export default () => <button>{user.name}</button>;`);
+    const unsupported = transform(`const user = { name: 'Ada' }; export default () => <div>{user.name}</div>;`);
     const mixed = transform(`const user = { name: 'Ada' }; export default () => <h1>Hello {user.name}</h1>;`);
 
     expect(unsupported).not.toContain('<FormattedBoundText');
     expect(mixed).not.toContain('<FormattedBoundText');
+  });
+
+  it('wraps button elements with bound expressions', () => {
+    const output = transform(`const user = { name: 'Ada' }; export default () => <button>{user.name}</button>;`);
+    expect(output).toContain('<FormattedBoundText');
   });
 
   it('does not wrap direct JSX or fragment expression children', () => {
