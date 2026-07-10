@@ -5,6 +5,16 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Only collect unit/component tests under src/ — Playwright e2e tests
+    // live in tests/ and are run separately via `npm run test:e2e`.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'tests/**',           // Playwright e2e directory
+      'test-results/**',    // Playwright output
+      'playwright-report/**',
+    ],
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
@@ -25,6 +35,7 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'src/test/',
+        'tests/',
         '*.config.js',
         '*.config.ts',
       ],

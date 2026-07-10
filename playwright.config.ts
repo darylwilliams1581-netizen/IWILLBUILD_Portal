@@ -3,28 +3,38 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright E2E configuration for IWILLBUILD Portal.
  *
- * Web server: starts `npm run dev` (Vite) and waits up to 2 minutes for
- * http://localhost:3000 to respond before running tests.
+ * Separated from Vitest (unit/component tests in src/).
+ * E2E tests live in tests/ and are run via `npm run test:e2e`.
  *
- * reuseExistingServer: true locally so you can keep `npm run dev` running
- * in a separate terminal and skip the startup wait on subsequent runs.
- * In CI (process.env.CI) a fresh server is always started.
+ * webServer starts Vite on port 3000 and waits up to 2 minutes.
+ * reuseExistingServer: true locally — keep `npm run dev` running in a
+ * separate terminal to skip the cold-start wait on repeated runs.
  */
 export default defineConfig({
+  // ── Test discovery ────────────────────────────────────────────────────────
   testDir: "./tests",
+  testMatch: ["**/*.spec.ts", "**/*.spec.tsx"],
+  // Never pick up Vitest unit tests that live under src/
+  testIgnore: ["**/src/**/__tests__/**", "**/src/**/*.test.*"],
+
+  // ── Run behaviour ─────────────────────────────────────────────────────────
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : 2,
+
+  // ── Reporters ─────────────────────────────────────────────────────────────
   reporter: [["list"], ["html", { open: "never" }]],
 
+  // ── Shared browser context ─────────────────────────────────────────────────
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",
   },
 
+  // ── Browser projects ──────────────────────────────────────────────────────
   projects: [
     {
       name: "chromium",
@@ -36,14 +46,14 @@ export default defineConfig({
     },
   ],
 
+  // ── Dev server ────────────────────────────────────────────────────────────
   webServer: {
-    // Vite dev server — port must match server.port in vite.config.ts.
-    // The dev script uses PORT env var; default is 5173 but Playwright
-    // tests expect 3000, so we pass PORT=3000 explicitly here.
-    command: "cross-env PORT=3000 npm run dev",
-    url: "http://localhost:3000",
+    // Use npm.cmd on Windows (npm.cmd is the Windows shim for npm).
+    // The -- separator passes --host and --port directly to Vite.
+    command: "npm.cmd run dev -- --host 0.0.0.0 --port 3000",
+    url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
-    // 2 minutes — Vite cold start on Windows with a large project can be slow.
+    // 2 minutes — Vite cold start on Windows with this project can be slow.
     timeout: 120_000,
     stdout: "pipe",
     stderr: "pipe",
