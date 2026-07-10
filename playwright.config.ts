@@ -6,10 +6,25 @@ import { defineConfig, devices } from "@playwright/test";
  * Separated from Vitest (unit/component tests in src/).
  * E2E tests live in tests/ and are run via `npm run test:e2e`.
  *
- * webServer starts Vite on port 3000 and waits up to 2 minutes.
+ * ⚠️  SANDBOX NOTE: Playwright requires spawning a browser process. The Airo
+ * build sandbox blocks child-process execution, so `npm run test:e2e` will
+ * always fail with EACCES inside the sandbox. Run e2e tests locally or in a
+ * real CI environment (GitHub Actions, etc.) where the browser binary can
+ * execute.
+ *
+ * Environment detection:
+ *  - AIRO_PREVIEW_URL set  → use the running preview server (CI / sandbox)
+ *  - Otherwise             → start Vite dev server on port 3000 (local dev)
+ *
  * reuseExistingServer: true locally — keep `npm run dev` running in a
  * separate terminal to skip the cold-start wait on repeated runs.
  */
+
+// The Airo sandbox exposes the running preview at this env var.
+// When present we skip the webServer block and hit the proxy directly.
+const previewUrl = process.env.AIRO_PREVIEW_URL;
+const baseURL = previewUrl ?? "http://127.0.0.1:3000";
+
 export default defineConfig({
   // ── Test discovery ────────────────────────────────────────────────────────
   testDir: "./tests",
@@ -28,7 +43,7 @@ export default defineConfig({
 
   // ── Shared browser context ─────────────────────────────────────────────────
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",
@@ -47,15 +62,23 @@ export default defineConfig({
   ],
 
   // ── Dev server ────────────────────────────────────────────────────────────
-  webServer: {
-    // Use npm.cmd on Windows (npm.cmd is the Windows shim for npm).
-    // The -- separator passes --host and --port directly to Vite.
-    command: "npm.cmd run dev -- --host 0.0.0.0 --port 3000",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
-    // 2 minutes — Vite cold start on Windows with this project can be slow.
-    timeout: 120_000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  // Only start the dev server when no preview URL is available (local dev).
+  // In the Airo sandbox / CI the server is already running — skip the spawn.
+  ...(previewUrl
+    ? {}
+    : {
+        webServer: {
+          // npm.cmd is the Windows shim; on Linux/CI use npm directly.
+          command:
+            process.platform === "win32"
+              ? "npm.cmd run dev -- --host 0.0.0.0 --port 3000"
+              : "npm run dev -- --host 0.0.0.0 --port 3000",
+          url: "http://127.0.0.1:3000",
+          reuseExistingServer: !process.env.CI,
+          // 2 minutes — Vite cold start on Windows with this project can be slow.
+          timeout: 120_000,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      }),
 });

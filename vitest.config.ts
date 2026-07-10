@@ -108,9 +108,13 @@ export default defineConfig({
         find: 'virtual:format-overrides',
         replacement: path.resolve(__dirname, './src/test/format-overrides-module.ts'),
       },
+      // virtual:content — the real module is generated at Vite build time and
+      // is not available in Vitest. Point at the permanent fallback file under
+      // src/content/ (mirrors the stub but lives in the content tree so it is
+      // also importable outside of tests if needed).
       {
         find: 'virtual:content',
-        replacement: path.resolve(__dirname, './src/test/stubs/virtual-content.stub.ts'),
+        replacement: path.resolve(__dirname, './src/content/virtual-content-fallback.ts'),
       },
 
       // ── Named @/ aliases (must come before the catch-all) ──────────────────
