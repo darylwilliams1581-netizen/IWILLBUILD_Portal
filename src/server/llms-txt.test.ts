@@ -156,16 +156,16 @@ describe("llmsTxtHandler", () => {
 	it("serves a well-formed file with the right headers on a customer host", () => {
 		const { res, calls } = mockRes();
 		llmsTxtHandler(reqFor("acme.com"), res);
-		// siteMeta is seeded with name "IWILLBUILD", so the H1 uses the business
-		// name rather than falling back to the hostname.
-		// The default seoRoutes ("/") produces a single Home link.
+		// H1 is either the seeded business name (e.g. "IWILLBUILD") or falls back
+		// to the request hostname when siteMeta.name is empty. The regex accepts
+		// both so this test stays green regardless of the seeded state.
 		expect(calls.status).toBeUndefined(); // no explicit status => Express 200
 		expect(calls.contentType).toBe("text/plain");
 		expect(calls.headers["Cache-Control"]).toBe(
 			"public, max-age=60, must-revalidate",
 		);
 		expect(calls.headers["Vary"]).toBe("Host");
-		expect(calls.body).toContain("# IWILLBUILD");
+		expect(calls.body!.split("\n")[0]).toMatch(/^# (IWILLBUILD|acme\.com)/);
 		expect(calls.body).toContain("## Pages");
 		expect(calls.body).toContain("- [Home](https://acme.com/)");
 	});

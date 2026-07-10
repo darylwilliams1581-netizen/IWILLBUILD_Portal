@@ -4,13 +4,12 @@
  * Returns safe dummy credentials so getDatabaseCredentials() never reads
  * /local/config.json during Vitest runs.
  *
- * Aliased in vitest.config.ts so any import of the real config path
- * resolves here instead.
+ * Type is declared inline — do NOT import from the real config.ts because
+ * that file is itself aliased to this stub, which would create a circular
+ * reference.
  */
 
-// Inline the type — do NOT import from the real config.ts because that file
-// is itself aliased to this stub, which would create a circular reference.
-interface DatabaseCredentials {
+export interface DatabaseCredentials {
   host: string;
   port: number;
   user: string;
@@ -24,6 +23,6 @@ export function getDatabaseCredentials(): DatabaseCredentials {
     port: 3306,
     user: 'test',
     password: 'test',
-    database: 'test',
+    database: 'test_db',
   };
 }

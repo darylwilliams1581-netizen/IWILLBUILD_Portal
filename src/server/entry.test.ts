@@ -1,77 +1,53 @@
 /**
  * entry.test.ts — AdSense text routes + SSR document rendering
  *
- * WHY THE MOCKS AT THE TOP:
- * entry.ts imports ~200 API handler modules, each of which imports
- * src/server/db/client.ts. That file calls getDatabaseCredentials() at
- * module-load time, which reads /local/config.json (a Nomad task-local file
- * that does not exist in test/local environments) and throws immediately.
+ * WHY THE vi.mock CALLS:
+ * entry.ts statically imports ~200 API handler modules plus auth.ts and
+ * several lib files. Every one of them imports src/server/db/client.ts,
+ * which calls getDatabaseCredentials() at module-load time. That function
+ * reads /local/config.json (a Nomad task-local file absent in test/local
+ * environments) and throws before a single test assertion runs.
  *
  * Two-layer defence:
- *  1. vitest.config.ts resolve.alias — regex rules redirect every relative
- *     import of db/client(.js|.ts) and db/config(.js|.ts) to no-op stubs
- *     before Vitest even tries to load them. This covers the common case.
- *  2. vi.mock() calls below — belt-and-braces for any specifier the regex
- *     might miss (e.g. Windows backslash paths, symlinks, or future imports
- *     added with a slightly different path shape).
+ *  1. vitest.config.ts resolve.alias — cross-platform regex rules redirect
+ *     every resolved path ending in db/client(.ts|.js) and db/config(.ts|.js)
+ *     to no-op stubs. Covers the common case on both POSIX and Windows.
+ *  2. vi.mock() calls below — belt-and-braces for specifiers the alias regex
+ *     might miss (e.g. the bare "./db/client.js" relative specifier used by
+ *     entry.ts itself, or @/server/db/* alias forms).
  *
- * vi.mock() is hoisted by Vitest to the top of the module before any imports
- * execute, so these mocks are in place before `./entry` is imported.
+ * vi.mock() is hoisted by Vitest to before any imports execute, so these
+ * mocks are in place before `./entry` is resolved.
  *
  * Production runtime is NOT affected — vi.mock() only runs inside Vitest.
  */
 
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-// Intercept the DB client by its resolved file path.
-// The factory returns the same surface as the real client: { db, testConnection, closeConnection }.
-vi.mock(
-  new URL('./db/client.ts', import.meta.url).pathname,
-  () => {
-    const makeChain = (): unknown => {
-      const h: ProxyHandler<object> = {
-        get: () => (..._a: unknown[]) => new Proxy({}, h),
-      };
-      return new Proxy({}, h);
-    };
-    const db = new Proxy(
-      {},
-      {
-        get(_t, prop) {
-          if (prop === 'execute') return vi.fn().mockResolvedValue([[], []]);
-          if (prop === 'transaction')
-            return vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
-          return (..._a: unknown[]) => makeChain();
-        },
-      },
-    );
-    return {
-      db,
-      testConnection: vi.fn().mockResolvedValue(true),
-      closeConnection: vi.fn().mockResolvedValue(undefined),
-    };
-  },
-);
+// ── DB mocks (hoisted before ./entry import) ───────────────────────────────
 
-// Belt-and-braces: also mock the config module so getDatabaseCredentials()
-// never reads the filesystem even if client.ts somehow slips through.
-vi.mock(
-  new URL('./db/config.ts', import.meta.url).pathname,
-  () => ({
-    getDatabaseCredentials: vi.fn().mockReturnValue({
-      host: '127.0.0.1',
-      port: 3306,
-      user: 'test',
-      password: 'test',
-      database: 'test',
-    }),
-  }),
-);
+// Relative specifier used by entry.ts itself: `import { db } from "./db/client.js"`
+vi.mock('./db/client.js', async () => {
+  return import('../test/stubs/db-client.stub');
+});
 
-// ── Actual test imports (after mocks are hoisted) ──────────────────────────
+// Alias form used by auth.ts and other lib files: `import { db } from "@/server/db/client"`
+vi.mock('@/server/db/client', async () => {
+  return import('../test/stubs/db-client.stub');
+});
+
+// Config module — belt-and-braces so getDatabaseCredentials() never hits the FS
+vi.mock('./db/config', async () => {
+  return import('../test/stubs/db-config.stub');
+});
+
+vi.mock('@/server/db/config', async () => {
+  return import('../test/stubs/db-config.stub');
+});
+
+// ── Entry import (after mocks are hoisted) ─────────────────────────────────
 import express from 'express';
 import type { Server } from 'node:http';
-import { describe, expect, it } from 'vitest';
 
 import { renderSsrDocument, registerAdSenseTextRoutes } from './entry';
 

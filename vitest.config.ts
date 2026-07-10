@@ -11,23 +11,22 @@ export default defineConfig({
     exclude: [
       'node_modules/**',
       'dist/**',
-      'tests/**',            // Playwright e2e directory
-      'test-results/**',     // Playwright output
+      'tests/**',             // Playwright e2e directory
+      'test-results/**',      // Playwright output
       'playwright-report/**',
     ],
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    // Use forks pool to isolate memory per test file (prevents OOM)
+    // Use forks pool to isolate memory per test file (prevents OOM on large suites)
     pool: 'forks',
     poolOptions: {
       forks: {
         minForks: 1,
-        maxForks: 4, // Limit parallelism to prevent memory exhaustion
-        isolate: true, // Each test file runs in fresh process
+        maxForks: 4,
+        isolate: true,
       },
     },
-    // Limit concurrent tests within each file
     maxConcurrency: 5,
     coverage: {
       provider: 'v8',
@@ -56,27 +55,28 @@ export default defineConfig({
       // ── DB client stub ──────────────────────────────────────────────────────
       // src/server/db/client.ts calls getDatabaseCredentials() at module-load
       // time, which throws when /local/config.json is absent (test/local env).
-      // Aliasing the resolved file path redirects every relative import of
-      // db/client.js (100+ API handlers) AND the @/server/db/client alias to
-      // the same no-op stub — no vi.mock() calls needed in individual tests.
       //
-      // Regex matches any path ending in /src/server/db/client(.js|.ts)?
-      // so depth-varying relative imports (../../db/client.js, ../db/client.js)
-      // are all caught by the same rule.
+      // The regex uses [/\\] to match both POSIX (/) and Windows (\) path
+      // separators so the alias fires on all platforms.
+      //
+      // This single regex catches every relative import of db/client.js
+      // regardless of importer depth (../../db/client.js, ../db/client.js, etc.)
+      // because Vite resolves the specifier to an absolute path before matching.
       {
-        find: /\/src\/server\/db\/client(\.js|\.ts)?$/,
+        find: /[/\\]src[/\\]server[/\\]db[/\\]client(?:\.ts|\.js)?$/,
         replacement: path.resolve(__dirname, './src/test/stubs/db-client.stub.ts'),
       },
+      // String alias for the @/server/db/client form used by auth.ts and others
       {
         find: '@/server/db/client',
         replacement: path.resolve(__dirname, './src/test/stubs/db-client.stub.ts'),
       },
 
       // ── DB config stub ──────────────────────────────────────────────────────
-      // Belt-and-braces: if anything imports config directly, return safe
-      // dummy credentials instead of reading /local/config.json.
+      // Belt-and-braces: redirect direct imports of db/config so
+      // getDatabaseCredentials() never reads /local/config.json.
       {
-        find: /\/src\/server\/db\/config(\.js|\.ts)?$/,
+        find: /[/\\]src[/\\]server[/\\]db[/\\]config(?:\.ts|\.js)?$/,
         replacement: path.resolve(__dirname, './src/test/stubs/db-config.stub.ts'),
       },
       {
@@ -84,22 +84,30 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/test/stubs/db-config.stub.ts'),
       },
 
-      // ── Standard aliases ────────────────────────────────────────────────────
+      // ── virtual modules ─────────────────────────────────────────────────────
       {
         find: 'virtual:format-overrides',
         replacement: path.resolve(__dirname, './src/test/format-overrides-module.ts'),
       },
-      { find: '@/components', replacement: path.resolve(__dirname, './src/components') },
-      { find: '@/lib',        replacement: path.resolve(__dirname, './src/lib') },
-      { find: '@/api',        replacement: path.resolve(__dirname, './src/server/api') },
-      { find: '@/db',         replacement: path.resolve(__dirname, './src/server/db') },
-      { find: '@/layouts',    replacement: path.resolve(__dirname, './src/layouts') },
-      { find: '@/patterns',   replacement: path.resolve(__dirname, './src/patterns') },
-      { find: '@/pages',      replacement: path.resolve(__dirname, './src/pages') },
-      { find: '@/hooks',      replacement: path.resolve(__dirname, './src/hooks') },
-      { find: '@/styles',     replacement: path.resolve(__dirname, './src/styles') },
-      // @/ catch-all must come LAST — more-specific aliases above take priority
-      { find: '@/',           replacement: path.resolve(__dirname, './src/') },
+      {
+        find: 'virtual:content',
+        replacement: path.resolve(__dirname, './src/test/stubs/virtual-content.stub.ts'),
+      },
+
+      // ── Named @/ aliases (must come before the catch-all) ──────────────────
+      { find: '@/server/db/schema', replacement: path.resolve(__dirname, './src/server/db/schema.ts') },
+      { find: '@/server',           replacement: path.resolve(__dirname, './src/server') },
+      { find: '@/components',       replacement: path.resolve(__dirname, './src/components') },
+      { find: '@/lib',              replacement: path.resolve(__dirname, './src/lib') },
+      { find: '@/api',              replacement: path.resolve(__dirname, './src/server/api') },
+      { find: '@/db',               replacement: path.resolve(__dirname, './src/server/db') },
+      { find: '@/layouts',          replacement: path.resolve(__dirname, './src/layouts') },
+      { find: '@/patterns',         replacement: path.resolve(__dirname, './src/patterns') },
+      { find: '@/pages',            replacement: path.resolve(__dirname, './src/pages') },
+      { find: '@/hooks',            replacement: path.resolve(__dirname, './src/hooks') },
+      { find: '@/styles',           replacement: path.resolve(__dirname, './src/styles') },
+      // @/ catch-all MUST come last — more-specific aliases above take priority
+      { find: '@/',                 replacement: path.resolve(__dirname, './src/') },
     ],
   },
 });
