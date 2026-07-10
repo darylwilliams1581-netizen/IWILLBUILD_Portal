@@ -232,7 +232,7 @@ export default function Header() {
         </div>
 
         {/* ── Mobile hamburger ── */}
-        <div className="md:hidden" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="md:hidden" style={{ alignItems: 'center', gap: 8 }}>
           <Link
             to="/login"
             style={{
