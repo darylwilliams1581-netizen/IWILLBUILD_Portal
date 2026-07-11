@@ -1,4 +1,4 @@
-// RootLayout v16 — cache-bust 2026-07-12c
+// RootLayout v17 — cache-bust 2026-07-12e
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
