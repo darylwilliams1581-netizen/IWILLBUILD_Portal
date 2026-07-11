@@ -172,7 +172,7 @@ export function useSession() {
   };
 }
 // Alias for useSession (common naming convention)
-export const useAuth = useSession;
+export function useAuth() { return useSession(); }
 
 /**
  * SessionProvider - Wrapper for compatibility with common auth patterns.
