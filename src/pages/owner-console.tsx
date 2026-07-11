@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -8,6 +8,7 @@ import {
   ShieldAlert, X, Bot, Package,
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle, BookMarked,
+  Play, Info, Clock, Copy, Check,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -350,8 +351,10 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'library'>(
-    (searchParams.get('tab') as 'support-setup' | null) === 'support-setup' ? 'support-setup' : 'overview'
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'library' | 'health-check'>(
+    (searchParams.get('tab') as 'support-setup' | 'health-check' | null) === 'support-setup' ? 'support-setup'
+    : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
+    : 'overview'
   );
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -379,7 +382,94 @@ export default function OwnerConsolePage() {
   // Manual verify modal state
   const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; email: string } | null>(null);
 
-  // Run migrations once on mount
+  // ── Annette / Health Check state ─────────────────────────────────────────────
+  const [annetteStatus, setAnnetteStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [annetteReport, setAnnetteReport] = useState('');
+  const [annetteRunAt, setAnnetteRunAt] = useState<string | null>(null);
+  const [annetteWarnings, setAnnetteWarnings] = useState<string[]>([]);
+  const [annetteCopied, setAnnetteCopied] = useState(false);
+  const annetteReportRef = useRef<HTMLDivElement>(null);
+
+  const runAnnette = useCallback(async () => {
+    setAnnetteStatus('running');
+    setAnnetteReport('');
+    setAnnetteWarnings([]);
+    setAnnetteRunAt(null);
+    try {
+      const res = await fetch('/api/dazza/annette', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supportCompanyId: null }),
+      });
+      if (!res.ok || !res.body) {
+        const d = await res.json() as { error?: string };
+        setAnnetteReport(`⚠️ Error: ${d.error ?? 'Failed to start Health Check'}`);
+        setAnnetteStatus('error');
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const parsed = JSON.parse(line.slice(6)) as { text?: string; done?: boolean; warnings?: string[]; error?: boolean };
+            if (parsed.text) { fullText += parsed.text; setAnnetteReport(fullText); }
+            if (parsed.done) {
+              setAnnetteWarnings(parsed.warnings ?? []);
+              setAnnetteRunAt(new Date().toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+              setAnnetteStatus(parsed.error ? 'error' : 'done');
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (e) {
+      setAnnetteReport(`⚠️ Network error: ${e instanceof Error ? e.message : String(e)}`);
+      setAnnetteStatus('error');
+    }
+  }, []);
+
+  async function copyAnnetteReport() {
+    await navigator.clipboard.writeText(annetteReport);
+    setAnnetteCopied(true);
+    setTimeout(() => setAnnetteCopied(false), 2000);
+  }
+
+  // ── Annette markdown renderer ─────────────────────────────────────────────────
+  function renderAnnetteReport(text: string): React.ReactNode[] {
+    const lines = text.split('\n');
+    const nodes: React.ReactNode[] = [];
+    let key = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('## ')) {
+        const content = line.slice(3);
+        const contentHead = content.slice(0, 8);
+        const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
+        const rest = emoji ? content.slice(emoji.length).trim() : content;
+        nodes.push(<div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">{emoji && <span className="text-lg leading-none">{emoji}</span>}<h2 className="font-heading font-black text-sm text-slate-800 uppercase tracking-wider">{rest}</h2></div>);
+        continue;
+      }
+      if (line.startsWith('### ')) { nodes.push(<h3 key={key++} className="font-bold text-sm text-slate-700 mt-3 mb-1">{line.slice(4)}</h3>); continue; }
+      if (line.startsWith('- ') || line.startsWith('• ')) {
+        nodes.push(<div key={key++} className="flex items-start gap-2 py-0.5 pl-1"><span className="text-primary mt-1.5 shrink-0 text-[8px]">●</span><span className="text-sm text-slate-700 leading-relaxed">{line.slice(2)}</span></div>);
+        continue;
+      }
+      if (line.trim() === '') { nodes.push(<div key={key++} className="h-1" />); continue; }
+      nodes.push(<p key={key++} className="text-sm text-slate-700 leading-relaxed">{line}</p>);
+    }
+    return nodes;
+  }
+
+  // ── Run migrations ────────────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' }),
@@ -639,6 +729,12 @@ export default function OwnerConsolePage() {
               Library Manager
             </span>
           </Tab>
+          <Tab active={tab === 'health-check'} onClick={() => { setTab('health-check'); setSearchParams({ tab: 'health-check' }); }}>
+            <span className="flex items-center gap-1.5">
+              <Activity size={12} />
+              Health Check
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && (
             <Tab active={tab === 'support-setup'} onClick={() => { setTab('support-setup'); setSearchParams({ tab: 'support-setup' }); }}>
               <span className="flex items-center gap-1.5">
@@ -822,6 +918,119 @@ export default function OwnerConsolePage() {
 
               {/* ── Library Manager ── */}
               {tab === 'library' && <LibraryManagerTab />}
+
+              {/* ── Health Check (Annette) ── */}
+              {tab === 'health-check' && (
+                <div className="max-w-3xl">
+                  <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center shadow-sm">
+                        <Activity size={18} className="text-white" />
+                      </div>
+                      <div>
+                        <h2 className="font-heading font-black text-xl text-slate-900">Dazza Health Check</h2>
+                        <p className="text-xs text-slate-500">v1 — Company health check</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed mt-3">
+                      Analyses live portal data and produces a prioritised action report — urgent items, things needing attention, missing information, and suggested next steps.
+                    </p>
+                  </div>
+
+                  {/* Run card */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 mb-5">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <p className="font-bold text-sm text-slate-800">Run health check</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Analyses jobs, to-dos, fleet, estimates, and forms. Takes 10–20 seconds.</p>
+                        {annetteRunAt && (
+                          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                            <Clock size={10} />
+                            Last run: {annetteRunAt}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={runAnnette}
+                        disabled={annetteStatus === 'running'}
+                        className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors shrink-0"
+                      >
+                        {annetteStatus === 'running' ? (
+                          <><Loader2 size={14} className="animate-spin" />Running…</>
+                        ) : annetteStatus === 'done' ? (
+                          <><RefreshCw size={14} />Run again</>
+                        ) : (
+                          <><Play size={14} />Run Health Check</>
+                        )}
+                      </button>
+                    </div>
+                    {annetteStatus === 'running' && (
+                      <div className="mt-4">
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-violet-500 rounded-full animate-pulse w-3/4" />
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1.5">Analysing portal data…</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Streaming report */}
+                  {(annetteStatus === 'running' || annetteStatus === 'done' || annetteStatus === 'error') && annetteReport && (
+                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-5">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                        <div className="flex items-center gap-2">
+                          {annetteStatus === 'done' && <CheckCircle2 size={13} className="text-emerald-500" />}
+                          {annetteStatus === 'running' && <Loader2 size={13} className="text-violet-500 animate-spin" />}
+                          {annetteStatus === 'error' && <AlertCircle size={13} className="text-red-500" />}
+                          <span className="text-xs font-semibold text-slate-600">
+                            {annetteStatus === 'running' ? 'Generating report…' : annetteStatus === 'error' ? 'Report completed with errors' : 'Report complete'}
+                          </span>
+                        </div>
+                        {annetteStatus === 'done' && (
+                          <button
+                            onClick={copyAnnetteReport}
+                            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100"
+                          >
+                            {annetteCopied ? <><Check size={11} className="text-emerald-500" />Copied</> : <><Copy size={11} />Copy</>}
+                          </button>
+                        )}
+                      </div>
+                      <div ref={annetteReportRef} className="px-5 py-4 flex flex-col gap-0.5">
+                        {renderAnnetteReport(annetteReport)}
+                        {annetteStatus === 'running' && (
+                          <span className="inline-block w-1.5 h-4 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
+                        )}
+                      </div>
+                      {annetteWarnings.length > 0 && (
+                        <div className="mx-4 mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5 mb-1.5">
+                            <Info size={11} />
+                            {annetteWarnings.length} module{annetteWarnings.length > 1 ? 's' : ''} failed to load
+                          </p>
+                          {annetteWarnings.map((w, i) => (
+                            <p key={i} className="text-xs text-amber-600 font-mono">{w}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {annetteStatus === 'idle' && (
+                    <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-8 text-center mb-5">
+                      <Activity size={28} className="text-slate-300 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-slate-500">No report yet</p>
+                      <p className="text-xs text-slate-400 mt-1">Click "Run Health Check" to analyse your company data.</p>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
+                    <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

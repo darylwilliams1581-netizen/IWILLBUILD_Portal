@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   CalendarDays,
@@ -959,6 +959,9 @@ function QuickScheduleModal({ job, onClose, onSave }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SchedulerPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs';
+
   const [jobs,            setJobs]            = useState<SchedulerJob[]>([]);
   const [crewMembers,     setCrewMembers]      = useState<CrewMember[]>([]);
   const [unassignedJobs,  setUnassignedJobs]   = useState<SchedulerJob[]>([]);
@@ -1127,6 +1130,22 @@ export default function SchedulerPage() {
           </div>
           <CalendarDays size={18} className="text-orange-500 shrink-0" />
           <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
+
+          {/* ── Top-level page tabs ── */}
+          <div className="ml-4 flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setSearchParams({})}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Jobs
+            </button>
+            <Link
+              to="/team/schedule"
+              className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-500 hover:text-slate-700 hover:bg-white/60"
+            >
+              Team Shifts
+            </Link>
+          </div>
 
           {/* Save message toast */}
           {saveMsg && (

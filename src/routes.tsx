@@ -33,9 +33,9 @@ const FleetDetailPage    = lazy(() => import('./pages/fleet-detail'));
 const DazzaAIPage        = lazy(() => import('./pages/dazza-ai'));
 const StudioPage         = lazy(() => import('./pages/studio'));
 const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
-const AnnettePage        = lazy(() => import('./pages/annette'));
+
 const TeamPage           = lazy(() => import('./pages/team'));
-const TeamSchedulePage   = lazy(() => import('./pages/team-schedule'));
+
 const SettingsPage       = lazy(() => import('./pages/settings'));
 // FormsPage, SafetyPage, LibraryPage removed — now served as Studio tabs (/studio?tab=*)
 const FilesPage          = lazy(() => import('./pages/files'));
@@ -196,9 +196,9 @@ export const routes: RouteObject[] = [
   { path: '/studio/fleet',     loader: () => redirect('/fleet') },
   { path: '/studio/accounts',  loader: () => redirect('/settings') },
   { path: '/dazza-ai',      element: protectDev(<DazzaAIPage />),        errorElement: routeError },
-  { path: '/annette',       element: protectDev(<AnnettePage />),        errorElement: routeError },
+  { path: '/annette',       loader: () => redirect('/owner-console?tab=health-check') },
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
-  { path: '/team/schedule', element: protect(<TeamSchedulePage />),    errorElement: routeError },
+  { path: '/team/schedule', loader: () => redirect('/scheduler?tab=team-shifts') },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },

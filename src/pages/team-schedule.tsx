@@ -557,9 +557,23 @@ export default function TeamSchedulePage() {
               <CalendarDays size={18} className="text-orange-500" />
             </div>
             <div>
-              <h1 className="text-base md:text-lg font-bold text-slate-800">Team Schedule</h1>
+              <h1 className="text-base md:text-lg font-bold text-slate-800">Scheduler</h1>
               <p className="text-xs text-slate-400 hidden sm:block">Shifts, time tracking and payroll</p>
             </div>
+
+            {/* ── Page-level tabs ── */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-4">
+              <a
+                href="/scheduler"
+                className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-500 hover:text-slate-700 hover:bg-white/60"
+              >
+                Jobs
+              </a>
+              <span className="px-3 py-1.5 rounded-md text-xs font-semibold bg-white text-slate-800 shadow-sm">
+                Team Shifts
+              </span>
+            </div>
+
             <div className="flex-1" />
 
             {/* Tabs */}
