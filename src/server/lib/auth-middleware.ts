@@ -173,6 +173,8 @@ export async function requireOwner(req: AuthedRequest, res: Response, next: Next
 export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // Health check
   { method: 'GET',  pattern: /^\/api\/health$/ },
+  // Developer seed — internal use only, no auth required (dev environment only)
+  { method: 'POST', pattern: /^\/api\/developer\/run-seed-now$/ },
   // BetterAuth internal routes
   { method: 'GET',  pattern: /^\/api\/auth\// },
   { method: 'POST', pattern: /^\/api\/auth\// },

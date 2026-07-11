@@ -190,6 +190,8 @@ import developer_activity_log_get_108 from "./api/developer/activity-log/GET";
 import developer_audit_log_get_109 from "./api/developer/audit-log/GET";
 import developer_companies_id_archive_post_110 from "./api/developer/companies/[id]/archive/POST";
 import developer_company_health_get_111 from "./api/developer/company-health/GET";
+import developer_seed_developer_account_post from "./api/developer/seed-developer-account/POST";
+import developer_run_seed_now_post from "./api/developer/run-seed-now/POST";
 import developer_email_log_get_112 from "./api/developer/email-log/GET";
 import developer_email_settings_get_113 from "./api/developer/email-settings/GET";
 import developer_email_settings_put_114 from "./api/developer/email-settings/PUT";
@@ -771,6 +773,9 @@ app.use('/api/auth', authApiLimiter);
 // Token-validated inside the handler; guests do not need a portal session.
 app.post("/api/jobs/:id/signin-qr",  jobs_id_signin_qr_post_303);
 app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_306);
+
+// ── Developer seed — registered BEFORE auth guard (internal use only) ─────────
+app.post("/api/developer/run-seed-now", developer_run_seed_now_post);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
@@ -1751,6 +1756,7 @@ app.get("/api/developer/activity-log", developer_activity_log_get_108);
 app.get("/api/developer/audit-log", developer_audit_log_get_109);
 app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_110);
 app.get("/api/developer/company-health", developer_company_health_get_111);
+app.post("/api/developer/seed-developer-account", requirePlatformOwner, developer_seed_developer_account_post);
 app.get("/api/developer/email-log", developer_email_log_get_112);
 app.get("/api/developer/email-settings", developer_email_settings_get_113);
 app.put("/api/developer/email-settings", developer_email_settings_put_114);
