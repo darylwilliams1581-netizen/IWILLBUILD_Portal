@@ -136,13 +136,26 @@ function CustomLimitsModal({
             <div key={key} className="flex items-center gap-3">
               <Icon size={14} className="text-slate-400 shrink-0" />
               <label className="text-sm font-medium text-slate-700 w-32 shrink-0">{label}</label>
-              <input
-                type="number"
-                min={0}
-                value={limits[key]}
-                onChange={e => setLimits(l => ({ ...l, [key]: Number(e.target.value) }))}
-                className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
+              <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400">
+                <button
+                  type="button"
+                  onClick={() => setLimits(l => ({ ...l, [key]: Math.max(0, l[key] - 1) }))}
+                  className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors text-base font-bold select-none"
+                >−</button>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={limits[key]}
+                  onChange={e => setLimits(l => ({ ...l, [key]: Math.max(0, Math.round(Number(e.target.value))) }))}
+                  className="flex-1 px-2 py-1.5 text-sm text-center border-x border-slate-200 focus:outline-none bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLimits(l => ({ ...l, [key]: l[key] + 1 }))}
+                  className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors text-base font-bold select-none"
+                >+</button>
+              </div>
             </div>
           ))}
 
@@ -150,14 +163,26 @@ function CustomLimitsModal({
           <div className="flex items-center gap-3">
             <HardDrive size={14} className="text-slate-400 shrink-0" />
             <label className="text-sm font-medium text-slate-700 w-32 shrink-0">Storage (GB)</label>
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              value={parseFloat(storageGB)}
-              onChange={e => setLimits(l => ({ ...l, storageBytes: Math.round(Number(e.target.value) * GB) }))}
-              className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-            />
+            <div className="flex-1 flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-400">
+              <button
+                type="button"
+                onClick={() => setLimits(l => ({ ...l, storageBytes: Math.max(0, l.storageBytes - GB) }))}
+                className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors text-base font-bold select-none"
+              >−</button>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={parseFloat(storageGB)}
+                onChange={e => setLimits(l => ({ ...l, storageBytes: Math.max(0, Math.round(Number(e.target.value) * GB)) }))}
+                className="flex-1 px-2 py-1.5 text-sm text-center border-x border-slate-200 focus:outline-none bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => setLimits(l => ({ ...l, storageBytes: l.storageBytes + GB }))}
+                className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors text-base font-bold select-none"
+              >+</button>
+            </div>
           </div>
 
           {error && (

@@ -1,4 +1,4 @@
-// RootLayout v5 — SOS fully removed, portal menus
+// RootLayout v7 — 2026-07-12 force-bust stale cache
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -34,7 +34,6 @@ const PUBLIC_ROUTES = new Set([
 ]);
 
 function isPublicRoute(pathname: string): boolean {
-  // Exact match or prefix match (e.g. /reset-password/token123)
   if (PUBLIC_ROUTES.has(pathname)) return true;
   for (const route of PUBLIC_ROUTES) {
     if (pathname.startsWith(route + '/')) return true;
@@ -47,8 +46,6 @@ function ActivePing() {
   const { user } = useSession();
   const location = useLocation();
   const lastPingRef = useRef<number>(0);
-
-  // Never ping on public auth pages
   const isPublic = isPublicRoute(location.pathname);
 
   const ping = () => {
