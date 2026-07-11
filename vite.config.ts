@@ -26,6 +26,19 @@ function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) 
   }
 }
 
+// ---------------------------------------------------------------------------
+// E2E / local-dev DB stub flag
+// Set by playwright.config.ts webServer.env (PW_E2E=1 / VITE_E2E=1) or by
+// any CI environment. When true, Vite's resolve.alias redirects db/config
+// and db/client to safe no-op stubs so the dev server never tries to read
+// /local/config.json during `npm run test:e2e`.
+// ---------------------------------------------------------------------------
+const isE2ERun =
+  process.env.PW_E2E === "1" ||
+  process.env.VITE_E2E === "1" ||
+  process.env.CI === "1";
+
+// ---------------------------------------------------------------------------
 // Builder-only plugins — null when running locally (safe to skip)
 const sourceMapperPlugin    = tryLoad("./source-mapper/src/index");
 const devToolsPlugin        = tryLoad("./dev-tools/src/vite-plugin",               "devToolsPlugin");
@@ -44,6 +57,46 @@ function extractHostname(value: string): string {
   } catch {
     return value;
   }
+}
+
+// ---------------------------------------------------------------------------
+// E2E DB stub plugin
+// When isE2ERun is true this plugin intercepts any relative import of
+// `./config` or `./config.js` that originates from inside the
+// src/server/db/ directory and redirects it to the db-config stub.
+// This catches the `import { getDatabaseCredentials } from './config.js'`
+// line inside src/server/db/client.ts even when the importer path has
+// already been resolved to an absolute path by Vite's resolver.
+// ---------------------------------------------------------------------------
+function e2eDbStubPlugin(): Plugin {
+  const dbDir = path.resolve(__dirname, "src/server/db");
+  const configStub = path.resolve(__dirname, "src/test/stubs/db-config.stub.ts");
+  const clientStub = path.resolve(__dirname, "src/test/stubs/db-client.stub.ts");
+
+  return {
+    name: "e2e-db-stub",
+    enforce: "pre",
+    resolveId(source: string, importer?: string) {
+      if (!isE2ERun) return null;
+
+      // Redirect any relative ./config import that comes from inside src/server/db/
+      if (
+        importer &&
+        importer.startsWith(dbDir) &&
+        (source === "./config" || source === "./config.js" || source === "./config.ts")
+      ) {
+        return configStub;
+      }
+
+      // Belt-and-braces: catch absolute-path imports of db/client or db/config
+      // that somehow slip past the resolve.alias entries below.
+      const normalized = source.replace(/\\/g, "/");
+      if (/\/src\/server\/db\/client(\.ts|\.js)?$/.test(normalized)) return clientStub;
+      if (/\/src\/server\/db\/config(\.ts|\.js)?$/.test(normalized)) return configStub;
+
+      return null;
+    },
+  };
 }
 
 function apiDevPlugin(): Plugin {
@@ -101,6 +154,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         plugins: sourceMapperPlugin ? [sourceMapperPlugin] : [],
       }
     }),
+    // E2E DB stub plugin — intercepts relative ./config imports inside
+    // src/server/db/ so the dev server never reads /local/config.json
+    // during `npm run test:e2e`. No-op when isE2ERun is false.
+    e2eDbStubPlugin(),
     apiDevPlugin(),
     // Optional builder-only Vite plugins — skipped when null (local dev)
     formatOverridesPlugin  ? (formatOverridesPlugin as (d: string) => Plugin)(__dirname) : null,
@@ -340,6 +397,37 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       { find: '@/api', replacement: path.resolve(__dirname, './src/server/api') },
+      // ── E2E / local-dev DB stubs ──────────────────────────────────────────
+      // When PW_E2E=1 / VITE_E2E=1 / CI=1, redirect db/client and db/config
+      // to safe no-op stubs so the Vite dev server never reads /local/config.json
+      // during `npm run test:e2e`. Aliases are no-ops (undefined) when not in
+      // E2E mode so normal dev/build behaviour is completely unaffected.
+      //
+      // Four alias forms per module to cover all import patterns:
+      //   1. Absolute path regex  — catches resolved absolute paths
+      //   2. @/server/db/...      — catches the @-alias form used in auth.ts etc.
+      //   3. db/client / db/config — catches bare specifier forms
+      //   4. Windows regex [/\\]  — already handled by the regex forms above
+      ...(isE2ERun ? [
+        // db/client
+        {
+          find: /[/\\]src[/\\]server[/\\]db[/\\]client(?:\.ts|\.js)?$/,
+          replacement: path.resolve(__dirname, './src/test/stubs/db-client.stub.ts'),
+        },
+        {
+          find: '@/server/db/client',
+          replacement: path.resolve(__dirname, './src/test/stubs/db-client.stub.ts'),
+        },
+        // db/config
+        {
+          find: /[/\\]src[/\\]server[/\\]db[/\\]config(?:\.ts|\.js)?$/,
+          replacement: path.resolve(__dirname, './src/test/stubs/db-config.stub.ts'),
+        },
+        {
+          find: '@/server/db/config',
+          replacement: path.resolve(__dirname, './src/test/stubs/db-config.stub.ts'),
+        },
+      ] : []),
       { find: '@', replacement: path.resolve(__dirname, './src') },
     ],
   },

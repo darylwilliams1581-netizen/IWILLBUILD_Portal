@@ -68,7 +68,8 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          // npm.cmd is the Windows shim; on Linux/CI use npm directly.
+          // npm.cmd is the Windows shim for npm; on Linux/macOS use npm directly.
+          // The -- separator passes --host and --port directly to Vite.
           command:
             process.platform === "win32"
               ? "npm.cmd run dev -- --host 0.0.0.0 --port 3000"
@@ -79,6 +80,13 @@ export default defineConfig({
           timeout: 120_000,
           stdout: "pipe",
           stderr: "pipe",
+          // Tell Vite to use DB stubs so the dev server never reads
+          // /local/config.json during E2E runs. Both flags are checked in
+          // vite.config.ts (isE2ERun) and trigger the db-stub aliases/plugin.
+          env: {
+            PW_E2E: "1",
+            VITE_E2E: "1",
+          },
         },
       }),
 });
