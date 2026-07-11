@@ -9,7 +9,7 @@ import {
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
-import RootLayout from './layouts/RootLayout';
+import RootLayout from './layouts/RootLayout2';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 // DazzaWidget removed — Dazza AI is accessible via the sidebar nav link
