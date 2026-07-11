@@ -1,4 +1,4 @@
-// RootLayout — SOS/emergency fully removed
+// RootLayout v3 — clean
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';

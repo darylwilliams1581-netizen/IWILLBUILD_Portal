@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { jobs, profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
 export default async function handler(req: Request, res: Response) {
