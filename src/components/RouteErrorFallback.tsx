@@ -12,6 +12,7 @@ import { invalidateMeCache } from '@/lib/usePermissions';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
+import { signOut } from '@/lib/auth/auth-client';
 
 function clearAllCachesAndGoToLogin() {
   try {
@@ -22,6 +23,21 @@ function clearAllCachesAndGoToLogin() {
   } catch {
     // best-effort
   }
+  window.location.replace('/login');
+}
+
+/** Sign out (best-effort) then navigate to /login so the login page
+ *  doesn't immediately bounce back to the broken route. */
+async function signOutAndGoToLogin() {
+  try {
+    invalidateMeCache();
+    invalidateSubscriptionCache();
+    invalidateTerminologyCache();
+    invalidateSupportModeCache();
+  } catch { /* best-effort */ }
+  try {
+    await signOut();
+  } catch { /* best-effort — even if signOut fails, navigate away */ }
   window.location.replace('/login');
 }
 
@@ -64,7 +80,7 @@ export default function RouteErrorFallback() {
           Refresh
         </button>
         <button
-          onClick={() => { window.location.href = '/login'; }}
+          onClick={() => void signOutAndGoToLogin()}
           className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors"
         >
           <LogIn size={14} />
