@@ -83,6 +83,7 @@ export function stripDollars(text: string): string {
   // The 10,000-char cap is the bounding invariant — the regex runs only on this safe slice.
   const safe = text.length > 10_000 ? text.slice(0, 10_000) : text;
   // Bounded quantifier {1,15} prevents catastrophic backtracking on long digit/comma runs.
+  // eslint-disable-next-line security/detect-unsafe-regex -- quantifiers are strictly bounded ({1,15} and {1,2}); no nested unbounded groups; input is capped at 10,000 chars above
   return safe.replace(/\$[\d,]{1,15}(\.\d{1,2})?/g, '[amount hidden]');
 }
 

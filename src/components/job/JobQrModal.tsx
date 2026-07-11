@@ -10,6 +10,8 @@ import {
   X, QrCode, Loader2, AlertCircle, Copy, Printer,
   CheckCircle2, RefreshCw, LogIn, LogOut,
 } from 'lucide-react';
+import { openPrintWindow } from '@/lib/print-html';
+import { escapeHtml, safeUrl } from '@/lib/html-escape';
 
 const ACTOR_TYPES = [
   { value: 'employee',        label: 'Employee' },
@@ -98,32 +100,32 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
   function printQr() {
     if (!qrData?.url) return;
     const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData.url)}`;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>QR Code – ${action === 'signin' ? 'Sign In' : 'Sign Out'} – ${jobName ?? `Job ${jobId}`}</title>
-          <style>
-            body { font-family: sans-serif; text-align: center; padding: 40px; }
-            h1 { font-size: 22px; margin-bottom: 4px; }
-            p  { color: #666; font-size: 14px; margin: 4px 0; }
-            img { margin: 24px auto; display: block; }
-            .exp { font-size: 12px; color: #999; margin-top: 16px; }
-          </style>
-        </head>
-        <body>
-          <h1>${action === 'signin' ? 'Sign In' : 'Sign Out'} QR Code</h1>
-          <p>${jobName ?? `Job ${jobId}`}</p>
-          <p>Scan to ${action === 'signin' ? 'sign in to' : 'sign out of'} this job</p>
-          <img src="${qrImgUrl}" width="300" height="300" alt="QR Code" />
-          <p class="exp">Expires: ${qrData ? new Date(qrData.expiresAt).toLocaleString('en-AU') : ''}</p>
-          <script>window.onload = () => window.print();</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
+    const actionLabel  = action === 'signin' ? 'Sign In' : 'Sign Out';
+    const jobLabel     = escapeHtml(jobName ?? `Job ${jobId}`);
+    const safeQrImg    = safeUrl(qrImgUrl);
+    const expiresLabel = qrData ? escapeHtml(new Date(qrData.expiresAt).toLocaleString('en-AU')) : '';
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <title>QR Code \u2013 ${escapeHtml(actionLabel)} \u2013 ${jobLabel}</title>
+    <style>
+      body { font-family: sans-serif; text-align: center; padding: 40px; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      p  { color: #666; font-size: 14px; margin: 4px 0; }
+      img { margin: 24px auto; display: block; }
+      .exp { font-size: 12px; color: #999; margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(actionLabel)} QR Code</h1>
+    <p>${jobLabel}</p>
+    <p>Scan to ${action === 'signin' ? 'sign in to' : 'sign out of'} this job</p>
+    <img src="${safeQrImg}" width="300" height="300" alt="QR Code" />
+    <p class="exp">Expires: ${expiresLabel}</p>
+    <script>window.onload = () => window.print();<\/script>
+  </body>
+</html>`;
+    openPrintWindow(html);
   }
 
   const qrImgUrl = qrData

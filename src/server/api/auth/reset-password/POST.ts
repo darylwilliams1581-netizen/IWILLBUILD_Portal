@@ -13,7 +13,14 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
-const PASSWORD_RULES = /^(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/;
+// Password validation helpers — split into explicit checks to avoid lookahead
+// patterns that static analysis flags as potentially unsafe regexes.
+const HAS_DIGIT        = /\d/;
+const HAS_SPECIAL_CHAR = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
+
+function isValidPassword(p: string): boolean {
+  return p.length >= 8 && HAS_DIGIT.test(p) && HAS_SPECIAL_CHAR.test(p);
+}
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -28,13 +35,13 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Validate password strength
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-    }
-    if (!/\d/.test(newPassword)) {
-      return res.status(400).json({ error: 'Password must include at least one number.' });
-    }
-    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(newPassword)) {
+    if (!isValidPassword(newPassword)) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+      }
+      if (!HAS_DIGIT.test(newPassword)) {
+        return res.status(400).json({ error: 'Password must include at least one number.' });
+      }
       return res.status(400).json({ error: 'Password must include at least one symbol.' });
     }
 

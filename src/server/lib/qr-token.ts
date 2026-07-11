@@ -21,10 +21,13 @@ function b64url(input: string): string {
 }
 
 function getSecret(): string {
-  const raw =
-    process.env.BETTER_AUTH_SECRET ??
-    process.env.AUTH_SECRET ??
-    'iwb-fallback-dev-secret-change-in-prod';
+  const raw = process.env.BETTER_AUTH_SECRET ?? process.env.AUTH_SECRET;
+  if (!raw) {
+    throw new Error(
+      'QR token signing requires BETTER_AUTH_SECRET or AUTH_SECRET to be set. ' +
+      'Add the secret via the Airo Secrets panel.',
+    );
+  }
   return `qr:${raw}`;
 }
 

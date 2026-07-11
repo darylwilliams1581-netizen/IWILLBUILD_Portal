@@ -131,6 +131,7 @@ export function wall1_companyIsolation(
   companyName: string,
 ): WallResult {
   const crossCompanyPattern =
+    // eslint-disable-next-line security/detect-unsafe-regex -- alternation is bounded: each branch is a fixed keyword phrase; input is a short user chat message (< 2 KB), not attacker-controlled unbounded input
     /another company|other company|different company|competitor|someone else'?s?\s+(quote|job|data|estimate|invoice|fleet|form)/i;
 
   if (crossCompanyPattern.test(question)) {
@@ -591,12 +592,19 @@ export function wall8_learnGate(
  * Annette is analysis-only — it must never execute mutations.
  */
 const ANNETTE_MUTATION_PATTERNS: RegExp[] = [
+  // eslint-disable-next-line security/detect-unsafe-regex -- alternation over fixed keyword lists; input is a short user chat message, not unbounded attacker input
   /fix\s+(?:the|this|all|these)\s+(?:job|invoice|estimate|form|record|entry)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /update\s+(?:the|this|all|these)\s+(?:job|invoice|estimate|form|record)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /delete\s+(?:the|this|all|these)\s+(?:job|invoice|estimate|form|record)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /create\s+(?:a|the|new)\s+(?:job|invoice|estimate|form|record)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /send\s+(?:the|this|an)\s+(?:invoice|email|notification)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /approve\s+(?:the|this|all)\s+(?:estimate|swms|invoice)/i,
+  // eslint-disable-next-line security/detect-unsafe-regex -- same as above
   /sync\s+(?:to|with)\s+(?:xero|myob|accounting)/i,
 ];
 

@@ -68,14 +68,17 @@ export default async function handler(req: Request, res: Response) {
       const data = ${contentJson};
       const blocks = Array.isArray(data.blocks) ? data.blocks : [];
       const el = document.getElementById('doc-content');
+      function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
       if (blocks.length === 0) {
         el.textContent = 'No content blocks found.';
       } else {
+        // eslint-disable-next-line no-unsanitized/property -- block content is escaped via esc() before insertion; raw HTML blocks (richtext/html) are trusted document-builder output stored in the company's own DB record
         el.innerHTML = blocks.map(b => {
-          if (b.type === 'text' || b.type === 'richtext') return '<p>' + (b.content || b.html || '') + '</p>';
-          if (b.type === 'heading') return '<h2>' + (b.text || '') + '</h2>';
+          if (b.type === 'text') return '<p>' + esc(b.content) + '</p>';
+          if (b.type === 'richtext' || b.type === 'html') return '<p>' + esc(b.content || b.html || '') + '</p>';
+          if (b.type === 'heading') return '<h2>' + esc(b.text) + '</h2>';
           if (b.type === 'table') return '<p>[Table block]</p>';
-          return '<p>' + JSON.stringify(b) + '</p>';
+          return '<p>' + esc(JSON.stringify(b)) + '</p>';
         }).join('');
       }
     } catch(e) { document.getElementById('doc-content').textContent = 'Error rendering document.'; }

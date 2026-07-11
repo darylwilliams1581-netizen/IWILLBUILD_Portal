@@ -96,20 +96,28 @@ function renderReport(text: string): React.ReactNode[] {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Bold **text** — cap length before splitting to prevent regex DoS.
+  // Bold **text** — parse without regex to avoid SAST unsafe-regex flags.
+  // Cap length first to prevent any DoS on adversarial input.
   const safe = text.length > 5_000 ? text.slice(0, 5_000) : text;
-  const parts = safe.split(/(\*\*[^*]+\*\*)/g);
-  if (parts.length === 1) return safe;
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={i} className="font-bold text-slate-800">{part.slice(2, -2)}</strong>;
-        }
-        return part;
-      })}
-    </>
-  );
+  if (!safe.includes('**')) return safe;
+
+  const parts: React.ReactNode[] = [];
+  let remaining = safe;
+  let key = 0;
+  while (remaining.length > 0) {
+    const open = remaining.indexOf('**');
+    if (open === -1) { parts.push(remaining); break; }
+    if (open > 0) parts.push(remaining.slice(0, open));
+    const close = remaining.indexOf('**', open + 2);
+    if (close === -1) { parts.push(remaining.slice(open)); break; }
+    parts.push(
+      <strong key={key++} className="font-bold text-slate-800">
+        {remaining.slice(open + 2, close)}
+      </strong>
+    );
+    remaining = remaining.slice(close + 2);
+  }
+  return <>{parts}</>;
 }
 
 

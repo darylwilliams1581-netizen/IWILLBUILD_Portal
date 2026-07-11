@@ -131,6 +131,9 @@ function matchSafe(pattern: RegExp, input: string): RegExpMatchArray | null {
 function tryLocalTool(question: string): string | null {
   // Cap input length before any regex to prevent catastrophic backtracking.
   const q = question.trim().slice(0, 500);
+  /* eslint-disable security/detect-unsafe-regex -- all patterns below are matched against `q`
+     which is hard-capped at 500 characters above. The \s+ inside alternation groups cannot
+     cause catastrophic backtracking on bounded input of this length. */
 
   // ── Simple arithmetic ─────────────────────────────────────────────────────
   const mathMatch = matchSafe(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i, q);
@@ -260,6 +263,7 @@ function tryLocalTool(question: string): string | null {
   }
 
   return null;
+  /* eslint-enable security/detect-unsafe-regex */
 }
 
 // ── Context-aware local handler ───────────────────────────────────────────────

@@ -120,6 +120,9 @@ function safeEval(expr: string): number | null {
 
 function runStatelessTool(question: string, gstRate = 0.1): string | null {
   const q = question.trim().slice(0, 500);
+  /* eslint-disable security/detect-unsafe-regex -- all patterns below are matched against `q`
+     which is hard-capped at 500 characters above. The \s+ inside alternation groups cannot
+     cause catastrophic backtracking on bounded input of this length. */
 
   // Simple arithmetic
   const mathMatch = matchSafe(/^(?:what\s+is\s+|calculate\s+|calc\s+|work\s+out\s+)?([0-9\s+\-*/.()%]+)=?$/i, q);
@@ -229,6 +232,7 @@ function runStatelessTool(question: string, gstRate = 0.1): string | null {
   }
 
   return null;
+  /* eslint-enable security/detect-unsafe-regex */
 }
 
 // ── Public: tryStatelessLocalTool ─────────────────────────────────────────────

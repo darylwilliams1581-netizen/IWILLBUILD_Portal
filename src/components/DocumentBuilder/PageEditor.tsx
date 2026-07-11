@@ -103,6 +103,7 @@ export default function PageEditor({ onChange }: Props) {
   useEffect(() => {
     if (!editorRef.current || isInternal.current) return;
     const html = blocksToHtml(blocks);
+    // eslint-disable-next-line no-unsanitized/property -- html is produced by blocksToHtml (trusted internal serialiser), not raw user input
     editorRef.current.innerHTML = html;
     applyEditorStyles();
     schedulePageCheck();

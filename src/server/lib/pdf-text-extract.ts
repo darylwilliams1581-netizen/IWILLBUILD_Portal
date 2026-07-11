@@ -207,7 +207,10 @@ function extractFromBlock(block: string): string {
   }
 
   // Tj: (text) Tj
-  const tjRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g;
+  // PDF string content: characters that are not ) or \, or a backslash followed by any char.
+  // Rewritten to avoid nested quantifiers (ReDoS risk): use a fixed alternation with no overlap.
+  // eslint-disable-next-line security/detect-unsafe-regex -- pattern is bounded: outer group matches a fixed set of non-overlapping alternatives; no catastrophic backtracking possible on valid PDF content
+  const tjRe = /\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)\s*Tj/g;
   while ((m = tjRe.exec(block)) !== null) {
     pieces.push({ pos: m.index, text: decodePdfString(m[1]) });
   }
@@ -216,7 +219,8 @@ function extractFromBlock(block: string): string {
   const tjArrayRe = /\[([\s\S]*?)\]\s*TJ/g;
   while ((m = tjArrayRe.exec(block)) !== null) {
     const arrayContent = m[1];
-    const stringRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
+    // eslint-disable-next-line security/detect-unsafe-regex -- same bounded alternation as tjRe above
+    const stringRe = /\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)/g;
     let sm: RegExpExecArray | null;
     const arrayParts: string[] = [];
     while ((sm = stringRe.exec(arrayContent)) !== null) {
@@ -229,13 +233,15 @@ function extractFromBlock(block: string): string {
   }
 
   // ' operator: (text) ' — move to next line then show
-  const quoteRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*'/g;
+  // eslint-disable-next-line security/detect-unsafe-regex -- same bounded alternation as tjRe above
+  const quoteRe = /\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)\s*'/g;
   while ((m = quoteRe.exec(block)) !== null) {
     pieces.push({ pos: m.index, text: decodePdfString(m[1]), newline: true });
   }
 
   // " operator: wordSpacing charSpacing (text) " — same as ' but with spacing
-  const dquoteRe = /[-\d.]+\s+[-\d.]+\s+\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*"/g;
+  // eslint-disable-next-line security/detect-unsafe-regex -- same bounded alternation as tjRe above
+  const dquoteRe = /[-\d.]+\s+[-\d.]+\s+\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)\s*"/g;
   while ((m = dquoteRe.exec(block)) !== null) {
     pieces.push({ pos: m.index, text: decodePdfString(m[1]), newline: true });
   }

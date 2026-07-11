@@ -112,6 +112,7 @@ export default function RichTextBlockView({ block, columnsBlockId, columnId }: P
   useEffect(() => {
     if (ref.current && mode === 'edit') {
       if (ref.current.innerHTML !== block.html) {
+        // eslint-disable-next-line no-unsanitized/property -- value is passed through sanitiseHtml before assignment
         ref.current.innerHTML = sanitiseHtml(block.html);
       }
     }
