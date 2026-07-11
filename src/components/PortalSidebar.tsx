@@ -26,6 +26,7 @@ import {
   UserCircle,
   MoreHorizontal,
   Siren,
+  Smartphone,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -59,6 +60,7 @@ function useSubscriptionStatus() {
 function buildNavItems(_workPlural: string) {
   return [
     { label: 'Dashboard',            icon: LayoutDashboard, href: '/dashboard',            permKey: null },
+    { label: 'Driver App',           icon: Smartphone,      href: '/driver',               permKey: 'fleet' },
     { label: 'Scheduler',            icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Fleet Manager',        icon: Truck,           href: '/fleet',                permKey: 'fleet' },
     { label: 'Asset Manager',        icon: Building2,       href: '/studio/asset-manager', permKey: null },

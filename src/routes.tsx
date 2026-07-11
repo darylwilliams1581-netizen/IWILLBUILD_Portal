@@ -60,6 +60,7 @@ const AssetManagerDetailPage = lazy(() => import('./pages/asset-manager-detail')
 const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
+const DriverPage              = lazy(() => import('./pages/driver'));
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -139,6 +140,7 @@ export const routes: RouteObject[] = [
   { path: '/reset-password',  element: <ResetPasswordPage /> },
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
+  { path: '/driver',         element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>, errorElement: routeError },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },
