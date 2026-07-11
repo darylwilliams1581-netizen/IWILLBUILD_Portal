@@ -1591,32 +1591,39 @@ if (!process.env.VITEST) {
 }
 
 // ── DB connection keep-alive ──────────────────────────────────────────────────
-// MySQL managed instances (PlanetScale, RDS, etc.) close idle connections after
-// wait_timeout (often 60–300 s on shared tiers). mysql2 pools don't detect a
-// server-side close until the next query, which surfaces as ER_CLIENT_INTERACTION_TIMEOUT.
+// MySQL managed instances close idle connections after wait_timeout (often 60–300 s
+// on shared tiers). mysql2 pools don't detect a server-side close until the next
+// query, which surfaces as ER_CLIENT_INTERACTION_TIMEOUT.
+//
 // Strategy:
-//   1. Immediate warm-up ping on startup so the pool is fresh before the first request.
-//   2. Ping every 30 s to keep all pooled connections alive.
-async function warmUpDbPool() {
+//   1. Immediate warm-up: acquire POOL_SIZE connections simultaneously on startup
+//      so every slot is fresh before the first real request.
+//   2. Ping every 20 s — well under the typical 60 s wait_timeout — cycling
+//      through POOL_SIZE concurrent pings so every connection in the pool stays
+//      alive, not just one.
+const KEEPALIVE_POOL_SIZE = 5; // match or exceed the pool's connectionLimit
+const KEEPALIVE_INTERVAL_MS = 20_000;
+
+async function pingAllPoolConnections(label: string) {
   try {
     const { testConnection } = await import('./db/client.js');
-    await testConnection();
-    console.log('[db-keepalive] pool warmed up');
+    // Fire KEEPALIVE_POOL_SIZE concurrent pings so the pool allocates multiple
+    // connections and keeps them all warm.
+    const results = await Promise.allSettled(
+      Array.from({ length: KEEPALIVE_POOL_SIZE }, () => testConnection())
+    );
+    const ok = results.filter((r) => r.status === 'fulfilled' && r.value).length;
+    if (label === 'startup') {
+      console.log(`[db-keepalive] pool warmed up (${ok}/${KEEPALIVE_POOL_SIZE} connections ok)`);
+    }
   } catch (e) {
-    console.warn('[db-keepalive] warm-up ping failed (will retry on interval):', String(e).slice(0, 120));
+    console.warn(`[db-keepalive] ${label} ping failed:`, String(e).slice(0, 120));
   }
 }
 
 if (!process.env.VITEST) {
-  void warmUpDbPool();
-  setInterval(async () => {
-    try {
-      const { testConnection } = await import('./db/client.js');
-      await testConnection();
-    } catch {
-      // Non-fatal — the pool will reconnect on the next real query.
-    }
-  }, 30_000);
+  void pingAllPoolConnections('startup');
+  setInterval(() => void pingAllPoolConnections('interval'), KEEPALIVE_INTERVAL_MS);
 }
 
 // ── Startup checks ────────────────────────────────────────────────────────────
