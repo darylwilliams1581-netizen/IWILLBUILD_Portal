@@ -45,10 +45,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/portal/dashboard", changefreq: "never", priority: 0.2 },
   { path: "/portal/payment-success", changefreq: "never", priority: 0.1 },
   { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
-  { path: "/projects", changefreq: "monthly", priority: 0.8 },
-  { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },
-  { path: "/subscription", changefreq: "monthly", priority: 0.8 },
-  { path: "/tools", changefreq: "monthly", priority: 0.8 },
+  // /projects, /stakeholders, /subscription, /tools are redirect aliases — excluded from sitemap
   { path: "/jobs", changefreq: "monthly", priority: 0.8 },
   { path: "/scheduler", changefreq: "monthly", priority: 0.7 },
   { path: "/fleet", changefreq: "monthly", priority: 0.8 },
@@ -61,19 +58,16 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/invoices", changefreq: "monthly", priority: 0.8 },
   { path: "/studio", changefreq: "monthly", priority: 0.7 },
   { path: "/plan-manager", changefreq: "monthly", priority: 0.7 },
-  { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.6 },
   { path: "/signin-history", changefreq: "monthly", priority: 0.6 },
-  { path: "/studio/jobs", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/estimates", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/fleet", changefreq: "monthly", priority: 0.5 },
-  { path: "/studio/accounts", changefreq: "monthly", priority: 0.5 },
+  // /studio/jobs, /studio/estimates, /studio/fleet, /studio/accounts are redirect aliases — excluded from sitemap
   { path: "/dazza-ai", changefreq: "monthly", priority: 0.6 },
   { path: "/annette", changefreq: "monthly", priority: 0.5 },
   { path: "/team", changefreq: "monthly", priority: 0.7 },
-  { path: "/team/schedule", changefreq: "monthly", priority: 0.5 },
+  { path: "/team/schedule", changefreq: "monthly", priority: 0.6 }, // maps to team-schedule.tsx
   { path: "/settings", changefreq: "monthly", priority: 0.6 },
   { path: "/owner-console", changefreq: "monthly", priority: 0.5 },
-  { path: "/developer-console", changefreq: "monthly", priority: 0.8 },
+  // /developer-console is a redirect alias to /owner-console — excluded from sitemap
   { path: "/roadmap", changefreq: "monthly", priority: 0.4 },
   { path: "/billing", changefreq: "monthly", priority: 0.6 },
 ];
