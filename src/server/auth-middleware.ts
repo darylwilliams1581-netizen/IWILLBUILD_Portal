@@ -68,23 +68,54 @@ export async function authHandler(req: Request, res: Response) {
 
   // Helper: run the BetterAuth handler with one automatic retry on MySQL
   // idle-connection errors (ER_CLIENT_INTERACTION_TIMEOUT / ER_QUERY_INTERRUPTED).
-  // The pool hands out a dead connection on the first attempt; the retry gets a
-  // fresh one. This is safe because sign-in is idempotent from the client's POV.
+  //
+  // Two failure modes:
+  //   1. BetterAuth throws  — caught in the catch block below.
+  //   2. BetterAuth catches the DB error internally and returns a 500 web
+  //      response — we detect that by inspecting the response status and body.
+  //
+  // Both are retried once. The retry is safe: get-session is read-only, and
+  // sign-in is idempotent from the client's POV.
+  const DB_ERROR_STRINGS = [
+    'ER_CLIENT_INTERACTION_TIMEOUT',
+    'ER_QUERY_INTERRUPTED',
+    'packets out of order',
+    'inactivity',
+    'ECONNRESET',
+    'PROTOCOL_CONNECTION_LOST',
+  ];
+
+  function isDbConnectionMsg(msg: string): boolean {
+    return DB_ERROR_STRINGS.some((s) => msg.includes(s));
+  }
+
   async function runAuthHandler(retries = 1): Promise<Response> {
     try {
       const auth = getAuth();
-      return await auth.handler(toWebRequest(req));
+      const webResponse = await auth.handler(toWebRequest(req));
+
+      // BetterAuth sometimes swallows the MySQL error and returns a 500.
+      // Detect that by peeking at the response body on 500s for get-session.
+      if (webResponse.status === 500 && retries > 0) {
+        try {
+          const clone = webResponse.clone();
+          const text = await clone.text().catch(() => '');
+          if (isDbConnectionMsg(text) || text === '' || text === 'null') {
+            console.warn('[auth-middleware] BetterAuth returned 500 (likely DB connection), retrying once…');
+            await new Promise<void>((r) => setTimeout(r, 250));
+            return runAuthHandler(retries - 1);
+          }
+        } catch {
+          // Can't read body — fall through and return the 500 as-is
+        }
+      }
+
+      return webResponse;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isConnectionError =
-        msg.includes('ER_CLIENT_INTERACTION_TIMEOUT') ||
-        msg.includes('ER_QUERY_INTERRUPTED') ||
-        msg.includes('packets out of order') ||
-        msg.includes('inactivity');
-      if (isConnectionError && retries > 0) {
+      if (isDbConnectionMsg(msg) && retries > 0) {
         console.warn('[auth-middleware] DB connection error on auth handler, retrying once…');
-        // Brief pause to let the pool establish a fresh connection
-        await new Promise<void>((r) => setTimeout(r, 200));
+        await new Promise<void>((r) => setTimeout(r, 250));
         return runAuthHandler(retries - 1);
       }
       throw err;

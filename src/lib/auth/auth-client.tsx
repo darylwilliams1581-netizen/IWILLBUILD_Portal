@@ -77,6 +77,11 @@ function recoverFromStaleSession(): void {
  * blank. Recover on an explicit error, or when the session never settles within
  * the pending timeout. A healthy session resets the guard so a later genuine
  * failure can recover again in the same tab.
+ *
+ * NOTE: We intentionally ignore transient server errors (5xx, network blips)
+ * so a momentary DB hiccup doesn't wipe a valid session cookie. Recovery only
+ * fires for errors that look like a stale/invalid token (4xx or unknown auth
+ * errors), not for server-side failures.
  */
 function useStaleSessionRecovery(error: unknown, isPending: boolean, isAuthenticated: boolean): void {
   useEffect(
@@ -84,7 +89,25 @@ function useStaleSessionRecovery(error: unknown, isPending: boolean, isAuthentic
       if (typeof window === 'undefined') return;
 
       if (error) {
-        authLog('session.error', { errorMsg: String((error as Error)?.message ?? error).slice(0, 120) });
+        const msg = String((error as Error)?.message ?? error).toLowerCase();
+        // Skip recovery for transient server/network errors — these don't mean
+        // the cookie is stale, just that the server had a momentary DB issue.
+        const isTransient =
+          msg.includes('500') ||
+          msg.includes('503') ||
+          msg.includes('network') ||
+          msg.includes('fetch') ||
+          msg.includes('failed to fetch') ||
+          msg.includes('connection') ||
+          msg.includes('timeout') ||
+          msg.includes('inactivity');
+
+        if (isTransient) {
+          authLog('session.error.transient', { errorMsg: msg.slice(0, 120) });
+          return; // Don't wipe the cookie for a server-side blip
+        }
+
+        authLog('session.error', { errorMsg: msg.slice(0, 120) });
         recoverFromStaleSession();
         return;
       }
@@ -116,15 +139,35 @@ export const { signIn, signUp, signOut } = _authClient;
  */
 export function useSession() {
   const { data: session, isPending, error } = _authClient.useSession();
-  const isAuthenticated = !isPending && !!session?.user;
 
-  useStaleSessionRecovery(error, isPending, isAuthenticated);
+  // Treat transient server/network errors as still-pending rather than
+  // unauthenticated. A MySQL idle-timeout on the server returns a 500 which
+  // BetterAuth surfaces as an error object — we don't want that to flash the
+  // login redirect or trigger stale-session recovery.
+  const isTransientError = (() => {
+    if (!error) return false;
+    const msg = String((error as Error)?.message ?? error).toLowerCase();
+    return (
+      msg.includes('500') ||
+      msg.includes('503') ||
+      msg.includes('network') ||
+      msg.includes('failed to fetch') ||
+      msg.includes('connection') ||
+      msg.includes('timeout') ||
+      msg.includes('inactivity')
+    );
+  })();
+
+  const effectiveError = isTransientError ? null : error;
+  const isAuthenticated = !isPending && !isTransientError && !!session?.user;
+
+  useStaleSessionRecovery(effectiveError, isPending || isTransientError, isAuthenticated);
 
   return {
     session,
     user: session?.user ?? null,
-    isPending,
-    error,
+    isPending: isPending || isTransientError,
+    error: effectiveError,
     isAuthenticated,
   };
 }
