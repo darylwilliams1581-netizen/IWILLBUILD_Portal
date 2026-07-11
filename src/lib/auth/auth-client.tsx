@@ -46,9 +46,11 @@ const _authClient = createAuthClient({
 });
 
 // How long an unsettled session may stay pending before we treat it as a stuck
-// stale-cookie state and attempt recovery. Generous enough to clear a slow but
-// healthy first load; short enough that a blank preview self-heals quickly.
-const SESSION_RECOVERY_PENDING_TIMEOUT_MS = 8000;
+// stale-cookie state and attempt recovery. Set very high — the pending timeout
+// recovery is a last resort for a truly frozen session, not a slow network.
+// In practice, an explicit `error` from useSession() triggers recovery immediately;
+// the timeout is only a safety net for a session that never resolves at all.
+const SESSION_RECOVERY_PENDING_TIMEOUT_MS = 60_000;
 
 /**
  * Clear the stale HttpOnly session cookie server-side, then reload into a clean
@@ -145,8 +147,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 // Alias for SessionProvider (common naming convention in auth libraries)
 export const AuthProvider = SessionProvider;
 
-// Session timeout for loading state (30 seconds)
-const SESSION_TIMEOUT_MS = 30000;
+// Session timeout for loading state — generous to avoid false "timed out" screens
+// in the preview iframe where the first session fetch can be slow.
+const SESSION_TIMEOUT_MS = 90_000;
 
 // ProtectedRoute component with timeout handling
 export function ProtectedRoute({ children }: { children: ReactNode }) {

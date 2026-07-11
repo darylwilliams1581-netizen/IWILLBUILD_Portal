@@ -63,7 +63,7 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, isPending } = useSession();
 
   // ── All hooks must be declared before any conditional return ──────────────
 
@@ -119,7 +119,12 @@ export default function LoginPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  // Don't render the form while redirecting
+  // Don't render the form while session is loading or while redirecting
+  if (isPending) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>
+  );
   if (isAuthenticated) return null;
 
   /** Returns true if an error message is about email verification */
