@@ -404,7 +404,7 @@ export default function FleetPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
             <Suspense fallback={

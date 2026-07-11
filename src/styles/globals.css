@@ -137,6 +137,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;            /* prevent flex children from overflowing */
+  min-height: 0;           /* allow flex children to shrink below content size */
 }
 
 /* On mobile, reserve space at the bottom for the fixed tab bar (~56px bar + safe area).

@@ -162,11 +162,12 @@ function DriverCard({
 
 export default function FleetLiveMap() {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapWrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletMapRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<Map<number, any>>(new Map());
-  const hasFitRef = useRef(false); // only auto-fit on first load
+  const hasFitRef = useRef(false);
 
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +175,25 @@ export default function FleetLiveMap() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [mapReady, setMapReady] = useState(false);
+  const [mapHeight, setMapHeight] = useState(400); // explicit px height for Leaflet
+
+  // ── Track wrapper height so Leaflet always has a real pixel size ──────────
+  useEffect(() => {
+    const el = mapWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? 0;
+      if (h > 0) {
+        setMapHeight(h);
+        leafletMapRef.current?.invalidateSize();
+      }
+    });
+    ro.observe(el);
+    // Set initial height immediately
+    const h = el.getBoundingClientRect().height;
+    if (h > 0) setMapHeight(h);
+    return () => ro.disconnect();
+  }, []);
 
   // ── Fetch live sessions ─────────────────────────────────────────────────────
   const fetchSessions = useCallback(async (silent = false) => {
@@ -425,7 +445,7 @@ export default function FleetLiveMap() {
   const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0" style={{ height: '100%' }}>
       {/* Header bar */}
       <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
         <div className="flex items-center gap-2">
@@ -468,7 +488,7 @@ export default function FleetLiveMap() {
       </div>
 
       {/* Body: sidebar + map */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0" style={{ minHeight: 0 }}>
         {/* Driver sidebar */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-200 bg-white">
@@ -518,12 +538,15 @@ export default function FleetLiveMap() {
         </div>
 
         {/* Map area */}
-        <div className="flex-1 relative min-w-0 overflow-hidden">
-          {/* Leaflet map container — must be absolute inset-0 */}
-          <div ref={mapRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
+        <div ref={mapWrapRef} className="flex-1 relative min-w-0 min-h-0" style={{ minHeight: 0 }}>
+          {/* Leaflet map container — explicit pixel height so Leaflet can measure it */}
+          <div
+            ref={mapRef}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${mapHeight}px`, zIndex: 0 }}
+          />
 
           {/* Custom zoom controls — top-right */}
-          <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
+          <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1" style={{ zIndex: 1000 }}>
             <button
               onClick={handleZoomIn}
               title="Zoom in"
