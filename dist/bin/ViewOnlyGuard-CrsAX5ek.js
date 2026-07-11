@@ -1,0 +1,1 @@
+import{createRequire as i}from"module";import{J as t}from"../server.bundle.mjs";const n=i(import.meta.url);function u(){const{isViewOnly:e,isLoading:r}=t();return{isViewOnly:e,isLoading:r}}export{u};

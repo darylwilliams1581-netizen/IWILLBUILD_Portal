@@ -115,7 +115,15 @@ export default function DashboardPage() {
         // Never show usage warnings to owner/enterprise/developer plans — they have no meaningful limits
         const unlimitedPlans = ['owner', 'enterprise', 'developer'];
         if (d && (d.hasWarnings || d.hasBlocked) && !unlimitedPlans.includes(d.plan)) {
-          setUsageWarning({ hasWarnings: d.hasWarnings, hasBlocked: d.hasBlocked, warnings: d.warnings ?? [] });
+          // Suppress the banner when the only warning is the users limit — a single-user
+          // account is always at 1/1 and the alert is permanent noise with no action to take.
+          const warnings: string[] = d.warnings ?? [];
+          const onlyUsersLimit = warnings.length > 0 && warnings.every((w: string) =>
+            /user/i.test(w)
+          );
+          if (!onlyUsersLimit) {
+            setUsageWarning({ hasWarnings: d.hasWarnings, hasBlocked: d.hasBlocked, warnings });
+          }
         }
       })
       .catch(() => {});
