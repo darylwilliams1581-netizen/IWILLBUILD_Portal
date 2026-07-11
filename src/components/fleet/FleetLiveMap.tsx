@@ -170,10 +170,27 @@ export default function FleetLiveMap() {
       }).addTo(map);
 
       leafletMapRef.current = map;
+
+      // Invalidate size after a short delay to handle CSS-not-yet-loaded race
+      setTimeout(() => map.invalidateSize(), 200);
+
+      // Watch for container resize (sidebar open/close, window resize)
+      if (mapRef.current && typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => map.invalidateSize());
+        ro.observe(mapRef.current);
+        // Store on the element so we can disconnect on cleanup
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mapRef.current as any).__ro = ro;
+      }
+
       setMapReady(true);
     }).catch(console.error);
 
     return () => {
+      if (mapRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mapRef.current as any).__ro?.disconnect();
+      }
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
@@ -285,17 +302,40 @@ export default function FleetLiveMap() {
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Load Leaflet CSS
+  // Load Leaflet CSS — inject before map init and invalidate size once loaded
   useEffect(() => {
     const id = 'leaflet-css';
-    if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id = id;
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+    const existing = document.getElementById(id) as HTMLLinkElement | null;
+    if (existing) {
+      // Already loaded — just invalidate size in case map mounted before CSS
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+      return;
     }
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.onload = () => {
+      // CSS is now applied — tell Leaflet to re-measure the container
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+    };
+    document.head.appendChild(link);
   }, []);
+
+  // Also invalidate size whenever mapReady flips true (handles race between
+  // CSS load and map init order)
+  useEffect(() => {
+    if (!mapReady || !leafletMapRef.current) return;
+    // Small delay lets the browser finish layout before Leaflet measures
+    const t = setTimeout(() => {
+      leafletMapRef.current?.invalidateSize();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [mapReady]);
 
   const withGps = sessions.filter(s => s.lat != null && s.lng != null);
   const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
