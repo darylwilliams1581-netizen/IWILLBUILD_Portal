@@ -1,4 +1,4 @@
-// RootLayout v3 — clean
+// RootLayout v5 — SOS fully removed, portal menus
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
