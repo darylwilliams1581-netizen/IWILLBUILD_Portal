@@ -136,5 +136,57 @@
       "/airo-assets/uploads/reference-studio-issue-2-df4e960d.jpg": "f38wenbvln_1783598576208_file_crKH52b-qZ.jpg"
     },
     "uploadContentHash": "03180ac07cd2395a04c8bfc24be275bd66e3e2c8352a8ef4850061463c56a1a8"
+  },
+  "debug/login-screenshot-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-login-screenshot-1-6e6bcc93.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-11T01:54:21.633Z",
+    "lastUpdated": "2026-07-11T01:54:21.633Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-login-screenshot-1-6e6bcc93.jpg": "f38wenbvln_1783713273946_file_8RcvyLGRI8.jpg"
+    },
+    "uploadContentHash": "e9ff672fe540491af2dc6ae1d90237b79a206f10d881a5c0e423f34bf9ecc71e"
+  },
+  "debug/login-error-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-login-error-1-6e6bcc93.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-11T01:54:30.712Z",
+    "lastUpdated": "2026-07-11T01:54:30.712Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-login-error-1-6e6bcc93.jpg": "f38wenbvln_1783713273946_file_8RcvyLGRI8.jpg"
+    },
+    "uploadContentHash": "e9ff672fe540491af2dc6ae1d90237b79a206f10d881a5c0e423f34bf9ecc71e"
+  },
+  "debug/login-error-2": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-login-error-2-49dc48b2.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-11T01:54:31.720Z",
+    "lastUpdated": "2026-07-11T01:54:31.720Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-login-error-2-49dc48b2.jpg": "f38wenbvln_1783713382703_file_odUyOmAqmK.jpg"
+    },
+    "uploadContentHash": "3da0d951adab273ce3a8ca96aab4b99c529e6d389b967ab53f2b0b9751039e19"
+  },
+  "debug/login-error-3": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-login-error-3-74667bd4.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-11T01:54:32.499Z",
+    "lastUpdated": "2026-07-11T01:54:32.499Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-login-error-3-74667bd4.jpg": "f38wenbvln_1783715735909_file_VEB4hNGgRo.jpg"
+    },
+    "uploadContentHash": "1c8e6e03f32203ad5a3bcbcc9938d36d9c4908d754f79213d6a783f58ac62231"
   }
 }

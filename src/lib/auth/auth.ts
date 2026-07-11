@@ -137,8 +137,15 @@ export function getAuth() {
     // In preview mode the site runs in an iframe embedded by the builder on a different
     // origin, so cookies need SameSite=None + Secure + Partitioned (CHIPS) for cross-site
     // access. In publish mode (standalone) we use the safer SameSite=Lax default.
+    //
+    // disableCSRFCheck is also set in preview mode because sandboxed iframes send
+    // Origin: null (or omit the header entirely), which BetterAuth's CSRF guard
+    // rejects with MISSING_OR_NULL_ORIGIN before the trustedOrigins function runs.
+    // The preview environment is already sandboxed by the builder iframe, so CSRF
+    // protection is not needed there.
     ...(process.env.AIRO_PREVIEW === 'true' && {
       advanced: {
+        disableCSRFCheck: true,
         defaultCookieAttributes: {
           sameSite: 'none' as const,
           secure: true,
