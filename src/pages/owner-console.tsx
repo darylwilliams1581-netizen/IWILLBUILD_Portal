@@ -8,10 +8,9 @@ import {
   ShieldAlert, X, Bot, Package,
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle, BookMarked,
-  Play, Info, Clock, Copy, Check,
+  Play, Info, Clock, Copy, Check, Plus,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSupportMode } from '@/lib/useSupportMode';
 import OverviewTab from '@/components/owner-console/OverviewTab';
@@ -607,8 +606,6 @@ export default function OwnerConsolePage() {
     <div className="flex h-full bg-[#F4F5F7] overflow-hidden">
       <PortalSidebar />
 
-      <PortalErrorBoundary inline>
-      <>
       <div className="flex-1 flex flex-col overflow-hidden">
         <Helmet>
           <title>Developer Console — IWILLBUILD Portal</title>
@@ -1211,9 +1208,6 @@ export default function OwnerConsolePage() {
           {actionToast}
         </div>
       )}
-      </div>
-      </>
-      </PortalErrorBoundary>
     </div>
   );
 }
