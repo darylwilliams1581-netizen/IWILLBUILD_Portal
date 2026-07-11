@@ -69,12 +69,12 @@ export default function JobsPage() {
     navigate(`/jobs/${job.id}`);
   }
 
-  /** Open a path in a new tab on plain left-click; let browser handle everything else. */
-  function openInNewTab(path: string, e: React.MouseEvent) {
-    // Middle-click, ctrl/cmd/shift/alt-click → let browser do its thing natively
+  /** Navigate to job on plain left-click; open new tab on ctrl/cmd/middle-click. */
+  function handleJobClick(path: string, e: React.MouseEvent) {
+    // Middle-click or modifier key → let browser open new tab natively
     if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    window.open(path, '_blank', 'noopener,noreferrer');
+    navigate(path);
   }
 
   const filtered = jobs.filter((j) => {
@@ -274,7 +274,7 @@ export default function JobsPage() {
                       href={`/jobs/${job.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => openInNewTab(`/jobs/${job.id}`, e)}
+                      onClick={(e) => handleJobClick(`/jobs/${job.id}`, e)}
                       className="block bg-white border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all duration-150 group"
                       style={{ WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
                     >
