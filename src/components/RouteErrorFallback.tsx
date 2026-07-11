@@ -45,14 +45,20 @@ export default function RouteErrorFallback() {
   const error = useRouteError();
 
   let message = 'An unexpected error occurred on this page.';
+  let stack = '';
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) message = 'This page could not be found.';
     else if (error.status === 403) message = "You don't have permission to view this page.";
     else message = `Server error ${error.status}: ${error.statusText}`;
   } else if (error instanceof Error) {
-    // React #310 and similar hook-order errors land here
     message = error.message;
+    stack = error.stack ?? '';
+  } else if (error) {
+    message = String(error);
   }
+
+  // Always log to console so it appears in preview logs
+  console.error('[RouteErrorFallback]', message, stack || error);
 
   // Detect if this looks like a session/auth error
   const isAuthError =
@@ -107,17 +113,16 @@ export default function RouteErrorFallback() {
         </button>
       )}
 
-      {/* Dev-only detail */}
-      {import.meta.env.DEV && (
-        <details className="mt-8 max-w-lg text-left">
-          <summary className="text-slate-400 text-xs cursor-pointer hover:text-slate-600">
-            Error detail (dev only)
-          </summary>
-          <pre className="mt-2 text-red-500 text-xs bg-red-50 border border-red-100 rounded-lg p-3 overflow-auto max-h-40 whitespace-pre-wrap">
-            {message}
-          </pre>
-        </details>
-      )}
+      {/* Error detail — always visible so the error can be diagnosed */}
+      <details className="mt-8 max-w-lg w-full text-left" open>
+        <summary className="text-slate-400 text-xs cursor-pointer hover:text-slate-600">
+          Error detail
+        </summary>
+        <pre className="mt-2 text-red-500 text-xs bg-red-50 border border-red-100 rounded-lg p-3 overflow-auto max-h-60 whitespace-pre-wrap">
+          {message}
+          {stack ? `\n\n${stack}` : ''}
+        </pre>
+      </details>
     </div>
   );
 }
