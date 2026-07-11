@@ -1590,6 +1590,22 @@ if (!process.env.VITEST) {
   );
 }
 
+// ── DB connection keep-alive ──────────────────────────────────────────────────
+// MySQL managed instances (PlanetScale, RDS, etc.) close idle connections after
+// wait_timeout (often 60–300 s on shared tiers). mysql2 pools don't detect a
+// server-side close until the next query, which surfaces as ER_CLIENT_INTERACTION_TIMEOUT.
+// Pinging every 30 s keeps every pooled connection alive without hammering the DB.
+if (!process.env.VITEST) {
+  setInterval(async () => {
+    try {
+      const { testConnection } = await import('./db/client.js');
+      await testConnection();
+    } catch {
+      // Non-fatal — the pool will reconnect on the next real query.
+    }
+  }, 30_000);
+}
+
 // ── Startup checks ────────────────────────────────────────────────────────────
 const openAiKey = getSecret('OPENAI_API_KEY');
 if (!openAiKey || openAiKey.trim().length === 0) {
