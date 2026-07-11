@@ -10,16 +10,22 @@ import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FilePanel from '@/components/FilePanel';
 import JobContextTab from '@/components/JobContextTab';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
+import { Skeleton } from '@/components/ui/skeleton';
+import PageError from '@/components/ui/PageError';
 
 export default function FilesPage() {
   const [files, setFiles] = useState<CompanyFile[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
+    setLoadError(false);
     try {
       const data = await fetchFiles();
       setFiles(data);
-    } catch { /* FilePanel shows its own error */ }
+    } catch {
+      setLoadError(true);
+    }
     setLoaded(true);
   }, []);
 
@@ -74,8 +80,25 @@ export default function FilesPage() {
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Loading skeleton for stats */}
+          {!loaded && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
+                  <Skeleton className="h-3 w-20 rounded" />
+                  <Skeleton className="h-7 w-12 rounded" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {loaded && loadError && (
+            <PageError message="Could not load files. Please try again." onRetry={load} />
+          )}
+
           {/* Stats row */}
-          {loaded && files.length > 0 && (
+          {loaded && !loadError && files.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-white rounded-xl border border-slate-200 p-4">
                 <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Total Files</p>

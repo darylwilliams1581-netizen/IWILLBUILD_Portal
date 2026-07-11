@@ -499,8 +499,16 @@ export default function DashboardPage() {
               </div>
 
               {!jobsLoaded ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="divide-y divide-border">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-40 bg-slate-100 rounded animate-pulse" />
+                        <div className="h-3 w-24 bg-slate-100 rounded animate-pulse" />
+                      </div>
+                      <div className="h-3 w-16 bg-slate-100 rounded animate-pulse shrink-0" />
+                    </div>
+                  ))}
                 </div>
               ) : recentJobs.length === 0 ? (
                 /* Empty state */

@@ -3,7 +3,7 @@ import { asset_manager } from 'virtual:content';
  * /studio/asset-manager — Asset Manager module
  * Tabs: Assets | Inspections | Defects | Tenders/Quotes | Monitoring | Induction & Completion Docs | Shared Reports
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Building2, ClipboardCheck, AlertTriangle, FileText,
@@ -19,6 +19,24 @@ import AMMonitoringTab from '@/components/AssetManager/AMMonitoringTab';
 import AMCloseoutTab from '@/components/AssetManager/AMCloseoutTab';
 import AMSharedReportsTab from '@/components/AssetManager/AMSharedReportsTab';
 import AssetDetailPanel from '@/components/AssetManager/AssetDetailPanel';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function TabFallback() {
+  return (
+    <div className="p-6 space-y-3 animate-pulse">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-48 rounded" />
+            <Skeleton className="h-3 w-32 rounded" />
+          </div>
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type Tab = 'assets' | 'inspections' | 'defects' | 'tenders' | 'monitoring' | 'closeout' | 'shared';
 
@@ -132,13 +150,15 @@ export default function AssetManagerPage() {
 
             {/* Tab content */}
             <div className="flex-1 overflow-y-auto">
-              {tab === 'assets'      && <AMAssetsTab onSelectAsset={setSelectedAssetId} />}
-              {tab === 'inspections' && <AMInspectionsTab />}
-              {tab === 'defects'     && <AMDefectsTab />}
-              {tab === 'tenders'     && <AMTendersTab />}
-              {tab === 'monitoring'  && <AMMonitoringTab />}
-              {tab === 'closeout'    && <AMCloseoutTab />}
-              {tab === 'shared'      && <AMSharedReportsTab />}
+              <Suspense fallback={<TabFallback />}>
+                {tab === 'assets'      && <AMAssetsTab onSelectAsset={setSelectedAssetId} />}
+                {tab === 'inspections' && <AMInspectionsTab />}
+                {tab === 'defects'     && <AMDefectsTab />}
+                {tab === 'tenders'     && <AMTendersTab />}
+                {tab === 'monitoring'  && <AMMonitoringTab />}
+                {tab === 'closeout'    && <AMCloseoutTab />}
+                {tab === 'shared'      && <AMSharedReportsTab />}
+              </Suspense>
             </div>
           </>
         )}

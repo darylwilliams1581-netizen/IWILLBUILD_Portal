@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -33,6 +33,7 @@ import MyAccountTab from '@/components/settings/MyAccountTab';
 import CompanyTab from '@/components/settings/CompanyTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 import InstallAppTab from '@/components/settings/InstallAppTab';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -61,8 +62,25 @@ interface Company {
   industry: string | null;
 }
 
-const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
-const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
+/** Fallback shown while a settings sub-tab is loading */
+function TabSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <Skeleton className="h-5 w-40 rounded" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3 w-24 rounded" />
+              <Skeleton className="h-9 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-9 w-28 rounded-lg" />
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
@@ -150,21 +168,21 @@ export default function SettingsPage() {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              {activeTab === 'account'    && <MyAccountTab />}
-              {activeTab === 'security'   && <SecurityTab />}
-              {activeTab === 'company'    && <CompanyTab />}
-              {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
-              {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
-              {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
-              {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
-              {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
-              {activeTab === 'notifications' && <NotificationsTab />}
-              {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
-              {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
-              {activeTab === 'data' && (
-                <DataBackupTab isAdmin={isAdmin} />
-              )}
-              {activeTab === 'install' && <InstallAppTab />}
+              <Suspense fallback={<TabSkeleton />}>
+                {activeTab === 'account'    && <MyAccountTab />}
+                {activeTab === 'security'   && <SecurityTab />}
+                {activeTab === 'company'    && <CompanyTab />}
+                {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
+                {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
+                {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
+                {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}
+                {activeTab === 'banner'     && <DashboardBannerTab isAdmin={isAdmin} />}
+                {activeTab === 'notifications' && <NotificationsTab />}
+                {activeTab === 'integrations' && <IntegrationsTab isOwner={isOwner} />}
+                {activeTab === 'fleet'        && <FleetAnalyticsTab isAdmin={isAdmin} />}
+                {activeTab === 'data' && <DataBackupTab isAdmin={isAdmin} />}
+                {activeTab === 'install' && <InstallAppTab />}
+              </Suspense>
             </div>
 
           </div>

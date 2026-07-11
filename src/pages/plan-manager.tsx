@@ -5,13 +5,14 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Map, Archive, Layers, Menu } from 'lucide-react';
+import { Map, Archive, Layers, Menu, AlertTriangle, RefreshCw } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobContextTab from '@/components/JobContextTab';
 import PlanManagerList from '@/components/PlanManager/PlanManagerList';
 import DrawingViewer from '@/components/PlanManager/DrawingViewer';
 import { usePlanManager } from '@/components/PlanManager/usePlanManager';
 import type { Drawing } from '@/components/PlanManager/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Tab = 'active' | 'archived';
 
@@ -28,11 +29,13 @@ export default function PlanManagerPage() {
   const [jobs, setJobs] = useState<JobGroup[]>([]);
   const [unassigned, setUnassigned] = useState<Drawing[]>([]);
   const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState(false);
   const hook = usePlanManager();
   const { state, loadDrawing, closeDrawing, createShareToken } = hook;
 
   const loadAll = useCallback(async (t: Tab) => {
     setListLoading(true);
+    setListError(false);
     try {
       const res = await fetch(`/api/plan-manager/jobs-with-drawings?status=${t}`, { credentials: 'include' });
       const data = await res.json() as { jobs?: JobGroup[]; unassigned?: Drawing[]; error?: string };
@@ -42,6 +45,7 @@ export default function PlanManagerPage() {
     } catch {
       setJobs([]);
       setUnassigned([]);
+      setListError(true);
     } finally {
       setListLoading(false);
     }
@@ -141,7 +145,34 @@ export default function PlanManagerPage() {
             </div>
           </div>
 
-          {/* List */}
+          {/* List / loading / error */}
+          {listLoading ? (
+            <div className="flex-1 overflow-auto p-4 md:p-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48 rounded" />
+                    <Skeleton className="h-3 w-32 rounded" />
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : listError ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+                <AlertTriangle size={24} className="text-red-500" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Failed to load drawings</p>
+              <button
+                onClick={() => void loadAll(tab)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
+              >
+                <RefreshCw size={13} /> Try again
+              </button>
+            </div>
+          ) : (
           <PlanManagerList
             jobs={jobs}
             unassigned={unassigned}
@@ -154,6 +185,7 @@ export default function PlanManagerPage() {
             onReorder={handleReorder}
             onCreateShareToken={createShareToken}
           />
+          )}
         </div>
       </div>
 
