@@ -2,14 +2,14 @@
  * FleetLiveMap — Live GPS tracking map for all active driving sessions.
  *
  * Uses Leaflet (OpenStreetMap tiles — no API key required).
- * Auto-refreshes every 15 seconds.
- * Shows a pin per active driver with a popup: name, vehicle, speed, last seen.
+ * Auto-refreshes every 5 seconds.
+ * Shows a styled pin per active driver with popup: name, vehicle, speed, last seen.
  * Admins/owners/managers only (API enforces this too).
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Loader2, MapPin, RefreshCw, AlertCircle, Navigation,
-  Truck, Clock, Gauge, Users,
+  Truck, Clock, Gauge, Users, ZoomIn, ZoomOut, Crosshair,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -47,6 +47,59 @@ function formatLastSeen(iso: string | null): string {
   const m = Math.floor(ms / 60_000);
   if (m < 60) return `${m}m ago`;
   return `${Math.floor(m / 60)}h ago`;
+}
+
+/** Build the HTML for a driver map pin */
+function buildPinHtml(driverName: string, selected: boolean): string {
+  const initials = driverName
+    .split(' ')
+    .map(w => w[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const bg = selected ? '#ea580c' : '#f97316';
+  const ring = selected ? '#fff7ed' : '#fff';
+  const shadow = selected
+    ? '0 4px 16px rgba(249,115,22,0.55)'
+    : '0 2px 10px rgba(0,0,0,0.28)';
+
+  return `
+    <div style="position:relative;width:40px;height:48px;">
+      <!-- Pulse ring (always shown for active drivers) -->
+      <div style="
+        position:absolute;top:50%;left:50%;
+        transform:translate(-50%,-60%);
+        width:52px;height:52px;border-radius:50%;
+        background:${bg};opacity:0.18;
+        animation:fleet-pulse 2s ease-out infinite;
+        pointer-events:none;
+      "></div>
+      <!-- Pin body -->
+      <div style="
+        position:absolute;top:0;left:50%;transform:translateX(-50%);
+        width:36px;height:36px;border-radius:50% 50% 50% 0;
+        background:${bg};
+        border:3px solid ${ring};
+        box-shadow:${shadow};
+        transform:translateX(-50%) rotate(-45deg);
+        display:flex;align-items:center;justify-content:center;
+      ">
+        <span style="
+          transform:rotate(45deg);
+          color:#fff;font-size:11px;font-weight:800;
+          font-family:system-ui,sans-serif;letter-spacing:-0.5px;
+          line-height:1;
+        ">${initials}</span>
+      </div>
+      <!-- Pin tip shadow -->
+      <div style="
+        position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+        width:8px;height:4px;border-radius:50%;
+        background:rgba(0,0,0,0.18);
+      "></div>
+    </div>
+  `;
 }
 
 // ── Driver sidebar card ───────────────────────────────────────────────────────
@@ -113,6 +166,7 @@ export default function FleetLiveMap() {
   const leafletMapRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<Map<number, any>>(new Map());
+  const hasFitRef = useRef(false); // only auto-fit on first load
 
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,11 +195,44 @@ export default function FleetLiveMap() {
     }
   }, []);
 
+  // ── Inject pulse keyframe CSS once ─────────────────────────────────────────
+  useEffect(() => {
+    const id = 'fleet-pulse-style';
+    if (document.getElementById(id)) return;
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+      @keyframes fleet-pulse {
+        0%   { transform: translate(-50%, -60%) scale(0.6); opacity: 0.22; }
+        70%  { transform: translate(-50%, -60%) scale(1.6); opacity: 0; }
+        100% { transform: translate(-50%, -60%) scale(1.6); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
+  // ── Load Leaflet CSS before map init ───────────────────────────────────────
+  useEffect(() => {
+    const id = 'leaflet-css';
+    const existing = document.getElementById(id) as HTMLLinkElement | null;
+    if (existing) {
+      if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+      return;
+    }
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.onload = () => {
+      if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+    };
+    document.head.appendChild(link);
+  }, []);
+
   // ── Init Leaflet map ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    // Dynamically import Leaflet (browser-only)
     import('leaflet').then((L) => {
       if (!mapRef.current || leafletMapRef.current) return;
 
@@ -160,8 +247,9 @@ export default function FleetLiveMap() {
 
       const map = L.map(mapRef.current, {
         center: [-27.4698, 153.0251], // Brisbane default
-        zoom: 10,
-        zoomControl: true,
+        zoom: 11,
+        zoomControl: false, // we render our own zoom controls
+        attributionControl: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -171,14 +259,15 @@ export default function FleetLiveMap() {
 
       leafletMapRef.current = map;
 
-      // Invalidate size after a short delay to handle CSS-not-yet-loaded race
+      // Multiple invalidateSize calls to handle CSS race
+      setTimeout(() => map.invalidateSize(), 50);
       setTimeout(() => map.invalidateSize(), 200);
+      setTimeout(() => map.invalidateSize(), 600);
 
-      // Watch for container resize (sidebar open/close, window resize)
+      // Watch for container resize
       if (mapRef.current && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => map.invalidateSize());
         ro.observe(mapRef.current);
-        // Store on the element so we can disconnect on cleanup
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (mapRef.current as any).__ro = ro;
       }
@@ -197,6 +286,13 @@ export default function FleetLiveMap() {
       }
     };
   }, []);
+
+  // ── Invalidate size when map becomes ready ─────────────────────────────────
+  useEffect(() => {
+    if (!mapReady || !leafletMapRef.current) return;
+    const t = setTimeout(() => leafletMapRef.current?.invalidateSize(), 100);
+    return () => clearTimeout(t);
+  }, [mapReady]);
 
   // ── Update markers when sessions change ─────────────────────────────────────
   useEffect(() => {
@@ -224,39 +320,43 @@ export default function FleetLiveMap() {
         const lng = Number(session.lng);
         if (isNaN(lat) || isNaN(lng)) return;
 
-        // Custom orange icon for active drivers
+        const isSelected = selectedId === session.session_id;
+
         const icon = L.divIcon({
           className: '',
-          html: `
-            <div style="
-              width:32px;height:32px;border-radius:50% 50% 50% 0;
-              background:#f97316;border:3px solid #fff;
-              box-shadow:0 2px 8px rgba(0,0,0,0.3);
-              transform:rotate(-45deg);
-              display:flex;align-items:center;justify-content:center;
-            ">
-              <div style="transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700;">
-                🚛
-              </div>
-            </div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
-          popupAnchor: [0, -36],
+          html: buildPinHtml(session.driver_name, isSelected),
+          iconSize: [40, 48],
+          iconAnchor: [20, 48],
+          popupAnchor: [0, -52],
         });
 
         const popupHtml = `
-          <div style="font-family:system-ui,sans-serif;min-width:180px;">
-            <div style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:4px;">
-              ${session.driver_name}
+          <div style="font-family:system-ui,sans-serif;min-width:190px;padding:2px 0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="
+                width:32px;height:32px;border-radius:50%;
+                background:#f97316;display:flex;align-items:center;justify-content:center;
+                color:#fff;font-size:12px;font-weight:800;flex-shrink:0;
+              ">${session.driver_name.split(' ').map((w: string) => w[0] ?? '').slice(0,2).join('').toUpperCase()}</div>
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#1e293b;line-height:1.2;">${session.driver_name}</div>
+                <div style="font-size:11px;color:#64748b;">${session.asset_name}${session.rego ? ` · ${session.rego}` : ''}</div>
+              </div>
             </div>
-            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">
-              ${session.asset_name}${session.rego ? ` · ${session.rego}` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:6px;border-top:1px solid #f1f5f9;">
+              ${session.speed_kmh != null ? `
+                <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
+                  <div style="font-size:16px;font-weight:800;color:#f97316;">${Math.round(Number(session.speed_kmh))}</div>
+                  <div style="font-size:10px;color:#94a3b8;font-weight:600;">km/h</div>
+                </div>
+              ` : ''}
+              <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
+                <div style="font-size:14px;font-weight:800;color:#1e293b;">${formatDuration(session.start_at)}</div>
+                <div style="font-size:10px;color:#94a3b8;font-weight:600;">driving</div>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:3px;">
-              ${session.speed_kmh != null ? `<div style="font-size:11px;color:#475569;">🚀 <b>${Math.round(Number(session.speed_kmh))} km/h</b></div>` : ''}
-              <div style="font-size:11px;color:#475569;">⏱ Driving ${formatDuration(session.start_at)}</div>
-              <div style="font-size:11px;color:#94a3b8;">📍 ${formatLastSeen(session.last_seen_at)}</div>
+            <div style="margin-top:6px;font-size:10px;color:#94a3b8;text-align:center;">
+              GPS updated ${formatLastSeen(session.last_seen_at)}
             </div>
           </div>
         `;
@@ -264,25 +364,29 @@ export default function FleetLiveMap() {
         const existing = markersRef.current.get(session.session_id);
         if (existing) {
           existing.setLatLng([lat, lng]);
+          existing.setIcon(icon);
           existing.setPopupContent(popupHtml);
         } else {
           const marker = L.marker([lat, lng], { icon })
             .addTo(map)
-            .bindPopup(popupHtml);
+            .bindPopup(popupHtml, { maxWidth: 220 });
           markersRef.current.set(session.session_id, marker);
         }
       });
 
-      // Auto-fit bounds if we have GPS points
-      const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
-      if (gpsPoints.length > 0) {
-        const bounds = L.latLngBounds(
-          gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
-        );
-        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+      // Auto-fit bounds only on first load with GPS data
+      if (!hasFitRef.current) {
+        const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
+        if (gpsPoints.length > 0) {
+          const bounds = L.latLngBounds(
+            gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
+          );
+          map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 });
+          hasFitRef.current = true;
+        }
       }
     }).catch(console.error);
-  }, [sessions, mapReady]);
+  }, [sessions, mapReady, selectedId]);
 
   // ── Pan to selected driver ──────────────────────────────────────────────────
   useEffect(() => {
@@ -290,52 +394,32 @@ export default function FleetLiveMap() {
     const session = sessions.find(s => s.session_id === selectedId);
     if (!session || session.lat == null || session.lng == null) return;
 
-    leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 15, { animate: true });
+    leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 16, { animate: true });
     const marker = markersRef.current.get(selectedId);
     if (marker) marker.openPopup();
   }, [selectedId, sessions]);
 
-  // ── Initial load + auto-refresh every 15s ──────────────────────────────────
+  // ── Initial load + auto-refresh every 5s ───────────────────────────────────
   useEffect(() => {
     void fetchSessions();
-    const interval = setInterval(() => void fetchSessions(true), 15_000);
+    const interval = setInterval(() => void fetchSessions(true), 5_000);
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Load Leaflet CSS — inject before map init and invalidate size once loaded
-  useEffect(() => {
-    const id = 'leaflet-css';
-    const existing = document.getElementById(id) as HTMLLinkElement | null;
-    if (existing) {
-      // Already loaded — just invalidate size in case map mounted before CSS
-      if (leafletMapRef.current) {
-        leafletMapRef.current.invalidateSize();
-      }
-      return;
-    }
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    link.onload = () => {
-      // CSS is now applied — tell Leaflet to re-measure the container
-      if (leafletMapRef.current) {
-        leafletMapRef.current.invalidateSize();
-      }
-    };
-    document.head.appendChild(link);
-  }, []);
-
-  // Also invalidate size whenever mapReady flips true (handles race between
-  // CSS load and map init order)
-  useEffect(() => {
-    if (!mapReady || !leafletMapRef.current) return;
-    // Small delay lets the browser finish layout before Leaflet measures
-    const t = setTimeout(() => {
-      leafletMapRef.current?.invalidateSize();
-    }, 100);
-    return () => clearTimeout(t);
-  }, [mapReady]);
+  // ── Zoom control handlers ───────────────────────────────────────────────────
+  function handleZoomIn() { leafletMapRef.current?.zoomIn(); }
+  function handleZoomOut() { leafletMapRef.current?.zoomOut(); }
+  function handleFitAll() {
+    if (!leafletMapRef.current) return;
+    import('leaflet').then((L) => {
+      const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
+      if (gpsPoints.length === 0) return;
+      const bounds = L.latLngBounds(
+        gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
+      );
+      leafletMapRef.current?.fitBounds(bounds, { padding: [80, 80], maxZoom: 15, animate: true });
+    }).catch(console.error);
+  }
 
   const withGps = sessions.filter(s => s.lat != null && s.lng != null);
   const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
@@ -351,7 +435,7 @@ export default function FleetLiveMap() {
           <div>
             <p className="text-sm font-bold text-slate-800">Live GPS Tracking</p>
             <p className="text-[11px] text-slate-400 hidden sm:block">
-              {sessions.length} active driver{sessions.length !== 1 ? 's' : ''} · refreshes every 15s
+              {sessions.length} active driver{sessions.length !== 1 ? 's' : ''} · refreshes every 5s
             </p>
           </div>
         </div>
@@ -385,7 +469,7 @@ export default function FleetLiveMap() {
 
       {/* Body: sidebar + map */}
       <div className="flex flex-1 min-h-0">
-        {/* Driver sidebar — hidden on very small phones, shown from sm: */}
+        {/* Driver sidebar */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-200 bg-white">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -433,26 +517,52 @@ export default function FleetLiveMap() {
           </div>
         </div>
 
-        {/* Map */}
-        <div className="flex-1 relative min-w-0">
-          {/* Map container */}
-          <div ref={mapRef} className="absolute inset-0" />
+        {/* Map area */}
+        <div className="flex-1 relative min-w-0 overflow-hidden">
+          {/* Leaflet map container — must be absolute inset-0 */}
+          <div ref={mapRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
-          {/* No GPS overlay — shown when drivers exist but none have GPS */}
+          {/* Custom zoom controls — top-right */}
+          <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1">
+            <button
+              onClick={handleZoomIn}
+              title="Zoom in"
+              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors"
+            >
+              <ZoomIn size={15} className="text-slate-600" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              title="Zoom out"
+              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors"
+            >
+              <ZoomOut size={15} className="text-slate-600" />
+            </button>
+            {withGps.length > 0 && (
+              <button
+                onClick={handleFitAll}
+                title="Fit all drivers"
+                className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors mt-1"
+              >
+                <Crosshair size={14} className="text-orange-500" />
+              </button>
+            )}
+          </div>
+
+          {/* No GPS overlay */}
           {!loading && sessions.length > 0 && withGps.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
               <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
                 <AlertCircle size={28} className="text-amber-400 mx-auto mb-2" />
                 <p className="text-sm font-bold text-slate-700">Waiting for GPS</p>
                 <p className="text-xs text-slate-500 mt-1 mb-3">
                   {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active but
-                  {sessions.length !== 1 ? ' haven\'t' : ' hasn\'t'} sent a GPS point yet.
+                  {sessions.length !== 1 ? " haven't" : " hasn't"} sent a GPS point yet.
                 </p>
                 <ul className="text-left text-xs text-slate-500 space-y-1 border-t border-slate-100 pt-3">
                   <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Driver must have the portal open in their browser</li>
                   <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Browser must grant location permission when prompted</li>
                   <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>First GPS fix can take up to 30s outdoors</li>
-                  <li className="flex items-start gap-1.5"><span className="text-amber-400 shrink-0 mt-0.5">•</span>Map updates automatically — no refresh needed</li>
                 </ul>
               </div>
             </div>
@@ -460,7 +570,7 @@ export default function FleetLiveMap() {
 
           {/* Empty state overlay */}
           {!loading && sessions.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[500]">
               <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl px-8 py-6 shadow-lg text-center max-w-sm">
                 <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                   <Navigation size={24} className="text-slate-400" />
