@@ -1,4 +1,4 @@
-// RootLayout v9 — 2026-07-12
+// RootLayout v11 — 2026-07-12
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';

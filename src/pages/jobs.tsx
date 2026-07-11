@@ -15,6 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import PortalSidebar from '@/components/PortalSidebar';
+import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
@@ -123,6 +124,7 @@ export default function JobsPage() {
       <PortalSidebar />
       <NewJobModal open={showNewJob} onClose={() => setShowNewJob(false)} onCreated={handleCreated} />
 
+      <PortalErrorBoundary inline>
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
@@ -328,6 +330,7 @@ export default function JobsPage() {
           )}
         </div>
       </div>
+      </PortalErrorBoundary>
     </div>
   );
 }

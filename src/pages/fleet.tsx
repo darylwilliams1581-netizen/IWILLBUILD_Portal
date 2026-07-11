@@ -18,6 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
+import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import {
   fetchFleet,
   createAsset,
@@ -338,6 +339,7 @@ export default function FleetPage() {
 
       <PortalSidebar />
 
+      <PortalErrorBoundary inline>
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-2">
@@ -595,6 +597,7 @@ export default function FleetPage() {
           )}
         </div>
       </div>
+      </PortalErrorBoundary>
 
       {/* New Asset Modal */}
       <AnimatePresence>
