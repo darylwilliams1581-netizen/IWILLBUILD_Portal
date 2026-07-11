@@ -1,74 +1,82 @@
 // PPE Requirements Banner — compact single-row strip for SWMS print output.
-// Shows the PPE icon set in a horizontal banner, not the full poster.
+// Light background with orange accent label and bordered icon cells — print-friendly.
 
 const PPE_ITEMS = [
   { icon: '🪖', label: 'SAFETY\nHELMET' },
   { icon: '👟', label: 'SAFETY\nFOOTWEAR' },
   { icon: '🥽', label: 'EYE\nPROTECTION' },
   { icon: '🧤', label: 'GLOVES' },
-  { icon: '⚡', label: 'ELEC.\nGLOVES' },
   { icon: '🎧', label: 'HEARING\nPROTECTION' },
   { icon: '🦺', label: 'HI-VIS\nCLOTHING' },
   { icon: '😷', label: 'RESPIRATORY\nPROTECTION' },
   { icon: '🪢', label: 'FALL ARREST\nHARNESS' },
+  { icon: '⚡', label: 'ELEC.\nGLOVES' },
 ];
 
 export default function PPEBanner() {
   return (
     <div style={{
       fontFamily: 'Arial, sans-serif',
-      background: '#111',
-      color: '#fff',
-      width: '100%',
-      borderRadius: 5,
+      background: '#fff',
+      border: '2px solid #f97316',
+      borderRadius: 6,
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'stretch',
     }}>
-      {/* Left label */}
+      {/* Left label — orange only, no black */}
       <div style={{
-        background: '#dc2626',
+        background: '#f97316',
         padding: '8px 12px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 64,
+        minWidth: 60,
         flexShrink: 0,
       }}>
-        <div style={{ fontSize: 20 }}>🦺</div>
-        <div style={{ fontSize: 7, fontWeight: 900, color: '#fff', textAlign: 'center', letterSpacing: 0.5, marginTop: 4, lineHeight: 1.3 }}>PPE{'\n'}REQUIRED</div>
+        <div style={{ fontSize: 18 }}>🦺</div>
+        <div style={{
+          fontSize: 7,
+          fontWeight: 900,
+          color: '#fff',
+          textAlign: 'center',
+          letterSpacing: 0.5,
+          marginTop: 4,
+          lineHeight: 1.3,
+          whiteSpace: 'pre-line',
+        }}>{'PPE\nREQUIRED'}</div>
       </div>
 
-      {/* Icon strip */}
+      {/* Icon strip — white background */}
       <div style={{
         flex: 1,
-        background: '#1f2937',
+        background: '#fff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
-        padding: '8px 12px',
-        gap: 6,
+        padding: '8px 10px',
+        gap: 4,
       }}>
         {PPE_ITEMS.map((item, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
             <div style={{
-              width: 36,
-              height: 36,
-              background: '#111',
-              border: '1.5px solid #dc2626',
+              width: 34,
+              height: 34,
+              background: '#fff9f5',
+              border: '1.5px solid #f97316',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 16,
+              fontSize: 15,
             }}>
               {item.icon}
             </div>
             <div style={{
               fontSize: 6,
               fontWeight: 700,
-              color: '#dc2626',
+              color: '#c2410c',
               textAlign: 'center',
               lineHeight: 1.2,
               whiteSpace: 'pre-line',
@@ -77,28 +85,6 @@ export default function PPEBanner() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Right tagline */}
-      <div style={{
-        background: '#374151',
-        padding: '8px 12px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 72,
-        flexShrink: 0,
-      }}>
-        <div style={{
-          fontSize: 7,
-          fontWeight: 700,
-          color: '#9ca3af',
-          textAlign: 'center',
-          lineHeight: 1.6,
-          letterSpacing: 0.3,
-        }}>
-          Think Safe{'\n'}Work Safe{'\n'}Go Home Safe
-        </div>
       </div>
     </div>
   );

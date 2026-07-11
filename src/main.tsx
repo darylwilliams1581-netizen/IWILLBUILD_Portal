@@ -1,4 +1,4 @@
-// cache-bust 2026-07-12d
+// cache-bust 2026-07-12g
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';

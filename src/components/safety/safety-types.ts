@@ -16,6 +16,8 @@ export interface SwmsTemplate {
   revision_number: string;
   review_date: string | null;
   status: string;
+  author_name: string | null;
+  approved_by_name: string | null;
   created_at: string;
 }
 
@@ -109,6 +111,8 @@ export interface SwmsPrintData {
   revision_number?: string;
   review_date?: string | null;
   status?: string;
+  author_name?: string | null;
+  approved_by_name?: string | null;
   hazards?: string | null;
   risks?: string | null;
   controls?: string | null;

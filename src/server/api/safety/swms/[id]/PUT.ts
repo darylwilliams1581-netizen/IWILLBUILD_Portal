@@ -29,6 +29,7 @@ export default async function handler(req: Request, res: Response) {
       environmentalControls, signOffRequirements,
       permitsApprovals, monitoringReview, notes,
       revisionNumber, reviewDate, status,
+      authorName, approvedByName,
     } = b;
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
@@ -60,7 +61,9 @@ export default async function handler(req: Request, res: Response) {
         notes = ${notes ?? null},
         revision_number = ${revisionNumber ?? '1'},
         review_date = ${reviewDate ?? null},
-        status = ${status ?? 'draft'}
+        status = ${status ?? 'draft'},
+        author_name = ${authorName ?? null},
+        approved_by_name = ${approvedByName ?? null}
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 

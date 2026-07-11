@@ -79,6 +79,8 @@ export default async function handler(_req: Request, res: Response) {
     ['monitoring_review',     'TEXT NULL'],
     ['notes',                 'TEXT NULL'],
     ['source_file_id',        'INT NULL'],
+    ['author_name',           'VARCHAR(255) NULL'],
+    ['approved_by_name',      'VARCHAR(255) NULL'],
   ];
   for (const [col, def] of swmsNewCols) {
     await run(`swms_templates.${col}`, `ALTER TABLE swms_templates ADD COLUMN ${col} ${def}`);

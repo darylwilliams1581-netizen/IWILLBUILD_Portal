@@ -15,6 +15,8 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
     title: initial?.title ?? '',
     workActivity: initial?.work_activity ?? '',
+    authorName: initial?.author_name ?? '',
+    approvedByName: initial?.approved_by_name ?? '',
     hazards: initial?.hazards ?? '',
     risks: initial?.risks ?? '',
     controls: initial?.controls ?? '',
@@ -92,7 +94,15 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
                 </div>
                 <div className="sm:col-span-3">
                   <label className={labelCls}>Work Activity</label>
-                  <input value={form.workActivity} onChange={(e) => set('workActivity', e.target.value)} className={inputCls} placeholder="Describe the specific work activity covered by this SWMS" />
+                  <textarea value={form.workActivity} onChange={(e) => set('workActivity', e.target.value)} rows={3} className={textareaCls} placeholder="Describe the specific work activity covered by this SWMS" />
+                </div>
+                <div>
+                  <label className={labelCls}>Author</label>
+                  <input value={form.authorName} onChange={(e) => set('authorName', e.target.value)} className={inputCls} placeholder="Full name" />
+                </div>
+                <div>
+                  <label className={labelCls}>Approved By</label>
+                  <input value={form.approvedByName} onChange={(e) => set('approvedByName', e.target.value)} className={inputCls} placeholder="Full name" />
                 </div>
                 <div>
                   <label className={labelCls}>Revision No.</label>
