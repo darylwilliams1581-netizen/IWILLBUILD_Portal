@@ -11,6 +11,7 @@
  */
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { RefreshCw, LogIn } from 'lucide-react';
+import { signOut } from '@/lib/auth/auth-client';
 
 interface Props {
   children: ReactNode;
@@ -44,7 +45,11 @@ export default class PortalErrorBoundary extends Component<Props, State> {
   };
 
   handleGoToLogin = () => {
-    window.location.href = '/login';
+    // Sign out first so the login page doesn't immediately bounce back to the
+    // broken route (which would create an infinite error loop).
+    void signOut().catch(() => undefined).finally(() => {
+      window.location.replace('/login');
+    });
   };
 
   render() {

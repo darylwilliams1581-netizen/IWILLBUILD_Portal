@@ -91,10 +91,21 @@ export default function LoginPage() {
     if (isAuthenticated) {
       const params = new URLSearchParams(location.search);
       const fromParam = params.get('from');
-      const from =
+      const rawFrom =
         (location.state as { from?: { pathname: string } })?.from?.pathname ||
         (fromParam ? decodeURIComponent(fromParam) : null) ||
         '/dashboard';
+
+      // Never redirect back to the login page itself (loop guard), and never
+      // redirect back to a public/auth page — always land on the dashboard in
+      // those cases. Also guard against redirecting to an error state by only
+      // accepting internal app paths that start with '/'.
+      const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+      const isSafe =
+        rawFrom.startsWith('/') &&
+        !SAFE_BLOCKLIST.some((blocked) => rawFrom.startsWith(blocked));
+
+      const from = isSafe ? rawFrom : '/dashboard';
       authLog('already_authenticated', { redirectTo: from });
       navigate(from, { replace: true });
     }
@@ -210,10 +221,12 @@ export default function LoginPage() {
       // React Router location state (set by ProtectedRoute soft redirect).
       const params = new URLSearchParams(location.search);
       const fromParam = params.get('from');
-      const from =
+      const rawFrom =
         (location.state as { from?: { pathname: string } })?.from?.pathname ||
         (fromParam ? decodeURIComponent(fromParam) : null) ||
         '/dashboard';
+      const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/dashboard';
       authLog('redirect', { to: from });
       navigate(from, { replace: true });
     } catch (err) {
@@ -276,8 +289,10 @@ export default function LoginPage() {
       });
       const d = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code. Please try again.'); return; }
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      const SAFE_BLOCKLIST_2FA = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+      const from2fa = rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some((b) => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/dashboard';
+      navigate(from2fa, { replace: true });
     } catch { setError('Something went wrong. Please try again.'); }
     finally { setTfaLoading(false); }
   }
@@ -296,8 +311,10 @@ export default function LoginPage() {
         <ForcedPasswordChangeModal
           onSuccess={() => {
             setMustChangePassword(false);
-            const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-            navigate(from, { replace: true });
+            const rawFromPwChange = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+            const SAFE_BLOCKLIST_PW = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+            const fromPwChange = rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some((b) => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/dashboard';
+            navigate(fromPwChange, { replace: true });
           }}
         />
       )}
