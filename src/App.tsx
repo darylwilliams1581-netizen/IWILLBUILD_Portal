@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'; // v7 cache-bust 2026-07-12g
+import { lazy, Suspense } from 'react'; // v8 cache-bust 2026-07-12h
 import {
   Outlet,
   RouterProvider,
@@ -9,7 +9,7 @@ import {
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
-import RootLayout from './layouts/RootLayout2';
+import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 // DazzaWidget removed — Dazza AI is accessible via the sidebar nav link

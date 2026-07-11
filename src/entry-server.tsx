@@ -11,7 +11,7 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 
-import RootLayout from './layouts/RootLayout2';
+import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 

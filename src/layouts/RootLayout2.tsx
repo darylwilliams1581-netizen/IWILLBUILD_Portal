@@ -1,4 +1,4 @@
-// RootLayout v19 — cache-bust 2026-07-12g
+// RootLayout v20 — fresh module 2026-07-12h — no SOSAlertPopup
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';

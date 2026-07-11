@@ -34,7 +34,7 @@ import{createRequire as o}from"module";import{d as U}from"../server.bundle.mjs";
       updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_company (company_id)
     )
-  `);const r=[["category","VARCHAR(100) NULL"],["purpose_scope","TEXT NULL"],["critical_risks","TEXT NULL"],["mandatory_controls","TEXT NULL"],["hazard_identification","TEXT NULL"],["high_risk_work","TEXT NULL"],["ppe_requirements","TEXT NULL"],["risk_rating","TEXT NULL"],["sequence_controls","TEXT NULL"],["permits_approvals","TEXT NULL"],["monitoring_review","TEXT NULL"],["notes","TEXT NULL"],["source_file_id","INT NULL"]];for(const[T,e]of r)await L(`swms_templates.${T}`,`ALTER TABLE swms_templates ADD COLUMN ${T} ${e}`);await L("safety_plans",`
+  `);const r=[["category","VARCHAR(100) NULL"],["purpose_scope","TEXT NULL"],["critical_risks","TEXT NULL"],["mandatory_controls","TEXT NULL"],["hazard_identification","TEXT NULL"],["high_risk_work","TEXT NULL"],["ppe_requirements","TEXT NULL"],["risk_rating","TEXT NULL"],["sequence_controls","TEXT NULL"],["permits_approvals","TEXT NULL"],["monitoring_review","TEXT NULL"],["notes","TEXT NULL"],["source_file_id","INT NULL"],["author_name","VARCHAR(255) NULL"],["approved_by_name","VARCHAR(255) NULL"]];for(const[T,e]of r)await L(`swms_templates.${T}`,`ALTER TABLE swms_templates ADD COLUMN ${T} ${e}`);await L("safety_plans",`
     CREATE TABLE IF NOT EXISTS safety_plans (
       id                        INT AUTO_INCREMENT PRIMARY KEY,
       company_id                INT NOT NULL,

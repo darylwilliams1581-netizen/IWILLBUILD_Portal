@@ -1,4 +1,4 @@
-// RootLayout v19 — cache-bust 2026-07-12g
+// RootLayout — IWILLBUILD Portal — no SOSAlertPopup — rewritten 2026-07-12
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -9,19 +9,10 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { Toaster } from '@/components/ui/sonner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
-/**
- * Root layout for IWILLBUILD Portal — fullscreen dashboard app.
- * No shared header/footer; each page manages its own layout.
- */
 interface RootLayoutProps {
   children: ReactElement;
 }
 
-/**
- * Public auth routes that must never trigger portal API calls.
- * These pages render without a session and must not mount any
- * component that fetches /api/me, /api/subscription/status, etc.
- */
 const PUBLIC_ROUTES = new Set([
   '/',
   '/login',
@@ -41,7 +32,6 @@ function isPublicRoute(pathname: string): boolean {
   return false;
 }
 
-/** Sends a lightweight ping to update last_active_at. Fires on mount and every 2 minutes. */
 function ActivePing() {
   const { user } = useSession();
   const location = useLocation();
@@ -58,20 +48,19 @@ function ActivePing() {
 
   useEffect(() => {
     ping();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, user?.id]);
 
   useEffect(() => {
     if (!user || isPublic) return;
     const interval = setInterval(ping, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isPublic]);
 
   return null;
 }
 
-/** Portal-only banners — only mounted when the user is on a protected route. */
 function PortalBanners() {
   const location = useLocation();
   if (isPublicRoute(location.pathname)) return null;
@@ -88,7 +77,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
-        <meta name="description" content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
+        <meta
+          name="description"
+          content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
+        />
       </Helmet>
       <OfflineBanner />
       <PortalBanners />
