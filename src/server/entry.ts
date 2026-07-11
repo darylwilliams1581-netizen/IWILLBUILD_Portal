@@ -1594,8 +1594,21 @@ if (!process.env.VITEST) {
 // MySQL managed instances (PlanetScale, RDS, etc.) close idle connections after
 // wait_timeout (often 60–300 s on shared tiers). mysql2 pools don't detect a
 // server-side close until the next query, which surfaces as ER_CLIENT_INTERACTION_TIMEOUT.
-// Pinging every 30 s keeps every pooled connection alive without hammering the DB.
+// Strategy:
+//   1. Immediate warm-up ping on startup so the pool is fresh before the first request.
+//   2. Ping every 30 s to keep all pooled connections alive.
+async function warmUpDbPool() {
+  try {
+    const { testConnection } = await import('./db/client.js');
+    await testConnection();
+    console.log('[db-keepalive] pool warmed up');
+  } catch (e) {
+    console.warn('[db-keepalive] warm-up ping failed (will retry on interval):', String(e).slice(0, 120));
+  }
+}
+
 if (!process.env.VITEST) {
+  void warmUpDbPool();
   setInterval(async () => {
     try {
       const { testConnection } = await import('./db/client.js');

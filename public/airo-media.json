@@ -188,5 +188,18 @@
       "/airo-assets/uploads/debug-login-error-3-74667bd4.jpg": "f38wenbvln_1783715735909_file_VEB4hNGgRo.jpg"
     },
     "uploadContentHash": "1c8e6e03f32203ad5a3bcbcc9938d36d9c4908d754f79213d6a783f58ac62231"
+  },
+  "debug/current-error": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-current-error-987023a9.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-11T02:40:15.547Z",
+    "lastUpdated": "2026-07-11T02:40:15.547Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-current-error-987023a9.jpg": "f38wenbvln_1783734873845_file_QmHrafxyAN.jpg"
+    },
+    "uploadContentHash": "afb30cd5949f4f1a1b9eb11af7b166896f5cb025ddf089c190fc690cd695b7e3"
   }
 }
