@@ -77,10 +77,10 @@ self.addEventListener('fetch', (event) => {
   if (!request.url.startsWith('http')) return;
 
   // ── Frozen snapshot rewrite ──────────────────────────────────────────────
-  // Intercept the frozen RootLayout HMR URL and strip the stale ?t= param
+  // Intercept ANY src/*.tsx HMR URL with the frozen ?t= param and strip it
   // so Vite serves the current (fixed) version of the file.
   if (
-    request.url.includes('RootLayout.tsx') &&
+    request.url.includes('.tsx') &&
     request.url.includes('t=' + FROZEN_TS)
   ) {
     const fresh = new URL(request.url);

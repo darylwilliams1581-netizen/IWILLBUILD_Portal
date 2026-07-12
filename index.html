@@ -1,61 +1,71 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v14 -->
+  <!-- cache-bust: v15 -->
   <head>
     <meta charset="UTF-8" />
     <script>
-      // Declare SOSAlertPopup as a var so it exists as a bare identifier
-      // on the global scope. ES modules in strict mode cannot see window.*
-      // properties as bare names, but a var in a classic script IS visible
-      // as a bare name from any script on the page (including module scripts
-      // that share the same global object). This stops the frozen HMR
-      // snapshot of RootLayout.tsx (?t=1783772358219) from throwing a
-      // ReferenceError when it references SOSAlertPopup at line 122.
-      var SOSAlertPopup = function SOSAlertPopup() { return null; };
-    </script>
-    <script>
       (function () {
-        // ── SOSAlertPopup frozen-snapshot guard v14 ───────────────────────────
-        var LS_KEY = 'html_sos_reload_ts';
-        var SS_KEY = 'sos_boundary_triggered';
-        var WINDOW_MS = 3000; // short window — only block tight reload loops
+        // ── SOSAlertPopup frozen-snapshot hard-reload guard v15 ───────────────
+        // The frozen Vite HMR snapshot of RootLayout.tsx (?t=1783772358219)
+        // references SOSAlertPopup as a bare identifier inside its render fn.
+        // ES module scope is isolated — window vars cannot reach it.
+        // React catches the ReferenceError via its error boundary system and
+        // calls console.error with the error before AiroErrorBoundary swallows
+        // it, so window.onerror never fires. We patch console.error to detect
+        // the message and trigger a hard reload. Loop guard: 5 s.
+        var LS_KEY   = 'sos_reload_ts_v15';
+        var GUARD_MS = 5000;
 
         function recentReload() {
           try {
             var ts = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
-            return ts && (Date.now() - ts < WINDOW_MS);
+            return ts > 0 && (Date.now() - ts < GUARD_MS);
           } catch (_) { return false; }
         }
 
         function doReload() {
           if (recentReload()) return;
           try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (_) {}
-          try { sessionStorage.removeItem(SS_KEY); } catch (_) {}
           window.location.reload();
         }
 
-        // Layer 1: React boundary set the flag on previous render
-        try {
-          if (sessionStorage.getItem(SS_KEY) === '1') {
-            sessionStorage.removeItem(SS_KEY);
-            doReload();
-          }
-        } catch (_) {}
+        function isSos(v) {
+          return typeof v === 'string' && v.indexOf('SOSAlertPopup') !== -1;
+        }
 
-        // Layer 2: module-evaluation ReferenceError (fires before React)
+        // Layer 1 — window.onerror capture (non-React paths)
         window.addEventListener('error', function (e) {
-          if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
+          if (e && isSos(e.message)) {
+            e.preventDefault && e.preventDefault();
+            e.stopImmediatePropagation && e.stopImmediatePropagation();
             doReload();
           }
         }, true);
 
-        // Layer 3: callable by React boundaries
-        window.__sosBoundaryTrigger = function () {
-          try { sessionStorage.setItem(SS_KEY, '1'); } catch (_) {}
-          doReload();
-        };
+        // Layer 2 — console.error + console.warn patch
+        // React 19 dev mode calls console.error with the raw Error object AND
+        // also with formatted strings like "The above error occurred in...".
+        // We intercept both. Also patch console.warn as a belt-and-suspenders.
+        function patchConsole(method) {
+          var orig = console[method];
+          console[method] = function () {
+            var args = Array.prototype.slice.call(arguments);
+            var hit = args.some(function (a) {
+              if (!a) return false;
+              if (isSos(a.message)) return true;
+              if (isSos(a.stack)) return true;
+              try { if (isSos(String(a))) return true; } catch (_) {}
+              return false;
+            });
+            if (hit) { doReload(); return; }
+            orig.apply(console, args);
+          };
+        }
+        patchConsole('error');
+        patchConsole('warn');
+
+        // Layer 3 — callable by any React error boundary
+        window.__sosBoundaryTrigger = doReload;
       })();
     </script>
     <script>

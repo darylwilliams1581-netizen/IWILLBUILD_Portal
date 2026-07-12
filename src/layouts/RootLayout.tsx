@@ -94,10 +94,21 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
   state: SosState = { caught: false };
   private _rethrow: Error | null = null;
 
-  static getDerivedStateFromError(): SosState { return { caught: true }; }
+  static getDerivedStateFromError(error: Error): SosState {
+    const isSos = error.message?.includes('SOSAlertPopup') ||
+                  error.stack?.includes('SOSAlertPopup') ||
+                  error.stack?.includes('1783772358219');
+    return { caught: isSos };
+  }
 
   componentDidCatch(error: Error) {
-    if (error.message?.includes('SOSAlertPopup')) {
+    const isSos = error.message?.includes('SOSAlertPopup') ||
+                  error.stack?.includes('SOSAlertPopup') ||
+                  error.stack?.includes('1783772358219');
+    if (isSos) {
+      // Fire the patched console.error so the index.html guard also sees it,
+      // then call __sosBoundaryTrigger directly as a guaranteed fallback.
+      try { console.error(error); } catch (_) {}
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
       } else if (!sosRecentReload()) {
