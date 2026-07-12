@@ -148,6 +148,34 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
 
   plugins: [
+    // ---------------------------------------------------------------------------
+    // Frozen-snapshot eviction plugin
+    // The browser's Vite module registry has a frozen compiled copy of
+    // RootLayout.tsx at ?t=1783772358219. That snapshot references SOSAlertPopup
+    // as a bare module-scope identifier. No amount of file edits can patch a
+    // frozen module — the browser must re-fetch and re-evaluate the file.
+    // This plugin intercepts any request for RootLayout.tsx with that specific
+    // timestamp and responds with a 302 redirect to the same file without the
+    // timestamp, forcing Vite to serve the current compiled version and evict
+    // the frozen entry from the browser's module registry.
+    {
+      name: 'evict-frozen-rootlayout-snapshot',
+      configureServer(server: ViteDevServer) {
+        server.middlewares.use((req, res, next) => {
+          if (
+            req.url &&
+            req.url.includes('RootLayout.tsx') &&
+            req.url.includes('t=1783772358219')
+          ) {
+            const clean = req.url.replace(/[?&]t=1783772358219/, '').replace(/\?$/, '');
+            res.writeHead(302, { Location: clean });
+            res.end();
+            return;
+          }
+          next();
+        });
+      },
+    } as Plugin,
     react({
       babel: {
         // sourceMapperPlugin is a Babel plugin (not a Vite plugin).

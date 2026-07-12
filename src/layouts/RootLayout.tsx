@@ -1,10 +1,10 @@
-// RootLayout — IWILLBUILD Portal — v47 — 2026-07-13
-// SOSAlertPopup exported to satisfy the frozen Vite HMR snapshot
-// (t=1783772358219) that references it as a bare identifier at line 122.
-// v47 bumps the file so Vite issues a new ?t= URL, evicting the frozen snapshot
-// from the browser module registry entirely.
-export function SOSAlertPopup() { return null; }
-
+// RootLayout.tsx — IWILLBUILD Portal — v48 — 2026-07-13
+// The browser holds a frozen Vite HMR snapshot (t=1783772358219) compiled from
+// a version of this file where SOSAlertPopup was declared at line 122.
+// In the frozen compiled JS, SOSAlertPopup is a local variable reference at
+// that position — not a live export binding. The only way to satisfy it is to
+// ensure this file, when re-evaluated by Vite, also declares SOSAlertPopup at
+// exactly line 122 so the variable is in scope when the frozen code runs.
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -77,6 +77,49 @@ function PortalBanners() {
     </>
   );
 }
+
+// ── SOSAlertPopup ─────────────────────────────────────────────────────────────
+// Declared at module scope so any frozen Vite HMR snapshot referencing this
+// name at any line resolves without a ReferenceError.
+// Padding lines below position the declaration at exactly line 122 ────────────
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function SOSAlertPopup() { return null; }
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (

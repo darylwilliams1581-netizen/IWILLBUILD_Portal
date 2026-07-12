@@ -1,20 +1,22 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v9 -->
+  <!-- cache-bust: v10 -->
   <head>
     <meta charset="UTF-8" />
     <!-- Auto-reload if the browser holds the frozen RootLayout HMR snapshot.
          The frozen module (t=1783772358219) has SOSAlertPopup as a bare
          identifier — cannot be patched. Hard reload clears the module registry.
-         v9: unconditionally clears ALL prior guard keys on every page load so
-         the reload fires every time the error surfaces, not just once. -->
+         v10: guard key is cleared on every CLEAN page load (no error).
+              It is only set for the duration of the reload itself to prevent
+              an infinite loop. This means every new page load gets a fresh
+              chance to reload if the frozen snapshot resurfaces. -->
     <script>
       (function () {
-        // Fallback global error handler for SOSAlertPopup ReferenceError.
-        // Uses localStorage so the guard persists across the reload.
-        // StaleModuleReloadBoundary is the primary handler; this catches
-        // any errors that fire before React mounts.
-        var KEY = 'rl_stale_reload_done';
+        var KEY = 'rl_stale_reloading';
+        // If we arrive here normally (not mid-reload), clear any stale guard.
+        // This ensures the next error always triggers a fresh reload.
+        try { localStorage.removeItem(KEY); } catch (_) {}
+
         window.addEventListener('error', function (e) {
           if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
             try {

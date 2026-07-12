@@ -1,4 +1,7 @@
-// cache-bust 2026-07-13c
+// cache-bust 2026-07-13d
+// sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
+// the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
+import './sos-shim';
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
