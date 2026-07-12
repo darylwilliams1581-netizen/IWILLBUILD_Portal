@@ -17,6 +17,17 @@
            reload loop cannot occur within that window. -->
     <script>
       (function () {
+        // ── Proactive shim ────────────────────────────────────────────────────
+        // The browser holds a frozen Vite HMR snapshot of RootLayout.tsx
+        // (t=1783772358219) that references SOSAlertPopup as a bare identifier.
+        // ES modules run in strict mode so bare identifiers fall back to the
+        // global object (window). Setting it here — before ANY module evaluates
+        // — ensures the frozen snapshot never throws a ReferenceError.
+        window.SOSAlertPopup = function SOSAlertPopup() { return null; };
+
+        // ── Reload guard (fallback) ───────────────────────────────────────────
+        // If the shim above somehow doesn't prevent the error (e.g. a different
+        // frozen snapshot), catch it and do one hard reload to flush the registry.
         var KEY = 'rl_stale_ts';
         var WINDOW_MS = 10000;
 
