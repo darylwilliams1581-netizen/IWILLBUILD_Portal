@@ -304,7 +304,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-[#f1f5f9] text-[#101828] font-sans m-0">
+    <div style={{ backgroundColor: '#f1f5f9', color: '#101828', margin: 0 }} suppressHydrationWarning>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />

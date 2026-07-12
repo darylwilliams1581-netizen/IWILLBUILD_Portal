@@ -323,17 +323,25 @@ export default function SwmsMasterLibraryTab() {
       try {
         const url = `/api/owner-console/swms/seed-${seed.name}${seedReplace ? '?replace=1' : ''}`;
         const r = await fetch(url, { method: 'POST', credentials: 'include' });
-        const d = await r.json() as { message?: string; error?: string; skipped?: boolean };
-        out.push({ name: seed.name, status: r.ok ? (d.skipped ? 'skipped' : 'ok') : 'error', message: d.message ?? d.error ?? `HTTP ${r.status}` });
+        const d = await r.json() as { ok?: boolean; action?: string; message?: string; error?: string };
+        if (!r.ok) {
+          out.push({ name: seed.name, status: 'error', message: d.error ?? `HTTP ${r.status}` });
+        } else if (d.action === 'skipped') {
+          out.push({ name: seed.name, status: 'skipped', message: 'Already exists (use Replace to overwrite)' });
+        } else {
+          out.push({ name: seed.name, status: 'ok', message: d.action === 'updated' ? 'Updated' : 'Inserted as platform master' });
+        }
       } catch (e) {
         out.push({ name: seed.name, status: 'error', message: String(e) });
       }
       setSeedResults([...out]);
     }
     setSeeding(false);
-    // After seeding company libraries, also seed master library
     await loadMasters();
-    toast.success('Seed complete — check results below');
+    const ok = out.filter((r) => r.status === 'ok').length;
+    const skipped = out.filter((r) => r.status === 'skipped').length;
+    const failed = out.filter((r) => r.status === 'error').length;
+    toast.success(`Seed complete — ${ok} seeded, ${skipped} skipped, ${failed} failed`);
   }
 
   // ── Publish one ─────────────────────────────────────────────────────────────
@@ -618,9 +626,9 @@ export default function SwmsMasterLibraryTab() {
         {showSeed && (
           <div className="px-4 py-4 space-y-4 border-t border-slate-100">
             <p className="text-sm text-slate-500">
-              Seeds all 24 built-in SWMS directly into every company's library using the existing seed endpoints.
-              These templates are <strong>not</strong> stored as platform masters — use the master library above for
-              templates you want to review before publishing.
+              Seeds all 24 built-in SWMS as <strong>platform master templates</strong> in this library.
+              They will appear in the list above where you can review, edit, and then publish to companies.
+              Uncheck "Replace existing" to skip templates that are already seeded.
             </p>
 
             <label className="flex items-center gap-2.5 cursor-pointer select-none">

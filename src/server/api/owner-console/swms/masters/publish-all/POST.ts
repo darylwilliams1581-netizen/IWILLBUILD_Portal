@@ -28,7 +28,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const [companyRows] = await db.execute(sql.raw(
-      `SELECT id FROM companies WHERE status != 'archived' ORDER BY id`
+      `SELECT id FROM companies WHERE status <> 'archived' ORDER BY id`
     )) as unknown as [Array<{ id: number }>, unknown];
     const companyIds = (companyRows ?? []).map((r) => r.id);
 

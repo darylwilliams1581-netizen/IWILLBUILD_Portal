@@ -369,65 +369,59 @@ export default async function handler(req: Request, res: Response) {
   const replace = req.query.replace === '1' || req.body?.replace === true;
 
   try {
-    const [companyRows] = await db.execute(sql.raw(
-      `SELECT id FROM companies WHERE status != 'archived' ORDER BY id`
-    )) as unknown as [Array<{ id: number }>, unknown];
-
-    const companyIds = (companyRows ?? []).map((r) => r.id);
     const title = CARPENTER_FIXING_SWMS.title;
     const swmsBodyJson = JSON.stringify(CARPENTER_FIXING_SWMS);
+    const safe = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-    let inserted = 0, updated = 0, skipped = 0;
+    // Check if a platform master already exists for this title
+    const [existing] = await db.execute(sql.raw(
+      `SELECT id FROM swms_templates WHERE company_id IS NULL AND is_platform_master = 1 AND title = ${JSON.stringify(title)} LIMIT 1`
+    ));
 
-    for (const companyId of companyIds) {
-      const [existing] = await db.execute(sql.raw(
-        `SELECT id FROM swms_templates WHERE company_id = ${companyId} AND title = ${JSON.stringify(title)} LIMIT 1`
-      )) as unknown as [Array<{ id: number }>, unknown];
+    const existingId = existing?.[0]?.id;
 
-      const existingId = existing?.[0]?.id;
-      const safe = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-      if (existingId && replace) {
-        await db.execute(sql.raw(`
-          UPDATE swms_templates SET
-            swms_body       = '${safe(swmsBodyJson)}',
-            build_mode      = 'advanced',
-            document_type   = 'swms',
-            category        = 'Carpentry / Fixing Out',
-            revision_number = '1',
-            status          = 'draft',
-            updated_at      = NOW()
-          WHERE id = ${existingId}
-        `));
-        updated++;
-      } else if (existingId) {
-        skipped++;
-      } else {
-        await db.execute(sql.raw(`
-          INSERT INTO swms_templates
-            (company_id, title, category, revision_number, author_name, approved_by_name,
-             status, build_mode, document_type, swms_body, created_at, updated_at)
-          VALUES (
-            ${companyId},
-            '${safe(title)}',
-            'Carpentry / Fixing Out',
-            '1',
-            'Site Supervisor / Williams Constructions NQ',
-            'Principal Contractor',
-            'draft',
-            'advanced',
-            'swms',
-            '${safe(swmsBodyJson)}',
-            NOW(), NOW()
-          )
-        `));
-        inserted++;
-      }
+    if (existingId && replace) {
+      await db.execute(sql.raw(`
+        UPDATE swms_templates SET
+          swms_body = '${safe(swmsBodyJson)}',
+          build_mode = 'advanced',
+          document_type = 'swms',
+          is_platform_master = 1,
+          status = 'draft',
+          updated_at = NOW()
+        WHERE id = ${existingId}
+      `));
+      return res.json({ ok: true, action: 'updated', id: existingId });
     }
 
-    return res.json({ ok: true, companies: companyIds.length, inserted, updated, skipped });
+    if (existingId) {
+      return res.json({ ok: true, action: 'skipped', id: existingId });
+    }
+
+    // Insert new platform master (company_id = NULL)
+    const [result] = await db.execute(sql.raw(`
+      INSERT INTO swms_templates
+        (company_id, title, category, revision_number, author_name, approved_by_name,
+         status, build_mode, document_type, swms_body, is_platform_master, created_at, updated_at)
+      VALUES (
+        NULL,
+        '${safe(title)}',
+        'General Construction / Site Works',
+        '1',
+        'Site Supervisor / IWILLBUILD',
+        'Principal Contractor',
+        'draft',
+        'advanced',
+        'swms',
+        '${safe(swmsBodyJson)}',
+        1,
+        NOW(), NOW()
+      )
+    `));
+
+    return res.json({ ok: true, action: 'inserted', id: result?.insertId ?? null });
   } catch (err) {
-    console.error('seed-carpenter-fixing error:', err);
+    console.error('seed error:', err);
     return res.status(500).json({ error: String(err) });
   }
 }
