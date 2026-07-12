@@ -150,14 +150,19 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   plugins: [
     // ---------------------------------------------------------------------------
     // Frozen-snapshot eviction plugin
-    // The browser's Vite module registry has a frozen compiled copy of
-    // RootLayout.tsx at ?t=1783772358219. That snapshot references SOSAlertPopup
-    // as a bare module-scope identifier. No amount of file edits can patch a
-    // frozen module — the browser must re-fetch and re-evaluate the file.
-    // This plugin intercepts any request for RootLayout.tsx with that specific
-    // timestamp and responds with a 302 redirect to the same file without the
-    // timestamp, forcing Vite to serve the current compiled version and evict
-    // the frozen entry from the browser's module registry.
+    // The browser's module registry has a frozen compiled copy of RootLayout.tsx
+    // at ?t=1783772358219. That snapshot references SOSAlertPopup as a free
+    // variable (module-scope identifier). ES modules are strict — free variables
+    // that aren't declared in the module throw ReferenceError regardless of
+    // globalThis. The only fix is to prevent the browser from executing that
+    // frozen URL at all.
+    //
+    // This middleware intercepts ANY request for RootLayout.tsx that carries the
+    // frozen timestamp and returns a JS module that re-exports everything from
+    // the current RootLayout.tsx (without the timestamp). The browser executes
+    // this shim instead of the frozen snapshot, so SOSAlertPopup is never
+    // referenced as an undeclared identifier.
+    // ---------------------------------------------------------------------------
     {
       name: 'evict-frozen-rootlayout-snapshot',
       configureServer(server: ViteDevServer) {
@@ -167,9 +172,15 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             req.url.includes('RootLayout.tsx') &&
             req.url.includes('t=1783772358219')
           ) {
-            const clean = req.url.replace(/[?&]t=1783772358219/, '').replace(/\?$/, '');
-            res.writeHead(302, { Location: clean });
-            res.end();
+            // Return a JS shim that re-exports the current (unfrozen) module.
+            // The browser executes this instead of the frozen snapshot.
+            const cleanUrl = '/src/layouts/RootLayout.tsx';
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-store');
+            res.end(
+              `// frozen-snapshot eviction shim\n` +
+              `export { default, SOSAlertPopup } from '${cleanUrl}';\n`
+            );
             return;
           }
           next();

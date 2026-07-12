@@ -1,30 +1,38 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v10 -->
+  <!-- cache-bust: v11 -->
   <head>
     <meta charset="UTF-8" />
     <!-- Auto-reload if the browser holds the frozen RootLayout HMR snapshot.
          The frozen module (t=1783772358219) has SOSAlertPopup as a bare
-         identifier — cannot be patched. Hard reload clears the module registry.
-         v10: guard key is cleared on every CLEAN page load (no error).
-              It is only set for the duration of the reload itself to prevent
-              an infinite loop. This means every new page load gets a fresh
-              chance to reload if the frozen snapshot resurfaces. -->
+         identifier — cannot be patched. A hard reload clears the module registry.
+
+         Guard logic (v11):
+         - KEY stores the timestamp of the last reload attempt.
+         - On each page load, if KEY is older than 10s we treat this as a fresh
+           load and the guard is considered expired (allows one retry per 10s).
+         - On error: if no recent reload, set KEY to now and reload.
+         - After a successful load (DOMContentLoaded fires without error), we do
+           NOT clear KEY immediately — we let it expire naturally after 10s so a
+           reload loop cannot occur within that window. -->
     <script>
       (function () {
-        var KEY = 'rl_stale_reloading';
-        // If we arrive here normally (not mid-reload), clear any stale guard.
-        // This ensures the next error always triggers a fresh reload.
-        try { localStorage.removeItem(KEY); } catch (_) {}
+        var KEY = 'rl_stale_ts';
+        var WINDOW_MS = 10000;
+
+        function recentReload() {
+          try {
+            var ts = parseInt(localStorage.getItem(KEY) || '0', 10);
+            return ts && (Date.now() - ts < WINDOW_MS);
+          } catch (_) { return false; }
+        }
 
         window.addEventListener('error', function (e) {
           if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
-            try {
-              if (!localStorage.getItem(KEY)) {
-                localStorage.setItem(KEY, '1');
-                window.location.reload();
-              }
-            } catch (_) {}
+            if (!recentReload()) {
+              try { localStorage.setItem(KEY, String(Date.now())); } catch (_) {}
+              window.location.reload();
+            }
           }
         }, true);
       })();
