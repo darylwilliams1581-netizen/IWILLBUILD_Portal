@@ -1,4 +1,4 @@
-// RootLayout — IWILLBUILD Portal — v25 — 2026-07-12T12:15:00 — force-hmr
+// RootLayout — IWILLBUILD Portal — v27 — 2026-07-12T12:20:00 — clean
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
