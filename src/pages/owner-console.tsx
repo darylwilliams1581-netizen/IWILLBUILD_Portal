@@ -33,7 +33,7 @@ import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
-import SwmsSeedTab from '@/components/owner-console/SwmsSeedTab';
+import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -752,7 +752,7 @@ export default function OwnerConsolePage() {
           <Tab active={tab === 'swms-seed'} onClick={() => { setTab('swms-seed'); setSearchParams({}); }}>
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={12} />
-              SWMS Seed
+              SWMS Masters
             </span>
           </Tab>
           <Tab active={tab === 'health-check'} onClick={() => { setTab('health-check'); setSearchParams({ tab: 'health-check' }); }}>
@@ -944,7 +944,7 @@ export default function OwnerConsolePage() {
 
               {/* ── Library Manager ── */}
               {tab === 'library' && <LibraryManagerTab />}
-              {tab === 'swms-seed' && <SwmsSeedTab />}
+              {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (

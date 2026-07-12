@@ -54,21 +54,41 @@
     </script>
     <script>
       (function () {
-        // ── SOSAlertPopup error-boundary navigation guard v20 ─────────────────
+        // ── SOSAlertPopup error-boundary navigation guard v21 ─────────────────
         // Fallback: if the fetch override above doesn't catch it (e.g. the module
         // was already in the module registry from a prior session), detect the
         // ReferenceError and do a true location.href navigation (not reload —
         // reload reuses the module registry in Chromium) to bust the registry.
-        var COUNT_KEY = 'sos_nav_count_v20';
-        var TS_KEY    = 'sos_nav_ts_v20';
-        var MAX       = 5;
-        var WIN_MS    = 60000;
+        var COUNT_KEY = 'sos_nav_count_v21';
+        var TS_KEY    = 'sos_nav_ts_v21';
+        var SESSION_KEY = 'sos_nav_session_v21';
+        var MAX       = 8;
+        var WIN_MS    = 30000;
+
+        // Always allow at least one nav per browser session (sessionStorage resets on tab close).
+        try {
+          if (!sessionStorage.getItem(SESSION_KEY)) {
+            localStorage.removeItem(COUNT_KEY);
+            localStorage.removeItem(TS_KEY);
+            sessionStorage.setItem(SESSION_KEY, '1');
+          }
+        } catch (_) {}
 
         // Strip _sos param left by a previous navigation.
         try {
           var u = new URL(location.href);
           if (u.searchParams.has('_sos')) {
             u.searchParams.delete('_sos');
+            history.replaceState(null, '', u.toString());
+          }
+          // Clean up old guard keys from previous versions.
+          localStorage.removeItem('sos_nav_count_v20');
+          localStorage.removeItem('sos_nav_ts_v20');
+          localStorage.removeItem('smrb_nav_ts_v2');
+          localStorage.removeItem('smrb_nav_count_v2');
+          // Strip _airo_sos param left by AiroErrorBoundary navigation.
+          if (u.searchParams.has('_airo_sos')) {
+            u.searchParams.delete('_airo_sos');
             history.replaceState(null, '', u.toString());
           }
         } catch (_) {}

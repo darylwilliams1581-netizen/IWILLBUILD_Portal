@@ -4,10 +4,20 @@ interface Props { children: ReactNode; }
 interface State { sosError: boolean; }
 
 // Separate key from the index.html guard so they don't interfere.
-const GUARD_KEY = 'smrb_nav_ts_v2';
-const COUNT_KEY = 'smrb_nav_count_v2';
+const GUARD_KEY = 'smrb_nav_ts_v3';
+const COUNT_KEY = 'smrb_nav_count_v3';
+const SESSION_KEY = 'smrb_session_v3';
 const WINDOW_MS = 30_000;
-const MAX_NAV   = 4;
+const MAX_NAV   = 8;
+
+// Reset per-session so the guard never permanently blocks a fresh tab.
+try {
+  if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(SESSION_KEY)) {
+    localStorage.removeItem(GUARD_KEY);
+    localStorage.removeItem(COUNT_KEY);
+    sessionStorage.setItem(SESSION_KEY, '1');
+  }
+} catch (_) { /* ignore */ }
 
 function canNav(): boolean {
   try {

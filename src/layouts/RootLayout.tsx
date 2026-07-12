@@ -120,6 +120,13 @@ import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 //
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SOSAlertPopup() { return null; }
+// Make SOSAlertPopup available globally so the frozen Vite snapshot
+// (RootLayout.tsx?t=1783772358219) can resolve it as a bare identifier
+// even when its module bindings are stale.
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).SOSAlertPopup = SOSAlertPopup;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {

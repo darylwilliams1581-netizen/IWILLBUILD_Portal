@@ -404,6 +404,47 @@ export default class AiroErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // ── Frozen HMR snapshot (SOSAlertPopup ReferenceError) ───────────────────
+    // The frozen Vite snapshot of RootLayout.tsx (t=1783772358219) references
+    // SOSAlertPopup as a bare identifier. This boundary may catch it when the
+    // StaleModuleReloadBoundary is absent (frozen App.tsx snapshot). Trigger an
+    // immediate location.href navigation to bust the ES module registry — the
+    // only reliable fix without user action.
+    const isSosError =
+      error.message?.includes('SOSAlertPopup') ||
+      (error.stack ?? '').includes('SOSAlertPopup') ||
+      (error.stack ?? '').includes('1783772358219');
+    if (isSosError) {
+      try {
+        const GUARD_KEY = 'airo_sos_nav_ts_v1';
+        const COUNT_KEY = 'airo_sos_nav_count_v1';
+        const SESSION_KEY = 'airo_sos_session_v1';
+        const MAX = 6;
+        const WIN_MS = 30_000;
+        const now = Date.now();
+        // Reset per session so a fresh tab always gets at least one attempt.
+        if (!sessionStorage.getItem(SESSION_KEY)) {
+          localStorage.removeItem(GUARD_KEY);
+          localStorage.removeItem(COUNT_KEY);
+          sessionStorage.setItem(SESSION_KEY, '1');
+        }
+        const ts    = parseInt(localStorage.getItem(GUARD_KEY)  ?? '0', 10);
+        const count = parseInt(localStorage.getItem(COUNT_KEY) ?? '0', 10);
+        const withinWindow = now - ts < WIN_MS;
+        if (!withinWindow || count < MAX) {
+          const newCount = withinWindow ? count + 1 : 1;
+          localStorage.setItem(COUNT_KEY, String(newCount));
+          localStorage.setItem(GUARD_KEY, String(now));
+          const dest = new URL(location.href);
+          dest.searchParams.set('_airo_sos', String(now));
+          location.href = dest.toString();
+          return;
+        }
+      } catch (_) {}
+      // Guard exhausted — fall through to normal error handling so the
+      // overlay shows with a "hard reload" message rather than a blank screen.
+    }
+
     // Claim across instances first: React 18 re-dispatches this exact
     // Error to `window.onerror`, where the ROOT boundary's global handler
     // would otherwise re-forward and re-overlay an error this boundary
