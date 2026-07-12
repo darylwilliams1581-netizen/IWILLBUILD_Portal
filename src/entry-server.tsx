@@ -1,4 +1,4 @@
-import { StrictMode, Suspense } from 'react'; // v23 cache-bust 2026-07-12T12:00
+import { StrictMode } from 'react'; // v24 2026-07-13 — removed Suspense from route tree (SSR mismatch)
 import { renderToString } from 'react-dom/server';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import type { HelmetServerState } from '@dr.pogodin/react-helmet';
@@ -12,7 +12,6 @@ import {
 } from 'react-router-dom';
 
 import RootLayout from './layouts/RootLayout';
-import Spinner from './components/Spinner';
 import { routes } from './routes';
 
 export interface RenderResult {
@@ -22,24 +21,16 @@ export interface RenderResult {
   redirect?: string;
 }
 
-const SpinnerFallback = () => (
-  <div className="flex justify-center py-8 h-screen items-center">
-    <Spinner />
-  </div>
-);
-
-// Mirrors the layout wrapping in App.tsx so client and server render the same
-// tree. Kept separate from the client `router` in App.tsx because
-// createBrowserRouter touches `window` at module load and must never be
-// evaluated in the SSR bundle.
+// Mirrors the layout wrapping in App.tsx exactly — no Suspense wrapper here.
+// renderToString resolves Suspense synchronously and serialises the inner div,
+// but the client sees the Suspense boundary itself, causing a tree mismatch.
+// Lazy page components carry their own Suspense boundaries inside routes.tsx.
 const routeTree: RouteObject[] = [
   {
     element: (
-      <Suspense fallback={<SpinnerFallback />}>
-        <RootLayout>
-          <Outlet />
-        </RootLayout>
-      </Suspense>
+      <RootLayout>
+        <Outlet />
+      </RootLayout>
     ),
     children: routes,
   },

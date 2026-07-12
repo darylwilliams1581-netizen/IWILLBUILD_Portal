@@ -90,17 +90,23 @@ class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundarySt
 // initial hydrateRoot call — they don't exist in entry-server.tsx so including
 // them in the hydration tree causes React #418 (tree mismatch).
 //
-// Solution: render the core providers (HelmetProvider + QueryClientProvider +
-// App) for the initial hydrateRoot call, then swap in the full dev boundary
-// shell on the first client-side effect. React reconciles the swap cleanly
-// because it happens after hydration is committed.
-function DevBoundaryShell({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+// Solution: use a module-level flag (not component state) so HMR hot-reloads
+// don't carry over a stale `mounted=true` into the next hydration attempt.
+// The flag starts false, is set to true after the first effect, and stays true
+// for the lifetime of the page (no reset on HMR).
+let _devShellHydrated = false;
 
-  if (!mounted) {
-    // During hydration: render children without any extra wrapper so the
-    // component tree exactly matches what entry-server.tsx produced.
+function DevBoundaryShell({ children }: { children: ReactNode }) {
+  const [hydrated, setHydrated] = useState(_devShellHydrated);
+  useEffect(() => {
+    if (!_devShellHydrated) {
+      _devShellHydrated = true;
+      setHydrated(true);
+    }
+  }, []);
+
+  if (!hydrated) {
+    // During hydration: transparent pass-through — tree matches entry-server.tsx.
     return <>{children}</>;
   }
 
