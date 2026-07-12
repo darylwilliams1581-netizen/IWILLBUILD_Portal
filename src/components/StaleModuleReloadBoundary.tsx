@@ -5,11 +5,14 @@ interface State { crashed: boolean; }
 
 /**
  * Catches the SOSAlertPopup ReferenceError thrown by the frozen Vite HMR
- * snapshot of RootLayout.tsx (t=1783772358219). Instead of showing an error
- * UI it forces a hard reload (once, guarded by sessionStorage) so the browser
- * discards its module registry and fetches fresh modules.
+ * snapshot of RootLayout.tsx (t=1783772358219). Forces a hard reload once
+ * per page-load to clear the browser's ES module registry.
  *
- * All other errors are re-thrown so the outer AiroErrorBoundary / PortalErrorBoundary
+ * The index.html v9 script clears ALL rl_stale_reloaded_* keys on every page
+ * load, so this boundary always gets one fresh reload attempt per load.
+ * After the reload the frozen snapshot is gone and the error stops.
+ *
+ * All other errors are re-thrown so AiroErrorBoundary / PortalErrorBoundary
  * can handle them normally.
  */
 export default class StaleModuleReloadBoundary extends Component<Props, State> {
@@ -17,13 +20,13 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     if (error instanceof ReferenceError && error.message.includes('SOSAlertPopup')) {
-      const KEY = 'rl_stale_reloaded_v6';
+      const KEY = 'rl_stale_reloaded_v9';
       if (!sessionStorage.getItem(KEY)) {
         sessionStorage.setItem(KEY, '1');
         window.location.reload();
         return;
       }
-      // Already reloaded once — mark crashed so we don't loop
+      // Already reloaded this page-load — show manual reload UI to avoid loop
       this.setState({ crashed: true });
       return;
     }

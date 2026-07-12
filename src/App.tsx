@@ -10,7 +10,7 @@ import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import StaleModuleReloadBoundary from '@/components/StaleModuleReloadBoundary';
-import RootLayout from './layouts/RootLayout3';
+import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
