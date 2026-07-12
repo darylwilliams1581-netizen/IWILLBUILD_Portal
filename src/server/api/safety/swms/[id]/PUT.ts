@@ -30,6 +30,7 @@ export default async function handler(req: Request, res: Response) {
       permitsApprovals, monitoringReview, notes,
       revisionNumber, reviewDate, status,
       authorName, approvedByName,
+      swms_body, build_mode, document_type,
     } = b;
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
@@ -63,7 +64,10 @@ export default async function handler(req: Request, res: Response) {
         review_date = ${reviewDate ?? null},
         status = ${status ?? 'draft'},
         author_name = ${authorName ?? null},
-        approved_by_name = ${approvedByName ?? null}
+        approved_by_name = ${approvedByName ?? null},
+        swms_body = ${swms_body ?? null},
+        build_mode = ${build_mode ?? 'quick'},
+        document_type = ${document_type ?? 'swms'}
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 

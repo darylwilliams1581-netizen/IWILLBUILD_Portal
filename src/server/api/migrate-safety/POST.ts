@@ -122,6 +122,17 @@ export default async function handler(_req: Request, res: Response) {
     await run(`safety_plans.${col}`, `ALTER TABLE safety_plans ADD COLUMN ${col} ${def}`);
   }
 
+  // Add swms_body LONGTEXT to swms_templates and job_swms for structured SWMS body builder
+  const swmsBodyCols: [string, string][] = [
+    ['swms_body', 'LONGTEXT NULL'],
+    ['build_mode', "VARCHAR(20) NOT NULL DEFAULT 'quick'"],
+    ['document_type', "VARCHAR(60) NOT NULL DEFAULT 'swms'"],
+  ];
+  for (const [col, def] of swmsBodyCols) {
+    await run(`swms_templates.${col}`, `ALTER TABLE swms_templates ADD COLUMN ${col} ${def}`);
+    await run(`job_swms.${col}`, `ALTER TABLE job_swms ADD COLUMN ${col} ${def}`);
+  }
+
   await run('job_swms', `
     CREATE TABLE IF NOT EXISTS job_swms (
       id                    INT AUTO_INCREMENT PRIMARY KEY,

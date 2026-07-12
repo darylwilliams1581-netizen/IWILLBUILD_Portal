@@ -30,6 +30,7 @@ export default async function handler(req: Request, res: Response) {
       permitsApprovals, monitoringReview, notes,
       revisionNumber, reviewDate, status,
       authorName, approvedByName,
+      swms_body, build_mode, document_type,
     } = b;
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
@@ -44,7 +45,8 @@ export default async function handler(req: Request, res: Response) {
          environmental_controls, sign_off_requirements,
          permits_approvals, monitoring_review, notes,
          revision_number, review_date, status, created_by_user_id,
-         author_name, approved_by_name)
+         author_name, approved_by_name,
+         swms_body, build_mode, document_type)
       VALUES
         (${profile.companyId}, ${title.trim()}, ${category ?? null}, ${workActivity ?? null},
          ${purposeScope ?? null}, ${criticalRisks ?? null}, ${mandatoryControls ?? null}, ${hazardIdentification ?? null},
@@ -55,7 +57,8 @@ export default async function handler(req: Request, res: Response) {
          ${permitsApprovals ?? null}, ${monitoringReview ?? null}, ${notes ?? null},
          ${revisionNumber ?? '1'}, ${reviewDate ?? null},
          ${status ?? 'draft'}, ${session.user.id},
-         ${authorName ?? null}, ${approvedByName ?? null})
+         ${authorName ?? null}, ${approvedByName ?? null},
+         ${swms_body ?? null}, ${build_mode ?? 'quick'}, ${document_type ?? 'swms'})
     `) as unknown as [ResultSetHeader, unknown];
 
     const [rows] = await db.execute(
