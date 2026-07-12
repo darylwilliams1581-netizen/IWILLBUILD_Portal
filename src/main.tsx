@@ -1,13 +1,12 @@
-// cache-bust 2026-07-13l — __sosBoundaryTrigger wired to all three boundary layers
+// cache-bust 2026-07-13m — SosInterceptBoundary wraps AiroErrorBoundary to catch SOS before it
 // sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';
-import { StrictMode } from 'react';
+import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
-import SosReloadBoundary from '@/components/SosReloadBoundary';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
@@ -35,6 +34,60 @@ const queryClient = new QueryClient({
   },
 });
 
+// ── SosInterceptBoundary ──────────────────────────────────────────────────────
+// Sits INSIDE AiroErrorBoundary (closer to the throw site) so it catches the
+// SOSAlertPopup ReferenceError from the frozen RootLayout snapshot before
+// AiroErrorBoundary swallows it. On SOS error: reload once via the index.html
+// guard. On any other error: re-throw so AiroErrorBoundary handles it.
+const LS_KEY = 'sos_intercept_reload_ts';
+const WINDOW_MS = 20_000;
+
+function sosRecentReload(): boolean {
+  try {
+    const ts = parseInt(localStorage.getItem(LS_KEY) ?? '0', 10);
+    return ts > 0 && Date.now() - ts < WINDOW_MS;
+  } catch { return false; }
+}
+
+function isSosError(e: unknown): boolean {
+  return e instanceof Error &&
+    e.message.includes('SOSAlertPopup');
+}
+
+interface BoundaryState { caught: boolean; }
+class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundaryState> {
+  state: BoundaryState = { caught: false };
+  private _other: Error | null = null;
+
+  static getDerivedStateFromError(error: Error): BoundaryState {
+    return { caught: true };
+  }
+
+  componentDidCatch(error: Error) {
+    if (isSosError(error)) {
+      // Trigger reload via the index.html centralised guard
+      if (typeof (window as any).__sosBoundaryTrigger === 'function') {
+        (window as any).__sosBoundaryTrigger();
+      } else if (!sosRecentReload()) {
+        try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (_) {}
+        window.location.reload();
+      }
+    } else {
+      this._other = error;
+    }
+  }
+
+  render() {
+    if (this._other) {
+      const err = this._other;
+      this._other = null;
+      throw err;
+    }
+    if (this.state.caught) return null; // waiting for reload
+    return this.props.children;
+  }
+}
+
 const rootElement = document.getElementById('app');
 if (!rootElement) throw new Error('Root element not found');
 
@@ -46,22 +99,14 @@ const providers = (
   </HelmetProvider>
 );
 
-// Root-level dev error boundary. The inner boundary in App.tsx lives
-// inside the route element (so it can catch route render errors before
-// React Router swaps in its own error UI), which leaves everything
-// OUTSIDE the router uncaught: provider crashes, errors in App itself,
-// and render errors in components mounted as siblings of <RouterProvider>
-// (e.g. an analytics loader calling useLocation() outside the router).
-// Those throw on first render before the inner boundary ever mounts, so
-// only an ancestor boundary above the providers can catch them. This
-// boundary also owns the global window.onerror/unhandledrejection
-// handlers (the inner one opts out via captureGlobalErrors={false}).
 const tree = (
   <StrictMode>
     {import.meta.env.MODE === 'development' ? (
-      <SosReloadBoundary>
-        <AiroErrorBoundary>{providers}</AiroErrorBoundary>
-      </SosReloadBoundary>
+      <AiroErrorBoundary>
+        <SosInterceptBoundary>
+          {providers}
+        </SosInterceptBoundary>
+      </AiroErrorBoundary>
     ) : (
       providers
     )}

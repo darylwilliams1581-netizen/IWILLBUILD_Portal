@@ -1,24 +1,24 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v13 -->
+  <!-- cache-bust: v14 -->
   <head>
     <meta charset="UTF-8" />
     <script>
+      // Declare SOSAlertPopup as a var so it exists as a bare identifier
+      // on the global scope. ES modules in strict mode cannot see window.*
+      // properties as bare names, but a var in a classic script IS visible
+      // as a bare name from any script on the page (including module scripts
+      // that share the same global object). This stops the frozen HMR
+      // snapshot of RootLayout.tsx (?t=1783772358219) from throwing a
+      // ReferenceError when it references SOSAlertPopup at line 122.
+      var SOSAlertPopup = function SOSAlertPopup() { return null; };
+    </script>
+    <script>
       (function () {
-        // ── SOSAlertPopup frozen-snapshot guard v13 ───────────────────────────
-        // The browser module registry holds a frozen Vite HMR snapshot of
-        // RootLayout.tsx at ?t=1783772358219. That snapshot references
-        // SOSAlertPopup as a bare identifier in a strict-mode ES module.
-        // window globals cannot fix this — only a hard reload flushes the registry.
-        //
-        // Detection layers:
-        // 1. sessionStorage flag set by React boundary on previous render → reload
-        // 2. capture-phase window error for module-eval ReferenceErrors
-        // 3. window.__sosBoundaryTrigger() callable by React boundaries
-
+        // ── SOSAlertPopup frozen-snapshot guard v14 ───────────────────────────
         var LS_KEY = 'html_sos_reload_ts';
         var SS_KEY = 'sos_boundary_triggered';
-        var WINDOW_MS = 20000;
+        var WINDOW_MS = 3000; // short window — only block tight reload loops
 
         function recentReload() {
           try {
