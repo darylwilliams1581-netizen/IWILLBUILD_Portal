@@ -6,7 +6,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
+import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
 
 const MANUAL_HANDLING_SWMS = {
   buildMode: 'advanced',
