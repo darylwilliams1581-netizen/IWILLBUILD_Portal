@@ -435,6 +435,7 @@ import owner_console_swms_seed_carpenter_lockup_post from "./api/owner-console/s
 import owner_console_swms_seed_manual_handling_post from "./api/owner-console/swms/seed-manual-handling/POST";
 import owner_console_swms_seed_underground_services_post from "./api/owner-console/swms/seed-underground-services/POST";
 import owner_console_swms_seed_live_parts_post from "./api/owner-console/swms/seed-live-parts/POST";
+import owner_console_swms_seed_moving_plant_post from "./api/owner-console/swms/seed-moving-plant/POST";
 import owner_console_library_submissions_get_388 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_389 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_390 from "./api/owner-console/starter-pack/GET";
@@ -2062,6 +2063,7 @@ app.post("/api/owner-console/swms/seed-carpenter-lockup", owner_console_swms_see
 app.post("/api/owner-console/swms/seed-manual-handling", owner_console_swms_seed_manual_handling_post);
 app.post("/api/owner-console/swms/seed-underground-services", owner_console_swms_seed_underground_services_post);
 app.post("/api/owner-console/swms/seed-live-parts", owner_console_swms_seed_live_parts_post);
+app.post("/api/owner-console/swms/seed-moving-plant", owner_console_swms_seed_moving_plant_post);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_388);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_389);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_390);

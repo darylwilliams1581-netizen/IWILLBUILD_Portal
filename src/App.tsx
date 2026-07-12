@@ -30,10 +30,10 @@ const SpinnerFallback = () => (
 
 export default function App() {
   const router = useMemo(() => {
-    // StaleModuleReloadBoundary MUST be the innermost boundary — wrapping
-    // RootLayout directly — so it catches the SOSAlertPopup ReferenceError
-    // thrown by the frozen Vite HMR snapshot (t=1783772358219) before
-    // AiroErrorBoundary or PortalErrorBoundary can intercept it.
+    // StaleModuleReloadBoundary MUST be the outermost boundary — wrapping
+    // everything including AiroErrorBoundary — so it intercepts the
+    // SOSAlertPopup ReferenceError before AiroErrorBoundary can swallow it
+    // and prevent the reload.
     const innerElement = (
       <Suspense fallback={<SpinnerFallback />}>
         <RootLayout>
@@ -42,8 +42,6 @@ export default function App() {
       </Suspense>
     );
 
-    // StaleModuleReloadBoundary must be OUTSIDE AiroErrorBoundary/PortalErrorBoundary
-    // so it intercepts the SOSAlertPopup ReferenceError before those boundaries swallow it.
     const routeTree: RouteObject[] = [
       {
         element: (
