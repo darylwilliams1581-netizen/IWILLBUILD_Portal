@@ -304,7 +304,7 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ backgroundColor: '#f1f5f9', color: '#101828', margin: 0 }} suppressHydrationWarning>
+    <div suppressHydrationWarning>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />

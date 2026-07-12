@@ -42,7 +42,7 @@ export default async function handler(req: Request, res: Response) {
       companyIds = [body.company_id];
     } else {
       const [rows] = await db.execute(sql.raw(
-        `SELECT id FROM companies WHERE status <> 'archived' ORDER BY id`
+        `SELECT id FROM companies ORDER BY id`
       )) as unknown as [Array<{ id: number }>, unknown];
       companyIds = (rows ?? []).map((r) => r.id);
     }
