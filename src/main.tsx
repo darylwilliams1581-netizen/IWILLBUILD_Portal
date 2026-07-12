@@ -1,4 +1,11 @@
-// cache-bust 2026-07-12g
+// cache-bust 2026-07-13a
+// SOSAlertPopup shim — the browser has a frozen Vite HMR snapshot of
+// RootLayout.tsx?t=1783772358219 that references SOSAlertPopup as a free
+// variable. Defining it on globalThis before React renders means the frozen
+// snapshot resolves it without a ReferenceError regardless of which cached
+// module version the browser loads.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).SOSAlertPopup = function SOSAlertPopup() { return null; };
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';

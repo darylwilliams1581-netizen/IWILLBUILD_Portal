@@ -1,4 +1,6 @@
-// RootLayout — IWILLBUILD Portal — v27 — 2026-07-12T12:20:00 — clean
+// RootLayout — IWILLBUILD Portal — v33 — 2026-07-13 — sos-shim
+// SOSAlertPopup exported so any frozen Vite HMR snapshot that imports it resolves cleanly.
+export function SOSAlertPopup() { return null; }
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
