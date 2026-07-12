@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'; // v8 cache-bust 2026-07-12i
+import { lazy, Suspense } from 'react'; // v9 cache-bust 2026-07-13a
 import {
   Outlet,
   RouterProvider,
