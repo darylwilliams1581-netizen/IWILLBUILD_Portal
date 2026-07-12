@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react'; // v14 2026-07-13h — force-recompile to evict frozen RootLayout import
+import { lazy, Suspense, useMemo } from 'react'; // v15 2026-07-13i — StaleModuleReloadBoundary innermost; bust frozen App snapshot
 import {
   Outlet,
   RouterProvider,

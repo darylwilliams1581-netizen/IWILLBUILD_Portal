@@ -438,6 +438,7 @@ import owner_console_swms_seed_live_parts_post from "./api/owner-console/swms/se
 import owner_console_swms_seed_moving_plant_post from "./api/owner-console/swms/seed-moving-plant/POST";
 import owner_console_swms_seed_excavations_substation_post from "./api/owner-console/swms/seed-excavations-substation/POST";
 import owner_console_swms_seed_vacuum_excavation_post from "./api/owner-console/swms/seed-vacuum-excavation/POST";
+import owner_console_swms_seed_traffic_management_post from "./api/owner-console/swms/seed-traffic-management/POST";
 import owner_console_library_submissions_get_388 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_389 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_390 from "./api/owner-console/starter-pack/GET";
@@ -2068,6 +2069,7 @@ app.post("/api/owner-console/swms/seed-live-parts", owner_console_swms_seed_live
 app.post("/api/owner-console/swms/seed-moving-plant", owner_console_swms_seed_moving_plant_post);
 app.post("/api/owner-console/swms/seed-excavations-substation", owner_console_swms_seed_excavations_substation_post);
 app.post("/api/owner-console/swms/seed-vacuum-excavation", owner_console_swms_seed_vacuum_excavation_post);
+app.post("/api/owner-console/swms/seed-traffic-management", owner_console_swms_seed_traffic_management_post);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_388);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_389);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_390);

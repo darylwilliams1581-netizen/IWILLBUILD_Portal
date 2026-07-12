@@ -1,4 +1,4 @@
-// cache-bust 2026-07-13e — force full module graph recompile
+// cache-bust 2026-07-13j — SosReloadBoundary wraps AiroErrorBoundary in main.tsx
 // sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';
@@ -7,6 +7,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
+import SosReloadBoundary from '@/components/SosReloadBoundary';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
@@ -58,7 +59,9 @@ const providers = (
 const tree = (
   <StrictMode>
     {import.meta.env.MODE === 'development' ? (
-      <AiroErrorBoundary>{providers}</AiroErrorBoundary>
+      <SosReloadBoundary>
+        <AiroErrorBoundary>{providers}</AiroErrorBoundary>
+      </SosReloadBoundary>
     ) : (
       providers
     )}

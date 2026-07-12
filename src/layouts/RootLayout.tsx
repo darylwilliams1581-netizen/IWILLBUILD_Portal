@@ -1,7 +1,7 @@
-// RootLayout.tsx — IWILLBUILD Portal — v49 — 2026-07-13
-// SOSAlertPopup declared at line 122 to satisfy any frozen HMR snapshot.
-// App.tsx v14 forces a fresh module graph so the frozen ?t=1783772358219
-// URL is no longer imported by any live module.
+// RootLayout.tsx — IWILLBUILD Portal — v50 2026-07-13i
+// SOSAlertPopup exported at line 122 to satisfy any frozen HMR snapshot.
+// sos-shim.ts also sets window.SOSAlertPopup + globalThis.SOSAlertPopup as
+// the very first import in main.tsx so bare-identifier references resolve too.
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
