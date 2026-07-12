@@ -1,10 +1,10 @@
 /**
- * IWILLBUILD Service Worker — v4
+ * IWILLBUILD Service Worker — v5
  * App Shell Cache + Push Notifications + Background Sync
  * + Frozen HMR snapshot rewrite (SOSAlertPopup fix)
  */
 
-const CACHE_NAME = 'iwillbuild-shell-v4';
+const CACHE_NAME = 'iwillbuild-shell-v5';
 
 // ── Frozen HMR snapshot rewrite ───────────────────────────────────────────────
 // The browser module registry may hold a frozen Vite HMR snapshot of

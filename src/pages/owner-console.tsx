@@ -33,6 +33,7 @@ import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
+import SwmsSeedTab from '@/components/owner-console/SwmsSeedTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -351,7 +352,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'library' | 'health-check'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'library' | 'health-check' | 'swms-seed'>(
     (searchParams.get('tab') as 'support-setup' | 'health-check' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
     : 'overview'
@@ -748,6 +749,12 @@ export default function OwnerConsolePage() {
               Library Manager
             </span>
           </Tab>
+          <Tab active={tab === 'swms-seed'} onClick={() => { setTab('swms-seed'); setSearchParams({}); }}>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck size={12} />
+              SWMS Seed
+            </span>
+          </Tab>
           <Tab active={tab === 'health-check'} onClick={() => { setTab('health-check'); setSearchParams({ tab: 'health-check' }); }}>
             <span className="flex items-center gap-1.5">
               <Activity size={12} />
@@ -937,6 +944,7 @@ export default function OwnerConsolePage() {
 
               {/* ── Library Manager ── */}
               {tab === 'library' && <LibraryManagerTab />}
+              {tab === 'swms-seed' && <SwmsSeedTab />}
 
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (

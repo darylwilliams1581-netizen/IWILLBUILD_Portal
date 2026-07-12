@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v19 -->
+  <!-- cache-bust: v20 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -99,12 +99,14 @@
         }
 
         function isSos(v) {
-          if (typeof v !== 'string') return false;
-          return v.indexOf('SOSAlertPopup') !== -1 || v.indexOf('1783772358219') !== -1;
+          if (!v) return false;
+          var s = typeof v === 'string' ? v : '';
+          if (!s && typeof v === 'object') { try { s = v.message + ' ' + v.stack; } catch(_){} }
+          return s.indexOf('SOSAlertPopup') !== -1 || s.indexOf('1783772358219') !== -1;
         }
 
         window.addEventListener('error', function (e) {
-          if (e && (isSos(e.message) || isSos(e.filename) || isSos(e.error && e.error.stack))) {
+          if (e && (isSos(e.message) || isSos(e.filename) || isSos(e.error))) {
             e.preventDefault && e.preventDefault();
             e.stopImmediatePropagation && e.stopImmediatePropagation();
             doNav();
@@ -151,7 +153,8 @@
       })();
     </script>
     <meta name="referrer" content="same-origin" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />

@@ -760,9 +760,11 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   ].join(' ');
   // In production: drop unsafe-eval (only needed by Vite HMR in dev).
   // In dev: keep it so the Vite client and React refresh work correctly.
+  // img1.wsimg.com is injected by GoDaddy's CDN infrastructure — allow it so
+  // CSP violations don't pollute the console or interfere with hydration.
   const scriptSrc = import.meta.env.PROD
-    ? `script-src 'self' 'unsafe-inline' https://js.stripe.com`
-    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`;
+    ? `script-src 'self' 'unsafe-inline' https://js.stripe.com https://img1.wsimg.com`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://img1.wsimg.com`;
   // frame-ancestors: allow the GoDaddy builder iframe to embed this app in preview.
   // In production this is same-origin only (no builder iframe needed).
   const frameAncestors = import.meta.env.PROD
