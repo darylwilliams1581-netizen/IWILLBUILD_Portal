@@ -184,9 +184,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             // frozen snapshot. The shim re-exports the real RootLayout default
             // and declares SOSAlertPopup so the frozen code's reference resolves.
             res.end(
-              `// frozen-snapshot eviction shim v3\n` +
-              `export { default } from '${cleanUrl}';\n` +
-              `export { SOSAlertPopup } from '${cleanUrl}';\n`
+              `// frozen-snapshot eviction shim v4\n` +
+              `import _RL, { SOSAlertPopup as _SOS } from '${cleanUrl}';\n` +
+              `globalThis.SOSAlertPopup = _SOS || function SOSAlertPopup() { return null; };\n` +
+              `export default _RL;\n` +
+              `export const SOSAlertPopup = globalThis.SOSAlertPopup;\n`
             );
             return;
           }

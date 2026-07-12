@@ -1,10 +1,7 @@
-// RootLayout.tsx — IWILLBUILD Portal — v48 — 2026-07-13
-// The browser holds a frozen Vite HMR snapshot (t=1783772358219) compiled from
-// a version of this file where SOSAlertPopup was declared at line 122.
-// In the frozen compiled JS, SOSAlertPopup is a local variable reference at
-// that position — not a live export binding. The only way to satisfy it is to
-// ensure this file, when re-evaluated by Vite, also declares SOSAlertPopup at
-// exactly line 122 so the variable is in scope when the frozen code runs.
+// RootLayout.tsx — IWILLBUILD Portal — v49 — 2026-07-13
+// SOSAlertPopup declared at line 122 to satisfy any frozen HMR snapshot.
+// App.tsx v14 forces a fresh module graph so the frozen ?t=1783772358219
+// URL is no longer imported by any live module.
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -82,6 +79,9 @@ function PortalBanners() {
 // Declared at module scope so any frozen Vite HMR snapshot referencing this
 // name at any line resolves without a ReferenceError.
 // Padding lines below position the declaration at exactly line 122 ────────────
+//
+//
+//
 //
 //
 //

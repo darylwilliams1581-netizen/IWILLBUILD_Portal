@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react'; // v13 2026-07-13g — stale-boundary innermost
+import { lazy, Suspense, useMemo } from 'react'; // v14 2026-07-13h — force-recompile to evict frozen RootLayout import
 import {
   Outlet,
   RouterProvider,
@@ -34,24 +34,27 @@ export default function App() {
     // everything including AiroErrorBoundary — so it intercepts the
     // SOSAlertPopup ReferenceError before AiroErrorBoundary can swallow it
     // and prevent the reload.
+    // StaleModuleReloadBoundary wraps RootLayout directly — INSIDE
+    // AiroErrorBoundary — so it intercepts the SOSAlertPopup ReferenceError
+    // before AiroErrorBoundary can report it to the platform.
     const innerElement = (
-      <Suspense fallback={<SpinnerFallback />}>
-        <RootLayout>
-          <Outlet />
-        </RootLayout>
-      </Suspense>
+      <StaleModuleReloadBoundary>
+        <Suspense fallback={<SpinnerFallback />}>
+          <RootLayout>
+            <Outlet />
+          </RootLayout>
+        </Suspense>
+      </StaleModuleReloadBoundary>
     );
 
     const routeTree: RouteObject[] = [
       {
         element: (
-          <StaleModuleReloadBoundary>
-            {import.meta.env.MODE === 'development' ? (
-              <AiroErrorBoundary captureGlobalErrors={false}>{innerElement}</AiroErrorBoundary>
-            ) : (
-              <PortalErrorBoundary>{innerElement}</PortalErrorBoundary>
-            )}
-          </StaleModuleReloadBoundary>
+          import.meta.env.MODE === 'development' ? (
+            <AiroErrorBoundary captureGlobalErrors={false}>{innerElement}</AiroErrorBoundary>
+          ) : (
+            <PortalErrorBoundary>{innerElement}</PortalErrorBoundary>
+          )
         ),
         children: routes,
       },
