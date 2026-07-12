@@ -1058,15 +1058,29 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Mode toggle */}
-            <button
-              type="button"
-              onClick={() => set('buildMode', data.buildMode === 'quick' ? 'advanced' : 'quick')}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${data.buildMode === 'advanced' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}
-            >
-              {data.buildMode === 'advanced' ? <Settings2 size={12} /> : <Zap size={12} />}
-              {data.buildMode === 'advanced' ? 'Advanced' : 'Quick Build'}
-            </button>
+            {/* Mode toggle — two explicit options */}
+            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 gap-0.5">
+              <button
+                type="button"
+                onClick={() => { set('buildMode', 'quick'); setStep(0); }}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'quick' ? 'bg-white text-orange-600 shadow-sm border border-orange-200' : 'text-slate-500 hover:text-slate-700'}`}
+                title="9 sections — Identity, HRCW, Controls, PPE, Sequence, Emergency, Sign-On"
+              >
+                <Zap size={12} />
+                Quick
+                <span className={`text-[10px] font-normal ${data.buildMode === 'quick' ? 'text-orange-400' : 'text-slate-400'}`}>9 sections</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { set('buildMode', 'advanced'); setStep(0); }}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'advanced' ? 'bg-white text-slate-800 shadow-sm border border-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+                title="14 sections — adds Task Requirements, Environmental Controls, Training & Competency, Definitions, Related Documents"
+              >
+                <Settings2 size={12} />
+                Advanced
+                <span className={`text-[10px] font-normal ${data.buildMode === 'advanced' ? 'text-slate-400' : 'text-slate-400'}`}>14 sections</span>
+              </button>
+            </div>
             {/* Validation badge */}
             {(errorCount > 0 || warnCount > 0) && (
               <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${errorCount > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -1085,11 +1099,15 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
               key={sec.id}
               type="button"
               onClick={() => setStep(i)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0 ${i === step ? 'border-primary text-primary bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'} ${!sec.quickBuild ? 'opacity-70' : ''}`}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0
+                ${i === step ? 'border-primary text-primary bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
+                ${!sec.quickBuild ? 'border-l border-l-violet-200 bg-violet-50/40' : ''}`}
+              title={!sec.quickBuild ? 'Advanced mode only' : ''}
             >
               {sec.icon}
               <span className="hidden sm:inline">{sec.label}</span>
               <span className="sm:hidden">{i + 1}</span>
+              {!sec.quickBuild && <span className="hidden sm:inline text-[9px] font-bold text-violet-400 uppercase tracking-wide ml-0.5">+</span>}
             </button>
           ))}
         </div>
