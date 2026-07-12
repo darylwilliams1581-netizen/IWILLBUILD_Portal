@@ -1,9 +1,9 @@
-// RootLayout.tsx — IWILLBUILD Portal — v50 2026-07-13i
+// RootLayout.tsx — IWILLBUILD Portal — v51 2026-07-13j
 // SOSAlertPopup exported at line 122 to satisfy any frozen HMR snapshot.
-// sos-shim.ts also sets window.SOSAlertPopup + globalThis.SOSAlertPopup as
-// the very first import in main.tsx so bare-identifier references resolve too.
+// SosInnerBoundary wraps children so it sits INSIDE AiroErrorBoundary and
+// catches the frozen-snapshot ReferenceError before AiroErrorBoundary swallows it.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { type ReactElement, useEffect, useRef } from 'react';
+import { Component, type ReactElement, type ReactNode, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -75,6 +75,47 @@ function PortalBanners() {
   );
 }
 
+// ── SosInnerBoundary ──────────────────────────────────────────────────────────
+// Sits inside AiroErrorBoundary (closer to the throw site) so it intercepts the
+// SOSAlertPopup ReferenceError from the frozen RootLayout snapshot before
+// AiroErrorBoundary swallows it. Triggers a hard reload via __sosBoundaryTrigger.
+const SOS_LS_KEY = 'sos_inner_reload_ts';
+const SOS_WINDOW_MS = 4000;
+
+function sosRecentReload(): boolean {
+  try {
+    const ts = parseInt(localStorage.getItem(SOS_LS_KEY) ?? '0', 10);
+    return ts > 0 && Date.now() - ts < SOS_WINDOW_MS;
+  } catch { return false; }
+}
+
+interface SosState { caught: boolean }
+class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
+  state: SosState = { caught: false };
+  private _rethrow: Error | null = null;
+
+  static getDerivedStateFromError(): SosState { return { caught: true }; }
+
+  componentDidCatch(error: Error) {
+    if (error.message?.includes('SOSAlertPopup')) {
+      if (typeof (window as any).__sosBoundaryTrigger === 'function') {
+        (window as any).__sosBoundaryTrigger();
+      } else if (!sosRecentReload()) {
+        try { localStorage.setItem(SOS_LS_KEY, String(Date.now())); } catch (_) {}
+        window.location.reload();
+      }
+    } else {
+      this._rethrow = error;
+    }
+  }
+
+  render() {
+    if (this._rethrow) { const e = this._rethrow; this._rethrow = null; throw e; }
+    if (this.state.caught) return null;
+    return this.props.children;
+  }
+}
+
 // ── SOSAlertPopup ─────────────────────────────────────────────────────────────
 // Declared at module scope so any frozen Vite HMR snapshot referencing this
 // name at any line resolves without a ReferenceError.
@@ -138,7 +179,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <Toaster position="top-right" richColors />
       <PwaInstallPrompt />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {children}
+        <SosInnerBoundary>
+          {children}
+        </SosInnerBoundary>
       </div>
     </div>
   );
