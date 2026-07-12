@@ -264,6 +264,8 @@ export function SafetyPlansTab() {
   const [showLegacyModal, setShowLegacyModal] = useState(false);
   const [editing, setEditing] = useState<SafetyPlan | null>(null);
   const [builderInitial, setBuilderInitial] = useState<ReturnType<typeof austenPlanDefaults> | null>(null);
+  const [builderPlanId, setBuilderPlanId] = useState<number | null>(null);
+  const [builderPlanTitle, setBuilderPlanTitle] = useState<string | undefined>(undefined);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -300,11 +302,26 @@ export function SafetyPlansTab() {
 
   function openAustenPlan() {
     setBuilderInitial(austenPlanDefaults());
+    setBuilderPlanId(null);
+    setBuilderPlanTitle('Austen WHS Management Plan');
     setShowBuilder(true);
   }
 
   function openNewBuilder() {
     setBuilderInitial(null);
+    setBuilderPlanId(null);
+    setBuilderPlanTitle(undefined);
+    setShowBuilder(true);
+  }
+
+  function openExistingPlan(p: SafetyPlan) {
+    let parsedData: ReturnType<typeof austenPlanDefaults> | null = null;
+    if (p.plan_data) {
+      try { parsedData = JSON.parse(p.plan_data as string); } catch { /* ignore */ }
+    }
+    setBuilderInitial(parsedData);
+    setBuilderPlanId(p.id);
+    setBuilderPlanTitle(p.title);
     setShowBuilder(true);
   }
 
@@ -427,7 +444,7 @@ export function SafetyPlansTab() {
                   <FileDown size={14} />
                 </a>
                 <button
-                  onClick={() => { setBuilderInitial(null); setShowBuilder(true); }}
+                  onClick={() => openExistingPlan(p)}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
                   title="Open in WHS Builder"
                 >
@@ -447,9 +464,10 @@ export function SafetyPlansTab() {
         {showBuilder && (
           <WHS_PlanBuilder
             initial={builderInitial}
-            planTitle={builderInitial ? 'Austen WHS Management Plan' : undefined}
+            planTitle={builderPlanTitle}
+            existingPlanId={builderPlanId}
             jobs={jobs}
-            onClose={() => { setShowBuilder(false); setBuilderInitial(null); }}
+            onClose={() => { setShowBuilder(false); setBuilderInitial(null); setBuilderPlanId(null); setBuilderPlanTitle(undefined); }}
             onSaved={(_id, _title) => {
               refreshPlans();
             }}

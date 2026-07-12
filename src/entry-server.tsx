@@ -1,4 +1,4 @@
-import { StrictMode, Suspense } from 'react';
+import { StrictMode, Suspense } from 'react'; // v23 cache-bust 2026-07-12T12:00
 import { renderToString } from 'react-dom/server';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import type { HelmetServerState } from '@dr.pogodin/react-helmet';

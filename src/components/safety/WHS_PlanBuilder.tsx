@@ -1159,14 +1159,16 @@ function getWarnings(d: WHS_PlanData): string[] {
 interface Props {
   initial?: Partial<WHS_PlanData> | null;
   planTitle?: string;
+  existingPlanId?: number | null;
   jobs: Array<{ id: number; name: string; jobNumber: string | null }>;
   onClose: () => void;
   onSaved: (planId: number, title: string) => void;
 }
 
-export default function WHS_PlanBuilder({ initial, planTitle, jobs, onClose, onSaved }: Props) {
+export default function WHS_PlanBuilder({ initial, planTitle, existingPlanId, jobs, onClose, onSaved }: Props) {
   const defaults = { ...blankPlanDefaults(), ...(initial ?? {}) };
   const [data, setData] = useState<WHS_PlanData>(defaults);
+  const [savedPlanId, setSavedPlanId] = useState<number | null>(existingPlanId ?? null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -1183,8 +1185,9 @@ export default function WHS_PlanBuilder({ initial, planTitle, jobs, onClose, onS
   async function handleSave(andClose = false) {
     setSaving(true); setSaveError('');
     try {
+      const resolvedTitle = planTitle || data.projectName || 'WHS Management Plan';
       const body = {
-        title: planTitle || data.projectName || 'WHS Management Plan',
+        title: resolvedTitle,
         plan_data: JSON.stringify(data),
         status: data.status,
         job_id: data.jobId ? parseInt(data.jobId) : null,
@@ -1200,14 +1203,33 @@ export default function WHS_PlanBuilder({ initial, planTitle, jobs, onClose, onS
         is_principal_contractor: data.principalContractorWho === 'Our company' ? 1 : 0,
         high_risk_activities: data.selectedHRCW.join('|'),
       };
-      const r = await fetch('/api/safety/plans', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const resp = await r.json();
-      if (!r.ok) throw new Error(resp.error ?? 'Failed to save');
-      onSaved(resp.plan.id, resp.plan.title);
+
+      let planId = savedPlanId;
+      let resp: Record<string, unknown>;
+
+      if (planId) {
+        // Update existing plan
+        const r = await fetch(`/api/safety/plans/${planId}`, {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        resp = await r.json();
+        if (!r.ok) throw new Error((resp.error as string) ?? 'Failed to save');
+      } else {
+        // Create new plan
+        const r = await fetch('/api/safety/plans', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        resp = await r.json();
+        if (!r.ok) throw new Error((resp.error as string) ?? 'Failed to save');
+        planId = (resp.plan as Record<string, unknown>)?.id as number;
+        setSavedPlanId(planId);
+      }
+
+      onSaved(planId!, resolvedTitle);
       if (andClose) onClose();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');

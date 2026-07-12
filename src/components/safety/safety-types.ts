@@ -37,6 +37,8 @@ export interface SafetyPlan {
   site_rules: string | null;
   high_risk_activities: string | null;
   status: string;
+  plan_data: string | null;
+  plan_type: string | null;
   job_name: string | null;
   job_number: string | null;
   created_at: string;

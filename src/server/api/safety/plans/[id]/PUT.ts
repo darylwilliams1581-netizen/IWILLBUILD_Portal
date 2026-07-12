@@ -24,26 +24,46 @@ export default async function handler(req: Request, res: Response) {
       siteSupervisor, firstAidOfficer, emergencyContact, nearestHospital,
       emergencyAssemblyPoint, evacuationNotes, siteRules, highRiskActivities,
       requiredPosters, status,
+      plan_data, plan_type,
+      // snake_case aliases from WHS builder
+      project_value, is_principal_contractor,
+      site_address, site_supervisor, first_aid_officer, emergency_contact,
+      nearest_hospital, emergency_assembly_point, evacuation_notes,
+      high_risk_activities,
     } = req.body as Record<string, string>;
 
-    if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
+    const resolvedTitle = (title ?? '').trim();
+    if (!resolvedTitle) return res.status(400).json({ error: 'Title is required' });
+
+    const resolvedProjectValue = projectValue ?? project_value ?? null;
+    const resolvedIsPC = isPrincipalContractor === 'true' || is_principal_contractor === '1' || (is_principal_contractor as unknown) === 1 ? 1 : 0;
+    const resolvedSiteAddress = siteAddress ?? site_address ?? null;
+    const resolvedSupervisor = siteSupervisor ?? site_supervisor ?? null;
+    const resolvedFirstAid = firstAidOfficer ?? first_aid_officer ?? null;
+    const resolvedEmergency = emergencyContact ?? emergency_contact ?? null;
+    const resolvedHospital = nearestHospital ?? nearest_hospital ?? null;
+    const resolvedAssembly = emergencyAssemblyPoint ?? emergency_assembly_point ?? null;
+    const resolvedEvacuation = evacuationNotes ?? evacuation_notes ?? null;
+    const resolvedHRA = highRiskActivities ?? high_risk_activities ?? null;
 
     await db.execute(sql`
       UPDATE safety_plans SET
-        title = ${title.trim()},
-        project_value = ${projectValue ?? null},
-        is_principal_contractor = ${isPrincipalContractor === 'true' ? 1 : 0},
-        site_address = ${siteAddress ?? null},
-        site_supervisor = ${siteSupervisor ?? null},
-        first_aid_officer = ${firstAidOfficer ?? null},
-        emergency_contact = ${emergencyContact ?? null},
-        nearest_hospital = ${nearestHospital ?? null},
-        emergency_assembly_point = ${emergencyAssemblyPoint ?? null},
-        evacuation_notes = ${evacuationNotes ?? null},
+        title = ${resolvedTitle},
+        project_value = ${resolvedProjectValue},
+        is_principal_contractor = ${resolvedIsPC},
+        site_address = ${resolvedSiteAddress},
+        site_supervisor = ${resolvedSupervisor},
+        first_aid_officer = ${resolvedFirstAid},
+        emergency_contact = ${resolvedEmergency},
+        nearest_hospital = ${resolvedHospital},
+        emergency_assembly_point = ${resolvedAssembly},
+        evacuation_notes = ${resolvedEvacuation},
         site_rules = ${siteRules ?? null},
-        high_risk_activities = ${highRiskActivities ?? null},
+        high_risk_activities = ${resolvedHRA},
         required_posters = ${requiredPosters ?? null},
-        status = ${status ?? 'draft'}
+        status = ${status ?? 'draft'},
+        plan_data = ${plan_data ?? null},
+        plan_type = ${plan_type ?? null}
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 
