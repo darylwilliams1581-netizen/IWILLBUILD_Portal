@@ -4,27 +4,29 @@
 // ─── Risk Rating ──────────────────────────────────────────────────────────────
 export type RiskLevel = 'extreme' | 'high' | 'medium' | 'low' | '';
 
-// ─── High-Risk Construction Work categories (WHS Reg 2017, Schedule 3) ────────
+// ─── High-Risk Construction Work categories ───────────────────────────────────
+// Source: Work Health and Safety Regulation 2011 (Qld), Schedule 3
+// 18 prescribed activities — maintained here as the single source of truth.
+// Do NOT hardcode this list elsewhere in the codebase.
 export const HRCW_CATEGORIES = [
   'Work involving a risk of a person falling more than 3 metres',
   'Work on telecommunications towers',
   'Demolition of load-bearing structures',
   'Work involving disturbance of asbestos',
-  'Work involving structural alterations requiring temporary support',
+  'Work involving structural alterations requiring temporary support to prevent collapse',
   'Work in or near a confined space',
   'Work in or near a shaft or trench deeper than 1.5 metres',
   'Work using explosives',
   'Work on or near pressurised gas distribution mains or piping',
   'Work on or near chemical, fuel or refrigerant lines',
   'Work on or near energised electrical installations or services',
-  'Work in an area where there may be a contaminated or flammable atmosphere',
+  'Work in an area that may have a contaminated or flammable atmosphere',
   'Tilt-up or precast concrete work',
   'Work on or adjacent to roads or railways used by traffic',
   'Work in areas with artificial extremes of temperature',
   'Work in or near water or other liquids where there is a risk of drowning',
   'Work involving diving',
-  'Work involving the use of explosives',
-  'Work involving the use of a crane or hoist',
+  'Work involving the use of a crane, hoist or suspended work platform',
 ] as const;
 
 export type HRCWCategory = typeof HRCW_CATEGORIES[number];
@@ -102,12 +104,12 @@ export interface WorkStep {
   sequenceNumber: number;
   sequenceOfWork: string;
   hazardsAndRisks: string;
+  possibleConsequence: string;        // mandatory — separate from hazard
   initialRisk: RiskLevel;
   controlMeasures: string;
   residualRisk: RiskLevel;
   responsiblePerson: string;
   // Optional expanded fields
-  possibleConsequence?: string;
   isCriticalControl?: boolean;
   monitoringMethod?: string;
   stopWorkTrigger?: string;
@@ -262,8 +264,10 @@ export interface SwmsBodyData {
   workBoundaries: string;
 
   // 2. HRCW Interface
+  hrcwApplies: 'yes' | 'no' | 'unsure';   // replaces noHrcwApplies boolean
   hrcwCategories: HRCWEntry[];
-  noHrcwApplies: boolean;
+  /** @deprecated use hrcwApplies instead */
+  noHrcwApplies?: boolean;
 
   // 3. Fatal Hazards & Critical Controls
   criticalControls: CriticalControl[];
@@ -327,8 +331,8 @@ export function blankSwmsBody(overrides?: Partial<SwmsBodyData>): SwmsBodyData {
     excludedActivities: [],
     workBoundaries: '',
 
+    hrcwApplies: 'unsure',
     hrcwCategories: [],
-    noHrcwApplies: false,
 
     criticalControls: [],
 
@@ -385,14 +389,23 @@ export function validateSwmsBody(d: SwmsBodyData): SwmsValidationWarning[] {
 
   if (!d.purpose.trim()) warnings.push({ field: 'purpose', message: 'No Purpose entered', severity: 'error' });
   if (!d.scope.trim()) warnings.push({ field: 'scope', message: 'No Scope entered', severity: 'error' });
-  if (!d.noHrcwApplies && d.hrcwCategories.length === 0)
-    warnings.push({ field: 'hrcw', message: 'No high-risk construction work category or document type selected', severity: 'error' });
+
+  // HRCW validation — new three-state logic
+  if (d.hrcwApplies === 'unsure')
+    warnings.push({ field: 'hrcw', message: 'Confirm whether High-Risk Construction Work applies', severity: 'error' });
+  if (d.hrcwApplies === 'yes' && d.hrcwCategories.length === 0)
+    warnings.push({ field: 'hrcw', message: 'HRCW applies — select at least one category', severity: 'error' });
+  if (d.hrcwApplies === 'no' && (!d.documentType || d.documentType === 'swms'))
+    warnings.push({ field: 'hrcw', message: 'No statutory HRCW — select the correct document type (Task-Specific SWMS, Safe Work Procedure, or General Risk Assessment)', severity: 'error' });
+
   if (d.workSteps.length === 0)
     warnings.push({ field: 'workSteps', message: 'No sequence-of-work rows exist', severity: 'error' });
 
   for (const step of d.workSteps) {
     if (!step.hazardsAndRisks.trim())
       warnings.push({ field: `step-${step.id}-hazard`, message: `Work step ${step.sequenceNumber}: no hazard entered`, severity: 'warning' });
+    if (!step.possibleConsequence.trim())
+      warnings.push({ field: `step-${step.id}-consequence`, message: `Work step ${step.sequenceNumber}: no possible consequence entered`, severity: 'warning' });
     if (!step.controlMeasures.trim())
       warnings.push({ field: `step-${step.id}-controls`, message: `Work step ${step.sequenceNumber}: no controls entered`, severity: 'warning' });
     if (!step.responsiblePerson.trim())
@@ -426,6 +439,7 @@ export function migrateFromLegacy(legacy: Record<string, string | null>): Partia
             sequenceNumber: i + 1,
             sequenceOfWork: s.sequenceOfWork ?? '',
             hazardsAndRisks: s.hazardsAndRisks ?? '',
+            possibleConsequence: s.possibleConsequence ?? '',  // may be blank on old records
             initialRisk: s.initialRisk ?? '',
             controlMeasures: s.controlMeasures ?? '',
             residualRisk: s.residualRisk ?? '',
@@ -436,9 +450,17 @@ export function migrateFromLegacy(legacy: Record<string, string | null>): Partia
     } catch { /* not JSON — leave steps empty, put in legacy field */ }
   }
 
+  // Infer hrcwApplies from legacy noHrcwApplies if present
+  const legacyNoHrcw = legacy.no_hrcw_applies;
+  const hrcwApplies: 'yes' | 'no' | 'unsure' =
+    legacyNoHrcw === 'true' ? 'no' :
+    legacyNoHrcw === 'false' ? 'yes' :
+    'unsure';
+
   return {
     purpose: legacy.purpose_scope ?? '',
     scope: legacy.work_activity ?? '',
+    hrcwApplies,
     legacyHazards: legacy.hazards ?? undefined,
     legacyRisks: legacy.risks ?? undefined,
     legacyControls: legacy.controls ?? undefined,

@@ -1,6 +1,6 @@
-// RootLayout — IWILLBUILD Portal — v30 — 2026-07-13 — full-standalone-with-sos
-// This file is the canonical RootLayout. SOSAlertPopup is defined here as a
-// no-op so any stale Vite HMR snapshot that references it at line 122 resolves.
+// RootLayout — IWILLBUILD Portal — v32 — 2026-07-13 — sos-inline-canonical
+// SOSAlertPopup defined at module scope so any frozen Vite HMR snapshot
+// that references it as a free variable at line 122 resolves cleanly.
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -11,71 +11,48 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { Toaster } from '@/components/ui/sonner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
-// No-op shim — satisfies stale HMR snapshots that reference this symbol
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// ── SOSAlertPopup shim ────────────────────────────────────────────────────────
+// The old RootLayout.tsx (t=1783772358219) referenced this symbol at line 122.
+// Defining it here means the frozen snapshot resolves it without a ReferenceError.
 function SOSAlertPopup() { return null; }
 
-interface RootLayoutProps {
-  children: ReactElement;
-}
+// ── Layout ────────────────────────────────────────────────────────────────────
+interface RootLayoutProps { children: ReactElement; }
 
-const PUBLIC_ROUTES = new Set([
-  '/',
-  '/login',
-  '/signup',
-  '/check-email',
-  '/verify-email',
-  '/verify-required',
-  '/forgot-password',
-  '/reset-password',
-]);
+const PUBLIC_ROUTES = new Set(['/', '/login', '/signup', '/check-email',
+  '/verify-email', '/verify-required', '/forgot-password', '/reset-password']);
 
-function isPublicRoute(pathname: string): boolean {
-  if (PUBLIC_ROUTES.has(pathname)) return true;
-  for (const route of PUBLIC_ROUTES) {
-    if (pathname.startsWith(route + '/')) return true;
-  }
+function isPublicRoute(p: string) {
+  if (PUBLIC_ROUTES.has(p)) return true;
+  for (const r of PUBLIC_ROUTES) if (p.startsWith(r + '/')) return true;
   return false;
 }
 
 function ActivePing() {
   const { user } = useSession();
   const location = useLocation();
-  const lastPingRef = useRef<number>(0);
+  const lastRef = useRef<number>(0);
   const isPublic = isPublicRoute(location.pathname);
-
   const ping = () => {
     if (!user || isPublic) return;
     const now = Date.now();
-    if (now - lastPingRef.current < 60_000) return;
-    lastPingRef.current = now;
+    if (now - lastRef.current < 60_000) return;
+    lastRef.current = now;
     void fetch('/api/active-ping', { method: 'POST', credentials: 'include' }).catch(() => {});
   };
-
-  useEffect(() => {
-    ping();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, user?.id]);
-
+  useEffect(() => { ping(); }, [location.pathname, user?.id]); // eslint-disable-line
   useEffect(() => {
     if (!user || isPublic) return;
-    const interval = setInterval(ping, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isPublic]);
-
+    const t = setInterval(ping, 2 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [user?.id, isPublic]); // eslint-disable-line
   return null;
 }
 
 function PortalBanners() {
   const location = useLocation();
   if (isPublicRoute(location.pathname)) return null;
-  return (
-    <>
-      <SupportModeBanner />
-      <ViewOnlyBanner />
-    </>
-  );
+  return <><SupportModeBanner /><ViewOnlyBanner /></>;
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -83,10 +60,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
-        <meta
-          name="description"
-          content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
-        />
+        <meta name="description" content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
       </Helmet>
       <OfflineBanner />
       <PortalBanners />
@@ -95,9 +69,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <Toaster position="top-right" richColors />
       <PwaInstallPrompt />
       <SOSAlertPopup />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {children}
-      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
     </div>
   );
 }

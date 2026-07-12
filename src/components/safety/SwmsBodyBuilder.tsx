@@ -296,15 +296,34 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
     return (
       <div className="flex flex-col gap-4">
         {sectionHead('High-Risk Construction Work Interface')}
-        <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-amber-800">
-            <input type="checkbox" checked={data.noHrcwApplies} onChange={(e) => set('noHrcwApplies', e.target.checked)} className="rounded" />
-            No statutory HRCW category applies to this work
-          </label>
+
+        {/* ── Three-state question ── */}
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-slate-700">Does statutory High-Risk Construction Work (HRCW) apply to this work?</p>
+          <p className="text-xs text-slate-500">WHS Regulation 2011 (Qld), Schedule 3 — 18 prescribed activities</p>
+          <div className="flex gap-2 mt-1">
+            {(['yes', 'no', 'unsure'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => set('hrcwApplies', opt)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors capitalize
+                  ${data.hrcwApplies === opt
+                    ? opt === 'yes' ? 'bg-red-600 text-white border-red-600'
+                      : opt === 'no' ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}
+              >
+                {opt === 'yes' ? 'Yes — HRCW applies' : opt === 'no' ? 'No — HRCW does not apply' : 'Unsure'}
+              </button>
+            ))}
+          </div>
         </div>
-        {!data.noHrcwApplies && (
+
+        {/* ── Yes: show category checklist ── */}
+        {data.hrcwApplies === 'yes' && (
           <>
-            <p className="text-xs text-slate-500">Select all applicable high-risk construction work categories (WHS Regulations, Schedule 3):</p>
+            <p className="text-xs text-slate-500">Select all applicable HRCW categories:</p>
             <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3">
               {HRCW_CATEGORIES.map((cat) => {
                 const selected = data.hrcwCategories.some((h) => h.category === cat);
@@ -345,6 +364,38 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
               </div>
             )}
           </>
+        )}
+
+        {/* ── No: require correct document type ── */}
+        {data.hrcwApplies === 'no' && (
+          <div className="flex flex-col gap-2 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <p className="text-sm font-semibold text-emerald-800">No statutory HRCW — select the correct document type:</p>
+            <p className="text-xs text-emerald-700">A full SWMS is not required. Choose the appropriate document type for this work.</p>
+            <div className="flex flex-col gap-2 mt-1">
+              {(['task-specific-swms', 'safe-work-procedure', 'general-risk-assessment'] as const).map((dt) => (
+                <label key={dt} className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="radio"
+                    name="documentType"
+                    checked={data.documentType === dt}
+                    onChange={() => set('documentType', dt)}
+                    className="accent-emerald-600"
+                  />
+                  <span className={data.documentType === dt ? 'font-bold text-emerald-800' : 'text-slate-700'}>
+                    {DOCUMENT_TYPE_LABELS[dt]}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Unsure: guidance ── */}
+        {data.hrcwApplies === 'unsure' && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm font-semibold text-amber-800 mb-1">Review the 18 HRCW categories above</p>
+            <p className="text-xs text-amber-700">If any of the listed activities will be performed, select <strong>Yes</strong>. If none apply, select <strong>No</strong> and choose the correct document type. If still unsure, consult your WHS advisor before proceeding.</p>
+          </div>
         )}
       </div>
     );
@@ -529,6 +580,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
       sequenceNumber: data.workSteps.length + 1,
       sequenceOfWork: '',
       hazardsAndRisks: '',
+      possibleConsequence: '',
       initialRisk: '',
       controlMeasures: '',
       residualRisk: '',
@@ -596,8 +648,12 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
                       <textarea value={step.sequenceOfWork} onChange={(e) => updateStep(step.id, 'sequenceOfWork', e.target.value)} rows={2} className={textareaCls} placeholder="Describe the specific work activity for this step…" />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-xs text-slate-500 mb-1 block">Hazards & Risks</label>
-                      <textarea value={step.hazardsAndRisks} onChange={(e) => updateStep(step.id, 'hazardsAndRisks', e.target.value)} rows={2} className={textareaCls} placeholder="• Identify specific hazards and risks for this step…" />
+                      <label className="text-xs text-slate-500 mb-1 block">Hazards <span className="text-red-400">*</span></label>
+                      <textarea value={step.hazardsAndRisks} onChange={(e) => updateStep(step.id, 'hazardsAndRisks', e.target.value)} rows={2} className={textareaCls} placeholder="• Identify the specific hazard (e.g. exposed rotating blade, live conductors)…" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-slate-500 mb-1 block">Possible Consequence <span className="text-red-400">*</span></label>
+                      <textarea value={step.possibleConsequence} onChange={(e) => updateStep(step.id, 'possibleConsequence', e.target.value)} rows={2} className={textareaCls} placeholder="• What injury or damage could result? (e.g. laceration, electrocution, property damage)…" />
                     </div>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">Initial Risk</label>
