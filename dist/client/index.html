@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v19 -->
+  <!-- cache-bust: v20 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -54,21 +54,41 @@
     </script>
     <script>
       (function () {
-        // ── SOSAlertPopup error-boundary navigation guard v18 ─────────────────
+        // ── SOSAlertPopup error-boundary navigation guard v21 ─────────────────
         // Fallback: if the fetch override above doesn't catch it (e.g. the module
         // was already in the module registry from a prior session), detect the
         // ReferenceError and do a true location.href navigation (not reload —
         // reload reuses the module registry in Chromium) to bust the registry.
-        var COUNT_KEY = 'sos_nav_count_v18';
-        var TS_KEY    = 'sos_nav_ts_v18';
-        var MAX       = 3;
+        var COUNT_KEY = 'sos_nav_count_v21';
+        var TS_KEY    = 'sos_nav_ts_v21';
+        var SESSION_KEY = 'sos_nav_session_v21';
+        var MAX       = 8;
         var WIN_MS    = 30000;
+
+        // Always allow at least one nav per browser session (sessionStorage resets on tab close).
+        try {
+          if (!sessionStorage.getItem(SESSION_KEY)) {
+            localStorage.removeItem(COUNT_KEY);
+            localStorage.removeItem(TS_KEY);
+            sessionStorage.setItem(SESSION_KEY, '1');
+          }
+        } catch (_) {}
 
         // Strip _sos param left by a previous navigation.
         try {
           var u = new URL(location.href);
           if (u.searchParams.has('_sos')) {
             u.searchParams.delete('_sos');
+            history.replaceState(null, '', u.toString());
+          }
+          // Clean up old guard keys from previous versions.
+          localStorage.removeItem('sos_nav_count_v20');
+          localStorage.removeItem('sos_nav_ts_v20');
+          localStorage.removeItem('smrb_nav_ts_v2');
+          localStorage.removeItem('smrb_nav_count_v2');
+          // Strip _airo_sos param left by AiroErrorBoundary navigation.
+          if (u.searchParams.has('_airo_sos')) {
+            u.searchParams.delete('_airo_sos');
             history.replaceState(null, '', u.toString());
           }
         } catch (_) {}
@@ -99,12 +119,14 @@
         }
 
         function isSos(v) {
-          if (typeof v !== 'string') return false;
-          return v.indexOf('SOSAlertPopup') !== -1 || v.indexOf('1783772358219') !== -1;
+          if (!v) return false;
+          var s = typeof v === 'string' ? v : '';
+          if (!s && typeof v === 'object') { try { s = v.message + ' ' + v.stack; } catch(_){} }
+          return s.indexOf('SOSAlertPopup') !== -1 || s.indexOf('1783772358219') !== -1;
         }
 
         window.addEventListener('error', function (e) {
-          if (e && (isSos(e.message) || isSos(e.filename))) {
+          if (e && (isSos(e.message) || isSos(e.filename) || isSos(e.error))) {
             e.preventDefault && e.preventDefault();
             e.stopImmediatePropagation && e.stopImmediatePropagation();
             doNav();
@@ -151,7 +173,8 @@
       })();
     </script>
     <meta name="referrer" content="same-origin" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -163,11 +186,11 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-CvO5bQdr.js"></script>
+    <script type="module" crossorigin src="/assets/index-DK7l6Mxt.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-C23BF34b.js">
     <link rel="modulepreload" crossorigin href="/assets/document-vendor-BWJGTITm.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-CJcKS1eY.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-DV8ilYI7.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-_70HNMz6.css">
   </head>
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>

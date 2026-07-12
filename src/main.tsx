@@ -1,8 +1,8 @@
-// cache-bust 2026-07-13m — SosInterceptBoundary wraps AiroErrorBoundary to catch SOS before it
+// cache-bust 2026-07-13n — hydration-safe: dev error boundaries mount after hydrateRoot
 // sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';
-import { Component, StrictMode, type ReactNode } from 'react';
+import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -35,10 +35,9 @@ const queryClient = new QueryClient({
 });
 
 // ── SosInterceptBoundary ──────────────────────────────────────────────────────
-// Sits INSIDE AiroErrorBoundary (closer to the throw site) so it catches the
-// SOSAlertPopup ReferenceError from the frozen RootLayout snapshot before
-// AiroErrorBoundary swallows it. On SOS error: reload once via the index.html
-// guard. On any other error: re-throw so AiroErrorBoundary handles it.
+// Catches the SOSAlertPopup ReferenceError from the frozen RootLayout snapshot.
+// On SOS error: reload once via the index.html guard.
+// On any other error: re-throw so AiroErrorBoundary handles it.
 const LS_KEY = 'sos_intercept_reload_ts';
 const WINDOW_MS = 20_000;
 
@@ -50,8 +49,7 @@ function sosRecentReload(): boolean {
 }
 
 function isSosError(e: unknown): boolean {
-  return e instanceof Error &&
-    e.message.includes('SOSAlertPopup');
+  return e instanceof Error && e.message.includes('SOSAlertPopup');
 }
 
 interface BoundaryState { caught: boolean; }
@@ -59,13 +57,12 @@ class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundarySt
   state: BoundaryState = { caught: false };
   private _other: Error | null = null;
 
-  static getDerivedStateFromError(error: Error): BoundaryState {
+  static getDerivedStateFromError(_error: Error): BoundaryState {
     return { caught: true };
   }
 
   componentDidCatch(error: Error) {
     if (isSosError(error)) {
-      // Trigger reload via the index.html centralised guard
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
       } else if (!sosRecentReload()) {
@@ -83,14 +80,46 @@ class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundarySt
       this._other = null;
       throw err;
     }
-    if (this.state.caught) return null; // waiting for reload
+    if (this.state.caught) return null;
     return this.props.children;
   }
+}
+
+// ── DevBoundaryShell ──────────────────────────────────────────────────────────
+// Dev-only error boundaries must NOT be part of the server-rendered tree or the
+// initial hydrateRoot call — they don't exist in entry-server.tsx so including
+// them in the hydration tree causes React #418 (tree mismatch).
+//
+// Solution: render the core providers (HelmetProvider + QueryClientProvider +
+// App) for the initial hydrateRoot call, then swap in the full dev boundary
+// shell on the first client-side effect. React reconciles the swap cleanly
+// because it happens after hydration is committed.
+function DevBoundaryShell({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) {
+    // During hydration: render children without any extra wrapper so the
+    // component tree exactly matches what entry-server.tsx produced.
+    return <>{children}</>;
+  }
+
+  // After hydration: wrap with dev error boundaries.
+  return (
+    <AiroErrorBoundary>
+      <SosInterceptBoundary>
+        {children}
+      </SosInterceptBoundary>
+    </AiroErrorBoundary>
+  );
 }
 
 const rootElement = document.getElementById('app');
 if (!rootElement) throw new Error('Root element not found');
 
+// Core providers — identical structure to entry-server.tsx so hydrateRoot
+// sees the same tree the server rendered. Dev boundaries are added by
+// DevBoundaryShell after the first effect (post-hydration).
 const providers = (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -101,15 +130,10 @@ const providers = (
 
 const tree = (
   <StrictMode>
-    {import.meta.env.MODE === 'development' ? (
-      <AiroErrorBoundary>
-        <SosInterceptBoundary>
-          {providers}
-        </SosInterceptBoundary>
-      </AiroErrorBoundary>
-    ) : (
-      providers
-    )}
+    {import.meta.env.MODE === 'development'
+      ? <DevBoundaryShell>{providers}</DevBoundaryShell>
+      : providers
+    }
   </StrictMode>
 );
 

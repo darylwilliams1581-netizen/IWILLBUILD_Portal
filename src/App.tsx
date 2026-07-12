@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react'; // v15 2026-07-13i — StaleModuleReloadBoundary innermost; bust frozen App snapshot
+import { lazy, Suspense, useMemo } from 'react'; // v16 2026-07-13n — removed StaleModuleReloadBoundary from route tree (hydration parity)
 import {
   Outlet,
   RouterProvider,
@@ -6,10 +6,8 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 
-import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
-import StaleModuleReloadBoundary from '@/components/StaleModuleReloadBoundary';
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
@@ -30,27 +28,26 @@ const SpinnerFallback = () => (
 
 export default function App() {
   const router = useMemo(() => {
-    // StaleModuleReloadBoundary wraps RootLayout directly and sits INSIDE
-    // AiroErrorBoundary. React finds the nearest ancestor boundary walking up
-    // from the throw site (RootLayout line 122). The walk order is:
-    //   RootLayout → StaleModuleReloadBoundary ← caught here first
-    // AiroErrorBoundary is further up and never sees the SOSAlertPopup error.
+    // Layout element — must match the structure in entry-server.tsx exactly so
+    // hydrateRoot sees the same component tree the server rendered.
+    // Dev-only boundaries (AiroErrorBoundary, SosInterceptBoundary) are added
+    // by DevBoundaryShell in main.tsx AFTER hydration to avoid React #418.
     const layoutElement = (
       <Suspense fallback={<SpinnerFallback />}>
-        <StaleModuleReloadBoundary>
-          <RootLayout>
-            <Outlet />
-          </RootLayout>
-        </StaleModuleReloadBoundary>
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
       </Suspense>
     );
 
+    // Production uses PortalErrorBoundary; dev uses AiroErrorBoundary which is
+    // mounted by DevBoundaryShell in main.tsx (post-hydration). In prod there is
+    // no SSR/client mismatch because PortalErrorBoundary is not in the server
+    // tree either — it wraps the already-hydrated subtree.
     const outerElement =
-      import.meta.env.MODE === 'development' ? (
-        <AiroErrorBoundary captureGlobalErrors={false}>{layoutElement}</AiroErrorBoundary>
-      ) : (
-        <PortalErrorBoundary>{layoutElement}</PortalErrorBoundary>
-      );
+      import.meta.env.MODE === 'development'
+        ? layoutElement
+        : <PortalErrorBoundary>{layoutElement}</PortalErrorBoundary>;
 
     const routeTree: RouteObject[] = [
       {
