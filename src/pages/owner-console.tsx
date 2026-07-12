@@ -8,7 +8,7 @@ import {
   ShieldAlert, X, Bot, Package,
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle, BookMarked,
-  Play, Info, Clock, Copy, Check, Plus,
+  Play, Info, Clock, Copy, Check, Plus, Database,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
@@ -382,6 +382,24 @@ export default function OwnerConsolePage() {
   // Manual verify modal state
   const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; email: string } | null>(null);
 
+  // ── Safety migration state ────────────────────────────────────────────────────
+  const [safetyMigStatus, setSafetyMigStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [safetyMigResults, setSafetyMigResults] = useState<string[]>([]);
+
+  const runSafetyMigration = useCallback(async () => {
+    setSafetyMigStatus('running');
+    setSafetyMigResults([]);
+    try {
+      const res = await fetch('/api/migrate-safety', { method: 'POST', credentials: 'include' });
+      const data = await res.json() as { ok: boolean; results: string[] };
+      setSafetyMigResults(data.results ?? []);
+      setSafetyMigStatus(data.ok ? 'done' : 'error');
+    } catch (e) {
+      setSafetyMigResults([`Error: ${String(e)}`]);
+      setSafetyMigStatus('error');
+    }
+  }, []);
+
   // ── Annette / Health Check state ─────────────────────────────────────────────
   const [annetteStatus, setAnnetteStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [annetteReport, setAnnetteReport] = useState('');
@@ -475,6 +493,7 @@ export default function OwnerConsolePage() {
       fetch('/api/migrate-owner-console', { method: 'POST', credentials: 'include' }),
       fetch('/api/migrate-support-mode', { method: 'POST', credentials: 'include' }),
       fetch('/api/migrate-account-recovery', { method: 'POST', credentials: 'include' }),
+      fetch('/api/migrate-safety', { method: 'POST', credentials: 'include' }),
     ]).finally(() => setMigrated(true));
   }, []);
 
@@ -922,6 +941,45 @@ export default function OwnerConsolePage() {
               {/* ── Health Check (Annette) ── */}
               {tab === 'health-check' && (
                 <div className="max-w-3xl">
+
+                  {/* Safety DB Migration card */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <Database size={16} className="text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-slate-800">Safety DB Migration</p>
+                        <p className="text-xs text-slate-500">Adds swms_body, build_mode, document_type columns — idempotent, safe to re-run</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={runSafetyMigration}
+                        disabled={safetyMigStatus === 'running'}
+                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                      >
+                        {safetyMigStatus === 'running' ? (
+                          <><Loader2 size={13} className="animate-spin" />Running…</>
+                        ) : safetyMigStatus === 'done' ? (
+                          <><RefreshCw size={13} />Run again</>
+                        ) : (
+                          <><Play size={13} />Run Migration</>
+                        )}
+                      </button>
+                      {safetyMigStatus === 'done' && <span className="text-xs text-emerald-600 font-semibold">✓ Complete</span>}
+                      {safetyMigStatus === 'error' && <span className="text-xs text-red-600 font-semibold">✗ Error — see results</span>}
+                    </div>
+                    {safetyMigResults.length > 0 && (
+                      <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto">
+                        {safetyMigResults.map((r, i) => (
+                          <p key={i} className={`text-xs font-mono leading-relaxed ${r.startsWith('✗') ? 'text-red-600' : r.startsWith('~') ? 'text-slate-400' : 'text-emerald-700'}`}>{r}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dazza Health Check */}
                   <div className="mb-6">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center shadow-sm">
