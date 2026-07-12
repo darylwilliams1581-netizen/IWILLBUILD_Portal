@@ -48,7 +48,11 @@ export default class SosReloadBoundary extends Component<Props, State> {
 
   componentDidUpdate(_: Props, prev: State) {
     if (this.state.sosError && !prev.sosError) {
-      if (!recentReload()) {
+      // Use the centralised reload helper from index.html if available,
+      // otherwise fall back to the local guard.
+      if (typeof (window as any).__sosBoundaryTrigger === 'function') {
+        (window as any).__sosBoundaryTrigger();
+      } else if (!recentReload()) {
         try { localStorage.setItem(GUARD_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }

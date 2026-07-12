@@ -1,4 +1,4 @@
-// cache-bust 2026-07-13j — SosReloadBoundary wraps AiroErrorBoundary in main.tsx
+// cache-bust 2026-07-13l — __sosBoundaryTrigger wired to all three boundary layers
 // sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';

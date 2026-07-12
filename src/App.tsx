@@ -10,11 +10,7 @@ import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
 import StaleModuleReloadBoundary from '@/components/StaleModuleReloadBoundary';
-// Cache-bust: forces Vite to load the current RootLayout module URL instead of
-// the frozen HMR snapshot (t=1783772358219) stuck in the browser module registry.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — query param on local import is valid for Vite
-import RootLayout from './layouts/RootLayout?v=20260713';
+import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
 import ImpersonationBanner from '@/components/ImpersonationBanner';

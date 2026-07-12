@@ -50,11 +50,12 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
 
   componentDidUpdate(_: Props, prev: State) {
     if (this.state.sosError && !prev.sosError) {
-      if (!recentReload()) {
+      if (typeof (window as any).__sosBoundaryTrigger === 'function') {
+        (window as any).__sosBoundaryTrigger();
+      } else if (!recentReload()) {
         try { localStorage.setItem(GUARD_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
-      // Guard active — fall through to show manual-reload UI.
     }
   }
 
