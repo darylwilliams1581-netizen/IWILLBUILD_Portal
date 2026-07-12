@@ -1,24 +1,60 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v17 -->
+  <!-- cache-bust: v18 -->
   <head>
     <meta charset="UTF-8" />
     <script>
+      // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
+      // The browser HTTP cache may hold RootLayout.tsx?t=1783772358219 — a frozen
+      // Vite HMR snapshot where SOSAlertPopup is a bare identifier (ReferenceError
+      // in strict ES module scope). We cannot patch window globals into ES module
+      // scope. The only fix is to prevent that frozen URL from being loaded at all.
+      //
+      // Strategy: override fetch() before any <script type="module"> runs so that
+      // any request for the frozen URL is silently redirected to the clean URL.
+      // This fires synchronously before Vite's module loader makes its first fetch.
       (function () {
-        // ── SOSAlertPopup frozen-snapshot hard-reload guard v17 ───────────────
-        // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) has
-        // SOSAlertPopup as a bare identifier. ES module strict scope cannot see
-        // window globals. window.location.reload() reuses the module registry in
-        // Chromium — it does NOT evict the frozen module. We must do a true
-        // navigation (assign location.href with a cache-buster param) so the
-        // browser starts a fresh module graph. Loop guard: max 3 navigations in
-        // 30 s, then give up to avoid an infinite loop.
-        var COUNT_KEY = 'sos_nav_count_v17';
-        var TS_KEY    = 'sos_nav_ts_v17';
+        var FROZEN = '1783772358219';
+        var _fetch = window.fetch;
+        window.fetch = function (input, init) {
+          try {
+            var url = (typeof input === 'string') ? input
+                    : (input && input.url) ? input.url
+                    : String(input);
+            if (url.indexOf('t=' + FROZEN) !== -1 && url.indexOf('.tsx') !== -1) {
+              var clean = url.replace(/[?&]t=1783772358219/, function (m) {
+                return m[0] === '?' ? '?' : '';
+              }).replace(/\?$/, '').replace(/&&/, '&');
+              // Rebuild cleanly
+              try {
+                var u2 = new URL(url);
+                u2.searchParams.delete('t');
+                clean = u2.toString();
+              } catch (_) {}
+              if (typeof input === 'string') {
+                return _fetch.call(this, clean, init);
+              } else {
+                return _fetch.call(this, new Request(clean, input), init);
+              }
+            }
+          } catch (_) {}
+          return _fetch.apply(this, arguments);
+        };
+      })();
+    </script>
+    <script>
+      (function () {
+        // ── SOSAlertPopup error-boundary navigation guard v18 ─────────────────
+        // Fallback: if the fetch override above doesn't catch it (e.g. the module
+        // was already in the module registry from a prior session), detect the
+        // ReferenceError and do a true location.href navigation (not reload —
+        // reload reuses the module registry in Chromium) to bust the registry.
+        var COUNT_KEY = 'sos_nav_count_v18';
+        var TS_KEY    = 'sos_nav_ts_v18';
         var MAX       = 3;
         var WIN_MS    = 30000;
 
-        // Strip _sos param left by a previous navigation so the URL stays clean.
+        // Strip _sos param left by a previous navigation.
         try {
           var u = new URL(location.href);
           if (u.searchParams.has('_sos')) {
@@ -47,7 +83,6 @@
             localStorage.setItem(COUNT_KEY, String(count + 1));
             localStorage.setItem(TS_KEY,    String(now));
           } catch (_) {}
-          // True navigation — clears the ES module registry in all browsers.
           var dest = new URL(location.href);
           dest.searchParams.set('_sos', String(Date.now()));
           location.href = dest.toString();
@@ -58,7 +93,6 @@
           return v.indexOf('SOSAlertPopup') !== -1 || v.indexOf('1783772358219') !== -1;
         }
 
-        // Layer 1 — window.onerror (fires before React error boundary)
         window.addEventListener('error', function (e) {
           if (e && (isSos(e.message) || isSos(e.filename))) {
             e.preventDefault && e.preventDefault();
@@ -67,7 +101,6 @@
           }
         }, true);
 
-        // Layer 2 — unhandledrejection (module load failures)
         window.addEventListener('unhandledrejection', function (e) {
           try {
             var msg = e && e.reason && (e.reason.message || String(e.reason));
@@ -75,9 +108,6 @@
           } catch (_) {}
         });
 
-        // Layer 3 — console.error / console.warn patch
-        // React 19 calls console.error with the raw Error object on every
-        // caught render error, even when an error boundary swallows it.
         function patch(method) {
           var orig = console[method];
           console[method] = function () {
@@ -96,7 +126,6 @@
         patch('error');
         patch('warn');
 
-        // Layer 4 — callable by SosInnerBoundary in RootLayout
         window.__sosBoundaryTrigger = doNav;
       })();
     </script>
