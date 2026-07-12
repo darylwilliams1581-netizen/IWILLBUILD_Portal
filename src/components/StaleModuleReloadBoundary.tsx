@@ -5,28 +5,33 @@ interface State { crashed: boolean; }
 
 /**
  * Catches the SOSAlertPopup ReferenceError thrown by the frozen Vite HMR
- * snapshot of RootLayout.tsx (t=1783772358219). Forces a hard reload once
- * per page-load to clear the browser's ES module registry.
+ * snapshot of RootLayout.tsx (t=1783772358219).
  *
- * The index.html v9 script clears ALL rl_stale_reloaded_* keys on every page
- * load, so this boundary always gets one fresh reload attempt per load.
- * After the reload the frozen snapshot is gone and the error stops.
- *
- * All other errors are re-thrown so AiroErrorBoundary / PortalErrorBoundary
- * can handle them normally.
+ * Uses localStorage (not sessionStorage) for the reload guard so that
+ * index.html's sessionStorage-clearing script cannot reset it mid-loop.
+ * The guard key is written before reload and checked on the next load —
+ * if the error is gone the key is cleared; if it persists we show the
+ * manual-reload UI instead of looping.
  */
 export default class StaleModuleReloadBoundary extends Component<Props, State> {
   state: State = { crashed: false };
 
+  componentDidMount() {
+    // If we reloaded to fix the error and it's now gone, clear the guard.
+    try { localStorage.removeItem('rl_stale_reload_done'); } catch (_) {}
+  }
+
   componentDidCatch(error: Error) {
     if (error instanceof ReferenceError && error.message.includes('SOSAlertPopup')) {
-      const KEY = 'rl_stale_reloaded_v9';
-      if (!sessionStorage.getItem(KEY)) {
-        sessionStorage.setItem(KEY, '1');
-        window.location.reload();
-        return;
-      }
-      // Already reloaded this page-load — show manual reload UI to avoid loop
+      try {
+        const KEY = 'rl_stale_reload_done';
+        if (!localStorage.getItem(KEY)) {
+          localStorage.setItem(KEY, '1');
+          window.location.reload();
+          return;
+        }
+      } catch (_) {}
+      // Already reloaded once and error persists — show manual UI
       this.setState({ crashed: true });
       return;
     }
@@ -40,7 +45,10 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
         <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
           <h2>Something went wrong</h2>
           <p>Please do a hard reload (Ctrl+Shift+R / Cmd+Shift+R) to clear the browser cache.</p>
-          <button onClick={() => { sessionStorage.clear(); window.location.reload(); }}>
+          <button onClick={() => {
+            try { localStorage.removeItem('rl_stale_reload_done'); } catch (_) {}
+            window.location.reload();
+          }}>
             Hard reload
           </button>
         </div>
