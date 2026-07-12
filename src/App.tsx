@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react'; // v10 cache-bust 2026-07-13d
+import { lazy, Suspense, useMemo } from 'react'; // v11 cache-bust 2026-07-13e
 import {
   Outlet,
   RouterProvider,
@@ -9,6 +9,7 @@ import {
 import AiroErrorBoundary from '../dev-tools/src/AiroErrorBoundary';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
+import StaleModuleReloadBoundary from '@/components/StaleModuleReloadBoundary';
 import RootLayout from './layouts/RootLayout3';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
@@ -45,9 +46,13 @@ export default function App() {
       {
         element:
           import.meta.env.MODE === 'development' ? (
-            <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
+            <StaleModuleReloadBoundary>
+              <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
+            </StaleModuleReloadBoundary>
           ) : (
-            <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
+            <StaleModuleReloadBoundary>
+              <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
+            </StaleModuleReloadBoundary>
           ),
         children: routes,
       },

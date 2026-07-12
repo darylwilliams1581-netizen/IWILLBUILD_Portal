@@ -1,11 +1,25 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v5 -->
+  <!-- cache-bust: v6 -->
   <head>
     <meta charset="UTF-8" />
-    <!-- SOSAlertPopup shim: runs before any ES module so the frozen Vite HMR
-         snapshot of RootLayout.tsx (t=1783772358219) resolves the free variable -->
-    <script>window.SOSAlertPopup = function SOSAlertPopup() { return null; };</script>
+    <!-- Auto-reload if the browser holds the frozen RootLayout HMR snapshot.
+         The frozen module (t=1783772358219) has SOSAlertPopup as a bare
+         identifier that can't be patched via window. A hard reload clears the
+         module registry. sessionStorage guard prevents reload loops. -->
+    <script>
+      (function () {
+        var KEY = 'rl_stale_reloaded_v6';
+        window.addEventListener('error', function (e) {
+          if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
+            if (!sessionStorage.getItem(KEY)) {
+              sessionStorage.setItem(KEY, '1');
+              window.location.reload(true);
+            }
+          }
+        }, true);
+      })();
+    </script>
     <script>
       (function () {
         try {

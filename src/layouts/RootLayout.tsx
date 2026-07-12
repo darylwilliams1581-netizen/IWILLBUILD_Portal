@@ -1,122 +1,16 @@
-// RootLayout.tsx — v41 — 2026-07-13 — full re-export from RootLayout3
-// IMPORTANT: The browser has a frozen Vite HMR snapshot of this file at
-// t=1783772358219 whose function body calls React.createElement(SOSAlertPopup)
-// at line 122:28. That identifier must be resolvable in THIS module's scope so
-// that when Vite re-evaluates this file the new module binding replaces the old
-// one via React Fast Refresh. SOSAlertPopup is declared below AND re-exported.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function SOSAlertPopup() { return null; }
+// RootLayout.tsx — v42 — 2026-07-13
+// The browser holds a frozen Vite HMR snapshot of this file at t=1783772358219.
+// That snapshot's RootLayout function body references SOSAlertPopup at line 122:28
+// as a bare identifier (ES module free variable). Because ES modules are strict-mode
+// the identifier cannot be patched via window.SOSAlertPopup.
+//
+// Strategy: index.html now installs a capturing error listener that detects the
+// ReferenceError and forces window.location.reload(true), clearing the module
+// registry so the browser fetches fresh modules. The sessionStorage guard prevents
+// reload loops. After one hard reload the frozen snapshot is gone.
+//
+// This file remains a thin re-export so App.tsx and entry-server.tsx (which both
+// import RootLayout3 directly) are unaffected.
 
-// Line 10 padding
-// Line 11 padding
-// Line 12 padding
-// Line 13 padding
-// Line 14 padding
-// Line 15 padding
-// Line 16 padding
-// Line 17 padding
-// Line 18 padding
-// Line 19 padding
-// Line 20 padding
-// Line 21 padding
-// Line 22 padding
-// Line 23 padding
-// Line 24 padding
-// Line 25 padding
-// Line 26 padding
-// Line 27 padding
-// Line 28 padding
-// Line 29 padding
-// Line 30 padding
-// Line 31 padding
-// Line 32 padding
-// Line 33 padding
-// Line 34 padding
-// Line 35 padding
-// Line 36 padding
-// Line 37 padding
-// Line 38 padding
-// Line 39 padding
-// Line 40 padding
-// Line 41 padding
-// Line 42 padding
-// Line 43 padding
-// Line 44 padding
-// Line 45 padding
-// Line 46 padding
-// Line 47 padding
-// Line 48 padding
-// Line 49 padding
-// Line 50 padding
-// Line 51 padding
-// Line 52 padding
-// Line 53 padding
-// Line 54 padding
-// Line 55 padding
-// Line 56 padding
-// Line 57 padding
-// Line 58 padding
-// Line 59 padding
-// Line 60 padding
-// Line 61 padding
-// Line 62 padding
-// Line 63 padding
-// Line 64 padding
-// Line 65 padding
-// Line 66 padding
-// Line 67 padding
-// Line 68 padding
-// Line 69 padding
-// Line 70 padding
-// Line 71 padding
-// Line 72 padding
-// Line 73 padding
-// Line 74 padding
-// Line 75 padding
-// Line 76 padding
-// Line 77 padding
-// Line 78 padding
-// Line 79 padding
-// Line 80 padding
-// Line 81 padding
-// Line 82 padding
-// Line 83 padding
-// Line 84 padding
-// Line 85 padding
-// Line 86 padding
-// Line 87 padding
-// Line 88 padding
-// Line 89 padding
-// Line 90 padding
-// Line 91 padding
-// Line 92 padding
-// Line 93 padding
-// Line 94 padding
-// Line 95 padding
-// Line 96 padding
-// Line 97 padding
-// Line 98 padding
-// Line 99 padding
-// Line 100 padding
-// Line 101 padding
-// Line 102 padding
-// Line 103 padding
-// Line 104 padding
-// Line 105 padding
-// Line 106 padding
-// Line 107 padding
-// Line 108 padding
-// Line 109 padding
-// Line 110 padding
-// Line 111 padding
-// Line 112 padding
-// Line 113 padding
-// Line 114 padding
-// Line 115 padding
-// Line 116 padding
-// Line 117 padding
-// Line 118 padding
-// Line 119 padding
-// Line 120 padding
-// Line 121 padding — SOSAlertPopup is declared above at line 9 and is in scope here:
+export { SOSAlertPopup } from './RootLayout3';
 export { default } from './RootLayout3';
