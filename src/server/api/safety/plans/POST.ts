@@ -24,24 +24,46 @@ export default async function handler(req: Request, res: Response) {
       siteSupervisor, firstAidOfficer, emergencyContact, nearestHospital,
       emergencyAssemblyPoint, evacuationNotes, siteRules, highRiskActivities,
       requiredPosters, status,
+      plan_data, plan_type,
+      // WHS builder fields (camelCase from builder)
+      job_id: jobIdAlt,
+      is_principal_contractor,
+      site_address, site_supervisor, first_aid_officer, emergency_contact,
+      nearest_hospital, emergency_assembly_point, evacuation_notes,
+      project_value, high_risk_activities,
     } = req.body as Record<string, string>;
 
-    if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
+    const resolvedJobId = jobId ?? jobIdAlt;
+    const resolvedTitle = title?.trim();
+    if (!resolvedTitle) return res.status(400).json({ error: 'Title is required' });
+
+    const resolvedProjectValue = projectValue ?? project_value ?? null;
+    const resolvedIsPC = isPrincipalContractor === 'true' || is_principal_contractor === '1' || is_principal_contractor === 1 ? 1 : 0;
+    const resolvedSiteAddress = siteAddress ?? site_address ?? null;
+    const resolvedSupervisor = siteSupervisor ?? site_supervisor ?? null;
+    const resolvedFirstAid = firstAidOfficer ?? first_aid_officer ?? null;
+    const resolvedEmergency = emergencyContact ?? emergency_contact ?? null;
+    const resolvedHospital = nearestHospital ?? nearest_hospital ?? null;
+    const resolvedAssembly = emergencyAssemblyPoint ?? emergency_assembly_point ?? null;
+    const resolvedEvacuation = evacuationNotes ?? evacuation_notes ?? null;
+    const resolvedHRA = highRiskActivities ?? high_risk_activities ?? null;
 
     const [result] = await db.execute(sql`
       INSERT INTO safety_plans
         (company_id, job_id, title, project_value, is_principal_contractor,
          site_address, site_supervisor, first_aid_officer, emergency_contact,
          nearest_hospital, emergency_assembly_point, evacuation_notes,
-         site_rules, high_risk_activities, required_posters, status, created_by_user_id)
+         site_rules, high_risk_activities, required_posters, status,
+         plan_data, plan_type, created_by_user_id)
       VALUES
-        (${profile.companyId}, ${jobId ? parseInt(jobId, 10) : null}, ${title.trim()},
-         ${projectValue ?? null}, ${isPrincipalContractor === 'true' ? 1 : 0},
-         ${siteAddress ?? null}, ${siteSupervisor ?? null}, ${firstAidOfficer ?? null},
-         ${emergencyContact ?? null}, ${nearestHospital ?? null},
-         ${emergencyAssemblyPoint ?? null}, ${evacuationNotes ?? null},
-         ${siteRules ?? null}, ${highRiskActivities ?? null},
-         ${requiredPosters ?? null}, ${status ?? 'draft'}, ${session.user.id})
+        (${profile.companyId}, ${resolvedJobId ? parseInt(resolvedJobId, 10) : null}, ${resolvedTitle},
+         ${resolvedProjectValue ?? null}, ${resolvedIsPC},
+         ${resolvedSiteAddress}, ${resolvedSupervisor}, ${resolvedFirstAid},
+         ${resolvedEmergency}, ${resolvedHospital},
+         ${resolvedAssembly}, ${resolvedEvacuation},
+         ${siteRules ?? null}, ${resolvedHRA},
+         ${requiredPosters ?? null}, ${status ?? 'draft'},
+         ${plan_data ?? null}, ${plan_type ?? null}, ${session.user.id})
     `) as unknown as [ResultSetHeader, unknown];
 
     const [rows] = await db.execute(

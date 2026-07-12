@@ -113,6 +113,15 @@ export default async function handler(_req: Request, res: Response) {
     )
   `);
 
+  // Add plan_data column to safety_plans for extended WHS builder
+  const safetyPlansNewCols: [string, string][] = [
+    ['plan_data', 'LONGTEXT NULL'],
+    ['plan_type', "VARCHAR(100) NULL"],
+  ];
+  for (const [col, def] of safetyPlansNewCols) {
+    await run(`safety_plans.${col}`, `ALTER TABLE safety_plans ADD COLUMN ${col} ${def}`);
+  }
+
   await run('job_swms', `
     CREATE TABLE IF NOT EXISTS job_swms (
       id                    INT AUTO_INCREMENT PRIMARY KEY,

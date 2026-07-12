@@ -19,6 +19,7 @@ import PlanFormModal from '@/components/safety/PlanFormModal';
 import DazzaAiTab from '@/components/safety/DazzaAiTab';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
 import JobSwmsTab from '@/components/safety/JobSwmsTab';
+import WHS_PlanBuilder, { austenPlanDefaults } from '@/components/safety/WHS_PlanBuilder';
 import {
   type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster,
   type GeneratedPoster, type SwmsPrintData,
@@ -259,8 +260,10 @@ export function SafetyPlansTab() {
   const [plans, setPlans] = useState<SafetyPlan[]>([]);
   const [jobs, setJobs] = useState<Array<{ id: number; name: string; jobNumber: string | null }>>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [showLegacyModal, setShowLegacyModal] = useState(false);
   const [editing, setEditing] = useState<SafetyPlan | null>(null);
+  const [builderInitial, setBuilderInitial] = useState<ReturnType<typeof austenPlanDefaults> | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -295,6 +298,16 @@ export function SafetyPlansTab() {
     }
   }
 
+  function openAustenPlan() {
+    setBuilderInitial(austenPlanDefaults());
+    setShowBuilder(true);
+  }
+
+  function openNewBuilder() {
+    setBuilderInitial(null);
+    setShowBuilder(true);
+  }
+
   async function handleDelete(id: number, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeleting(id);
@@ -313,23 +326,52 @@ export function SafetyPlansTab() {
     }
   }
 
+  async function refreshPlans() {
+    const r = await fetch('/api/safety/plans', { credentials: 'include' });
+    const d = await r.json();
+    setPlans(d.plans ?? []);
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">{plans.length} plan{plans.length !== 1 ? 's' : ''}</p>
-        <div className="flex items-center gap-2">
+      {/* ── Header bar ── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">WHS Management Plans</p>
+          <p className="text-xs text-slate-400">{plans.length} plan{plans.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleSeed}
             disabled={seeding}
             className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            title="Load 3 industry-standard Safety Plan templates"
+            title="Load industry-standard Safety Plan templates"
           >
             {seeding ? <Loader2 size={13} className="animate-spin" /> : <BookOpen size={13} />}
             <span className="hidden sm:inline">Load Templates</span>
           </button>
-          <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={15} /><span className="hidden sm:inline">New Plan</span>
+          <button
+            onClick={openAustenPlan}
+            className="flex items-center gap-1.5 px-3 py-2 border border-orange-300 bg-orange-50 rounded-lg text-xs font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+            title="Open Austen plan template pre-filled for developer review"
+          >
+            <HardHat size={13} />
+            <span className="hidden sm:inline">Austen Plan (Dev Review)</span>
           </button>
+          <button
+            onClick={openNewBuilder}
+            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus size={15} /><span className="hidden sm:inline">New WHS Plan</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Upgrade notice ── */}
+      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <ShieldCheck size={15} className="text-blue-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-800">
+          <span className="font-bold">Upgraded WHS Plan Builder</span> — now supports Principal Contractor WHS Management Plans, Contractor WHS&amp;E Plans, Site Safety Plans and Project Safety Plans with 20 sections including hazard registers, HRCW, emergency planning, approval sign-off and appendices.
         </div>
       </div>
 
@@ -345,14 +387,13 @@ export function SafetyPlansTab() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldCheck size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No safety plans yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create site-specific safety plans, or load 3 industry-standard templates to get started quickly.</p>
-          <div className="flex items-center gap-3">
-            <button onClick={handleSeed} disabled={seeding} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50">
-              {seeding ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
-              Load Templates
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the new builder, or load the Austen plan template for developer review.</p>
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <button onClick={openAustenPlan} className="flex items-center gap-2 border border-orange-300 bg-orange-50 text-orange-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-orange-100 transition-colors">
+              <HardHat size={14} />Austen Plan (Dev Review)
             </button>
-            <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-              <Plus size={15} />Create Plan
+            <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+              <Plus size={15} />New WHS Plan
             </button>
           </div>
         </div>
@@ -365,7 +406,7 @@ export function SafetyPlansTab() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(p.status)}`}>
-                    {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                    {p.status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
                   {p.is_principal_contractor === 1 && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">Principal Contractor</span>
@@ -379,16 +420,17 @@ export function SafetyPlansTab() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <a href={`/api/safety/plans/${p.id}/pack`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Download Safety Pack (Plan + all SWMS)">
+                <a href={`/api/safety/plans/${p.id}/pack`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Download Safety Pack">
                   <Package size={14} />
                 </a>
                 <a href={`/api/safety/plans/${p.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
                   <FileDown size={14} />
                 </a>
-                <a href={`/api/safety/plans/${p.id}/export?format=docx`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Export DOCX">
-                  <FileText size={14} />
-                </a>
-                <button onClick={() => { setEditing(p); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                <button
+                  onClick={() => { setBuilderInitial(null); setShowBuilder(true); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                  title="Open in WHS Builder"
+                >
                   <Wand2 size={14} />
                 </button>
                 <button onClick={() => handleDelete(p.id, p.title)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete plan">
@@ -400,15 +442,31 @@ export function SafetyPlansTab() {
         </div>
       )}
 
+      {/* ── WHS Plan Builder ── */}
       <AnimatePresence>
-        {showModal && (
+        {showBuilder && (
+          <WHS_PlanBuilder
+            initial={builderInitial}
+            planTitle={builderInitial ? 'Austen WHS Management Plan' : undefined}
+            jobs={jobs}
+            onClose={() => { setShowBuilder(false); setBuilderInitial(null); }}
+            onSaved={(_id, _title) => {
+              refreshPlans();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Legacy simple modal (kept for backward compat) ── */}
+      <AnimatePresence>
+        {showLegacyModal && (
           <PlanFormModal
             initial={editing}
             jobs={jobs}
-            onClose={() => { setShowModal(false); setEditing(null); }}
+            onClose={() => { setShowLegacyModal(false); setEditing(null); }}
             onSaved={(p) => {
               setPlans((prev) => editing ? prev.map((x) => x.id === p.id ? p : x) : [p, ...prev]);
-              setShowModal(false); setEditing(null);
+              setShowLegacyModal(false); setEditing(null);
             }}
           />
         )}
