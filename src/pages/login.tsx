@@ -350,9 +350,9 @@ export default function LoginPage() {
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
             <div className="flex items-center justify-center mb-6">
               <img
-                src="/airo-assets/images/logo/horizontal"
+                src="/assets/logo.png"
                 alt="IWILLBUILD"
-                className="h-10 w-auto object-contain"
+                className="h-12 w-auto object-contain"
               />
             </div>
             <h1 className="font-heading font-bold text-xl text-white text-center">

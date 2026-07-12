@@ -1,39 +1,50 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v15 -->
+  <!-- cache-bust: v16 -->
   <head>
     <meta charset="UTF-8" />
     <script>
       (function () {
-        // ── SOSAlertPopup frozen-snapshot hard-reload guard v15 ───────────────
-        // The frozen Vite HMR snapshot of RootLayout.tsx (?t=1783772358219)
-        // references SOSAlertPopup as a bare identifier inside its render fn.
-        // ES module scope is isolated — window vars cannot reach it.
-        // React catches the ReferenceError via its error boundary system and
-        // calls console.error with the error before AiroErrorBoundary swallows
-        // it, so window.onerror never fires. We patch console.error to detect
-        // the message and trigger a hard reload. Loop guard: 5 s.
-        var LS_KEY   = 'sos_reload_ts_v15';
-        var GUARD_MS = 5000;
+        // ── SOSAlertPopup frozen-snapshot hard-reload guard v16 ───────────────
+        // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) has
+        // SOSAlertPopup as a bare identifier at line 122. ES module strict scope
+        // cannot see window globals. React catches the ReferenceError and calls
+        // console.error — we patch it to trigger a reload.
+        // Counter-based loop guard: allow up to 3 reloads within 30 s, then stop.
+        var COUNT_KEY = 'sos_reload_count_v16';
+        var TS_KEY    = 'sos_reload_ts_v16';
+        var MAX       = 3;
+        var WINDOW_MS = 30000;
 
-        function recentReload() {
+        function shouldReload() {
           try {
-            var ts = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
-            return ts > 0 && (Date.now() - ts < GUARD_MS);
-          } catch (_) { return false; }
+            var ts    = parseInt(localStorage.getItem(TS_KEY)    || '0', 10);
+            var count = parseInt(localStorage.getItem(COUNT_KEY) || '0', 10);
+            var now   = Date.now();
+            if (now - ts > WINDOW_MS) { count = 0; } // reset window
+            return count < MAX;
+          } catch (_) { return true; }
         }
 
         function doReload() {
-          if (recentReload()) return;
-          try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (_) {}
+          if (!shouldReload()) return;
+          try {
+            var now   = Date.now();
+            var ts    = parseInt(localStorage.getItem(TS_KEY)    || '0', 10);
+            var count = parseInt(localStorage.getItem(COUNT_KEY) || '0', 10);
+            if (now - ts > WINDOW_MS) count = 0;
+            localStorage.setItem(COUNT_KEY, String(count + 1));
+            localStorage.setItem(TS_KEY,    String(now));
+          } catch (_) {}
           window.location.reload();
         }
 
         function isSos(v) {
-          return typeof v === 'string' && v.indexOf('SOSAlertPopup') !== -1;
+          if (typeof v !== 'string') return false;
+          return v.indexOf('SOSAlertPopup') !== -1 || v.indexOf('1783772358219') !== -1;
         }
 
-        // Layer 1 — window.onerror capture (non-React paths)
+        // Layer 1 — window.onerror (non-React paths)
         window.addEventListener('error', function (e) {
           if (e && isSos(e.message)) {
             e.preventDefault && e.preventDefault();
@@ -42,18 +53,17 @@
           }
         }, true);
 
-        // Layer 2 — console.error + console.warn patch
-        // React 19 dev mode calls console.error with the raw Error object AND
-        // also with formatted strings like "The above error occurred in...".
-        // We intercept both. Also patch console.warn as a belt-and-suspenders.
-        function patchConsole(method) {
+        // Layer 2 — console.error / console.warn patch
+        // React calls console.error with the raw Error for every caught render
+        // error, even when an error boundary swallows it.
+        function patch(method) {
           var orig = console[method];
           console[method] = function () {
             var args = Array.prototype.slice.call(arguments);
             var hit = args.some(function (a) {
               if (!a) return false;
               if (isSos(a.message)) return true;
-              if (isSos(a.stack)) return true;
+              if (isSos(a.stack))   return true;
               try { if (isSos(String(a))) return true; } catch (_) {}
               return false;
             });
@@ -61,10 +71,10 @@
             orig.apply(console, args);
           };
         }
-        patchConsole('error');
-        patchConsole('warn');
+        patch('error');
+        patch('warn');
 
-        // Layer 3 — callable by any React error boundary
+        // Layer 3 — callable by SosInnerBoundary
         window.__sosBoundaryTrigger = doReload;
       })();
     </script>

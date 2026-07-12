@@ -64,28 +64,13 @@ export default function Header() {
         {/* ── Brand mark ── */}
         <Link
           to="/"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
         >
-          <span
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg,#1263d8 0%,#0f8aa8 100%)',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff',
-              fontWeight: 900,
-              fontSize: 14,
-              letterSpacing: '-0.04em',
-              flexShrink: 0,
-            }}
-          >
-            IW
-          </span>
-          <strong style={{ fontSize: 18, letterSpacing: '-0.035em', color: '#0f172a', fontFamily: "'Space Grotesk', sans-serif" }}>
-            IWILLBUILD
-          </strong>
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            style={{ height: 44, width: 'auto', objectFit: 'contain', display: 'block' }}
+          />
         </Link>
 
         {/* ── Desktop nav ── */}

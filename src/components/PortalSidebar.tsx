@@ -220,13 +220,18 @@ function SidebarContent({
     <>
       {/* ── Logo / header ── */}
       <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0 gap-2">
-        <div className="w-8 h-8 bg-gradient-to-br from-[#1263d8] to-[#0f8b8d] rounded-lg flex items-center justify-center shrink-0">
-          <span className="text-white font-black text-sm">IW</span>
-        </div>
-        {!collapsed && (
-          <span className="font-heading font-black text-sm tracking-widest text-white uppercase truncate flex-1">
-            IWILLBUILD
-          </span>
+        {collapsed ? (
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            className="h-8 w-auto object-contain shrink-0"
+          />
+        ) : (
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            className="h-9 w-auto object-contain shrink-0 flex-1 min-w-0"
+          />
         )}
         {onToggle && (
           <button

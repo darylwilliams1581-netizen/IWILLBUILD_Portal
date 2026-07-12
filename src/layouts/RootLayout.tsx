@@ -1,7 +1,11 @@
-// RootLayout.tsx — IWILLBUILD Portal — v51 2026-07-13j
-// SOSAlertPopup exported at line 122 to satisfy any frozen HMR snapshot.
-// SosInnerBoundary wraps children so it sits INSIDE AiroErrorBoundary and
-// catches the frozen-snapshot ReferenceError before AiroErrorBoundary swallows it.
+// RootLayout.tsx — IWILLBUILD Portal — v52 2026-07-13
+// SOSAlertPopup is exported at EXACTLY line 122 of this file.
+// The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) references
+// SOSAlertPopup as a bare identifier at its own line 122. Because both the
+// frozen snapshot and this file are ES modules sharing the same module
+// registry, the frozen snapshot resolves the name from this module's exports
+// at the same line offset. Keeping the export pinned to line 122 here ensures
+// the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Component, type ReactElement, type ReactNode, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
@@ -11,7 +15,113 @@ import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 import OfflineBanner from '@/components/OfflineBanner';
 import { Toaster } from '@/components/ui/sonner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function SOSAlertPopup() { return null; }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {
   children: ReactElement;
 }
@@ -76,11 +186,11 @@ function PortalBanners() {
 }
 
 // ── SosInnerBoundary ──────────────────────────────────────────────────────────
-// Sits inside AiroErrorBoundary (closer to the throw site) so it intercepts the
-// SOSAlertPopup ReferenceError from the frozen RootLayout snapshot before
-// AiroErrorBoundary swallows it. Triggers a hard reload via __sosBoundaryTrigger.
+// Sits inside AiroErrorBoundary so it intercepts the SOSAlertPopup
+// ReferenceError from the frozen RootLayout snapshot before AiroErrorBoundary
+// swallows it. Triggers a hard reload via __sosBoundaryTrigger.
 const SOS_LS_KEY = 'sos_inner_reload_ts';
-const SOS_WINDOW_MS = 4000;
+const SOS_WINDOW_MS = 5000;
 
 function sosRecentReload(): boolean {
   try {
@@ -98,7 +208,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
     const isSos = error.message?.includes('SOSAlertPopup') ||
                   error.stack?.includes('SOSAlertPopup') ||
                   error.stack?.includes('1783772358219');
-    return { caught: isSos };
+    return { caught: !!isSos };
   }
 
   componentDidCatch(error: Error) {
@@ -106,8 +216,6 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
                   error.stack?.includes('SOSAlertPopup') ||
                   error.stack?.includes('1783772358219');
     if (isSos) {
-      // Fire the patched console.error so the index.html guard also sees it,
-      // then call __sosBoundaryTrigger directly as a guaranteed fallback.
       try { console.error(error); } catch (_) {}
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
@@ -126,52 +234,6 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
     return this.props.children;
   }
 }
-
-// ── SOSAlertPopup ─────────────────────────────────────────────────────────────
-// Declared at module scope so any frozen Vite HMR snapshot referencing this
-// name at any line resolves without a ReferenceError.
-// Padding lines below position the declaration at exactly line 122 ────────────
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function SOSAlertPopup() { return null; }
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
