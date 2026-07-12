@@ -54,15 +54,15 @@
     </script>
     <script>
       (function () {
-        // ── SOSAlertPopup error-boundary navigation guard v18 ─────────────────
+        // ── SOSAlertPopup error-boundary navigation guard v20 ─────────────────
         // Fallback: if the fetch override above doesn't catch it (e.g. the module
         // was already in the module registry from a prior session), detect the
         // ReferenceError and do a true location.href navigation (not reload —
         // reload reuses the module registry in Chromium) to bust the registry.
-        var COUNT_KEY = 'sos_nav_count_v18';
-        var TS_KEY    = 'sos_nav_ts_v18';
-        var MAX       = 3;
-        var WIN_MS    = 30000;
+        var COUNT_KEY = 'sos_nav_count_v20';
+        var TS_KEY    = 'sos_nav_ts_v20';
+        var MAX       = 5;
+        var WIN_MS    = 60000;
 
         // Strip _sos param left by a previous navigation.
         try {
@@ -104,7 +104,7 @@
         }
 
         window.addEventListener('error', function (e) {
-          if (e && (isSos(e.message) || isSos(e.filename))) {
+          if (e && (isSos(e.message) || isSos(e.filename) || isSos(e.error && e.error.stack))) {
             e.preventDefault && e.preventDefault();
             e.stopImmediatePropagation && e.stopImmediatePropagation();
             doNav();

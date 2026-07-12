@@ -172,17 +172,12 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             req.url.includes('RootLayout.tsx') &&
             req.url.includes('t=1783772358219')
           ) {
-            // The browser has this frozen URL in its module registry.
-            // When it does make a fetch (e.g. after a hard reload or first
-            // load in a new tab), we intercept it and serve the CURRENT
-            // compiled output of RootLayout.tsx by transforming it fresh.
-            // This ensures the frozen URL resolves to working code.
-            const cleanId = '/src/layouts/RootLayout.tsx';
-            server.transformRequest(cleanId).then((result) => {
-              if (result) {
+            // Serve the current transformed RootLayout at the frozen URL.
+            // transformRequest expects the URL as Vite sees it (with leading /).
+            server.transformRequest('/src/layouts/RootLayout.tsx').then((result) => {
+              if (result?.code) {
                 res.setHeader('Content-Type', 'application/javascript');
                 res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-                res.setHeader('Pragma', 'no-cache');
                 res.end(result.code);
               } else {
                 next();
