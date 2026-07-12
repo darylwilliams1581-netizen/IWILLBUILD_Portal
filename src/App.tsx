@@ -30,32 +30,31 @@ const SpinnerFallback = () => (
 
 export default function App() {
   const router = useMemo(() => {
-    // StaleModuleReloadBoundary MUST be the outermost boundary — wrapping
-    // everything including AiroErrorBoundary — so it intercepts the
-    // SOSAlertPopup ReferenceError before AiroErrorBoundary can swallow it
-    // and prevent the reload.
-    // StaleModuleReloadBoundary wraps RootLayout directly — INSIDE
-    // AiroErrorBoundary — so it intercepts the SOSAlertPopup ReferenceError
-    // before AiroErrorBoundary can report it to the platform.
-    const innerElement = (
-      <StaleModuleReloadBoundary>
-        <Suspense fallback={<SpinnerFallback />}>
+    // StaleModuleReloadBoundary wraps RootLayout directly and sits INSIDE
+    // AiroErrorBoundary. React finds the nearest ancestor boundary walking up
+    // from the throw site (RootLayout line 122). The walk order is:
+    //   RootLayout → StaleModuleReloadBoundary ← caught here first
+    // AiroErrorBoundary is further up and never sees the SOSAlertPopup error.
+    const layoutElement = (
+      <Suspense fallback={<SpinnerFallback />}>
+        <StaleModuleReloadBoundary>
           <RootLayout>
             <Outlet />
           </RootLayout>
-        </Suspense>
-      </StaleModuleReloadBoundary>
+        </StaleModuleReloadBoundary>
+      </Suspense>
     );
+
+    const outerElement =
+      import.meta.env.MODE === 'development' ? (
+        <AiroErrorBoundary captureGlobalErrors={false}>{layoutElement}</AiroErrorBoundary>
+      ) : (
+        <PortalErrorBoundary>{layoutElement}</PortalErrorBoundary>
+      );
 
     const routeTree: RouteObject[] = [
       {
-        element: (
-          import.meta.env.MODE === 'development' ? (
-            <AiroErrorBoundary captureGlobalErrors={false}>{innerElement}</AiroErrorBoundary>
-          ) : (
-            <PortalErrorBoundary>{innerElement}</PortalErrorBoundary>
-          )
-        ),
+        element: outerElement,
         children: routes,
       },
     ];
