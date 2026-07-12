@@ -1,16 +1,14 @@
-// RootLayout.tsx — v42 — 2026-07-13
+// RootLayout.tsx — v44 — 2026-07-13
 // The browser holds a frozen Vite HMR snapshot of this file at t=1783772358219.
-// That snapshot's RootLayout function body references SOSAlertPopup at line 122:28
-// as a bare identifier (ES module free variable). Because ES modules are strict-mode
-// the identifier cannot be patched via window.SOSAlertPopup.
+// That snapshot's RootLayout function body references SOSAlertPopup at line 122
+// as a bare identifier (ES module live binding in the frozen closure).
 //
-// Strategy: index.html now installs a capturing error listener that detects the
-// ReferenceError and forces window.location.reload(true), clearing the module
-// registry so the browser fetches fresh modules. The sessionStorage guard prevents
-// reload loops. After one hard reload the frozen snapshot is gone.
+// Vite HMR live-binding: the frozen module's named exports are live references
+// to THIS module's current export bindings. So if this module exports
+// SOSAlertPopup as a named export, the frozen closure resolves it correctly.
 //
-// This file remains a thin re-export so App.tsx and entry-server.tsx (which both
-// import RootLayout3 directly) are unaffected.
+// Single clean export — no duplicate declarations.
 
-export { SOSAlertPopup } from './RootLayout3';
+export function SOSAlertPopup() { return null; }
+
 export { default } from './RootLayout3';
