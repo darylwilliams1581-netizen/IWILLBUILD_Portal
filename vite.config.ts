@@ -172,24 +172,22 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             req.url.includes('RootLayout.tsx') &&
             req.url.includes('t=1783772358219')
           ) {
-            // Return a JS shim that re-exports the current (unfrozen) module.
-            // The browser executes this instead of the frozen snapshot.
-            const cleanUrl = '/src/layouts/RootLayout.tsx';
-            res.setHeader('Content-Type', 'application/javascript');
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            // The frozen compiled JS references SOSAlertPopup as a lexical
-            // free variable in its own module scope. By serving this shim at
-            // the frozen URL, the browser executes the shim instead of the
-            // frozen snapshot. The shim re-exports the real RootLayout default
-            // and declares SOSAlertPopup so the frozen code's reference resolves.
-            res.end(
-              `// frozen-snapshot eviction shim v4\n` +
-              `import _RL, { SOSAlertPopup as _SOS } from '${cleanUrl}';\n` +
-              `globalThis.SOSAlertPopup = _SOS || function SOSAlertPopup() { return null; };\n` +
-              `export default _RL;\n` +
-              `export const SOSAlertPopup = globalThis.SOSAlertPopup;\n`
-            );
+            // The browser has this frozen URL in its module registry.
+            // When it does make a fetch (e.g. after a hard reload or first
+            // load in a new tab), we intercept it and serve the CURRENT
+            // compiled output of RootLayout.tsx by transforming it fresh.
+            // This ensures the frozen URL resolves to working code.
+            const cleanId = '/src/layouts/RootLayout.tsx';
+            server.transformRequest(cleanId).then((result) => {
+              if (result) {
+                res.setHeader('Content-Type', 'application/javascript');
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.end(result.code);
+              } else {
+                next();
+              }
+            }).catch(() => next());
             return;
           }
           next();

@@ -1,8 +1,18 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v18 -->
+  <!-- cache-bust: v19 -->
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // ── SOSAlertPopup global shim — runs before ANY module executes ───────────
+      // Vite dev mode wraps modules in an async function (not strict-mode at the
+      // top level of the wrapper). Free variable lookups in the frozen snapshot
+      // fall through to globalThis. Setting it here — in a classic inline script
+      // that runs synchronously before the <script type="module"> entry — ensures
+      // the identifier is defined when the frozen module body executes.
+      window.SOSAlertPopup = function SOSAlertPopup() { return null; };
+      globalThis.SOSAlertPopup = window.SOSAlertPopup;
+    </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
       // The browser HTTP cache may hold RootLayout.tsx?t=1783772358219 — a frozen
