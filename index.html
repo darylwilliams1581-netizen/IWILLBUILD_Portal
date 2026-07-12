@@ -1,8 +1,11 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v3 -->
+  <!-- cache-bust: v4 -->
   <head>
     <meta charset="UTF-8" />
+    <!-- SOSAlertPopup shim: runs before any ES module so the frozen Vite HMR
+         snapshot of RootLayout.tsx (t=1783772358219) resolves the free variable -->
+    <script>window.SOSAlertPopup = function SOSAlertPopup() { return null; };</script>
     <script>
       (function () {
         try {

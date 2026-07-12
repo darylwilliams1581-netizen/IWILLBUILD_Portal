@@ -422,6 +422,7 @@ import owner_console_library_items_id_delete_386 from "./api/owner-console/libra
 import owner_console_library_items_id_patch_387 from "./api/owner-console/library/items/[id]/PATCH";
 import owner_console_swms_push_post from "./api/owner-console/swms/push/POST";
 import owner_console_swms_seed_fencing_post from "./api/owner-console/swms/seed-fencing/POST";
+import owner_console_swms_seed_carpenter_framing_post from "./api/owner-console/swms/seed-carpenter-framing/POST";
 import owner_console_library_submissions_get_388 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_389 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_390 from "./api/owner-console/starter-pack/GET";
@@ -2036,6 +2037,7 @@ app.delete("/api/owner-console/library/items/:id", owner_console_library_items_i
 app.patch("/api/owner-console/library/items/:id", owner_console_library_items_id_patch_387);
 app.post("/api/owner-console/swms/push", owner_console_swms_push_post);
 app.post("/api/owner-console/swms/seed-fencing", owner_console_swms_seed_fencing_post);
+app.post("/api/owner-console/swms/seed-carpenter-framing", owner_console_swms_seed_carpenter_framing_post);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_388);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_389);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_390);

@@ -1,0 +1,10 @@
+// RootLayout.tsx — v36 — 2026-07-13 — function-hoisted-shim
+// The browser holds a frozen Vite HMR snapshot (t=1783772358219) of this file.
+// That snapshot references SOSAlertPopup at line 122. JS function declarations
+// are hoisted to the top of their scope, so SOSAlertPopup is defined before
+// any line executes — including line 122 of the frozen snapshot.
+// App.tsx and entry-server.tsx import RootLayout3 directly; this file only
+// exists to satisfy the stale browser module cache entry.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function SOSAlertPopup() { return null; }
+export { default } from './RootLayout3';
