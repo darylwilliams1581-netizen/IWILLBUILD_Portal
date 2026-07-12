@@ -1,28 +1,32 @@
 import { Component, type ReactNode } from 'react';
 
 interface Props { children: ReactNode; }
-interface State { crashed: boolean; }
+interface State { crashed: boolean; otherError: Error | null; }
 
 /**
  * Catches the SOSAlertPopup ReferenceError thrown by the frozen Vite HMR
  * snapshot of RootLayout.tsx (t=1783772358219).
  *
- * Uses localStorage (not sessionStorage) for the reload guard so that
- * index.html's sessionStorage-clearing script cannot reset it mid-loop.
- * The guard key is written before reload and checked on the next load —
- * if the error is gone the key is cleared; if it persists we show the
- * manual-reload UI instead of looping.
+ * Must sit OUTSIDE AiroErrorBoundary/PortalErrorBoundary so it intercepts
+ * the error first. Uses localStorage for the reload guard so index.html's
+ * sessionStorage-clearing script cannot reset it mid-loop.
+ *
+ * Non-SOSAlertPopup errors are stored in state and re-thrown during render
+ * so the inner boundary (AiroErrorBoundary / PortalErrorBoundary) handles them.
  */
 export default class StaleModuleReloadBoundary extends Component<Props, State> {
-  state: State = { crashed: false };
+  state: State = { crashed: false, otherError: null };
 
-  componentDidMount() {
-    // If we reloaded to fix the error and it's now gone, clear the guard.
-    try { localStorage.removeItem('rl_stale_reload_done'); } catch (_) {}
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    if (error instanceof ReferenceError && error.message.includes('SOSAlertPopup')) {
+      return { crashed: true, otherError: null };
+    }
+    // Pass other errors through by storing them — render will re-throw
+    return { crashed: false, otherError: error };
   }
 
-  componentDidCatch(error: Error) {
-    if (error instanceof ReferenceError && error.message.includes('SOSAlertPopup')) {
+  componentDidUpdate(_: Props, prev: State) {
+    if (this.state.crashed && !prev.crashed) {
       try {
         const KEY = 'rl_stale_reload_done';
         if (!localStorage.getItem(KEY)) {
@@ -31,15 +35,20 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
           return;
         }
       } catch (_) {}
-      // Already reloaded once and error persists — show manual UI
-      this.setState({ crashed: true });
-      return;
     }
-    // Not our error — re-throw so outer boundary handles it
-    throw error;
+  }
+
+  componentDidMount() {
+    // If we reloaded and the error is gone, clear the guard
+    if (!this.state.crashed) {
+      try { localStorage.removeItem('rl_stale_reload_done'); } catch (_) {}
+    }
   }
 
   render() {
+    // Re-throw non-SOSAlertPopup errors so inner boundaries handle them
+    if (this.state.otherError) throw this.state.otherError;
+
     if (this.state.crashed) {
       return (
         <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
@@ -54,6 +63,7 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
         </div>
       );
     }
+
     return this.props.children;
   }
 }

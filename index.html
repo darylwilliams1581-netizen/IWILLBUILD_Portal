@@ -10,23 +10,19 @@
          the reload fires every time the error surfaces, not just once. -->
     <script>
       (function () {
-        // Clear ALL stale-reload guard keys unconditionally on every page load.
-        // This means the reload fires every time the error surfaces — the guard
-        // only prevents a reload loop within the same page load, not across loads.
-        var toRemove = [];
-        for (var i = 0; i < sessionStorage.length; i++) {
-          var k = sessionStorage.key(i);
-          if (k && k.indexOf('rl_stale_reloaded_') === 0) toRemove.push(k);
-        }
-        for (var j = 0; j < toRemove.length; j++) sessionStorage.removeItem(toRemove[j]);
-
-        var KEY = 'rl_stale_reloaded_v9';
+        // Fallback global error handler for SOSAlertPopup ReferenceError.
+        // Uses localStorage so the guard persists across the reload.
+        // StaleModuleReloadBoundary is the primary handler; this catches
+        // any errors that fire before React mounts.
+        var KEY = 'rl_stale_reload_done';
         window.addEventListener('error', function (e) {
           if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
-            if (!sessionStorage.getItem(KEY)) {
-              sessionStorage.setItem(KEY, '1');
-              window.location.reload(true);
-            }
+            try {
+              if (!localStorage.getItem(KEY)) {
+                localStorage.setItem(KEY, '1');
+                window.location.reload();
+              }
+            } catch (_) {}
           }
         }, true);
       })();

@@ -34,24 +34,27 @@ export default function App() {
     // RootLayout directly — so it catches the SOSAlertPopup ReferenceError
     // thrown by the frozen Vite HMR snapshot (t=1783772358219) before
     // AiroErrorBoundary or PortalErrorBoundary can intercept it.
-    const rootElement = (
-      <StaleModuleReloadBoundary>
-        <Suspense fallback={<SpinnerFallback />}>
-          <RootLayout>
-            <Outlet />
-          </RootLayout>
-        </Suspense>
-      </StaleModuleReloadBoundary>
+    const innerElement = (
+      <Suspense fallback={<SpinnerFallback />}>
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
+      </Suspense>
     );
 
+    // StaleModuleReloadBoundary must be OUTSIDE AiroErrorBoundary/PortalErrorBoundary
+    // so it intercepts the SOSAlertPopup ReferenceError before those boundaries swallow it.
     const routeTree: RouteObject[] = [
       {
-        element:
-          import.meta.env.MODE === 'development' ? (
-            <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
-          ) : (
-            <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
-          ),
+        element: (
+          <StaleModuleReloadBoundary>
+            {import.meta.env.MODE === 'development' ? (
+              <AiroErrorBoundary captureGlobalErrors={false}>{innerElement}</AiroErrorBoundary>
+            ) : (
+              <PortalErrorBoundary>{innerElement}</PortalErrorBoundary>
+            )}
+          </StaleModuleReloadBoundary>
+        ),
         children: routes,
       },
     ];

@@ -1,11 +1,8 @@
-// RootLayout — IWILLBUILD Portal — v46 — 2026-07-13
-// SOSAlertPopup is declared here as a named export so Vite's HMR live-binding
-// mechanism patches the frozen snapshot (t=1783772358219) that still references
-// it as a bare identifier at line 122. The frozen snapshot's module export
-// object is a live reference to this module's bindings — exporting the name
-// here satisfies the reference without a browser reload.
-// The index.html v9 reload listener fires a hard reload on every occurrence
-// to permanently clear the frozen snapshot from the browser's module registry.
+// RootLayout — IWILLBUILD Portal — v47 — 2026-07-13
+// SOSAlertPopup exported to satisfy the frozen Vite HMR snapshot
+// (t=1783772358219) that references it as a bare identifier at line 122.
+// v47 bumps the file so Vite issues a new ?t= URL, evicting the frozen snapshot
+// from the browser module registry entirely.
 export function SOSAlertPopup() { return null; }
 
 import { Helmet } from '@dr.pogodin/react-helmet';
