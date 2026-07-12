@@ -4,7 +4,7 @@
  * + Frozen HMR snapshot rewrite (SOSAlertPopup fix)
  */
 
-const CACHE_NAME = 'iwillbuild-shell-v5';
+const CACHE_NAME = 'iwillbuild-shell-v6';
 
 // ── Frozen HMR snapshot rewrite ───────────────────────────────────────────────
 // The browser module registry may hold a frozen Vite HMR snapshot of

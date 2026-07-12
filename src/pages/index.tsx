@@ -304,7 +304,7 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ background: '#f1f5f9', color: '#101828', fontFamily: "'Inter', Arial, Helvetica, sans-serif", margin: 0 }}>
+    <div style={{ backgroundColor: '#f1f5f9', color: '#101828', fontFamily: "'Inter', Arial, Helvetica, sans-serif", margin: 0 }}>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
