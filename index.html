@@ -1,24 +1,26 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v7 -->
+  <!-- cache-bust: v9 -->
   <head>
     <meta charset="UTF-8" />
     <!-- Auto-reload if the browser holds the frozen RootLayout HMR snapshot.
          The frozen module (t=1783772358219) has SOSAlertPopup as a bare
-         identifier (ES module free variable) — cannot be patched via window.
-         A hard reload clears the module registry. sessionStorage guard v7
-         prevents reload loops. Bumping the key version resets any prior guard
-         so a fresh reload fires on the next error occurrence. -->
+         identifier — cannot be patched. Hard reload clears the module registry.
+         v9: unconditionally clears ALL prior guard keys on every page load so
+         the reload fires every time the error surfaces, not just once. -->
     <script>
       (function () {
-        var KEY = 'rl_stale_reloaded_v7';
-        // Clear any old guard keys from previous versions so this reload fires
+        // Clear ALL stale-reload guard keys unconditionally on every page load.
+        // This means the reload fires every time the error surfaces — the guard
+        // only prevents a reload loop within the same page load, not across loads.
+        var toRemove = [];
         for (var i = 0; i < sessionStorage.length; i++) {
           var k = sessionStorage.key(i);
-          if (k && k.indexOf('rl_stale_reloaded_') === 0 && k !== KEY) {
-            sessionStorage.removeItem(k);
-          }
+          if (k && k.indexOf('rl_stale_reloaded_') === 0) toRemove.push(k);
         }
+        for (var j = 0; j < toRemove.length; j++) sessionStorage.removeItem(toRemove[j]);
+
+        var KEY = 'rl_stale_reloaded_v9';
         window.addEventListener('error', function (e) {
           if (e.message && e.message.indexOf('SOSAlertPopup') !== -1) {
             if (!sessionStorage.getItem(KEY)) {

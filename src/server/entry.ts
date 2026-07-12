@@ -429,6 +429,7 @@ import owner_console_swms_seed_concreting_slab_post from "./api/owner-console/sw
 import owner_console_swms_seed_ceramic_tiling_post from "./api/owner-console/swms/seed-ceramic-tiling/POST";
 import owner_console_swms_seed_painting_post from "./api/owner-console/swms/seed-painting/POST";
 import owner_console_swms_seed_landscaping_post from "./api/owner-console/swms/seed-landscaping/POST";
+import owner_console_swms_seed_ewp_post from "./api/owner-console/swms/seed-ewp/POST";
 import owner_console_library_submissions_get_388 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_389 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_390 from "./api/owner-console/starter-pack/GET";
@@ -2050,6 +2051,7 @@ app.post("/api/owner-console/swms/seed-concreting-slab", owner_console_swms_seed
 app.post("/api/owner-console/swms/seed-ceramic-tiling", owner_console_swms_seed_ceramic_tiling_post);
 app.post("/api/owner-console/swms/seed-painting", owner_console_swms_seed_painting_post);
 app.post("/api/owner-console/swms/seed-landscaping", owner_console_swms_seed_landscaping_post);
+app.post("/api/owner-console/swms/seed-ewp", owner_console_swms_seed_ewp_post);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_388);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_389);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_390);
