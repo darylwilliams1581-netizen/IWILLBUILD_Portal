@@ -3,7 +3,9 @@
 export interface SwmsTemplate {
   id: number;
   title: string;
+  category?: string | null;
   work_activity: string | null;
+  purpose_scope?: string | null;
   hazards: string | null;
   risks: string | null;
   controls: string | null;
@@ -18,6 +20,10 @@ export interface SwmsTemplate {
   status: string;
   author_name: string | null;
   approved_by_name: string | null;
+  // Structured body builder fields
+  swms_body?: string | null;
+  build_mode?: string | null;
+  document_type?: string | null;
   created_at: string;
 }
 

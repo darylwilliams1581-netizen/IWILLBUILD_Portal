@@ -1,4 +1,4 @@
-// RootLayout — IWILLBUILD Portal — v23 — 2026-07-12T12:00:00 — NO SOSAlertPopup
+// RootLayout — IWILLBUILD Portal — v24 — 2026-07-12T12:14:00 — cache-bust
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, useEffect, useRef } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';

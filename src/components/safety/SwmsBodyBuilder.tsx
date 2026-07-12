@@ -1,12 +1,12 @@
 // SwmsBodyBuilder.tsx — Upgraded SWMS Body Builder (Quick + Advanced modes)
 // Stores structured body as JSON in swms_body column; preserves all legacy fields.
-import { useState, useCallback, useId } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Check, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronDown,
   Plus, Trash2, Copy, GripVertical, ChevronLeft, Zap, Settings2,
   ShieldAlert, HardHat, ClipboardList, Wrench, Users, FileText,
-  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare, Square,
+  TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare,
 } from 'lucide-react';
 import {
   type SwmsBodyData, type WorkStep, type CriticalControl, type PlantItem,

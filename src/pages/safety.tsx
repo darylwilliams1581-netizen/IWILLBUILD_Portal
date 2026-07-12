@@ -14,7 +14,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
-import SwmsFormModal from '@/components/safety/SwmsFormModal';
+import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import PlanFormModal from '@/components/safety/PlanFormModal';
 import DazzaAiTab from '@/components/safety/DazzaAiTab';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
@@ -230,7 +230,7 @@ export function SwmsLibraryTab() {
 
       <AnimatePresence>
         {showModal && (
-          <SwmsFormModal
+          <SwmsBodyBuilder
             initial={editing}
             onClose={() => { setShowModal(false); setEditing(null); }}
             onSaved={(s) => {
