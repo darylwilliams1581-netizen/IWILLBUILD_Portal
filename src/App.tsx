@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'; // v9 cache-bust 2026-07-13a
+import { lazy, Suspense, useMemo } from 'react'; // v10 cache-bust 2026-07-13d
 import {
   Outlet,
   RouterProvider,
@@ -28,52 +28,39 @@ const SpinnerFallback = () => (
   </div>
 );
 
-const rootElement = (
-  <Suspense fallback={<SpinnerFallback />}>
-    <RootLayout>
-      <Outlet />
-    </RootLayout>
-    
-  </Suspense>
-);
-
-// Wrap the agent-editable flat `routes` array in a layout route so ScrollRestoration
-// + shared chrome live once above every page. Keeping the wrap here (instead of
-// in routes.tsx) preserves the agent's simple flat-route contract. The dev
-// boundary must live inside the route element so React Router doesn't replace it
-// with its default route error UI before our boundary can catch render errors.
-//
-// `captureGlobalErrors={false}`: the ROOT boundary in main.tsx owns the global
-// window.onerror/unhandledrejection handlers. This inner boundary only catches
-// route render errors via componentDidCatch — installing window handlers here
-// too would double-forward async errors and stack a second overlay.
-//
-// In production we use PortalErrorBoundary (class-based) which shows a friendly
-// "Something went wrong — Refresh / Go to Login" screen instead of a blank crash.
-const routeTree: RouteObject[] = [
-  {
-    element:
-      import.meta.env.MODE === 'development' ? (
-        <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
-      ) : (
-        <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
-      ),
-    children: routes,
-  },
-];
-
-const router = createBrowserRouter(routeTree);
-
 export default function App() {
+  // Build the router inside the component so React Fast Refresh re-creates it
+  // with the current RootLayout3 reference on every HMR cycle, preventing the
+  // frozen RootLayout.tsx?t=1783772358219 snapshot from being called.
+  const router = useMemo(() => {
+    const rootElement = (
+      <Suspense fallback={<SpinnerFallback />}>
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
+      </Suspense>
+    );
+
+    const routeTree: RouteObject[] = [
+      {
+        element:
+          import.meta.env.MODE === 'development' ? (
+            <AiroErrorBoundary captureGlobalErrors={false}>{rootElement}</AiroErrorBoundary>
+          ) : (
+            <PortalErrorBoundary>{rootElement}</PortalErrorBoundary>
+          ),
+        children: routes,
+      },
+    ];
+
+    return createBrowserRouter(routeTree);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <ImpersonationBanner />
       <RouterProvider router={router} />
-      {/*
-        CookieBanner reads document.cookie and subscribes to browser events.
-        App.tsx is client-only (entry-server.tsx renders the route tree
-        directly without importing App), so no SSR gate is needed here.
-      */}
       <CookieBannerErrorBoundary>
         <Suspense fallback={null}>
           <CookieBanner />
