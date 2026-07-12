@@ -430,7 +430,7 @@ function buildPrintHtml(swms: SwmsPrintData, today: string): string {
 
   <!-- Footer -->
   <div class="doc-footer">
-    <span>IWILLBUILD Portal — Safety Management System</span>
+    <span>Safety Management System</span>
     <span>Rev ${revNum} · Printed ${today}</span>
   </div>
 
@@ -625,7 +625,7 @@ export default function SwmsPrintModal({ swms, onClose }: Props) {
 
             {/* Footer */}
             <div className="flex justify-between items-center text-[8px] text-slate-400 border-t border-slate-200 pt-3">
-              <span>IWILLBUILD Portal — Safety Management System</span>
+              <span>Safety Management System</span>
               <span>Rev {swms.revision_number ?? '1'} · Printed {today}</span>
             </div>
 

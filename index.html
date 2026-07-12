@@ -1,42 +1,56 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v16 -->
+  <!-- cache-bust: v17 -->
   <head>
     <meta charset="UTF-8" />
     <script>
       (function () {
-        // ── SOSAlertPopup frozen-snapshot hard-reload guard v16 ───────────────
+        // ── SOSAlertPopup frozen-snapshot hard-reload guard v17 ───────────────
         // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) has
-        // SOSAlertPopup as a bare identifier at line 122. ES module strict scope
-        // cannot see window globals. React catches the ReferenceError and calls
-        // console.error — we patch it to trigger a reload.
-        // Counter-based loop guard: allow up to 3 reloads within 30 s, then stop.
-        var COUNT_KEY = 'sos_reload_count_v16';
-        var TS_KEY    = 'sos_reload_ts_v16';
+        // SOSAlertPopup as a bare identifier. ES module strict scope cannot see
+        // window globals. window.location.reload() reuses the module registry in
+        // Chromium — it does NOT evict the frozen module. We must do a true
+        // navigation (assign location.href with a cache-buster param) so the
+        // browser starts a fresh module graph. Loop guard: max 3 navigations in
+        // 30 s, then give up to avoid an infinite loop.
+        var COUNT_KEY = 'sos_nav_count_v17';
+        var TS_KEY    = 'sos_nav_ts_v17';
         var MAX       = 3;
-        var WINDOW_MS = 30000;
+        var WIN_MS    = 30000;
 
-        function shouldReload() {
+        // Strip _sos param left by a previous navigation so the URL stays clean.
+        try {
+          var u = new URL(location.href);
+          if (u.searchParams.has('_sos')) {
+            u.searchParams.delete('_sos');
+            history.replaceState(null, '', u.toString());
+          }
+        } catch (_) {}
+
+        function canNav() {
           try {
+            var now   = Date.now();
             var ts    = parseInt(localStorage.getItem(TS_KEY)    || '0', 10);
             var count = parseInt(localStorage.getItem(COUNT_KEY) || '0', 10);
-            var now   = Date.now();
-            if (now - ts > WINDOW_MS) { count = 0; } // reset window
+            if (now - ts > WIN_MS) count = 0;
             return count < MAX;
           } catch (_) { return true; }
         }
 
-        function doReload() {
-          if (!shouldReload()) return;
+        function doNav() {
+          if (!canNav()) return;
           try {
             var now   = Date.now();
             var ts    = parseInt(localStorage.getItem(TS_KEY)    || '0', 10);
             var count = parseInt(localStorage.getItem(COUNT_KEY) || '0', 10);
-            if (now - ts > WINDOW_MS) count = 0;
+            if (now - ts > WIN_MS) count = 0;
             localStorage.setItem(COUNT_KEY, String(count + 1));
             localStorage.setItem(TS_KEY,    String(now));
           } catch (_) {}
-          window.location.reload();
+          // True navigation — clears the ES module registry in all browsers.
+          var dest = new URL(location.href);
+          dest.searchParams.set('_sos', String(Date.now()));
+          location.href = dest.toString();
         }
 
         function isSos(v) {
@@ -44,18 +58,26 @@
           return v.indexOf('SOSAlertPopup') !== -1 || v.indexOf('1783772358219') !== -1;
         }
 
-        // Layer 1 — window.onerror (non-React paths)
+        // Layer 1 — window.onerror (fires before React error boundary)
         window.addEventListener('error', function (e) {
-          if (e && isSos(e.message)) {
+          if (e && (isSos(e.message) || isSos(e.filename))) {
             e.preventDefault && e.preventDefault();
             e.stopImmediatePropagation && e.stopImmediatePropagation();
-            doReload();
+            doNav();
           }
         }, true);
 
-        // Layer 2 — console.error / console.warn patch
-        // React calls console.error with the raw Error for every caught render
-        // error, even when an error boundary swallows it.
+        // Layer 2 — unhandledrejection (module load failures)
+        window.addEventListener('unhandledrejection', function (e) {
+          try {
+            var msg = e && e.reason && (e.reason.message || String(e.reason));
+            if (isSos(msg)) { e.preventDefault && e.preventDefault(); doNav(); }
+          } catch (_) {}
+        });
+
+        // Layer 3 — console.error / console.warn patch
+        // React 19 calls console.error with the raw Error object on every
+        // caught render error, even when an error boundary swallows it.
         function patch(method) {
           var orig = console[method];
           console[method] = function () {
@@ -67,15 +89,15 @@
               try { if (isSos(String(a))) return true; } catch (_) {}
               return false;
             });
-            if (hit) { doReload(); return; }
+            if (hit) { doNav(); return; }
             orig.apply(console, args);
           };
         }
         patch('error');
         patch('warn');
 
-        // Layer 3 — callable by SosInnerBoundary
-        window.__sosBoundaryTrigger = doReload;
+        // Layer 4 — callable by SosInnerBoundary in RootLayout
+        window.__sosBoundaryTrigger = doNav;
       })();
     </script>
     <script>

@@ -61,7 +61,7 @@ export default async function handler(req: Request, res: Response) {
 </head>
 <body>
   <h1>${name.replace(/</g, '&lt;')}</h1>
-  <p class="meta">Exported from IWILLBUILD — Document ID ${id}</p>
+  <p class="meta">Document ID ${id}</p>
   <div class="content" id="doc-content">Loading document…</div>
   <script>
     try {
