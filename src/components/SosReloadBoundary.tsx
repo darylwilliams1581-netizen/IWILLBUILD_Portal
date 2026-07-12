@@ -1,24 +1,16 @@
 import { Component, type ReactNode } from 'react';
 
 /**
- * SosReloadBoundary — sits ABOVE AiroErrorBoundary in main.tsx.
+ * SosReloadBoundary — outermost boundary in main.tsx, above AiroErrorBoundary.
  *
- * The browser caches a frozen Vite HMR snapshot of RootLayout.tsx at
- * ?t=1783772358219 that references SOSAlertPopup as a bare identifier.
- * When that snapshot executes it throws ReferenceError: SOSAlertPopup is
- * not defined — BEFORE sos-shim.ts has a chance to set it on globalThis,
- * because the frozen module is already in the browser's module registry.
+ * Catches SOSAlertPopup ReferenceErrors from the frozen Vite HMR snapshot of
+ * RootLayout.tsx (t=1783772358219) and reloads once to flush the module registry.
  *
- * Strategy:
- *  - Catch ALL errors here first (above AiroErrorBoundary).
- *  - If it's a SOSAlertPopup ReferenceError → reload (clears the frozen
- *    module from the registry). A 10-second guard prevents reload loops.
- *  - For any other error → reset the boundary key so the children
- *    re-mount fresh; AiroErrorBoundary will catch it on the next render.
+ * Non-SOS errors are re-thrown from render so AiroErrorBoundary catches them.
  */
 
-const GUARD_KEY = 'sos_reload_ts';
-const WINDOW_MS = 10_000;
+const GUARD_KEY = 'sos_outer_reload_ts';
+const WINDOW_MS = 12_000;
 
 function recentReload(): boolean {
   try {
@@ -32,57 +24,48 @@ function recentReload(): boolean {
 function isSosError(error: unknown): boolean {
   return (
     error instanceof ReferenceError &&
-    typeof error.message === 'string' &&
-    error.message.includes('SOSAlertPopup')
+    typeof (error as Error).message === 'string' &&
+    (error as Error).message.includes('SOSAlertPopup')
   );
 }
 
-interface Props {
-  children: ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  isSos: boolean;
-  resetKey: number;
-}
+interface Props { children: ReactNode; }
+interface State { sosError: boolean; }
 
 export default class SosReloadBoundary extends Component<Props, State> {
-  state: State = { hasError: false, isSos: false, resetKey: 0 };
+  state: State = { sosError: false };
+  private _otherError: Error | null = null;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, isSos: isSosError(error) };
+    return { sosError: isSosError(error) };
+  }
+
+  componentDidCatch(error: Error) {
+    if (!isSosError(error)) {
+      this._otherError = error;
+    }
   }
 
   componentDidUpdate(_: Props, prev: State) {
-    if (!this.state.hasError || prev.hasError) return;
-
-    if (this.state.isSos) {
-      // SOSAlertPopup error — reload to flush the frozen module.
+    if (this.state.sosError && !prev.sosError) {
       if (!recentReload()) {
-        try {
-          localStorage.setItem(GUARD_KEY, String(Date.now()));
-        } catch (_) {}
+        try { localStorage.setItem(GUARD_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
-      // If we already reloaded recently, fall through to reset below
-      // so the app at least attempts to render rather than staying blank.
     }
-
-    // Non-SOS error (or post-guard fallback): reset so AiroErrorBoundary
-    // gets a fresh render pass and can catch + report it properly.
-    this.setState((s) => ({ hasError: false, isSos: false, resetKey: s.resetKey + 1 }));
   }
 
   render() {
-    // While waiting for componentDidUpdate to fire, render nothing
-    // (avoids a flash of broken UI before reload or reset).
-    if (this.state.hasError) return null;
+    // Re-throw non-SOS errors so AiroErrorBoundary (child) catches them.
+    if (this._otherError) {
+      const err = this._otherError;
+      this._otherError = null;
+      throw err;
+    }
 
-    return (
-      <div key={this.state.resetKey} style={{ display: 'contents' }}>
-        {this.props.children}
-      </div>
-    );
+    // While waiting for reload, render nothing.
+    if (this.state.sosError) return null;
+
+    return this.props.children;
   }
 }
