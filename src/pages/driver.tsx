@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Clock,
   MapPin,
-  FileText,
   LogOut,
   X,
   Car,
@@ -33,6 +32,7 @@ import {
   Layers,
   HardHat,
   LayoutDashboard,
+  LogIn,
 } from 'lucide-react';
 import BuildersCalc from '../components/estimating/BuildersCalc';
 import TakeoffPad from '../components/estimating/TakeoffPad';
@@ -280,6 +280,222 @@ function ToolSheet({ title, icon, onClose, children }: ToolSheetProps) {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
           {children}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Attendance Sheet ──────────────────────────────────────────────────────────
+
+interface AttendanceJob {
+  id: number;
+  name: string;
+  jobNumber?: string | null;
+  status?: string | null;
+}
+
+interface AttendanceStatus {
+  signedIn: boolean;
+  lastAction: string | null;
+  lastActionAt: string | null;
+}
+
+function AttendanceSheet({ onClose }: { onClose: () => void }) {
+  const [jobs, setJobs]               = useState<AttendanceJob[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [selectedJob, setSelectedJob] = useState<AttendanceJob | null>(null);
+  const [status, setStatus]           = useState<AttendanceStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [actioning, setActioning]     = useState(false);
+  const [message, setMessage]         = useState<{ text: string; ok: boolean } | null>(null);
+
+  // Load jobs
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/jobs', { credentials: 'include' });
+        const data = await res.json() as { jobs?: AttendanceJob[] };
+        setJobs(data.jobs ?? []);
+      } catch {
+        setJobs([]);
+      } finally {
+        setJobsLoading(false);
+      }
+    })();
+  }, []);
+
+  // Load sign-in status when a job is selected
+  useEffect(() => {
+    if (!selectedJob) { setStatus(null); return; }
+    setStatusLoading(true);
+    setMessage(null);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/jobs/${selectedJob.id}/signin-status`, { credentials: 'include' });
+        if (res.ok) setStatus(await res.json() as AttendanceStatus);
+      } catch { /* ignore */ }
+      finally { setStatusLoading(false); }
+    })();
+  }, [selectedJob]);
+
+  async function handleAction(action: 'signin' | 'signout') {
+    if (!selectedJob) return;
+    setActioning(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/jobs/${selectedJob.id}/${action}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json() as { ok: boolean; message?: string };
+      setMessage({ text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok });
+      if (res.ok) {
+        // Refresh status
+        const s = await fetch(`/api/jobs/${selectedJob.id}/signin-status`, { credentials: 'include' });
+        if (s.ok) setStatus(await s.json() as AttendanceStatus);
+        if (action === 'signin') void hapticSuccess();
+        else void hapticImpact('medium');
+      } else {
+        void hapticError();
+      }
+    } catch {
+      setMessage({ text: 'Request failed. Try again.', ok: false });
+      void hapticError();
+    } finally {
+      setActioning(false);
+    }
+  }
+
+  const signedIn = status?.signedIn ?? false;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        style={{ maxHeight: '90vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-700" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+              <LogIn size={15} className="text-emerald-400" />
+            </div>
+            <h2 className="text-white font-bold text-base">Job Attendance</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+          {/* Job picker */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">Select Job</p>
+            {jobsLoading ? (
+              <div className="flex items-center gap-2 text-gray-500 text-sm py-3">
+                <Loader2 size={14} className="animate-spin" /> Loading jobs…
+              </div>
+            ) : jobs.length === 0 ? (
+              <p className="text-gray-500 text-sm py-3">No active jobs found.</p>
+            ) : (
+              <div className="space-y-2">
+                {jobs.map(job => (
+                  <button
+                    key={job.id}
+                    onClick={() => setSelectedJob(job)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
+                      selectedJob?.id === job.id
+                        ? 'bg-orange-500/10 border-orange-500/40 text-white'
+                        : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-orange-400' : 'bg-gray-600'}`} />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{job.name}</p>
+                      {job.jobNumber && <p className="text-xs text-gray-500 font-mono">{job.jobNumber}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status + actions */}
+          {selectedJob && (
+            <div className="space-y-3">
+              {/* Current status */}
+              <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 ${
+                statusLoading ? 'bg-gray-900 border-gray-800' :
+                signedIn ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gray-900 border-gray-800'
+              }`}>
+                {statusLoading ? (
+                  <Loader2 size={16} className="animate-spin text-gray-500" />
+                ) : (
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${signedIn ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                )}
+                <div>
+                  <p className={`text-sm font-bold ${signedIn ? 'text-emerald-400' : 'text-gray-400'}`}>
+                    {statusLoading ? 'Checking…' : signedIn ? 'Signed in' : 'Not signed in'}
+                  </p>
+                  {status?.lastActionAt && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Last: {status.lastAction} at {new Date(status.lastActionAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Message */}
+              {message && (
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold ${
+                  message.ok ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                }`}>
+                  {message.ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                  {message.text}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="grid grid-cols-2 gap-3 pb-2">
+                <button
+                  onClick={() => void handleAction('signin')}
+                  disabled={actioning || statusLoading || signedIn}
+                  className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-40 text-white font-bold py-4 rounded-2xl transition-colors"
+                >
+                  {actioning ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+                  Sign In
+                </button>
+                <button
+                  onClick={() => void handleAction('signout')}
+                  disabled={actioning || statusLoading || !signedIn}
+                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-40 border border-gray-700 text-gray-300 font-bold py-4 rounded-2xl transition-colors"
+                >
+                  {actioning ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -542,6 +758,7 @@ export default function DriverPage() {
   // Tool sheets
   const [showBuildersCalc, setShowBuildersCalc] = useState(false);
   const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
+  const [showAttendance, setShowAttendance]     = useState(false);
 
   // Elapsed timer
   const [elapsed, setElapsed]           = useState('00m 00s');
@@ -882,26 +1099,24 @@ export default function DriverPage() {
                 </button>
               </div>
 
-              {/* Secondary row — Jobs, Safety, Fleet */}
+              {/* Secondary row — Attendance, Safety, Fleet */}
               <div className="grid grid-cols-3 gap-2">
-                <Link
-                  to={selectedJob ? `/jobs/${selectedJob.id}` : '/jobs'}
+                <button
+                  onClick={() => setShowAttendance(true)}
                   className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center">
-                    <FileText size={16} className="text-sky-400" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <LogIn size={16} className="text-emerald-400" />
                   </div>
-                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">
-                    {selectedJob ? 'Job' : 'Jobs'}
-                  </span>
-                </Link>
+                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Attendance</span>
+                </button>
 
                 <Link
                   to="/safety"
                   className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <HardHat size={16} className="text-emerald-400" />
+                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                    <HardHat size={16} className="text-orange-400" />
                   </div>
                   <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Safety</span>
                 </Link>
@@ -910,8 +1125,8 @@ export default function DriverPage() {
                   to="/fleet"
                   className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                    <Truck size={16} className="text-orange-400" />
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center">
+                    <Truck size={16} className="text-sky-400" />
                   </div>
                   <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Fleet</span>
                 </Link>
@@ -954,6 +1169,13 @@ export default function DriverPage() {
             onCancel={() => setShowStopConfirm(false)}
             stopping={stopping}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Attendance sheet ─────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showAttendance && (
+          <AttendanceSheet onClose={() => setShowAttendance(false)} />
         )}
       </AnimatePresence>
 

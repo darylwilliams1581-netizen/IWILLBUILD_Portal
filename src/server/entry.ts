@@ -1731,6 +1731,71 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] team_time_entries CREATE failed:', msg);
     }
   }
+
+  // ── job_attendance ────────────────────────────────────────────────────────
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS job_attendance (" +
+      "  id          INT PRIMARY KEY AUTO_INCREMENT," +
+      "  company_id  INT         NOT NULL," +
+      "  job_id      INT         NOT NULL," +
+      "  user_id     VARCHAR(36) NOT NULL," +
+      "  action      VARCHAR(20) NOT NULL," +
+      "  source      VARCHAR(20) NOT NULL DEFAULT 'portal'," +
+      "  actor_type  VARCHAR(30) NOT NULL DEFAULT 'employee'," +
+      "  notes       TEXT        NULL," +
+      "  created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP," +
+      "  INDEX idx_ja_job     (job_id)," +
+      "  INDEX idx_ja_user    (user_id)," +
+      "  INDEX idx_ja_company (company_id)," +
+      "  INDEX idx_ja_created (created_at)," +
+      "  FOREIGN KEY (job_id)     REFERENCES jobs(id)      ON DELETE CASCADE," +
+      "  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ));
+    console.log('[startup-migration] job_attendance table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] job_attendance CREATE failed:', msg);
+    }
+  }
+
+  // ── guest_checkins ────────────────────────────────────────────────────────
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS guest_checkins (" +
+      "  id                INT PRIMARY KEY AUTO_INCREMENT," +
+      "  company_id        INT          NOT NULL," +
+      "  job_id            INT          NOT NULL," +
+      "  session_id        VARCHAR(64)  NOT NULL," +
+      "  action            VARCHAR(20)  NOT NULL," +
+      "  actor_type        VARCHAR(30)  NOT NULL DEFAULT 'guest'," +
+      "  full_name         VARCHAR(255) NOT NULL," +
+      "  phone_number      VARCHAR(50)  NOT NULL," +
+      "  email             VARCHAR(255) NULL," +
+      "  white_card_number VARCHAR(100) NOT NULL," +
+      "  white_card_expiry VARCHAR(20)  NOT NULL," +
+      "  contact_name      VARCHAR(255) NOT NULL," +
+      "  contact_phone     VARCHAR(50)  NOT NULL," +
+      "  reason_for_visit  TEXT         NOT NULL," +
+      "  qr_token_id       VARCHAR(64)  NULL," +
+      "  source            VARCHAR(20)  NOT NULL DEFAULT 'qr'," +
+      "  created_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP," +
+      "  INDEX idx_gc_job     (job_id)," +
+      "  INDEX idx_gc_company (company_id)," +
+      "  INDEX idx_gc_session (session_id)," +
+      "  FOREIGN KEY (job_id)     REFERENCES jobs(id)      ON DELETE CASCADE," +
+      "  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ));
+    console.log('[startup-migration] guest_checkins table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] guest_checkins CREATE failed:', msg);
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
