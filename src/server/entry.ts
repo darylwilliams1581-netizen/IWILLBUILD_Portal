@@ -1169,6 +1169,12 @@ async function runStartupMigrations() {
     { table: 'jobs', column: 'asset_id', definition: 'INT NULL' },
     // ── am_tender_cycles: job link ───────────────────────────────────────────
     { table: 'am_tender_cycles', column: 'job_id', definition: 'INT NULL' },
+    // ── library_items: columns added by migrate-library-downloads ────────────
+    { table: 'library_items', column: 'source_file_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'library_items', column: 'file_path',        definition: 'VARCHAR(1000) NULL' },
+    { table: 'library_items', column: 'file_mime',        definition: 'VARCHAR(100) NULL' },
+    { table: 'library_items', column: 'builder_json',     definition: 'LONGTEXT NULL' },
+    { table: 'library_items', column: 'download_count',   definition: 'INT NOT NULL DEFAULT 0' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {

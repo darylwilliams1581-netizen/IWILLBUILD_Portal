@@ -394,51 +394,53 @@ export default function SwmsMasterLibraryTab() {
     toast.success(`Seed complete — ${ok} seeded, ${skipped} skipped, ${failed} failed`);
   }
 
-  // ── Publish one ─────────────────────────────────────────────────────────────
+  // ── Publish one → Global Library ────────────────────────────────────────────
+  // Calls the same endpoint used by the Safety page "Share to Global Library"
+  // button. Creates a row in library_items (status=active, visibility=public).
 
   async function publishOne(id: number) {
     setPublishingId(id);
     try {
-      const r = await fetch(`/api/owner-console/swms/masters/${id}/publish`, {
+      const r = await fetch(`/api/safety/swms/${id}/publish-to-library`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ replace: publishReplace }),
+        body: JSON.stringify({}),
       });
-      const d = await r.json() as PublishResult;
-      setPublishResults((prev) => ({ ...prev, [id]: d }));
-      if (d.ok) {
-        toast.success(`"${d.title}" pushed to ${d.companies} companies (${d.inserted} new, ${d.updated} updated, ${d.skipped} skipped)`);
-      } else {
-        toast.error(d.error ?? 'Publish failed');
-      }
+      const d = await r.json() as { ok?: boolean; libraryItemId?: number; error?: string };
+      if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`);
+      setPublishResults((prev) => ({ ...prev, [id]: { ok: true } }));
+      toast.success('Published to Global Library — companies can now browse and install it.');
     } catch (e) {
-      setPublishResults((prev) => ({ ...prev, [id]: { ok: false, error: String(e) } }));
+      setPublishResults((prev) => ({ ...prev, [id]: { ok: false, error: String(e instanceof Error ? e.message : e) } }));
       toast.error(String(e instanceof Error ? e.message : e));
     } finally {
       setPublishingId(null);
     }
   }
 
-  // ── Publish all ─────────────────────────────────────────────────────────────
+  // ── Publish all → Global Library ────────────────────────────────────────────
 
   async function publishAll() {
     setPublishingAll(true);
     setPublishAllResult(null);
+    let published = 0;
+    let failed = 0;
     try {
-      const r = await fetch('/api/owner-console/swms/masters/publish-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ replace: publishReplace }),
-      });
-      const d = await r.json() as PublishResult & { masters?: number };
-      setPublishAllResult(d);
-      if (d.ok) {
-        toast.success(`Published ${(d as { masters?: number }).masters ?? 0} masters to ${d.companies} companies`);
-      } else {
-        toast.error(d.error ?? 'Publish all failed');
+      for (const m of masters) {
+        try {
+          const r = await fetch(`/api/safety/swms/${m.id}/publish-to-library`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({}),
+          });
+          const d = await r.json() as { ok?: boolean; error?: string };
+          if (!r.ok || d.error) { failed++; } else { published++; }
+        } catch { failed++; }
       }
+      setPublishAllResult({ ok: true, companies: published });
+      toast.success(`Published ${published} SWMS to Global Library${failed > 0 ? ` (${failed} failed)` : ''}`);
     } catch (e) {
       setPublishAllResult({ ok: false, error: String(e) });
       toast.error(String(e instanceof Error ? e.message : e));
@@ -595,26 +597,24 @@ export default function SwmsMasterLibraryTab() {
         </div>
       </div>
 
-      {/* ── Publish options bar ── */}
-      <div className="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={publishReplace}
-            onChange={(e) => setPublishReplace(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-orange-500"
-          />
-          Replace existing company copies when publishing
-        </label>
+      {/* ── Publish to Global Library bar ── */}
+      <div className="flex items-center gap-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-blue-700">
+          <Globe size={14} className="text-blue-500 flex-shrink-0" />
+          <span>
+            <strong>Publish to Global Library</strong> — makes SWMS available for companies to browse and install.
+            Does not push directly to any company.
+          </span>
+        </div>
         <div className="flex-1" />
         {masters.length > 0 && (
           <button
             onClick={publishAll}
             disabled={publishingAll}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
           >
             {publishingAll ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
-            {publishingAll ? 'Publishing all…' : `Publish all ${masters.length} to companies`}
+            {publishingAll ? 'Publishing…' : `Publish all ${masters.length} to library`}
           </button>
         )}
       </div>
@@ -627,7 +627,7 @@ export default function SwmsMasterLibraryTab() {
             : <XCircle size={15} className="text-red-600 flex-shrink-0 mt-0.5" />}
           <span className="text-slate-700">
             {publishAllResult.ok
-              ? `Published to ${publishAllResult.companies} companies — ${publishAllResult.inserted} new, ${publishAllResult.updated} updated, ${publishAllResult.skipped} skipped`
+              ? `Published ${publishAllResult.companies ?? 0} SWMS to the Global Library — companies can now browse and install them`
               : publishAllResult.error}
           </span>
         </div>
@@ -668,7 +668,7 @@ export default function SwmsMasterLibraryTab() {
                     {pr && (
                       <p className={`text-xs mt-0.5 ${pr.ok ? 'text-green-600' : 'text-red-600'}`}>
                         {pr.ok
-                          ? `✓ Pushed to ${pr.companies} companies (${pr.inserted} new, ${pr.updated} updated, ${pr.skipped} skipped)`
+                          ? `✓ Published to Global Library`
                           : `✗ ${pr.error}`}
                       </p>
                     )}
@@ -694,13 +694,13 @@ export default function SwmsMasterLibraryTab() {
                     <button
                       onClick={() => publishOne(m.id)}
                       disabled={publishingId === m.id || publishingAll}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg"
-                      title="Publish to all companies"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg"
+                      title="Publish to Global Library"
                     >
                       {publishingId === m.id
                         ? <Loader2 size={12} className="animate-spin" />
-                        : <Send size={12} />}
-                      Publish
+                        : <Globe size={12} />}
+                      Publish to library
                     </button>
                     <button
                       onClick={() => deleteMaster(m.id, m.title)}
@@ -824,10 +824,9 @@ export default function SwmsMasterLibraryTab() {
         <Eye size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-blue-700">
           <strong>Workflow:</strong> Create or edit master templates here → set status to <em>Active</em> when ready →
-          click <strong>Publish</strong> to push to all companies. Company copies link back to the master via
-          <code className="bg-blue-100 px-1 rounded mx-0.5">source_master_id</code> so you can re-push updates later.
-          The <strong>Seed</strong> panel below pushes the 24 built-in templates directly to company libraries
-          (bypassing the master review step).
+          click <strong>Publish to library</strong> to add to the Global Library.
+          Companies then browse the Global Library and <strong>install</strong> their own copy.
+          Use <strong>Library Manager</strong> tab to manage what's in the Global Library.
         </p>
       </div>
 

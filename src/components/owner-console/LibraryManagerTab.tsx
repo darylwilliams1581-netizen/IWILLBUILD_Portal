@@ -204,6 +204,49 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 flex flex-col gap-4">
+
+          {/* Upload hint (create only) — shown first so it's obvious */}
+          {isNew && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 flex items-start gap-2">
+              <Info size={13} className="flex-shrink-0 mt-0.5 text-blue-500" />
+              <span>
+                <strong>To upload an existing SWMS, policy or form:</strong> fill in the title, select the type, then attach your DOCX or PDF below.
+                The file content will be parsed and stored in the library so companies can browse and install it.
+                The file upload is optional — you can also create a blank item and edit the content later.
+              </span>
+            </div>
+          )}
+
+          {/* File upload (create only) — moved to top so it's the first action */}
+          {isNew && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Upload existing file <span className="font-normal text-slate-400">(DOCX or PDF — optional)</span>
+              </label>
+              <div
+                className="border-2 border-dashed border-orange-200 rounded-xl p-5 text-center cursor-pointer hover:border-orange-400 hover:bg-orange-50/40 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {file ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
+                    <FileText size={14} className="text-orange-500" />
+                    <span className="font-medium">{file.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-slate-400 hover:text-red-500">
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Upload size={22} className="text-orange-300" />
+                    <span className="text-sm font-medium text-slate-500">Click to upload DOCX or PDF</span>
+                    <span className="text-xs">Content will be extracted and stored in the library</span>
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept=".docx,.pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </div>
+          )}
+
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title <span className="text-red-400">*</span></label>
@@ -287,33 +330,6 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary</label>
             <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} className={`${inp} resize-none`} placeholder="Brief description of what this document covers…" />
           </div>
-
-          {/* File upload (create only) */}
-          {isNew && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Upload file <span className="font-normal text-slate-400">(DOCX or PDF — optional)</span></label>
-              <div
-                className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
-                onClick={() => fileRef.current?.click()}
-              >
-                {file ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-                    <FileText size={14} className="text-orange-500" />
-                    <span className="font-medium">{file.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-slate-400 hover:text-red-500">
-                      <X size={13} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1.5 text-slate-400">
-                    <Upload size={18} />
-                    <span className="text-xs">Click to upload DOCX or PDF</span>
-                  </div>
-                )}
-              </div>
-              <input ref={fileRef} type="file" accept=".docx,.pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            </div>
-          )}
 
           {error && (
             <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
