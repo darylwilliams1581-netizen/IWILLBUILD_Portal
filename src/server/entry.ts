@@ -1618,8 +1618,8 @@ async function runStartupMigrations() {
 
   // ── Permanently set developer/platform-owner accounts to 'owner' plan ────────
   // These emails are the platform developers and should never be on trial limits.
-  const developerEmails = ['darylwilliams1581@gmail.com'];
-  for (const email of developerEmails) {
+  const devPlanEmails = ['darylwilliams1581@gmail.com'];
+  for (const email of devPlanEmails) {
     try {
       await db.execute(sql.raw(`
         UPDATE companies c
