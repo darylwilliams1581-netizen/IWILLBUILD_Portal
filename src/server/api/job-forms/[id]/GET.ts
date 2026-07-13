@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { jobFormSubmissions, profiles } from '../../../db/schema.js';
+import { jobFormSubmissions, formTemplates, profiles } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
@@ -28,7 +28,17 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!submission) return res.status(404).json({ error: 'Submission not found' });
 
-    res.json({ submission });
+    // Fetch template name for the runner page title
+    let templateName = 'Form';
+    if (submission.templateId) {
+      const tpl = await db.query.formTemplates.findFirst({
+        where: eq(formTemplates.id, submission.templateId),
+        columns: { name: true },
+      });
+      if (tpl?.name) templateName = tpl.name;
+    }
+
+    res.json({ submission, templateName });
   } catch (error) {
     console.error('GET /api/job-forms/:id error:', error);
     res.status(500).json({ error: 'Failed to load submission' });

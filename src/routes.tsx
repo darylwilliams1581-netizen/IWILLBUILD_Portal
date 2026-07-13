@@ -27,6 +27,7 @@ const DashboardPage      = lazy(() => import('./pages/dashboard'));
 const JobsPage           = lazy(() => import('./pages/jobs'));
 const SchedulerPage      = lazy(() => import('./pages/scheduler'));
 const JobDetailPage      = lazy(() => import('./pages/job-detail'));
+const JobFormRunnerPage  = lazy(() => import('./pages/job-form-runner'));
 const JobSignInPage      = lazy(() => import('./pages/job-signin'));
 const FleetPage          = lazy(() => import('./pages/fleet'));
 const FleetDetailPage    = lazy(() => import('./pages/fleet-detail'));
@@ -161,8 +162,8 @@ export const routes: RouteObject[] = [
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   // QR scan landing — unauthenticated allowed (guest check-in form)
   { path: '/jobs/:id/signin', element: <Suspense fallback={<PageLoader />}><JobSignInPage /></Suspense>, errorElement: routeError },
-  // Deep-link: open a specific form instance directly in the job forms tab
-  { path: '/jobs/:id/forms/:formInstanceId', element: protect(<JobDetailPage />), errorElement: routeError },
+  // Deep-link: open a specific form instance directly — full-page runner in new tab
+  { path: '/jobs/:id/forms/:formInstanceId', element: protect(<JobFormRunnerPage />), errorElement: routeError },
   { path: '/scheduler',     element: protect(<SchedulerPage />),       errorElement: routeError },
   { path: '/fleet',         element: protect(<FleetPage />),           errorElement: routeError },
   { path: '/fleet/:id',     element: protect(<FleetDetailPage />),     errorElement: routeError },
