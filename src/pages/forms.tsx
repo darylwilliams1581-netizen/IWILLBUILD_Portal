@@ -4,12 +4,14 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
-  Clock, Link2, Copy, CheckCircle2, Inbox,
+  Clock, Link2, Copy, CheckCircle2, Inbox, Library,
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
+import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -247,12 +249,13 @@ function DeleteConfirm({ name, onConfirm, onCancel, deleting }: {
 
 // ── Template card ─────────────────────────────────────────────────────────────
 
-function TemplateCard({ t, onBuild, onEdit, onDelete, onShare }: {
+function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary }: {
   t: FormTemplate;
   onBuild: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onShareToLibrary?: () => void;
 }) {
   const meta = TYPE_META[t.formType];
 
@@ -324,6 +327,15 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare }: {
         >
           <Link2 size={14} />
         </button>
+        {onShareToLibrary && (
+          <button
+            onClick={onShareToLibrary}
+            className="p-2 rounded-xl text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+            title="Share to Global Library"
+          >
+            <Library size={14} />
+          </button>
+        )}
         <button
           onClick={onEdit}
           className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
@@ -587,9 +599,11 @@ export function FormsPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<FormTemplate | null>(null);
+  const [libraryShareTarget, setLibraryShareTarget] = useState<FormTemplate | null>(null);
   const [builderTemplateId, setBuilderTemplateId] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const { isPlatformOwner } = usePermissions();
 
   // ── Document Builder state removed — Documents tab moved to Studio ───────────
   const [pageTab, setPageTab] = useState<'forms' | 'submissions'>('forms');
@@ -810,6 +824,7 @@ export function FormsPage() {
                       onEdit={() => setEditTarget(t)}
                       onDelete={() => setDeleteTarget(t)}
                       onShare={() => setShareTarget(t)}
+                      onShareToLibrary={isPlatformOwner ? () => setLibraryShareTarget(t) : undefined}
                     />
                   ))}
                 </motion.div>
@@ -840,6 +855,15 @@ export function FormsPage() {
             templateId={shareTarget.id}
             templateName={shareTarget.name}
             onClose={() => setShareTarget(null)}
+          />
+        )}
+        {libraryShareTarget && (
+          <ShareToLibraryModal
+            templateId={libraryShareTarget.id}
+            templateName={libraryShareTarget.name}
+            isPlatformOwner={isPlatformOwner}
+            sourceType="form"
+            onClose={() => setLibraryShareTarget(null)}
           />
         )}
       </AnimatePresence>

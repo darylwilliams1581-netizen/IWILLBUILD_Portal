@@ -1,0 +1,121 @@
+/**
+ * POST /api/form-templates/:id/publish-to-library
+ *
+ * Platform owner ONLY — publishes a form template (and its fields) to the
+ * Global Library so any company can install it.
+ *
+ * Body (JSON):
+ *   title       — optional override (defaults to template name)
+ *   type        — library type (default 'form')
+ *   category    — optional
+ *   discipline  — optional
+ *   summary     — optional description
+ *   version     — optional (default '1.0')
+ *   tags        — optional comma-separated
+ *
+ * Returns: { ok: true, libraryItemId: number }
+ */
+import type { Request, Response } from 'express';
+import { db } from '../../../../db/client.js';
+import { sql } from 'drizzle-orm';
+import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
+
+const ALLOWED_TYPES = new Set([
+  'policy', 'procedure', 'swms', 'form', 'recipe', 'estimate_recipe', 'scope_line',
+  'checklist', 'induction', 'report', 'toolbox_talk', 'prestart',
+]);
+
+export default async function handler(req: Request, res: Response) {
+  // Platform owner only
+  const info = await getPlatformOwnerInfo(req);
+  if (!info) return res.status(401).json({ error: 'Unauthorised' });
+  if (!info.isPlatformOwner) {
+    return res.status(403).json({ error: 'Only the platform owner can publish to the Global Library.' });
+  }
+
+  const templateId = Number(req.params.id);
+  if (!templateId) return res.status(400).json({ error: 'Invalid template ID' });
+
+  // Fetch the form template
+  const [tRows] = await db.execute(sql.raw(
+    `SELECT id, name, form_type, category, description FROM form_templates WHERE id = ${templateId} LIMIT 1`
+  )) as unknown as [Array<{ id: number; name: string; form_type: string; category: string | null; description: string | null }>, unknown];
+
+  const template = tRows?.[0];
+  if (!template) return res.status(404).json({ error: 'Form template not found' });
+
+  // Fetch its fields
+  const [fieldRows] = await db.execute(sql.raw(
+    `SELECT id, label, field_type, is_required, options_json, sort_order
+     FROM form_template_fields
+     WHERE template_id = ${templateId}
+     ORDER BY sort_order ASC`
+  )) as unknown as [Array<{
+    id: number; label: string; field_type: string;
+    is_required: number; options_json: string | null; sort_order: number;
+  }>, unknown];
+
+  // Serialise template + fields into builder_json for the library
+  const builderJson = JSON.stringify({
+    formType:    template.form_type,
+    description: template.description ?? '',
+    fields: (fieldRows ?? []).map((f) => ({
+      label:      f.label,
+      fieldType:  f.field_type,
+      isRequired: !!f.is_required,
+      options:    f.options_json ? JSON.parse(f.options_json) : [],
+      sortOrder:  f.sort_order,
+    })),
+  });
+
+  const body = req.body as {
+    title?: string;
+    type?: string;
+    category?: string;
+    discipline?: string;
+    summary?: string;
+    version?: string;
+    tags?: string;
+  };
+
+  const title      = (body.title ?? template.name ?? 'Untitled').trim();
+  const type       = ALLOWED_TYPES.has(body.type ?? '') ? (body.type ?? 'form') : 'form';
+  const category   = (body.category ?? template.category ?? '').trim() || null;
+  const discipline = (body.discipline ?? '').trim() || null;
+  const summary    = (body.summary ?? template.description ?? '').trim() || null;
+  const version    = (body.version ?? '1.0').trim();
+  const tags       = (body.tags ?? '').trim() || null;
+
+  const safe = (s: string) => s.replace(/'/g, "''");
+
+  try {
+    const [result] = await db.execute(sql.raw(
+      `INSERT INTO library_items (
+         title, type, category, discipline, summary, tags, builder_json,
+         status, visibility, version,
+         install_count, download_count, rating_sum, rating_count,
+         created_at, updated_at
+       )
+       VALUES (
+         '${safe(title)}',
+         '${safe(type)}',
+         ${category   ? `'${safe(category)}'`   : 'NULL'},
+         ${discipline ? `'${safe(discipline)}'` : 'NULL'},
+         ${summary    ? `'${safe(summary)}'`    : 'NULL'},
+         ${tags       ? `'${safe(tags)}'`       : 'NULL'},
+         '${safe(builderJson)}',
+         'active',
+         'public',
+         '${safe(version)}',
+         0, 0, 0, 0,
+         NOW(), NOW()
+       )`
+    )) as unknown as [{ insertId: number }, unknown];
+
+    const libraryItemId = (result as unknown as { insertId: number }).insertId;
+    return res.json({ ok: true, libraryItemId });
+  } catch (err) {
+    console.error('form-templates publish-to-library error:', err);
+    return res.status(500).json({ error: 'Failed to publish to library' });
+  }
+}

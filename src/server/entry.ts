@@ -287,6 +287,7 @@ import form_templates_get_207 from "./api/form-templates/GET";
 import form_templates_post_208 from "./api/form-templates/POST";
 import form_templates_id_delete_210 from "./api/form-templates/[id]/DELETE";
 import form_templates_id_put_211 from "./api/form-templates/[id]/PUT";
+import form_templates_id_publish_to_library_post from "./api/form-templates/[id]/publish-to-library/POST";
 import forms_migrate_skip_logic_post_212 from "./api/forms/migrate-skip-logic/POST";
 import forms_skip_audit_get_213 from "./api/forms/skip-audit/GET";
 import forms_skip_audit_post_214 from "./api/forms/skip-audit/POST";
@@ -811,9 +812,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // Auth routes get a tighter sub-limit on top of the global one.
 app.use('/api', globalApiLimiter);
 app.use('/api/auth', authApiLimiter);
-
-// ── Developer seed — registered BEFORE auth guard (internal use only) ─────────
-app.post("/api/developer/run-seed-now", developer_run_seed_now_post);
 
 // ── API catch-all authentication guard ───────────────────────────────────────
 // Every /api/* request must be authenticated UNLESS it is on the public
@@ -1914,6 +1912,7 @@ app.post("/api/form-templates", form_templates_post_208);
 app.post("/api/form-templates/seed", _h_form_templates_seed_post_6);
 app.delete("/api/form-templates/:id", form_templates_id_delete_210);
 app.put("/api/form-templates/:id", form_templates_id_put_211);
+app.post("/api/form-templates/:id/publish-to-library", form_templates_id_publish_to_library_post);
 app.post("/api/forms/migrate-skip-logic", forms_migrate_skip_logic_post_212);
 app.get("/api/forms/skip-audit", forms_skip_audit_get_213);
 app.post("/api/forms/skip-audit", forms_skip_audit_post_214);

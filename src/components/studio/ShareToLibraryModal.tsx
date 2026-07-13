@@ -25,8 +25,9 @@ interface Props {
   isPlatformOwner?: boolean;
   /** Which API to call:
    *  'document' (default) → POST /api/document-templates/:id/publish-to-library
-   *  'swms'               → POST /api/safety/swms/:id/publish-to-library */
-  sourceType?: 'document' | 'swms';
+   *  'swms'               → POST /api/safety/swms/:id/publish-to-library
+   *  'form'               → POST /api/form-templates/:id/publish-to-library */
+  sourceType?: 'document' | 'swms' | 'form';
   onClose: () => void;
 }
 
@@ -82,6 +83,7 @@ export default function ShareToLibraryModal({
 
   function buildUrl() {
     if (sourceType === 'swms') return `/api/safety/swms/${templateId}/publish-to-library`;
+    if (sourceType === 'form') return `/api/form-templates/${templateId}/publish-to-library`;
     return `/api/document-templates/${templateId}/publish-to-library`;
   }
 
