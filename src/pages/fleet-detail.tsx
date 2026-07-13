@@ -1242,41 +1242,40 @@ export default function FleetDetailPage() {
               )}
             </motion.div>
           )}
+
+          {/* ── Usage tab ── */}
+          {activeTab === 'usage' && asset && (
+            <motion.div
+              key="usage"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <FleetUsagePanel fleetId={asset.id} assetName={asset.name} />
+            </motion.div>
+          )}
+
+          {/* ── Notes tab ── */}
+          {activeTab === 'notes' && asset && (
+            <motion.div
+              key="notes"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <NotesPanel
+                entityType="fleet"
+                entityId={asset.id}
+                entityLabel={asset.name}
+                userRole={userRole ?? ''}
+              />
+            </motion.div>
+          )}
         </div>
 
-        {/* ── Usage tab ── */}
-        {activeTab === 'usage' && asset && (
-          <motion.div
-            key="usage"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="p-4 md:p-6"
-          >
-            <FleetUsagePanel fleetId={asset.id} assetName={asset.name} />
-          </motion.div>
-        )}
-
-        {/* ── Notes tab ── */}
-        {activeTab === 'notes' && asset && (
-          <motion.div
-            key="notes"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="p-4 md:p-6"
-          >
-            <NotesPanel
-              entityType="fleet"
-              entityId={asset.id}
-              entityLabel={asset.name}
-              userRole={userRole ?? ''}
-            />
-          </motion.div>
-        )}
-      </div>
+      </div> {/* portal-main */}
 
       {/* Modals */}
       <AnimatePresence>
