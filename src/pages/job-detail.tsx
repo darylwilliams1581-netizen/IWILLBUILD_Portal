@@ -20,7 +20,6 @@ import {
   Calculator,
   FolderOpen,
   StickyNote,
-  CheckSquare,
   TrendingUp,
   Upload,
   Mail,
@@ -49,7 +48,6 @@ import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import JobNotes from '@/components/job/JobNotes';
 import NotesPanel from '@/components/notes/NotesPanel';
-import JobTodos from '@/components/job/JobTodos';
 import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
 import JobSafety from '@/components/job/JobSafety';
@@ -65,7 +63,7 @@ import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/l
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'todos' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -76,7 +74,6 @@ const NAV_GROUPS = [
       { key: 'details'   as Tab, label: 'Details',   icon: FileText },
       { key: 'photos'    as Tab, label: 'Photos',     icon: Image },
       { key: 'drawings'  as Tab, label: 'Drawings',   icon: Layers },
-      { key: 'todos'     as Tab, label: 'To-do',      icon: CheckSquare },
       { key: 'delays'    as Tab, label: 'Delays',     icon: Clock },
       { key: 'notes'     as Tab, label: 'Notes',      icon: StickyNote },
     ],
@@ -138,7 +135,7 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'todos' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance') return t as Tab;
     return 'details';
   });
 
@@ -940,8 +937,7 @@ export default function JobDetailPage() {
                   {/* ── Drawings ── */}
                   {activeTab === 'drawings' && <JobPlanManagerTab jobId={job.id} jobName={job.name} />}
 
-                  {/* ── To-do ── */}
-                  {activeTab === 'todos' && <JobTodos jobId={job.id} />}
+                  {/* ── To-do removed — use Notes tab (Tagged Actions) instead ── */}
 
                   {/* ── Delays ── */}
                   {activeTab === 'delays' && <JobDelays jobId={job.id} />}
