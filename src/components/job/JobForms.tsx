@@ -6,13 +6,13 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  ClipboardList,
   Eye,
   Trash2,
   Printer,
   RotateCcw,
   X,
   ExternalLink,
+  ChevronDown,
   PlayCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -79,14 +79,12 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Delete confirmation modal ─────────────────────────────────────────────────
 
-interface DeleteConfirmProps {
+function DeleteConfirm({ templateName, onConfirm, onCancel, deleting }: {
   templateName: string;
   onConfirm: () => void;
   onCancel: () => void;
   deleting: boolean;
-}
-
-function DeleteConfirm({ templateName, onConfirm, onCancel, deleting }: DeleteConfirmProps) {
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -138,19 +136,16 @@ function DeleteConfirm({ templateName, onConfirm, onCancel, deleting }: DeleteCo
 
 // ── Submission row ────────────────────────────────────────────────────────────
 
-interface SubmissionRowProps {
+function SubmissionRow({ submission, templateName, onOpen, onDelete, canDelete, canShare, canReset, onStatusChange }: {
   submission: FormSubmission;
   templateName: string;
   onOpen: () => void;
-  onPrint: () => void;
   onDelete: () => void;
   canDelete: boolean;
   canShare: boolean;
   canReset: boolean;
   onStatusChange: () => void;
-}
-
-function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, canDelete, canShare, canReset, onStatusChange }: SubmissionRowProps) {
+}) {
   const isCompleted = submission.status === 'completed' || submission.status === 'submitted';
   const isSubmitted = submission.status === 'submitted';
 
@@ -163,7 +158,7 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
       transition={{ duration: 0.15 }}
       className="rounded-xl border border-slate-200 bg-white overflow-hidden"
     >
-      {/* Main row — clickable to open */}
+      {/* Main row — click to open in new tab */}
       <div
         onClick={onOpen}
         className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors"
@@ -182,34 +177,25 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
           </p>
         </div>
         <StatusBadge status={submission.status} />
+        <ExternalLink size={12} className="text-slate-300 shrink-0" />
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 mt-0 bg-slate-50/60 flex-wrap">
+      <div className="flex items-center gap-1.5 px-3 pb-3 pt-0 border-t border-slate-100 bg-slate-50/60 flex-wrap">
         {isCompleted ? (
           <>
-            {/* View */}
             <button
               onClick={onOpen}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 transition-colors"
             >
               <Eye size={12} /> View
             </button>
-            {/* Open in new tab */}
             <button
-              onClick={(e) => { e.stopPropagation(); window.open(`/jobs/${submission.jobId}/forms/${submission.id}`, '_blank', 'noopener,noreferrer'); }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 transition-colors"
-            >
-              <ExternalLink size={12} /> New tab
-            </button>
-            {/* Print/PDF */}
-            <button
-              onClick={(e) => { e.stopPropagation(); onPrint(); }}
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-600 transition-colors"
             >
               <Printer size={12} /> Print / PDF
             </button>
-            {/* Reopen (internal) — only if not externally submitted */}
             {!isSubmitted && (
               <button
                 onClick={onOpen}
@@ -220,7 +206,6 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
             )}
           </>
         ) : (
-          /* Continue */
           <button
             onClick={onOpen}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary hover:bg-orange-600 text-white transition-colors"
@@ -229,10 +214,8 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
           </button>
         )}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Share panel */}
         {canShare && (
           <FormSharePanel
             submissionId={submission.id}
@@ -242,7 +225,6 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
           />
         )}
 
-        {/* Delete */}
         {canDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -256,6 +238,81 @@ function SubmissionRow({ submission, templateName, onOpen, onPrint, onDelete, ca
   );
 }
 
+// ── New Form dropdown picker ───────────────────────────────────────────────────
+
+function NewFormPicker({ templates, starting, onStart }: {
+  templates: FormTemplate[];
+  starting: number | null;
+  onStart: (templateId: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  if (templates.length === 0) return null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={starting !== null}
+        className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition-colors"
+      >
+        {starting !== null ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        New Form
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-2 z-30 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[240px] py-1 overflow-hidden"
+          >
+            <p className="px-4 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+              Select a form to start
+            </p>
+            {templates.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setOpen(false);
+                  onStart(t.id);
+                }}
+                disabled={starting === t.id}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors disabled:opacity-50"
+              >
+                <div className="p-1.5 rounded-lg bg-orange-50 shrink-0">
+                  <FileText size={13} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{t.name}</p>
+                  {t.category && (
+                    <p className="text-[11px] text-slate-400">{t.category}</p>
+                  )}
+                </div>
+                {starting === t.id && <Loader2 size={12} className="animate-spin text-primary shrink-0" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface JobFormsProps {
@@ -263,24 +320,18 @@ interface JobFormsProps {
   job?: Job | null;
   userRole?: string;
   onRunnerActive?: (active: boolean) => void;
-  /** Deep-link: auto-open this form instance when the tab loads */
   initialFormInstanceId?: number;
 }
 
-export default function JobForms({ jobId, job, userRole, onRunnerActive, initialFormInstanceId }: JobFormsProps) {
+export default function JobForms({ jobId, userRole }: JobFormsProps) {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [starting, setStarting] = useState<number | null>(null);
-  // Track whether we've already auto-opened the deep-linked instance
-  const autoOpenedRef = useRef<number | null>(null);
-
-  // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<FormSubmission | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Can this user delete? Owner/Admin/Manager
   const canDelete = ['owner', 'admin', 'manager'].includes(userRole ?? '');
 
   const load = useCallback(async () => {
@@ -305,27 +356,6 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
 
   useEffect(() => { void load(); }, [load]);
 
-  // Auto-open a deep-linked form instance in a new window
-  useEffect(() => {
-    if (!initialFormInstanceId || loading || autoOpenedRef.current === initialFormInstanceId) return;
-    const target = submissions.find((s) => s.id === initialFormInstanceId);
-    if (target) {
-      autoOpenedRef.current = initialFormInstanceId;
-      window.open(`/jobs/${jobId}/forms/${initialFormInstanceId}`, '_blank', 'noopener,noreferrer');
-    }
-  }, [initialFormInstanceId, loading, submissions, jobId]);
-
-  // Fetch company name once for print header
-  useEffect(() => {
-    if ((window as unknown as Record<string, string>).__iwb_company_name) return;
-    fetch('/api/company-settings', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d: { name?: string }) => {
-        if (d.name) (window as unknown as Record<string, string>).__iwb_company_name = d.name;
-      })
-      .catch(() => { /* ignore */ });
-  }, []);
-
   async function startForm(templateId: number) {
     setStarting(templateId);
     setError('');
@@ -340,7 +370,7 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
         setSubmissions((prev) => [data.submission!, ...prev]);
-        // Open in new window so the job detail page stays intact
+        // Open form in a new tab — job detail page stays open
         window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener,noreferrer');
       }
     } catch (e) {
@@ -376,15 +406,6 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
     }
   }
 
-  // Map templateId -> submissions
-  const submissionsByTemplate = submissions.reduce<Record<number, FormSubmission[]>>((acc, s) => {
-    if (!acc[s.templateId]) acc[s.templateId] = [];
-    acc[s.templateId].push(s);
-    return acc;
-  }, {});
-
-  // ── Form runner view — now opens in new window, no inline runner ──────────────
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -403,114 +424,71 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
           </div>
         )}
 
-        {/* Available templates */}
-        <div className="bg-white rounded-xl border border-border p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList size={15} className="text-primary" />
-            <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">
-              Available Job Forms
-            </h2>
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-heading font-bold text-base text-slate-900">Job Forms</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {submissions.length > 0
+                ? `${submissions.length} form${submissions.length !== 1 ? 's' : ''} on this job`
+                : 'No forms started yet'}
+            </p>
           </div>
-
-          {templates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="p-3 rounded-2xl bg-slate-100 mb-3">
-                <FileText size={20} className="text-slate-400" />
-              </div>
-              <p className="text-sm font-semibold text-slate-600">No Job forms set up yet</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Create a form template with type "Job" in the Forms section to get started.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {templates.map((t) => {
-                const existing = submissionsByTemplate[t.id] ?? [];
-                const inProgress = existing.filter((s) => s.status === 'in_progress');
-                const completed = existing.filter((s) => s.status === 'completed');
-
-                return (
-                  <motion.div
-                    key={t.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="p-2 rounded-lg bg-orange-50 shrink-0">
-                      <FileText size={14} className="text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{t.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {t.category && (
-                          <span className="text-[11px] text-slate-400">{t.category}</span>
-                        )}
-                        {inProgress.length > 0 && (
-                          <span className="text-[11px] text-amber-600 font-medium">
-                            {inProgress.length} in progress
-                          </span>
-                        )}
-                        {completed.length > 0 && (
-                          <span className="text-[11px] text-emerald-600 font-medium">
-                            {completed.length} completed
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => startForm(t.id)}
-                      disabled={starting === t.id}
-                      className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-orange-600 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors shrink-0"
-                    >
-                      {starting === t.id ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Plus size={12} />
-                      )}
-                      Start
-                    </button>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
+          <NewFormPicker
+            templates={templates}
+            starting={starting}
+            onStart={startForm}
+          />
         </div>
+
+        {/* No templates state */}
+        {templates.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-xl border border-slate-200">
+            <div className="p-3 rounded-2xl bg-slate-100 mb-3">
+              <FileText size={20} className="text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">No job form templates set up</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs">
+              Create a form template with type "Job" in the Forms section to get started.
+            </p>
+          </div>
+        )}
 
         {/* Submissions list */}
         {submissions.length > 0 && (
-          <div className="bg-white rounded-xl border border-border p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock size={15} className="text-slate-500" />
-              <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">
-                In Progress / Completed
-              </h2>
-              <span className="ml-auto text-xs text-slate-400 font-medium">{submissions.length}</span>
-            </div>
+          <div className="flex flex-col gap-2">
+            <AnimatePresence mode="popLayout">
+              {submissions.map((s) => {
+                const template = templates.find((t) => t.id === s.templateId);
+                const templateName = template?.name ?? `Form #${s.templateId}`;
+                return (
+                  <SubmissionRow
+                    key={s.id}
+                    submission={s}
+                    templateName={templateName}
+                    onOpen={() => openSubmission(s)}
+                    onDelete={() => setDeleteTarget(s)}
+                    canDelete={canDelete}
+                    canShare={true}
+                    canReset={['owner', 'admin'].includes(userRole ?? '')}
+                    onStatusChange={load}
+                  />
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
 
-            <div className="flex flex-col gap-2">
-              <AnimatePresence mode="popLayout">
-                {submissions.map((s) => {
-                  const template = templates.find((t) => t.id === s.templateId);
-                  const templateName = template?.name ?? `Form #${s.templateId}`;
-
-                  return (
-                    <SubmissionRow
-                      key={s.id}
-                      submission={s}
-                      templateName={templateName}
-                      onOpen={() => openSubmission(s)}
-                      onPrint={() => openSubmission(s)}
-                      onDelete={() => setDeleteTarget(s)}
-                      canDelete={canDelete}
-                      canShare={true}
-                      canReset={['owner', 'admin'].includes(userRole ?? '')}
-                      onStatusChange={load}
-                    />
-                  );
-                })}
-              </AnimatePresence>
+        {/* Empty state when templates exist but no submissions */}
+        {templates.length > 0 && submissions.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-xl border border-dashed border-slate-200">
+            <div className="p-3 rounded-2xl bg-orange-50 mb-3">
+              <FileText size={20} className="text-primary" />
             </div>
+            <p className="text-sm font-semibold text-slate-600">No forms started yet</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Tap <strong>New Form</strong> above to pick a form and complete it.
+            </p>
           </div>
         )}
       </div>
@@ -527,10 +505,12 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
         )}
       </AnimatePresence>
 
-      {/* Skip logic analytics — shown per template that has submissions */}
-      {templates.filter((t) => (submissionsByTemplate[t.id] ?? []).length > 0).map((t) => (
-        <SkipMetricsPanel key={t.id} templateId={t.id} />
-      ))}
+      {/* Skip logic analytics */}
+      {templates
+        .filter((t) => submissions.some((s) => s.templateId === t.id))
+        .map((t) => (
+          <SkipMetricsPanel key={t.id} templateId={t.id} />
+        ))}
     </>
   );
 }
