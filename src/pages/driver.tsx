@@ -16,7 +16,6 @@ import {
   Truck,
   Play,
   Square,
-  ChevronDown,
   ChevronRight,
   Loader2,
   AlertCircle,
@@ -26,15 +25,16 @@ import {
   CheckSquare,
   FileText,
   LogOut,
-  Wifi,
-  WifiOff,
-  RefreshCw,
   X,
   Car,
   ClipboardCheck,
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  Calculator,
+  Layers,
+  HardHat,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
@@ -777,48 +777,78 @@ export default function DriverPage() {
 
             {/* ── Quick actions ─────────────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">Quick Actions</p>
-              <div className="grid grid-cols-2 gap-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">Quick Access</p>
+
+              {/* Dashboard — full-width hero button */}
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-4 bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 mb-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20">
+                  <LayoutDashboard size={22} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-base leading-tight">Dashboard</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Portal overview &amp; activity</p>
+                </div>
+                <ChevronRight size={16} className="text-gray-600 shrink-0" />
+              </Link>
+
+              {/* Tools row — Builders Calc + Take-off Pad */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Link
+                  to="/estimating?tab=builders-calc"
+                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
+                    <Calculator size={20} className="text-blue-400" />
+                  </div>
+                  <span className="text-white text-xs font-bold text-center leading-tight">Builders Calc</span>
+                </Link>
+
+                <Link
+                  to="/estimating?tab=takeoff-pad"
+                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                    <Layers size={20} className="text-violet-400" />
+                  </div>
+                  <span className="text-white text-xs font-bold text-center leading-tight">Take-off Pad</span>
+                </Link>
+              </div>
+
+              {/* Secondary row — Jobs, Safety, Fleet */}
+              <div className="grid grid-cols-3 gap-2">
                 <Link
                   to={selectedJob ? `/jobs/${selectedJob.id}` : '/jobs'}
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-2xl py-4 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <FileText size={18} className="text-blue-400" />
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center">
+                    <FileText size={16} className="text-sky-400" />
                   </div>
-                  <span className="text-white text-xs font-semibold text-center">
-                    {selectedJob ? 'Job Details' : 'All Jobs'}
+                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">
+                    {selectedJob ? 'Job' : 'Jobs'}
                   </span>
                 </Link>
 
                 <Link
                   to="/safety"
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-2xl py-4 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <CheckSquare size={18} className="text-emerald-400" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <HardHat size={16} className="text-emerald-400" />
                   </div>
-                  <span className="text-white text-xs font-semibold text-center">Safety Forms</span>
+                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Safety</span>
                 </Link>
 
                 <Link
                   to="/fleet"
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-2xl py-4 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                    <Truck size={18} className="text-orange-400" />
+                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                    <Truck size={16} className="text-orange-400" />
                   </div>
-                  <span className="text-white text-xs font-semibold text-center">Fleet</span>
-                </Link>
-
-                <Link
-                  to="/dashboard"
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-2xl py-4 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                    <Gauge size={18} className="text-purple-400" />
-                  </div>
-                  <span className="text-white text-xs font-semibold text-center">Dashboard</span>
+                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Fleet</span>
                 </Link>
               </div>
             </div>
