@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, Users,
   Printer, Wand2, Trash2, ClipboardList, Link2, UserCheck,
+  ChevronDown, Library, FilePlus,
 } from 'lucide-react';
 import { safeUrl } from '@/lib/html-escape';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
+import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import {
   type SwmsTemplate, type SafetyPlanTemplate, type Signoff, type JobSwmsRecord,
   type JobSafetyPlan, type JobInfo,
@@ -14,12 +16,83 @@ import {
   SignonModal, AddSwmsModal, SwmsEditModal, SwmsPrintModal, AddSafetyPlanModal,
 } from './JobSafetyModals';
 
+// ── Add SWMS dropdown button ──────────────────────────────────────────────────
+
+function AddSwmsDropdown({ onFromLibrary, onCreateNew }: {
+  onFromLibrary: () => void;
+  onCreateNew: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors"
+      >
+        <Plus size={14} />
+        <span className="hidden sm:inline">Add SWMS</span>
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-2 z-30 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[210px] py-1 overflow-hidden"
+          >
+            <button
+              onClick={() => { setOpen(false); onFromLibrary(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
+            >
+              <div className="p-1.5 rounded-lg bg-orange-50 shrink-0">
+                <Library size={13} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">From Library</p>
+                <p className="text-[11px] text-slate-400">Copy an existing template</p>
+              </div>
+            </button>
+            <div className="mx-3 border-t border-slate-100" />
+            <button
+              onClick={() => { setOpen(false); onCreateNew(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
+            >
+              <div className="p-1.5 rounded-lg bg-slate-50 shrink-0">
+                <FilePlus size={13} className="text-slate-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Create New</p>
+                <p className="text-[11px] text-slate-400">Build a blank SWMS from scratch</p>
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── SWMS Sub-tab ──────────────────────────────────────────────────────────────
 
 function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
   const [list, setList] = useState<JobSwmsRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
   const [editing, setEditing] = useState<JobSwmsRecord | null>(null);
   const [printing, setPrinting] = useState<{ swms: JobSwmsRecord; signoffs: Signoff[] } | null>(null);
   const [signonTarget, setSignonTarget] = useState<JobSwmsRecord | null>(null);
@@ -89,19 +162,25 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
           <h3 className="font-heading font-bold text-sm text-slate-700">Job SWMS</h3>
           <p className="text-xs text-slate-400 mt-0.5">{list.length} attached · <Link to="/safety" className="text-primary hover:underline">SWMS Library →</Link></p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors">
-          <Plus size={14} /><span className="hidden sm:inline">Add SWMS</span>
-        </button>
+        <AddSwmsDropdown
+          onFromLibrary={() => setShowAdd(true)}
+          onCreateNew={() => setShowBuilder(true)}
+        />
       </div>
 
       {list.length === 0 && (
         <div className="flex flex-col items-center justify-center py-14 text-center bg-white rounded-xl border border-slate-200">
           <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-3"><ShieldAlert size={22} className="text-primary" /></div>
           <p className="font-bold text-sm text-slate-700 mb-1">No SWMS on this job</p>
-          <p className="text-xs text-slate-400 mb-4 max-w-xs">Add SWMS from the library. Workers sign on before starting work.</p>
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={14} />Add SWMS
-          </button>
+          <p className="text-xs text-slate-400 mb-4 max-w-xs">Add SWMS from the library or create a new one. Workers sign on before starting work.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+              <Library size={14} />From Library
+            </button>
+            <button onClick={() => setShowBuilder(true)} className="flex items-center gap-2 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+              <FilePlus size={14} />Create New
+            </button>
+          </div>
         </div>
       )}
 
@@ -212,6 +291,31 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
 
       <AnimatePresence>
         {showAdd && <AddSwmsModal jobId={jobId} onClose={() => setShowAdd(false)} onAdded={(items) => { setList((prev) => [...items.map((i) => ({ ...i, signoffs: [] })), ...prev]); setShowAdd(false); }} />}
+        {showBuilder && (
+          <SwmsBodyBuilder
+            onClose={() => setShowBuilder(false)}
+            onSaved={async (saved) => {
+              // Saved to library — now attach to this job automatically
+              setShowBuilder(false);
+              try {
+                const r = await fetch('/api/safety/job-swms', {
+                  method: 'POST', credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ jobId, templateIds: [saved.id] }),
+                });
+                const d = await r.json() as { jobSwms?: JobSwmsRecord[] };
+                if (r.ok && d.jobSwms?.length) {
+                  setList((prev) => [...(d.jobSwms!.map((i) => ({ ...i, signoffs: [] }))), ...prev]);
+                } else {
+                  // Fallback: reload
+                  load();
+                }
+              } catch {
+                load();
+              }
+            }}
+          />
+        )}
         {editing && <SwmsEditModal initial={editing} onClose={() => setEditing(null)} onSaved={(updated) => { setList((prev) => prev.map((j) => j.id === updated.id ? { ...updated, signoffs: j.signoffs ?? [] } : j)); setEditing(null); }} />}
         {printing && <SwmsPrintModal swms={printing.swms} signoffs={printing.signoffs} job={job} onClose={() => setPrinting(null)} />}
         {signonTarget && (
