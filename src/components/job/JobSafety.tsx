@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  ShieldAlert, Plus, Loader2, X, AlertCircle, Users,
+  ShieldAlert, Plus, Loader2, Users,
   Printer, Wand2, Trash2, ClipboardList, Link2, UserCheck,
 } from 'lucide-react';
+import { safeUrl } from '@/lib/html-escape';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
 import {
   type SwmsTemplate, type SafetyPlanTemplate, type Signoff, type JobSwmsRecord,

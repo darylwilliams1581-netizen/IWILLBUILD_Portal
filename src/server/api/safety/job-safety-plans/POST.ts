@@ -29,7 +29,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Verify job belongs to company
     const [jobRows] = await db.execute(
-      sql`SELECT id, name, site_address, client_name FROM jobs WHERE id = ${jobId} AND company_id = ${profile.companyId} LIMIT 1`
+      sql`SELECT id, name, address as site_address, client as client_name FROM jobs WHERE id = ${jobId} AND company_id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<{ id: number; name: string; site_address: string | null; client_name: string | null }>, unknown];
     if (!jobRows?.length) return res.status(404).json({ error: 'Job not found' });
     const job = jobRows[0];

@@ -28,8 +28,8 @@ export default async function handler(req: Request, res: Response) {
     let query = sql`
       SELECT js.*,
              j.name as job_name, j.job_number,
-             j.client_name, j.site_address as job_site_address,
-             j.start_date, j.supervisor
+             j.client as client_name, j.address as job_site_address,
+             j.scheduled_start_date as start_date, j.assigned_supervisor_user_id as supervisor
       FROM job_swms js
       LEFT JOIN jobs j ON j.id = js.job_id AND j.company_id = js.company_id
       WHERE js.company_id = ${profile.companyId}
