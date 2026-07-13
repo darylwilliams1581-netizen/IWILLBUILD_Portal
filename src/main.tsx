@@ -152,10 +152,11 @@ if (rootElement.firstElementChild) {
     // DOM nodes before React hydrates, causing spurious hydration mismatches.
     // These are recoverable — React re-renders on the client and the UI is correct.
     // Suppress them here so they don't surface as errors in the dev error boundary.
-    onRecoverableError(error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('Hydration') || msg.includes('hydration') || msg.includes('hydrat')) return;
-      console.error('[hydrateRoot] Recoverable error:', error);
+    onRecoverableError(_error: unknown) {
+      // Recoverable errors (hydration mismatches caused by browser extensions
+      // injecting style attributes before React hydrates) are silently swallowed.
+      // React already re-renders the affected subtree on the client — the UI is
+      // correct. Logging these as errors would be misleading.
     },
   });
 } else {

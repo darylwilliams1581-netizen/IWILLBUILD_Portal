@@ -41,6 +41,7 @@ export default function Header() {
 
   return (
     <header
+      suppressHydrationWarning
       className="sticky top-0 z-50"
       style={{
         background: 'rgba(255,255,255,0.97)',
@@ -50,6 +51,7 @@ export default function Header() {
       }}
     >
       <div
+        suppressHydrationWarning
         style={{
           maxWidth: 1180,
           margin: '0 auto',
