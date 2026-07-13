@@ -323,12 +323,20 @@ export default function DashboardPage() {
                       Keep your jobs, fleet, forms and files moving from one place.
                     </p>
                   </div>
+                  {/* Desktop: New Job | Mobile: Driver App */}
                   <Link
                     to="/jobs"
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
+                    className="hidden sm:inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
                   >
                     <Plus size={13} />
                     + New {workSingular}
+                  </Link>
+                  <Link
+                    to="/driver"
+                    className="sm:hidden inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
+                  >
+                    <Car size={13} />
+                    Driver App
                   </Link>
                 </>
               ) : (
@@ -344,10 +352,17 @@ export default function DashboardPage() {
                   </div>
                   <Link
                     to="/jobs"
-                    className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
+                    className="hidden sm:inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
                   >
                     <Plus size={13} />
                     {addWorkLabel}
+                  </Link>
+                  <Link
+                    to="/driver"
+                    className="sm:hidden inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors duration-150 shrink-0"
+                  >
+                    <Car size={13} />
+                    Driver App
                   </Link>
                 </>
               )}
@@ -481,77 +496,97 @@ export default function DashboardPage() {
           {/* ── Bottom panels ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
-            {/* Recent Jobs — real data */}
+            {/* Mobile: Scheduler shortcut | Desktop: Recent Jobs */}
             <motion.div
               variants={itemVariants}
               initial="hidden"
               animate="visible"
               className="lg:col-span-2 bg-white rounded-lg border border-border"
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <h2 className="font-heading font-semibold text-xs text-foreground">Recent Jobs</h2>
+              {/* Mobile scheduler card */}
+              <div className="sm:hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <h2 className="font-heading font-semibold text-xs text-foreground">Scheduler</h2>
+                  <Link to="/scheduler" className="text-[11px] text-primary font-medium flex items-center gap-0.5 hover:underline">
+                    Open <ChevronRight size={11} />
+                  </Link>
+                </div>
                 <Link
-                  to="/jobs"
-                  className="text-[11px] text-primary font-medium flex items-center gap-0.5 hover:underline"
+                  to="/scheduler"
+                  className="flex items-center gap-4 px-4 py-5 hover:bg-muted/50 transition-colors group"
                 >
-                  View all <ChevronRight size={11} />
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Calendar size={22} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">View Schedule</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Timeline, calendar and day view</p>
+                  </div>
+                  <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                 </Link>
               </div>
 
-              {!jobsLoaded ? (
-                <div className="divide-y divide-border">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3.5 w-40 bg-slate-100 rounded animate-pulse" />
-                        <div className="h-3 w-24 bg-slate-100 rounded animate-pulse" />
-                      </div>
-                      <div className="h-3 w-16 bg-slate-100 rounded animate-pulse shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              ) : recentJobs.length === 0 ? (
-                /* Empty state */
-                <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
-                    <HardHat size={18} className="text-primary" />
-                  </div>
-                  <p className="text-xs font-semibold text-foreground mb-1">No jobs yet</p>
-                  <p className="text-[11px] text-muted-foreground mb-4 max-w-xs">
-                    Once you add jobs they'll appear here with status.
-                  </p>
-                  <Link
-                    to="/jobs"
-                    className="inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
-                  >
-                    <Plus size={12} />
-                    Add First Job
+              {/* Desktop recent jobs */}
+              <div className="hidden sm:block">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <h2 className="font-heading font-semibold text-xs text-foreground">Recent Jobs</h2>
+                  <Link to="/jobs" className="text-[11px] text-primary font-medium flex items-center gap-0.5 hover:underline">
+                    View all <ChevronRight size={11} />
                   </Link>
                 </div>
-              ) : (
-                /* Real jobs list */
-                <div className="divide-y divide-border">
-                  {recentJobs.map((job) => (
+                {!jobsLoaded ? (
+                  <div className="divide-y divide-border">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3.5 w-40 bg-slate-100 rounded animate-pulse" />
+                          <div className="h-3 w-24 bg-slate-100 rounded animate-pulse" />
+                        </div>
+                        <div className="h-3 w-16 bg-slate-100 rounded animate-pulse shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                ) : recentJobs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
+                      <HardHat size={18} className="text-primary" />
+                    </div>
+                    <p className="text-xs font-semibold text-foreground mb-1">No jobs yet</p>
+                    <p className="text-[11px] text-muted-foreground mb-4 max-w-xs">
+                      Once you add jobs they'll appear here with status.
+                    </p>
                     <Link
-                      key={job.id}
-                      to={`/jobs/${job.id}`}
-                      className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 transition-colors group"
+                      to="/jobs"
+                      className="inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
                     >
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{job.name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {job.jobNumber && <span className="font-mono mr-1.5">{job.jobNumber}</span>}
-                          {job.client ?? 'No client'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-[11px] font-semibold text-muted-foreground hidden sm:block">{job.status}</span>
-                        <ChevronRight size={13} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
+                      <Plus size={12} />
+                      Add First Job
                     </Link>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {recentJobs.map((job) => (
+                      <Link
+                        key={job.id}
+                        to={`/jobs/${job.id}`}
+                        className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">{job.name}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {job.jobNumber && <span className="font-mono mr-1.5">{job.jobNumber}</span>}
+                            {job.client ?? 'No client'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="text-[11px] font-semibold text-muted-foreground hidden sm:block">{job.status}</span>
+                          <ChevronRight size={13} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
 
             {/* Quick Actions */}
