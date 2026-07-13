@@ -1551,13 +1551,11 @@ async function runStartupMigrations() {
   }
 
   // ── Seed platform_role = 'developer' for known platform developer emails ──────────
-  const platformOwnerEmails = [
-    'daryl.williams@energyq.com.au',
-    'darylwilliams1581@gmail.com',
-  ];
-  for (const email of platformOwnerEmails) {
+  // darylwilliams1581@gmail.com = developer account (full platform access)
+  // daryl.williams@energyq.com.au = regular user test account (clean slate, no developer access)
+  const developerEmails = ['darylwilliams1581@gmail.com'];
+  for (const email of developerEmails) {
     try {
-      // Find the better-auth user by email, then update their profile
       await db.execute(
         sql`UPDATE profiles p
             INNER JOIN user u ON u.id = p.user_id
@@ -1567,6 +1565,17 @@ async function runStartupMigrations() {
     } catch (e: unknown) {
       console.warn(`[startup-migration] platform_role seed failed for ${email}:`, String((e as Error)?.message ?? e));
     }
+  }
+  // Explicitly clear developer flag for the regular user test account
+  try {
+    await db.execute(
+      sql`UPDATE profiles p
+          INNER JOIN user u ON u.id = p.user_id
+          SET p.platform_role = NULL
+          WHERE LOWER(u.email) = LOWER('daryl.williams@energyq.com.au')`
+    );
+  } catch (e: unknown) {
+    console.warn('[startup-migration] platform_role clear failed for energyq account:', String((e as Error)?.message ?? e));
   }
   console.log('[startup-migration] platform_role seeding complete');
 
