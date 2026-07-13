@@ -18,6 +18,8 @@ import { type FormField, type FieldLogic, parseLogic, parseSettings } from '../F
 import SignaturePad, {
   type SignatureAnswer,
   type MultiSignatureAnswer,
+  parseSignatureAnswer,
+  parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 import { parseSkipRules } from '@/lib/skip-logic-types';

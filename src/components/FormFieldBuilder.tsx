@@ -1059,7 +1059,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F4F5F7]">
+    <div className="flex flex-col h-full overflow-y-auto bg-[#F4F5F7]">
       {/* Builder header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200 shadow-sm">
         {/* Orange accent line */}

@@ -684,7 +684,7 @@ export function FormsPage() {
 
   if (builderTemplateId !== null) {
     return (
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
       </div>
     );

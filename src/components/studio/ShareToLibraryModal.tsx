@@ -129,7 +129,7 @@ export default function ShareToLibraryModal({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 8 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -149,7 +149,7 @@ export default function ShareToLibraryModal({
 
         {/* Body */}
         {status === 'success' ? (
-          <div className="p-8 flex flex-col items-center gap-4 text-center">
+          <div className="p-8 flex flex-col items-center gap-4 text-center overflow-y-auto">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-emerald-50 border border-emerald-200">
               <CheckCircle size={32} className="text-emerald-500" />
             </div>
@@ -169,7 +169,7 @@ export default function ShareToLibraryModal({
             </button>
           </div>
         ) : (
-          <div className="p-6 flex flex-col gap-4">
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto">
             {/* Owner badge */}
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
               <Globe size={13} />

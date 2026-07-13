@@ -7,7 +7,7 @@ import {
   ClipboardList, BookOpen, Library, Image, Menu, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  ChevronLeft, Share2,
+  ChevronLeft, Share2, Pencil,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
@@ -22,6 +22,7 @@ import DazzaAiTab from '@/components/safety/DazzaAiTab';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
 import JobSwmsTab from '@/components/safety/JobSwmsTab';
 import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
+import UploadDocModal from '@/components/safety/UploadDocModal';
 import {
   type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster,
   type GeneratedPoster, type SwmsPrintData,
@@ -478,20 +479,45 @@ export function SafetyPlansTab() {
                   {p.project_value && <span>${parseFloat(p.project_value).toLocaleString()}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                {/* Edit */}
+                <button
+                  onClick={() => openExistingPlan(p)}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-primary hover:bg-orange-50 border border-slate-200 hover:border-primary/30 transition-colors"
+                  title="Edit in WHS Builder"
+                >
+                  <Pencil size={12} /><span className="hidden sm:inline">Edit</span>
+                </button>
+                {/* Share — copy link */}
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(`${window.location.origin}/api/safety/plans/${p.id}/export?format=pdf`);
+                      alert('PDF link copied to clipboard');
+                    } catch {
+                      alert(`Share link: ${window.location.origin}/api/safety/plans/${p.id}/export?format=pdf`);
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-colors"
+                  title="Share — copy PDF link"
+                >
+                  <Share2 size={12} /><span className="hidden sm:inline">Share</span>
+                </button>
+                {/* Print */}
+                <a
+                  href={`/api/safety/plans/${p.id}/export?format=pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
+                  title="Print / Export PDF"
+                >
+                  <Printer size={12} /><span className="hidden sm:inline">Print</span>
+                </a>
+                {/* Safety Pack */}
                 <a href={`/api/safety/plans/${p.id}/pack`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Download Safety Pack">
                   <Package size={14} />
                 </a>
-                <a href={`/api/safety/plans/${p.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
-                  <FileDown size={14} />
-                </a>
-                <button
-                  onClick={() => openExistingPlan(p)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
-                  title="Open in WHS Builder"
-                >
-                  <Wand2 size={14} />
-                </button>
+                {/* Delete */}
                 <button onClick={() => handleDelete(p.id, p.title)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete plan">
                   {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 </button>

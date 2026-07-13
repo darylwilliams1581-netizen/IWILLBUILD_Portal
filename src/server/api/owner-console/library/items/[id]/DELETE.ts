@@ -22,6 +22,8 @@ export default async function handler(req: Request, res: Response) {
   if (!id) return res.status(400).json({ error: 'Invalid id' });
 
   try {
+    // Remove company-installed copies first (FK constraint: company_library_items → library_items)
+    await db.execute(sql.raw(`DELETE FROM company_library_items WHERE source_item_id = ${id}`));
     await db.execute(sql.raw(`DELETE FROM library_items WHERE id = ${id}`));
     return res.json({ ok: true });
   } catch (err) {
