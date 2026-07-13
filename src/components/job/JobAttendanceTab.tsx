@@ -81,9 +81,23 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      const data = await res.json() as { ok: boolean; message?: string; alreadySignedIn?: boolean; notSignedIn?: boolean };
+      const data = await res.json() as {
+        ok: boolean;
+        message?: string;
+        alreadySignedIn?: boolean;
+        notSignedIn?: boolean;
+      };
       setMessage({ text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok });
-      if (res.ok) await fetchStatus();
+      if (res.ok) {
+        // Optimistically update signedIn immediately so buttons reflect new state
+        if (action === 'signin') {
+          setStatus((prev) => prev ? { ...prev, signedIn: true, lastAction: 'signin' } : prev);
+        } else {
+          setStatus((prev) => prev ? { ...prev, signedIn: false, lastAction: 'signout' } : prev);
+        }
+        // Then refresh from server for accurate state + recent log
+        await fetchStatus();
+      }
     } catch {
       setMessage({ text: 'Request failed. Please try again.', ok: false });
     } finally {

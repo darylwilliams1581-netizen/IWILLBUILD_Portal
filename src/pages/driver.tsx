@@ -623,10 +623,23 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      const data = await res.json() as { ok: boolean; message?: string };
+      const data = await res.json() as {
+        ok: boolean;
+        message?: string;
+        alreadySignedIn?: boolean;
+        notSignedIn?: boolean;
+        action?: string;
+      };
       setMessage({ text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok });
       if (res.ok) {
-        // Refresh status
+        // Optimistically update signedIn state immediately so the UI reflects
+        // the new state without waiting for the status refresh round-trip.
+        if (action === 'signin') {
+          setStatus((prev) => prev ? { ...prev, signedIn: true, lastAction: 'signin' } : prev);
+        } else {
+          setStatus((prev) => prev ? { ...prev, signedIn: false, lastAction: 'signout' } : prev);
+        }
+        // Then refresh from server to get accurate state + recent log
         const s = await fetch(`/api/jobs/${selectedJob.id}/signin-status`, { credentials: 'include' });
         if (s.ok) setStatus(await s.json() as AttendanceStatus);
         if (action === 'signin') void hapticSuccess();
