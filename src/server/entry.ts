@@ -1811,6 +1811,8 @@ app.get("/api/developer/audit-log", developer_audit_log_get_109);
 app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_110);
 app.get("/api/developer/company-health", developer_company_health_get_111);
 app.post("/api/developer/seed-developer-account", requirePlatformOwner, developer_seed_developer_account_post);
+import developer_swms_cleanup_post from "./api/developer/swms-cleanup/POST.js";
+app.post("/api/developer/swms-cleanup", requirePlatformOwner, developer_swms_cleanup_post);
 app.get("/api/developer/email-log", developer_email_log_get_112);
 app.get("/api/developer/email-settings", developer_email_settings_get_113);
 app.put("/api/developer/email-settings", developer_email_settings_put_114);

@@ -244,7 +244,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta
@@ -258,7 +258,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <ActivePing />
       <Toaster position="top-right" richColors />
       <PwaInstallPrompt />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>
           {children}
         </SosInnerBoundary>
