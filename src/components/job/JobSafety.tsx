@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, Users,
   Printer, Wand2, Trash2, ClipboardList, Link2, UserCheck,
-  ChevronDown, Library, FilePlus,
+  ChevronDown, Library, FileText,
 } from 'lucide-react';
 import { safeUrl } from '@/lib/html-escape';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
@@ -72,7 +72,7 @@ function AddSwmsDropdown({ onFromLibrary, onCreateNew }: {
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
             >
               <div className="p-1.5 rounded-lg bg-slate-50 shrink-0">
-                <FilePlus size={13} className="text-slate-600" />
+                <FileText size={13} className="text-slate-600" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">Create New</p>
@@ -178,7 +178,7 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
               <Library size={14} />From Library
             </button>
             <button onClick={() => setShowBuilder(true)} className="flex items-center gap-2 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-              <FilePlus size={14} />Create New
+              <FileText size={14} />Create New
             </button>
           </div>
         </div>
