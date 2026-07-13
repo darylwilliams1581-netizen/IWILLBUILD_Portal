@@ -1640,6 +1640,75 @@ async function runStartupMigrations() {
       console.warn(`[startup-migration] Developer plan fix failed for ${email}:`, String((e as Error)?.message ?? e));
     }
   }
+
+  // ── team_shifts ──────────────────────────────────────────────────────────────
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS team_shifts (" +
+      "  id            INT AUTO_INCREMENT PRIMARY KEY," +
+      "  company_id    INT NOT NULL," +
+      "  profile_id    INT NOT NULL," +
+      "  job_id        INT NULL," +
+      "  title         VARCHAR(255) NOT NULL DEFAULT 'Shift'," +
+      "  shift_date    DATE NOT NULL," +
+      "  start_time    TIME NOT NULL," +
+      "  end_time      TIME NOT NULL," +
+      "  break_minutes INT NOT NULL DEFAULT 0," +
+      "  status        ENUM('scheduled','confirmed','completed','cancelled') NOT NULL DEFAULT 'scheduled'," +
+      "  notes         TEXT NULL," +
+      "  created_by    INT NULL," +
+      "  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+      "  INDEX idx_ts_company (company_id)," +
+      "  INDEX idx_ts_profile (profile_id)," +
+      "  INDEX idx_ts_date (shift_date)" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ));
+    console.log('[startup-migration] team_shifts table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] team_shifts CREATE failed:', msg);
+    }
+  }
+
+  // ── team_time_entries ────────────────────────────────────────────────────────
+  try {
+    await db.execute(sql.raw(
+      "CREATE TABLE IF NOT EXISTS team_time_entries (" +
+      "  id            INT AUTO_INCREMENT PRIMARY KEY," +
+      "  company_id    INT NOT NULL," +
+      "  profile_id    INT NOT NULL," +
+      "  shift_id      INT NULL," +
+      "  job_id        INT NULL," +
+      "  entry_date    DATE NOT NULL," +
+      "  clock_in      DATETIME NOT NULL," +
+      "  clock_out     DATETIME NULL," +
+      "  break_minutes INT NOT NULL DEFAULT 0," +
+      "  total_minutes INT GENERATED ALWAYS AS (" +
+      "    CASE WHEN clock_out IS NOT NULL" +
+      "      THEN TIMESTAMPDIFF(MINUTE, clock_in, clock_out) - break_minutes" +
+      "      ELSE NULL END" +
+      "  ) STORED," +
+      "  hourly_rate   DECIMAL(10,2) NULL," +
+      "  notes         TEXT NULL," +
+      "  approved_by   INT NULL," +
+      "  approved_at   DATETIME NULL," +
+      "  status        ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'," +
+      "  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+      "  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+      "  INDEX idx_tte_company (company_id)," +
+      "  INDEX idx_tte_profile (profile_id)," +
+      "  INDEX idx_tte_date (entry_date)" +
+      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    ));
+    console.log('[startup-migration] team_time_entries table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] team_time_entries CREATE failed:', msg);
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
@@ -2798,6 +2867,69 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.log('[startup] drawing_audit_log table ready');
 		} catch (e) {
 			console.warn('[startup] drawing_audit_log migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── team_shifts ────────────────────────────────────────────────────────
+		try {
+			await db.execute(sql.raw(
+				"CREATE TABLE IF NOT EXISTS team_shifts (" +
+				"  id            INT AUTO_INCREMENT PRIMARY KEY," +
+				"  company_id    INT NOT NULL," +
+				"  profile_id    INT NOT NULL," +
+				"  job_id        INT NULL," +
+				"  title         VARCHAR(255) NOT NULL DEFAULT 'Shift'," +
+				"  shift_date    DATE NOT NULL," +
+				"  start_time    TIME NOT NULL," +
+				"  end_time      TIME NOT NULL," +
+				"  break_minutes INT NOT NULL DEFAULT 0," +
+				"  status        ENUM('scheduled','confirmed','completed','cancelled') NOT NULL DEFAULT 'scheduled'," +
+				"  notes         TEXT NULL," +
+				"  created_by    INT NULL," +
+				"  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+				"  INDEX idx_ts_company (company_id)," +
+				"  INDEX idx_ts_profile (profile_id)," +
+				"  INDEX idx_ts_date (shift_date)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] team_shifts table ready');
+		} catch (e) {
+			console.warn('[startup] team_shifts migration skipped:', (e as Error)?.message?.slice(0, 120));
+		}
+
+		// ── team_time_entries ───────────────────────────────────────────────────
+		try {
+			await db.execute(sql.raw(
+				"CREATE TABLE IF NOT EXISTS team_time_entries (" +
+				"  id            INT AUTO_INCREMENT PRIMARY KEY," +
+				"  company_id    INT NOT NULL," +
+				"  profile_id    INT NOT NULL," +
+				"  shift_id      INT NULL," +
+				"  job_id        INT NULL," +
+				"  entry_date    DATE NOT NULL," +
+				"  clock_in      DATETIME NOT NULL," +
+				"  clock_out     DATETIME NULL," +
+				"  break_minutes INT NOT NULL DEFAULT 0," +
+				"  total_minutes INT GENERATED ALWAYS AS (" +
+				"    CASE WHEN clock_out IS NOT NULL" +
+				"      THEN TIMESTAMPDIFF(MINUTE, clock_in, clock_out) - break_minutes" +
+				"      ELSE NULL END" +
+				"  ) STORED," +
+				"  hourly_rate   DECIMAL(10,2) NULL," +
+				"  notes         TEXT NULL," +
+				"  approved_by   INT NULL," +
+				"  approved_at   DATETIME NULL," +
+				"  status        ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'," +
+				"  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+				"  INDEX idx_tte_company (company_id)," +
+				"  INDEX idx_tte_profile (profile_id)," +
+				"  INDEX idx_tte_date (entry_date)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+			));
+			console.log('[startup] team_time_entries table ready');
+		} catch (e) {
+			console.warn('[startup] team_time_entries migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
 		// ── All migrations done — now start accepting requests ─────────────────
