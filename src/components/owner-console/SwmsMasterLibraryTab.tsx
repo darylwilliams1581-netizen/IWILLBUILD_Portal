@@ -11,9 +11,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck, Plus, Send, RefreshCw, Loader2, CheckCircle2,
   XCircle, AlertTriangle, Pencil, Trash2, Play, ChevronDown,
-  ChevronUp, BookOpen, Globe, Eye, Database,
+  ChevronUp, BookOpen, Globe, Eye, Database, FileEdit,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SwmsBodyBuilder from '../safety/SwmsBodyBuilder';
+import type { SwmsTemplate } from '../safety/safety-types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -244,6 +246,51 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
   );
 }
 
+// ── Master body editor wrapper ─────────────────────────────────────────────────
+// Intercepts SwmsBodyBuilder's fetch calls and redirects them to the master API.
+
+interface MasterBodyEditorWrapperProps {
+  master: MasterTemplate & { swms_body?: string | null };
+  toSwmsTemplate: (m: MasterTemplate & { swms_body?: string | null }) => SwmsTemplate;
+  onClose: () => void;
+  onSaved: (s: SwmsTemplate) => void;
+}
+
+function MasterBodyEditorWrapper({ master, toSwmsTemplate, onClose, onSaved }: MasterBodyEditorWrapperProps) {
+  // We patch window.fetch temporarily so SwmsBodyBuilder's PUT /api/safety/swms/:id
+  // is redirected to PUT /api/owner-console/swms/masters/:id
+  const originalFetch = window.fetch.bind(window);
+
+  function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+    // Redirect safety SWMS save → master save
+    if (typeof url === 'string' && url.match(/\/api\/safety\/swms\/\d+/)) {
+      const masterUrl = url.replace('/api/safety/swms/', '/api/owner-console/swms/masters/');
+      return originalFetch(masterUrl, init);
+    }
+    if (typeof url === 'string' && url === '/api/safety/swms') {
+      // New record — shouldn't happen for masters but handle gracefully
+      return originalFetch(`/api/owner-console/swms/masters/${master.id}`, { ...init, method: 'PUT' });
+    }
+    return originalFetch(input, init);
+  }
+
+  // Apply patch on mount, restore on unmount
+  useEffect(() => {
+    const orig = window.fetch;
+    window.fetch = patchedFetch as typeof window.fetch;
+    return () => { window.fetch = orig; };
+  });
+
+  return (
+    <SwmsBodyBuilder
+      initial={toSwmsTemplate(master)}
+      onClose={onClose}
+      onSaved={onSaved}
+    />
+  );
+}
+
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function SwmsMasterLibraryTab() {
@@ -261,6 +308,9 @@ export default function SwmsMasterLibraryTab() {
   // Edit modal
   const [editTarget, setEditTarget]       = useState<MasterTemplate | null | 'new'>('new' as never);
   const [showEdit, setShowEdit]           = useState(false);
+
+  // Full-content body editor
+  const [bodyEditTarget, setBodyEditTarget] = useState<MasterTemplate | null>(null);
 
   // Publish
   const [publishingId, setPublishingId]   = useState<number | null>(null);
@@ -414,6 +464,57 @@ export default function SwmsMasterLibraryTab() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  // ── Convert MasterTemplate → SwmsTemplate for SwmsBodyBuilder ──────────────
+
+  function masterToSwmsTemplate(m: MasterTemplate & { swms_body?: string | null }): SwmsTemplate {
+    return {
+      id: m.id,
+      title: m.title,
+      category: m.category,
+      work_activity: null,
+      purpose_scope: null,
+      hazards: null,
+      risks: null,
+      controls: null,
+      ppe: null,
+      plant_equipment: null,
+      training_competency: null,
+      emergency_controls: null,
+      environmental_controls: null,
+      sign_off_requirements: null,
+      revision_number: m.revision_number,
+      review_date: m.review_date,
+      status: m.status,
+      author_name: m.author_name,
+      approved_by_name: m.approved_by_name,
+      swms_body: m.swms_body ?? null,
+      build_mode: m.build_mode,
+      document_type: m.document_type,
+      created_at: m.created_at,
+    };
+  }
+
+  // ── Load full master (with swms_body) for body editor ───────────────────────
+
+  async function openBodyEditor(m: MasterTemplate) {
+    try {
+      const r = await fetch(`/api/owner-console/swms/masters/${m.id}`, { credentials: 'include' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json() as { master: MasterTemplate & { swms_body?: string | null } };
+      setBodyEditTarget(d.master);
+    } catch (e) {
+      toast.error(`Failed to load template: ${String(e instanceof Error ? e.message : e)}`);
+    }
+  }
+
+  // ── Handle save from SwmsBodyBuilder (redirect to master API) ───────────────
+
+  function handleBodySaved(_saved: SwmsTemplate) {
+    toast.success('Master template content saved');
+    setBodyEditTarget(null);
+    void loadMasters();
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -578,9 +679,17 @@ export default function SwmsMasterLibraryTab() {
                     <button
                       onClick={() => { setEditTarget(m); setShowEdit(true); }}
                       className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                      title="Edit metadata"
+                      title="Edit metadata (title, category, status…)"
                     >
                       <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => void openBodyEditor(m)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-lg"
+                      title="Edit full SWMS content"
+                    >
+                      <FileEdit size={12} />
+                      Edit content
                     </button>
                     <button
                       onClick={() => publishOne(m.id)}
@@ -722,12 +831,22 @@ export default function SwmsMasterLibraryTab() {
         </p>
       </div>
 
-      {/* Edit modal */}
+      {/* Edit metadata modal */}
       {showEdit && (
         <EditModal
           template={editTarget === 'new' ? null : editTarget as MasterTemplate | null}
           onClose={() => setShowEdit(false)}
           onSaved={loadMasters}
+        />
+      )}
+
+      {/* Full-content body editor — uses SwmsBodyBuilder but saves to master API */}
+      {bodyEditTarget && (
+        <MasterBodyEditorWrapper
+          master={bodyEditTarget}
+          toSwmsTemplate={masterToSwmsTemplate}
+          onClose={() => setBodyEditTarget(null)}
+          onSaved={handleBodySaved}
         />
       )}
     </div>

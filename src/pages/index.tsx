@@ -304,7 +304,7 @@ export default function HomePage() {
   };
 
   return (
-    <div suppressHydrationWarning>
+    <>
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -819,6 +819,6 @@ export default function HomePage() {
           }
         }
       `}</style>
-    </div>
+    </>
   );
 }
