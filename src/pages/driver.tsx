@@ -647,6 +647,13 @@ export default function DriverPage() {
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
+            <Link
+              to="/dashboard"
+              className="w-8 h-8 rounded-xl bg-gray-800 hover:bg-gray-700 active:bg-gray-600 flex items-center justify-center transition-colors shrink-0"
+              aria-label="Back to dashboard"
+            >
+              <ChevronRight size={16} className="text-gray-400 rotate-180" />
+            </Link>
             <div className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center">
               <span className="text-white font-black text-xs">IW</span>
             </div>
