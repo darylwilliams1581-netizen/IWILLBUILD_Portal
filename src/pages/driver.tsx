@@ -31,6 +31,10 @@ import {
   RefreshCw,
   X,
   Car,
+  ClipboardCheck,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
@@ -228,6 +232,238 @@ function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: St
   );
 }
 
+// ── Prestart Sheet ────────────────────────────────────────────────────────────
+
+interface PrestartSheetProps {
+  vehicleId: number;
+  vehicleName: string;
+  onClose: () => void;
+  onDone: () => void;
+}
+
+function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartSheetProps) {
+  const [form, setForm] = useState({
+    kmHours: '',
+    safeToOperate: true,
+    issueNeedsAttention: false,
+    issueComment: '',
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
+  const [done, setDone]     = useState(false);
+
+  async function handleSubmit() {
+    if (form.issueNeedsAttention && !form.issueComment.trim()) {
+      setError('Please describe the issue');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/fleet/${vehicleId}/prestarts`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kmHours: form.kmHours.trim() || undefined,
+          safeToOperate: form.safeToOperate,
+          issueNeedsAttention: form.issueNeedsAttention,
+          issueComment: form.issueNeedsAttention ? form.issueComment.trim() : undefined,
+          notes: form.notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        setError(d.error ?? 'Failed to save prestart');
+        return;
+      }
+      setDone(true);
+      setTimeout(onDone, 1200);
+    } catch {
+      setError('Network error — please try again');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="w-full bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[92vh] overflow-hidden flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-700" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <ClipboardCheck size={16} className="text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-white font-bold text-base">Daily Prestart</h2>
+              <p className="text-gray-500 text-xs">{vehicleName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Done state */}
+        {done ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-12">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-emerald-400" />
+            </div>
+            <p className="text-white font-bold text-lg">Prestart Complete</p>
+            <p className="text-gray-400 text-sm">Logged successfully</p>
+          </div>
+        ) : (
+          <>
+            {/* Form */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+              {/* KM / Hours */}
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                  Current KM / Hours (optional)
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.kmHours}
+                  onChange={e => setForm(f => ({ ...f, kmHours: e.target.value }))}
+                  placeholder="e.g. 45230"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Safe to operate */}
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                  Is the vehicle safe to operate?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, safeToOperate: true, issueNeedsAttention: false }))}
+                    className={`flex items-center justify-center gap-2 rounded-xl py-3 border font-semibold text-sm transition-colors ${
+                      form.safeToOperate
+                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                    }`}
+                  >
+                    <CheckCircle2 size={16} />
+                    Yes, safe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, safeToOperate: false, issueNeedsAttention: true }))}
+                    className={`flex items-center justify-center gap-2 rounded-xl py-3 border font-semibold text-sm transition-colors ${
+                      !form.safeToOperate
+                        ? 'bg-red-500/10 border-red-500/50 text-red-400'
+                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                    }`}
+                  >
+                    <XCircle size={16} />
+                    Not safe
+                  </button>
+                </div>
+              </div>
+
+              {/* Issue flag */}
+              {form.safeToOperate && (
+                <div>
+                  <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                    Any issues to flag?
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, issueNeedsAttention: !f.issueNeedsAttention }))}
+                    className={`flex items-center gap-2.5 w-full rounded-xl px-4 py-3 border text-sm font-semibold transition-colors ${
+                      form.issueNeedsAttention
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-400'
+                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                    }`}
+                  >
+                    <AlertTriangle size={16} />
+                    {form.issueNeedsAttention ? 'Issue flagged — needs attention' : 'Flag an issue'}
+                  </button>
+                </div>
+              )}
+
+              {/* Issue comment */}
+              {form.issueNeedsAttention && (
+                <div>
+                  <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                    Describe the issue <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={form.issueComment}
+                    onChange={e => setForm(f => ({ ...f, issueComment: e.target.value }))}
+                    placeholder="What's the issue?"
+                    rows={3}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+                  />
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Any other notes…"
+                  rows={2}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 bg-red-950/50 border border-red-800/50 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <p className="text-red-300 text-sm">{error}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Submit */}
+            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-800">
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-4 rounded-2xl transition-colors disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <ClipboardCheck size={18} />}
+                {saving ? 'Saving…' : 'Submit Prestart'}
+              </button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DriverPage() {
@@ -243,6 +479,11 @@ export default function DriverPage() {
   const [stopping, setStopping]         = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [actionError, setActionError]   = useState('');
+
+  // Prestart
+  const [showPrestart, setShowPrestart] = useState(false);
+  const [prestartVehicle, setPrestartVehicle] = useState<Vehicle | null>(null);
+  const [pickerMode, setPickerMode] = useState<'drive' | 'prestart'>('drive');
 
   // Elapsed timer
   const [elapsed, setElapsed]           = useState('00m 00s');
@@ -464,7 +705,7 @@ export default function DriverPage() {
               )}
 
               {/* CTA button */}
-              <div className="px-5 pb-5">
+              <div className="px-5 pb-5 space-y-2.5">
                 {sessionActive ? (
                   <button
                     onClick={() => setShowStopConfirm(true)}
@@ -477,6 +718,7 @@ export default function DriverPage() {
                   <button
                     onClick={async () => {
                       await loadVehicles();
+                      setPickerMode('drive');
                       setShowPicker(true);
                     }}
                     disabled={starting}
@@ -490,6 +732,26 @@ export default function DriverPage() {
                     {starting ? 'Starting…' : 'Start Drive Session'}
                   </button>
                 )}
+
+                {/* Prestart button — always visible */}
+                <button
+                  onClick={async () => {
+                    if (sessionActive && session) {
+                      // Use the current session's vehicle directly
+                      setPrestartVehicle({ id: session.fleet_asset_id, name: session.asset_name } as Vehicle);
+                      setShowPrestart(true);
+                    } else {
+                      // Pick a vehicle first, then open prestart
+                      setPickerMode('prestart');
+                      await loadVehicles();
+                      setShowPicker(true);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2.5 bg-gray-800 hover:bg-gray-750 active:bg-gray-700 border border-gray-700 text-gray-300 font-semibold py-3.5 rounded-2xl transition-colors"
+                >
+                  <ClipboardCheck size={17} className="text-orange-400" />
+                  Start Prestart
+                </button>
               </div>
             </div>
 
@@ -573,7 +835,15 @@ export default function DriverPage() {
           <VehiclePicker
             vehicles={vehicles}
             loading={vehiclesLoading}
-            onSelect={handleStartSession}
+            onSelect={v => {
+              setShowPicker(false);
+              if (pickerMode === 'prestart') {
+                setPrestartVehicle(v);
+                setShowPrestart(true);
+              } else {
+                void handleStartSession(v);
+              }
+            }}
             onClose={() => setShowPicker(false)}
           />
         )}
@@ -588,6 +858,18 @@ export default function DriverPage() {
             onConfirm={handleStopSession}
             onCancel={() => setShowStopConfirm(false)}
             stopping={stopping}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Prestart sheet ───────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showPrestart && prestartVehicle && (
+          <PrestartSheet
+            vehicleId={prestartVehicle.id}
+            vehicleName={prestartVehicle.name}
+            onClose={() => setShowPrestart(false)}
+            onDone={() => setShowPrestart(false)}
           />
         )}
       </AnimatePresence>
