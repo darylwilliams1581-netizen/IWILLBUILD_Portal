@@ -41,7 +41,7 @@ export default async function handler(req: Request, res: Response) {
     if (!template) return res.status(404).json({ error: 'Template not found' });
 
     const [result] = await db.insert(jobFormSubmissions).values({
-      jobId:              jobId ?? null,
+      jobId:              jobId ?? 0,   // 0 = standalone (no job); DB column is NOT NULL
       companyId:          profile.companyId,
       templateId,
       completedByUserId:  session.user.id,
