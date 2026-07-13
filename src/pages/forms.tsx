@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Pencil, Trash2,
@@ -249,7 +249,7 @@ function DeleteConfirm({ name, onConfirm, onCancel, deleting }: {
 
 // ── Template card ─────────────────────────────────────────────────────────────
 
-function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary, onComplete }: {
+function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary, onComplete, isCompleting }: {
   t: FormTemplate;
   onBuild: () => void;
   onEdit: () => void;
@@ -257,6 +257,7 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
   onShare: () => void;
   onShareToLibrary?: () => void;
   onComplete?: () => void;
+  isCompleting?: boolean;
 }) {
   const meta = TYPE_META[t.formType];
 
@@ -324,10 +325,14 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         {onComplete && (
           <button
             onClick={onComplete}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+            disabled={isCompleting}
+            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-60"
             title="Complete this form"
           >
-            <ExternalLink size={12} /> Complete
+            {isCompleting
+              ? <><Loader2 size={12} className="animate-spin" /> Opening…</>
+              : <><ExternalLink size={12} /> Complete</>
+            }
           </button>
         )}
         <button
@@ -615,7 +620,6 @@ export function FormsPage() {
   const [seedMsg, setSeedMsg] = useState('');
   const [completingId, setCompletingId] = useState<number | null>(null);
   const { isPlatformOwner } = usePermissions();
-  const navigate = useNavigate();
 
   async function handleComplete(templateId: number) {
     setCompletingId(templateId);
@@ -628,11 +632,10 @@ export function FormsPage() {
       });
       const data = await res.json() as { ok?: boolean; submission?: { id: number; jobId?: number | null } };
       if (!res.ok || !data.submission) throw new Error('Failed to start form');
-      // Navigate to the form runner — use jobId 0 as a sentinel for standalone forms
+      // Open in a new tab — same pattern as job forms, keeps Studio context intact
       const jobId = data.submission.jobId ?? 0;
-      navigate(`/jobs/${jobId}/forms/${data.submission.id}`);
+      window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener');
     } catch {
-      // toast would be ideal but keep it simple
       alert('Could not start form. Please try again.');
     } finally {
       setCompletingId(null);
@@ -860,6 +863,7 @@ export function FormsPage() {
                       onShare={() => setShareTarget(t)}
                       onShareToLibrary={isPlatformOwner ? () => setLibraryShareTarget(t) : undefined}
                       onComplete={() => void handleComplete(t.id)}
+                      isCompleting={completingId === t.id}
                     />
                   ))}
                 </motion.div>

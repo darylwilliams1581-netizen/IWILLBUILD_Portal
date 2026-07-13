@@ -109,10 +109,9 @@ export default function JobFormRunnerPage() {
         templateName={templateName}
         readOnly={isReadOnly}
         onBack={() => {
-          if (window.history.length <= 1) {
+          // Standalone forms (jobId=0) are always opened in a new tab — close it
+          if (isStandalone || window.history.length <= 1) {
             window.close();
-          } else if (isStandalone) {
-            navigate('/studio?tab=forms');
           } else {
             navigate(`/jobs/${jobId}?tab=forms`);
           }
