@@ -169,9 +169,6 @@ export default class AiroErrorBoundary extends Component<Props, State> {
         const err = event.error instanceof Error
           ? event.error
           : new Error(event.message || 'Uncaught runtime error');
-        // Browser extensions relocate DOM nodes before/during hydration; React's
-        // commit phase then throws NotFoundError on removeChild. Not an app bug.
-        if (err.name === 'NotFoundError' && err.message.includes('removeChild')) return;
         this.captureAsyncError(err);
       };
       this.unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
@@ -407,73 +404,12 @@ export default class AiroErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // ── Frozen HMR snapshot (SOSAlertPopup ReferenceError) ───────────────────
-    // The frozen Vite snapshot of RootLayout.tsx (t=1783772358219) references
-    // SOSAlertPopup as a bare identifier. This boundary may catch it when the
-    // StaleModuleReloadBoundary is absent (frozen App.tsx snapshot). Trigger an
-    // immediate location.href navigation to bust the ES module registry — the
-    // only reliable fix without user action.
-    const isSosError =
-      error.message?.includes('SOSAlertPopup') ||
-      (error.stack ?? '').includes('SOSAlertPopup') ||
-      (error.stack ?? '').includes('1783772358219');
-    if (isSosError) {
-      try {
-        const GUARD_KEY = 'airo_sos_nav_ts_v1';
-        const COUNT_KEY = 'airo_sos_nav_count_v1';
-        const SESSION_KEY = 'airo_sos_session_v1';
-        const MAX = 6;
-        const WIN_MS = 30_000;
-        const now = Date.now();
-        // Reset per session so a fresh tab always gets at least one attempt.
-        if (!sessionStorage.getItem(SESSION_KEY)) {
-          localStorage.removeItem(GUARD_KEY);
-          localStorage.removeItem(COUNT_KEY);
-          sessionStorage.setItem(SESSION_KEY, '1');
-        }
-        const ts    = parseInt(localStorage.getItem(GUARD_KEY)  ?? '0', 10);
-        const count = parseInt(localStorage.getItem(COUNT_KEY) ?? '0', 10);
-        const withinWindow = now - ts < WIN_MS;
-        if (!withinWindow || count < MAX) {
-          const newCount = withinWindow ? count + 1 : 1;
-          localStorage.setItem(COUNT_KEY, String(newCount));
-          localStorage.setItem(GUARD_KEY, String(now));
-          const dest = new URL(location.href);
-          dest.searchParams.set('_airo_sos', String(now));
-          location.href = dest.toString();
-          return;
-        }
-      } catch (_) {}
-      // Guard exhausted — fall through to normal error handling so the
-      // overlay shows with a "hard reload" message rather than a blank screen.
-    }
-
     // Claim across instances first: React 18 re-dispatches this exact
     // Error to `window.onerror`, where the ROOT boundary's global handler
     // would otherwise re-forward and re-overlay an error this boundary
     // already owns. The shared registry suppresses that re-dispatch
     // regardless of which boundary caught the render error.
     claim(error);
-
-    // Hydration mismatches from browser extensions are recoverable — React
-    // re-renders the subtree on the client and the UI is correct. Do not
-    // show an error overlay for these. We must still call setState so React
-    // knows the boundary handled the error and doesn't propagate it further.
-    if (
-      error.message.includes('Hydration failed') ||
-      error.message.includes('hydration') ||
-      error.message.includes('did not match') ||
-      error.message.includes('server rendered HTML') ||
-      // Browser extensions relocate DOM nodes before/during hydration; React's
-      // commit phase then can't removeChild from the original parent. This is
-      // a browser-extension-induced DOM mismatch, not an app bug.
-      (error.name === 'NotFoundError' && error.message.includes('removeChild'))
-    ) {
-      // Acknowledge the error without showing an overlay — children continue
-      // to render normally after React's client-side re-render recovers.
-      return;
-    }
-
     if (this.isDevToolsOriginError(error)) {
       console.error('[dev-tools internal render error, suppressed from overlay]', error, errorInfo);
       // Track by identity so React 18's same-frame re-dispatch to
@@ -514,18 +450,6 @@ export default class AiroErrorBoundary extends Component<Props, State> {
     // short-circuit here — don't re-forward, don't show an overlay.
     if (this.platformErrors.has(error)) {
       console.warn('[dev-tools] suppressed re-dispatch of platform render error', error);
-      return;
-    }
-    // Hydration mismatches caused by browser extensions injecting style
-    // attributes before React hydrates are recoverable non-issues — React
-    // already re-renders the affected subtree on the client and the UI is
-    // correct. Surfacing them as an error overlay is misleading noise.
-    if (
-      error.message.includes('Hydration failed') ||
-      error.message.includes('hydration') ||
-      error.message.includes('did not match') ||
-      (error.name === 'NotFoundError' && error.message.includes('removeChild'))
-    ) {
       return;
     }
     if (this.isDevToolsOriginError(error)) {
