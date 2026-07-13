@@ -84,21 +84,10 @@ function addDays(d: Date, n: number): Date {
   return r;
 }
 
-function snapAnchor(tw: TimeWindow): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  if (tw === 'month' || tw === '3months') d.setDate(1);
-  return d;
-}
-
 function windowDays(tw: TimeWindow): number {
-  if (tw === 'week')     return 7;
-  if (tw === 'month')    return 30;
+  if (tw === 'week')  return 7;
+  if (tw === 'month') return 30;
   return 90;
-}
-
-function stepAnchor(anchor: Date, tw: TimeWindow, dir: -1 | 1): Date {
-  return addDays(anchor, dir * windowDays(tw));
 }
 
 function buildDays(anchor: Date, tw: TimeWindow): Date[] {
@@ -106,10 +95,6 @@ function buildDays(anchor: Date, tw: TimeWindow): Date[] {
   const count = windowDays(tw);
   for (let i = 0; i < count; i++) days.push(addDays(anchor, i));
   return days;
-}
-
-function fmtShort(d: Date): string {
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
 function fmtFull(d: Date): string {
@@ -128,8 +113,8 @@ function bookingPosition(
   days: Date[],
   dayWidth: number,
 ): { left: number; width: number } | null {
-  const start = new Date(booking.start_date + 'T00:00:00');
-  const end   = new Date(booking.end_date   + 'T00:00:00');
+  const start    = new Date(booking.start_date + 'T00:00:00');
+  const end      = new Date(booking.end_date   + 'T00:00:00');
   const winStart = days[0];
   const winEnd   = days[days.length - 1];
 
@@ -190,9 +175,10 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
     }
     setSaving(true); setError('');
     try {
+      const fallbackTitle = assets.find(a => a.id === fleetAssetId)?.name ?? '';
       const body = {
         fleet_asset_id: fleetAssetId,
-        title: title.trim() || assets.find(a => a.id === fleetAssetId)?.name ?? '',
+        title: title.trim() || fallbackTitle,
         start_date: startDate,
         end_date: endDate,
         start_time: startTime || null,
@@ -232,7 +218,10 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -316,7 +305,9 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
           {/* Times (optional) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Start time <span className="font-normal text-slate-400">(optional)</span></label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Start time <span className="font-normal text-slate-400">(optional)</span>
+              </label>
               <input
                 type="time"
                 value={startTime}
@@ -325,7 +316,9 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">End time <span className="font-normal text-slate-400">(optional)</span></label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                End time <span className="font-normal text-slate-400">(optional)</span>
+              </label>
               <input
                 type="time"
                 value={endTime}
@@ -351,7 +344,9 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Notes <span className="font-normal text-slate-400">(optional)</span></label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Notes <span className="font-normal text-slate-400">(optional)</span>
+            </label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -409,8 +404,10 @@ function BookingPopover({ booking, onEdit, onClose, anchorRef }: BookingPopoverP
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (popRef.current && !popRef.current.contains(e.target as Node) &&
-          anchorRef.current && !anchorRef.current.contains(e.target as Node)) {
+      if (
+        popRef.current && !popRef.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) {
         onClose();
       }
     }
@@ -442,19 +439,27 @@ function BookingPopover({ booking, onEdit, onClose, anchorRef }: BookingPopoverP
             {booking.start_date !== booking.end_date && (
               <> – {new Date(booking.end_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</>
             )}
-            {booking.start_time && <> · {booking.start_time.slice(0, 5)}{booking.end_time ? `–${booking.end_time.slice(0, 5)}` : ''}</>}
+            {booking.start_time && (
+              <> · {booking.start_time.slice(0, 5)}{booking.end_time ? `–${booking.end_time.slice(0, 5)}` : ''}</>
+            )}
           </span>
         </div>
         {booking.job_name && (
           <div className="flex items-center gap-1.5">
             <Briefcase size={11} className="text-slate-400 shrink-0" />
-            <Link to={`/job-detail?id=${booking.job_id}`} className="text-orange-600 hover:underline truncate" onClick={onClose}>
+            <Link
+              to={`/job-detail?id=${booking.job_id}`}
+              className="text-orange-600 hover:underline truncate"
+              onClick={onClose}
+            >
               {booking.job_number ? `#${booking.job_number} ` : ''}{booking.job_name}
             </Link>
           </div>
         )}
         {booking.notes && <p className="text-slate-500 mt-1 leading-relaxed">{booking.notes}</p>}
-        <span className={`self-start mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white ${statusColor}`}>{statusLabel}</span>
+        <span className={`self-start mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white ${statusColor}`}>
+          {statusLabel}
+        </span>
       </div>
 
       <button
@@ -463,92 +468,6 @@ function BookingPopover({ booking, onEdit, onClose, anchorRef }: BookingPopoverP
       >
         <Pencil size={11} />Edit Booking
       </button>
-    </div>
-  );
-}
-
-// ─── Timeline Row ─────────────────────────────────────────────────────────────
-
-interface AssetRowProps {
-  asset: FleetAsset;
-  bookings: AssetBooking[];
-  days: Date[];
-  dayWidth: number;
-  onBookingClick: (b: AssetBooking) => void;
-  onCellClick: (assetId: number, date: string) => void;
-}
-
-function AssetRow({ asset, bookings, days, dayWidth, onBookingClick, onCellClick }: AssetRowProps) {
-  const totalWidth = days.length * dayWidth;
-
-  return (
-    <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors group">
-      {/* Asset label */}
-      <div className="w-44 shrink-0 px-3 py-2.5 border-r border-slate-100 flex flex-col justify-center">
-        <Link to={`/fleet/${asset.id}`} className="text-xs font-bold text-slate-800 hover:text-orange-600 transition-colors truncate leading-tight">
-          {asset.name}
-        </Link>
-        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-          {[asset.type, asset.rego].filter(Boolean).join(' · ') || asset.make_model || '—'}
-        </p>
-      </div>
-
-      {/* Timeline cells */}
-      <div className="relative flex-1 overflow-hidden" style={{ height: 44 }}>
-        {/* Day grid lines */}
-        <div className="absolute inset-0 flex pointer-events-none">
-          {days.map((d, i) => (
-            <div
-              key={i}
-              style={{ width: dayWidth }}
-              className={`h-full border-r border-slate-100 shrink-0 ${isToday(d) ? 'bg-orange-50/60' : ''}`}
-            />
-          ))}
-        </div>
-
-        {/* Clickable cells to create booking */}
-        <div className="absolute inset-0 flex">
-          {days.map((d, i) => (
-            <div
-              key={i}
-              style={{ width: dayWidth }}
-              className="h-full shrink-0 cursor-pointer"
-              onClick={() => onCellClick(asset.id, toDateStr(d))}
-              title={`Book ${asset.name} on ${fmtFull(d)}`}
-            />
-          ))}
-        </div>
-
-        {/* Booking bars */}
-        {bookings.map(b => {
-          const pos = bookingPosition(b, days, dayWidth);
-          if (!pos) return null;
-          const color = STATUS_COLORS[b.status] ?? 'bg-slate-400';
-          return (
-            <div
-              key={b.id}
-              className={`absolute top-2 h-7 rounded-md ${color} text-white text-[10px] font-semibold flex items-center px-2 cursor-pointer hover:brightness-110 transition-all shadow-sm overflow-hidden whitespace-nowrap`}
-              style={{ left: pos.left + 2, width: Math.max(pos.width - 4, 20) }}
-              onClick={e => { e.stopPropagation(); onBookingClick(b); }}
-              title={b.title}
-            >
-              <span className="truncate">{b.title}</span>
-            </div>
-          );
-        })}
-
-        {/* Today line */}
-        {(() => {
-          const todayIdx = days.findIndex(d => isToday(d));
-          if (todayIdx < 0) return null;
-          return (
-            <div
-              className="absolute top-0 bottom-0 w-0.5 bg-orange-400 z-10 pointer-events-none"
-              style={{ left: todayIdx * dayWidth + dayWidth / 2 }}
-            />
-          );
-        })()}
-      </div>
     </div>
   );
 }
@@ -618,10 +537,6 @@ export default function AssetSchedulerView({
     setFormOpen(true);
   }
 
-  function handleBookingClick(b: AssetBooking) {
-    setPopoverBooking(b);
-  }
-
   function handleEditFromPopover() {
     if (!popoverBooking) return;
     setEditBooking(popoverBooking);
@@ -653,8 +568,6 @@ export default function AssetSchedulerView({
   }
 
   const totalWidth = days.length * dayWidth;
-
-  // Header label density
   const showEveryDay   = dayWidth >= 36;
   const showEveryOther = dayWidth >= 20;
 
@@ -731,7 +644,7 @@ export default function AssetSchedulerView({
           </div>
           <p className="font-bold text-slate-700 mb-1">No fleet assets yet</p>
           <p className="text-sm text-slate-400 mb-4">Add assets in the Fleet module first.</p>
-          <Link to="/fleet" className="text-xs font-bold text-orange-600 hover:underline">Go to Fleet →</Link>
+          <Link to="/fleet" className="text-xs font-bold text-orange-600 hover:underline">Go to Fleet</Link>
         </div>
       )}
 
@@ -741,7 +654,6 @@ export default function AssetSchedulerView({
           <div className="flex min-w-max">
             {/* Sticky asset label column */}
             <div className="w-44 shrink-0 sticky left-0 z-20 bg-white border-r border-slate-200">
-              {/* Corner header */}
               <div className="h-9 border-b border-slate-200 flex items-center px-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Asset</span>
               </div>
@@ -784,8 +696,12 @@ export default function AssetSchedulerView({
 
                 {/* Asset rows */}
                 {assets.map(asset => (
-                  <div key={asset.id} className="relative flex border-b border-slate-100 last:border-0 hover:bg-slate-50/30 transition-colors" style={{ height: 44 }}>
-                    {/* Day grid cells */}
+                  <div
+                    key={asset.id}
+                    className="relative flex border-b border-slate-100 last:border-0 hover:bg-slate-50/30 transition-colors"
+                    style={{ height: 44 }}
+                  >
+                    {/* Day grid cells (non-interactive background) */}
                     <div className="absolute inset-0 flex pointer-events-none">
                       {days.map((d, i) => (
                         <div
@@ -813,7 +729,7 @@ export default function AssetSchedulerView({
                     {(bookingsByAsset.get(asset.id) ?? []).map(b => {
                       const pos = bookingPosition(b, days, dayWidth);
                       if (!pos) return null;
-                      const color = STATUS_COLORS[b.status] ?? 'bg-slate-400';
+                      const color    = STATUS_COLORS[b.status] ?? 'bg-slate-400';
                       const isActive = popoverBooking?.id === b.id;
                       return (
                         <div
@@ -842,10 +758,13 @@ export default function AssetSchedulerView({
 
                     {/* Popover */}
                     {popoverBooking && popoverBooking.fleet_asset_id === asset.id && (
-                      <div className="absolute top-0 z-30" style={{ left: (() => {
-                        const pos = bookingPosition(popoverBooking, days, dayWidth);
-                        return pos ? pos.left + 2 : 0;
-                      })() }}>
+                      <div
+                        className="absolute top-0 z-30"
+                        style={{ left: (() => {
+                          const pos = bookingPosition(popoverBooking, days, dayWidth);
+                          return pos ? pos.left + 2 : 0;
+                        })() }}
+                      >
                         <BookingPopover
                           booking={popoverBooking}
                           onEdit={handleEditFromPopover}
@@ -874,7 +793,13 @@ export default function AssetSchedulerView({
         {formOpen && (
           <BookingFormModal
             assets={assets}
-            initial={editBooking ?? (newDefaults ? { fleet_asset_id: newDefaults.fleet_asset_id, start_date: newDefaults.start_date, end_date: newDefaults.start_date } : undefined)}
+            initial={
+              editBooking ?? (
+                newDefaults
+                  ? { fleet_asset_id: newDefaults.fleet_asset_id, start_date: newDefaults.start_date, end_date: newDefaults.start_date }
+                  : undefined
+              )
+            }
             onClose={() => { setFormOpen(false); setEditBooking(null); setNewDefaults(null); }}
             onSaved={handleSaved}
             onDeleted={handleDeleted}
