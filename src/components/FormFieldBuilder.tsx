@@ -1063,7 +1063,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-[#F4F5F7]">
+    <div className="flex flex-col min-h-full bg-[#F4F5F7]">
       {/* Builder header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200 shadow-sm">
         {/* Orange accent line */}
@@ -1103,7 +1103,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
 
       {/* Build view */}
       {view === 'build' && (
-        <div className="flex flex-col lg:flex-row gap-4 p-4 flex-1">
+        <div className="flex flex-col lg:flex-row gap-4 p-4 pb-16 flex-1">
           {/* Add field panel — sticky sidebar */}
           <div className="lg:w-60 shrink-0">
             <div className="lg:sticky lg:top-20">
@@ -1162,7 +1162,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
 
       {/* Preview view */}
       {view === 'preview' && (
-        <div className="p-4 max-w-lg mx-auto w-full">
+        <div className="p-4 pb-16 max-w-lg mx-auto w-full">
           <div className="rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
             <div className="h-0.5 w-full bg-primary" />
             <div className="p-5 flex flex-col gap-5">
@@ -1173,7 +1173,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
               {fields.length === 0 ? (
                 <p className="text-sm text-slate-300 italic text-center py-8">No fields added yet</p>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 pb-4">
                   {(() => {
                     let pageNum = 1;
                     return fields.map((field) => {

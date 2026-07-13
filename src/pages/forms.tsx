@@ -718,7 +718,7 @@ export function FormsPage() {
 
   if (builderTemplateId !== null) {
     return (
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <FormFieldBuilder templateId={builderTemplateId} onBack={() => setBuilderTemplateId(null)} />
       </div>
     );
@@ -728,7 +728,7 @@ export function FormsPage() {
 
   return (
     <>
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col min-h-full">
         {/* Header */}
         <header className="h-16 flex items-center justify-between px-6 shrink-0 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
@@ -802,7 +802,7 @@ export function FormsPage() {
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="p-6 pb-16">
           {pageTab === 'forms' && (
             <>
               {loading ? (

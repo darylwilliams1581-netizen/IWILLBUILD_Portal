@@ -546,7 +546,9 @@ export default function StudioPage() {
         </div>
 
         {/* ── Tab content ── */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* forms tab needs overflow-y-auto so the builder/preview can scroll to the bottom;
+            other tabs manage their own internal scroll within overflow-hidden */}
+        <div className={`flex-1 min-h-0 ${activeTab === 'forms' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
           {activeTab === 'documents' && <DocumentsTab />}
           {activeTab === 'forms'     && <FormsContent />}
           {activeTab === 'library'   && <LibraryContent />}
