@@ -136,7 +136,7 @@ function useFormLogic(fields: FormField[], answers: Answers): Set<number> {
 // ── Main form runner ──────────────────────────────────────────────────────────
 
 interface FormRunnerProps {
-  jobId: number;
+  jobId?: number;
   job?: Job | null;
   submission: FormSubmission;
   templateName: string;

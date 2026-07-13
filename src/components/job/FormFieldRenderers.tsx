@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Loader2, AlertCircle, MapPin, Camera, Link, SplitSquareHorizontal,
-  Navigation, ExternalLink,
+  Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
 } from 'lucide-react';
 import { type FormField, parseOptions, parseSettings } from '../FormFieldBuilder';
 import SignaturePad, {
@@ -81,6 +81,35 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
       } else {
         display = <span className="text-sm text-slate-700 font-mono">{String(value)}</span>;
       }
+    } else if (field.fieldType === 'job_link') {
+      // Value is the job ID as a string — show a link to the job
+      const jobId = String(value);
+      display = (
+        <a
+          href={`/jobs/${jobId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+        >
+          <Briefcase size={13} />
+          Job #{jobId}
+          <ExternalLink size={11} className="text-slate-400" />
+        </a>
+      );
+    } else if (field.fieldType === 'asset_link') {
+      const assetId = String(value);
+      display = (
+        <a
+          href={`/fleet/${assetId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+        >
+          <Truck size={13} />
+          Asset #{assetId}
+          <ExternalLink size={11} className="text-slate-400" />
+        </a>
+      );
     } else {
       display = <span className="text-sm text-slate-700">{String(value)}</span>;
     }
@@ -102,9 +131,118 @@ interface FieldInputProps {
   onChange: (val: AnswerValue) => void;
   error?: string;
   disabled?: boolean;
+  companyId?: number;
 }
 
-export function FieldInput({ field, value, onChange, error, disabled }: FieldInputProps) {
+// ── Shared searchable dropdown for job_link / asset_link ─────────────────────
+
+interface LinkOption { id: number; label: string; sublabel?: string }
+
+function LinkDropdown({
+  options, value, onChange, placeholder, loading, error, disabled, icon: Icon,
+}: {
+  options: LinkOption[];
+  value: AnswerValue;
+  onChange: (val: AnswerValue) => void;
+  placeholder: string;
+  loading: boolean;
+  error?: string;
+  disabled?: boolean;
+  icon: React.ElementType;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((o) => String(o.id) === String(value)) ?? null;
+
+  const filtered = search.trim()
+    ? options.filter((o) =>
+        o.label.toLowerCase().includes(search.toLowerCase()) ||
+        (o.sublabel ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : options;
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const baseInput = 'w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
+  const borderCls = error ? 'border-red-400' : 'border-slate-200';
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        disabled={disabled || loading}
+        onClick={() => setOpen((v) => !v)}
+        className={`${baseInput} ${borderCls} flex items-center gap-2 text-left w-full`}
+      >
+        {loading
+          ? <Loader2 size={14} className="animate-spin text-slate-400 shrink-0" />
+          : <Icon size={14} className="text-slate-400 shrink-0" />}
+        <span className={`flex-1 truncate ${selected ? 'text-slate-800' : 'text-slate-400'}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        {selected && !disabled && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onChange(null); }}
+            className="text-slate-400 hover:text-red-500 transition-colors shrink-0"
+          >
+            <X size={13} />
+          </span>
+        )}
+        {!selected && <ChevronDown size={13} className="text-slate-400 shrink-0" />}
+      </button>
+
+      {/* Dropdown panel */}
+      {open && !disabled && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          {/* Search */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+            <Search size={13} className="text-slate-400 shrink-0" />
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="flex-1 text-sm outline-none bg-transparent text-slate-700 placeholder:text-slate-400"
+            />
+          </div>
+          {/* Options */}
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-4">No results</p>
+            )}
+            {filtered.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { onChange(String(opt.id)); setOpen(false); setSearch(''); }}
+                className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 transition-colors flex flex-col gap-0.5 ${
+                  String(opt.id) === String(value) ? 'bg-primary/5' : ''
+                }`}
+              >
+                <span className="text-sm font-medium text-slate-800 truncate">{opt.label}</span>
+                {opt.sublabel && <span className="text-xs text-slate-400 truncate">{opt.sublabel}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FieldInput({ field, value, onChange, error, disabled, companyId }: FieldInputProps) {
   const options = parseOptions(field.optionsJson);
   const settings = parseSettings(field.settingsJson);
 
@@ -303,7 +441,65 @@ export function FieldInput({ field, value, onChange, error, disabled }: FieldInp
         }
         return <SignaturePad value={parseSignatureAnswer(value)} onChange={(sig) => onChange(sig)} error={error} />;
       })()}
-      {error && field.fieldType !== 'signature' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
+      {field.fieldType === 'job_link' && (() => {
+        const [jobs, setJobs] = useState<LinkOption[]>([]);
+        const [loadingJobs, setLoadingJobs] = useState(true);
+        useEffect(() => {
+          fetch('/api/forms/jobs-list', { credentials: 'include' })
+            .then((r) => r.ok ? r.json() : { jobs: [] })
+            .then((d: { jobs?: Array<{ id: number; title: string; client: string | null; address: string | null }> }) => {
+              setJobs((d.jobs ?? []).map((j) => ({
+                id: j.id,
+                label: j.title,
+                sublabel: [j.client, j.address].filter(Boolean).join(' · ') || undefined,
+              })));
+            })
+            .catch(() => {})
+            .finally(() => setLoadingJobs(false));
+        }, []);
+        return (
+          <LinkDropdown
+            options={jobs}
+            value={value}
+            onChange={onChange}
+            placeholder="Select a job…"
+            loading={loadingJobs}
+            error={error}
+            disabled={disabled}
+            icon={Briefcase}
+          />
+        );
+      })()}
+      {field.fieldType === 'asset_link' && (() => {
+        const [assets, setAssets] = useState<LinkOption[]>([]);
+        const [loadingAssets, setLoadingAssets] = useState(true);
+        useEffect(() => {
+          fetch('/api/forms/assets-list', { credentials: 'include' })
+            .then((r) => r.ok ? r.json() : { assets: [] })
+            .then((d: { assets?: Array<{ id: number; name: string; registration: string | null; asset_type: string | null }> }) => {
+              setAssets((d.assets ?? []).map((a) => ({
+                id: a.id,
+                label: a.name,
+                sublabel: [a.asset_type, a.registration].filter(Boolean).join(' · ') || undefined,
+              })));
+            })
+            .catch(() => {})
+            .finally(() => setLoadingAssets(false));
+        }, []);
+        return (
+          <LinkDropdown
+            options={assets}
+            value={value}
+            onChange={onChange}
+            placeholder="Select an asset…"
+            loading={loadingAssets}
+            error={error}
+            disabled={disabled}
+            icon={Truck}
+          />
+        );
+      })()}
+      {error && field.fieldType !== 'signature' && field.fieldType !== 'job_link' && field.fieldType !== 'asset_link' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
     </div>
   );
 }

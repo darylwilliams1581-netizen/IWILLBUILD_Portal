@@ -33,6 +33,8 @@ import {
   ChevronDown as ChevronDownIcon,
   Zap,
   Eye,
+  Briefcase,
+  Truck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -101,6 +103,8 @@ const FIELD_TYPES: FieldTypeDef[] = [
   { type: 'photo',             label: 'Photo / Media',        icon: Camera,                group: 'Media' },
   { type: 'signature',         label: 'Signature',            icon: PenLine,               group: 'Media' },
   { type: 'location',          label: 'Location / GPS',       icon: MapPin,                group: 'Field Ops' },
+  { type: 'job_link',          label: 'Job Link',             icon: Briefcase,             group: 'Field Ops' },
+  { type: 'asset_link',        label: 'Asset Link',           icon: Truck,                 group: 'Field Ops' },
   { type: 'section',           label: 'Section Heading',      icon: Heading,               group: 'Layout', isLayout: true },
   { type: 'instruction',       label: 'Instruction',          icon: Info,                  group: 'Layout', isLayout: true },
   { type: 'instruction_image', label: 'Instruction + Image',  icon: ImagePlus,             group: 'Layout', isLayout: true },

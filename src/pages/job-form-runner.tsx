@@ -24,15 +24,12 @@ export default function JobFormRunnerPage() {
   const [job, setJob] = useState<Job | null>(null);
 
   useEffect(() => {
-    if (!jobId || !submissionId) { setError('Invalid URL'); setLoading(false); return; }
+    if (!submissionId) { setError('Invalid URL'); setLoading(false); return; }
 
     async function load() {
       try {
         // Load submission + template name
-        const [subRes, jobRes] = await Promise.all([
-          fetch(`/api/job-forms/${submissionId}`, { credentials: 'include' }),
-          fetch(`/api/jobs/${jobId}`, { credentials: 'include' }),
-        ]);
+        const subRes = await fetch(`/api/job-forms/${submissionId}`, { credentials: 'include' });
 
         if (!subRes.ok) {
           const d = await subRes.json() as { error?: string };
@@ -49,9 +46,13 @@ export default function JobFormRunnerPage() {
         setSubmission(subData.submission);
         setTemplateName(subData.templateName ?? 'Form');
 
-        if (jobRes.ok) {
-          const jobData = await jobRes.json() as { job?: Job };
-          setJob(jobData.job ?? null);
+        // Only fetch job if we have a real jobId (not 0 = standalone)
+        if (jobId && jobId > 0) {
+          const jobRes = await fetch(`/api/jobs/${jobId}`, { credentials: 'include' });
+          if (jobRes.ok) {
+            const jobData = await jobRes.json() as { job?: Job };
+            setJob(jobData.job ?? null);
+          }
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load form');
@@ -88,32 +89,39 @@ export default function JobFormRunnerPage() {
     );
   }
 
+  const isStandalone = !jobId || jobId === 0;
   const isReadOnly = submission.status === 'completed' || submission.status === 'submitted';
 
   return (
     <>
       <Helmet>
-        <title>{templateName} — {job?.name ?? `Job #${jobId}`}</title>
+        <title>{templateName}{job ? ` — ${job.name ?? `Job #${jobId}`}` : ''} | FleetOps</title>
+        <meta name="description" content={`Complete the ${templateName} form${job ? ` for ${job.name ?? `Job #${jobId}`}` : ''}.`} />
+        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.href : ''} />
+        <meta name="robots" content="noindex" />
       </Helmet>
+      <main>
+        <h1 className="sr-only">{templateName}</h1>
       <FormRunner
-        jobId={jobId}
+        jobId={isStandalone ? undefined : jobId}
         job={job}
         submission={submission}
         templateName={templateName}
         readOnly={isReadOnly}
         onBack={() => {
-          // If opened in a new tab, close it; otherwise go back to job
           if (window.history.length <= 1) {
             window.close();
+          } else if (isStandalone) {
+            navigate('/studio?tab=forms');
           } else {
             navigate(`/jobs/${jobId}?tab=forms`);
           }
         }}
         onComplete={() => {
-          // Reload to show completed state
           window.location.reload();
         }}
       />
+      </main>
     </>
   );
 }
