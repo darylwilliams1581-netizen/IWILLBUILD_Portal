@@ -21,8 +21,6 @@ import {
   AlertCircle,
   Clock,
   MapPin,
-  Gauge,
-  CheckSquare,
   FileText,
   LogOut,
   X,
@@ -36,6 +34,8 @@ import {
   HardHat,
   LayoutDashboard,
 } from 'lucide-react';
+import BuildersCalc from '../components/estimating/BuildersCalc';
+import TakeoffPad from '../components/estimating/TakeoffPad';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
 import DriverJobCard from '@/components/driver/DriverJobCard';
@@ -226,6 +226,60 @@ function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: St
           >
             Keep Driving
           </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Tool Sheet (Builders Calc / Take-off Pad) ─────────────────────────────────
+
+interface ToolSheetProps {
+  title: string;
+  icon: React.ReactNode;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+function ToolSheet({ title, icon, onClose, children }: ToolSheetProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        style={{ maxHeight: '94vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-700" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gray-800 flex items-center justify-center">
+              {icon}
+            </div>
+            <h2 className="text-white font-bold text-base">{title}</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          {children}
         </div>
       </motion.div>
     </motion.div>
@@ -484,6 +538,10 @@ export default function DriverPage() {
   const [showPrestart, setShowPrestart] = useState(false);
   const [prestartVehicle, setPrestartVehicle] = useState<Vehicle | null>(null);
   const [pickerMode, setPickerMode] = useState<'drive' | 'prestart'>('drive');
+
+  // Tool sheets
+  const [showBuildersCalc, setShowBuildersCalc] = useState(false);
+  const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
 
   // Elapsed timer
   const [elapsed, setElapsed]           = useState('00m 00s');
@@ -796,25 +854,25 @@ export default function DriverPage() {
 
               {/* Tools row — Builders Calc + Take-off Pad */}
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <Link
-                  to="/estimating?tab=builders-calc"
+                <button
+                  onClick={() => setShowBuildersCalc(true)}
                   className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
                   <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
                     <Calculator size={20} className="text-blue-400" />
                   </div>
                   <span className="text-white text-xs font-bold text-center leading-tight">Builders Calc</span>
-                </Link>
+                </button>
 
-                <Link
-                  to="/estimating?tab=takeoff-pad"
+                <button
+                  onClick={() => setShowTakeoffPad(true)}
                   className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
                 >
                   <div className="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
                     <Layers size={20} className="text-violet-400" />
                   </div>
                   <span className="text-white text-xs font-bold text-center leading-tight">Take-off Pad</span>
-                </Link>
+                </button>
               </div>
 
               {/* Secondary row — Jobs, Safety, Fleet */}
@@ -901,6 +959,32 @@ export default function DriverPage() {
             onClose={() => setShowPrestart(false)}
             onDone={() => setShowPrestart(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Builders Calc sheet ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showBuildersCalc && (
+          <ToolSheet
+            title="Builders Calc"
+            icon={<Calculator size={16} className="text-blue-400" />}
+            onClose={() => setShowBuildersCalc(false)}
+          >
+            <BuildersCalc />
+          </ToolSheet>
+        )}
+      </AnimatePresence>
+
+      {/* ── Take-off Pad sheet ───────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showTakeoffPad && (
+          <ToolSheet
+            title="Take-off Pad"
+            icon={<Layers size={16} className="text-violet-400" />}
+            onClose={() => setShowTakeoffPad(false)}
+          >
+            <TakeoffPad />
+          </ToolSheet>
         )}
       </AnimatePresence>
     </>
