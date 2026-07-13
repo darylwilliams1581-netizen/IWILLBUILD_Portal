@@ -32,6 +32,8 @@ export interface Job {
   // Scheduler v2 fields
   scheduledStartDate: string | null;
   expectedCompletionDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
   actualStartDate: string | null;
   actualCompletionDate: string | null;
   assignedSupervisorUserId: string | null;
@@ -134,6 +136,8 @@ export async function updateJob(id: number, payload: Partial<{
   assetId: number | null;
   scheduledStartDate: string | null;
   expectedCompletionDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
   actualStartDate: string | null;
   actualCompletionDate: string | null;
   assignedSupervisorUserId: string | null;

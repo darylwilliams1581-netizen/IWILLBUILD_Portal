@@ -150,7 +150,9 @@ export default function JobDetailPage() {
     status: '',
     notes: '',
     scheduledStartDate: '',
+    scheduledStartTime: '',
     expectedCompletionDate: '',
+    scheduledEndTime: '',
     actualStartDate: '',
     actualCompletionDate: '',
     assignedSupervisorUserId: '',
@@ -194,7 +196,9 @@ export default function JobDetailPage() {
         status: data.status,
         notes: data.notes ?? '',
         scheduledStartDate: data.scheduledStartDate ?? '',
+        scheduledStartTime: (data as Record<string, unknown>).scheduledStartTime as string ?? '',
         expectedCompletionDate: data.expectedCompletionDate ?? '',
+        scheduledEndTime: (data as Record<string, unknown>).scheduledEndTime as string ?? '',
         actualStartDate: data.actualStartDate ?? '',
         actualCompletionDate: data.actualCompletionDate ?? '',
         assignedSupervisorUserId: data.assignedSupervisorUserId ?? '',
@@ -242,6 +246,8 @@ export default function JobDetailPage() {
         assetId: editingAssetId ?? null,
         scheduledStartDate: form.scheduledStartDate || null,
         expectedCompletionDate: form.expectedCompletionDate || null,
+        scheduledStartTime: form.scheduledStartTime || null,
+        scheduledEndTime: form.scheduledEndTime || null,
         actualStartDate: form.actualStartDate || null,
         actualCompletionDate: form.actualCompletionDate || null,
         assignedSupervisorUserId: form.assignedSupervisorUserId || null,
@@ -490,6 +496,7 @@ export default function JobDetailPage() {
                         <span className="text-slate-400">Sched. Start:</span>
                         <span className="font-medium text-slate-700">
                           {(() => { const [y,m,d] = job.scheduledStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                          {job.scheduledStartTime && <span className="ml-1 text-orange-600">{fmtJobTime(job.scheduledStartTime)}</span>}
                         </span>
                       </span>
                     )}
@@ -499,6 +506,7 @@ export default function JobDetailPage() {
                         <span className="text-slate-400">Exp. Completion:</span>
                         <span className="font-medium text-slate-700">
                           {(() => { const [y,m,d] = job.expectedCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
+                          {job.scheduledEndTime && <span className="ml-1 text-slate-500">{fmtJobTime(job.scheduledEndTime)}</span>}
                         </span>
                       </span>
                     )}
@@ -716,25 +724,46 @@ export default function JobDetailPage() {
                             {/* Schedule */}
                             <div className="pt-2 border-t border-border">
                               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule</p>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
+                              {/* Scheduled Start — date + time */}
+                              <div className="mb-3">
+                                <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
+                                <div className="grid grid-cols-2 gap-2">
                                   <input
                                     type="date"
                                     value={form.scheduledStartDate}
                                     onChange={(e) => setForm((f) => ({ ...f, scheduledStartDate: e.target.value }))}
                                     className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                                   />
+                                  <input
+                                    type="time"
+                                    value={form.scheduledStartTime}
+                                    onChange={(e) => setForm((f) => ({ ...f, scheduledStartTime: e.target.value }))}
+                                    placeholder="Start time"
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
                                 </div>
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
+                              </div>
+                              {/* Expected Completion — date + time */}
+                              <div className="mb-3">
+                                <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
+                                <div className="grid grid-cols-2 gap-2">
                                   <input
                                     type="date"
                                     value={form.expectedCompletionDate}
                                     onChange={(e) => setForm((f) => ({ ...f, expectedCompletionDate: e.target.value }))}
                                     className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                                   />
+                                  <input
+                                    type="time"
+                                    value={form.scheduledEndTime}
+                                    onChange={(e) => setForm((f) => ({ ...f, scheduledEndTime: e.target.value }))}
+                                    placeholder="End time"
+                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                                  />
                                 </div>
+                              </div>
+                              {/* Actual dates — date only */}
+                              <div className="grid grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-xs font-semibold mb-1.5">Actual Start</label>
                                   <input
@@ -978,6 +1007,18 @@ export default function JobDetailPage() {
       </div>
     </div>
   );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtJobTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr ?? '00';
+  const ampm = h < 12 ? 'am' : 'pm';
+  const h12  = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m}${ampm}`;
 }
 
 // ── Detail row ────────────────────────────────────────────────────────────────
