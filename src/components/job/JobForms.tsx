@@ -7,7 +7,6 @@ import {
   Clock,
   CheckCircle2,
   ClipboardList,
-  PlayCircle,
   Eye,
   Trash2,
   Printer,
@@ -16,7 +15,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import FormRunner from './FormRunner';
 import SkipMetricsPanel from './SkipMetricsPanel';
 import type { Job } from '@/lib/jobs-api';
 import { FormSharePanel } from '@/components/jobs/FormSharePanel';
@@ -277,13 +275,6 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
   // Track whether we've already auto-opened the deep-linked instance
   const autoOpenedRef = useRef<number | null>(null);
 
-  // Runner state: submission + mode
-  const [runnerState, setRunnerState] = useState<{
-    submission: FormSubmission;
-    templateName: string;
-    readOnly: boolean;
-  } | null>(null);
-
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<FormSubmission | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -313,22 +304,15 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
 
   useEffect(() => { void load(); }, [load]);
 
-  // Auto-open a specific form instance when deep-linked (/jobs/:id/forms/:formInstanceId)
+  // Auto-open a deep-linked form instance in a new window
   useEffect(() => {
     if (!initialFormInstanceId || loading || autoOpenedRef.current === initialFormInstanceId) return;
     const target = submissions.find((s) => s.id === initialFormInstanceId);
     if (target) {
       autoOpenedRef.current = initialFormInstanceId;
-      const template = templates.find((t) => t.id === target.templateId);
-      const isCompleted = target.status === 'completed' || target.status === 'submitted';
-      onRunnerActive?.(true);
-      setRunnerState({
-        submission: target,
-        templateName: template?.name ?? 'Form',
-        readOnly: isCompleted,
-      });
+      window.open(`/jobs/${jobId}/forms/${initialFormInstanceId}`, '_blank', 'noopener,noreferrer');
     }
-  }, [initialFormInstanceId, loading, submissions, templates, onRunnerActive]);
+  }, [initialFormInstanceId, loading, submissions, jobId]);
 
   // Fetch company name once for print header
   useEffect(() => {
@@ -354,14 +338,9 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
       const data = await res.json() as { submission?: FormSubmission; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to start form');
       if (data.submission) {
-        const template = templates.find((t) => t.id === templateId);
         setSubmissions((prev) => [data.submission!, ...prev]);
-        onRunnerActive?.(true);
-        setRunnerState({
-          submission: data.submission!,
-          templateName: template?.name ?? 'Form',
-          readOnly: false,
-        });
+        // Open in new window so the job detail page stays intact
+        window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener,noreferrer');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start form');
@@ -370,24 +349,8 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
     }
   }
 
-  function openSubmission(s: FormSubmission, readOnly: boolean) {
-    const template = templates.find((t) => t.id === s.templateId);
-    onRunnerActive?.(true);
-    setRunnerState({
-      submission: s,
-      templateName: template?.name ?? 'Form',
-      readOnly,
-    });
-  }
-
-  function handleRunnerBack() {
-    setRunnerState(null);
-    void load();
-  }
-
-  function handleRunnerComplete() {
-    setRunnerState(null);
-    void load();
+  function openSubmission(s: FormSubmission) {
+    window.open(`/jobs/${jobId}/forms/${s.id}`, '_blank', 'noopener,noreferrer');
   }
 
   async function confirmDelete() {
@@ -419,22 +382,7 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
     return acc;
   }, {});
 
-  // ── Form runner view ────────────────────────────────────────────────────────
-  if (runnerState) {
-    return (
-      <div>
-        <FormRunner
-          jobId={jobId}
-          job={job}
-          submission={runnerState.submission}
-          templateName={runnerState.templateName}
-          readOnly={runnerState.readOnly}
-          onBack={() => { onRunnerActive?.(false); handleRunnerBack(); }}
-          onComplete={() => { onRunnerActive?.(false); handleRunnerComplete(); }}
-        />
-      </div>
-    );
-  }
+  // ── Form runner view — now opens in new window, no inline runner ──────────────
 
   if (loading) {
     return (
@@ -544,15 +492,14 @@ export default function JobForms({ jobId, job, userRole, onRunnerActive, initial
                 {submissions.map((s) => {
                   const template = templates.find((t) => t.id === s.templateId);
                   const templateName = template?.name ?? `Form #${s.templateId}`;
-                  const isCompleted = s.status === 'completed' || s.status === 'submitted';
 
                   return (
                     <SubmissionRow
                       key={s.id}
                       submission={s}
                       templateName={templateName}
-                      onOpen={() => openSubmission(s, isCompleted)}
-                      onPrint={() => openSubmission(s, true)}
+                      onOpen={() => openSubmission(s)}
+                      onPrint={() => openSubmission(s)}
                       onDelete={() => setDeleteTarget(s)}
                       canDelete={canDelete}
                       canShare={true}

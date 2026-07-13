@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, Plus, Loader2, X, AlertCircle, Users,
-  Printer, Wand2, Trash2, ClipboardList, Link2,
+  Printer, Wand2, Trash2, ClipboardList, Link2, UserCheck,
 } from 'lucide-react';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
 import {
