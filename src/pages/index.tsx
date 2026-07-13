@@ -138,7 +138,7 @@ const plans = [
 // ── Portal mockup component ───────────────────────────────────────────────────
 function PortalMockup() {
   return (
-    <div style={{
+    <div suppressHydrationWarning style={{
       background: '#0f172a',
       borderRadius: 14,
       overflow: 'hidden',
@@ -353,7 +353,7 @@ export default function HomePage() {
           alignItems: 'center',
         }} className="hero-grid">
           {/* Left copy */}
-          <div>
+          <div suppressHydrationWarning>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',

@@ -451,6 +451,18 @@ export default class AiroErrorBoundary extends Component<Props, State> {
     // already owns. The shared registry suppresses that re-dispatch
     // regardless of which boundary caught the render error.
     claim(error);
+
+    // Hydration mismatches from browser extensions are recoverable — React
+    // re-renders the subtree on the client and the UI is correct. Do not
+    // show an error overlay for these.
+    if (
+      error.message.includes('Hydration failed') ||
+      error.message.includes('hydration') ||
+      error.message.includes('did not match')
+    ) {
+      return;
+    }
+
     if (this.isDevToolsOriginError(error)) {
       console.error('[dev-tools internal render error, suppressed from overlay]', error, errorInfo);
       // Track by identity so React 18's same-frame re-dispatch to
@@ -491,6 +503,17 @@ export default class AiroErrorBoundary extends Component<Props, State> {
     // short-circuit here — don't re-forward, don't show an overlay.
     if (this.platformErrors.has(error)) {
       console.warn('[dev-tools] suppressed re-dispatch of platform render error', error);
+      return;
+    }
+    // Hydration mismatches caused by browser extensions injecting style
+    // attributes before React hydrates are recoverable non-issues — React
+    // already re-renders the affected subtree on the client and the UI is
+    // correct. Surfacing them as an error overlay is misleading noise.
+    if (
+      error.message.includes('Hydration failed') ||
+      error.message.includes('hydration') ||
+      error.message.includes('did not match')
+    ) {
       return;
     }
     if (this.isDevToolsOriginError(error)) {
