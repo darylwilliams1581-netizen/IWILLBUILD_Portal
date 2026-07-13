@@ -1,9 +1,7 @@
 /**
  * PATCH /api/scheduler/jobs/:id/reschedule
- * Updates scheduled_start_date and expected_completion_date for a job.
- * Used by the drag-drop scheduler to move/resize job bars.
- *
- * Body: { scheduledStartDate: "YYYY-MM-DD", expectedCompletionDate: "YYYY-MM-DD" }
+ * Updates scheduled_start_date, expected_completion_date, and optional times.
+ * Body: { scheduledStartDate, expectedCompletionDate, scheduledStartTime, scheduledEndTime }
  */
 import type { Request, Response } from 'express';
 import { getAuth } from '@/lib/auth/auth';
@@ -11,6 +9,7 @@ import { db } from '@/server/db/client';
 import { sql } from 'drizzle-orm';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -31,17 +30,24 @@ export default async function handler(req: Request, res: Response) {
     const jobId = parseInt(String(req.params.id), 10);
     if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
 
-    const { scheduledStartDate, expectedCompletionDate } = req.body as {
+    const { scheduledStartDate, expectedCompletionDate, scheduledStartTime, scheduledEndTime } = req.body as {
       scheduledStartDate?: string;
       expectedCompletionDate?: string;
+      scheduledStartTime?: string | null;
+      scheduledEndTime?: string | null;
     };
 
-    // Validate dates
     if (scheduledStartDate && !DATE_RE.test(scheduledStartDate)) {
       return res.status(400).json({ error: 'Invalid scheduledStartDate format (YYYY-MM-DD)' });
     }
     if (expectedCompletionDate && !DATE_RE.test(expectedCompletionDate)) {
       return res.status(400).json({ error: 'Invalid expectedCompletionDate format (YYYY-MM-DD)' });
+    }
+    if (scheduledStartTime && !TIME_RE.test(scheduledStartTime)) {
+      return res.status(400).json({ error: 'Invalid scheduledStartTime format (HH:MM)' });
+    }
+    if (scheduledEndTime && !TIME_RE.test(scheduledEndTime)) {
+      return res.status(400).json({ error: 'Invalid scheduledEndTime format (HH:MM)' });
     }
 
     // Verify job belongs to company
@@ -50,13 +56,18 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ id: number }>];
     if (!check?.length) return res.status(404).json({ error: 'Job not found' });
 
-    // Build update
     const updates: string[] = [];
     if (scheduledStartDate !== undefined) {
       updates.push(`scheduled_start_date = ${scheduledStartDate ? `'${scheduledStartDate}'` : 'NULL'}`);
     }
     if (expectedCompletionDate !== undefined) {
       updates.push(`expected_completion_date = ${expectedCompletionDate ? `'${expectedCompletionDate}'` : 'NULL'}`);
+    }
+    if (scheduledStartTime !== undefined) {
+      updates.push(`scheduled_start_time = ${scheduledStartTime ? `'${scheduledStartTime}'` : 'NULL'}`);
+    }
+    if (scheduledEndTime !== undefined) {
+      updates.push(`scheduled_end_time = ${scheduledEndTime ? `'${scheduledEndTime}'` : 'NULL'}`);
     }
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
@@ -65,7 +76,7 @@ export default async function handler(req: Request, res: Response) {
       sql.raw(`UPDATE jobs SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ${jobId} AND company_id = ${companyId}`)
     );
 
-    res.json({ ok: true, jobId, scheduledStartDate, expectedCompletionDate });
+    res.json({ ok: true, jobId, scheduledStartDate, expectedCompletionDate, scheduledStartTime, scheduledEndTime });
   } catch (err) {
     console.error('PATCH /api/scheduler/jobs/:id/reschedule error:', err);
     res.status(500).json({ error: 'Failed to reschedule job' });

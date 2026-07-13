@@ -36,6 +36,8 @@ interface SchedulerJob {
   progress: number;
   scheduledStartDate: string | null;
   expectedCompletionDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
   actualStartDate: string | null;
   actualCompletionDate: string | null;
   supervisorUserId: string | null;
@@ -122,6 +124,17 @@ function fmt(dateStr: string | null): string {
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Format HH:MM or HH:MM:SS to 12-hour time, e.g. "8:00 am" */
+function fmtTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr ?? '00';
+  const ampm = h < 12 ? 'am' : 'pm';
+  const h12  = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m}${ampm}`;
+}
+
 function fmtShort(dateStr: string | null): string {
   if (!dateStr) return '—';
   const d = parseLocalDate(dateStr);
@@ -188,14 +201,21 @@ function barHex(status: string) {
 async function rescheduleJob(
   jobId: number,
   scheduledStartDate: string,
-  expectedCompletionDate: string
+  expectedCompletionDate: string,
+  scheduledStartTime?: string,
+  scheduledEndTime?: string,
 ): Promise<boolean> {
   try {
     const res = await fetch(`/api/scheduler/jobs/${jobId}/reschedule`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scheduledStartDate, expectedCompletionDate }),
+      body: JSON.stringify({
+        scheduledStartDate,
+        expectedCompletionDate,
+        ...(scheduledStartTime !== undefined && { scheduledStartTime: scheduledStartTime || null }),
+        ...(scheduledEndTime   !== undefined && { scheduledEndTime:   scheduledEndTime   || null }),
+      }),
     });
     return res.ok;
   } catch {
@@ -240,15 +260,33 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                     {job.jobNumber && <div className="text-xs text-slate-400">#{job.jobNumber}</div>}
                   </td>
                   <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{job.client ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-500 truncate max-w-[120px]">{job.address ?? '—'}</td>
+                  <td className="px-4 py-3 max-w-[140px]">
+                    {job.address ? (
+                      <a
+                        href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-orange-600 hover:text-orange-700 text-xs truncate"
+                        title={job.address}
+                      >
+                        <MapPin size={11} className="shrink-0" />
+                        <span className="truncate">{job.address}</span>
+                      </a>
+                    ) : <span className="text-slate-400 text-xs">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.scheduledStartDate)}</td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{fmt(job.expectedCompletionDate)}</td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                    <div>{fmt(job.scheduledStartDate)}</div>
+                    {job.scheduledStartTime && <div className="text-xs text-orange-600 font-medium">{fmtTime(job.scheduledStartTime)}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                    <div>{fmt(job.expectedCompletionDate)}</div>
+                    {job.scheduledEndTime && <div className="text-xs text-slate-400">{fmtTime(job.scheduledEndTime)}</div>}
+                  </td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{duration}</td>
                   <td className="px-4 py-3 text-slate-600 truncate max-w-[140px]">{supervisor}</td>
                   <td className="px-4 py-3">
@@ -288,9 +326,17 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs text-slate-500">
                 {job.client  && <span className="flex items-center gap-1"><User   size={10} />{job.client}</span>}
-                {job.address && <span className="flex items-center gap-1"><MapPin size={10} />{job.address}</span>}
-                <span className="flex items-center gap-1"><Calendar size={10} />{fmt(job.scheduledStartDate)}</span>
-                <span className="flex items-center gap-1"><Clock    size={10} />{fmt(job.expectedCompletionDate)}</span>
+                {job.address
+                  ? <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-orange-600"><MapPin size={10} className="shrink-0" /><span className="truncate">{job.address}</span></a>
+                  : null}
+                <span className="flex items-center gap-1">
+                  <Calendar size={10} />{fmt(job.scheduledStartDate)}
+                  {job.scheduledStartTime && <span className="text-orange-600 font-medium ml-1">{fmtTime(job.scheduledStartTime)}</span>}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock size={10} />{fmt(job.expectedCompletionDate)}
+                  {job.scheduledEndTime && <span className="ml-1">{fmtTime(job.scheduledEndTime)}</span>}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
@@ -435,7 +481,7 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
                       key={job.id}
                       draggable={isStart}
                       onDragStart={isStart ? (e) => handleDragStart(e, job) : undefined}
-                      title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}`}
+                      title={`${job.name}${job.scheduledStartTime ? ` · ${fmtTime(job.scheduledStartTime)}${job.scheduledEndTime ? `–${fmtTime(job.scheduledEndTime)}` : ''}` : ''}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}${job.address ? `\n${job.address}` : ''}`}
                       className={`text-[10px] font-semibold text-white px-1 py-0.5 rounded truncate leading-tight ${
                         isStart ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-80'
                       }`}
@@ -829,11 +875,11 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
                       <Link
                         key={job.id}
                         to={`/jobs/${job.id}`}
-                        title={`${job.name}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}`}
+                        title={`${job.name}${job.scheduledStartTime ? ` · ${fmtTime(job.scheduledStartTime)}${job.scheduledEndTime ? `–${fmtTime(job.scheduledEndTime)}` : ''}` : ''}\n${fmt(job.scheduledStartDate)} → ${fmt(job.expectedCompletionDate)}${job.address ? `\n📍 ${job.address}` : ''}`}
                         className={`absolute h-[18px] flex items-center text-white text-[10px] font-semibold truncate shadow-sm hover:brightness-110 transition-all rounded-md ${barColor(job.status)}`}
                         style={{ left: bar.left, width: bar.width, top: 4 + laneIdx * 24 }}
                       >
-                        <span className="px-1.5 truncate">{bar.width > 40 ? job.name : ''}</span>
+                        <span className="px-1.5 truncate">{bar.width > 40 ? (job.scheduledStartTime ? `${fmtTime(job.scheduledStartTime)} ${job.name}` : job.name) : ''}</span>
                       </Link>
                     );
                   })
@@ -910,17 +956,19 @@ function UnscheduledSection({ jobs, onSchedule }: { jobs: SchedulerJob[]; onSche
 function QuickScheduleModal({ job, onClose, onSave }: {
   job: SchedulerJob;
   onClose: () => void;
-  onSave: (start: string, end: string) => void;
+  onSave: (start: string, end: string, startTime: string, endTime: string) => void;
 }) {
   const today = toDateStr(new Date());
-  const [start, setStart] = useState(job.scheduledStartDate ?? today);
-  const [end,   setEnd]   = useState(job.expectedCompletionDate ?? today);
+  const [start,     setStart]     = useState(job.scheduledStartDate ?? today);
+  const [end,       setEnd]       = useState(job.expectedCompletionDate ?? today);
+  const [startTime, setStartTime] = useState(job.scheduledStartTime ?? '');
+  const [endTime,   setEndTime]   = useState(job.scheduledEndTime   ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (!start || !end) return;
     setSaving(true);
-    await onSave(start, end);
+    await onSave(start, end, startTime, endTime);
     setSaving(false);
   }
 
@@ -930,15 +978,29 @@ function QuickScheduleModal({ job, onClose, onSave }: {
         <h2 className="text-base font-bold text-slate-800 mb-1">Schedule Job</h2>
         <p className="text-sm text-slate-500 mb-4 truncate">{job.name}</p>
         <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Date</label>
-            <input type="date" value={start} onChange={e => setStart(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Date</label>
+              <input type="date" value={start} onChange={e => setStart(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Start Time</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">Completion Date</label>
-            <input type="date" value={end} onChange={e => setEnd(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">End Date</label>
+              <input type="date" value={end} onChange={e => setEnd(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">End Time</label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
           </div>
         </div>
         <div className="flex gap-2 mt-5">
@@ -1005,10 +1067,13 @@ export default function SchedulerPage() {
   }, [view]);
 
   // Reschedule handler — optimistic update + API call
-  const handleReschedule = useCallback(async (job: SchedulerJob, newStart: string, newEnd: string) => {
+  const handleReschedule = useCallback(async (job: SchedulerJob, newStart: string, newEnd: string, newStartTime?: string, newEndTime?: string) => {
     // Optimistic update
     setJobs(prev => prev.map(j => j.id === job.id
-      ? { ...j, scheduledStartDate: newStart, expectedCompletionDate: newEnd }
+      ? { ...j, scheduledStartDate: newStart, expectedCompletionDate: newEnd,
+          ...(newStartTime !== undefined && { scheduledStartTime: newStartTime || null }),
+          ...(newEndTime   !== undefined && { scheduledEndTime:   newEndTime   || null }),
+        }
       : j
     ));
     setCrewMembers(prev => prev.map(m => ({
@@ -1019,14 +1084,15 @@ export default function SchedulerPage() {
       ),
     })));
 
-    const ok = await rescheduleJob(job.id, newStart, newEnd);
+    const ok = await rescheduleJob(job.id, newStart, newEnd, newStartTime, newEndTime);
     if (ok) {
-      setSaveMsg(`${job.name} rescheduled to ${fmt(newStart)}`);
+      setSaveMsg(`${job.name} rescheduled to ${fmt(newStart)}${newStartTime ? ` at ${fmtTime(newStartTime)}` : ''}`);
       setTimeout(() => setSaveMsg(''), 3000);
     } else {
       // Revert
       setJobs(prev => prev.map(j => j.id === job.id
-        ? { ...j, scheduledStartDate: job.scheduledStartDate, expectedCompletionDate: job.expectedCompletionDate }
+        ? { ...j, scheduledStartDate: job.scheduledStartDate, expectedCompletionDate: job.expectedCompletionDate,
+            scheduledStartTime: job.scheduledStartTime, scheduledEndTime: job.scheduledEndTime }
         : j
       ));
       setSaveMsg('Failed to save — please try again');
@@ -1034,12 +1100,12 @@ export default function SchedulerPage() {
     }
   }, []);
 
-  const handleQuickSchedule = useCallback(async (start: string, end: string) => {
+  const handleQuickSchedule = useCallback(async (start: string, end: string, startTime: string, endTime: string) => {
     if (!scheduleTarget) return;
-    await handleReschedule(scheduleTarget, start, end);
-    // Move from unscheduled to scheduled
+    await handleReschedule(scheduleTarget, start, end, startTime, endTime);
     setJobs(prev => prev.map(j => j.id === scheduleTarget.id
-      ? { ...j, scheduledStartDate: start, expectedCompletionDate: end }
+      ? { ...j, scheduledStartDate: start, expectedCompletionDate: end,
+          scheduledStartTime: startTime || null, scheduledEndTime: endTime || null }
       : j
     ));
     setScheduleTarget(null);
@@ -1139,12 +1205,6 @@ export default function SchedulerPage() {
             >
               Jobs
             </button>
-            <Link
-              to="/team/schedule"
-              className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-slate-500 hover:text-slate-700 hover:bg-white/60"
-            >
-              Team Shifts
-            </Link>
           </div>
 
           {/* Save message toast */}

@@ -30,6 +30,7 @@ export default async function handler(req: Request, res: Response) {
     const {
       name, client, address, status, notes, jobNumber, customerId, assetId,
       scheduledStartDate, expectedCompletionDate,
+      scheduledStartTime, scheduledEndTime,
       actualStartDate, actualCompletionDate,
       assignedSupervisorUserId, assignedTeamLabel,
     } = req.body as {
@@ -43,6 +44,8 @@ export default async function handler(req: Request, res: Response) {
       assetId?: number | null;
       scheduledStartDate?: string | null;
       expectedCompletionDate?: string | null;
+      scheduledStartTime?: string | null;
+      scheduledEndTime?: string | null;
       actualStartDate?: string | null;
       actualCompletionDate?: string | null;
       assignedSupervisorUserId?: string | null;
@@ -83,6 +86,18 @@ export default async function handler(req: Request, res: Response) {
     if (assetId !== undefined) {
       await db.execute(
         sql`UPDATE jobs SET asset_id = ${assetId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+
+    // scheduled_start_time / scheduled_end_time via raw SQL (added via startup migration)
+    if (scheduledStartTime !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET scheduled_start_time = ${scheduledStartTime ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+    if (scheduledEndTime !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET scheduled_end_time = ${scheduledEndTime ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
       );
     }
 

@@ -1641,6 +1641,19 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── jobs: scheduled_start_time / scheduled_end_time columns ─────────────────
+  for (const col of ['scheduled_start_time', 'scheduled_end_time'] as const) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE jobs ADD COLUMN ${col} TIME NULL`));
+      console.log(`[startup-migration] jobs.${col} column added`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('Duplicate column') && !msg.includes('already exists') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] jobs.${col} skipped:`, msg.slice(0, 120));
+      }
+    }
+  }
+
   // ── team_shifts ──────────────────────────────────────────────────────────────
   try {
     await db.execute(sql.raw(
