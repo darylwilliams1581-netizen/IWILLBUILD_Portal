@@ -7,7 +7,6 @@ import type { Request, Response } from 'express';
 import { getAuth } from '@/lib/auth/auth';
 import { db } from '@/server/db/client';
 import { sql } from 'drizzle-orm';
-import { resolveEffectiveCompany } from '@/server/lib/dazza-context';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -19,7 +18,10 @@ export default async function handler(req: Request, res: Response) {
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
 
-    const { companyId } = await resolveEffectiveCompany(req, session.user.id);
+    const [profileRows] = await db.execute(
+      sql`SELECT company_id FROM profiles WHERE user_id = ${session.user.id} LIMIT 1`
+    ) as unknown as [Array<{ company_id: number }>];
+    const companyId = profileRows?.[0]?.company_id;
     if (!companyId) return res.status(400).json({ error: 'No company' });
 
     // Get all team members for this company

@@ -572,6 +572,17 @@ export async function buildDazzaContext(
 }
 
 /**
+ * Convenience overload: resolveEffectiveCompany(req, userId)
+ * Looks up the user's profile to get their company_id, then delegates to the
+ * main overload. Returns { companyId, effectiveCompanyId, supportMode, supportCompanyId }.
+ * Used by simple API handlers that don't need full Dazza context.
+ */
+export async function resolveEffectiveCompany(
+  req: import('express').Request,
+  userId: string,
+): Promise<{ companyId: number | null; effectiveCompanyId: number | null; supportMode: boolean; supportCompanyId: number | null }>;
+
+/**
  * Verify that a supportCompanyId is valid for an owner to support.
  * Returns true only if the company exists. Owners can support any company.
  * Non-owners always get null (support mode disabled).
@@ -580,7 +591,27 @@ export async function resolveEffectiveCompany(
   isOwner: boolean,
   ownCompanyId: number,
   requestedSupportCompanyId: number | null | undefined,
-): Promise<{ effectiveCompanyId: number; supportMode: boolean; supportCompanyId: number | null }> {
+): Promise<{ effectiveCompanyId: number; supportMode: boolean; supportCompanyId: number | null }>;
+
+export async function resolveEffectiveCompany(
+  isOwnerOrReq: boolean | import('express').Request,
+  ownCompanyIdOrUserId: number | string,
+  requestedSupportCompanyId?: number | null,
+): Promise<{ companyId?: number | null; effectiveCompanyId: number | null; supportMode: boolean; supportCompanyId: number | null }> {
+  // Overload 1: (req, userId) — look up profile
+  if (typeof isOwnerOrReq === 'object') {
+    const userId = ownCompanyIdOrUserId as string;
+    const [profileRows] = await db.execute(
+      sql`SELECT company_id FROM profiles WHERE user_id = ${userId} LIMIT 1`
+    ) as unknown as [Array<{ company_id: number }>];
+    const companyId = profileRows?.[0]?.company_id ?? null;
+    return { companyId, effectiveCompanyId: companyId, supportMode: false, supportCompanyId: null };
+  }
+
+  // Overload 2: (isOwner, ownCompanyId, requestedSupportCompanyId)
+  const isOwner = isOwnerOrReq as boolean;
+  const ownCompanyId = ownCompanyIdOrUserId as number;
+
   if (!isOwner || !requestedSupportCompanyId) {
     return { effectiveCompanyId: ownCompanyId, supportMode: false, supportCompanyId: null };
   }
