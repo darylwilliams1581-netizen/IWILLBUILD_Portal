@@ -619,25 +619,46 @@ export function FormsPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
   const [completingId, setCompletingId] = useState<number | null>(null);
+  const [jobPickerTemplate, setJobPickerTemplate] = useState<FormTemplate | null>(null);
+  const [jobNumberInput, setJobNumberInput] = useState('');
+  const [jobPickerError, setJobPickerError] = useState('');
+  const [jobPickerLoading, setJobPickerLoading] = useState(false);
   const { isPlatformOwner } = usePermissions();
 
   async function handleComplete(templateId: number) {
-    setCompletingId(templateId);
+    // Find the template and open the job picker modal
+    const tpl = templates.find(t => t.id === templateId) ?? null;
+    setJobPickerTemplate(tpl);
+    setJobNumberInput('');
+    setJobPickerError('');
+  }
+
+  async function handleJobPickerSubmit() {
+    if (!jobPickerTemplate) return;
+    const jobNum = jobNumberInput.trim();
+    if (!jobNum || isNaN(Number(jobNum))) {
+      setJobPickerError('Please enter a valid job number.');
+      return;
+    }
+    setJobPickerLoading(true);
+    setJobPickerError('');
+    setCompletingId(jobPickerTemplate.id);
     try {
       const res = await fetch('/api/forms/start', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId }),
+        body: JSON.stringify({ templateId: jobPickerTemplate.id, jobId: Number(jobNum) }),
       });
-      const data = await res.json() as { ok?: boolean; submission?: { id: number; jobId?: number | null } };
-      if (!res.ok || !data.submission) throw new Error('Failed to start form');
-      // Open in a new tab — same pattern as job forms, keeps Studio context intact
-      const jobId = data.submission.jobId ?? 0;
+      const data = await res.json() as { ok?: boolean; submission?: { id: number; jobId?: number | null }; error?: string };
+      if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
+      const jobId = data.submission.jobId ?? Number(jobNum);
+      setJobPickerTemplate(null);
       window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener');
-    } catch {
-      alert('Could not start form. Please try again.');
+    } catch (e) {
+      setJobPickerError(e instanceof Error ? e.message : 'Could not start form. Please try again.');
     } finally {
+      setJobPickerLoading(false);
       setCompletingId(null);
     }
   }
@@ -904,6 +925,74 @@ export function FormsPage() {
             sourceType="form"
             onClose={() => setLibraryShareTarget(null)}
           />
+        )}
+
+        {/* ── Job number picker for standalone form completion ── */}
+        {jobPickerTemplate && (
+          <motion.div
+            key="job-picker-backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setJobPickerTemplate(null); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-heading font-bold text-base text-slate-900">Complete Form</h2>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">Enter the job number to link this form to.</p>
+                </div>
+                <button onClick={() => setJobPickerTemplate(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors shrink-0">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+                <FileText size={14} className="text-primary shrink-0" />
+                <span className="text-sm font-semibold text-slate-700 truncate">{jobPickerTemplate.name}</span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-600">Job Number</label>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 1042"
+                  value={jobNumberInput}
+                  onChange={e => { setJobNumberInput(e.target.value); setJobPickerError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') void handleJobPickerSubmit(); }}
+                  autoFocus
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                />
+                {jobPickerError && (
+                  <p className="text-xs text-red-600 flex items-center gap-1.5 mt-0.5">
+                    <X size={11} className="shrink-0" /> {jobPickerError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => setJobPickerTemplate(null)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void handleJobPickerSubmit()}
+                  disabled={jobPickerLoading || !jobNumberInput.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {jobPickerLoading
+                    ? <><Loader2 size={14} className="animate-spin" /> Opening…</>
+                    : <><ExternalLink size={14} /> Open Form</>
+                  }
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
