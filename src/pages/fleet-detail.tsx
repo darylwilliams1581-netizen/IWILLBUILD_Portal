@@ -628,6 +628,7 @@ export default function FleetDetailPage() {
   const [prestarts, setPrestarts] = useState<FleetPrestart[]>([]);
   const [driverSessions, setDriverSessions] = useState<DriverSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [stoppingId, setStoppingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [prestartLoading, setPrestartLoading] = useState(false);
@@ -678,12 +679,18 @@ export default function FleetDetailPage() {
   const loadDriverSessions = useCallback(async () => {
     if (!id) return;
     setSessionsLoading(true);
+    setSessionsError(null);
     try {
       const res = await fetch(`/api/fleet/${id}/driver-sessions`, { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        setSessionsError(err.error ?? `Server error ${res.status}`);
+        return;
+      }
       const data = await res.json() as { sessions?: DriverSession[] };
       setDriverSessions(data.sessions ?? []);
-    } catch {
-      // silently fail
+    } catch (e) {
+      setSessionsError(e instanceof Error ? e.message : 'Network error loading driver log');
     } finally {
       setSessionsLoading(false);
     }
@@ -1176,6 +1183,13 @@ export default function FleetDetailPage() {
                   {sessionsLoading && driverSessions.length === 0 ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                    </div>
+                  ) : sessionsError ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-6">
+                      <AlertCircle size={24} className="text-red-400" />
+                      <p className="text-sm font-semibold text-red-600">Failed to load driver log</p>
+                      <p className="text-xs text-muted-foreground">{sessionsError}</p>
+                      <button onClick={() => void loadDriverSessions()} className="mt-1 text-xs text-primary underline">Retry</button>
                     </div>
                   ) : driverSessions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-6">

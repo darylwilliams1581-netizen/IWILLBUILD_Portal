@@ -1174,6 +1174,15 @@ async function runStartupMigrations() {
     { table: 'library_items', column: 'download_count',   definition: 'INT NOT NULL DEFAULT 0' },
     // ── company_library_items: customised flag ────────────────────────────────
     { table: 'company_library_items', column: 'customised', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    // ── fleet_driver_sessions: analytics summary columns ─────────────────────
+    { table: 'fleet_driver_sessions', column: 'end_at',               definition: 'DATETIME NULL' },
+    { table: 'fleet_driver_sessions', column: 'updated_at',           definition: 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP' },
+    { table: 'fleet_driver_sessions', column: 'total_distance_km',    definition: 'DECIMAL(10,3) NULL' },
+    { table: 'fleet_driver_sessions', column: 'active_drive_seconds', definition: 'INT NULL' },
+    { table: 'fleet_driver_sessions', column: 'avg_speed_kmh',        definition: 'DECIMAL(6,2) NULL' },
+    { table: 'fleet_driver_sessions', column: 'max_speed_kmh',        definition: 'DECIMAL(6,2) NULL' },
+    { table: 'fleet_driver_sessions', column: 'collision_count',      definition: 'INT NOT NULL DEFAULT 0' },
+    { table: 'fleet_driver_sessions', column: 'summary_computed_at',  definition: 'DATETIME NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {

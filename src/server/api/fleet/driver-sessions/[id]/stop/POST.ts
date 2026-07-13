@@ -60,11 +60,19 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Session is already completed' });
     }
 
-    // Mark session completed
-    await db.execute(
-      sql`UPDATE fleet_driver_sessions SET status = 'completed', end_at = NOW(), updated_at = NOW()
-          WHERE id = ${sessionId} AND company_id = ${profile.companyId}`
-    );
+    // Mark session completed — end_at / updated_at may not exist on older DBs,
+    // so attempt the full update first and fall back to status-only.
+    try {
+      await db.execute(
+        sql`UPDATE fleet_driver_sessions SET status = 'completed', end_at = NOW(), updated_at = NOW()
+            WHERE id = ${sessionId} AND company_id = ${profile.companyId}`
+      );
+    } catch {
+      await db.execute(
+        sql`UPDATE fleet_driver_sessions SET status = 'completed'
+            WHERE id = ${sessionId} AND company_id = ${profile.companyId}`
+      );
+    }
 
     // ── Compute analytics summary from telemetry ──────────────────────────
     try {
@@ -133,16 +141,20 @@ export default async function handler(req: Request, res: Response) {
       const avgSpeed = trackSpeed && speedCount > 0 ? Math.round((speedSum / speedCount) * 10) / 10 : null;
       const maxSpeed = trackSpeed && speedCount > 0 ? Math.round(maxSpeedKmh * 10) / 10 : null;
 
-      await db.execute(sql`
-        UPDATE fleet_driver_sessions SET
-          total_distance_km    = ${distKm},
-          active_drive_seconds = ${driveSec},
-          avg_speed_kmh        = ${avgSpeed},
-          max_speed_kmh        = ${maxSpeed},
-          collision_count      = ${collisionCount},
-          summary_computed_at  = NOW()
-        WHERE id = ${sessionId} AND company_id = ${profile.companyId}
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE fleet_driver_sessions SET
+            total_distance_km    = ${distKm},
+            active_drive_seconds = ${driveSec},
+            avg_speed_kmh        = ${avgSpeed},
+            max_speed_kmh        = ${maxSpeed},
+            collision_count      = ${collisionCount},
+            summary_computed_at  = NOW()
+          WHERE id = ${sessionId} AND company_id = ${profile.companyId}
+        `);
+      } catch (colErr) {
+        console.warn('Fleet session summary UPDATE skipped (columns not yet migrated):', colErr instanceof Error ? colErr.message : colErr);
+      }
 
       return res.json({
         ok: true,
