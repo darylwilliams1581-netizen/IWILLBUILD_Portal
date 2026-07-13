@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <>
       <Helmet>
         <title>Privacy Policy — IWILLBUILD</title>
-        <meta name="description" content="How IWILLBUILD collects, uses and protects your data. Read our privacy policy." />
+        <meta name="description" content="How IWILLBUILD collects, uses and protects your data. Read our privacy policy for the fleet and construction management portal." />
         <link rel="canonical" href="https://iwillbuild.com/privacy" />
         <meta property="og:title" content="Privacy Policy — IWILLBUILD" />
         <meta property="og:description" content="How IWILLBUILD collects, uses and protects your data." />
@@ -18,9 +18,19 @@ export default function PrivacyPage() {
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': 'https://iwillbuild.com/privacy#webpage',
+          name: 'Privacy Policy — IWILLBUILD',
+          url: 'https://iwillbuild.com/privacy',
+          description: 'How IWILLBUILD collects, uses and protects your data.',
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+          about: { '@id': 'https://iwillbuild.com/#organization' },
+        })}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
         {/* ── Nav bar ── */}
         <header style={{ borderBottom: '1px solid #1e293b', padding: '0 24px' }}>
@@ -46,7 +56,7 @@ export default function PrivacyPage() {
         <div style={{ borderBottom: '1px solid #1e293b', padding: '48px 24px 40px' }}>
           <div style={{ maxWidth: 860, margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: '#1e3a5f', display: 'grid', placeItems: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e3a5f', display: 'grid', placeItems: 'center' }}>
                 <Shield size={20} color="#60a5fa" />
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Privacy Policy</span>

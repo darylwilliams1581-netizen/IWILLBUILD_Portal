@@ -139,7 +139,7 @@ const plans = [
 function PortalMockup() {
   return (
     <div suppressHydrationWarning style={{
-      background: '#0f172a',
+      backgroundColor: '#0f172a',
       borderRadius: 14,
       overflow: 'hidden',
       boxShadow: '0 32px 80px rgba(0,0,0,.55)',
@@ -148,20 +148,20 @@ function PortalMockup() {
       maxWidth: 560,
     }}>
       {/* Window chrome */}
-      <div style={{ background: '#1e293b', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
-        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-        <span style={{ flex: 1, background: '#334155', borderRadius: 4, height: 18, marginLeft: 8 }} />
+      <div style={{ backgroundColor: '#1e293b', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7 }}>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
+        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+        <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 18, marginLeft: 8 }} />
       </div>
       {/* Sidebar + content */}
       <div style={{ display: 'flex', minHeight: 340 }}>
         {/* Sidebar */}
-        <div style={{ width: 52, background: '#111827', padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 52, backgroundColor: '#111827', padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           {[LayoutDashboard, Briefcase, Truck, FileText, FileText].map((Icon, i) => (
             <div key={i} style={{
               width: 34, height: 34, borderRadius: 8,
-              background: i === 0 ? '#1263d8' : 'transparent',
+              backgroundColor: i === 0 ? '#1263d8' : 'transparent',
               display: 'grid', placeItems: 'center',
               color: i === 0 ? '#fff' : '#64748b',
             }}>
@@ -178,7 +178,7 @@ function PortalMockup() {
               <span key={t} style={{
                 fontSize: 11, fontWeight: 700, padding: '4px 10px',
                 borderRadius: 6,
-                background: i === 0 ? '#1263d8' : '#1e293b',
+                backgroundColor: i === 0 ? '#1263d8' : '#1e293b',
                 color: i === 0 ? '#fff' : '#94a3b8',
                 border: i === 0 ? 'none' : '1px solid #334155',
               }}>{t}</span>
@@ -193,7 +193,7 @@ function PortalMockup() {
               { label: 'Fleet Flags', val: '2'  },
             ].map((s) => (
               <div key={s.label} style={{
-                background: '#1e293b', borderRadius: 8, padding: '10px 12px',
+                backgroundColor: '#1e293b', borderRadius: 8, padding: '10px 12px',
                 border: '1px solid #334155',
               }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: '#f97316' }}>{s.val}</div>
@@ -207,13 +207,13 @@ function PortalMockup() {
           {homeRows.map((r) => (
             <div key={r.label} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: '#1e293b', borderRadius: 7, padding: '9px 12px',
+              backgroundColor: '#1e293b', borderRadius: 7, padding: '9px 12px',
               marginBottom: 6, border: '1px solid #334155',
             }}>
               <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{r.label}</span>
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: '3px 8px',
-                borderRadius: 20, background: `${r.color}22`, color: r.color,
+                borderRadius: 20, backgroundColor: `${r.color}22`, color: r.color,
               }}>{r.status}</span>
             </div>
           ))}
@@ -298,7 +298,7 @@ export default function HomePage() {
         about: { '@id': `${site}/#app` },
         publisher: { '@id': `${site}/#organization` },
         datePublished: '2026-06-25',
-        dateModified: '2026-07-08',
+        dateModified: '2026-07-13',
       },
     ],
   };
@@ -383,7 +383,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#f97316', borderRadius: 9, color: '#fff',
+                backgroundColor: '#f97316', borderRadius: 9, color: '#fff',
                 padding: '14px 26px', fontWeight: 800, fontSize: 15,
                 textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.4)',
               }}>
@@ -414,7 +414,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Trust bar ──────────────────────────────────────────────────────── */}
-      <div suppressHydrationWarning style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+      <div suppressHydrationWarning style={{ backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '18px 22px',
           display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
@@ -432,7 +432,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Accounting sync strip ───────────────────────────────────────────── */}
-      <div suppressHydrationWarning style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+      <div suppressHydrationWarning style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '20px 22px',
           display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
@@ -476,14 +476,14 @@ export default function HomePage() {
                 <div
                   key={f.title}
                   style={{
-                    background: '#fff', border: '1px solid #e2e8f0',
+                    backgroundColor: '#fff', border: '1px solid #e2e8f0',
                     borderRadius: 10, padding: '22px 20px',
                     boxShadow: '0 2px 8px rgba(15,23,42,.05)',
                   }}
                 >
                   <div style={{
                     width: 42, height: 42, borderRadius: 10,
-                    background: '#eff6ff', color: '#1263d8',
+                    backgroundColor: '#eff6ff', color: '#1263d8',
                     display: 'grid', placeItems: 'center', marginBottom: 14,
                   }}>
                     <Icon size={20} />
@@ -498,7 +498,7 @@ export default function HomePage() {
       </section>
 
       {/* ── How it works ───────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="how" style={{ background: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+      <section suppressHydrationWarning id="how" style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
           <div>
             <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
@@ -512,14 +512,14 @@ export default function HomePage() {
                 <div
                   key={w.n}
                   style={{
-                    background: '#f8fafc', border: '1px solid #e2e8f0',
+                    backgroundColor: '#f8fafc', border: '1px solid #e2e8f0',
                     borderRadius: 10, padding: '24px 20px',
                     position: 'relative',
                   }}
                 >
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    background: '#f97316', color: '#fff',
+                    backgroundColor: '#f97316', color: '#fff',
                     display: 'grid', placeItems: 'center',
                     fontWeight: 900, fontSize: 16, marginBottom: 14,
                   }}>{w.n}</div>
@@ -561,7 +561,7 @@ export default function HomePage() {
                   {plan.popular && (
                     <div style={{
                       position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)',
-                      background: '#f97316', color: '#fff',
+                      backgroundColor: '#f97316', color: '#fff',
                       fontSize: 11, fontWeight: 800, padding: '4px 14px',
                       borderRadius: 20, whiteSpace: 'nowrap',
                     }}>Most popular</div>
@@ -589,7 +589,7 @@ export default function HomePage() {
                     <a href={href} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '12px 16px', borderRadius: 8,
-                      border: '1.5px solid #e2e8f0', background: '#fff',
+                      border: '1.5px solid #e2e8f0', backgroundColor: '#fff',
                       color: '#374151', fontWeight: 700, fontSize: 14,
                       textDecoration: 'none',
                     }}>
@@ -600,7 +600,7 @@ export default function HomePage() {
                     <Link to={href} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '13px 16px', borderRadius: 8,
-                      background: '#f97316', color: '#fff',
+                      backgroundColor: '#f97316', color: '#fff',
                       fontWeight: 800, fontSize: 14, textDecoration: 'none',
                       boxShadow: '0 4px 14px rgba(249,115,22,.4)',
                     }}>
@@ -627,7 +627,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="why" style={{ background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+      <section suppressHydrationWarning id="why" style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '72px 22px',
           display: 'grid', gap: 48, alignItems: 'center',
@@ -651,7 +651,7 @@ export default function HomePage() {
             <div>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#f97316', borderRadius: 8, color: '#fff',
+                backgroundColor: '#f97316', borderRadius: 8, color: '#fff',
                 padding: '13px 22px', fontWeight: 800, fontSize: 14,
                 textDecoration: 'none',
               }}>
@@ -664,7 +664,7 @@ export default function HomePage() {
           {/* Feature highlights */}
           <div
             style={{
-              background: '#1e293b', borderRadius: 12, padding: 20,
+              backgroundColor: '#1e293b', borderRadius: 12, padding: 20,
               border: '1px solid #334155',
               boxShadow: '0 20px 50px rgba(0,0,0,.4)',
             }}
@@ -765,7 +765,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Final CTA ──────────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning style={{ background: '#fff', borderTop: '1px solid #e2e8f0' }}>
+      <section suppressHydrationWarning style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 22px', textAlign: 'center' }}>
           <div>
             <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0f172a' }}>
@@ -777,7 +777,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#f97316', borderRadius: 9, color: '#fff',
+                backgroundColor: '#f97316', borderRadius: 9, color: '#fff',
                 padding: '14px 28px', fontWeight: 800, fontSize: 15,
                 textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.35)',
               }}>
@@ -787,7 +787,7 @@ export default function HomePage() {
               <Link to="/login" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 border: '1.5px solid #e2e8f0', borderRadius: 9,
-                background: '#fff', color: '#374151',
+                backgroundColor: '#fff', color: '#374151',
                 padding: '14px 24px', fontWeight: 700, fontSize: 15,
                 textDecoration: 'none',
               }}>

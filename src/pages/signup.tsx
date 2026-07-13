@@ -309,10 +309,17 @@ export default function SignupPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
       <Helmet>
-        <title>Get Started — IWILLBUILD Portal</title>
-        <meta name="description" content="Create your IWILLBUILD portal account. 30-day free trial, no credit card required." />
+        <title>Get Started Free — IWILLBUILD Fleet & Construction Portal</title>
+        <meta name="description" content="Create your IWILLBUILD portal account. 30-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
         <link rel="canonical" href="https://iwillbuild.com/signup" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Get Started Free — IWILLBUILD" />
+        <meta property="og:description" content="30-day free trial. Fleet tracking, SWMS safety management, jobs, forms and files — all in one portal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/signup" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <BlueprintBg />

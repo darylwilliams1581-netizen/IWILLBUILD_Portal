@@ -9,7 +9,7 @@ export default function TermsPage() {
     <>
       <Helmet>
         <title>Terms of Use — IWILLBUILD</title>
-        <meta name="description" content="Terms of use for the IWILLBUILD construction management portal. Read before using the platform." />
+        <meta name="description" content="Terms of use for the IWILLBUILD fleet and construction management portal. Read before using the platform." />
         <link rel="canonical" href="https://iwillbuild.com/terms" />
         <meta property="og:title" content="Terms of Use — IWILLBUILD" />
         <meta property="og:description" content="Terms of use for the IWILLBUILD construction management portal." />
@@ -18,9 +18,19 @@ export default function TermsPage() {
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': 'https://iwillbuild.com/terms#webpage',
+          name: 'Terms of Use — IWILLBUILD',
+          url: 'https://iwillbuild.com/terms',
+          description: 'Terms of use for the IWILLBUILD fleet and construction management portal.',
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+          about: { '@id': 'https://iwillbuild.com/#organization' },
+        })}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
         {/* ── Nav bar ── */}
         <header style={{ borderBottom: '1px solid #1e293b', padding: '0 24px' }}>
@@ -46,7 +56,7 @@ export default function TermsPage() {
         <div style={{ borderBottom: '1px solid #1e293b', padding: '48px 24px 40px' }}>
           <div style={{ maxWidth: 860, margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: '#1e2d1a', display: 'grid', placeItems: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#1e2d1a', display: 'grid', placeItems: 'center' }}>
                 <FileText size={20} color="#4ade80" />
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Terms of Use</span>

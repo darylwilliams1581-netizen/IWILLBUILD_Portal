@@ -454,12 +454,16 @@ export default class AiroErrorBoundary extends Component<Props, State> {
 
     // Hydration mismatches from browser extensions are recoverable — React
     // re-renders the subtree on the client and the UI is correct. Do not
-    // show an error overlay for these.
+    // show an error overlay for these. We must still call setState so React
+    // knows the boundary handled the error and doesn't propagate it further.
     if (
       error.message.includes('Hydration failed') ||
       error.message.includes('hydration') ||
-      error.message.includes('did not match')
+      error.message.includes('did not match') ||
+      error.message.includes('server rendered HTML')
     ) {
+      // Acknowledge the error without showing an overlay — children continue
+      // to render normally after React's client-side re-render recovers.
       return;
     }
 

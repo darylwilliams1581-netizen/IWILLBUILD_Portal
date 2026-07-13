@@ -9,7 +9,7 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer style={{ background: '#0f172a', color: '#94a3b8', fontFamily: "'Inter', Arial, sans-serif" }}>
+    <footer style={{ backgroundColor: '#0f172a', color: '#94a3b8', fontFamily: "'Inter', Arial, sans-serif" }}>
       {/* ── Main columns ── */}
       <div
         style={{
@@ -124,7 +124,7 @@ export default function Footer() {
                 style={{
                   display: 'inline-block',
                   padding: '9px 18px', borderRadius: 8,
-                  background: '#f97316', color: '#fff',
+                  backgroundColor: '#f97316', color: '#fff',
                   fontWeight: 700, fontSize: 13, textDecoration: 'none',
                 }}
                 className="hover:opacity-90"

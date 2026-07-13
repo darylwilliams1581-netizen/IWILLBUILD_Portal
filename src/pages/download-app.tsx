@@ -29,10 +29,18 @@ export default function DownloadAppPage() {
   return (
     <>
       <Helmet>
-        <title>Download IWILLBUILD App</title>
-        <meta name="description" content="Download the IWILLBUILD mobile app for Android. Live GPS tracking, job management, and fleet tools in your pocket." />
+        <title>Download the IWILLBUILD Driver App — Fleet Management on Mobile</title>
+        <meta name="description" content="Download the IWILLBUILD driver app for Android. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket." />
         <link rel="canonical" href="https://iwillbuild.com/download-app" />
-        <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Download the IWILLBUILD Driver App" />
+        <meta property="og:description" content="Live GPS tracking, job management, SWMS safety forms, and fleet tools for drivers — available on Android." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/download-app" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Download the IWILLBUILD Driver App" />
+        <meta name="twitter:description" content="Live GPS tracking, job management, SWMS safety forms, and fleet tools for drivers." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       <main className="min-h-screen bg-gray-950 text-white">

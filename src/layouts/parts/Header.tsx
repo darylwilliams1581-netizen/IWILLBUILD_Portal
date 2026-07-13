@@ -44,7 +44,7 @@ export default function Header() {
       suppressHydrationWarning
       className="sticky top-0 z-50"
       style={{
-        background: 'rgba(255,255,255,0.97)',
+        backgroundColor: 'rgba(255,255,255,0.97)',
         borderBottom: '1px solid #e2e8f0',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',

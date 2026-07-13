@@ -37,7 +37,9 @@ export default function LanguageSwitcher({
       document.documentElement.dir = lang.dir;
     }
 
-    // Build pattern from supported codes to handle all formats (en, en-US, fil, etc.)
+    // Build pattern from the hardcoded supportedLanguages constant — not user input,
+    // so ReDoS is not possible here. The codes are short alpha strings (e.g. "en", "fil").
+    // nosemgrep: javascript.lang.security.audit.non-literal-regexp.non-literal-regexp
     const langPattern = supportedLanguages.map((l) => l.code).join('|');
     const regex = new RegExp(`^/(${langPattern})(/|$)`);
     const newPath = location.pathname.replace(regex, `/${languageCode}$2`);
