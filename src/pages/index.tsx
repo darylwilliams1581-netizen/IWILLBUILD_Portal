@@ -333,18 +333,18 @@ export default function HomePage() {
       <main suppressHydrationWarning>
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="top" style={{
+      <section id="top" style={{
         background: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 55%, #0f2d4a 100%)',
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Subtle grid texture */}
-        <div suppressHydrationWarning style={{
+        <div style={{
           position: 'absolute', inset: 0, opacity: 0.06,
           backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
           backgroundSize: '48px 48px',
         }} />
 
-        <div suppressHydrationWarning style={{
+        <div style={{
           position: 'relative',
           maxWidth: 1180, margin: '0 auto',
           padding: '80px 22px 72px',
@@ -353,7 +353,7 @@ export default function HomePage() {
           alignItems: 'center',
         }} className="hero-grid">
           {/* Left copy */}
-          <div suppressHydrationWarning>
+          <div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
@@ -414,7 +414,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Trust bar ──────────────────────────────────────────────────────── */}
-      <div suppressHydrationWarning style={{ backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+      <div style={{ backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '18px 22px',
           display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
@@ -432,7 +432,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Accounting sync strip ───────────────────────────────────────────── */}
-      <div suppressHydrationWarning style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+      <div style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '20px 22px',
           display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
@@ -461,7 +461,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+      <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
         <div>
           <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
             Construction job management software built for the field
@@ -498,7 +498,7 @@ export default function HomePage() {
       </section>
 
       {/* ── How it works ───────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="how" style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+      <section id="how" style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
           <div>
             <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
@@ -533,7 +533,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Pricing ────────────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="pricing" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
+      <section id="pricing" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
         <div>
           <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
             Simple, honest pricing
@@ -627,7 +627,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning id="why" style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b' }}>
+      <section id="why" style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b' }}>
         <div style={{
           maxWidth: 1180, margin: '0 auto', padding: '72px 22px',
           display: 'grid', gap: 48, alignItems: 'center',
@@ -703,7 +703,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Site Escape Arcade — compact icon link ──────────────────────────── */}
-      <section suppressHydrationWarning id="arcade" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 60%, #0f172a 100%)', position: 'relative', overflow: 'hidden' }}>
+      <section id="arcade" style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1a2744 60%, #0f172a 100%)', position: 'relative', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.05,
           backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
@@ -765,7 +765,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Final CTA ──────────────────────────────────────────────────────── */}
-      <section suppressHydrationWarning style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0' }}>
+      <section style={{ backgroundColor: '#fff', borderTop: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 22px', textAlign: 'center' }}>
           <div>
             <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.04em', margin: '0 0 16px', color: '#0f172a' }}>

@@ -15,33 +15,6 @@ import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interce
 // Install session expiry header interceptor before any fetch calls are made
 installSessionFetchInterceptor();
 
-// ── Hydration-mismatch console suppression ────────────────────────────────────
-// Browser extensions (Grammarly, Dark Reader, LastPass, etc.) inject DOM nodes
-// and style attributes before React hydrates, causing spurious hydration
-// mismatch warnings. React logs these via console.error before calling
-// onRecoverableError. Suppress them here so they don't surface in the dev
-// error overlay or monitoring. Only hydration-specific messages are filtered.
-if (typeof window !== 'undefined') {
-  const _origError = console.error.bind(console);
-  console.error = (...args: unknown[]) => {
-    const msg = typeof args[0] === 'string' ? args[0] : '';
-    if (
-      msg.includes('Hydration failed') ||
-      msg.includes('hydration') ||
-      msg.includes('did not match') ||
-      msg.includes('server rendered HTML') ||
-      msg.includes('In HTML, %s cannot be a child') ||
-      msg.includes('Warning: An update to') ||
-      (msg.includes('%s') && typeof args[1] === 'string' && (
-        (args[1] as string).includes('hydrat') ||
-        (args[1] as string).includes('did not match')
-      ))
-    ) {
-      return; // swallow hydration noise
-    }
-    _origError(...args);
-  };
-}
 
 if (import.meta.env.MODE === 'development') {
   const meta = document.createElement('meta');

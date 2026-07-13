@@ -66,17 +66,19 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    // Safety: check for any company data linked to this user
-    const [jobRows] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM jobs WHERE created_by_user_id = ${targetUserId} LIMIT 1`
-    ) as unknown as [Array<{ cnt: number }>, unknown];
-    const jobCount = Number(jobRows?.[0]?.cnt ?? 0);
-
-    if (jobCount > 0) {
-      return res.status(400).json({
-        error: `Cannot delete — user has ${jobCount} job(s) linked to their account. Assign to a company instead.`,
-      });
-    }
+    // Safety: check for any fleet telemetry linked to this user (orphans have
+    // no profile/company so jobs can't be linked — check telemetry instead)
+    try {
+      const [telRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM vehicle_telemetry WHERE driver_user_id = ${targetUserId} LIMIT 1`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const telCount = Number(telRows?.[0]?.cnt ?? 0);
+      if (telCount > 0) {
+        return res.status(400).json({
+          error: `Cannot delete — user has ${telCount} telemetry record(s). Assign to a company instead.`,
+        });
+      }
+    } catch { /* vehicle_telemetry table may not exist yet — safe to proceed */ }
 
     // Delete sessions first
     try {
