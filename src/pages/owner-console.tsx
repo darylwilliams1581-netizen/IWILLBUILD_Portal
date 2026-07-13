@@ -3,11 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   RefreshCw, Shield, ChevronRight, Activity, Loader2,
-  ShieldCheck, FileText, ClipboardList,
-  CheckCircle2, XCircle, ChevronDown, ExternalLink,
-  ShieldAlert, X, Bot, Package,
+  ShieldCheck, FileText, ClipboardList,  CheckCircle2, XCircle, ChevronDown, ExternalLink,
+  ShieldAlert, X, Bot,
   Mail, BarChart2, StickyNote, Receipt,
-  Send, Ban, RotateCcw, Server, AlertCircle, BookMarked,
+  Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -21,8 +20,7 @@ import OwnerUsageTab from '@/components/owner-console/OwnerUsageTab';
 import SystemStorageTab from '@/components/owner-console/SystemStorageTab';
 import CancellationFeedbackTab from '@/components/owner-console/CancellationFeedbackTab';
 import SystemAITab from '@/components/owner-console/SystemAITab';
-import StarterPackTab from '@/components/owner-console/StarterPackTab';
-import FormTemplatesTab from '@/components/owner-console/FormTemplatesTab';
+
 import ManualVerifyModal from '@/components/ManualVerifyModal';
 import UserActionModal from '@/components/owner-console/UserActionModal';
 import DeveloperAuditLogTab from '@/components/owner-console/DeveloperAuditLogTab';
@@ -32,7 +30,7 @@ import PlatformEmailTab from '@/components/owner-console/PlatformEmailTab';
 import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
-import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
+
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
@@ -352,7 +350,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'starter-pack' | 'form-templates' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'library' | 'health-check' | 'swms-seed'>(
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed'>(
     (searchParams.get('tab') as 'support-setup' | 'health-check' | null) === 'support-setup' ? 'support-setup'
     : (searchParams.get('tab') as 'health-check' | null) === 'health-check' ? 'health-check'
     : 'overview'
@@ -689,18 +687,6 @@ export default function OwnerConsolePage() {
               System AI
             </span>
           </Tab>
-          <Tab active={tab === 'starter-pack'} onClick={() => { setTab('starter-pack'); setSearchParams({}); }}>
-            <span className="flex items-center gap-1.5">
-              <Package size={12} />
-              Starter Pack
-            </span>
-          </Tab>
-          <Tab active={tab === 'form-templates'} onClick={() => { setTab('form-templates'); setSearchParams({}); }}>
-            <span className="flex items-center gap-1.5">
-              <FileText size={12} />
-              Form Templates
-            </span>
-          </Tab>
           <Tab active={tab === 'audit-log'} onClick={() => { setTab('audit-log'); setSearchParams({}); }}>
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={12} />
@@ -741,18 +727,6 @@ export default function OwnerConsolePage() {
             <span className="flex items-center gap-1.5">
               <Receipt size={12} />
               Accounting Tests
-            </span>
-          </Tab>
-          <Tab active={tab === 'library'} onClick={() => { setTab('library'); setSearchParams({}); }}>
-            <span className="flex items-center gap-1.5">
-              <BookMarked size={12} />
-              Library Manager
-            </span>
-          </Tab>
-          <Tab active={tab === 'swms-seed'} onClick={() => { setTab('swms-seed'); setSearchParams({}); }}>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck size={12} />
-              SWMS Masters
             </span>
           </Tab>
           <Tab active={tab === 'health-check'} onClick={() => { setTab('health-check'); setSearchParams({ tab: 'health-check' }); }}>
@@ -915,14 +889,6 @@ export default function OwnerConsolePage() {
                 <SystemAITab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
               )}
 
-              {/* ── Starter Pack ── */}
-              {tab === 'starter-pack' && (
-                <StarterPackTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
-              )}
-              {tab === 'form-templates' && (
-                <FormTemplatesTab companies={companies.map((c) => ({ id: c.id, name: c.name, totalUsers: c.totalUsers }))} />
-              )}
-
               {/* ── Developer Audit Log ── */}
               {tab === 'audit-log' && <DeveloperAuditLogTab />}
 
@@ -942,8 +908,6 @@ export default function OwnerConsolePage() {
               {tab === 'support-notes' && <SupportNotesTab />}
               {tab === 'accounting-smoke' && <AccountingSmokeTestTab />}
 
-              {/* ── Library Manager ── */}
-              {tab === 'library' && <LibraryManagerTab />}
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
 
               {/* ── Health Check (Annette) ── */}
