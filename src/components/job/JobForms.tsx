@@ -13,6 +13,7 @@ import {
   RotateCcw,
   X,
   ExternalLink,
+  PlayCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SkipMetricsPanel from './SkipMetricsPanel';
