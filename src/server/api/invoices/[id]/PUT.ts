@@ -30,12 +30,20 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ id: number; status: string; locked: number }>, unknown];
     if (!existing?.length) return res.status(404).json({ error: 'Invoice not found' });
 
-    // Immutability guard — sent/paid/void invoices are locked for accounting compliance
-    const lockedStatuses = ['sent', 'paid', 'partially_paid', 'overdue', 'void'];
-    if (existing[0].locked || lockedStatuses.includes(existing[0].status)) {
+    // Immutability guard — paid/void invoices are final; sent can only be recalled via /unlock
+    const finalStatuses = ['paid', 'partially_paid', 'overdue', 'void'];
+    if (existing[0].locked || finalStatuses.includes(existing[0].status)) {
       return res.status(423).json({
-        error: 'This invoice is locked and cannot be edited. It has already been sent or paid. To correct an error, void this invoice and create a new one.',
+        error: 'This invoice is locked and cannot be edited. It has already been paid or voided.',
         locked: true,
+      });
+    }
+    // Sent invoices can only be edited via recall (PATCH /unlock) first
+    if (existing[0].status === 'sent') {
+      return res.status(423).json({
+        error: 'This invoice has been sent. Recall it to draft before making changes.',
+        locked: true,
+        recall_required: true,
       });
     }
 
@@ -75,6 +83,9 @@ export default async function handler(req: Request, res: Response) {
     if (amountPaid > 0 && amountPaid >= total) finalStatus = 'paid';
     else if (amountPaid > 0 && amountPaid < total) finalStatus = 'partially_paid';
 
+    // Record sent_at when transitioning to sent for the first time
+    const isBeingSent = finalStatus === 'sent' && existing[0].status !== 'sent';
+
     await db.execute(sql`
       UPDATE invoices SET
         job_id = ${job_id ?? null},
@@ -90,7 +101,8 @@ export default async function handler(req: Request, res: Response) {
         amount_paid = ${amountPaid},
         balance_due = ${balanceDue},
         notes = ${notes?.trim() ?? null},
-        terms = ${terms?.trim() ?? null}
+        terms = ${terms?.trim() ?? null},
+        sent_at = CASE WHEN ${isBeingSent ? 1 : 0} = 1 THEN NOW() ELSE sent_at END
       WHERE id = ${id} AND company_id = ${profile.companyId}
     `);
 

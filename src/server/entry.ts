@@ -248,6 +248,7 @@ import estimates_id_put_168 from "./api/estimates/[id]/PUT";
 import estimates_id_export_csv_get_169 from "./api/estimates/[id]/export-csv/GET";
 import estimates_id_export_pdf_get_170 from "./api/estimates/[id]/export-pdf/GET";
 import estimates_id_import_csv_post_171 from "./api/estimates/[id]/import-csv/POST";
+import estimates_id_convert_to_invoice_post from "./api/estimates/[id]/convert-to-invoice/POST";
 import external_form_token_get_172 from "./api/external/form/[token]/GET";
 import external_form_token_post_173 from "./api/external/form/[token]/POST";
 import files_get_174 from "./api/files/GET";
@@ -332,6 +333,7 @@ import invoices_id_export_pdf_get_252 from "./api/invoices/[id]/export-pdf/GET";
 import invoices_id_mark_sent_post_253 from "./api/invoices/[id]/mark-sent/POST";
 import invoices_id_record_payment_post_254 from "./api/invoices/[id]/record-payment/POST";
 import invoices_id_void_post_255 from "./api/invoices/[id]/void/POST";
+import invoices_id_unlock_patch from "./api/invoices/[id]/unlock/PATCH";
 import job_forms_id_delete_256 from "./api/job-forms/[id]/DELETE";
 import job_forms_id_get_257 from "./api/job-forms/[id]/GET";
 import job_forms_id_put_258 from "./api/job-forms/[id]/PUT";
@@ -1106,10 +1108,16 @@ async function runStartupMigrations() {
     // ── Fleet assets: odometer tracking ──────────────────────────────────────
     { table: 'fleet_assets', column: 'current_odometer_km', definition: 'INT NULL' },
     // ── Invoice immutability lock ─────────────────────────────────────────────
-    { table: 'invoices', column: 'locked',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
-    { table: 'invoices', column: 'locked_at',  definition: 'DATETIME NULL' },
-    { table: 'invoices', column: 'locked_by',  definition: 'VARCHAR(255) NULL' },
-    { table: 'invoices', column: 'pdf_url',    definition: 'VARCHAR(500) NULL' },
+    { table: 'invoices', column: 'locked',              definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'invoices', column: 'locked_at',           definition: 'DATETIME NULL' },
+    { table: 'invoices', column: 'locked_by',           definition: 'VARCHAR(255) NULL' },
+    { table: 'invoices', column: 'pdf_url',             definition: 'VARCHAR(500) NULL' },
+    // ── Estimate → Invoice workflow ───────────────────────────────────────────
+    { table: 'invoices',  column: 'source_estimate_id', definition: 'INT NULL' },
+    { table: 'invoices',  column: 'sent_at',            definition: 'DATETIME NULL' },
+    { table: 'estimates', column: 'locked',             definition: "TINYINT(1) NOT NULL DEFAULT 0" },
+    { table: 'estimates', column: 'locked_at',          definition: 'DATETIME NULL' },
+    { table: 'estimates', column: 'locked_invoice_id',  definition: 'INT NULL' },
     // ── Accounting provider columns (QBO + MYOB) ─────────────────────────────
     { table: 'invoices', column: 'qbo_invoice_id',      definition: 'VARCHAR(255) NULL' },
     { table: 'invoices', column: 'qbo_sync_status',     definition: "VARCHAR(30) NULL DEFAULT 'not_synced'" },
@@ -2028,6 +2036,7 @@ app.put("/api/estimates/:id", estimates_id_put_168);
 app.get("/api/estimates/:id/export-csv", estimates_id_export_csv_get_169);
 app.get("/api/estimates/:id/export-pdf", estimates_id_export_pdf_get_170);
 app.post("/api/estimates/:id/import-csv", estimates_id_import_csv_post_171);
+app.post("/api/estimates/:id/convert-to-invoice", estimates_id_convert_to_invoice_post);
 app.get("/api/external/form/:token", external_form_token_get_172);
 app.post("/api/external/form/:token", external_form_token_post_173);
 app.get("/api/files", files_get_174);
@@ -2113,6 +2122,7 @@ app.get("/api/invoices/:id/export-pdf", invoices_id_export_pdf_get_252);
 app.post("/api/invoices/:id/mark-sent", invoices_id_mark_sent_post_253);
 app.post("/api/invoices/:id/record-payment", invoices_id_record_payment_post_254);
 app.post("/api/invoices/:id/void", invoices_id_void_post_255);
+app.patch("/api/invoices/:id/unlock", invoices_id_unlock_patch);
 app.delete("/api/job-forms/:id", job_forms_id_delete_256);
 app.get("/api/job-forms/:id", job_forms_id_get_257);
 app.put("/api/job-forms/:id", job_forms_id_put_258);

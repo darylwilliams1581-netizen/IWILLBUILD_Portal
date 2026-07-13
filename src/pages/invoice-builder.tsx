@@ -6,6 +6,7 @@ import {
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
   ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
+  RotateCcw, Lock,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
@@ -485,6 +486,35 @@ export default function InvoiceBuilderPage() {
     finally { setSaving(false); }
   }
 
+  async function handleRecall() {
+    if (!invoice) return;
+    if (!confirm('Recall this invoice to draft? This will also unlock the source estimate so it can be adjusted and re-converted.')) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/unlock`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+      const data = await res.json() as { invoice?: Record<string, unknown>; estimate_unlocked?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to recall invoice');
+      // Reload invoice
+      const refreshed = await fetchInvoice(invoice.id);
+      setInvoice(refreshed);
+      setStatus(refreshed.status);
+      setLines((refreshed.lines ?? []).map((l: InvoiceLine, i: number) => ({
+        _key: `${Date.now()}-${i}`,
+        description: l.description ?? '',
+        quantity: String(l.quantity ?? '1'),
+        unit: String(l.unit ?? ''),
+        rate: String(l.rate ?? '0'),
+        amount: parseFloat(String(l.amount ?? '0')),
+      })));
+      setDirty(false);
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed to recall'); }
+    finally { setSaving(false); }
+  }
+
   async function handleDelete() {
     if (!invoice) return;
     if (!confirm('Permanently delete this invoice? This cannot be undone.')) return;
@@ -517,7 +547,10 @@ export default function InvoiceBuilderPage() {
   const s = STATUS_COLORS[status] ?? STATUS_COLORS.draft;
   const isVoid = status === 'void';
   const isPaid = status === 'paid';
-  const canEdit = !isVoid;
+  const isSent = status === 'sent';
+  const isDraft = status === 'draft';
+  const canEdit = !isVoid && !isSent;
+  const sourceEstimateId = (invoice as (typeof invoice & { source_estimate_id?: number }) | null)?.source_estimate_id;
 
   const inp = 'w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white disabled:bg-slate-50 disabled:text-muted-foreground';
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5';
@@ -569,7 +602,29 @@ export default function InvoiceBuilderPage() {
 
         {!loading && !error && (
           <div className="flex flex-col gap-5 max-w-4xl">
-            {/* Header card */}
+
+            {/* Sent banner */}
+            {!isNew && isSent && (
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                <Lock size={15} className="text-blue-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-blue-800">Invoice sent — locked for editing</p>
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    {(invoice as (typeof invoice & { sent_at?: string }) | null)?.sent_at
+                      ? `Sent on ${new Date((invoice as (typeof invoice & { sent_at?: string }))!.sent_at!).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                      : 'Sent to client'}
+                    {sourceEstimateId ? ' · Linked to estimate' : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRecall}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <RotateCcw size={12} />Recall to Draft
+                </button>
+              </div>
+            )}
             <div className="bg-white border border-border rounded-xl p-5">
               <div className="flex items-start justify-between gap-3 mb-5">
                 <div className="flex items-center gap-3">
@@ -633,7 +688,18 @@ export default function InvoiceBuilderPage() {
                   )}
                   {!isNew && canEdit && status === 'draft' && (
                     <button onClick={handleMarkSent} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 border border-blue-200 bg-blue-50 rounded-lg text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50">
-                      <Send size={13} />Mark Sent
+                      <Send size={13} />Send Invoice
+                    </button>
+                  )}
+                  {/* Recall button — only on sent invoices */}
+                  {!isNew && isSent && (
+                    <button
+                      onClick={handleRecall}
+                      disabled={saving}
+                      title="Recall to draft — unlocks source estimate for adjustment"
+                      className="flex items-center gap-1.5 px-3 py-2 border border-amber-200 bg-amber-50 rounded-lg text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw size={13} />Recall to Draft
                     </button>
                   )}
                   {!isNew && canEdit && !isPaid && !isVoid && (

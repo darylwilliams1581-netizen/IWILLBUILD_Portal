@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, Loader2, AlertCircle, Copy, Trash2, ChevronRight,
-  ChevronDown, Check, Lock, ExternalLink, Mail, Share2,
+  ChevronDown, Check, Lock, ExternalLink, Mail, Share2, Receipt, ArrowRight,
 } from 'lucide-react';
 import {
   fetchEstimates, createEstimate, deleteEstimate, patchEstimateStatus,
@@ -19,12 +19,18 @@ interface Props {
 // Statuses a non-admin can set (cannot set Approved)
 const NON_ADMIN_STATUSES = ESTIMATE_STATUSES.filter((s) => s !== 'Approved');
 
+// Extend Estimate type with locked fields returned by the API
+interface EstimateWithLock extends Estimate {
+  locked?: number | boolean;
+  locked_invoice_id?: number | null;
+}
+
 export default function JobEstimates({ jobId }: Props) {
   const navigate = useNavigate();
   const { isAdmin, isOwner } = usePermissions();
   const canApprove = isAdmin || isOwner;
 
-  const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [estimates, setEstimates] = useState<EstimateWithLock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -35,6 +41,7 @@ export default function JobEstimates({ jobId }: Props) {
   const [statusOpenId, setStatusOpenId] = useState<number | null>(null);
   const [statusSaving, setStatusSaving] = useState<number | null>(null);
   const [shareEst, setShareEst] = useState<Estimate | null>(null);
+  const [converting, setConverting] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [jobId]);
@@ -132,6 +139,36 @@ export default function JobEstimates({ jobId }: Props) {
       setError('Failed to update status.');
     } finally {
       setStatusSaving(null);
+    }
+  }
+
+  async function handleConvertToInvoice(est: EstimateWithLock) {
+    // If already locked, just navigate to the existing invoice
+    if (est.locked && est.locked_invoice_id) {
+      navigate(`/invoices/${est.locked_invoice_id}`);
+      return;
+    }
+    setConverting(est.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/estimates/${est.id}/convert-to-invoice`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json() as { invoice_id?: number; invoice_number?: string; error?: string };
+      if (!res.ok) {
+        if (res.status === 409 && data.invoice_id) {
+          navigate(`/invoices/${data.invoice_id}`);
+          return;
+        }
+        throw new Error(data.error ?? 'Failed to convert');
+      }
+      await load();
+      navigate(`/invoices/${data.invoice_id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to convert estimate to invoice.');
+    } finally {
+      setConverting(null);
     }
   }
 
@@ -233,19 +270,36 @@ export default function JobEstimates({ jobId }: Props) {
         </div>
       )}
 
-      {/* Estimate list */}
       {estimates.length > 0 && (
         <div className="flex flex-col gap-2" ref={dropdownRef}>
           {estimates.map((est) => {
             const style = getEstimateStatusStyle(est.status);
             const isApproved = est.status === 'Approved';
             const isSavingThis = statusSaving === est.id;
+            const isLocked = !!(est.locked);
+            const isConverting = converting === est.id;
 
             return (
               <div
                 key={est.id}
-                className="bg-white rounded-xl border border-border hover:border-primary/30 hover:shadow-sm transition-all group"
+                className={`bg-white rounded-xl border transition-all group ${isLocked ? 'border-amber-200 bg-amber-50/30' : 'border-border hover:border-primary/30 hover:shadow-sm'}`}
               >
+                {/* Locked banner */}
+                {isLocked && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-amber-200 bg-amber-50 rounded-t-xl">
+                    <Lock size={12} className="text-amber-600 shrink-0" />
+                    <span className="text-xs font-semibold text-amber-700">Locked — converted to invoice</span>
+                    {est.locked_invoice_id && (
+                      <button
+                        onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
+                        className="ml-auto flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors"
+                      >
+                        View Invoice <ArrowRight size={11} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 px-4 py-3">
 
                   {/* Click area → open editor */}
@@ -253,8 +307,8 @@ export default function JobEstimates({ jobId }: Props) {
                     onClick={() => navigate(`/estimates/${est.id}`)}
                     className="flex-1 flex items-center gap-3 min-w-0 text-left"
                   >
-                    <div className="p-2 rounded-lg bg-muted shrink-0">
-                      <FileText size={15} className="text-muted-foreground" />
+                    <div className={`p-2 rounded-lg shrink-0 ${isLocked ? 'bg-amber-100' : 'bg-muted'}`}>
+                      <FileText size={15} className={isLocked ? 'text-amber-600' : 'text-muted-foreground'} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground truncate">{est.title}</p>
@@ -273,109 +327,125 @@ export default function JobEstimates({ jobId }: Props) {
                     <ChevronRight size={14} className="text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
-                  {/* Status dropdown */}
-                  <div className="relative shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setStatusOpenId(statusOpenId === est.id ? null : est.id);
-                      }}
-                      disabled={isSavingThis}
-                      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${style.bg} ${style.color} hover:opacity-80`}
-                      title={isApproved && !canApprove ? 'Only admins can change Approved status' : 'Change status'}
-                    >
-                      {isSavingThis
-                        ? <Loader2 size={10} className="animate-spin" />
-                        : <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                      }
-                      {est.status}
-                      {isApproved && !canApprove
-                        ? <Lock size={9} className="ml-0.5 opacity-60" />
-                        : <ChevronDown size={10} />
-                      }
-                    </button>
+                  {/* Status dropdown — hidden when locked */}
+                  {!isLocked && (
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStatusOpenId(statusOpenId === est.id ? null : est.id);
+                        }}
+                        disabled={isSavingThis}
+                        className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-full border transition-colors ${style.bg} ${style.color} hover:opacity-80`}
+                        title={isApproved && !canApprove ? 'Only admins can change Approved status' : 'Change status'}
+                      >
+                        {isSavingThis
+                          ? <Loader2 size={10} className="animate-spin" />
+                          : <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                        }
+                        {est.status}
+                        {isApproved && !canApprove
+                          ? <Lock size={9} className="ml-0.5 opacity-60" />
+                          : <ChevronDown size={10} />
+                        }
+                      </button>
 
-                    {statusOpenId === est.id && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setStatusOpenId(null)} />
-                        <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
-                          {availableStatuses.map((s) => {
-                            const st = getEstimateStatusStyle(s);
-                            const isLocked = s === 'Approved' && !canApprove;
-                            return (
-                              <button
-                                key={s}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isLocked) void handleStatusChange(est, s);
-                                }}
-                                disabled={isLocked}
-                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors
-                                  ${isLocked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted'}
-                                  ${est.status === s ? 'font-bold' : ''}`}
-                              >
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-                                <span className="flex-1">{s}</span>
-                                {isLocked && <Lock size={10} className="text-muted-foreground" />}
-                                {est.status === s && !isLocked && <Check size={12} className="text-primary" />}
-                              </button>
-                            );
-                          })}
-                          {!canApprove && (
-                            <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border mt-1">
-                              Admin approval required for Approved status
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      {statusOpenId === est.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setStatusOpenId(null)} />
+                          <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-20 py-1 min-w-[180px]">
+                            {availableStatuses.map((s) => {
+                              const st = getEstimateStatusStyle(s);
+                              const isLockedStatus = s === 'Approved' && !canApprove;
+                              return (
+                                <button
+                                  key={s}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isLockedStatus) void handleStatusChange(est, s);
+                                  }}
+                                  disabled={isLockedStatus}
+                                  className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors
+                                    ${isLockedStatus ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted'}
+                                    ${est.status === s ? 'font-bold' : ''}`}
+                                >
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                  <span className="flex-1">{s}</span>
+                                  {isLockedStatus && <Lock size={10} className="text-muted-foreground" />}
+                                  {est.status === s && !isLockedStatus && <Check size={12} className="text-primary" />}
+                                </button>
+                              );
+                            })}
+                            {!canApprove && (
+                              <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border mt-1">
+                                Admin approval required for Approved status
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  {/* Convert to Invoice button — shown when Approved and not yet locked */}
+                  {!isLocked && isApproved && (
                     <button
-                      onClick={() => handleSend(est)}
-                      title="Send via email"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      onClick={() => void handleConvertToInvoice(est)}
+                      disabled={isConverting}
+                      title="Convert to Invoice"
+                      className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60 shrink-0"
                     >
-                      <Mail size={14} />
+                      {isConverting ? <Loader2 size={12} className="animate-spin" /> : <Receipt size={12} />}
+                      Invoice
                     </button>
-                    <button
-                      onClick={() => setShareEst(est)}
-                      title="Share link"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
-                    >
-                      <Share2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
-                      title="Open in new tab"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
-                    >
-                      <ExternalLink size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(est)}
-                      title="Duplicate"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      onClick={() => setDeleteId(est.id)}
-                      title="Delete"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  )}
+
+                  {/* Actions — hidden when locked */}
+                  {!isLocked && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleSend(est)}
+                        title="Send via email"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      >
+                        <Mail size={14} />
+                      </button>
+                      <button
+                        onClick={() => setShareEst(est)}
+                        title="Share link"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                      >
+                        <Share2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => window.open(`/view/estimate/${est.id}`, '_blank', 'noopener,noreferrer')}
+                        title="Open in new tab"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                      >
+                        <ExternalLink size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDuplicate(est)}
+                        title="Duplicate"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Copy size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(est.id)}
+                        title="Delete"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
       {/* Delete confirm */}
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">

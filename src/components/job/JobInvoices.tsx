@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Receipt, Plus, Loader2, AlertCircle, ChevronRight,
   FileText, Send, Clock, CheckCircle2, AlertTriangle, XCircle,
-  DollarSign, Copy, ExternalLink,
+  DollarSign, Lock,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import {
@@ -35,8 +35,6 @@ export default function JobInvoices({ jobId, job }: Props) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [estimates, setEstimates] = useState<Array<{ id: number; title: string; status: string }>>([]);
-  const [showEstimatePicker, setShowEstimatePicker] = useState(false);
 
   const load = useCallback(() => {
     if (!canInvoices) { setLoading(false); return; }
@@ -48,19 +46,6 @@ export default function JobInvoices({ jobId, job }: Props) {
   }, [jobId, canInvoices]);
 
   useEffect(() => { if (!permLoading) load(); }, [permLoading, load]);
-
-  // Load approved estimates for "create from estimate"
-  useEffect(() => {
-    fetch(`/api/jobs/${jobId}/estimates`, { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        const approved = (d.estimates ?? []).filter((e: { status: string }) =>
-          ['Approved', 'Accepted', 'Sent'].includes(e.status)
-        );
-        setEstimates(approved);
-      })
-      .catch(() => {});
-  }, [jobId]);
 
   // Summary
   const totalInvoiced = invoices.reduce((s, i) => s + parseFloat(i.total ?? '0'), 0);
@@ -86,14 +71,6 @@ export default function JobInvoices({ jobId, job }: Props) {
         <div className="flex items-center justify-between gap-3 mb-4">
           <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Invoices</h2>
           <div className="flex items-center gap-2">
-            {estimates.length > 0 && (
-              <button
-                onClick={() => setShowEstimatePicker((v) => !v)}
-                className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <Copy size={12} />From Estimate
-              </button>
-            )}
             <button
               onClick={() => navigate(`/invoices/new?jobId=${jobId}`)}
               className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors"
@@ -103,23 +80,13 @@ export default function JobInvoices({ jobId, job }: Props) {
           </div>
         </div>
 
-        {/* Estimate picker */}
-        {showEstimatePicker && estimates.length > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs font-bold text-blue-700 mb-2">Select an approved estimate to create invoice from:</p>
-            <div className="flex flex-col gap-1.5">
-              {estimates.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => { setShowEstimatePicker(false); navigate(`/invoices/new?jobId=${jobId}&fromEstimate=${e.id}`); }}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-left hover:bg-blue-50 transition-colors"
-                >
-                  <FileText size={13} className="text-blue-600 shrink-0" />
-                  <span className="font-semibold text-foreground">{e.title}</span>
-                  <span className="ml-auto text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{e.status}</span>
-                </button>
-              ))}
-            </div>
+        {/* Hint — convert from estimate */}
+        {invoices.length === 0 && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3">
+            <FileText size={13} className="text-blue-600 shrink-0" />
+            <p className="text-xs text-blue-700">
+              To convert an approved estimate to an invoice, go to the <strong>Estimates</strong> tab and tap <strong>Invoice</strong> on any approved estimate.
+            </p>
           </div>
         )}
 
@@ -189,6 +156,7 @@ export default function JobInvoices({ jobId, job }: Props) {
           {invoices.map((inv) => {
             const s = STATUS_COLORS[inv.status as InvoiceStatus] ?? STATUS_COLORS.draft;
             const StatusIcon = STATUS_ICONS[inv.status] ?? FileText;
+            const fromEstimate = !!(inv as Invoice & { source_estimate_id?: number }).source_estimate_id;
             return (
               <Link
                 key={inv.id}
@@ -199,12 +167,17 @@ export default function JobInvoices({ jobId, job }: Props) {
                   <StatusIcon size={14} className={s.text} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="text-xs font-mono text-muted-foreground">{inv.invoice_number}</span>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                       {STATUS_LABELS[inv.status as InvoiceStatus] ?? inv.status}
                     </span>
+                    {fromEstimate && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                        <Lock size={8} />From estimate
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-semibold text-foreground truncate">{inv.title}</p>
                   {inv.due_date && (
