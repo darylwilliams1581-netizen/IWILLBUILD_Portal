@@ -516,6 +516,151 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
 
 // ─── Timeline / Gantt View ────────────────────────────────────────────────────
 
+// ─── Day View (hourly 6am–6pm) ────────────────────────────────────────────────
+
+const DAY_START_HOUR = 6;
+const DAY_END_HOUR   = 18;
+const HOUR_HEIGHT    = 64; // px per hour
+const TOTAL_HOURS    = DAY_END_HOUR - DAY_START_HOUR; // 12
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m ?? 0);
+}
+
+function DayView({ jobs, anchorDate, onReschedule }: {
+  jobs: SchedulerJob[];
+  anchorDate: Date;
+  onReschedule: (job: SchedulerJob, start: string, end: string, startTime?: string, endTime?: string) => void;
+}) {
+  const dateStr = toDateStr(anchorDate);
+  const dayJobs = jobs.filter(j => j.scheduledStartDate === dateStr);
+
+  // Jobs with times → positioned blocks
+  const timedJobs   = dayJobs.filter(j => j.scheduledStartTime);
+  // Jobs without times → all-day strip at top
+  const allDayJobs  = dayJobs.filter(j => !j.scheduledStartTime);
+
+  const hours = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => DAY_START_HOUR + i);
+
+  function topPct(timeStr: string): number {
+    const mins = timeToMinutes(timeStr);
+    const startMins = DAY_START_HOUR * 60;
+    const totalMins = TOTAL_HOURS * 60;
+    return Math.max(0, Math.min(100, ((mins - startMins) / totalMins) * 100));
+  }
+
+  function heightPct(startStr: string, endStr: string | null | undefined): number {
+    const startMins = timeToMinutes(startStr);
+    const endMins   = endStr ? timeToMinutes(endStr) : startMins + 60;
+    const totalMins = TOTAL_HOURS * 60;
+    return Math.max(4, Math.min(100 - topPct(startStr), ((endMins - startMins) / totalMins) * 100));
+  }
+
+  // Current time indicator
+  const now = new Date();
+  const isToday = anchorDate.toDateString() === now.toDateString();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowPct  = ((nowMins - DAY_START_HOUR * 60) / (TOTAL_HOURS * 60)) * 100;
+  const showNow = isToday && nowPct >= 0 && nowPct <= 100;
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* All-day strip */}
+      {allDayJobs.length > 0 && (
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">All day</p>
+          <div className="flex flex-wrap gap-1.5">
+            {allDayJobs.map(job => (
+              <Link key={job.id} to={`/jobs/${job.id}`}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-white ${barColor(job.status)}`}>
+                {job.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hourly grid */}
+      <div className="flex flex-1 overflow-y-auto">
+        {/* Time gutter */}
+        <div className="w-16 shrink-0 border-r border-slate-200 bg-slate-50 relative" style={{ height: TOTAL_HOURS * HOUR_HEIGHT }}>
+          {hours.map(h => (
+            <div key={h} className="absolute w-full flex items-start justify-end pr-2"
+              style={{ top: (h - DAY_START_HOUR) * HOUR_HEIGHT - 8, height: HOUR_HEIGHT }}>
+              <span className="text-[10px] font-medium text-slate-400 leading-none">
+                {h === 12 ? '12pm' : h < 12 ? `${h}am` : `${h - 12}pm`}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Grid + events */}
+        <div className="flex-1 relative" style={{ height: TOTAL_HOURS * HOUR_HEIGHT }}>
+          {/* Hour lines */}
+          {hours.map(h => (
+            <div key={h} className="absolute left-0 right-0 border-t border-slate-100"
+              style={{ top: (h - DAY_START_HOUR) * HOUR_HEIGHT }} />
+          ))}
+          {/* Half-hour lines */}
+          {hours.slice(0, -1).map(h => (
+            <div key={`h${h}`} className="absolute left-0 right-0 border-t border-slate-50"
+              style={{ top: (h - DAY_START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
+          ))}
+
+          {/* Now indicator */}
+          {showNow && (
+            <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: `${nowPct}%` }}>
+              <div className="w-2 h-2 rounded-full bg-orange-500 -ml-1 shrink-0" />
+              <div className="flex-1 h-px bg-orange-500" />
+            </div>
+          )}
+
+          {/* Timed job blocks */}
+          {timedJobs.map(job => {
+            const top  = topPct(job.scheduledStartTime!);
+            const ht   = heightPct(job.scheduledStartTime!, job.scheduledEndTime);
+            const startLabel = fmtTime(job.scheduledStartTime);
+            const endLabel   = job.scheduledEndTime ? fmtTime(job.scheduledEndTime) : '';
+            return (
+              <Link
+                key={job.id}
+                to={`/jobs/${job.id}`}
+                title={`${job.name}${job.address ? `\n📍 ${job.address}` : ''}`}
+                className={`absolute left-2 right-2 rounded-lg px-2 py-1 text-white shadow-sm hover:brightness-110 transition-all overflow-hidden ${barColor(job.status)}`}
+                style={{ top: `${top}%`, height: `${ht}%`, minHeight: 28 }}
+              >
+                <p className="text-[11px] font-bold leading-tight truncate">{job.name}</p>
+                <p className="text-[10px] opacity-80 leading-tight">
+                  {startLabel}{endLabel ? `–${endLabel}` : ''}
+                </p>
+                {job.address && (
+                  <p className="text-[10px] opacity-70 leading-tight truncate flex items-center gap-0.5 mt-0.5">
+                    <MapPin size={8} className="shrink-0" />{job.address}
+                  </p>
+                )}
+                {job.client && (
+                  <p className="text-[10px] opacity-70 leading-tight truncate">{job.client}</p>
+                )}
+              </Link>
+            );
+          })}
+
+          {/* Empty state */}
+          {dayJobs.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 pointer-events-none">
+              <CalendarDays size={32} className="mb-2 opacity-40" />
+              <p className="text-sm">No jobs scheduled for this day</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Timeline View ────────────────────────────────────────────────────────────
+
 interface TimelineViewProps {
   jobs: SchedulerJob[];
   window: TimeWindow;
@@ -1339,7 +1484,14 @@ export default function SchedulerPage() {
             >
               <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 {view === 'table' && <TableView jobs={filtered} />}
-                {view === 'timeline' && (
+                {view === 'timeline' && timeWindow === 'day' && (
+                  <DayView
+                    jobs={filtered}
+                    anchorDate={anchorDate}
+                    onReschedule={handleReschedule}
+                  />
+                )}
+                {view === 'timeline' && timeWindow !== 'day' && (
                   <TimelineView
                     jobs={filtered}
                     window={timeWindow}
