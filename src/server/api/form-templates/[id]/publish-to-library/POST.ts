@@ -46,13 +46,13 @@ export default async function handler(req: Request, res: Response) {
 
   // Fetch its fields
   const [fieldRows] = await db.execute(sql.raw(
-    `SELECT id, label, field_type, is_required, options_json, sort_order
+    `SELECT id, label, field_type, required, options_json, field_order
      FROM form_template_fields
      WHERE template_id = ${templateId}
-     ORDER BY sort_order ASC`
+     ORDER BY field_order ASC`
   )) as unknown as [Array<{
     id: number; label: string; field_type: string;
-    is_required: number; options_json: string | null; sort_order: number;
+    required: number; options_json: string | null; field_order: number;
   }>, unknown];
 
   // Serialise template + fields into builder_json for the library
@@ -62,9 +62,9 @@ export default async function handler(req: Request, res: Response) {
     fields: (fieldRows ?? []).map((f) => ({
       label:      f.label,
       fieldType:  f.field_type,
-      isRequired: !!f.is_required,
+      isRequired: !!f.required,
       options:    f.options_json ? JSON.parse(f.options_json) : [],
-      sortOrder:  f.sort_order,
+      sortOrder:  f.field_order,
     })),
   });
 

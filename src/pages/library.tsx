@@ -12,8 +12,9 @@ import {
   BookOpen, Search, Download, CheckCircle2, Loader2,
   Filter, ChevronDown, Star, RefreshCw, BookMarked,
   FileText, Shield, ClipboardList, Wrench, Calculator,
-  Package, AlertCircle,
+  Package, AlertCircle, Trash2,
 } from 'lucide-react';
+import { usePermissions } from '@/lib/usePermissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,8 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function LibraryPage() {
+  const { isPlatformOwner } = usePermissions();
+
   // ── Browse state ─────────────────────────────────────────────────────────
   const [items, setItems]           = useState<LibraryItem[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, limit: 20, pages: 0 });
@@ -228,6 +231,25 @@ export function LibraryPage() {
       setInstallMsg({ id: item.id, msg: 'Install failed. Please try again.', ok: false });
     } finally {
       setInstalling(null);
+    }
+  }
+
+  // ── Delete handler (platform owner only) ─────────────────────────────────
+  async function handleDelete(item: LibraryItem) {
+    if (!confirm(`Delete "${item.title}" from the Global Library? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/owner-console/library/items/${item.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+        setInstalledIds((prev) => { const s = new Set(prev); s.delete(item.id); return s; });
+      } else {
+        alert('Delete failed. Please try again.');
+      }
+    } catch {
+      alert('Network error — could not delete item.');
     }
   }
 
@@ -425,6 +447,17 @@ export function LibraryPage() {
                                   <Download size={12} />
                                 )}
                                 {isInstalling ? 'Installing…' : 'Install'}
+                              </button>
+                            )}
+
+                            {/* Developer-only delete */}
+                            {isPlatformOwner && (
+                              <button
+                                onClick={() => void handleDelete(item)}
+                                title="Delete from Global Library"
+                                className="p-1.5 rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={13} />
                               </button>
                             )}
                           </div>
