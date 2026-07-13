@@ -244,7 +244,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta
