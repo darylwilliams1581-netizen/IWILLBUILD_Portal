@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
-import { usePermissions } from '@/hooks/usePermissions';
+import { usePermissions } from '@/lib/usePermissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
