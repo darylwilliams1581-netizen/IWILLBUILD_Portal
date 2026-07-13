@@ -248,7 +248,8 @@ export async function resolveRouteForModule(
   // strand the user on the 404).
   if (hint.url) {
     const probeFailed = manifest.routes.length === 0;
-    const registered = manifest.routes.some(r => routesMatch(r.path, hint.url!));
+    const urlPathOnly = hint.url.split('?')[0].split('#')[0];
+    const registered = manifest.routes.some(r => routesMatch(r.path, urlPathOnly));
     if ((probeFailed || registered) && hint.url !== currentPath) {
       return hint.url;
     }
