@@ -20,9 +20,11 @@ import {
   GripVertical,
   CheckCircle2,
   AlertTriangle,
+  Truck,
 } from 'lucide-react';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
+import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,7 @@ interface CrewMember {
   jobs: SchedulerJob[];
 }
 
-type ViewMode   = 'table' | 'timeline' | 'calendar' | 'crew';
+type ViewMode   = 'table' | 'timeline' | 'calendar' | 'crew' | 'assets';
 type TimeWindow = 'day' | 'week' | 'month' | '3months';
 
 // ─── Window config ────────────────────────────────────────────────────────────
@@ -1366,8 +1368,8 @@ export default function SchedulerPage() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Time window — only for timeline/crew/calendar views */}
-            {view !== 'table' && (
+            {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
+            {view !== 'table' && view !== 'assets' && (
               <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
                 {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
                   <button
@@ -1392,6 +1394,7 @@ export default function SchedulerPage() {
                 { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
                 { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
                 { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
+                { key: 'assets',   icon: <Truck size={13} />,       label: 'Assets' },
               ] as const).map(({ key, icon, label }) => (
                 <button
                   key={key}
@@ -1407,8 +1410,9 @@ export default function SchedulerPage() {
           </div>
         </div>
 
-        {/* ── Filters + period nav bar ── */}
-        <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
+          {/* ── Filters + period nav bar — hidden in assets view (has its own toolbar) ── */}
+          {view !== 'assets' && (
+          <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -1460,23 +1464,38 @@ export default function SchedulerPage() {
           <div className="text-xs text-slate-400 hidden lg:block">
             {visibleCount} scheduled · {unscheduled.length} unscheduled
           </div>
-        </div>
+          </div>
+          )}
 
         {/* ── Main content ── */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {loading && (
+        <div className={`flex-1 overflow-y-auto ${view === 'assets' ? '' : 'p-4'}`}>
+          {/* Assets view — full-height, manages its own layout */}
+          {view === 'assets' && (
+            <div className="h-full flex flex-col bg-white border border-slate-200 rounded-none overflow-hidden">
+              <AssetSchedulerView
+                timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
+                anchorDate={anchorDate}
+                onWindowChange={(tw) => switchWindow(tw)}
+                onNavigate={navigate}
+                onGoToday={goToToday}
+                windowLabel={windowLabel}
+              />
+            </div>
+          )}
+
+          {view !== 'assets' && loading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="animate-spin text-orange-500" size={28} />
             </div>
           )}
 
-          {!loading && error && (
+          {view !== 'assets' && !loading && error && (
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4">
               <AlertCircle size={16} /> {error}
             </div>
           )}
 
-          {!loading && !error && (
+          {view !== 'assets' && !loading && !error && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}

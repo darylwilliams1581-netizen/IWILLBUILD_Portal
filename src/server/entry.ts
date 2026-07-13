@@ -223,6 +223,10 @@ import fleet_flags_get_190 from "./api/fleet/flags/GET";
 import fleet_service_logs_logId_delete_191 from "./api/fleet/service-logs/[logId]/DELETE";
 import fleet_service_logs_logId_patch_192 from "./api/fleet/service-logs/[logId]/PATCH";
 import fleet_vehicles_get_193 from "./api/fleet/vehicles/GET";
+import fleet_asset_bookings_get from "./api/fleet/asset-bookings/GET";
+import fleet_asset_bookings_post from "./api/fleet/asset-bookings/POST";
+import fleet_asset_bookings_id_patch from "./api/fleet/asset-bookings/[id]/PATCH";
+import fleet_asset_bookings_id_delete from "./api/fleet/asset-bookings/[id]/DELETE";
 import fleet_id_delete_194 from "./api/fleet/[id]/DELETE";
 import fleet_id_get_195 from "./api/fleet/[id]/GET";
 import fleet_id_put_196 from "./api/fleet/[id]/PUT";
@@ -1325,6 +1329,8 @@ async function runStartupMigrations() {
     // ── Smart Document Builder ────────────────────────────────────────────────
     { name: 'document_templates', ddl: "CREATE TABLE IF NOT EXISTS document_templates (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, template_type VARCHAR(50) NOT NULL DEFAULT 'document', builder_json LONGTEXT NULL, page_layout_json TEXT NULL, theme_json TEXT NULL, source_docx_path VARCHAR(500) NULL, source_docx_name VARCHAR(255) NULL, is_active TINYINT(1) NOT NULL DEFAULT 1, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_type (company_id, template_type), INDEX idx_active (company_id, is_active))" },
     { name: 'document_submissions', ddl: "CREATE TABLE IF NOT EXISTS document_submissions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, job_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', answers_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_template (template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
+    // ── Asset Bookings (fleet asset → job scheduling) ─────────────────────────
+    { name: 'asset_bookings', ddl: "CREATE TABLE IF NOT EXISTS asset_bookings (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, fleet_asset_id INT NOT NULL, job_id INT NULL, title VARCHAR(255) NOT NULL DEFAULT '', start_date DATE NOT NULL, end_date DATE NOT NULL, start_time TIME NULL, end_time TIME NULL, notes TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'booked', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_asset (fleet_asset_id), INDEX idx_job (company_id, job_id), INDEX idx_dates (company_id, start_date, end_date))" },
     // ── Fleet Service / Maintenance Logs ─────────────────────────────────────
     { name: 'fleet_service_logs', ddl: "CREATE TABLE IF NOT EXISTS fleet_service_logs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, fleet_asset_id INT NOT NULL, service_type VARCHAR(60) NOT NULL DEFAULT 'Service', title VARCHAR(255) NOT NULL, service_date DATE NOT NULL, odometer_km INT NULL, cost DECIMAL(12,2) NULL, provider VARCHAR(255) NULL, invoice_number VARCHAR(100) NULL, notes TEXT NULL, next_service_date DATE NULL, next_service_km INT NULL, status VARCHAR(30) NOT NULL DEFAULT 'completed', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_asset (fleet_asset_id), INDEX idx_date (fleet_asset_id, service_date))" },
     // ── SWMS share tokens (public sign-off links) ─────────────────────────────
@@ -2101,6 +2107,10 @@ app.get("/api/fleet/flags", fleet_flags_get_190);
 app.delete("/api/fleet/service-logs/:logId", fleet_service_logs_logId_delete_191);
 app.patch("/api/fleet/service-logs/:logId", fleet_service_logs_logId_patch_192);
 app.get("/api/fleet/vehicles", fleet_vehicles_get_193);
+app.get("/api/fleet/asset-bookings", fleet_asset_bookings_get);
+app.post("/api/fleet/asset-bookings", fleet_asset_bookings_post);
+app.patch("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_patch);
+app.delete("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_delete);
 app.delete("/api/fleet/:id", fleet_id_delete_194);
 app.get("/api/fleet/:id", fleet_id_get_195);
 app.put("/api/fleet/:id", fleet_id_put_196);
