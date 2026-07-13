@@ -169,6 +169,9 @@ export default class AiroErrorBoundary extends Component<Props, State> {
         const err = event.error instanceof Error
           ? event.error
           : new Error(event.message || 'Uncaught runtime error');
+        // Browser extensions relocate DOM nodes before/during hydration; React's
+        // commit phase then throws NotFoundError on removeChild. Not an app bug.
+        if (err.name === 'NotFoundError' && err.message.includes('removeChild')) return;
         this.captureAsyncError(err);
       };
       this.unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
@@ -460,7 +463,11 @@ export default class AiroErrorBoundary extends Component<Props, State> {
       error.message.includes('Hydration failed') ||
       error.message.includes('hydration') ||
       error.message.includes('did not match') ||
-      error.message.includes('server rendered HTML')
+      error.message.includes('server rendered HTML') ||
+      // Browser extensions relocate DOM nodes before/during hydration; React's
+      // commit phase then can't removeChild from the original parent. This is
+      // a browser-extension-induced DOM mismatch, not an app bug.
+      (error.name === 'NotFoundError' && error.message.includes('removeChild'))
     ) {
       // Acknowledge the error without showing an overlay — children continue
       // to render normally after React's client-side re-render recovers.
@@ -516,7 +523,8 @@ export default class AiroErrorBoundary extends Component<Props, State> {
     if (
       error.message.includes('Hydration failed') ||
       error.message.includes('hydration') ||
-      error.message.includes('did not match')
+      error.message.includes('did not match') ||
+      (error.name === 'NotFoundError' && error.message.includes('removeChild'))
     ) {
       return;
     }

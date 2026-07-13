@@ -15,7 +15,6 @@ import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interce
 // Install session expiry header interceptor before any fetch calls are made
 installSessionFetchInterceptor();
 
-
 if (import.meta.env.MODE === 'development') {
   const meta = document.createElement('meta');
   meta.name = 'robots';
