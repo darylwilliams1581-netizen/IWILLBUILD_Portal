@@ -10,6 +10,8 @@ import {
   HardHat, ChevronLeft, Share2,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
+import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
+import { usePermissions } from '@/lib/usePermissions';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
@@ -41,6 +43,8 @@ export function SwmsLibraryTab() {
   const [seedMsg, setSeedMsg] = useState('');
   const [printing, setPrinting] = useState<SwmsTemplate | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: number; title: string } | null>(null);
+  const [publishTarget, setPublishTarget] = useState<{ id: number; title: string } | null>(null);
+  const { isPlatformOwner } = usePermissions();
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
@@ -207,6 +211,15 @@ export function SwmsLibraryTab() {
                 <button onClick={() => setShareTarget({ id: s.id, title: s.title })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Share link">
                   <Share2 size={14} />
                 </button>
+                {isPlatformOwner && (
+                  <button
+                    onClick={() => setPublishTarget({ id: s.id, title: s.title })}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    title="Publish to Global Library"
+                  >
+                    <BookOpen size={14} />
+                  </button>
+                )}
                 <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
                   <Printer size={14} />
                 </button>
@@ -248,6 +261,15 @@ export function SwmsLibraryTab() {
           targetType="swms"
           targetId={String(shareTarget.id)}
           title={shareTarget.title}
+        />
+      )}
+      {publishTarget && isPlatformOwner && (
+        <ShareToLibraryModal
+          templateId={publishTarget.id}
+          templateName={publishTarget.title}
+          isPlatformOwner={true}
+          sourceType="swms"
+          onClose={() => setPublishTarget(null)}
         />
       )}
     </div>
@@ -500,6 +522,8 @@ export function PoliciesTab() {
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [policyPublishTarget, setPolicyPublishTarget] = useState<{ id: number; title: string } | null>(null);
+  const { isPlatformOwner: isPolicyOwner } = usePermissions();
 
   useEffect(() => {
     fetch('/api/safety/documents?type=policy', { credentials: 'include' })
@@ -561,6 +585,15 @@ export function PoliciesTab() {
                 <a href={`/api/safety/documents/${d.id}/download`} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Download">
                   <Download size={14} />
                 </a>
+                {isPolicyOwner && (
+                  <button
+                    onClick={() => setPolicyPublishTarget({ id: d.id, title: d.title })}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    title="Publish to Global Library"
+                  >
+                    <BookOpen size={14} />
+                  </button>
+                )}
                 <button onClick={() => handleDelete(d.id)} disabled={deleting === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                   {deleting === d.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 </button>
@@ -582,6 +615,15 @@ export function PoliciesTab() {
           />
         )}
       </AnimatePresence>
+
+      {policyPublishTarget && isPolicyOwner && (
+        <ShareToLibraryModal
+          templateId={policyPublishTarget.id}
+          templateName={policyPublishTarget.title}
+          isPlatformOwner={true}
+          onClose={() => setPolicyPublishTarget(null)}
+        />
+      )}
     </div>
   );
 }

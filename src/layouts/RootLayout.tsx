@@ -258,7 +258,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <ActivePing />
       <Toaster position="top-right" richColors />
       <PwaInstallPrompt />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>
           {children}
         </SosInnerBoundary>

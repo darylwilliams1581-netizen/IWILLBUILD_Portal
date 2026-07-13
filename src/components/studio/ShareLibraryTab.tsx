@@ -1,19 +1,18 @@
 /**
- * ShareLibraryTab
- * ─────────────────────────────────────────────────────────────────────────────
- * The "Share to Library" tab inside the Studio Documents section.
+ * ShareLibraryTab — Studio → Global Library tab
  *
- * Shows:
- *   1. A picker to select which document to share (or pre-selected via prop)
- *   2. The ShareToLibraryModal inline (not as an overlay) for a seamless tab UX
- *   3. A "My submissions" list showing documents this company has already shared
+ * Platform owner only. Shows:
+ *   1. Quick-publish picker: select a document from this company and publish to Global Library
+ *   2. Recently published items (from library_items, platform owner can see all)
+ *
+ * Regular company users never see this tab (filtered out in studio.tsx).
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
 import {
   Library, Search, ChevronDown, Loader2, AlertTriangle,
-  Clock, CheckCircle, Globe, FileText, RefreshCw,
+  CheckCircle2, Globe, FileText, RefreshCw, BookOpen, Plus,
+  Eye, EyeOff, Tag,
 } from 'lucide-react';
 import ShareToLibraryModal from './ShareToLibraryModal';
 import { AnimatePresence } from 'motion/react';
@@ -25,19 +24,18 @@ interface DocTemplate {
   updated_at: string;
 }
 
-interface Submission {
+interface LibItem {
   id: number;
   title: string;
   type: string;
-  visibility: 'public' | 'pending' | 'rejected';
+  version: string;
   status: string;
+  visibility: string;
+  install_count: number;
   created_at: string;
-  reviewer_notes?: string | null;
 }
 
 interface Props {
-  /** Pre-select a specific template (e.g. from DocRow "Share" button) */
-  preSelectedId?: number | null;
   isPlatformOwner?: boolean;
 }
 
@@ -47,16 +45,34 @@ const TYPE_LABELS: Record<string, string> = {
   checklist: 'Checklist', toolbox_talk: 'Toolbox Talk', prestart: 'Pre-start', custom: 'Custom',
 };
 
-export default function ShareLibraryTab({ preSelectedId, isPlatformOwner = false }: Props) {
-  const [templates,    setTemplates]    = useState<DocTemplate[]>([]);
-  const [loadingTpls,  setLoadingTpls]  = useState(true);
-  const [search,       setSearch]       = useState('');
-  const [selectedId,   setSelectedId]   = useState<number | null>(preSelectedId ?? null);
-  const [showModal,    setShowModal]     = useState(false);
-  const [submissions,  setSubmissions]  = useState<Submission[]>([]);
-  const [loadingSubs,  setLoadingSubs]  = useState(true);
+function fmtDate(s: string) {
+  try { return new Date(s).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch { return s; }
+}
 
-  // Load templates
+export default function ShareLibraryTab({ isPlatformOwner = false }: Props) {
+  // Guard — this tab should never render for non-owners, but be safe
+  if (!isPlatformOwner) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-20 text-center px-6">
+        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+          <Library size={22} className="text-slate-400" />
+        </div>
+        <p className="text-sm font-semibold text-slate-600 mb-1">Access restricted</p>
+        <p className="text-xs text-slate-400 max-w-xs">Only the platform owner can publish to the Global Library.</p>
+      </div>
+    );
+  }
+
+  const [templates,   setTemplates]   = useState<DocTemplate[]>([]);
+  const [loadingTpls, setLoadingTpls] = useState(true);
+  const [search,      setSearch]      = useState('');
+  const [selectedId,  setSelectedId]  = useState<number | null>(null);
+  const [showModal,   setShowModal]   = useState(false);
+
+  const [recentItems,    setRecentItems]    = useState<LibItem[]>([]);
+  const [loadingRecent,  setLoadingRecent]  = useState(true);
+
   const loadTemplates = useCallback(async () => {
     setLoadingTpls(true);
     try {
@@ -68,228 +84,165 @@ export default function ShareLibraryTab({ preSelectedId, isPlatformOwner = false
     finally { setLoadingTpls(false); }
   }, []);
 
-  // Load this company's submissions
-  const loadSubmissions = useCallback(async () => {
-    setLoadingSubs(true);
+  const loadRecent = useCallback(async () => {
+    setLoadingRecent(true);
     try {
-      const r = await fetch('/api/library/my-submissions', { credentials: 'include' });
+      const r = await fetch('/api/owner-console/library/items?limit=20', { credentials: 'include' });
       if (r.ok) {
-        const d = await r.json() as { submissions?: Submission[] };
-        setSubmissions(d.submissions ?? []);
+        const d = await r.json() as { items?: LibItem[] };
+        setRecentItems(d.items ?? []);
       }
-    } catch { /* silent — endpoint may not exist yet */ }
-    finally { setLoadingSubs(false); }
+    } catch { /* silent */ }
+    finally { setLoadingRecent(false); }
   }, []);
 
   useEffect(() => {
     void loadTemplates();
-    void loadSubmissions();
-  }, [loadTemplates, loadSubmissions]);
-
-  // Sync pre-selected id
-  useEffect(() => {
-    if (preSelectedId) setSelectedId(preSelectedId);
-  }, [preSelectedId]);
+    void loadRecent();
+  }, [loadTemplates, loadRecent]);
 
   const filtered = templates.filter((t) =>
-    !search || t.name.toLowerCase().includes(search.toLowerCase())
+    !search.trim() || t.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selectedTemplate = templates.find((t) => t.id === selectedId);
+  const selectedDoc = templates.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Sub-header */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-            <Library size={15} className="text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-800">Share to Global Library</p>
-            <p className="text-xs text-slate-500">
-              {isPlatformOwner
-                ? 'Publish documents directly to the global library for all companies.'
-                : 'Submit documents for review. Once approved, they appear in the library for all companies to install.'}
-            </p>
-          </div>
+    <div className="flex flex-col gap-6 p-1">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Globe size={14} className="text-orange-500" />
+            Publish to Global Library
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Select a document from this company and publish it as a global master.
+          </p>
         </div>
+        <button onClick={() => { void loadTemplates(); void loadRecent(); }} className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 transition-colors">
+          <RefreshCw size={13} />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-6 flex flex-col gap-6">
+      {/* Document picker */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <Search size={13} className="text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search documents…"
+            className="flex-1 text-sm bg-transparent focus:outline-none placeholder-slate-400"
+          />
+        </div>
 
-          {/* ── Step 1: Pick a document ─────────────────────────────────── */}
-          <section>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-              1. Select a document to share
-            </h3>
-
-            <div className="relative mb-3">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search your documents…"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
-              />
-            </div>
-
-            {loadingTpls ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 size={18} className="animate-spin text-slate-400" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-10 text-sm text-slate-400">
-                {templates.length === 0 ? 'No documents yet — create one in the Documents tab first.' : 'No results.'}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
-                {filtered.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedId(t.id === selectedId ? null : t.id)}
-                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl border text-left transition-all ${
-                      selectedId === t.id
-                        ? 'border-primary/50 bg-orange-50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      selectedId === t.id ? 'bg-primary/10' : 'bg-slate-100'
-                    }`}>
-                      <FileText size={14} className={selectedId === t.id ? 'text-primary' : 'text-slate-400'} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${selectedId === t.id ? 'text-primary' : 'text-slate-700'}`}>
-                        {t.name}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {TYPE_LABELS[t.template_type ?? ''] ?? 'Custom'} · Updated {new Date(t.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
-                    {selectedId === t.id && (
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                        <CheckCircle size={12} className="text-white" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ── Step 2: Share button ────────────────────────────────────── */}
-          {selectedTemplate && (
-            <motion.section
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                2. Submit details
-              </h3>
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-                  <FileText size={16} className="text-primary" />
+        {loadingTpls ? (
+          <div className="flex items-center justify-center py-8 text-slate-400">
+            <Loader2 size={16} className="animate-spin mr-2" />
+            <span className="text-xs">Loading documents…</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            {search ? 'No documents match your search.' : 'No documents in this company yet.'}
+          </div>
+        ) : (
+          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+            {filtered.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedId(t.id === selectedId ? null : t.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                  selectedId === t.id ? 'bg-orange-50 border-l-2 border-orange-400' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <FileText size={12} className="text-slate-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-800 truncate">{selectedTemplate.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {isPlatformOwner ? 'Will be published immediately' : 'Will be submitted for review'}
+                  <p className="text-sm font-medium text-slate-800 truncate">{t.name}</p>
+                  <p className="text-xs text-slate-400">
+                    {t.template_type ? TYPE_LABELS[t.template_type] ?? t.template_type : 'Document'} · Updated {fmtDate(t.updated_at)}
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors flex-shrink-0"
-                >
-                  <Library size={13} />
-                  {isPlatformOwner ? 'Publish' : 'Share'}
-                </button>
-              </div>
-            </motion.section>
-          )}
-
-          {/* ── My submissions ──────────────────────────────────────────── */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                My submissions
-              </h3>
-              <button
-                onClick={() => void loadSubmissions()}
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <RefreshCw size={11} />Refresh
+                {selectedId === t.id && <CheckCircle2 size={14} className="text-orange-500 flex-shrink-0" />}
               </button>
-            </div>
-
-            {loadingSubs ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 size={16} className="animate-spin text-slate-400" />
-              </div>
-            ) : submissions.length === 0 ? (
-              <div className="text-center py-8 bg-slate-50 border border-slate-200 rounded-2xl">
-                <Library size={22} className="text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">No submissions yet</p>
-                <p className="text-xs text-slate-400 mt-0.5">Documents you share will appear here</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {submissions.map((sub) => (
-                  <SubmissionRow key={sub.id} submission={sub} />
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Share modal */}
+      {/* Publish button */}
+      <button
+        onClick={() => { if (selectedId) setShowModal(true); }}
+        disabled={!selectedId}
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        <Globe size={14} />
+        {selectedId ? `Publish "${selectedDoc?.name ?? ''}" to Global Library` : 'Select a document above to publish'}
+      </button>
+
+      {/* Recently published */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <BookOpen size={12} />
+            Recently in Global Library
+          </h4>
+          <a href="/owner-console" className="text-xs text-orange-500 font-semibold hover:underline">
+            Manage all →
+          </a>
+        </div>
+
+        {loadingRecent ? (
+          <div className="flex items-center gap-2 text-xs text-slate-400 py-3">
+            <Loader2 size={13} className="animate-spin" />
+            Loading…
+          </div>
+        ) : recentItems.length === 0 ? (
+          <p className="text-xs text-slate-400 py-3">Nothing published yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recentItems.slice(0, 8).map((item) => (
+              <div key={item.id} className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl">
+                <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+                  <Library size={12} className="text-orange-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{item.title}</p>
+                  <p className="text-xs text-slate-400">
+                    {TYPE_LABELS[item.type] ?? item.type} · v{item.version} · {fmtDate(item.created_at)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                    item.visibility === 'public' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {item.visibility === 'public' ? 'Public' : 'Private'}
+                  </span>
+                  <span className="text-xs text-slate-400">{item.install_count} installed</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Publish modal */}
       <AnimatePresence>
-        {showModal && selectedTemplate && (
+        {showModal && selectedDoc && (
           <ShareToLibraryModal
-            templateId={selectedTemplate.id}
-            templateName={selectedTemplate.name}
-            isPlatformOwner={isPlatformOwner}
+            templateId={selectedDoc.id}
+            templateName={selectedDoc.name}
+            isPlatformOwner={true}
             onClose={() => {
               setShowModal(false);
-              void loadSubmissions();
+              setSelectedId(null);
+              void loadRecent();
             }}
           />
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Submission row ────────────────────────────────────────────────────────────
-
-function SubmissionRow({ submission }: { submission: Submission }) {
-  const vis = submission.visibility;
-  const badge = vis === 'public'
-    ? { icon: <Globe size={11} />, label: 'Live', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
-    : vis === 'rejected'
-    ? { icon: <AlertTriangle size={11} />, label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' }
-    : { icon: <Clock size={11} />, label: 'Pending review', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl">
-      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-        <Library size={13} className="text-slate-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-700 truncate">{submission.title}</p>
-        <p className="text-xs text-slate-400">
-          {TYPE_LABELS[submission.type] ?? submission.type} · Submitted {new Date(submission.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </p>
-        {submission.reviewer_notes && (
-          <p className="text-xs text-slate-500 mt-0.5 italic">"{submission.reviewer_notes}"</p>
-        )}
-      </div>
-      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge.cls}`}>
-        {badge.icon}{badge.label}
-      </span>
     </div>
   );
 }

@@ -75,7 +75,7 @@ export default async function handler(req: Request, res: Response) {
     await db.execute(
       sql.raw(`
         UPDATE company_library_items
-        SET ${setClauses.join(', ')}, updated_at = NOW()
+        SET ${setClauses.join(', ')}, customised = 1, updated_at = NOW()
         WHERE id = ${companyItemId} AND company_id = ${companyId}
       `)
     );

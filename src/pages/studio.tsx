@@ -371,12 +371,13 @@ function DocumentsTab() {
         )}
       </div>
 
-      {/* Share to Library modal — triggered from DocRow toolbar */}
+      {/* Share to Global Library modal — developer/owner only, triggered from DocRow toolbar */}
       <AnimatePresence>
         {shareDocId && shareDoc && (
           <ShareToLibraryModal
             templateId={shareDocId}
             templateName={shareDoc.name}
+            isPlatformOwner={isPlatformOwner}
             onClose={() => setShareDocId(null)}
           />
         )}
@@ -549,7 +550,7 @@ export default function StudioPage() {
           {activeTab === 'documents' && <DocumentsTab />}
           {activeTab === 'forms'     && <FormsContent />}
           {activeTab === 'library'   && <LibraryContent />}
-          {activeTab === 'share'     && <ShareLibraryTab />}
+          {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
           {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>

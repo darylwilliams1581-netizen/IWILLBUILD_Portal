@@ -1,47 +1,27 @@
 /**
  * GET /api/library/my-submissions
  *
- * Returns library_items submitted by the current user's company,
- * ordered newest first. Includes pending, public, and rejected items.
+ * Platform owner only — returns all library_items.
+ * Regular company users always get an empty list (they cannot submit to the Global Library).
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getSessionAndProfile } from '../../../lib/auth-middleware.js';
+import { getPlatformOwnerInfo } from '../../../lib/platform-owner-guard.js';
 
 export default async function handler(req: Request, res: Response) {
-  const auth = await getSessionAndProfile(req, res);
-  if (!auth) return;
-
-  const companyId = auth.profile.company_id;
-  if (!companyId) return res.json({ submissions: [] });
+  const info = await getPlatformOwnerInfo(req);
+  // Non-owners get an empty list (not an error — UI may call this without knowing the role)
+  if (!info || !info.isPlatformOwner) return res.json({ submissions: [] });
 
   try {
     const [rows] = await db.execute(sql.raw(
-      `SELECT
-         id, title, type, category, discipline, summary,
-         visibility, status, version,
-         reviewer_notes, reviewed_at,
-         created_at, updated_at
+      `SELECT id, title, type, category, discipline, summary,
+              visibility, status, version, created_at, updated_at
        FROM library_items
-       WHERE submitted_by_company_id = ${companyId}
        ORDER BY created_at DESC
        LIMIT 100`
-    )) as unknown as [Array<{
-      id: number;
-      title: string;
-      type: string;
-      category: string | null;
-      discipline: string | null;
-      summary: string | null;
-      visibility: string;
-      status: string;
-      version: string;
-      reviewer_notes: string | null;
-      reviewed_at: string | null;
-      created_at: string;
-      updated_at: string;
-    }>, unknown];
+    )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     return res.json({ submissions: rows ?? [] });
   } catch (err) {

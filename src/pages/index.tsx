@@ -336,7 +336,7 @@ export default function HomePage() {
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Subtle grid texture */}
-        <div style={{
+        <div suppressHydrationWarning style={{
           position: 'absolute', inset: 0, opacity: 0.06,
           backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
           backgroundSize: '48px 48px',

@@ -1,22 +1,27 @@
 /**
- * LibraryManagerTab — Owner Console
+ * LibraryManagerTab — Owner Console → Global Library
  *
- * Full CRUD for the global library. Platform owner can:
- *  • Browse all library items (all statuses, all visibilities)
- *  • Upload a DOCX or PDF to auto-populate builder_json
- *  • Fill in metadata (title, type, category, discipline, summary, tags, version, status)
- *  • Edit metadata on existing items
- *  • Archive or permanently delete items
+ * Platform owner full governance of the Global Library:
+ *   • Browse all items (all statuses, all visibilities)
+ *   • Filter by type / status / search
+ *   • Create new items (upload DOCX/PDF or blank)
+ *   • Edit metadata (title, type, category, discipline, summary, tags, version, status, visibility)
+ *   • Publish / unpublish (toggle visibility public ↔ private)
+ *   • Archive / restore
+ *   • Delete permanently
+ *   • Push update to company copies (explicit, not silent)
+ *   • View install count
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, Plus, Search, Loader2, AlertCircle, CheckCircle2,
-  Pencil, Trash2, FileText, File, Upload, X, ChevronDown,
+  Pencil, Trash2, FileText, Upload, X, ChevronDown,
   Shield, ClipboardList, Wrench, Calculator, Package, RefreshCw,
-  Eye, EyeOff, Archive, Download, Clock, Globe, CheckCircle, XCircle,
-  Building2, User,
+  Eye, EyeOff, Archive, Download, Globe, XCircle,
+  Building2, Send, RotateCcw, Tag, Info,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,9 +34,10 @@ interface LibItem {
   tags: string | null;
   discipline: string | null;
   version: string;
-  status: string;
-  visibility: string;
+  status: string;        // active | draft | archived
+  visibility: string;    // public | private
   install_count: number;
+  download_count: number;
   source_file_name: string | null;
   file_path: string | null;
   created_at: string;
@@ -43,405 +49,291 @@ const ITEM_TYPES = [
   { value: 'procedure',       label: 'Procedure' },
   { value: 'swms',            label: 'SWMS' },
   { value: 'form',            label: 'Form' },
+  { value: 'checklist',       label: 'Checklist' },
+  { value: 'induction',       label: 'Induction' },
+  { value: 'toolbox_talk',    label: 'Toolbox Talk' },
+  { value: 'prestart',        label: 'Pre-start' },
+  { value: 'report',          label: 'Report' },
   { value: 'recipe',          label: 'Recipe' },
   { value: 'estimate_recipe', label: 'Estimate Recipe' },
   { value: 'scope_line',      label: 'Scope Line' },
 ];
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
-  policy:          Shield,
-  procedure:       FileText,
-  swms:            AlertCircle,
-  form:            ClipboardList,
-  recipe:          Wrench,
-  estimate_recipe: Calculator,
-  scope_line:      Package,
+  policy: Shield, procedure: FileText, swms: AlertCircle,
+  form: ClipboardList, recipe: Wrench, estimate_recipe: Calculator,
+  scope_line: Package, checklist: ClipboardList, induction: BookOpen,
+  toolbox_talk: FileText, prestart: FileText, report: FileText,
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  policy:          'bg-blue-100 text-blue-700',
-  procedure:       'bg-purple-100 text-purple-700',
-  swms:            'bg-red-100 text-red-700',
-  form:            'bg-green-100 text-green-700',
-  recipe:          'bg-amber-100 text-amber-700',
-  estimate_recipe: 'bg-orange-100 text-orange-700',
-  scope_line:      'bg-slate-100 text-slate-700',
+  policy: 'bg-blue-100 text-blue-700', procedure: 'bg-purple-100 text-purple-700',
+  swms: 'bg-red-100 text-red-700', form: 'bg-green-100 text-green-700',
+  recipe: 'bg-amber-100 text-amber-700', estimate_recipe: 'bg-orange-100 text-orange-700',
+  scope_line: 'bg-slate-100 text-slate-700', checklist: 'bg-teal-100 text-teal-700',
+  induction: 'bg-indigo-100 text-indigo-700', toolbox_talk: 'bg-pink-100 text-pink-700',
+  prestart: 'bg-cyan-100 text-cyan-700', report: 'bg-violet-100 text-violet-700',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active:   'bg-emerald-100 text-emerald-700',
-  draft:    'bg-amber-100 text-amber-700',
+  active: 'bg-emerald-100 text-emerald-700',
+  draft: 'bg-amber-100 text-amber-700',
   archived: 'bg-slate-100 text-slate-500',
 };
 
-// ── Empty form ────────────────────────────────────────────────────────────────
+const CATEGORIES = [
+  'Safety', 'HR', 'Operations', 'Quality', 'Environment',
+  'Finance', 'Legal', 'IT', 'Construction', 'Electrical',
+  'Plumbing', 'HVAC', 'Landscaping', 'Cleaning', 'Other',
+];
 
-function emptyForm() {
-  return {
-    title: '',
-    type: 'procedure',
-    category: '',
-    discipline: '',
-    summary: '',
-    tags: '',
-    version: '1.0',
-    status: 'active',
-    visibility: 'public',
-  };
+const DISCIPLINES = [
+  'Construction', 'Electrical', 'Plumbing', 'HVAC', 'Landscaping',
+  'Cleaning', 'Mining', 'Oil & Gas', 'Manufacturing', 'Hospitality',
+  'Healthcare', 'Transport', 'Retail', 'General', 'Other',
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtDate(s: string) {
+  try { return new Date(s).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch { return s; }
 }
 
-// ── Upload Form Modal ─────────────────────────────────────────────────────────
+function typeLabel(t: string) {
+  return ITEM_TYPES.find((x) => x.value === t)?.label ?? t;
+}
 
-interface UploadModalProps {
-  editItem?: LibItem | null;
+// ── Edit / Create modal ───────────────────────────────────────────────────────
+
+interface EditModalProps {
+  item: LibItem | null;   // null = create new
   onClose: () => void;
   onSaved: () => void;
 }
 
-function UploadModal({ editItem, onClose, onSaved }: UploadModalProps) {
-  const [form, setForm] = useState(editItem ? {
-    title:      editItem.title,
-    type:       editItem.type,
-    category:   editItem.category ?? '',
-    discipline: editItem.discipline ?? '',
-    summary:    editItem.summary ?? '',
-    tags:       editItem.tags ?? '',
-    version:    editItem.version,
-    status:     editItem.status,
-    visibility: editItem.visibility,
-  } : emptyForm());
+function EditModal({ item, onClose, onSaved }: EditModalProps) {
+  const isNew = !item;
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isEdit = !!editItem;
+  const [title,      setTitle]      = useState(item?.title ?? '');
+  const [type,       setType]       = useState(item?.type ?? 'procedure');
+  const [category,   setCategory]   = useState(item?.category ?? '');
+  const [discipline, setDiscipline] = useState(item?.discipline ?? '');
+  const [summary,    setSummary]    = useState(item?.summary ?? '');
+  const [tags,       setTags]       = useState(item?.tags ?? '');
+  const [version,    setVersion]    = useState(item?.version ?? '1.0');
+  const [status,     setStatus]     = useState(item?.status ?? 'active');
+  const [visibility, setVisibility] = useState(item?.visibility ?? 'public');
+  const [file,       setFile]       = useState<File | null>(null);
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
 
-  const handleFile = (f: File) => {
-    const name = f.name.toLowerCase();
-    if (!name.endsWith('.docx') && !name.endsWith('.pdf')) {
-      setError('Only .docx and .pdf files are supported.');
-      return;
-    }
-    setFile(f);
-    setError(null);
-    // Auto-fill title from filename if blank
-    if (!form.title) {
-      const stem = f.name.replace(/\.(docx|pdf)$/i, '').replace(/[-_]/g, ' ');
-      setForm(prev => ({ ...prev, title: stem }));
-    }
-  };
+  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-colors placeholder-slate-400';
+  const sel = `${inp} appearance-none cursor-pointer`;
 
-  const handleSubmit = async () => {
-    if (!form.title.trim()) { setError('Title is required.'); return; }
-    setSaving(true);
-    setError(null);
-
+  async function handleSave() {
+    if (!title.trim()) { setError('Title is required'); return; }
+    setSaving(true); setError('');
     try {
-      if (isEdit) {
-        // PATCH — metadata only (no file re-upload on edit for now)
-        const res = await fetch(`/api/owner-console/library/items/${editItem!.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(form),
-        });
-        const data = await res.json() as { ok?: boolean; error?: string };
-        if (!res.ok) throw new Error(data.error ?? 'Update failed');
-      } else {
-        // POST — multipart with optional file
+      if (isNew) {
+        // Create via multipart (supports file upload)
         const fd = new FormData();
-        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+        fd.append('title', title.trim());
+        fd.append('type', type);
+        if (category.trim())   fd.append('category', category.trim());
+        if (discipline.trim()) fd.append('discipline', discipline.trim());
+        if (summary.trim())    fd.append('summary', summary.trim());
+        if (tags.trim())       fd.append('tags', tags.trim());
+        fd.append('version', version.trim() || '1.0');
+        fd.append('status', status);
+        fd.append('visibility', visibility);
         if (file) fd.append('file', file);
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90_000);
-        let res: Response;
-        try {
-          res = await fetch('/api/owner-console/library/items', {
-            method: 'POST',
-            credentials: 'include',
-            body: fd,
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeout);
-        }
-        const data = await res.json() as { ok?: boolean; id?: number; error?: string };
-        if (!res.ok) throw new Error(data.error ?? 'Create failed');
+        const r = await fetch('/api/owner-console/library/items', {
+          method: 'POST', credentials: 'include', body: fd,
+        });
+        const d = await r.json() as { ok?: boolean; error?: string };
+        if (!r.ok || d.error) throw new Error(d.error ?? 'Failed to create');
+        toast.success('Library item created');
+      } else {
+        // Update metadata via PUT
+        const r = await fetch(`/api/owner-console/library/items/${item.id}`, {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title.trim(), type,
+            category: category.trim() || null,
+            discipline: discipline.trim() || null,
+            summary: summary.trim() || null,
+            tags: tags.trim() || null,
+            version: version.trim() || '1.0',
+            status, visibility,
+          }),
+        });
+        const d = await r.json() as { ok?: boolean; error?: string };
+        if (!r.ok || d.error) throw new Error(d.error ?? 'Failed to update');
+        toast.success('Library item updated');
       }
       onSaved();
       onClose();
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError('Upload timed out — file may be too large.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Something went wrong.');
-      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center">
-              <BookOpen size={14} className="text-primary" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
+              <BookOpen size={15} className="text-orange-500" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">{isEdit ? 'Edit Library Item' : 'Add to Global Library'}</p>
-              <p className="text-xs text-slate-400">{isEdit ? 'Update metadata' : 'Upload a document or fill in details manually'}</p>
-            </div>
+            <p className="text-sm font-bold text-slate-800">
+              {isNew ? 'Add to Global Library' : 'Edit Library Item'}
+            </p>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 transition-colors p-1">
-            <X size={16} />
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100">
+            <X size={15} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-          {/* File upload — new items only */}
-          {!isEdit && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Source File <span className="font-normal text-slate-400 normal-case">(optional — .docx or .pdf)</span>
-              </label>
-              <div
-                onClick={() => inputRef.current?.click()}
-                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-                onDragOver={(e) => e.preventDefault()}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-primary hover:bg-orange-50/30 transition-colors"
-              >
-                {file ? (
-                  <>
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
-                      {file.name.endsWith('.pdf') ? <File size={18} className="text-red-500" /> : <FileText size={18} className="text-primary" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                      <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(0)} KB — will be parsed into builder blocks</p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                      className="text-slate-300 hover:text-slate-500 transition-colors shrink-0"
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                      <Upload size={18} className="text-slate-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-600">Drop a .docx or .pdf here</p>
-                      <p className="text-xs text-slate-400">or click to browse — content will be parsed into editable blocks</p>
-                    </div>
-                  </>
-                )}
-                <input ref={inputRef} type="file" accept=".docx,.pdf" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-              </div>
-            </div>
-          )}
-
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-6 flex flex-col gap-4">
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title *</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Bricklaying Safety Procedure"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-            />
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title <span className="text-red-400">*</span></label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} placeholder="e.g. Electrical Safety SWMS" />
           </div>
 
-          {/* Type + Version row */}
+          {/* Type + Category */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type *</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              >
-                {ITEM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
+              <div className="relative">
+                <select value={type} onChange={(e) => setType(e.target.value)} className={sel}>
+                  {ITEM_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+              <div className="relative">
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className={sel}>
+                  <option value="">Select…</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Discipline + Version */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry / Discipline</label>
+              <div className="relative">
+                <select value={discipline} onChange={(e) => setDiscipline(e.target.value)} className={sel}>
+                  <option value="">Select…</option>
+                  {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Version</label>
-              <input
-                type="text"
-                value={form.version}
-                onChange={(e) => setForm(f => ({ ...f, version: e.target.value }))}
-                placeholder="1.0"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              />
+              <input value={version} onChange={(e) => setVersion(e.target.value)} className={inp} placeholder="1.0" />
             </div>
-          </div>
-
-          {/* Category + Discipline */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
-              <input
-                type="text"
-                value={form.category}
-                onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
-                placeholder="e.g. Safety, HR, Operations"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Discipline</label>
-              <input
-                type="text"
-                value={form.discipline}
-                onChange={(e) => setForm(f => ({ ...f, discipline: e.target.value }))}
-                placeholder="e.g. Bricklaying, Electrical"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Summary */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary</label>
-            <textarea
-              value={form.summary}
-              onChange={(e) => setForm(f => ({ ...f, summary: e.target.value }))}
-              rows={2}
-              placeholder="Brief description shown in the library browse view"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors resize-none"
-            />
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tags <span className="font-normal text-slate-400 normal-case">(comma-separated)</span></label>
-            <input
-              type="text"
-              value={form.tags}
-              onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
-              placeholder="safety, bricklaying, WHS, procedure"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-            />
           </div>
 
           {/* Status + Visibility */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              >
-                <option value="active">Active — visible to all users</option>
-                <option value="draft">Draft — hidden from users</option>
-                <option value="archived">Archived</option>
-              </select>
+              <div className="relative">
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel}>
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="archived">Archived</option>
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Visibility</label>
-              <select
-                value={form.visibility}
-                onChange={(e) => setForm(f => ({ ...f, visibility: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              >
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-              </select>
+              <div className="relative">
+                <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className={sel}>
+                  <option value="public">Public (visible to all companies)</option>
+                  <option value="private">Private (hidden from companies)</option>
+                </select>
+                <ChevronDown size={11} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
           </div>
 
-          {/* Error */}
+          {/* Tags */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tags <span className="font-normal text-slate-400">(comma-separated)</span></label>
+            <input value={tags} onChange={(e) => setTags(e.target.value)} className={inp} placeholder="e.g. electrical, high-voltage, safety" />
+          </div>
+
+          {/* Summary */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Summary</label>
+            <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} className={`${inp} resize-none`} placeholder="Brief description of what this document covers…" />
+          </div>
+
+          {/* File upload (create only) */}
+          {isNew && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Upload file <span className="font-normal text-slate-400">(DOCX or PDF — optional)</span></label>
+              <div
+                className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {file ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
+                    <FileText size={14} className="text-orange-500" />
+                    <span className="font-medium">{file.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-slate-400 hover:text-red-500">
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 text-slate-400">
+                    <Upload size={18} />
+                    <span className="text-xs">Click to upload DOCX or PDF</span>
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept=".docx,.pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </div>
+          )}
+
           {error && (
-            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
-              <AlertCircle size={13} className="shrink-0 mt-0.5" />
-              <span>{error}</span>
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+              <AlertCircle size={13} className="flex-shrink-0" />
+              {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-slate-100 shrink-0">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => void handleSubmit()}
-            disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-60 transition-colors"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            {saving ? (isEdit ? 'Saving…' : 'Uploading…') : (isEdit ? 'Save Changes' : 'Add to Library')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Delete Confirm Modal ──────────────────────────────────────────────────────
-
-function DeleteModal({ item, onClose, onDeleted }: { item: LibItem; onClose: () => void; onDeleted: () => void }) {
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/owner-console/library/items/${item.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Delete failed');
-      }
-      onDeleted();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200">
-        <div className="px-5 py-5 flex flex-col items-center text-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center">
-            <Trash2 size={20} className="text-red-500" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900">Delete Library Item?</p>
-            <p className="text-sm text-slate-500 mt-1">
-              <strong className="text-slate-700">"{item.title}"</strong> will be permanently removed from the global library. Companies that already installed it keep their copy.
-            </p>
-          </div>
-          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 w-full">{error}</p>}
-        </div>
-        <div className="flex gap-3 px-5 pb-5">
+        <div className="flex gap-2.5 px-6 py-4 border-t border-slate-100 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
             Cancel
           </button>
           <button
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+            onClick={() => void handleSave()}
+            disabled={!title.trim() || saving}
+            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-            {deleting ? 'Deleting…' : 'Delete'}
+            {saving ? <><Loader2 size={13} className="animate-spin" />Saving…</> : isNew ? 'Add to Library' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -449,567 +341,437 @@ function DeleteModal({ item, onClose, onDeleted }: { item: LibItem; onClose: () 
   );
 }
 
-// ── Main Tab ──────────────────────────────────────────────────────────────────
+// ── Push-update confirm modal ─────────────────────────────────────────────────
+
+function PushUpdateModal({ item, onClose }: { item: LibItem; onClose: () => void }) {
+  const [force,   setForce]   = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [result,  setResult]  = useState<{ pushed: number; skipped: number; message: string } | null>(null);
+  const [error,   setError]   = useState('');
+
+  async function handlePush() {
+    setPushing(true); setError('');
+    try {
+      const r = await fetch(`/api/owner-console/library/items/${item.id}/push-update`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
+      });
+      const d = await r.json() as { ok?: boolean; pushed?: number; skipped?: number; message?: string; error?: string };
+      if (!r.ok || d.error) throw new Error(d.error ?? 'Push failed');
+      setResult({ pushed: d.pushed ?? 0, skipped: d.skipped ?? 0, message: d.message ?? '' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Push failed');
+    } finally {
+      setPushing(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center">
+              <Send size={14} className="text-blue-500" />
+            </div>
+            <p className="text-sm font-bold text-slate-800">Push update to companies</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100">
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4">
+          {result ? (
+            <div className="flex flex-col items-center gap-3 text-center py-2">
+              <CheckCircle2 size={36} className="text-emerald-500" />
+              <p className="text-sm font-bold text-slate-800">{result.message}</p>
+              {result.skipped > 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  {result.skipped} customised {result.skipped === 1 ? 'copy was' : 'copies were'} skipped. Use "Force overwrite" to update those too.
+                </p>
+              )}
+              <button onClick={onClose} className="mt-2 px-6 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">
+                Done
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600">
+                <p className="font-semibold text-slate-700 mb-1">"{item.title}" — v{item.version}</p>
+                <p>This will push the current global master content to all company copies that have this item installed.</p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                <Info size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-700">
+                  <p className="font-semibold mb-0.5">By default, customised company copies are skipped.</p>
+                  <p>Enable "Force overwrite" below to update all copies including those companies have edited.</p>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="w-4 h-4 rounded accent-orange-500" />
+                <span className="text-sm text-slate-700 font-medium">Force overwrite — update customised company copies too</span>
+              </label>
+
+              {error && (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                  <AlertCircle size={13} className="flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-2.5 pt-1">
+                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void handlePush()}
+                  disabled={pushing}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {pushing ? <><Loader2 size={13} className="animate-spin" />Pushing…</> : <><Send size={13} />Push update</>}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function LibraryManagerTab() {
-  const [subTab, setSubTab] = useState<'items' | 'submissions'>('items');
-  const [items, setItems] = useState<LibItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [items,    setItems]    = useState<LibItem[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+  const [total,    setTotal]    = useState(0);
+
+  // Filters
+  const [search,     setSearch]     = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
-  const [editItem, setEditItem] = useState<LibItem | null>(null);
-  const [deleteItem, setDeleteItem] = useState<LibItem | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
+  // Modals
+  const [editItem,   setEditItem]   = useState<LibItem | null | 'new'>('new' as never);
+  const [showEdit,   setShowEdit]   = useState(false);
+  const [pushItem,   setPushItem]   = useState<LibItem | null>(null);
+
+  // Action states
+  const [toggling,  setToggling]  = useState<number | null>(null);
+  const [deleting,  setDeleting]  = useState<number | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError('');
     try {
-      // Run migration to ensure file_path/file_mime columns exist
-      await fetch('/api/migrate-library-downloads', { method: 'POST', credentials: 'include' }).catch(() => {});
-      // Fetch all items including drafts/archived — owner view
-      const params = new URLSearchParams({ limit: '200', status: 'all' });
-      const res = await fetch(`/api/library/items?${params}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json() as { items: LibItem[] };
-      setItems(data.items ?? []);
-    } catch {
-      setItems([]);
+      const params = new URLSearchParams({ limit: '100' });
+      if (filterType)   params.set('type', filterType);
+      if (filterStatus) params.set('status', filterStatus);
+      if (search.trim()) params.set('search', search.trim());
+
+      const r = await fetch(`/api/owner-console/library/items?${params}`, { credentials: 'include' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json() as { ok: boolean; items: LibItem[]; total: number };
+      setItems(d.items ?? []);
+      setTotal(d.total ?? 0);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterType, filterStatus, search]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const filtered = items.filter(item => {
-    if (filterType && item.type !== filterType) return false;
-    if (filterStatus && item.status !== filterStatus) return false;
-    if (search.trim().length >= 2) {
-      const q = search.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(q) ||
-        (item.summary ?? '').toLowerCase().includes(q) ||
-        (item.tags ?? '').toLowerCase().includes(q) ||
-        (item.category ?? '').toLowerCase().includes(q) ||
-        (item.discipline ?? '').toLowerCase().includes(q)
-      );
+  async function toggleVisibility(item: LibItem) {
+    setToggling(item.id);
+    const newVis = item.visibility === 'public' ? 'private' : 'public';
+    try {
+      const r = await fetch(`/api/owner-console/library/items/${item.id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: newVis }),
+      });
+      if (!r.ok) throw new Error('Failed');
+      toast.success(newVis === 'public' ? 'Item published — visible to all companies' : 'Item unpublished — hidden from companies');
+      void load();
+    } catch {
+      toast.error('Failed to update visibility');
+    } finally {
+      setToggling(null);
     }
-    return true;
-  });
+  }
 
-  const handleArchive = async (item: LibItem) => {
+  async function toggleArchive(item: LibItem) {
+    setToggling(item.id);
     const newStatus = item.status === 'archived' ? 'active' : 'archived';
     try {
-      await fetch(`/api/owner-console/library/items/${item.id}`, {
-        method: 'PATCH',
+      const r = await fetch(`/api/owner-console/library/items/${item.id}`, {
+        method: 'PUT', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ status: newStatus }),
       });
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: newStatus } : i));
-      showToast(newStatus === 'archived' ? 'Item archived.' : 'Item restored to active.');
+      if (!r.ok) throw new Error('Failed');
+      toast.success(newStatus === 'archived' ? 'Item archived' : 'Item restored');
+      void load();
     } catch {
-      showToast('Failed to update status.');
+      toast.error('Failed to update status');
+    } finally {
+      setToggling(null);
     }
-  };
+  }
+
+  async function handleDelete(item: LibItem) {
+    if (!confirm(`Permanently delete "${item.title}"? This cannot be undone.`)) return;
+    setDeleting(item.id);
+    try {
+      const r = await fetch(`/api/owner-console/library/items/${item.id}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      if (!r.ok) throw new Error('Failed');
+      toast.success('Library item deleted');
+      void load();
+    } catch {
+      toast.error('Failed to delete item');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-5 max-w-5xl">
-      {/* Sub-tab switcher */}
-      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setSubTab('items')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            subTab === 'items' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <BookOpen size={13} />Library Items
-        </button>
-        <button
-          onClick={() => setSubTab('submissions')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            subTab === 'submissions' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Clock size={13} />User Submissions
-        </button>
-      </div>
-
-      {subTab === 'submissions' ? (
-        <SubmissionsPanel />
-      ) : (
-      <>
+    <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="font-heading font-black text-lg text-slate-900">Global Library</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {items.length} item{items.length !== 1 ? 's' : ''} — visible to all companies in the Library tab
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <BookOpen size={16} className="text-orange-500" />
+            Global Library
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {total} item{total !== 1 ? 's' : ''} — only you can publish here; companies can browse and install copies
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => void load()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors"
-          >
-            <RefreshCw size={13} />
-            Refresh
+          <button onClick={() => void load()} className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors" title="Refresh">
+            <RefreshCw size={14} />
           </button>
           <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-orange-600 transition-colors"
+            onClick={() => { setEditItem(null); setShowEdit(true); }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
           >
             <Plus size={14} />
-            Add Item
+            Add item
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
-            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search title, tags, category…"
-            className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
+            placeholder="Search title, summary, tags…"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-white"
           />
         </div>
         <div className="relative">
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="appearance-none pl-3 pr-7 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors bg-white"
-          >
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="pl-3 pr-7 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 appearance-none cursor-pointer">
             <option value="">All types</option>
-            {ITEM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {ITEM_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
         <div className="relative">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="appearance-none pl-3 pr-7 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors bg-white"
-          >
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="pl-3 pr-7 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 appearance-none cursor-pointer">
             <option value="">All statuses</option>
             <option value="active">Active</option>
             <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
       </div>
 
-      {/* List */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 size={22} className="animate-spin text-primary" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <BookOpen size={20} className="text-slate-400" />
-            </div>
-            <p className="text-sm font-semibold text-slate-500">
-              {items.length === 0 ? 'No library items yet — add your first one above.' : 'No items match your filters.'}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Title</span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-20 text-center">Type</span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16 text-center">Status</span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16 text-center">Installs</span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider w-28 text-right">Actions</span>
-            </div>
-
-            {filtered.map((item) => {
-              const TypeIcon = TYPE_ICONS[item.type] ?? FileText;
-              return (
-                <div
-                  key={item.id}
-                  className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 hover:bg-slate-50 transition-colors ${item.status === 'archived' ? 'opacity-60' : ''}`}                >
-                  {/* Title + meta */}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${TYPE_COLORS[item.type] ?? 'bg-slate-100 text-slate-500'}`}>
-                        <TypeIcon size={11} />
-                      </div>
-                      <p className="text-sm font-semibold text-slate-800 truncate">{item.title}</p>
-                      {item.visibility === 'private' && (
-                        <EyeOff size={11} className="text-slate-400 shrink-0" title="Private" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 ml-8">
-                      {item.category && <span className="text-[11px] text-slate-400">{item.category}</span>}
-                      {item.discipline && <span className="text-[11px] text-slate-400">· {item.discipline}</span>}
-                      {item.source_file_name && (
-                        <span className="text-[11px] text-slate-400 flex items-center gap-0.5">
-                          · <FileText size={10} className="inline" /> {item.source_file_name}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-slate-300">v{item.version}</span>
-                    </div>
-                  </div>
-
-                  {/* Type badge */}
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full w-20 text-center ${TYPE_COLORS[item.type] ?? 'bg-slate-100 text-slate-600'}`}>
-                    {ITEM_TYPES.find(t => t.value === item.type)?.label ?? item.type}
-                  </span>
-
-                  {/* Status badge */}
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full w-16 text-center ${STATUS_COLORS[item.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                    {item.status}
-                  </span>
-
-                  {/* Install count */}
-                  <span className="text-sm font-bold text-slate-600 w-16 text-center">{item.install_count}</span>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 w-28 justify-end">
-                    <button
-                      onClick={() => setEditItem(item)}
-                      title="Edit metadata"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    {item.file_path && (
-                      <a
-                        href={`/api/library/items/${item.id}/download`}
-                        download
-                        title={`Download ${item.source_file_name ?? 'file'}`}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        <Download size={13} />
-                      </a>
-                    )}
-                    <button
-                      onClick={() => void handleArchive(item)}
-                      title={item.status === 'archived' ? 'Restore' : 'Archive'}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                    >
-                      {item.status === 'archived' ? <Eye size={13} /> : <Archive size={13} />}
-                    </button>
-                    <button
-                      onClick={() => setDeleteItem(item)}
-                      title="Delete permanently"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Modals */}
-      {showUpload && (
-        <UploadModal
-          onClose={() => setShowUpload(false)}
-          onSaved={() => { void load(); showToast('Item added to global library.'); }}
-        />
-      )}
-      {editItem && (
-        <UploadModal
-          editItem={editItem}
-          onClose={() => setEditItem(null)}
-          onSaved={() => { void load(); showToast('Item updated.'); setEditItem(null); }}
-        />
-      )}
-      {deleteItem && (
-        <DeleteModal
-          item={deleteItem}
-          onClose={() => setDeleteItem(null)}
-          onDeleted={() => { setItems(prev => prev.filter(i => i.id !== deleteItem.id)); showToast('Item deleted.'); setDeleteItem(null); }}
-        />
-      )}
-      </> /* end items sub-tab */
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-          {toast}
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-slate-400">
+          <Loader2 size={22} className="animate-spin mr-2" />
+          <span className="text-sm">Loading library…</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-// ── Submissions review panel ──────────────────────────────────────────────────
-
-interface Submission {
-  id: number;
-  title: string;
-  type: string;
-  category: string | null;
-  discipline: string | null;
-  summary: string | null;
-  visibility: string;
-  status: string;
-  submitted_by_company_id: number | null;
-  submitted_by_user_id: string | null;
-  reviewer_notes: string | null;
-  reviewed_at: string | null;
-  created_at: string;
-  company_name: string | null;
-  submitter_name: string | null;
-  submitter_email: string | null;
-}
-
-function SubmissionsPanel() {
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reviewing, setReviewing] = useState<number | null>(null);
-  const [notes, setNotes] = useState('');
-  const [actionStatus, setActionStatus] = useState<Record<number, 'loading' | 'done' | 'error'>>({});
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await fetch('/api/owner-console/library/submissions', { credentials: 'include' });
-      if (r.ok) {
-        const d = await r.json() as { submissions?: Submission[] };
-        setSubmissions(d.submissions ?? []);
-      }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  async function handleReview(id: number, action: 'approve' | 'reject') {
-    setActionStatus((prev) => ({ ...prev, [id]: 'loading' }));
-    try {
-      const r = await fetch(`/api/owner-console/library/submissions/${id}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action, notes }),
-      });
-      if (!r.ok) throw new Error('Failed');
-      setActionStatus((prev) => ({ ...prev, [id]: 'done' }));
-      setReviewing(null);
-      setNotes('');
-      // Update local state
-      setSubmissions((prev) => prev.map((s) =>
-        s.id === id
-          ? { ...s, visibility: action === 'approve' ? 'public' : 'rejected', status: action === 'approve' ? 'active' : 'draft', reviewer_notes: notes || null }
-          : s
-      ));
-    } catch {
-      setActionStatus((prev) => ({ ...prev, [id]: 'error' }));
-    }
-  }
-
-  const pending  = submissions.filter((s) => s.visibility === 'pending');
-  const reviewed = submissions.filter((s) => s.visibility !== 'pending');
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-heading font-black text-lg text-slate-900">User Submissions</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Review documents submitted by companies for the global library
+      ) : error ? (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+          <AlertCircle size={14} className="flex-shrink-0" />
+          {error}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+            <BookOpen size={24} className="text-slate-400" />
+          </div>
+          <p className="text-sm font-semibold text-slate-600 mb-1">No library items yet</p>
+          <p className="text-xs text-slate-400 max-w-xs">
+            Add items directly here, or publish documents from Studio using the "Share to Global Library" action.
           </p>
         </div>
-        <button onClick={() => void load()} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 transition-colors">
-          <RefreshCw size={13} />Refresh
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-slate-400" /></div>
       ) : (
-        <>
-          {/* Pending */}
-          <section>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Clock size={12} className="text-amber-500" />
-              Pending review ({pending.length})
-            </h3>
-            {pending.length === 0 ? (
-              <div className="text-center py-10 bg-slate-50 border border-slate-200 rounded-2xl">
-                <CheckCircle size={22} className="text-emerald-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">All caught up — no pending submissions</p>
+        <div className="flex flex-col gap-2">
+          {items.map((item) => {
+            const TypeIcon = TYPE_ICONS[item.type] ?? FileText;
+            const typeColor = TYPE_COLORS[item.type] ?? 'bg-slate-100 text-slate-700';
+            const statusColor = STATUS_COLORS[item.status] ?? 'bg-slate-100 text-slate-500';
+            const isPublic = item.visibility === 'public';
+            const isArchived = item.status === 'archived';
+            const busy = toggling === item.id || deleting === item.id;
+
+            return (
+              <div key={item.id} className={`bg-white border rounded-xl p-4 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="flex items-start gap-3">
+                  {/* Icon */}
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${typeColor}`}>
+                    <TypeIcon size={15} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{item.title}</p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${typeColor}`}>
+                            {typeLabel(item.type)}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor}`}>
+                            {item.status}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${isPublic ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {isPublic ? <><Globe size={10} />Public</> : <><EyeOff size={10} />Private</>}
+                          </span>
+                          <span className="text-xs text-slate-400">v{item.version}</span>
+                          {item.category && (
+                            <span className="text-xs text-slate-400">{item.category}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-shrink-0">
+                        <span className="flex items-center gap-1">
+                          <Building2 size={11} />
+                          {item.install_count} installed
+                        </span>
+                        {item.download_count > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Download size={11} />
+                            {item.download_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {item.summary && (
+                      <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{item.summary}</p>
+                    )}
+
+                    {item.tags && (
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        <Tag size={10} className="text-slate-400" />
+                        {item.tags.split(',').map((t) => t.trim()).filter(Boolean).map((t) => (
+                          <span key={t} className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{t}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-400 mt-1.5">Updated {fmtDate(item.updated_at)}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+                  {/* Edit metadata */}
+                  <button
+                    onClick={() => { setEditItem(item); setShowEdit(true); }}
+                    disabled={busy}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-40"
+                  >
+                    <Pencil size={11} />
+                    Edit
+                  </button>
+
+                  {/* Publish / Unpublish */}
+                  <button
+                    onClick={() => void toggleVisibility(item)}
+                    disabled={busy}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold border rounded-lg transition-colors disabled:opacity-40 ${
+                      isPublic
+                        ? 'text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {toggling === item.id ? <Loader2 size={11} className="animate-spin" /> : isPublic ? <EyeOff size={11} /> : <Globe size={11} />}
+                    {isPublic ? 'Unpublish' : 'Publish'}
+                  </button>
+
+                  {/* Archive / Restore */}
+                  <button
+                    onClick={() => void toggleArchive(item)}
+                    disabled={busy}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-40"
+                  >
+                    {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
+                    {isArchived ? 'Restore' : 'Archive'}
+                  </button>
+
+                  {/* Push update */}
+                  {item.install_count > 0 && (
+                    <button
+                      onClick={() => setPushItem(item)}
+                      disabled={busy}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-40"
+                    >
+                      <Send size={11} />
+                      Push update
+                    </button>
+                  )}
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => void handleDelete(item)}
+                    disabled={busy}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 ml-auto"
+                  >
+                    {deleting === item.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                    Delete
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {pending.map((sub) => (
-                  <SubmissionCard
-                    key={sub.id}
-                    sub={sub}
-                    isReviewing={reviewing === sub.id}
-                    notes={reviewing === sub.id ? notes : ''}
-                    actionStatus={actionStatus[sub.id]}
-                    onStartReview={() => { setReviewing(sub.id); setNotes(''); }}
-                    onCancelReview={() => setReviewing(null)}
-                    onNotesChange={setNotes}
-                    onApprove={() => void handleReview(sub.id, 'approve')}
-                    onReject={() => void handleReview(sub.id, 'reject')}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Reviewed */}
-          {reviewed.length > 0 && (
-            <section>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                Previously reviewed ({reviewed.length})
-              </h3>
-              <div className="flex flex-col gap-2">
-                {reviewed.map((sub) => (
-                  <SubmissionCard
-                    key={sub.id}
-                    sub={sub}
-                    isReviewing={false}
-                    notes=""
-                    actionStatus={actionStatus[sub.id]}
-                    onStartReview={() => { setReviewing(sub.id); setNotes(''); }}
-                    onCancelReview={() => setReviewing(null)}
-                    onNotesChange={setNotes}
-                    onApprove={() => void handleReview(sub.id, 'approve')}
-                    onReject={() => void handleReview(sub.id, 'reject')}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function SubmissionCard({
-  sub, isReviewing, notes, actionStatus,
-  onStartReview, onCancelReview, onNotesChange, onApprove, onReject,
-}: {
-  sub: Submission;
-  isReviewing: boolean;
-  notes: string;
-  actionStatus?: 'loading' | 'done' | 'error';
-  onStartReview: () => void;
-  onCancelReview: () => void;
-  onNotesChange: (v: string) => void;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
-  const isPending  = sub.visibility === 'pending';
-  const isApproved = sub.visibility === 'public';
-  const isRejected = sub.visibility === 'rejected';
-
-  const badge = isApproved
-    ? { icon: <Globe size={11} />, label: 'Approved', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
-    : isRejected
-    ? { icon: <XCircle size={11} />, label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' }
-    : { icon: <Clock size={11} />, label: 'Pending', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
-
-  return (
-    <div className={`bg-white border rounded-2xl overflow-hidden transition-all ${isPending ? 'border-amber-200 shadow-sm' : 'border-slate-200'}`}>
-      <div className="flex items-start gap-4 p-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <FileText size={16} className="text-slate-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-sm font-bold text-slate-800">{sub.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {sub.type} {sub.category ? `· ${sub.category}` : ''} {sub.discipline ? `· ${sub.discipline}` : ''}
-              </p>
-            </div>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge.cls}`}>
-              {badge.icon}{badge.label}
-            </span>
-          </div>
-          {sub.summary && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{sub.summary}</p>}
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            {sub.company_name && (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <Building2 size={11} />{sub.company_name}
-              </span>
-            )}
-            {sub.submitter_email && (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <User size={11} />{sub.submitter_name ?? sub.submitter_email}
-              </span>
-            )}
-            <span className="text-xs text-slate-400">
-              Submitted {new Date(sub.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-          </div>
-          {sub.reviewer_notes && (
-            <p className="text-xs text-slate-500 mt-1.5 italic bg-slate-50 rounded-lg px-2.5 py-1.5">
-              Review note: "{sub.reviewer_notes}"
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Review actions */}
-      {isPending && !isReviewing && (
-        <div className="border-t border-slate-100 px-4 py-3 flex items-center gap-2 bg-amber-50/50">
-          <button
-            onClick={onStartReview}
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition-colors"
-          >
-            Review submission
-          </button>
+            );
+          })}
         </div>
       )}
 
-      {isReviewing && (
-        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50 flex flex-col gap-3">
-          <textarea
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            rows={2}
-            placeholder="Optional reviewer notes (shown to submitter)…"
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-          />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onApprove}
-              disabled={actionStatus === 'loading'}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
-            >
-              {actionStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
-              Approve & publish
-            </button>
-            <button
-              onClick={onReject}
-              disabled={actionStatus === 'loading'}
-              className="flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
-            >
-              <XCircle size={11} />Reject
-            </button>
-            <button onClick={onCancelReview} className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 transition-colors">
-              Cancel
-            </button>
-          </div>
-        </div>
+      {/* Edit / Create modal */}
+      {showEdit && (
+        <EditModal
+          item={editItem === 'new' ? null : editItem as LibItem | null}
+          onClose={() => setShowEdit(false)}
+          onSaved={load}
+        />
+      )}
+
+      {/* Push update modal */}
+      {pushItem && (
+        <PushUpdateModal
+          item={pushItem}
+          onClose={() => { setPushItem(null); void load(); }}
+        />
       )}
     </div>
   );
