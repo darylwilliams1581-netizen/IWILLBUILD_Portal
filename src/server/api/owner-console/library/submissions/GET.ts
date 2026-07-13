@@ -1,57 +1,22 @@
 /**
  * GET /api/owner-console/library/submissions
- * Platform owner only.
- * Returns all library_items with visibility='pending' for review.
+ *
+ * DEPRECATED — the pending-review submission queue no longer exists.
+ * Only the platform owner can publish to the Global Library (directly via
+ * POST /api/owner-console/library/items or the publish-to-library endpoints).
+ * Regular company users cannot submit items for review.
+ *
+ * This endpoint is kept registered to avoid 404s from any cached UI code,
+ * but always returns an empty list.
  */
 import type { Request, Response } from 'express';
-import { db } from '../../../../db/client.js';
-import { sql } from 'drizzle-orm';
+import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
 
-export default async function handler(_req: Request, res: Response) {
-  try {
-    const [rows] = await db.execute(sql.raw(
-      `SELECT
-         li.id, li.title, li.type, li.category, li.discipline, li.summary,
-         li.visibility, li.status, li.version,
-         li.submitted_by_company_id, li.submitted_by_user_id,
-         li.reviewer_notes, li.reviewed_at, li.reviewed_by,
-         li.created_at, li.updated_at,
-         c.name AS company_name,
-         u.name AS submitter_name, u.email AS submitter_email
-       FROM library_items li
-       LEFT JOIN companies c ON c.id = li.submitted_by_company_id
-       LEFT JOIN user u ON u.id = li.submitted_by_user_id
-       WHERE li.visibility IN ('pending', 'rejected')
-          OR (li.visibility = 'public' AND li.submitted_by_company_id IS NOT NULL)
-       ORDER BY
-         CASE li.visibility WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
-         li.created_at DESC
-       LIMIT 200`
-    )) as unknown as [Array<{
-      id: number;
-      title: string;
-      type: string;
-      category: string | null;
-      discipline: string | null;
-      summary: string | null;
-      visibility: string;
-      status: string;
-      version: string;
-      submitted_by_company_id: number | null;
-      submitted_by_user_id: string | null;
-      reviewer_notes: string | null;
-      reviewed_at: string | null;
-      reviewed_by: string | null;
-      created_at: string;
-      updated_at: string;
-      company_name: string | null;
-      submitter_name: string | null;
-      submitter_email: string | null;
-    }>, unknown];
+export default async function handler(req: Request, res: Response) {
+  const info = await getPlatformOwnerInfo(req);
+  if (!info) return res.status(401).json({ error: 'Unauthorised' });
+  if (!info.isPlatformOwner) return res.status(403).json({ error: 'Forbidden' });
 
-    return res.json({ submissions: rows ?? [] });
-  } catch (err) {
-    console.error('owner submissions error:', err);
-    return res.status(500).json({ error: 'Failed to load submissions' });
-  }
+  // No pending submissions exist — owner publishes directly
+  return res.json({ submissions: [] });
 }

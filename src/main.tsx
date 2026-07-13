@@ -147,7 +147,17 @@ const tree = (
 // reattaches to the server-rendered tree; createRoot mounts fresh for dev/
 // pre-SSR fallback.
 if (rootElement.firstElementChild) {
-  hydrateRoot(rootElement, tree);
+  hydrateRoot(rootElement, tree, {
+    // Browser extensions (Grammarly, LastPass, etc.) inject style attributes onto
+    // DOM nodes before React hydrates, causing spurious hydration mismatches.
+    // These are recoverable — React re-renders on the client and the UI is correct.
+    // Suppress them here so they don't surface as errors in the dev error boundary.
+    onRecoverableError(error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Hydration') || msg.includes('hydration') || msg.includes('hydrat')) return;
+      console.error('[hydrateRoot] Recoverable error:', error);
+    },
+  });
 } else {
   createRoot(rootElement).render(tree);
 }
