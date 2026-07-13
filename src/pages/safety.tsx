@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
-  ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
+  ClipboardList, BookOpen, Library, Image, Menu, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
   ChevronLeft, Share2,
@@ -252,10 +252,10 @@ export function SwmsLibraryTab() {
                 {isPlatformOwner && (
                   <button
                     onClick={() => setPublishTarget({ id: s.id, title: s.title })}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                    title="Publish to Global Library"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                    title="Share to Global Library"
                   >
-                    <BookOpen size={14} />
+                    <Library size={14} />
                   </button>
                 )}
                 <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
@@ -608,10 +608,10 @@ export function PoliciesTab() {
                 {isPolicyOwner && (
                   <button
                     onClick={() => setPolicyPublishTarget({ id: d.id, title: d.title })}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                    title="Publish to Global Library"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                    title="Share to Global Library"
                   >
-                    <BookOpen size={14} />
+                    <Library size={14} />
                   </button>
                 )}
                 <button onClick={() => handleDelete(d.id)} disabled={deleting === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
