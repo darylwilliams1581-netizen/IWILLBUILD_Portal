@@ -7,7 +7,7 @@ import {
   ClipboardList, BookOpen, Image, Menu, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
-  HardHat, ChevronLeft, Share2,
+  ChevronLeft, Share2,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
@@ -21,7 +21,7 @@ import PlanFormModal from '@/components/safety/PlanFormModal';
 import DazzaAiTab from '@/components/safety/DazzaAiTab';
 import SwmsPrintModal from '@/components/safety/SwmsPrintModal';
 import JobSwmsTab from '@/components/safety/JobSwmsTab';
-import WHS_PlanBuilder, { austenPlanDefaults } from '@/components/safety/WHS_PlanBuilder';
+import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import {
   type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster,
   type GeneratedPoster, type SwmsPrintData,
@@ -285,7 +285,7 @@ export function SafetyPlansTab() {
   const [showBuilder, setShowBuilder] = useState(false);
   const [showLegacyModal, setShowLegacyModal] = useState(false);
   const [editing, setEditing] = useState<SafetyPlan | null>(null);
-  const [builderInitial, setBuilderInitial] = useState<ReturnType<typeof austenPlanDefaults> | null>(null);
+  const [builderInitial, setBuilderInitial] = useState<Record<string, unknown> | null>(null);
   const [builderPlanId, setBuilderPlanId] = useState<number | null>(null);
   const [builderPlanTitle, setBuilderPlanTitle] = useState<string | undefined>(undefined);
   const [seeding, setSeeding] = useState(false);
@@ -322,13 +322,6 @@ export function SafetyPlansTab() {
     }
   }
 
-  function openAustenPlan() {
-    setBuilderInitial(austenPlanDefaults());
-    setBuilderPlanId(null);
-    setBuilderPlanTitle('Austen WHS Management Plan');
-    setShowBuilder(true);
-  }
-
   function openNewBuilder() {
     setBuilderInitial(null);
     setBuilderPlanId(null);
@@ -337,7 +330,7 @@ export function SafetyPlansTab() {
   }
 
   function openExistingPlan(p: SafetyPlan) {
-    let parsedData: ReturnType<typeof austenPlanDefaults> | null = null;
+    let parsedData: Record<string, unknown> | null = null;
     if (p.plan_data) {
       try { parsedData = JSON.parse(p.plan_data as string); } catch { /* ignore */ }
     }
@@ -390,14 +383,6 @@ export function SafetyPlansTab() {
             <span className="hidden sm:inline">Load Templates</span>
           </button>
           <button
-            onClick={openAustenPlan}
-            className="flex items-center gap-1.5 px-3 py-2 border border-orange-300 bg-orange-50 rounded-lg text-xs font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
-            title="Open Austen plan template pre-filled for developer review"
-          >
-            <HardHat size={13} />
-            <span className="hidden sm:inline">Austen Plan (Dev Review)</span>
-          </button>
-          <button
             onClick={openNewBuilder}
             className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
           >
@@ -426,11 +411,8 @@ export function SafetyPlansTab() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldCheck size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No safety plans yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the new builder, or load the Austen plan template for developer review.</p>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the builder.</p>
           <div className="flex items-center gap-3 flex-wrap justify-center">
-            <button onClick={openAustenPlan} className="flex items-center gap-2 border border-orange-300 bg-orange-50 text-orange-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-orange-100 transition-colors">
-              <HardHat size={14} />Austen Plan (Dev Review)
-            </button>
             <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
               <Plus size={15} />New WHS Plan
             </button>
