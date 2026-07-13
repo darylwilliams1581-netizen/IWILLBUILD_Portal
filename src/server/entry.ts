@@ -2122,6 +2122,8 @@ app.get("/api/job-forms/:id/share", job_forms_id_share_get_261);
 app.post("/api/job-forms/:id/share", job_forms_id_share_post_262);
 app.get("/api/jobs", jobs_get_263);
 app.post("/api/jobs", jobs_post_264);
+import jobCostsPost from "./api/job-costs/POST";
+app.post("/api/job-costs", jobCostsPost);
 app.get("/api/jobs/:id", jobs_id_get_265);
 app.put("/api/jobs/:id", jobs_id_put_266);
 app.post("/api/jobs/:id/attendance/:attendanceId/close", jobs_id_attendance_attendanceId_close_post_267);

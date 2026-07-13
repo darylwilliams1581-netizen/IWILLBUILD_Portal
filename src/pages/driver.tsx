@@ -33,14 +33,17 @@ import {
   HardHat,
   LayoutDashboard,
   LogIn,
+  Receipt,
+  Rocket,
+  Upload,
+  DollarSign,
+  Camera,
 } from 'lucide-react';
 import BuildersCalc from '../components/estimating/BuildersCalc';
 import TakeoffPad from '../components/estimating/TakeoffPad';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
-import DriverJobCard from '@/components/driver/DriverJobCard';
 import DriverGpsStatus from '@/components/driver/DriverGpsStatus';
-import type { Job } from '@/lib/jobs-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -281,6 +284,276 @@ function ToolSheet({ title, icon, onClose, children }: ToolSheetProps) {
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Job Cost Sheet ────────────────────────────────────────────────────────────
+
+interface CostJob {
+  id: number;
+  name: string;
+  jobNumber?: string | null;
+}
+
+function JobCostSheet({ onClose }: { onClose: () => void }) {
+  const [jobs, setJobs]               = useState<CostJob[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [selectedJob, setSelectedJob] = useState<CostJob | null>(null);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount]           = useState('');
+  const [category, setCategory]       = useState('materials');
+  const [files, setFiles]             = useState<File[]>([]);
+  const [uploading, setUploading]     = useState(false);
+  const [done, setDone]               = useState(false);
+  const [error, setError]             = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const CATEGORIES = [
+    { value: 'materials',  label: 'Materials' },
+    { value: 'labour',     label: 'Labour' },
+    { value: 'equipment',  label: 'Equipment' },
+    { value: 'subcontract',label: 'Subcontract' },
+    { value: 'other',      label: 'Other' },
+  ];
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/jobs', { credentials: 'include' });
+        const data = await res.json() as { jobs?: CostJob[] };
+        setJobs(data.jobs ?? []);
+      } catch { setJobs([]); }
+      finally { setJobsLoading(false); }
+    })();
+  }, []);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    setFiles(prev => [...prev, ...picked].slice(0, 5));
+    e.target.value = '';
+  }
+
+  function removeFile(idx: number) {
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleSubmit() {
+    if (!selectedJob) { setError('Please select a job.'); return; }
+    if (!description.trim()) { setError('Please add a description.'); return; }
+    setError('');
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('jobId', String(selectedJob.id));
+      form.append('description', description.trim());
+      form.append('amount', amount || '0');
+      form.append('category', category);
+      form.append('source', 'driver_app');
+      files.forEach(f => form.append('receipts', f));
+
+      const res = await fetch('/api/job-costs', {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? 'Upload failed');
+      }
+      void hapticSuccess();
+      setDone(true);
+      setTimeout(onClose, 1800);
+    } catch (e) {
+      setError(String((e as Error).message ?? 'Failed to save cost'));
+      void hapticError();
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        style={{ maxHeight: '92vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-700" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
+              <Receipt size={15} className="text-amber-400" />
+            </div>
+            <h2 className="text-white font-bold text-base">Job Cost</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-emerald-400" />
+            </div>
+            <p className="text-white font-bold text-lg">Cost saved!</p>
+            <p className="text-gray-500 text-sm text-center">Receipt uploaded and cost recorded.</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+              {/* Job picker */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Select Job</p>
+                {jobsLoading ? (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                    <Loader2 size={14} className="animate-spin" /> Loading…
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {jobs.map(job => (
+                      <button
+                        key={job.id}
+                        onClick={() => setSelectedJob(job)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                          selectedJob?.id === job.id
+                            ? 'bg-amber-500/10 border-amber-500/40 text-white'
+                            : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'
+                        }`}
+                      >
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-amber-400' : 'bg-gray-600'}`} />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{job.name}</p>
+                          {job.jobNumber && <p className="text-xs text-gray-500 font-mono">{job.jobNumber}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Category */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Category</p>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(c => (
+                    <button
+                      key={c.value}
+                      onClick={() => setCategory(c.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                        category === c.value
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                          : 'bg-gray-900 border-gray-800 text-gray-400 hover:bg-gray-800'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Description <span className="text-red-400">*</span></p>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="e.g. Timber framing — Bunnings"
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Amount (optional)</p>
+                <div className="relative">
+                  <DollarSign size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Receipt upload */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Receipts / Photos (up to 5)</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  multiple
+                  capture="environment"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={files.length >= 5}
+                  className="w-full flex items-center justify-center gap-2.5 bg-gray-900 border border-dashed border-gray-700 hover:border-amber-500/50 hover:bg-gray-800 disabled:opacity-40 text-gray-400 hover:text-amber-400 font-semibold py-4 rounded-xl transition-colors text-sm"
+                >
+                  <Camera size={16} />
+                  Take Photo / Upload Receipt
+                </button>
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {files.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+                        <Upload size={13} className="text-amber-400 shrink-0" />
+                        <span className="text-gray-300 text-xs flex-1 truncate">{f.name}</span>
+                        <button onClick={() => removeFile(i)} className="text-gray-600 hover:text-red-400 transition-colors">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 bg-red-950/50 border border-red-800/50 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <p className="text-red-300 text-sm">{error}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Submit */}
+            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-800">
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={uploading}
+                className="w-full flex items-center justify-center gap-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold py-4 rounded-2xl transition-colors disabled:opacity-60"
+              >
+                {uploading ? <Loader2 size={18} className="animate-spin" /> : <Receipt size={18} />}
+                {uploading ? 'Saving…' : 'Save Cost'}
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -759,15 +1032,14 @@ export default function DriverPage() {
   const [showBuildersCalc, setShowBuildersCalc] = useState(false);
   const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
   const [showAttendance, setShowAttendance]     = useState(false);
+  const [showJobCost, setShowJobCost]           = useState(false);
 
   // Elapsed timer
   const [elapsed, setElapsed]           = useState('00m 00s');
   const [elapsedHours, setElapsedHours] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Selected job (for display alongside session)
-  const [selectedJob, setSelectedJob]   = useState<Job | null>(null);
-
+  // Selected job (for display alongside session) — kept for future use
   // ── Elapsed timer ───────────────────────────────────────────────────────
   useEffect(() => {
     if (session?.start_at) {
@@ -1051,12 +1323,6 @@ export default function DriverPage() {
               )}
             </AnimatePresence>
 
-            {/* ── Current job card ─────────────────────────────────────────── */}
-            <DriverJobCard
-              onJobSelect={setSelectedJob}
-              compact
-            />
-
             {/* ── Quick actions ─────────────────────────────────────────────── */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">Quick Access</p>
@@ -1076,8 +1342,8 @@ export default function DriverPage() {
                 <ChevronRight size={16} className="text-gray-600 shrink-0" />
               </Link>
 
-              {/* Tools row — Builders Calc + Take-off Pad */}
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              {/* Tools row — Builders Calc + Take-off Pad + Job Cost */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 <button
                   onClick={() => setShowBuildersCalc(true)}
                   className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
@@ -1096,6 +1362,16 @@ export default function DriverPage() {
                     <Layers size={20} className="text-violet-400" />
                   </div>
                   <span className="text-white text-xs font-bold text-center leading-tight">Take-off Pad</span>
+                </button>
+
+                <button
+                  onClick={() => setShowJobCost(true)}
+                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
+                    <Receipt size={20} className="text-amber-400" />
+                  </div>
+                  <span className="text-white text-xs font-bold text-center leading-tight">Job Cost</span>
                 </button>
               </div>
 
@@ -1133,6 +1409,15 @@ export default function DriverPage() {
               </div>
             </div>
 
+            {/* ── Launch button ─────────────────────────────────────────────── */}
+            <Link
+              to="/jobs"
+              className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-orange-500/25"
+            >
+              <Rocket size={20} />
+              <span className="text-base">Launch</span>
+            </Link>
+
             {/* Bottom safe area padding for phones */}
             <div className="h-8" />
           </div>
@@ -1169,6 +1454,13 @@ export default function DriverPage() {
             onCancel={() => setShowStopConfirm(false)}
             stopping={stopping}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Job Cost sheet ───────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showJobCost && (
+          <JobCostSheet onClose={() => setShowJobCost(false)} />
         )}
       </AnimatePresence>
 
