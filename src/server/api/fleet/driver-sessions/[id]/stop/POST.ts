@@ -123,7 +123,9 @@ export default async function handler(req: Request, res: Response) {
       }
 
       // Drive time from session start to now
-      const startMs    = new Date(ds.start_at).getTime();
+      const rawStart = String(ds.start_at ?? '');
+      const startIso = (rawStart.endsWith('Z') || rawStart.includes('+')) ? rawStart : rawStart.replace(' ', 'T') + 'Z';
+      const startMs    = new Date(startIso).getTime();
       const driveTimeSec = Math.round((Date.now() - startMs) / 1000);
 
       const distKm   = trackDistance  ? Math.round(totalDistanceKm * 1000) / 1000 : null;

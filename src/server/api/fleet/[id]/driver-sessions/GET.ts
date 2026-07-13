@@ -22,5 +22,11 @@ export default async function handler(req: Request, res: Response) {
         LIMIT 100`
   ) as unknown as [Array<Record<string, unknown>>, unknown];
 
-  res.json({ sessions: rows ?? [] });
+  const sessions = (rows ?? []).map((r: Record<string, unknown>) => ({
+    ...r,
+    start_at: r.start_at ? (String(r.start_at).endsWith('Z') ? r.start_at : String(r.start_at).replace(' ', 'T') + 'Z') : null,
+    end_at:   r.end_at   ? (String(r.end_at).endsWith('Z')   ? r.end_at   : String(r.end_at).replace(' ', 'T')   + 'Z') : null,
+  }));
+
+  res.json({ sessions });
 }

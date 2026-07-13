@@ -246,6 +246,7 @@ export default function DriverPage() {
 
   // Elapsed timer
   const [elapsed, setElapsed]           = useState('00m 00s');
+  const [elapsedHours, setElapsedHours] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Selected job (for display alongside session)
@@ -254,13 +255,17 @@ export default function DriverPage() {
   // ── Elapsed timer ───────────────────────────────────────────────────────
   useEffect(() => {
     if (session?.start_at) {
-      setElapsed(formatElapsed(session.start_at));
-      elapsedRef.current = setInterval(() => {
+      const update = () => {
         setElapsed(formatElapsed(session.start_at));
-      }, 1000);
+        const ms = Date.now() - new Date(session.start_at).getTime();
+        setElapsedHours(ms / 3600000);
+      };
+      update();
+      elapsedRef.current = setInterval(update, 1000);
     } else {
       if (elapsedRef.current) clearInterval(elapsedRef.current);
       setElapsed('00m 00s');
+      setElapsedHours(0);
     }
     return () => { if (elapsedRef.current) clearInterval(elapsedRef.current); };
   }, [session?.start_at]);
@@ -412,11 +417,11 @@ export default function DriverPage() {
 
                 {/* Session stats row */}
                 {sessionActive && (
-                  <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <div className="flex items-center gap-1.5 text-gray-400">
                       <Clock size={12} />
                       <span className="text-xs">
-                        Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                        Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane' })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-400">
@@ -446,6 +451,17 @@ export default function DriverPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Stale session warning */}
+              {sessionActive && elapsedHours >= 8 && (
+                <div className="mx-5 mb-3 flex items-start gap-2 bg-amber-950/50 border border-amber-700/50 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-amber-300 text-xs font-semibold">Session looks stale</p>
+                    <p className="text-amber-400/70 text-xs mt-0.5">This session has been running for {elapsed}. If you forgot to end it, close it now.</p>
+                  </div>
+                </div>
+              )}
 
               {/* CTA button */}
               <div className="px-5 pb-5">

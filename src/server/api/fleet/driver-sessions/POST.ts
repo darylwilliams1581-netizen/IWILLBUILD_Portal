@@ -86,7 +86,12 @@ export default async function handler(req: Request, res: Response) {
           ORDER BY fds.id DESC LIMIT 1`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    res.status(201).json({ ok: true, session: newRows[0] ?? null });
+    const newSession = newRows[0] ?? null;
+    if (newSession?.start_at) {
+      const s = String(newSession.start_at);
+      newSession.start_at = (s.endsWith('Z') || s.includes('+')) ? s : s.replace(' ', 'T') + 'Z';
+    }
+    res.status(201).json({ ok: true, session: newSession });
   } catch (error) {
     console.error('POST /api/fleet/driver-sessions error:', error);
     res.status(500).json({ error: 'Failed to start driving session' });
