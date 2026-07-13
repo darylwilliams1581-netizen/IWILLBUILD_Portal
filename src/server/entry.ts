@@ -1856,6 +1856,62 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] guest_checkins CREATE failed:', msg);
     }
   }
+
+  // ── Make job_form_submissions.job_id nullable (standalone forms) ─────────────
+  // The column was created NOT NULL with a FK to jobs.id, which prevents
+  // standalone (no-job) form submissions. We need to:
+  //   1. Drop the existing FK constraint (name varies — look it up from INFORMATION_SCHEMA)
+  //   2. ALTER the column to INT NULL
+  //   3. Re-add the FK with ON DELETE SET NULL so standalone rows survive job deletes
+  try {
+    // Check if job_id is already nullable
+    const [nullableRows] = await db.execute(sql.raw(
+      `SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME   = 'job_form_submissions'
+         AND COLUMN_NAME  = 'job_id'`
+    )) as [Array<{ IS_NULLABLE: string }>];
+
+    if (nullableRows[0]?.IS_NULLABLE === 'NO') {
+      // Find the FK constraint name
+      const [fkRows] = await db.execute(sql.raw(
+        `SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+         WHERE TABLE_SCHEMA    = DATABASE()
+           AND TABLE_NAME      = 'job_form_submissions'
+           AND COLUMN_NAME     = 'job_id'
+           AND REFERENCED_TABLE_NAME IS NOT NULL`
+      )) as [Array<{ CONSTRAINT_NAME: string }>];
+
+      // Drop the FK if found
+      for (const row of fkRows) {
+        try {
+          await db.execute(sql.raw(
+            `ALTER TABLE job_form_submissions DROP FOREIGN KEY \`${row.CONSTRAINT_NAME}\``
+          ));
+        } catch { /* ignore if already dropped */ }
+      }
+
+      // Make column nullable
+      await db.execute(sql.raw(
+        `ALTER TABLE job_form_submissions MODIFY COLUMN job_id INT NULL`
+      ));
+
+      // Re-add FK allowing NULL — ON DELETE SET NULL so standalone rows survive job deletes
+      try {
+        await db.execute(sql.raw(
+          `ALTER TABLE job_form_submissions
+           ADD CONSTRAINT jfs_job_id_fk
+           FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL`
+        ));
+      } catch { /* FK may already exist with new name */ }
+
+      console.log('[startup-migration] job_form_submissions.job_id made nullable ✓');
+    } else {
+      console.log('[startup-migration] job_form_submissions.job_id already nullable ✓');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] job_form_submissions nullable migration failed:', String((e as Error)?.message ?? e));
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
