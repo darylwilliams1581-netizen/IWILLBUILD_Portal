@@ -1,15 +1,23 @@
 /**
  * GET /api/jobs/:id/signin-status
  *
- * Returns current sign-in status for the authenticated user on this job,
- * plus a recent attendance log (last 20 entries for this job, all users).
- *
- * Returns: { ok, signedIn, lastAction, recentLog }
+ * Returns:
+ *   - signedIn          — whether the current user is currently signed in
+ *   - lastAction / lastActionAt — for the status card
+ *   - currentlyOnSite   — live roster: all users with net sign-ins > sign-outs
+ *   - recentLog         — last 30 raw attendance entries (all users)
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
+
+// Normalise MySQL DATETIME (no Z) → UTC ISO string
+function toUtcIso(val: unknown): string | null {
+  if (!val) return null;
+  const s = String(val);
+  return s.endsWith('Z') || s.includes('+') ? s : s + 'Z';
+}
 
 export default async function handler(req: Request, res: Response) {
   const auth = await getSessionAndProfile(req, res);
@@ -20,6 +28,7 @@ export default async function handler(req: Request, res: Response) {
 
   const userId    = auth.session.user.id;
   const companyId = auth.profile.companyId;
+  const safeUserId = userId.replace(/'/g, '');
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
@@ -28,15 +37,14 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ id: number }>, unknown];
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
 
-    // ── Current user status — net sign-in count ──────────────────────────
-    // Use the same SUM approach as the signin/signout endpoints for consistency.
+    // ── 1. Current user status (net sign-in count) ────────────────────────
     const [netRows] = await db.execute(
       sql.raw(`
         SELECT
           SUM(CASE WHEN action = 'signin'  THEN 1 ELSE 0 END) AS ins,
           SUM(CASE WHEN action = 'signout' THEN 1 ELSE 0 END) AS outs
         FROM job_attendance
-        WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
+        WHERE job_id = ${jobId} AND user_id = '${safeUserId}'
       `)
     ) as unknown as [Array<{ ins: number; outs: number }>, unknown];
 
@@ -44,12 +52,12 @@ export default async function handler(req: Request, res: Response) {
     const netOuts = Number(netRows?.[0]?.outs ?? 0);
     const signedIn = netIns > netOuts;
 
-    // Last action for display
+    // ── 2. Last action for the status card ────────────────────────────────
     const [lastRows] = await db.execute(
       sql.raw(`
         SELECT action, created_at
         FROM job_attendance
-        WHERE job_id = ${jobId} AND user_id = '${userId.replace(/'/g, '')}'
+        WHERE job_id = ${jobId} AND user_id = '${safeUserId}'
         ORDER BY created_at DESC
         LIMIT 1
       `)
@@ -57,7 +65,37 @@ export default async function handler(req: Request, res: Response) {
 
     const lastRow = lastRows?.[0] ?? null;
 
-    // ── Recent log (all users, this job) ─────────────────────────────────
+    // ── 3. Currently on site — live roster ────────────────────────────────
+    // All users whose net sign-in count > sign-out count for this job.
+    const [onSiteRows] = await db.execute(
+      sql.raw(`
+        SELECT
+          ja.user_id,
+          SUM(CASE WHEN ja.action = 'signin'  THEN 1 ELSE 0 END) AS ins,
+          SUM(CASE WHEN ja.action = 'signout' THEN 1 ELSE 0 END) AS outs,
+          MAX(CASE WHEN ja.action = 'signin' THEN ja.created_at END) AS signed_in_at,
+          MAX(CASE WHEN ja.action = 'signin' THEN ja.actor_type END) AS actor_type,
+          MAX(CASE WHEN ja.action = 'signin' THEN ja.source    END) AS source,
+          u.name  AS user_name,
+          u.email AS user_email
+        FROM job_attendance ja
+        LEFT JOIN users u ON u.id = ja.user_id
+        WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
+        GROUP BY ja.user_id, u.name, u.email
+        HAVING SUM(CASE WHEN ja.action = 'signin'  THEN 1 ELSE 0 END)
+             > SUM(CASE WHEN ja.action = 'signout' THEN 1 ELSE 0 END)
+        ORDER BY signed_in_at DESC
+      `)
+    ) as unknown as [Array<{
+      user_id: string;
+      signed_in_at: string;
+      actor_type: string;
+      source: string;
+      user_name: string | null;
+      user_email: string | null;
+    }>, unknown];
+
+    // ── 4. Recent attendance log (raw, last 30 entries) ───────────────────
     const [logRows] = await db.execute(
       sql.raw(`
         SELECT
@@ -69,22 +107,19 @@ export default async function handler(req: Request, res: Response) {
         LEFT JOIN users u ON u.id = ja.user_id
         WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
         ORDER BY ja.created_at DESC
-        LIMIT 20
+        LIMIT 30
       `)
     ) as unknown as [Array<Record<string, unknown>>, unknown];
-
-    // Normalise DATETIME → UTC ISO (MySQL returns without Z suffix)
-    function toUtcIso(val: unknown): string | null {
-      if (!val) return null;
-      const s = String(val);
-      return s.endsWith('Z') || s.includes('+') ? s : s + 'Z';
-    }
 
     return res.json({
       ok: true,
       signedIn,
-      lastAction:   lastRow?.action    ?? null,
+      lastAction:   lastRow?.action              ?? null,
       lastActionAt: toUtcIso(lastRow?.created_at) ?? null,
+      currentlyOnSite: (onSiteRows ?? []).map((r) => ({
+        ...r,
+        signed_in_at: toUtcIso(r.signed_in_at),
+      })),
       recentLog: (logRows ?? []).map((r) => ({
         ...r,
         created_at: toUtcIso(r.created_at),

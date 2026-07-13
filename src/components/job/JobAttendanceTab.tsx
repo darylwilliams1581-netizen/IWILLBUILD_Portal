@@ -1,15 +1,24 @@
 /**
  * Job → Attendance tab
  *
- * Lets portal users sign in / sign out of a job and view the recent log.
- * Also provides QR code generation for guest/field access.
+ * Lets portal users sign in / sign out of a job and view the live roster
+ * plus the full attendance log.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
   LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  Clock, Users, QrCode, RefreshCw, User,
+  Clock, QrCode, RefreshCw, User, UserCheck, History,
 } from 'lucide-react';
 import JobQrModal from './JobQrModal';
+
+interface OnSiteEntry {
+  user_id: string;
+  signed_in_at: string;
+  actor_type: string;
+  source: string;
+  user_name: string | null;
+  user_email: string | null;
+}
 
 interface AttendanceEntry {
   id: number;
@@ -27,6 +36,7 @@ interface StatusData {
   signedIn: boolean;
   lastAction: string | null;
   lastActionAt: string | null;
+  currentlyOnSite: OnSiteEntry[];
   recentLog: AttendanceEntry[];
 }
 
@@ -218,12 +228,68 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
         </div>
       </div>
 
-      {/* ── Recent log ───────────────────────────────────────────────────── */}
+      {/* ── Currently on site — live roster ─────────────────────────────── */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-green-50">
+          <UserCheck size={15} className="text-green-600" />
+          <h3 className="text-sm font-semibold text-slate-700">Currently on Site</h3>
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-green-700 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+            Live
+          </span>
+        </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-4 text-sm text-slate-500">
+            <Loader2 size={14} className="animate-spin" />
+            Loading…
+          </div>
+        )}
+
+        {!loading && (!status?.currentlyOnSite || status.currentlyOnSite.length === 0) && (
+          <div className="px-4 py-6 text-center text-sm text-slate-400">
+            Nobody is currently signed in to this job.
+          </div>
+        )}
+
+        {!loading && status?.currentlyOnSite && status.currentlyOnSite.length > 0 && (
+          <div className="divide-y divide-border">
+            {status.currentlyOnSite.map((person) => (
+              <div key={person.user_id} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <User size={14} className="text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
+                    {person.user_name ?? person.user_email ?? 'Unknown'}
+                  </p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <span>{ACTOR_LABELS[person.actor_type] ?? person.actor_type}</span>
+                    <span>·</span>
+                    <span>{SOURCE_LABELS[person.source] ?? person.source}</span>
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs text-slate-400 flex items-center gap-1">
+                    <Clock size={10} />
+                    {new Date(person.signed_in_at).toLocaleString('en-AU', {
+                      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                    })}
+                  </p>
+                  <p className="text-xs font-semibold text-green-600 mt-0.5">On site</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Attendance log — raw history ─────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-          <Users size={15} className="text-slate-500" />
-          <h3 className="text-sm font-semibold text-slate-700">Recent Attendance</h3>
-          <span className="ml-auto text-xs text-slate-400">Last 20 entries</span>
+          <History size={15} className="text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-700">Attendance Log</h3>
+          <span className="ml-auto text-xs text-slate-400">Last 30 entries</span>
         </div>
 
         {loading && (

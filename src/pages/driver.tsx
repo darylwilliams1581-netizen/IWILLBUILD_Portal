@@ -38,6 +38,8 @@ import {
   Upload,
   DollarSign,
   Camera,
+  Users,
+  User,
 } from 'lucide-react';
 import BuildersCalc from '../components/estimating/BuildersCalc';
 import TakeoffPad from '../components/estimating/TakeoffPad';
@@ -568,10 +570,27 @@ interface AttendanceJob {
   status?: string | null;
 }
 
+interface OnSiteEntry {
+  user_id: string;
+  signed_in_at: string;
+  actor_type: string;
+  source: string;
+  user_name: string | null;
+  user_email: string | null;
+}
+
 interface AttendanceStatus {
   signedIn: boolean;
   lastAction: string | null;
   lastActionAt: string | null;
+  currentlyOnSite: OnSiteEntry[];
+  recentLog: Array<{
+    id: number;
+    action: string;
+    user_name: string | null;
+    user_email: string | null;
+    created_at: string;
+  }>;
 }
 
 function AttendanceSheet({ onClose }: { onClose: () => void }) {
@@ -780,6 +799,42 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                   Sign Out
                 </button>
               </div>
+
+              {/* Currently on site — live roster */}
+              {status && (
+                <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800">
+                    <Users size={13} className="text-emerald-400" />
+                    <span className="text-xs font-bold text-gray-300">Currently on Site</span>
+                    <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                      Live
+                    </span>
+                  </div>
+                  {status.currentlyOnSite.length === 0 ? (
+                    <p className="text-xs text-gray-600 text-center py-4">Nobody on site yet.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-800">
+                      {status.currentlyOnSite.map((p) => (
+                        <div key={p.user_id} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <User size={12} className="text-emerald-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {p.user_name ?? p.user_email ?? 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(p.signed_in_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-400">On site</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
