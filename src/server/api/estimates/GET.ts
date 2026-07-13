@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
-import { estimates, estimateLines, profiles } from '../../db/schema.js';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { profiles } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 
 function computeTotal(
@@ -36,35 +37,52 @@ export default async function handler(req: Request, res: Response) {
     const jobId = req.query.jobId ? parseInt(String(req.query.jobId), 10) : null;
     if (!jobId || isNaN(jobId)) return res.status(400).json({ error: 'jobId required' });
 
-    const rows = await db
-      .select()
-      .from(estimates)
-      .where(and(eq(estimates.jobId, jobId), eq(estimates.companyId, profile.companyId)))
-      .orderBy(desc(estimates.createdAt));
+    // Use raw SQL so we get ALL columns including locked/locked_invoice_id
+    // which were added via ALTER TABLE and are not in the Drizzle schema
+    const [rows] = await db.execute(
+      sql`SELECT * FROM estimates
+          WHERE job_id = ${jobId} AND company_id = ${profile.companyId}
+          ORDER BY created_at DESC`
+    ) as unknown as [Array<Record<string, unknown>>, unknown];
 
-    if (rows.length === 0) return res.json({ estimates: [] });
+    if (!rows?.length) return res.json({ estimates: [] });
 
     // Fetch all lines for these estimates in one query
-    const estimateIds = rows.map((r) => r.id);
-    const allLines = await db
-      .select({ estimateId: estimateLines.estimateId, quantity: estimateLines.quantity, rate: estimateLines.rate })
-      .from(estimateLines)
-      .where(inArray(estimateLines.estimateId, estimateIds));
+    const estimateIds = rows.map((r) => r.id as number);
+    const [allLines] = await db.execute(
+      sql`SELECT estimate_id, quantity, rate FROM estimate_lines
+          WHERE estimate_id IN (${sql.raw(estimateIds.join(','))})`
+    ) as unknown as [Array<{ estimate_id: number; quantity: string; rate: string }>, unknown];
 
     // Group lines by estimateId
     const linesByEstimate = new Map<number, { quantity: string; rate: string }[]>();
-    for (const l of allLines) {
-      const arr = linesByEstimate.get(l.estimateId) ?? [];
+    for (const l of (allLines ?? [])) {
+      const arr = linesByEstimate.get(l.estimate_id) ?? [];
       arr.push({ quantity: l.quantity, rate: l.rate });
-      linesByEstimate.set(l.estimateId, arr);
+      linesByEstimate.set(l.estimate_id, arr);
     }
 
     const result = rows.map((est) => ({
-      ...est,
+      // Normalise snake_case → camelCase for the fields the UI expects
+      id:              est.id,
+      jobId:           est.job_id,
+      companyId:       est.company_id,
+      title:           est.title,
+      status:          est.status,
+      markupPercent:   est.markup_percent,
+      gstMode:         est.gst_mode,
+      notes:           est.notes,
+      createdAt:       est.created_at,
+      updatedAt:       est.updated_at,
+      // Lock fields — present after ALTER TABLE migration
+      locked:          est.locked,
+      locked_at:       est.locked_at,
+      locked_invoice_id: est.locked_invoice_id,
+      // Computed total
       total: computeTotal(
-        linesByEstimate.get(est.id) ?? [],
-        est.markupPercent,
-        est.gstMode,
+        linesByEstimate.get(est.id as number) ?? [],
+        String(est.markup_percent ?? '0'),
+        String(est.gst_mode ?? 'No GST'),
       ),
     }));
 

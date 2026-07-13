@@ -19,6 +19,10 @@ export interface Estimate {
   updatedAt: string;
   /** Computed total returned by the list endpoint (not present on single-estimate fetch) */
   total?: number;
+  /** Lock fields — set when estimate has been converted to an invoice */
+  locked?: number | boolean | null;
+  locked_at?: string | null;
+  locked_invoice_id?: number | null;
 }
 
 export interface EstimateLine {

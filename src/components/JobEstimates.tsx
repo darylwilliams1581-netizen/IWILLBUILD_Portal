@@ -19,18 +19,12 @@ interface Props {
 // Statuses a non-admin can set (cannot set Approved)
 const NON_ADMIN_STATUSES = ESTIMATE_STATUSES.filter((s) => s !== 'Approved');
 
-// Extend Estimate type with locked fields returned by the API
-interface EstimateWithLock extends Estimate {
-  locked?: number | boolean;
-  locked_invoice_id?: number | null;
-}
-
 export default function JobEstimates({ jobId }: Props) {
   const navigate = useNavigate();
   const { isAdmin, isOwner } = usePermissions();
   const canApprove = isAdmin || isOwner;
 
-  const [estimates, setEstimates] = useState<EstimateWithLock[]>([]);
+  const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -142,7 +136,7 @@ export default function JobEstimates({ jobId }: Props) {
     }
   }
 
-  async function handleConvertToInvoice(est: EstimateWithLock) {
+  async function handleConvertToInvoice(est: Estimate) {
     // If already locked, just navigate to the existing invoice
     if (est.locked && est.locked_invoice_id) {
       navigate(`/invoices/${est.locked_invoice_id}`);

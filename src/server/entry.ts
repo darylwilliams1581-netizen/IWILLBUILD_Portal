@@ -1218,6 +1218,48 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── 3. Ensure performance indexes exist (idempotent — checks INFORMATION_SCHEMA first) ──
+  const indexesToEnsure: Array<{ table: string; indexName: string; columns: string }> = [
+    // jobs — most-queried table, every list/filter hits company_id
+    { table: 'jobs',                  indexName: 'idx_jobs_company',          columns: '(company_id)' },
+    { table: 'jobs',                  indexName: 'idx_jobs_company_status',   columns: '(company_id, status)' },
+    // estimates — fetched by job and by company
+    { table: 'estimates',             indexName: 'idx_estimates_company',     columns: '(company_id)' },
+    { table: 'estimates',             indexName: 'idx_estimates_job',         columns: '(job_id)' },
+    { table: 'estimates',             indexName: 'idx_estimates_company_job', columns: '(company_id, job_id)' },
+    // job_form_submissions — Drizzle-managed table, no inline indexes in schema
+    { table: 'job_form_submissions',  indexName: 'idx_jfs_company',          columns: '(company_id)' },
+    { table: 'job_form_submissions',  indexName: 'idx_jfs_job',              columns: '(job_id)' },
+    { table: 'job_form_submissions',  indexName: 'idx_jfs_company_job',      columns: '(company_id, job_id)' },
+    // estimate_lines — fetched by estimate_id on every estimate load
+    { table: 'estimate_lines',        indexName: 'idx_estlines_estimate',    columns: '(estimate_id)' },
+  ];
+
+  for (const { table, indexName, columns } of indexesToEnsure) {
+    try {
+      // Skip if table doesn't exist yet
+      const [tblRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(tblRows?.[0]?.cnt ?? 0) === 0) continue;
+
+      // Skip if index already exists
+      const [idxRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND INDEX_NAME = ${indexName}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(idxRows?.[0]?.cnt ?? 0) > 0) continue;
+
+      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` ${columns}`));
+      console.log(`[startup-migration] Added index ${indexName} on ${table}`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      // ER_DUP_KEYNAME = index already exists under a different check path — safe to ignore
+      if (!msg.includes('ER_DUP_KEYNAME') && !msg.includes('Duplicate key name')) {
+        console.warn(`[startup-migration] Could not add index ${indexName} on ${table}:`, msg);
+      }
+    }
+  }
+
   // Back-fill trial_ends_at for companies that existed before subscription columns
   try {
     await db.execute(sql`
