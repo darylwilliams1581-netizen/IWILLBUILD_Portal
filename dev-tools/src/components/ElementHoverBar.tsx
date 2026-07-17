@@ -12,10 +12,11 @@ import {
   getNextSelectionNumber,
 } from "../utils/selection-overlay";
 import type { HoveredElement } from "../hooks/useImageHoverDetection";
-import { Bookmark, Image, MousePointerClick, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Image, MousePointerClick, Move, Pencil, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { isClickable, isTextElement, isTextBlockElement, isListElement } from "../utils/element-detection";
 import { followClickableElement, resolveFollowTarget } from "../utils/link-follow";
 import {
+  clipBoundsToParent,
   computeHoverBarStyle,
   computeLinkFollowBarStyle,
   OUTLINE_PAD,
@@ -41,6 +42,15 @@ import TextSizeStepperButton from "./TextSizeStepperButton";
 import FontFamilyButton from "./FontFamilyButton";
 import { nextOpenMenu, type HoverBarMenuId } from "../utils/popover-coordinator";
 import FormatOverrideControls from "./FormatOverrideControls";
+import {
+  readExistingState as readRepositionState,
+  applyStylesToElement as applyRepositionStyles,
+  clampPan,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  ZOOM_STEP,
+  PAN_STEP,
+} from "../hooks/useMediaReposition";
 import { findFormatOverrideElement, isLoopRenderedElement } from "../utils/formatOverrideMessages";
 import { isCommerceManagedContent } from "../utils/commerce-managed-content";
 
@@ -143,6 +153,7 @@ export default function ElementHoverBar({
 
   const [quickEditMode, setQuickEditMode] = useState(false);
   const [clickActionMode, setClickActionMode] = useState(false);
+  const [repositionMode, setRepositionMode] = useState(false);
   // Single source of truth for which Hover Bar popover is open (Color Picker /
   // Size Stepper / Text Align). Children are controlled — opening one
   // implicitly closes any other so they never stack on screen.
@@ -189,11 +200,13 @@ export default function ElementHoverBar({
     overlay.style.pointerEvents = "none";
     overlay.style.zIndex = "9999";
     const updatePos = () => {
-      const r = element.getBoundingClientRect();
-      overlay.style.top = `${r.top - OUTLINE_PAD}px`;
-      overlay.style.left = `${r.left - OUTLINE_PAD}px`;
-      overlay.style.width = `${r.width + OUTLINE_PAD * 2}px`;
-      overlay.style.height = `${r.height + OUTLINE_PAD * 2}px`;
+      const b = clipBoundsToParent(element);
+      const width: number = b.width;
+      const height: number = Math.max(0, b.bottom - b.top);
+      overlay.style.top = `${b.top - OUTLINE_PAD}px`;
+      overlay.style.left = `${b.left - OUTLINE_PAD}px`;
+      overlay.style.width = `${width + OUTLINE_PAD * 2}px`;
+      overlay.style.height = `${height + OUTLINE_PAD * 2}px`;
     };
     updatePos();
     document.body.appendChild(overlay);
@@ -222,6 +235,7 @@ export default function ElementHoverBar({
   useEffect(() => {
     setQuickEditMode(false);
     setClickActionMode(false);
+    setRepositionMode(false);
     setOpenMenu(null);
     pendingContextRef.current = null;
     // Cancel any in-flight fix request — the captured toolbarElementRef is
@@ -234,8 +248,8 @@ export default function ElementHoverBar({
 
   // Notify parent when toolbar or quick edit is active so it can freeze the element
   useEffect(() => {
-    onQuickEditModeChange?.(toolbarMode || quickEditMode || clickActionMode);
-  }, [toolbarMode, quickEditMode, clickActionMode, onQuickEditModeChange]);
+    onQuickEditModeChange?.(toolbarMode || quickEditMode || clickActionMode || repositionMode);
+  }, [toolbarMode, quickEditMode, clickActionMode, repositionMode, onQuickEditModeChange]);
 
   // Toolbar-view impression: fires once per appearance. Deps are [toolbarMode]
   // so this fires on open, not on element retarget within an open toolbar.
@@ -278,7 +292,7 @@ export default function ElementHoverBar({
 
   // Dismiss toolbar/quick edit when clicking outside the bar, the element, or editor overlays
   useEffect(() => {
-    if (!toolbarMode && !quickEditMode && !clickActionMode) return;
+    if (!toolbarMode && !quickEditMode && !clickActionMode && !repositionMode) return;
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest(".edit-mode-hover-bar")) return;
@@ -287,9 +301,25 @@ export default function ElementHoverBar({
       if (target.closest("[data-dev-tools]") || target.closest("[data-airo-dev-tools]")) return;
       // Clear scroll-to-media selection overlay on click outside
       clearSelectionOverlay();
+      // Revert inline styles when dismissing reposition mode via click-outside
+      // (mirrors handleRepositionCancel, but inlined here because that callback
+      // is declared later in the component and can't appear in this dep array).
+      if (repositionMode) {
+        const el = toolbarElementRef.current;
+        if (el) {
+          const orig = repositionOriginalRef.current;
+          repositionStateRef.current = orig;
+          setRepoUi(orig);
+          applyRepositionStyles(el, orig);
+          if (el.parentElement) {
+            el.parentElement.style.overflow = repositionParentOverflowRef.current;
+          }
+        }
+      }
       setToolbarMode(false);
       setQuickEditMode(false);
       setClickActionMode(false);
+      setRepositionMode(false);
       fix.reset();
       pendingContextRef.current = null;
     };
@@ -297,7 +327,7 @@ export default function ElementHoverBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
     // Dep on `fix.reset` (stable useCallback), not `fix` — see the
     // element-change effect above for the explanation.
-  }, [toolbarMode, quickEditMode, clickActionMode, element, fix.reset]);
+  }, [toolbarMode, quickEditMode, clickActionMode, repositionMode, element, fix.reset]);
 
   // Track toolbar/popover position, updating on scroll/resize so it follows
   // the element. Both surfaces share the same computed style so the popover
@@ -324,14 +354,8 @@ export default function ElementHoverBar({
     // Derived from FontPicker's maxHeight style (360px)
     const FONT_PICKER_HEIGHT = 360;
     const update = () => {
+      const bounds = clipBoundsToParent(element);
       const rect = element.getBoundingClientRect();
-      const bounds = {
-        top: rect.top,
-        left: rect.left,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-      };
       const viewport = { width: window.innerWidth, height: window.innerHeight };
       const toolbar = computeHoverBarStyle(bounds, viewport);
       const linkBar = computeLinkFollowBarStyle(bounds, toolbar.placement, viewport);
@@ -550,6 +574,180 @@ export default function ElementHoverBar({
     setClickActionMode(true);
   }, [buildContextData]);
 
+  // Reposition: button-based pan/zoom on the media element.
+  // Keep toolbarMode true so the toolbar stays visible with directional controls.
+  const repositionStateRef = useRef({ panX: 50, panY: 50, zoom: 1 });
+  const repositionOriginalRef = useRef({ panX: 50, panY: 50, zoom: 1 });
+  const repositionParentOverflowRef = useRef<string>("");
+  const [repoUi, setRepoUi] = useState({ panX: 50, panY: 50, zoom: 1 });
+  // Which reposition button to briefly highlight when its keyboard shortcut fires
+  const [activeRepoButton, setActiveRepoButton] = useState<string | null>(null);
+  const activeRepoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashRepoButton = useCallback((id: string) => {
+    if (activeRepoTimerRef.current) clearTimeout(activeRepoTimerRef.current);
+    setActiveRepoButton(id);
+    activeRepoTimerRef.current = setTimeout(() => setActiveRepoButton(null), 150);
+  }, []);
+
+  const handleReposition = useCallback(() => {
+    trackEventBus.click("devtools.toolbar.reposition_media");
+    const el = toolbarElementRef.current;
+    if (el) {
+      const s = readRepositionState(el);
+      repositionStateRef.current = s;
+      repositionOriginalRef.current = { ...s };
+      // Capture parent's original overflow so cancel can restore it
+      repositionParentOverflowRef.current = el.parentElement?.style.overflow ?? "";
+      setRepoUi(s);
+    }
+    setRepositionMode(true);
+  }, []);
+
+  const applyRepositionNudge = useCallback((dx: number, dy: number, dz: number) => {
+    const el = toolbarElementRef.current;
+    if (!el) return;
+    // Per-direction tracking — each direction is a separate EID for FS funnels
+    if (dz > 0) trackEventBus.click("devtools.toolbar.reposition_zoom_in");
+    else if (dz < 0) trackEventBus.click("devtools.toolbar.reposition_zoom_out");
+    else if (dx < 0) trackEventBus.click("devtools.toolbar.reposition_move_left");
+    else if (dx > 0) trackEventBus.click("devtools.toolbar.reposition_move_right");
+    else if (dy < 0) trackEventBus.click("devtools.toolbar.reposition_move_up");
+    else if (dy > 0) trackEventBus.click("devtools.toolbar.reposition_move_down");
+    const prev = repositionStateRef.current;
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom + dz));
+    const newState = {
+      panX: clampPan(prev.panX + dx),
+      panY: clampPan(prev.panY + dy),
+      zoom: newZoom,
+    };
+    repositionStateRef.current = newState;
+    setRepoUi(newState);
+    applyRepositionStyles(el, newState);
+  }, []);
+
+  const handleRepositionSave = useCallback(() => {
+    const el = toolbarElementRef.current;
+    if (!el) return;
+    const repoState = repositionStateRef.current;
+    trackEventBus.click("devtools.toolbar.reposition_media_save");
+    const elRect = el.getBoundingClientRect();
+    const devContext = extractDevContext(el);
+    const preciseSelector = generatePreciseSelector(el);
+    const tag = el.tagName.toLowerCase();
+    let mediaSrc = "";
+    if (tag === "img") {
+      mediaSrc = (el as HTMLImageElement).getAttribute("src") || "";
+    } else if (tag === "video") {
+      mediaSrc = (el as HTMLVideoElement).getAttribute("src")
+        || el.querySelector("source")?.getAttribute("src")
+        || "";
+    }
+    const elementInfo: BusElementInfo = {
+      tagName: el.tagName.toLowerCase(),
+      className: getElementClassName(el),
+      id: el.id,
+      dataId: devContext?.devId || "",
+      textContent: "",
+      computedStyles: {},
+      rect: { top: elRect.top, left: elRect.left, width: elRect.width, height: elRect.height },
+      selector: preciseSelector,
+      preciseSelector,
+      devContext,
+    };
+    send({
+      type: "REPOSITION_MEDIA_ELEMENT",
+      data: {
+        selector: preciseSelector,
+        preciseSelector,
+        devContext,
+        elementInfo,
+        imageSrc: mediaSrc,
+        panX: repoState.panX,
+        panY: repoState.panY,
+        zoom: repoState.zoom,
+      },
+    });
+    setRepositionMode(false);
+  }, []);
+
+  const handleRepositionCancel = useCallback(() => {
+    trackEventBus.click("devtools.toolbar.reposition_media_cancel");
+    // Revert to the state captured when reposition mode was entered
+    const el = toolbarElementRef.current;
+    if (el) {
+      const orig = repositionOriginalRef.current;
+      repositionStateRef.current = orig;
+      setRepoUi(orig);
+      applyRepositionStyles(el, orig);
+      // Restore the parent's original overflow style
+      if (el.parentElement) {
+        el.parentElement.style.overflow = repositionParentOverflowRef.current;
+      }
+    }
+    setRepositionMode(false);
+  }, []);
+
+  // Keyboard shortcuts while reposition mode is active:
+  // Arrow keys → pan, +/= → zoom in, - → zoom out, Enter → save, Escape → cancel
+  useEffect(() => {
+    if (!repositionMode) return;
+    const handleKey = (e: KeyboardEvent): void => {
+      // Ignore if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          flashRepoButton("left");
+          applyRepositionNudge(-PAN_STEP, 0, 0);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          flashRepoButton("right");
+          applyRepositionNudge(PAN_STEP, 0, 0);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          flashRepoButton("up");
+          applyRepositionNudge(0, -PAN_STEP, 0);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          flashRepoButton("down");
+          applyRepositionNudge(0, PAN_STEP, 0);
+          break;
+        case "+":
+        case "=":
+          e.preventDefault();
+          flashRepoButton("zoomIn");
+          applyRepositionNudge(0, 0, ZOOM_STEP);
+          break;
+        case "-":
+          e.preventDefault();
+          flashRepoButton("zoomOut");
+          applyRepositionNudge(0, 0, -ZOOM_STEP);
+          break;
+        case "Enter":
+          e.preventDefault();
+          handleRepositionSave();
+          break;
+        case "Escape":
+          e.preventDefault();
+          handleRepositionCancel();
+          break;
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      if (activeRepoTimerRef.current) {
+        clearTimeout(activeRepoTimerRef.current);
+        activeRepoTimerRef.current = null;
+      }
+    };
+  }, [repositionMode, applyRepositionNudge, handleRepositionSave, handleRepositionCancel, flashRepoButton]);
+
   // On submit: send context first so the store is set before QUICK_EDIT_SEND reads it
   const handleQuickEditSubmit = useCallback((prompt: string) => {
     trackEventBus.click("devtools.toolbar.quick_edit_submit");
@@ -685,68 +883,142 @@ export default function ElementHoverBar({
 
   if (!toolbarMode) return null;
 
+  const canLeft: boolean = repoUi.panX > 0;
+  const canRight: boolean = repoUi.panX < 100;
+  const canUp: boolean = repoUi.panY > 0;
+  const canDown: boolean = repoUi.panY < 100;
+  const canZoomIn: boolean = repoUi.zoom < MAX_ZOOM - 0.001;
+  const canZoomOut: boolean = repoUi.zoom > MIN_ZOOM + 0.001;
+
   return (
     <>
       <HoverBar style={barStyle} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-        {showImageActions && (
+        {repositionMode ? (
           <>
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(-PAN_STEP, 0, 0)}
+                    title={t("devtools_reposition_move_left", "Move left")}
+                    icon={<ChevronLeft width={15} height={15} />}
+                    disabled={!canLeft}
+                    active={activeRepoButton === "left"}
+                  />
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(PAN_STEP, 0, 0)}
+                    title={t("devtools_reposition_move_right", "Move right")}
+                    icon={<ChevronRight width={15} height={15} />}
+                    disabled={!canRight}
+                    active={activeRepoButton === "right"}
+                  />
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(0, -PAN_STEP, 0)}
+                    title={t("devtools_reposition_move_up", "Move up")}
+                    icon={<ChevronUp width={15} height={15} />}
+                    disabled={!canUp}
+                    active={activeRepoButton === "up"}
+                  />
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(0, PAN_STEP, 0)}
+                    title={t("devtools_reposition_move_down", "Move down")}
+                    icon={<ChevronDown width={15} height={15} />}
+                    disabled={!canDown}
+                    active={activeRepoButton === "down"}
+                  />
+                  <span style={{ width: "1px", height: "20px", background: "rgba(0,0,0,0.15)", alignSelf: "center" }} />
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(0, 0, ZOOM_STEP)}
+                    title={t("devtools_reposition_zoom_in", "Zoom in")}
+                    icon={<ZoomIn width={15} height={15} />}
+                    disabled={!canZoomIn}
+                    active={activeRepoButton === "zoomIn"}
+                  />
+                  <HoverBarButton
+                    onClick={() => applyRepositionNudge(0, 0, -ZOOM_STEP)}
+                    title={t("devtools_reposition_zoom_out", "Zoom out")}
+                    icon={<ZoomOut width={15} height={15} />}
+                    disabled={!canZoomOut}
+                    active={activeRepoButton === "zoomOut"}
+                  />
+            <span style={{ width: "1px", height: "20px", background: "rgba(0,0,0,0.15)", alignSelf: "center" }} />
             <HoverBarButton
-              onClick={handleReplace}
-              title={t("devtools_image_replace_title", "Replace image")}
-              icon={<Image width={15} height={15} />}
-              label={t("devtools_image_replace", "Replace")}
+              onClick={handleRepositionSave}
+              title={t("devtools_reposition_done", "Done")}
+              icon={<Check width={15} height={15} />}
+              label={t("devtools_reposition_done", "Done")}
             />
-            {!isVideo && (
-              <HoverBarButton
-                onClick={handleModify}
-                title={t("devtools_image_modify_title", "Modify image")}
-                icon={<Pencil width={15} height={15} />}
-                label={t("devtools_image_modify", "Modify")}
-              />
-            )}
-            {showClickActionAction && (
-              <HoverBarButton
-                onClick={handleEditClickAction}
-                title={t("devtools_image_click_action_title", "Set click action")}
-                icon={<MousePointerClick width={15} height={15} />}
-                label={t("devtools_image_click_action", "On click")}
-              />
-            )}
             <HoverBarButton
-              onClick={handleDelete}
-              title={t("devtools_delete_media_title", "Delete")}
-              icon={<Trash2 width={15} height={15} />}
+              onClick={handleRepositionCancel}
+              title={t("devtools_reposition_cancel", "Cancel")}
+              icon={<X width={15} height={15} />}
             />
           </>
-        )}
-        {isBoundTextFormatEligible && (
-          <FormatOverrideControls selectedElement={boundFormatElement} colorMenu={menuController("color")} popoverPlacement={colorPickerPlacement} />
-        )}
-        {elementIsText && (
+        ) : (
           <>
-            <BoldButton selectedElement={targetEl} />
-            <ItalicButton selectedElement={targetEl} />
-            <TextColorButton selectedElement={targetEl} {...menuController("color")} popoverPlacement={colorPickerPlacement} />
-            <TextSizeStepperButton selectedElement={targetEl} {...menuController("size")} />
-            <FontFamilyButton selectedElement={targetEl} {...menuController("font")} popoverPlacement={fontPickerPlacement} />
-            {isTextBlockElement(element) && (
-              <TextAlignButton selectedElement={targetEl} {...menuController("align")} />
+            {showImageActions && (
+              <>
+                <HoverBarButton
+                  onClick={handleReplace}
+                  title={t("devtools_image_replace_title", "Replace image")}
+                  icon={<Image width={15} height={15} />}
+                  label={t("devtools_image_replace", "Replace")}
+                />
+                {!isVideo && (
+                  <HoverBarButton
+                    onClick={handleModify}
+                    title={t("devtools_image_modify_title", "Modify image")}
+                    icon={<Pencil width={15} height={15} />}
+                    label={t("devtools_image_modify", "Modify")}
+                  />
+                )}
+                {showClickActionAction && (
+                  <HoverBarButton
+                    onClick={handleEditClickAction}
+                    title={t("devtools_image_click_action_title", "Set click action")}
+                    icon={<MousePointerClick width={15} height={15} />}
+                    label={t("devtools_image_click_action", "On click")}
+                  />
+                )}
+                <HoverBarButton
+                  onClick={handleReposition}
+                  title={t("devtools_reposition_title", "Reposition")}
+                  icon={<Move width={15} height={15} />}
+                />
+                <HoverBarButton
+                  onClick={handleDelete}
+                  title={t("devtools_delete_media_title", "Delete")}
+                  icon={<Trash2 width={15} height={15} />}
+                />
+              </>
             )}
-            {fixEligible && <TextFixButton state={fix.state} onFix={handleFix} />}
+            {isBoundTextFormatEligible && (
+              <FormatOverrideControls selectedElement={boundFormatElement} colorMenu={menuController("color")} popoverPlacement={colorPickerPlacement} />
+            )}
+            {elementIsText && (
+              <>
+                <BoldButton selectedElement={targetEl} />
+                <ItalicButton selectedElement={targetEl} />
+                <TextColorButton selectedElement={targetEl} {...menuController("color")} popoverPlacement={colorPickerPlacement} />
+                <TextSizeStepperButton selectedElement={targetEl} {...menuController("size")} />
+                <FontFamilyButton selectedElement={targetEl} {...menuController("font")} popoverPlacement={fontPickerPlacement} />
+                {isTextBlockElement(element) && (
+                  <TextAlignButton selectedElement={targetEl} {...menuController("align")} />
+                )}
+                {fixEligible && <TextFixButton state={fix.state} onFix={handleFix} />}
+              </>
+            )}
+            {!isCommerceMutationBlocked && !isLoopRendered && isListElement(element) && <ListTypeButton selectedElement={targetEl} {...menuController("list")} />}
+            <HoverBarButton
+              onClick={handleReference}
+              title={t("devtools_reference_title", "Add as reference")}
+              icon={<Bookmark width={15} height={15} />}
+            />
+            {!isCommerceMutationBlocked && (
+              <HoverBarButton
+                onClick={handleEditWithAI}
+                title={t("devtools_edit_with_ai", "Edit with AI")}
+                icon={<Sparkles width={15} height={15} style={{ color: "var(--color-accent-purple)" }} />}
+              />
+            )}
           </>
-        )}
-        {!isCommerceMutationBlocked && !isLoopRendered && isListElement(element) && <ListTypeButton selectedElement={targetEl} {...menuController("list")} />}
-        <HoverBarButton
-          onClick={handleReference}
-          title={t("devtools_reference_title", "Add as reference")}
-          icon={<Bookmark width={15} height={15} />}
-        />
-        {!isCommerceMutationBlocked && (
-          <HoverBarButton
-            onClick={handleEditWithAI}
-            title={t("devtools_edit_with_ai", "Edit with AI")}
-            icon={<Sparkles width={15} height={15} style={{ color: "var(--color-accent-purple)" }} />}
-          />
         )}
       </HoverBar>
       {followTarget && (

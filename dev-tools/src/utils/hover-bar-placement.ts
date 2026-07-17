@@ -19,6 +19,38 @@ export interface Bounds {
   width: number;
 }
 
+/**
+ * Clip an element's bounding rect to its parent's bounds when the element
+ * overflows the parent (e.g. from `transform: scale` during image repositioning).
+ * Returns a `Bounds` representing the visible clipped area.
+ */
+export function clipBoundsToParent(element: HTMLElement): Bounds {
+  const rect: DOMRect = element.getBoundingClientRect();
+  let top: number = rect.top;
+  let left: number = rect.left;
+  let right: number = rect.right;
+  let bottom: number = rect.bottom;
+
+  const parent: HTMLElement | null = element.parentElement;
+  if (parent) {
+    const pr: DOMRect = parent.getBoundingClientRect();
+    if (rect.width > pr.width + 1 || rect.height > pr.height + 1) {
+      top = Math.max(rect.top, pr.top);
+      left = Math.max(rect.left, pr.left);
+      right = Math.min(rect.right, pr.right);
+      bottom = Math.min(rect.bottom, pr.bottom);
+    }
+  }
+
+  return {
+    top,
+    left,
+    right,
+    bottom,
+    width: Math.max(0, right - left),
+  };
+}
+
 export interface Viewport {
   width: number;
   height: number;
@@ -87,6 +119,13 @@ export function computeHoverBarStyle(
   if (hasSpaceAbove) {
     style.top = `${bounds.top - GAP - OUTLINE_PAD}px`;
     style.transform = combineTransform(horizontal.horizontalTransform, true);
+    return { style, placement: "above" };
+  }
+
+  // When the element is taller than the viewport (e.g. full-page hero image),
+  // place the toolbar inside at the top rather than below the off-screen bottom.
+  if (bounds.bottom > viewport.height) {
+    style.top = `${Math.max(bounds.top, 0) + GAP + OUTLINE_PAD}px`;
     return { style, placement: "above" };
   }
 

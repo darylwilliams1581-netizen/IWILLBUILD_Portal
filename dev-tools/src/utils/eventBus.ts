@@ -148,6 +148,21 @@ export interface BusMediaDeletePayload {
   alt?: string;
 }
 
+export interface BusMediaRepositionPayload {
+  selector: string;
+  preciseSelector: string;
+  devContext?: BusDevContext;
+  elementInfo: BusElementInfo;
+  /** Image src attribute for per-instance CSS targeting (loop-rendered images) */
+  imageSrc: string;
+  /** 0–100, percentage horizontal offset */
+  panX: number;
+  /** 0–100, percentage vertical offset */
+  panY: number;
+  /** 1.0–5.0, scale factor */
+  zoom: number;
+}
+
 export interface BusVisualContextPayload {
   page?: string;
   scroll_position?: { x: number; y: number };
@@ -194,6 +209,7 @@ export interface BusEventMap {
   QUICK_EDIT_SEND: { data: { prompt: string; selectionNumber?: number | null } };
   REPLACE_IMAGE: { data?: BusAiEditContextPayload };
   DELETE_MEDIA_ELEMENT: { data: BusMediaDeletePayload };
+  REPOSITION_MEDIA_ELEMENT: { data: BusMediaRepositionPayload };
   SCROLL_POSITION_UPDATE: { scrollX?: number; scrollY?: number };
   VISUAL_CONTEXT_RESPONSE: { context: BusVisualContextPayload };
   URL_CHANGE: { url: string };
@@ -230,6 +246,10 @@ export interface BusEventMap {
   SPEECH_START: object;
   SPEECH_STOP: object;
   EDITABLE_ELEMENT_CLICKED_IN_PREVIEW: { tagName: string };
+  /** Preview-mode click on an external (cross-origin) link. The sandboxed
+   *  preview iframe can't escape to a real top-level tab, so the builder opens
+   *  the URL in a new browser tab from the un-sandboxed top window. */
+  OPEN_EXTERNAL_URL: { url: string };
   PREVIEW_UNSUPPORTED_FEATURE: { feature: BusUnsupportedFeature };
   ANNOTATION_SELECTION_CREATED: {
     data: {

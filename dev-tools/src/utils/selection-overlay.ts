@@ -1,14 +1,18 @@
+import { clipBoundsToParent } from "./hover-bar-placement";
+
 const OVERLAY_ID = "ai-select-overlay";
 const SELECTION_COLOR = "#8b5cf6";
 
-/** Position (or reposition) the overlay to match the element's current rect */
+/** Position (or reposition) the overlay to match the element's visible rect */
 function positionOverlay(overlay: HTMLElement, el: HTMLElement): void {
-  const rect = el.getBoundingClientRect();
+  const b = clipBoundsToParent(el);
   const pad = 5;
-  overlay.style.top = `${rect.top - pad}px`;
-  overlay.style.left = `${rect.left - pad}px`;
-  overlay.style.width = `${rect.width + pad * 2}px`;
-  overlay.style.height = `${rect.height + pad * 2}px`;
+  const width: number = b.width;
+  const height: number = Math.max(0, b.bottom - b.top);
+  overlay.style.top = `${b.top - pad}px`;
+  overlay.style.left = `${b.left - pad}px`;
+  overlay.style.width = `${width + pad * 2}px`;
+  overlay.style.height = `${height + pad * 2}px`;
 }
 
 /** Remove the selection overlay and clear data-ai-selected from any element */

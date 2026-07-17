@@ -1111,6 +1111,18 @@ describe('jsxSourceMapper — indexed and derived content keys', () => {
     expect(output).not.toContain('FormattedBoundText');
   });
 
+  it('attributes a value derived through an OPTIONAL single-arg call (`useCounter?.(...)`)', () => {
+    const output = transform(`
+      import { home } from 'virtual:content';
+      export default function StatCounterOpt() {
+        const { display } = useCounter?.(home.about.stats[0].value);
+        return <span ref={ref}>{display}</span>;
+      }
+    `);
+    expect(output).toContain('data-dev-content-key="home.about.stats[0].value"');
+    expect(output).toContain('data-dev-content-derived="true"');
+  });
+
   it('attributes a value derived through a single-arg call (non-destructured scalar)', () => {
     const output = transform(`
       import { home } from 'virtual:content';
@@ -1289,6 +1301,158 @@ describe('jsxSourceMapper — data-dev-editable authoritative marker', () => {
     const output = transform('<h1>Text <Highlight>word</Highlight></h1>');
     expect(output).not.toContain('data-dev-editable');
   });
+});
+
+describe('jsxSourceMapper — alias-before-map and derive-before-map attribution', () => {
+  it('A. alias-before-map: attributes map items via a const alias of a content member', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => {
+        const book = catalog[0];
+        return <ul>{book.retailers.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={r.id}');
+  });
+
+  it('B. derive-before-map: attributes map items via a .filter() chain on a content member', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => (
+        <ul>{catalog[0].retailers.filter((x) => x.inStock).map((r) => <li>{r.name}</li>)}</ul>
+      );
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={r.id}');
+  });
+
+  it('C. derive-before-map with optional chaining: attributes map items via `?.` + .filter() chain', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => (
+        <ul>{catalog[0]?.retailers.filter((x) => x.inStock).map((r) => <li>{r.name}</li>)}</ul>
+      );
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={r.id}');
+  });
+
+  it('D. alias-before-map to a derived value: `const rs = catalog[0].retailers.filter(...)`', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => {
+        const rs = catalog[0].retailers.filter((r) => r.inStock);
+        return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={r.id}');
+  });
+
+  it('E. alias-before-map to a derived value with optional chaining + `?? []`', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => {
+        const rs = catalog[0]?.retailers.filter((r) => r.inStock) ?? [];
+        return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={r.id}');
+  });
+
+  it('F. nested customer shape: outer literal-array map wrapping an alias-to-derived inner map', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => (
+        <>{(['print', 'ebook', 'audiobook']).map((format) => {
+          const retailers = catalog[0]?.retailers.filter((r) => r.format === format) ?? [];
+          if (retailers.length === 0) return null;
+          return <div key={format}>{retailers.map((retailer) => (
+            <a href={retailer.url}><span>{retailer.name}</span></a>
+          ))}</div>;
+        })}</>
+      );
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+    expect(output).toContain('data-dev-item-id={retailer.id}');
+  });
+
+  it('G. alias-to-derived with `|| []` fallback attributes the same as `?? []`', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => {
+        const rs = catalog[0].retailers.filter((r) => r.inStock) || [];
+        return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    expect(output).toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).toContain('data-dev-content-key-template="catalog[0].retailers[].name"');
+  });
+
+  it('H. does NOT peel `contentA ?? contentB` — a runtime-dependent list must not be mis-attributed', () => {
+    const output = transform(`
+      import { catalog } from 'virtual:content';
+      export default () => {
+        const rs = catalog[1]?.retailers ?? catalog[0].retailers;
+        return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    // Neither operand's path may be stamped — the rendered list is chosen at runtime.
+    expect(output).not.toContain('data-dev-content-list="catalog[1].retailers"');
+    expect(output).not.toContain('data-dev-content-list="catalog[0].retailers"');
+    expect(output).not.toContain('data-dev-content-key-template');
+  });
+
+  it('I. does NOT attribute a `?? []` alias on a NON-content base', () => {
+    const output = transform(`
+      export default ({ data }) => {
+        const rs = data?.retailers.filter((r) => r.inStock) ?? [];
+        return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+      };
+    `);
+    expect(output).not.toContain('data-dev-content-list');
+    expect(output).not.toContain('data-dev-content-key-template');
+  });
+});
+
+// Lock-in tests for the intentional DERIVE_METHODS boundary: only filter/slice/
+// flatMap are peeled (they return a same-element array). find/sort/reduce must
+// NOT be peeled — find returns a single element (wrong base path), reduce/sort
+// change identity/order in ways a content path can't track. Guards against
+// someone widening DERIVE_METHODS and silently mis-attributing.
+describe('jsxSourceMapper — derive boundary (find/sort/reduce not attributed)', () => {
+  for (const method of ['find', 'sort', 'reduce']) {
+    it(`does NOT attribute a direct \`.${method}(...)\`-before-map chain`, () => {
+      const output = transform(`
+        import { catalog } from 'virtual:content';
+        export default () => (
+          <ul>{catalog[0].retailers.${method}((a, b) => a).map((r) => <li>{r.name}</li>)}</ul>
+        );
+      `);
+      expect(output).not.toContain('data-dev-content-list');
+      expect(output).not.toContain('data-dev-content-key-template');
+    });
+
+    it(`does NOT attribute an alias to a \`.${method}(...)\` derived value`, () => {
+      const output = transform(`
+        import { catalog } from 'virtual:content';
+        export default () => {
+          const rs = catalog[0].retailers.${method}((a, b) => a);
+          return <ul>{rs.map((r) => <li>{r.name}</li>)}</ul>;
+        };
+      `);
+      expect(output).not.toContain('data-dev-content-list');
+      expect(output).not.toContain('data-dev-content-key-template');
+    });
+  }
 });
 
 describe('jsxSourceMapper — data-dev-conformable-array heal hint', () => {

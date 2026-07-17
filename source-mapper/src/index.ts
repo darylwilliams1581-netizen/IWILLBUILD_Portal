@@ -22,6 +22,12 @@ interface AncestorFrame {
   sameTagChildCount: Map<string, number>;
 }
 
+// A `.map()`/`.filter()` call in a chain that contains `?.` upstream is parsed
+// by Babel as an OptionalCallExpression, even where the call itself carries no
+// `?.` — optional chaining propagates to the rest of the chain. All call-call
+// analysis below must treat the two node types identically.
+type AnyCallExpression = CallExpression | types.OptionalCallExpression;
+
 type PluginState = PluginPass & {
   opts?: PluginOptions;
   contentBindings: Set<string>;
@@ -29,9 +35,9 @@ type PluginState = PluginPass & {
   commerceComponentNamespaces: Set<string>;
   hasCommerceDataUsage: boolean;
   mapStack: IterationFrame[];
-  mapFrames: WeakMap<CallExpression, IterationFrame>;
+  mapFrames: WeakMap<AnyCallExpression, IterationFrame>;
   genericMapDepth: number;
-  genericMapFrames: WeakSet<CallExpression>;
+  genericMapFrames: WeakSet<AnyCallExpression>;
   ancestorStack: AncestorFrame[];
   programPath: NodePath<Program> | null;
   formatBoundTextRuntimeAvailable: boolean;
@@ -46,6 +52,10 @@ const CONTENT_MODULE = 'virtual:content';
 const COMMERCE_MODULE = '@godaddy/react';
 const COMMERCE_COMPONENTS = new Set(['ProductGrid', 'ProductDetails', 'ProductCard', 'Cart']);
 const COMMERCE_DATA_ROOTS = new Set(['skuGroup', 'sku', 'product', 'node']);
+// Array derive methods that change cardinality/order but NOT the base content path.
+// A .filter().map() or .slice().map() iterates the same collection — the base path
+// is unchanged, so we can peel through these to reach the content-rooted chain.
+const DERIVE_METHODS = new Set(['filter', 'slice', 'flatMap']);
 
 export function hashStructuralKey(key: string): string {
   let hash = 5381;
@@ -212,7 +222,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
   function readChain(node: Expression): (string | number)[] | null {
     const parts: (string | number)[] = [];
     let cur: Expression = node;
-    while (t.isMemberExpression(cur)) {
+    while (t.isMemberExpression(cur) || t.isOptionalMemberExpression(cur)) {
       if (cur.computed) {
         if (
           t.isNumericLiteral(cur.property) &&
@@ -253,8 +263,12 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
 
   // If `node` is a `.map()` call on a content-rooted chain, return the frame
   // metadata; otherwise null.
-  function analyzeMapCall(node: CallExpression, s: PluginState): IterationFrame | null {
-    if (!t.isMemberExpression(node.callee)) return null;
+  function analyzeMapCall(
+    node: AnyCallExpression,
+    s: PluginState,
+    scope?: NodePath['scope'] | null,
+  ): IterationFrame | null {
+    if (!t.isMemberExpression(node.callee) && !t.isOptionalMemberExpression(node.callee)) return null;
     if (node.callee.computed) return null;
     if (!t.isIdentifier(node.callee.property, { name: 'map' })) return null;
     // Resolve the iterated chain to a content path. This handles both a direct
@@ -262,7 +276,22 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     // an outer loop param (`cat.items` → `menu.categories[].items`), so nested
     // collections (categories → items → price) are attributable, not just one
     // level deep. The parent map's frame is already on the stack at this point.
-    const pathBase = resolveContentKey(node.callee.object as Expression, s);
+    //
+    // Derive-unwrap: `.filter().map()`, `.slice().map()`, `.flatMap().map()` all
+    // iterate the same base collection — peel the intermediate derive call to reach
+    // the content-rooted chain, then resolve as usual. The derive call and/or its
+    // callee may be the Optional* variant when `?.` appears upstream in the chain.
+    let iteratee: Expression = node.callee.object as Expression;
+    if (
+      (t.isCallExpression(iteratee) || t.isOptionalCallExpression(iteratee)) &&
+      (t.isMemberExpression(iteratee.callee) || t.isOptionalMemberExpression(iteratee.callee)) &&
+      !iteratee.callee.computed &&
+      t.isIdentifier(iteratee.callee.property) &&
+      DERIVE_METHODS.has(iteratee.callee.property.name)
+    ) {
+      iteratee = iteratee.callee.object as Expression;
+    }
+    const pathBase = resolveContentKey(iteratee, s, scope);
     if (!pathBase) return null;
     const cb = node.arguments[0];
     if (!cb || (!t.isArrowFunctionExpression(cb) && !t.isFunctionExpression(cb))) return null;
@@ -271,8 +300,8 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     return { paramName: first.name, pathBase };
   }
 
-  function isAnyMapCall(node: CallExpression): boolean {
-    return t.isMemberExpression(node.callee) &&
+  function isAnyMapCall(node: AnyCallExpression): boolean {
+    return (t.isMemberExpression(node.callee) || t.isOptionalMemberExpression(node.callee)) &&
       !node.callee.computed &&
       t.isIdentifier(node.callee.property, { name: 'map' }) &&
       node.arguments.length > 0 &&
@@ -336,7 +365,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
   // leaf data-dev-content-key-template, resolving e.g.
   //   "menu.categories[].items[].price" → "menu.categories[0].items[0].price".
   function injectListAttrs(
-    mapPath: NodePath<CallExpression>,
+    mapPath: NodePath<AnyCallExpression>,
     frame: IterationFrame,
   ): void {
     if (process.env.NODE_ENV === 'production') return;
@@ -403,10 +432,64 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     }
   }
 
+  // True when `node`'s chain is rooted in a `virtual:content` binding
+  // (e.g. `catalog[0].retailers`). Cheap structural check — no scope walk.
+  function isContentRooted(node: Expression, s: PluginState): boolean {
+    const chain = readChain(node);
+    const root = chain?.[0];
+    return typeof root === 'string' && s.contentBindings.has(root);
+  }
+
+  // Normalize an alias-binding init down to the expression it derives from, so
+  // `resolveContentKey` can be attempted on the underlying content-rooted chain.
+  // Peels two shapes, repeatedly (order-independent — either may nest the other):
+  //   - `x ?? <fallback>` / `x || <fallback>` (LogicalExpression) → `x`, but ONLY
+  //     when the right operand is a non-content fallback (`[]`, a local). When the
+  //     right is itself a content chain (`catalogA ?? catalogB`), the rendered path
+  //     is runtime-dependent — peeling to the left would attribute canvas edits to
+  //     the wrong list, so we bail (→ no attribution, safe by omission).
+  //   - `chain.filter(...)` / `.slice(...)` / `.flatMap(...)` (a DERIVE_METHODS
+  //     call, Optional* forms included) → `chain` (the callee's object)
+  // Returns the innermost node once neither shape applies.
+  function normalizeAliasInit(node: Expression, s: PluginState): Expression {
+    let cur: Expression = node;
+    for (;;) {
+      if (
+        t.isLogicalExpression(cur) &&
+        (cur.operator === '??' || cur.operator === '||') &&
+        !isContentRooted(cur.right, s)
+      ) {
+        cur = cur.left;
+        continue;
+      }
+      if (
+        (t.isCallExpression(cur) || t.isOptionalCallExpression(cur)) &&
+        (t.isMemberExpression(cur.callee) || t.isOptionalMemberExpression(cur.callee)) &&
+        !cur.callee.computed &&
+        t.isIdentifier(cur.callee.property) &&
+        DERIVE_METHODS.has(cur.callee.property.name)
+      ) {
+        cur = cur.callee.object as Expression;
+        continue;
+      }
+      return cur;
+    }
+  }
+
   // Given a child expression, try to resolve a content key.
   // Returns either `"site.brand"` (static path) or `"products[].name"` (template)
   // or null when it can't be statically attributed.
-  function resolveContentKey(node: Expression, s: PluginState): string | null {
+  //
+  // `scope` is optional: when provided, alias-following is enabled — if the chain
+  // root is a `const x = <content-resolvable MemberExpression>` binding, the init
+  // is resolved recursively and `chain.slice(1)` is spliced onto the base.
+  // `_aliasDepth` guards against pathological cyclic bindings (max 4 hops).
+  function resolveContentKey(
+    node: Expression,
+    s: PluginState,
+    scope?: NodePath['scope'] | null,
+    _aliasDepth = 0,
+  ): string | null {
     const chain = readChain(node);
     if (!chain) return null;
     const root = chain[0];
@@ -422,6 +505,30 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
         return rest.length === 0
           ? `${s.mapStack[i].pathBase}[]`
           : `${s.mapStack[i].pathBase}[].${renderChain(rest)}`;
+      }
+    }
+    // Alias-following: `const book = catalog[0]; book.retailers.map(...)`
+    // Walk the scope to find a VariableDeclarator whose init is a MemberExpression
+    // that resolves to a content path, then splice the remaining chain segments on.
+    if (scope && _aliasDepth < 4) {
+      const binding = scope.getBinding(root);
+      if (binding) {
+        const declaratorPath: NodePath | null = binding.path.isVariableDeclarator()
+          ? binding.path
+          : binding.path.findParent((p: NodePath): boolean => p.isVariableDeclarator());
+        if (declaratorPath?.isVariableDeclarator()) {
+          const rawInit = (declaratorPath.node as types.VariableDeclarator).init;
+          const init = rawInit ? normalizeAliasInit(rawInit as Expression, s) : null;
+          if (init && (t.isMemberExpression(init) || t.isOptionalMemberExpression(init))) {
+            const resolvedBase = resolveContentKey(init, s, scope, _aliasDepth + 1);
+            if (resolvedBase) {
+              const rest = chain.slice(1);
+              return rest.length === 0
+                ? resolvedBase
+                : `${resolvedBase}.${renderChain(rest)}`;
+            }
+          }
+        }
       }
     }
     return null;
@@ -454,7 +561,9 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
       : binding.path.findParent((p: NodePath): boolean => p.isVariableDeclarator());
     if (!declarator || !declarator.isVariableDeclarator()) return null;
     const init = declarator.node.init;
-    if (!init || !t.isCallExpression(init)) return null;
+    // Accept the OptionalCallExpression form too (`useCounter?.(home.x)`), for
+    // consistency with the optional-chaining widening elsewhere in this plugin.
+    if (!init || (!t.isCallExpression(init) && !t.isOptionalCallExpression(init))) return null;
     // Exactly ONE argument must resolve to a (non-template) content key; other
     // args (durations, options, flags — e.g. `useCountUp(home.x, 2000, started)`)
     // are ignored. Zero content args = nothing to attribute; two or more =
@@ -464,7 +573,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
         (a): a is Expression =>
           !t.isSpreadElement(a) && !t.isJSXNamespacedName(a) && !t.isArgumentPlaceholder(a),
       )
-      .map((a: Expression): string | null => resolveContentKey(a, s))
+      .map((a: Expression): string | null => resolveContentKey(a, s, path.scope))
       .filter((k: string | null): k is string => k !== null && !k.includes('[]'));
     if (contentKeys.length !== 1) return null;
     return contentKeys[0]!;
@@ -570,6 +679,62 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
     });
   }
 
+  // Shared `CallExpression` / `OptionalCallExpression` enter handler — see the
+  // visitor registration below for why both node types share this logic.
+  function handleCallExpressionEnter(path: NodePath<AnyCallExpression>, state: PluginState): void {
+    if (isAnyMapCall(path.node)) {
+      state.genericMapFrames.add(path.node);
+      state.genericMapDepth += 1;
+    }
+
+    const frame = analyzeMapCall(path.node, state, path.scope);
+    if (frame) {
+      state.mapFrames.set(path.node, frame);
+      state.mapStack.push(frame);
+      // Inject per-item list instrumentation onto the callback's root JSX element(s).
+      // Must happen in enter (before child JSX visitors run) so the attrs are present
+      // when the JSX visitor checks for existing content-list attributes.
+      injectListAttrs(path, frame);
+    } else if (process.env.NODE_ENV !== 'production' && isAnyMapCall(path.node)) {
+      const callee = path.node.callee as types.MemberExpression | types.OptionalMemberExpression;
+      if (t.isIdentifier(callee.object)) {
+        const ident: types.Identifier = callee.object;
+        const binding = path.scope.getBinding(ident.name);
+        const init = binding?.path.isVariableDeclarator() ? binding.path.node.init : null;
+        const isLocalObjectArray: boolean =
+          !!init && t.isArrayExpression(init) &&
+          init.elements.length > 0 &&
+          init.elements.every((e) => t.isObjectExpression(e));
+        if (isLocalObjectArray) {
+          const cb = path.node.arguments[0];
+          if (t.isArrowFunctionExpression(cb) || t.isFunctionExpression(cb)) {
+            const pageRel: string = normalizeFileName(state.filename ?? state.file.opts.filename ?? '');
+            const locId: string | null = arrayDeclaratorLocId(binding?.path.node.loc);
+            for (const root of collectCallbackRootElements(cb)) {
+              const attrs = root.openingElement.attributes;
+              if (hasAttr(attrs, 'data-dev-conformable-array')) continue;
+              attrs.push(
+                t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-array'), t.stringLiteral(ident.name)),
+                t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-page'), t.stringLiteral(pageRel)),
+              );
+              if (locId) attrs.push(t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-id'), t.stringLiteral(locId)));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function handleCallExpressionExit(path: NodePath<AnyCallExpression>, state: PluginState): void {
+    if (state.genericMapFrames.has(path.node)) {
+      state.genericMapDepth -= 1;
+    }
+
+    if (state.mapFrames.has(path.node)) {
+      state.mapStack.pop();
+    }
+  }
+
   return {
     name: 'jsx-source-mapper',
     visitor: {
@@ -627,60 +792,12 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
         }
       },
 
-      CallExpression: {
-        enter(path: NodePath<CallExpression>, state: PluginState) {
-          if (isAnyMapCall(path.node)) {
-            state.genericMapFrames.add(path.node);
-            state.genericMapDepth += 1;
-          }
-
-          const frame = analyzeMapCall(path.node, state);
-          if (frame) {
-            state.mapFrames.set(path.node, frame);
-            state.mapStack.push(frame);
-            // Inject per-item list instrumentation onto the callback's root JSX element(s).
-            // Must happen in enter (before child JSX visitors run) so the attrs are present
-            // when the JSX visitor checks for existing content-list attributes.
-            injectListAttrs(path, frame);
-          } else if (process.env.NODE_ENV !== 'production' && isAnyMapCall(path.node)) {
-            const callee = path.node.callee as types.MemberExpression;
-            if (t.isIdentifier(callee.object)) {
-              const ident: types.Identifier = callee.object;
-              const binding = path.scope.getBinding(ident.name);
-              const init = binding?.path.isVariableDeclarator() ? binding.path.node.init : null;
-              const isLocalObjectArray: boolean =
-                !!init && t.isArrayExpression(init) &&
-                init.elements.length > 0 &&
-                init.elements.every((e) => t.isObjectExpression(e));
-              if (isLocalObjectArray) {
-                const cb = path.node.arguments[0];
-                if (t.isArrowFunctionExpression(cb) || t.isFunctionExpression(cb)) {
-                  const pageRel: string = normalizeFileName(state.filename ?? state.file.opts.filename ?? '');
-                  const locId: string | null = arrayDeclaratorLocId(binding?.path.node.loc);
-                  for (const root of collectCallbackRootElements(cb)) {
-                    const attrs = root.openingElement.attributes;
-                    if (hasAttr(attrs, 'data-dev-conformable-array')) continue;
-                    attrs.push(
-                      t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-array'), t.stringLiteral(ident.name)),
-                      t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-page'), t.stringLiteral(pageRel)),
-                    );
-                    if (locId) attrs.push(t.jsxAttribute(t.jsxIdentifier('data-dev-conformable-id'), t.stringLiteral(locId)));
-                  }
-                }
-              }
-            }
-          }
-        },
-        exit(path: NodePath<CallExpression>, state: PluginState) {
-          if (state.genericMapFrames.has(path.node)) {
-            state.genericMapDepth -= 1;
-          }
-
-          if (state.mapFrames.has(path.node)) {
-            state.mapStack.pop();
-          }
-        },
-      },
+      // A `.map()`/`.filter()` call in a chain that contains `?.` upstream is parsed
+      // as an OptionalCallExpression even where the call itself carries no `?.` —
+      // optional chaining propagates to the rest of the chain (see AnyCallExpression).
+      // Both node types run through the same enter/exit logic below.
+      CallExpression: { enter: handleCallExpressionEnter, exit: handleCallExpressionExit },
+      OptionalCallExpression: { enter: handleCallExpressionEnter, exit: handleCallExpressionExit },
 
       JSXElement: {
         enter(path: NodePath<JSXElement>, state: PluginState) {
@@ -758,7 +875,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
                 const child = path.node.children[i];
                 if (!child || !t.isJSXExpressionContainer(child)) continue;
                 if (t.isJSXEmptyExpression(child.expression)) continue;
-                const childKey = resolveContentKey(child.expression as Expression, state);
+                const childKey = resolveContentKey(child.expression as Expression, state, path.scope);
                 if (!childKey) continue;
                 const wrapAttr = childKey.includes('[]')
                   ? 'data-dev-content-key-template'
@@ -784,7 +901,7 @@ export default function jsxSourceMapper(babel: { types: typeof types }): PluginO
           // Content key attribution
           const expressionContainer = pickSoleExpressionContainer(path.node);
           const expression = expressionContainer?.expression as Expression | undefined;
-          const contentKey = expression ? resolveContentKey(expression, state) : null;
+          const contentKey = expression ? resolveContentKey(expression, state, path.scope) : null;
           const derivedContentKey =
             isDevBuild && !contentKey && expression
               ? resolveDerivedContentKey(expression, path, state)

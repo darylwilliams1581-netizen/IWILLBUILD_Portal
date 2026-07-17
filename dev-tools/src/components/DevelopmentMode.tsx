@@ -10,6 +10,7 @@ import ElementHoverBar from "./ElementHoverBar";
 import { setTranslations } from "../utils/translations";
 import { resolveRouteForModule } from "../route-discovery";
 import { collectMediaSlotDomMatches } from "../utils/media-slot-dom";
+import { resolveExternalNavigationHref } from "../utils/link-follow";
 import { isClickable, isInsideNavSurface, isDevToolsElement, isManagedPath, hasManagedDocMarkup, FORM_TAGS } from "../utils/element-detection";
 import CarouselSlotEditNav from "./CarouselSlotEditNav";
 import { setCarouselSlotEdit, setCarouselToolbarPause } from "../utils/carousel-slot-edit";
@@ -1564,6 +1565,23 @@ export default function DevelopmentMode() {
     const handlePreviewClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null
       if (!target) return
+      // Standalone tab (not framed by the builder): nothing below applies —
+      // no external-link interception and no edit-mode messaging. Bail first so
+      // neither path runs, and there's a single window.parent check.
+      if (window.parent === window) return
+      // External links can't escape the sandboxed preview iframe to a real
+      // top-level tab (framing-restricted sites dead-end on
+      // ERR_BLOCKED_BY_RESPONSE), so hand the URL to the builder to open it at
+      // top level. Intentionally checked BEFORE the nav-surface/dev-tools/form
+      // guards: an external link should open in a new tab wherever it's clicked
+      // (e.g. a social link in the site nav), not fall through to the broken
+      // native path. Only cross-origin http(s) anchors match (see resolver).
+      const externalHref: string | null = resolveExternalNavigationHref(target)
+      if (externalHref) {
+        e.preventDefault()
+        send({ type: 'OPEN_EXTERNAL_URL', url: externalHref })
+        return
+      }
       // Managed compliance docs restrict editing to compliance fields; don't
       // prompt the builder to enter general edit mode from a click here.
       if (isManagedPath() && hasManagedDocMarkup()) return
@@ -1571,7 +1589,6 @@ export default function DevelopmentMode() {
       if (isInsideNavSurface(target)) return
       if (isDevToolsElement(target)) return
       if (FORM_TAGS.has(target.tagName.toLowerCase())) return
-      if (window.parent === window) return
       send({ type: 'EDITABLE_ELEMENT_CLICKED_IN_PREVIEW', tagName: target.tagName.toLowerCase() })
     }
 

@@ -110,6 +110,7 @@ export function HoverBarButton({
           background: baseBackground,
           border: "none",
           borderRadius: "6px",
+          outline: "none",
           cursor: disabled ? "not-allowed" : "pointer",
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
           color: textColor,

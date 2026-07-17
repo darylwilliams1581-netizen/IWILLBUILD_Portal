@@ -74,6 +74,42 @@ export function resolveFollowTarget(element: HTMLElement): FollowTarget | null {
   return null;
 }
 
+/** Parse a string into a URL, or null if it isn't a valid absolute URL. */
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the external, cross-origin http(s) destination of a clicked element,
+ * or null when the click is not an external navigation.
+ *
+ * Used by the preview-mode click interceptor: clicks inside the sandboxed
+ * preview iframe can't escape to a real top-level tab, so framing-restricted
+ * external sites (X-Frame-Options / CSP frame-ancestors) dead-end on
+ * ERR_BLOCKED_BY_RESPONSE. We hand these URLs to the parent to open at top
+ * level instead.
+ *
+ * Reuses `resolveFollowTarget` for the anchor walk (single source of truth for
+ * "which anchor did this click hit"), then keeps only truly external targets:
+ * the same-origin check naturally drops in-app nav and hash links, and the
+ * protocol check drops mailto:/tel:/etc. — all left to the browser's normal
+ * handling.
+ */
+export function resolveExternalNavigationHref(element: HTMLElement): string | null {
+  const target: FollowTarget | null = resolveFollowTarget(element);
+  if (target?.kind !== "link") return null;
+
+  const url: URL | null = parseUrl(target.href);
+  if (!url) return null;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  if (url.origin === window.location.origin) return null;
+  return url.href;
+}
+
 /**
  * Navigate or activate a link/button from Edit mode. Uses direct navigation for
  * anchors so edit-mode click interceptors cannot cancel the follow action.

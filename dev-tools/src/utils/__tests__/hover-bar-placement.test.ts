@@ -45,6 +45,12 @@ describe('hover-bar-placement', function packageTests() {
       expect(result.placement).toBe('below');
       expect(result.style.top).toBe('90px');
     });
+
+    it('places toolbar at the top inside the element when it is taller than the viewport', function fullPageHero() {
+      const result = computeHoverBarStyle(bounds({ top: 0, bottom: 1200 }), viewport);
+      expect(result.placement).toBe('above');
+      expect(result.style.top).toBe('16px'); // 0 + GAP(8) + OUTLINE_PAD(8)
+    });
   });
 
   describe('#computeLinkFollowBarStyle', function linkFollowStyleTests() {

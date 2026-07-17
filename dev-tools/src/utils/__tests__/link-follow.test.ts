@@ -6,6 +6,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   followClickableElement,
   formatLinkDisplayUrl,
+  resolveExternalNavigationHref,
   resolveFollowTarget,
 } from '../link-follow.js';
 
@@ -86,6 +87,47 @@ describe('link-follow', function packageTests() {
 
       expect(followClickableElement(button)).toBe(true);
       expect(clickSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('#resolveExternalNavigationHref', function externalNavTests() {
+    it('returns the absolute href for a cross-origin anchor', function external() {
+      const anchor = buildElement('<a href="https://play.google.com/store/books/details?id=abc">Buy</a>');
+      expect(resolveExternalNavigationHref(anchor)).toBe(
+        'https://play.google.com/store/books/details?id=abc',
+      );
+    });
+
+    it('resolves the anchor from a nested child click target', function nestedChild() {
+      const anchor = buildElement('<a href="https://example.com/pricing"><span>Pricing</span></a>');
+      const span = anchor.querySelector('span') as HTMLElement;
+      expect(resolveExternalNavigationHref(span)).toBe('https://example.com/pricing');
+    });
+
+    it('returns null for same-origin (in-app) navigation', function sameOrigin() {
+      // A relative href resolves against jsdom's default document origin
+      // (http://localhost), which equals window.location.origin here — so this
+      // genuinely exercises the same-origin comparison, not a masked no-op.
+      const anchor = buildElement('<a href="/contact">Contact</a>');
+      expect(resolveExternalNavigationHref(anchor)).toBeNull();
+    });
+
+    it('returns null for hash-only links', function hashOnly() {
+      const anchor = buildElement('<a href="#section">Jump</a>');
+      expect(resolveExternalNavigationHref(anchor)).toBeNull();
+    });
+
+    it('returns null for mailto: and tel: schemes', function nonHttp() {
+      expect(resolveExternalNavigationHref(buildElement('<a href="mailto:a@b.com">Email</a>'))).toBeNull();
+      expect(resolveExternalNavigationHref(buildElement('<a href="tel:+15551234567">Call</a>'))).toBeNull();
+    });
+
+    it('returns null for anchors without an href', function noHref() {
+      expect(resolveExternalNavigationHref(buildElement('<a>No href</a>'))).toBeNull();
+    });
+
+    it('returns null when the click is not on or inside an anchor', function nonAnchor() {
+      expect(resolveExternalNavigationHref(buildElement('<button type="button">Go</button>'))).toBeNull();
     });
   });
 });
