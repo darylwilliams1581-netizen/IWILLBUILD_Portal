@@ -526,7 +526,7 @@ export default function EstimateEditorPage() {
           )}
 
           {estimate && (
-            <div className="max-w-4xl flex flex-col gap-4">
+            <div className="max-w-4xl mx-auto flex flex-col gap-4">
 
               {/* Approved lock banner */}
               {isLocked && (
