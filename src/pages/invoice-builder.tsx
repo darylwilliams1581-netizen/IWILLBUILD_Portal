@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Receipt, ArrowLeft, Save, Send, Copy, Trash2,
+  Receipt, ArrowLeft, Save, Send, Copy, Trash2, FileText,
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
   ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
