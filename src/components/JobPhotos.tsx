@@ -22,7 +22,6 @@ import {
   CheckSquare,
   Square,
   Share2,
-  Archive,
   Send,
 } from 'lucide-react';
 
@@ -325,7 +324,7 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
   const [viewSize, setViewSize] = useState<ViewSize>('medium');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [exportingZip, setExportingZip] = useState(false);
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -433,35 +432,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     });
   };
 
-  // ── Export ZIP ─────────────────────────────────────────────────────────────
-
-  const exportZip = async (ids?: number[]) => {
-    setExportingZip(true);
-    try {
-      const body = ids && ids.length > 0 ? { photoIds: ids } : {};
-      const res = await fetch(`/api/jobs/${jobId}/photos/export-zip`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(d.error ?? 'Export failed');
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `job-${jobId}-photos.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Export failed');
-    } finally {
-      setExportingZip(false);
-    }
-  };
-
   // ── Share link ─────────────────────────────────────────────────────────────
 
   const generateShareLink = async () => {
@@ -520,9 +490,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
                   <button onClick={downloadSelected} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors">
                     <Download size={13} /> Download ({selected.size})
                   </button>
-                  <button onClick={() => void exportZip(Array.from(selected))} disabled={exportingZip} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors">
-                    {exportingZip ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />} ZIP ({selected.size})
-                  </button>
                   <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 rounded-lg transition-colors">
                     <Send size={13} /> Send ({selected.size})
                   </button>
@@ -560,16 +527,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
             >
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
               {uploading ? 'Uploading…' : 'Choose Files'}
-            </button>
-            {/* Export ZIP */}
-            <button
-              onClick={() => void exportZip()}
-              disabled={exportingZip || photos.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold text-slate-600 rounded-lg transition-colors"
-              title="Export all as ZIP"
-            >
-              {exportingZip ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
-              <span className="hidden sm:inline">Export ZIP</span>
             </button>
             {/* Share link */}
             {onShareLink && (
