@@ -1,8 +1,12 @@
 /**
  * POST /api/jobs/:id/ledger
  * Manually add a ledger entry.
+ * Accepts both JSON and multipart/form-data (for optional receipt photo).
  */
 import type { Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 import { db } from '../../../../db/client.js';
 import { jobs, profiles } from '../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -10,12 +14,39 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import type { ResultSetHeader } from 'mysql2';
 
+const UPLOAD_DIR = '/shared-storage/public/assets/uploads/ledger-photos';
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, '/tmp'),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+    cb(null, `ledger-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /^(image\/(jpeg|png|webp|heic)|application\/pdf)$/.test(file.mimetype);
+    cb(null, ok);
+  },
+}).single('photo');
+
 const VALID_EVENT_TYPES = [
   'LABOUR', 'MATERIAL', 'PLANT', 'SUBCONTRACTOR', 'RECEIPT',
   'PURCHASE', 'VARIATION', 'INVOICE_LINE', 'CREDIT', 'ADJUSTMENT',
 ];
 
 export default async function handler(req: Request, res: Response) {
+  // Run multer (handles both multipart and json — multer is a no-op for json)
+  await new Promise<void>((resolve, reject) => {
+    upload(req, res, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+
   try {
     const auth = getAuth();
     const headers = new Headers();
@@ -36,12 +67,13 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    const body = req.body as Record<string, string | number | boolean>;
     const {
       entryDate, eventType, sourceModule, sourceId,
       description, qty, unit, rate,
       gstInclusive, accountCode, taxCode,
       contactName, contactType, reference, status,
-    } = req.body as Record<string, string | number | boolean>;
+    } = body;
 
     if (!description) return res.status(400).json({ error: 'Description is required' });
     if (!entryDate) return res.status(400).json({ error: 'Entry date is required' });
@@ -54,12 +86,22 @@ export default async function handler(req: Request, res: Response) {
     const gstAmt = Math.round(subtotal * 0.1 * 100) / 100;
     const total = subtotal + gstAmt;
 
+    // Handle optional photo upload
+    let photoUrl: string | null = null;
+    const photoFile = req.file as Express.Multer.File | undefined;
+    if (photoFile) {
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
+      const dest = path.join(UPLOAD_DIR, photoFile.filename);
+      await fs.rename(photoFile.path, dest).catch(() => fs.copyFile(photoFile.path, dest));
+      photoUrl = `/airo-assets/uploads/ledger-photos/${photoFile.filename}`;
+    }
+
     const [result] = await db.execute(sql`
       INSERT INTO job_cost_ledger
         (company_id, job_id, job_number, job_title, entry_date, event_type, source_module, source_id,
          description, qty, unit, rate, subtotal, gst, total, gst_inclusive,
          account_code, tax_code, contact_name, contact_type, reference, status,
-         created_by_user_id, created_by_name)
+         created_by_user_id, created_by_name, photo_url)
       VALUES
         (${profile.companyId}, ${jobId}, ${job.jobNumber ?? null}, ${job.name ?? null},
          ${String(entryDate)}, ${evType},
@@ -72,7 +114,8 @@ export default async function handler(req: Request, res: Response) {
          ${contactType ? String(contactType) : null},
          ${reference ? String(reference) : null},
          ${['pending', 'approved'].includes(String(status)) ? String(status) : 'pending'},
-         ${session.user.id}, ${session.user.name ?? null})
+         ${session.user.id}, ${session.user.name ?? null},
+         ${photoUrl})
     `) as unknown as [ResultSetHeader, unknown];
 
     const [rows] = await db.execute(

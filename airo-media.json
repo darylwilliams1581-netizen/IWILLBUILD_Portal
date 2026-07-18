@@ -90,29 +90,35 @@
   },
   "reference/screenshot-2": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-2-c6e67c2e.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-09T11:55:22.380Z",
-    "lastUpdated": "2026-07-09T11:55:22.380Z",
+    "lastUpdated": "2026-07-18T03:28:36.531Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg": "f38wenbvln_1783594193977_file_raBuSs8RYT.jpg"
+      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg": "f38wenbvln_1783594193977_file_raBuSs8RYT.jpg",
+      "/airo-assets/uploads/reference-screenshot-2-c6e67c2e.jpg": "f38wenbvln_1784344893943_file__t3X6FIBe5.jpg"
     },
-    "uploadContentHash": "861f6573e82e37df720be4eafa0a45da842b89725ea0bc36bacbbdca6f376d8c"
+    "uploadContentHash": "5ea73d64c519880c5201c221dfbd9091ee4e5b9be411e8b6973feb0f748d17e4"
   },
   "reference/screenshot-3": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-3-6636035e.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-09T11:55:25.438Z",
-    "lastUpdated": "2026-07-09T11:55:25.438Z",
+    "lastUpdated": "2026-07-18T03:28:39.798Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg"
+      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg",
+      "/airo-assets/uploads/reference-screenshot-3-6636035e.jpg": "f38wenbvln_1784345167397_file_B8mQhe-nJS.jpg"
     },
-    "uploadContentHash": "5166a0cbaff30338512c95ceca4928f3b2a6c4268327a59225c7000b67fd3016"
+    "uploadContentHash": "493efaece8adff0672b662d9e8bbbc08fe22090f7383099caaaf31e39f2a3afd"
   },
   "reference/studio-issue-1": {
     "mediaType": "image",

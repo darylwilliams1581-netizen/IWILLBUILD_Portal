@@ -78,7 +78,7 @@ type NavEntry = NavItem | { group: NavGroup };
 
 function buildNavEntries(_workPlural: string): NavEntry[] {
   return [
-    { label: 'Dashboard',    icon: LayoutDashboard, href: '/dashboard',            permKey: null },
+    { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
     { label: 'Driver App',   icon: Smartphone,      href: '/driver',               permKey: 'fleet' },
     { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },

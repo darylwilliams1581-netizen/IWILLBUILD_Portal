@@ -62,6 +62,7 @@ const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
+const HomeScreenPage          = lazy(() => import('./pages/home'));
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -96,15 +97,15 @@ function protect(element: React.ReactElement) {
 function OwnerOnlyRoute({ children }: { children: React.ReactElement }) {
   const { isOwner, loading } = usePermissions();
   if (loading) return <PageLoader />;
-  if (!isOwner) return <Navigate to="/dashboard" replace />;
+  if (!isOwner) return <Navigate to="/home" replace />;
   return children;
 }
 
-/** Platform developer route — redirects non-developers to /dashboard */
+/** Platform developer route — redirects non-developers to /home */
 function PlatformDevRoute({ children }: { children: React.ReactElement }) {
   const { isPlatformOwner, loading } = usePermissions();
   if (loading) return <PageLoader />;
-  if (!isPlatformOwner) return <Navigate to="/dashboard" replace />;
+  if (!isPlatformOwner) return <Navigate to="/home" replace />;
   return children;
 }
 
@@ -130,6 +131,7 @@ function protectDev(element: React.ReactElement) {
 
 export const routes: RouteObject[] = [
   { path: '/',              element: <HomePage /> },
+  { path: '/home',          element: protect(<HomeScreenPage />), errorElement: routeError },
   { path: '/login',         element: <LoginPage /> },
   { path: '/signup',        element: <SignupPage /> },
   { path: '/privacy',       element: <PrivacyPage /> },

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, RefreshCw, Plus, Download, CheckCircle2, Clock,
   AlertCircle, Loader2, X, ChevronDown, Pencil, Trash2,
-  Filter, FileSpreadsheet, FileText, BarChart3,
+  Filter, FileSpreadsheet, FileText, BarChart3, Camera, Image,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ interface LedgerEntry {
   approved_at: string | null;
   created_by_name: string | null;
   created_at: string;
+  photo_url: string | null;
 }
 
 interface Totals {
@@ -123,6 +124,26 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Photo state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(editEntry?.photo_url ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function clearPhoto() {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   const subtotal = Math.round((parseFloat(form.qty) || 0) * (parseFloat(form.rate) || 0) * 100) / 100;
   const gst = Math.round(subtotal * 0.1 * 100) / 100;
   const total = subtotal + gst;
@@ -146,23 +167,37 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
         ? `/api/jobs/${jobId}/ledger/${editEntry.id}`
         : `/api/jobs/${jobId}/ledger`;
       const method = editEntry ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method, credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entryDate: form.entryDate,
-          eventType: form.eventType,
-          description: form.description.trim(),
-          qty: parseFloat(form.qty) || 1,
-          unit: form.unit.trim() || null,
-          rate: parseFloat(form.rate) || 0,
-          accountCode: form.accountCode.trim() || null,
-          taxCode: form.taxCode || 'GST',
-          contactName: form.contactName.trim() || null,
-          reference: form.reference.trim() || null,
-          status: form.status,
-        }),
-      });
+
+      const payload = {
+        entryDate: form.entryDate,
+        eventType: form.eventType,
+        description: form.description.trim(),
+        qty: parseFloat(form.qty) || 1,
+        unit: form.unit.trim() || null,
+        rate: parseFloat(form.rate) || 0,
+        accountCode: form.accountCode.trim() || null,
+        taxCode: form.taxCode || 'GST',
+        contactName: form.contactName.trim() || null,
+        reference: form.reference.trim() || null,
+        status: form.status,
+      };
+
+      let res: Response;
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('photo', photoFile);
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v != null) fd.append(k, String(v));
+        });
+        res = await fetch(url, { method, credentials: 'include', body: fd });
+      } else {
+        res = await fetch(url, {
+          method, credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
       const data = await res.json() as { entry?: LedgerEntry; error?: string };
       if (!res.ok) { setError(data.error ?? 'Failed to save'); return; }
       onCreated(data.entry!);
@@ -279,6 +314,41 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
               <option value="pending">Pending (awaiting approval)</option>
               <option value="approved">Approved</option>
             </select>
+          </div>
+
+          {/* Photo attachment */}
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Receipt / Invoice Photo</label>
+            {photoPreview ? (
+              <div className="relative rounded-xl overflow-hidden border border-border">
+                <img src={photoPreview} alt="Receipt preview" className="w-full max-h-48 object-contain bg-muted/30" />
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-colors"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-5 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Camera size={20} />
+                <span className="text-xs font-medium">Tap to attach photo or file</span>
+                <span className="text-[10px] opacity-60">JPG, PNG, PDF up to 10 MB</span>
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </div>
         </div>
 
@@ -635,6 +705,17 @@ export default function JobCosts({ jobId }: Props) {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1">
+                        {entry.photo_url && (
+                          <a
+                            href={entry.photo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-primary p-1 rounded hover:bg-muted transition-colors"
+                            title="View receipt photo"
+                          >
+                            <Image size={11} />
+                          </a>
+                        )}
                         <button onClick={() => setEditEntry(entry)} className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                           <Pencil size={11} />
                         </button>

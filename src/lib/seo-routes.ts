@@ -31,6 +31,7 @@ export interface SeoRoute {
 
 export const seoRoutes: SeoRoute[] = [
   { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-07-13" },
+  { path: "/home", changefreq: "monthly", priority: 0.8 },
   { path: "/login", changefreq: "monthly", priority: 0.6 },
   { path: "/signup", changefreq: "monthly", priority: 0.8 },
   { path: "/privacy", changefreq: "yearly", priority: 0.3 },
