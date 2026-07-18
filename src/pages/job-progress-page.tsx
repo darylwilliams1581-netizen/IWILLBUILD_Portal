@@ -133,13 +133,20 @@ export default function JobProgressPage() {
     setExportingPdf(true);
     try {
       const res = await fetch(`/api/jobs/${id}/progress/report/pdf`, { credentials: 'include' });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('PDF export failed:', res.status, text);
+        throw new Error(`PDF failed: ${res.status}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `progress-report-job-${id}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch { /* silent */ } finally { setExportingPdf(false); }
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('PDF export failed. Please try again.');
+    } finally { setExportingPdf(false); }
   };
 
   const updateLine = useCallback((lineId: number, field: keyof ProgressLine, value: number | string) => {
