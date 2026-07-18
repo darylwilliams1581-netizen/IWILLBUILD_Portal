@@ -54,7 +54,6 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Log Cost',  icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
   { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
   { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
-  { label: 'Schedule',  icon: CalendarDays,   href: '?panel=schedule-picker',   bg: 'bg-violet-500',   fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
