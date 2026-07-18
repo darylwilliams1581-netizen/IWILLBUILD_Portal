@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Plus, Search, Loader2, X, Check, AlertCircle,
   Phone, Mail, MapPin, Building2, Archive, ArchiveRestore,
-  ChevronRight, User, FileText, Briefcase, Tag,
+  ChevronRight, User, FileText, Briefcase, Tag, MessageSquare,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
@@ -278,7 +278,7 @@ function CustomerCard({
         </div>
       </div>
 
-      {/* Call / Email action buttons */}
+      {/* Call / Email / SMS action buttons */}
       {(phone || email) && (
         <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
           {phone && (
@@ -290,6 +290,16 @@ function CustomerCard({
               <Phone size={13} />
               <span>Call</span>
               <span className="text-emerald-500 font-normal hidden sm:inline">{phone}</span>
+            </a>
+          )}
+          {phone && (
+            <a
+              href={`sms:${phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-violet-50 hover:bg-violet-100 active:bg-violet-200 text-violet-700 text-xs font-bold py-2 rounded-lg border border-violet-200 transition-colors"
+            >
+              <MessageSquare size={13} />
+              <span>SMS</span>
             </a>
           )}
           {email && (
