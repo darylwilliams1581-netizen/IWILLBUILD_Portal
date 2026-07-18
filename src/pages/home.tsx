@@ -70,7 +70,7 @@ const ADMIN_ICONS: AppIcon[] = [
   { label: 'Fleet',     icon: Truck,       href: '/fleet',                 bg: 'bg-slate-600',    fg: 'text-white' },
   { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
   { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
-  { label: 'Plans',     icon: Map,         href: '/plan-manager',          bg: 'bg-lime-500',     fg: 'text-white' },
+  { label: 'Drawings',  icon: Map,         href: '/plan-manager',          bg: 'bg-lime-500',     fg: 'text-white' },
   { label: 'Assets',    icon: Building2,   href: '/studio/asset-manager',  bg: 'bg-rose-500',     fg: 'text-white' },
   { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
   { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
@@ -1148,6 +1148,18 @@ function ScheduleJobPickerSheet({ open, onClose }: { open: boolean; onClose: () 
       title="Job Schedule" subtitle="Select a job to view its schedule"
       iconBg="bg-violet-100" iconFg="text-violet-600" Icon={CalendarDays}
       onSelect={job => navigate(`/jobs/${job.id}/schedule`)}
+    />
+  );
+}
+
+function DrawingsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <JobPickerSheet
+      open={open} onClose={onClose}
+      title="Drawings" subtitle="Select a job to view its drawings"
+      iconBg="bg-lime-100" iconFg="text-lime-600" Icon={Layers}
+      onSelect={job => navigate(`/jobs/${job.id}?tab=drawings`)}
     />
   );
 }
