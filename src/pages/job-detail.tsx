@@ -43,7 +43,6 @@ import {
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
-import JobPhotos from '@/components/JobPhotos';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
 import JobNotes from '@/components/job/JobNotes';
@@ -636,7 +635,7 @@ export default function JobDetailPage() {
                   {/* ── Details ── */}
                   {activeTab === 'details' && (
                     <div className="flex flex-col gap-4 max-w-2xl">
-                      <QuickCameraCard jobId={job.id} onPhotoTab={() => switchTab('photos')} />
+                      <QuickCameraCard jobId={job.id} onPhotoTab={() => navigate(`/jobs/${job.id}/photos`)} />
 
                       <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
                         <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">{workSingular} Details</h2>
@@ -931,8 +930,8 @@ export default function JobDetailPage() {
                     </div>
                   )}
 
-                  {/* ── Photos ── */}
-                  {activeTab === 'photos' && <JobPhotos jobId={job.id} />}
+                  {/* ── Photos — dedicated page ── */}
+                  {activeTab === 'photos' && (() => { navigate(`/jobs/${job.id}/photos`); return null; })()}
 
                   {/* ── Drawings ── */}
                   {activeTab === 'drawings' && <JobPlanManagerTab jobId={job.id} jobName={job.name} />}
@@ -1102,7 +1101,7 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Quick Photo</h2>
         <button onClick={onPhotoTab} className="text-xs font-semibold text-primary hover:underline">
-          View all →
+          View all photos →
         </button>
       </div>
       <div className="flex items-center gap-2 flex-wrap">

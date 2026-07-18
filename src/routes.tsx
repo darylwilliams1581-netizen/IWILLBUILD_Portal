@@ -27,6 +27,7 @@ const DashboardPage      = lazy(() => import('./pages/dashboard'));
 const JobsPage           = lazy(() => import('./pages/jobs'));
 const SchedulerPage      = lazy(() => import('./pages/scheduler'));
 const JobDetailPage      = lazy(() => import('./pages/job-detail'));
+const JobPhotosPage      = lazy(() => import('./pages/job-photos-page'));
 const JobFormRunnerPage  = lazy(() => import('./pages/job-form-runner'));
 const JobSignInPage      = lazy(() => import('./pages/job-signin'));
 const FleetPage          = lazy(() => import('./pages/fleet'));
@@ -162,6 +163,7 @@ export const routes: RouteObject[] = [
   { path: '/tools',         loader: () => redirect('/estimating') },
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
+  { path: '/jobs/:id/photos', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosPage /></Suspense>), errorElement: routeError },
   // QR scan landing — unauthenticated allowed (guest check-in form)
   { path: '/jobs/:id/signin', element: <Suspense fallback={<PageLoader />}><JobSignInPage /></Suspense>, errorElement: routeError },
   // Deep-link: open a specific form instance directly — full-page runner in new tab
