@@ -70,6 +70,7 @@ const JobCostsPage           = lazy(() => import('./pages/job-costs-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
+const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HomeScreenPage          = lazy(() => import('./pages/home'));
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
@@ -151,7 +152,8 @@ export const routes: RouteObject[] = [
   { path: '/reset-password',  element: <ResetPasswordPage /> },
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
-  { path: '/driver',         element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>, errorElement: routeError },
+  { path: '/driver',    element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,   errorElement: routeError },
+  { path: '/prestart',  element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>, errorElement: routeError },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },

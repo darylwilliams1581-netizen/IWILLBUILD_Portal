@@ -1,0 +1,29 @@
+{
+  "CATEGORIES": [
+    {
+      "value": "materials",
+      "label": "Materials",
+      "id": "NpB8tQcdNvsV6HaIwSYrF"
+    },
+    {
+      "value": "labour",
+      "label": "Labour",
+      "id": "0il2pln9ysC0VK-F81ila"
+    },
+    {
+      "value": "equipment",
+      "label": "Equipment",
+      "id": "DY30nQ44adp4ZPJq7T0Gq"
+    },
+    {
+      "value": "subcontract",
+      "label": "Subcontract",
+      "id": "r75IZvNg2_vYZuS_WhueW"
+    },
+    {
+      "value": "other",
+      "label": "Other",
+      "id": "CNMGelWKjPTvTCjdqOJ4W"
+    }
+  ]
+}

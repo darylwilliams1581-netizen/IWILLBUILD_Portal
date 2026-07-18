@@ -15,7 +15,7 @@ import {
   Map, Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  HardHat as HardHatIcon, Navigation,
+  HardHat as HardHatIcon, Navigation, ClipboardCheck,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -44,14 +44,15 @@ interface AppIcon {
 // Solid, saturated colours — light theme needs full-opacity backgrounds
 
 const FIELD_ICONS: AppIcon[] = [
-  { label: 'Camera',    icon: Camera,      href: '?panel=camera',           bg: 'bg-orange-500',   fg: 'text-white' },
-  { label: 'Sign In',   icon: LogIn,       href: '?panel=signin',           bg: 'bg-indigo-500',   fg: 'text-white' },
-  { label: 'Drive',     icon: Car,         href: '?panel=drive-picker',     bg: 'bg-blue-500',     fg: 'text-white' },
-  { label: 'Forms',     icon: FileText,    href: '?panel=forms-picker',     bg: 'bg-purple-500',   fg: 'text-white' },
-  { label: 'Notes',     icon: StickyNote,  href: '?panel=notes-picker',     bg: 'bg-yellow-400',   fg: 'text-white' },
-  { label: 'Log Cost',  icon: DollarSign,  href: '?panel=log-cost',         bg: 'bg-emerald-500',  fg: 'text-white' },
-  { label: 'Delays',    icon: Clock,       href: '?panel=delays-picker',    bg: 'bg-red-500',      fg: 'text-white' },
-  { label: 'Progress',  icon: TrendingUp,  href: '?panel=progress-picker',  bg: 'bg-cyan-500',     fg: 'text-white' },
+  { label: 'Camera',    icon: Camera,         href: '?panel=camera',            bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Sign In',   icon: LogIn,          href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
+  { label: 'Drive',     icon: Car,            href: '?panel=drive-picker',      bg: 'bg-blue-500',     fg: 'text-white' },
+  { label: 'Prestart',  icon: ClipboardCheck, href: '?panel=prestart-picker',   bg: 'bg-orange-400',   fg: 'text-white' },
+  { label: 'Forms',     icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
+  { label: 'Notes',     icon: StickyNote,     href: '?panel=notes-picker',      bg: 'bg-yellow-400',   fg: 'text-white' },
+  { label: 'Log Cost',  icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
+  { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
+  { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
@@ -1128,6 +1129,83 @@ function ProgressJobPickerSheet({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
+function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  const [assets, setAssets] = useState<FleetOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    fetch('/api/fleet/vehicles', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { vehicles?: FleetOption[] } | FleetOption[]) => {
+        setAssets(Array.isArray(data) ? data : (data.vehicles ?? []));
+      })
+      .catch(() => setAssets([]))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <ClipboardCheck size={15} className="text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-base">Prestart Check</h2>
+                  <p className="text-gray-400 text-xs">Select equipment to prestart</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+              {loading ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
+                  <Loader2 size={16} className="animate-spin" /> Loading fleet…
+                </div>
+              ) : assets.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-8">No fleet assets found</p>
+              ) : assets.map(asset => (
+                <button
+                  key={asset.id}
+                  onClick={() => { onClose(); navigate(`/prestart?vehicleId=${asset.id}`); }}
+                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl px-3 py-3 text-left transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <ClipboardCheck size={16} className="text-orange-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 font-semibold text-sm truncate">{asset.name}</p>
+                    <p className="text-gray-400 text-xs">
+                      {[asset.type, asset.rego].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── Sign In / Out sheet ───────────────────────────────────────────────────────
 
 interface OnSiteUser {
@@ -1677,6 +1755,7 @@ export default function HomeScreen() {
   const [formsPickerOpen, setFormsPickerOpen] = useState(false);
   const [progressPickerOpen, setProgressPickerOpen] = useState(false);
   const [drivePickerOpen, setDrivePickerOpen] = useState(false);
+  const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
   const [activeStatusKey, setActiveStatusKey] = useState(0);
   const activeStatus = useActiveStatus(activeStatusKey);
 
@@ -1700,6 +1779,7 @@ export default function HomeScreen() {
     if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
     if (href === '?panel=drive-picker') { setDrivePickerOpen(true); return; }
+    if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     navigate(href);
   }
@@ -1821,6 +1901,7 @@ export default function HomeScreen() {
       <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
       <ProgressJobPickerSheet open={progressPickerOpen} onClose={() => setProgressPickerOpen(false)} />
       <DriveFleetPickerSheet open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
+      <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
     </div>
   );
 }
