@@ -236,5 +236,57 @@
       "/airo-assets/uploads/reference-screenshot-4-9f8a76e7.jpg": "f38wenbvln_1784345540485_file_8FMRF3QQBy.jpg"
     },
     "uploadContentHash": "2ad9b86657994c4582037262345431ab930c6229fb60e2890cc9e0b86915bddc"
+  },
+  "reference/screenshot-5": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-5-7505549b.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:42:59.359Z",
+    "lastUpdated": "2026-07-18T04:42:59.359Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-5-7505549b.jpg": "f38wenbvln_1784348941394_file_VZ8lvduSum.jpg"
+    },
+    "uploadContentHash": "8a25e59a01a649ad94de4aa55e89b980ff498c2806466cbba0ee1b8bd0b35d4a"
+  },
+  "reference/screenshot-6": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:00.000Z",
+    "lastUpdated": "2026-07-18T04:43:00.000Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg": "f38wenbvln_1784348858184_file_gQrVQXlVEY.jpg"
+    },
+    "uploadContentHash": "97ac4eb533ac6f816e15e681caf02b6a57e1aa9986522e4a9e87363a8861d7df"
+  },
+  "reference/screenshot-7": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:00.544Z",
+    "lastUpdated": "2026-07-18T04:43:00.544Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg": "f38wenbvln_1784348030849_file_kqzmruj29g.jpg"
+    },
+    "uploadContentHash": "4e7c91328f153cb3e96d162d3c72c76a10ca8f043d0825d4d63be211bc1839d6"
+  },
+  "reference/screenshot-8": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:01.246Z",
+    "lastUpdated": "2026-07-18T04:43:01.246Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg"
+    },
+    "uploadContentHash": "6053f9dff57f9ef898f4f3ddb48788f6e16e93b3c52b03e473f49757f7b49f3a"
   }
 }
