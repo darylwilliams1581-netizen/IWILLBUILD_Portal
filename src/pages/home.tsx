@@ -57,18 +57,6 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Drawings',  icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
 ];
 
-const SUPERVISOR_ICONS: AppIcon[] = [
-  { label: 'Sign In',   icon: UserCheck,      href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
-  { label: 'Schedule',  icon: CalendarDays,   href: '?panel=schedule-picker',   bg: 'bg-violet-500',   fg: 'text-white' },
-  { label: 'Forms',     icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
-  { label: 'Ledger',    icon: BookOpen,       href: '?panel=costs-picker',      bg: 'bg-emerald-600',  fg: 'text-white' },
-  { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
-  { label: 'Drawings',  icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
-  { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
-  { label: 'Notes',     icon: StickyNote,     href: '?panel=notes-picker',      bg: 'bg-yellow-400',   fg: 'text-white' },
-  { label: 'Photos',    icon: ImageIcon,      href: '?panel=photos-picker',     bg: 'bg-sky-500',      fg: 'text-white' },
-];
-
 const ESTIMATING_ICONS: AppIcon[] = [
   { label: 'Estimating', icon: Calculator, href: '/estimating', bg: 'bg-indigo-500', fg: 'text-white' },
   { label: 'Invoices',   icon: Receipt,    href: '/invoices',   bg: 'bg-teal-500',   fg: 'text-white' },
@@ -1897,7 +1885,6 @@ export default function HomeScreen() {
       <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-7">
 
         <Section label="Field" icons={FIELD_ICONS} onNavigate={handleNavigate} />
-        <Section label="Supervisors" icons={SUPERVISOR_ICONS} onNavigate={handleNavigate} />
 
         {can('estimating') && (
           <Section label="Estimating" icons={ESTIMATING_ICONS} onNavigate={handleNavigate} />
