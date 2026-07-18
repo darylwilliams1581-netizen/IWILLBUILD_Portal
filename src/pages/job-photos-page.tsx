@@ -45,7 +45,7 @@ export default function JobPhotosPage() {
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/home')}
           className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
         >
           <ArrowLeft size={18} />
