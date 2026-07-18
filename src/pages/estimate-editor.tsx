@@ -151,7 +151,7 @@ export default function EstimateEditorPage() {
       await save(est, currentLines);
     }
     if (est) {
-      navigate(`/jobs/${est.jobId}?tab=estimates`);
+      navigate(`/jobs/${est.jobId}/quotes`);
     } else {
       navigate(-1);
     }
