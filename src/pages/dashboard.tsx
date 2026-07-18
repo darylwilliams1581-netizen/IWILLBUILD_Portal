@@ -202,21 +202,6 @@ export default function DashboardPage() {
                 <Calculator size={18} />
               </Link>
 
-              {/* Quick Vehicle Driver Log — car icon */}
-              {!permLoading && canFleet && (
-                driverSession
-                  ? <DrivingSessionBadge session={driverSession} onStopped={refreshDriverSession} />
-                  : (
-                    <button
-                      onClick={() => setShowStartDriving(true)}
-                      title="Start driving"
-                      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
-                    >
-                      <Car size={18} />
-                    </button>
-                  )
-              )}
-
               <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
                 <Bell size={18} />
               </button>
@@ -241,21 +226,6 @@ export default function DashboardPage() {
           <div className="h-12 flex items-center justify-between px-4">
             <h1 className="font-heading font-bold text-base text-foreground leading-tight">Dashboard</h1>
             <div className="flex items-center gap-1">
-              {/* Driving badge — most important mobile action */}
-              {!permLoading && canFleet && (
-                driverSession
-                  ? <DrivingSessionBadge session={driverSession} onStopped={refreshDriverSession} />
-                  : (
-                    <button
-                      onClick={() => setShowStartDriving(true)}
-                      title="Start driving"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors"
-                    >
-                      <Car size={14} />
-                      Drive
-                    </button>
-                  )
-              )}
               {/* Avatar */}
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0 ml-2">
                 {initials}

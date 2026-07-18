@@ -71,7 +71,6 @@ interface NavItem {
 function buildNavEntries(_workPlural: string): NavItem[] {
   return [
     { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
-    { label: 'Driver App',   icon: Smartphone,      href: '/driver',               permKey: 'fleet' },
     { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
     { label: 'Asset Manager',icon: Building2,       href: '/studio/asset-manager', permKey: null },
