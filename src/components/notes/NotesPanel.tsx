@@ -12,7 +12,7 @@
  *   - Search + filter bar
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, AlertCircle, Search, X, Filter, StickyNote, CheckSquare } from 'lucide-react';
+import { Loader2, AlertCircle, Search, X, Filter, StickyNote, CheckSquare, Plus } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
 import NoteComposer from './NoteComposer';
 import NotesFeed from './NotesFeed';
@@ -155,37 +155,32 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
   const openTaskCount = allTasks.filter((t) => t.status === 'open').length;
   const myTaskCount = allTasks.filter((t) => t.assigneeUserId === currentUserId && t.status === 'open').length;
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Composer */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <NoteComposer
-          members={members}
-          onSubmit={handleSubmit}
-          disabled={loading}
-        />
-      </div>
+  const [composerOpen, setComposerOpen] = useState(false);
 
-      {/* View toggle + search */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white">
+  return (
+    <div className="flex flex-col gap-2">
+
+      {/* ── Toolbar: tabs + search + + button ── */}
+      <div className="flex items-center gap-2">
+        {/* Tabs */}
+        <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white shrink-0">
           <button
             type="button"
             onClick={() => setViewMode('notes')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
               viewMode === 'notes' ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
             }`}
           >
-            <StickyNote size={12} /> Notes
+            <StickyNote size={11} /> Notes
           </button>
           <button
             type="button"
             onClick={() => setViewMode('tasks')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-l border-slate-200 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l border-slate-200 ${
               viewMode === 'tasks' ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
             }`}
           >
-            <CheckSquare size={12} /> Tagged Actions
+            <CheckSquare size={11} /> Tagged Actions
             {openTaskCount > 0 && (
               <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none ${
                 viewMode === 'tasks' ? 'bg-white/20 text-white' : 'bg-primary text-white'
@@ -197,60 +192,89 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 min-w-[160px]">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <div className="relative flex-1 min-w-0">
+          <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search…"
-            className="w-full pl-8 pr-8 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
+            className="w-full pl-7 pr-7 py-1.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               <X size={11} />
             </button>
           )}
         </div>
 
-        {/* Task filter (tasks view only) */}
-        {viewMode === 'tasks' && (
-          <div className="flex items-center gap-1">
-            <Filter size={11} className="text-slate-400" />
-            {(['open', 'completed', 'mine', 'all'] as TaskFilter[]).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setTaskFilter(f)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
-                  taskFilter === f
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {f === 'mine' ? `Mine${myTaskCount > 0 ? ` (${myTaskCount})` : ''}` : f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* + button */}
+        <button
+          type="button"
+          onClick={() => setComposerOpen((v) => !v)}
+          title={composerOpen ? 'Close composer' : 'Add note'}
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all ${
+            composerOpen
+              ? 'bg-slate-200 text-slate-600 rotate-45'
+              : 'bg-primary text-white hover:bg-primary/90'
+          }`}
+          style={{ transition: 'transform 0.18s ease, background 0.15s' }}
+        >
+          <Plus size={16} />
+        </button>
       </div>
+
+      {/* Task filter strip (tasks view only) */}
+      {viewMode === 'tasks' && (
+        <div className="flex items-center gap-1 flex-wrap">
+          <Filter size={11} className="text-slate-400" />
+          {(['open', 'completed', 'mine', 'all'] as TaskFilter[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setTaskFilter(f)}
+              className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+                taskFilter === f
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {f === 'mine' ? `Mine${myTaskCount > 0 ? ` (${myTaskCount})` : ''}` : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Composer — slides in when + is tapped */}
+      {composerOpen && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
+          <NoteComposer
+            members={members}
+            onSubmit={async (data) => {
+              await handleSubmit(data);
+              setComposerOpen(false);
+            }}
+            disabled={loading}
+          />
+        </div>
+      )}
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-1">
           <AlertCircle size={13} /> {error}
         </div>
       )}
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center gap-2 py-10 text-slate-400">
-          <Loader2 size={16} className="animate-spin" />
-          <span className="text-sm">Loading notes…</span>
+        <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
+          <Loader2 size={15} className="animate-spin" />
+          <span className="text-xs">Loading notes…</span>
         </div>
       )}
 
