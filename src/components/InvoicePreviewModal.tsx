@@ -189,7 +189,23 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
     setDownloading(true);
     try {
       const res = await fetch(`/api/invoices/${invoice.id}/export-pdf`, { credentials: 'include' });
-      if (!res.ok) { setDownloadError('PDF generation failed — please try again.'); return; }
+      if (!res.ok) {
+        let msg = `PDF generation failed (${res.status})`;
+        try {
+          const ct = res.headers.get('content-type') ?? '';
+          if (ct.includes('json')) {
+            const j = await res.json() as { error?: string };
+            if (j?.error) msg = j.error;
+          }
+        } catch { /* ignore */ }
+        setDownloadError(msg);
+        return;
+      }
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.includes('pdf')) {
+        setDownloadError('Server returned unexpected content — please try again.');
+        return;
+      }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
