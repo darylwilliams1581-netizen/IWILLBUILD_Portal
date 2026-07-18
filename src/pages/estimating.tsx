@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle,
   BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X,
-  Upload, Download, FileText,
+  Upload, Download, FileText, Receipt,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
@@ -12,6 +12,7 @@ import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
+import JobPickerSheet from '@/components/JobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -784,22 +785,32 @@ export function RecipesTab() {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-type Tab = 'cost-guide' | 'recipes' | 'builders-calc' | 'takeoff-pad';
+type Tab = 'cost-guide' | 'recipes' | 'builders-calc' | 'takeoff-pad' | 'quotes';
 
-const VALID_TABS: Tab[] = ['cost-guide', 'recipes', 'builders-calc', 'takeoff-pad'];
+const VALID_TABS: Tab[] = ['cost-guide', 'recipes', 'builders-calc', 'takeoff-pad', 'quotes'];
 
 export default function EstimatingPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const tabFromUrl = new URLSearchParams(location.search).get('tab') as Tab | null;
   const [tab, setTab] = useState<Tab>(
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'cost-guide'
   );
+  const [quotesPickerOpen, setQuotesPickerOpen] = useState(false);
 
   // Sync tab when URL search param changes (e.g. navigating from sidebar/dashboard)
   useEffect(() => {
     const t = new URLSearchParams(location.search).get('tab') as Tab | null;
     if (t && VALID_TABS.includes(t)) setTab(t);
   }, [location.search]);
+
+  function handleTabClick(key: Tab) {
+    if (key === 'quotes') {
+      setQuotesPickerOpen(true);
+    } else {
+      setTab(key);
+    }
+  }
 
   function openMobileMenu() {
     window.dispatchEvent(new Event('portal:open-menu'));
@@ -841,12 +852,13 @@ export default function EstimatingPage() {
             { key: 'recipes',       label: 'Recipes' },
             { key: 'builders-calc', label: 'Builders Calc' },
             { key: 'takeoff-pad',   label: 'Take-off Pad' },
+            { key: 'quotes',        label: 'Quotes' },
           ] as const).map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => handleTabClick(t.key)}
               className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                tab === t.key
+                tab === t.key && t.key !== 'quotes'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
@@ -866,6 +878,17 @@ export default function EstimatingPage() {
           </div>
         </div>
       </div>
+
+      <JobPickerSheet
+        open={quotesPickerOpen}
+        onClose={() => setQuotesPickerOpen(false)}
+        title="Quotes"
+        subtitle="Select a job to view its quotes"
+        iconBg="bg-orange-100"
+        iconFg="text-orange-600"
+        Icon={Receipt}
+        onSelect={(job) => navigate(`/jobs/${job.id}/quotes`)}
+      />
     </div>
   );
 }
