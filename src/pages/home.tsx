@@ -54,6 +54,7 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Log Cost',  icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
   { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
   { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
+  { label: 'Drawings',  icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
@@ -1776,6 +1777,7 @@ export default function HomeScreen() {
   const [signInOutOpen, setSignInOutOpen] = useState(false);
   const [formsPickerOpen, setFormsPickerOpen] = useState(false);
   const [progressPickerOpen, setProgressPickerOpen] = useState(false);
+  const [drawingsPickerOpen, setDrawingsPickerOpen] = useState(false);
   const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
   const [drivePickerOpen, setDrivePickerOpen] = useState(false);
   const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
@@ -1801,6 +1803,7 @@ export default function HomeScreen() {
     if (href === '?panel=signin') { setSignInOutOpen(true); return; }
     if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
+    if (href === '?panel=drawings-picker') { setDrawingsPickerOpen(true); return; }
     if (href === '?panel=schedule-picker') { setSchedulePickerOpen(true); return; }
     if (href === '?panel=drive-picker') { setDrivePickerOpen(true); return; }
 
@@ -1930,6 +1933,7 @@ export default function HomeScreen() {
       <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
       <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
       <ProgressJobPickerSheet open={progressPickerOpen} onClose={() => setProgressPickerOpen(false)} />
+      <DrawingsJobPickerSheet open={drawingsPickerOpen} onClose={() => setDrawingsPickerOpen(false)} />
       <ScheduleJobPickerSheet open={schedulePickerOpen} onClose={() => setSchedulePickerOpen(false)} />
       {drivePickerOpen && (
         <StartDrivingModal
