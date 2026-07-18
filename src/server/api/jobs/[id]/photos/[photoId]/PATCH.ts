@@ -3,10 +3,9 @@ import { db } from '../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { getSignedUrl, saveFile, getDownloadStream } from '../../../../../storage/storage-service.js';
 
-const PHOTO_DIR = '/shared-storage/public/assets/job-photos';
+const PHOTO_BUCKET = 'job-photos';
 
 // ── Jimp lazy-loaded ──────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +29,16 @@ async function getJimp() {
   _JimpMime = JimpMime;
   _CustomJimp = createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats });
   return { CustomJimp: _CustomJimp, JimpMime: _JimpMime };
+}
+
+/** Stream → Buffer helper */
+async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (c: Buffer) => chunks.push(c));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -76,31 +85,37 @@ export default async function handler(req: Request, res: Response) {
       updates.label = label.trim() || null;
     }
 
-    // ── Rotation ──────────────────────────────────────────────────────────────
+    // ── Rotation (download from storage, rotate, re-upload) ───────────────────
     if (rotate === 'left' || rotate === 'right') {
       const mime = photo.mimeType ?? 'image/jpeg';
 
-      // Reject HEIC/HEIF
       if (mime === 'image/heic' || mime === 'image/heif') {
         return res.status(400).json({ error: 'HEIC/HEIF rotation is not supported.' });
       }
 
-      const filePath = join(PHOTO_DIR, photo.filename);
-      const buffer = await readFile(filePath);
+      // Download current file from storage
+      const { stream } = await getDownloadStream(photo.filename, PHOTO_BUCKET);
+      const buffer = await streamToBuffer(stream);
 
       const { CustomJimp, JimpMime } = await getJimp();
       const img = await CustomJimp.read(buffer);
 
       // Jimp rotate: positive = counter-clockwise, negative = clockwise
-      // "rotate left" = 90° counter-clockwise = +90 in Jimp
-      // "rotate right" = 90° clockwise = -90 in Jimp
       const degrees = rotate === 'left' ? 90 : -90;
       img.rotate(degrees);
 
       const outputMime = mime === 'image/png' ? JimpMime.png : JimpMime.jpeg;
       const outBuffer: Buffer = await img.getBuffer(outputMime, mime !== 'image/png' ? { quality: 82 } : undefined);
 
-      await writeFile(filePath, outBuffer);
+      // Re-upload to same key (overwrites in place)
+      await saveFile({
+        buffer: outBuffer,
+        originalName: photo.originalName ?? photo.filename,
+        mimeType: mime,
+        bucket: PHOTO_BUCKET,
+        storageKey: photo.filename,
+      });
+
       updates.sizeBytes = outBuffer.length;
     }
 
@@ -109,12 +124,17 @@ export default async function handler(req: Request, res: Response) {
       await db.update(jobPhotos).set(updates).where(eq(jobPhotos.id, photoId));
     }
 
-    // Return updated record
+    // Return updated record with a fresh signed URL
     const updated = await db.query.jobPhotos.findFirst({
       where: eq(jobPhotos.id, photoId),
     });
 
-    res.json({ ok: true, photo: updated });
+    let url: string | null = null;
+    try {
+      url = await getSignedUrl(photo.filename, PHOTO_BUCKET, 3600);
+    } catch { /* best-effort */ }
+
+    res.json({ ok: true, photo: { ...updated, url } });
   } catch (error) {
     console.error('PATCH /api/jobs/:id/photos/:photoId error:', error);
     res.status(500).json({ error: 'Failed to update photo' });

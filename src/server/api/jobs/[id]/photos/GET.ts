@@ -3,6 +3,9 @@ import { db } from '../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
+import { getSignedUrl } from '../../../../storage/storage-service.js';
+
+const PHOTO_BUCKET = 'job-photos';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -28,11 +31,25 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const photos = await db
+    const rows = await db
       .select()
       .from(jobPhotos)
       .where(and(eq(jobPhotos.jobId, jobId), eq(jobPhotos.companyId, profile.companyId)))
       .orderBy(desc(jobPhotos.createdAt));
+
+    // Attach a signed URL to each photo so the client can display it
+    // regardless of storage provider (R2 signed URLs, local proxy, etc.)
+    const photos = await Promise.all(
+      rows.map(async (p) => {
+        let url: string | null = null;
+        try {
+          url = await getSignedUrl(p.filename, PHOTO_BUCKET, 3600);
+        } catch {
+          // If URL generation fails, fall back to null — client shows placeholder
+        }
+        return { ...p, url };
+      })
+    );
 
     res.json({ photos });
   } catch (error) {

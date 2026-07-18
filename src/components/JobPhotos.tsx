@@ -33,6 +33,8 @@ export interface JobPhoto {
   uploadedByUserId: string | null;
   uploadedByName: string | null;
   createdAt: string;
+  /** Signed URL from the server — use this for <img src> */
+  url: string | null;
 }
 
 interface JobPhotosProps {
@@ -41,13 +43,16 @@ interface JobPhotosProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function photoUrl(filename: string) {
-  return `/airo-assets/uploads/job-photos/${filename}`;
+/** Returns the best available URL for a photo — signed R2 URL or local fallback */
+function photoUrl(photo: JobPhoto) {
+  if (photo.url) return photo.url;
+  // Local storage fallback
+  return `/airo-assets/uploads/job-photos/${photo.filename}`;
 }
 
 // Cache-bust after rotation so the browser re-fetches the updated file
-function photoUrlBusted(filename: string, bust?: number) {
-  const base = photoUrl(filename);
+function photoUrlBusted(photo: JobPhoto, bust?: number) {
+  const base = photoUrl(photo);
   return bust ? `${base}?v=${bust}` : base;
 }
 
@@ -213,7 +218,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
         <div className="bg-slate-100 flex items-center justify-center" style={{ height: 220 }}>
           <img
             key={localBust}
-            src={photoUrlBusted(photo.filename, localBust)}
+            src={photoUrlBusted(photo, localBust)}
             alt={photo.label ?? photo.originalName ?? 'Photo'}
             className="max-w-full max-h-full object-contain"
           />
@@ -420,7 +425,7 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
       <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
         <img
           key={bust ?? photo.filename}
-          src={photoUrlBusted(photo.filename, bust)}
+          src={photoUrlBusted(photo, bust)}
           alt={photo.label ?? photo.originalName ?? 'Job photo'}
           className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl"
         />
@@ -714,7 +719,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
                   >
                     <img
                       key={bust ?? photo.filename}
-                      src={photoUrlBusted(photo.filename, bust)}
+                      src={photoUrlBusted(photo, bust)}
                       alt={photo.label ?? photo.originalName ?? 'Job photo'}
                       className="w-full h-full object-cover"
                       loading="lazy"

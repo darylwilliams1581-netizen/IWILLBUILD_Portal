@@ -9,6 +9,7 @@ import {
   compressImageIfNeeded,
   saveFile,
   deleteFile,
+  getSignedUrl,
   ALLOWED_IMAGE_MIMES,
 } from '../../../../../../storage/storage-service.js';
 
@@ -88,7 +89,9 @@ export default async function handler(req: Request, res: Response) {
     }).where(eq(jobPhotos.id, photoId));
 
     const updated = await db.query.jobPhotos.findFirst({ where: eq(jobPhotos.id, photoId) });
-    res.json({ ok: true, photo: updated });
+    let url: string | null = null;
+    try { url = await getSignedUrl(result.storageKey, PHOTO_BUCKET, 3600); } catch { /* best-effort */ }
+    res.json({ ok: true, photo: { ...updated, url } });
   } catch (error) {
     console.error('POST replace error:', error);
     res.status(500).json({ error: 'Failed to replace photo' });
