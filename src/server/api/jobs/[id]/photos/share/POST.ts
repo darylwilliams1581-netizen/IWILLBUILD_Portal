@@ -2,6 +2,10 @@
  * POST /api/jobs/:id/photos/share
  * Generate a 90-day view-only share token for a job's photos.
  * Returns { shareUrl, expiresAt }
+ *
+ * Strategy: DELETE any existing share for this job, then INSERT fresh.
+ * This avoids relying on onDuplicateKeyUpdate for the job_id unique index
+ * which may not exist on older DB instances.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -35,23 +39,22 @@ export default async function handler(req: Request, res: Response) {
     const hash = hashToken(raw);
     const exp = expiresAt(90);
 
-    // Upsert — one active share per job (replace on conflict)
-    await db
-      .insert(jobPhotoShares)
-      .values({
-        jobId,
-        companyId: profile.companyId,
-        tokenHash: hash,
-        expiresAt: exp,
-        createdByUserId: session.user.id,
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          tokenHash: hash,
-          expiresAt: exp,
-          createdByUserId: session.user.id,
-        },
-      });
+    // Delete any existing share for this job, then insert fresh.
+    // Safer than onDuplicateKeyUpdate which requires the job_id unique index.
+    await db.delete(jobPhotoShares).where(
+      and(
+        eq(jobPhotoShares.jobId, jobId),
+        eq(jobPhotoShares.companyId, profile.companyId),
+      )
+    );
+
+    await db.insert(jobPhotoShares).values({
+      jobId,
+      companyId: profile.companyId,
+      tokenHash: hash,
+      expiresAt: exp,
+      createdByUserId: session.user.id,
+    });
 
     const origin = `${req.protocol}://${req.get('host')}`;
     const shareUrl = `${origin}/photos/share/${raw}`;

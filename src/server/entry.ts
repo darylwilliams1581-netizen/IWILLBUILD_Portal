@@ -1231,7 +1231,7 @@ async function runStartupMigrations() {
   }
 
   // ── 3. Ensure performance indexes exist (idempotent — checks INFORMATION_SCHEMA first) ──
-  const indexesToEnsure: Array<{ table: string; indexName: string; columns: string }> = [
+  const indexesToEnsure: Array<{ table: string; indexName: string; columns: string; unique?: boolean }> = [
     // jobs — most-queried table, every list/filter hits company_id
     { table: 'jobs',                  indexName: 'idx_jobs_company',          columns: '(company_id)' },
     { table: 'jobs',                  indexName: 'idx_jobs_company_status',   columns: '(company_id, status)' },
@@ -1245,9 +1245,11 @@ async function runStartupMigrations() {
     { table: 'job_form_submissions',  indexName: 'idx_jfs_company_job',      columns: '(company_id, job_id)' },
     // estimate_lines — fetched by estimate_id on every estimate load
     { table: 'estimate_lines',        indexName: 'idx_estlines_estimate',    columns: '(estimate_id)' },
+    // job_photo_shares — one share per job (unique), fast token lookup
+    { table: 'job_photo_shares',      indexName: 'uq_job_photo_shares_job',  columns: '(job_id)', unique: true },
   ];
 
-  for (const { table, indexName, columns } of indexesToEnsure) {
+  for (const { table, indexName, columns, unique } of indexesToEnsure) {
     try {
       // Skip if table doesn't exist yet
       const [tblRows] = await db.execute(
@@ -1261,8 +1263,9 @@ async function runStartupMigrations() {
       ) as unknown as [Array<{ cnt: number }>, unknown];
       if (Number(idxRows?.[0]?.cnt ?? 0) > 0) continue;
 
-      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` ${columns}`));
-      console.log(`[startup-migration] Added index ${indexName} on ${table}`);
+      const indexType = unique ? 'UNIQUE INDEX' : 'INDEX';
+      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD ${indexType} \`${indexName}\` ${columns}`));
+      console.log(`[startup-migration] Added ${unique ? 'unique ' : ''}index ${indexName} on ${table}`);
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
       // ER_DUP_KEYNAME = index already exists under a different check path — safe to ignore
