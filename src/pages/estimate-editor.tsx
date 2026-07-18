@@ -678,7 +678,7 @@ export default function EstimateEditorPage() {
                     <thead>
                       <tr className="bg-muted/40 text-xs font-semibold text-muted-foreground">
                         <th className="text-left px-4 py-2.5 w-[42%]">Description</th>
-                        <th className="text-left px-2 py-2.5 w-[13%]">Category</th>
+                        <th className="text-left px-2 py-2.5 w-[13%]">Area/Category</th>
                         <th className="text-right px-2 py-2.5 w-[7%]">Qty</th>
                         <th className="text-left px-2 py-2.5 w-[7%]">Unit</th>
                         <th className="text-right px-2 py-2.5 w-[9%]">Rate</th>
@@ -733,7 +733,7 @@ export default function EstimateEditorPage() {
                                 value={line.category ?? ''}
                                 disabled={isLocked}
                                 onChange={(e) => updateLine(line._key, 'category', e.target.value)}
-                                placeholder="Category"
+                                placeholder="Area/Category"
                                 className="w-full px-1.5 py-1.5 border border-transparent rounded text-xs focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors disabled:bg-transparent disabled:cursor-default text-slate-500"
                               />
                             )}
