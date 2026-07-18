@@ -51,7 +51,7 @@ import { getSecret } from '#airo/secrets';
 // Set STORAGE_PROVIDER=r2 in Settings → Secrets once R2 credentials are added.
 
 function resolveProvider(): StorageProvider {
-  const name = (getSecret('STORAGE_PROVIDER') || process.env.STORAGE_PROVIDER ?? 'local').toLowerCase().trim();
+  const name = (getSecret('STORAGE_PROVIDER') || process.env.STORAGE_PROVIDER || 'local').toLowerCase().trim();
   switch (name) {
     case 'r2':    return r2Provider;
     case 'local':
