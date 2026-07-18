@@ -1143,6 +1143,7 @@ async function runStartupMigrations() {
     // ── Job cost ledger immutability ──────────────────────────────────────────
     { table: 'job_cost_ledger', column: 'locked',            definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'job_cost_ledger', column: 'locked_at',         definition: 'DATETIME NULL' },
+    { table: 'job_cost_ledger', column: 'photo_url',         definition: 'VARCHAR(500) NULL' },
     { table: 'job_cost_ledger', column: 'original_entry_id', definition: 'INT NULL' },
     { table: 'job_cost_ledger', column: 'is_correction',     definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── QBO company connection ────────────────────────────────────────────────

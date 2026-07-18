@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, RefreshCw, Plus, Download, CheckCircle2, Clock,
   AlertCircle, Loader2, X, ChevronDown, Pencil, Trash2,
-  Filter, FileSpreadsheet, FileText, BarChart3, Camera, Image,
+  Filter, FileSpreadsheet, FileText, BarChart3, Camera,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -665,8 +665,25 @@ export default function JobCosts({ jobId }: Props) {
                         {entry.event_type}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-foreground max-w-[180px]">
-                      <p className="truncate">{entry.description}</p>
+                    <td className="px-3 py-2.5 text-foreground max-w-[200px]">
+                      <div className="flex items-center gap-2">
+                        {entry.photo_url && (
+                          <a
+                            href={entry.photo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View receipt"
+                            className="shrink-0"
+                          >
+                            <img
+                              src={entry.photo_url}
+                              alt="Receipt"
+                              className="w-8 h-8 rounded-lg object-cover border border-border hover:opacity-80 transition-opacity"
+                            />
+                          </a>
+                        )}
+                        <p className="truncate">{entry.description}</p>
+                      </div>
                     </td>
                     <td className="px-2 py-2.5 text-center text-muted-foreground whitespace-nowrap">
                       {entry.qty}{entry.unit ? ` ${entry.unit}` : ''}
@@ -705,17 +722,6 @@ export default function JobCosts({ jobId }: Props) {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1">
-                        {entry.photo_url && (
-                          <a
-                            href={entry.photo_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-primary p-1 rounded hover:bg-muted transition-colors"
-                            title="View receipt photo"
-                          >
-                            <Image size={11} />
-                          </a>
-                        )}
                         <button onClick={() => setEditEntry(entry)} className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                           <Pencil size={11} />
                         </button>
