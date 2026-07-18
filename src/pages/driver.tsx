@@ -705,23 +705,26 @@ export default function DriverPage() {
             {/* ── Session card ── */}
             <div
               className={`rounded-2xl border overflow-hidden transition-colors ${sessionActive ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
-              style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
             >
               <div className="px-5 pt-5 pb-4">
+
+                {/* Header row: icon + ACTIVE SESSION • LIVE + elapsed pill */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-2">
                       <Car size={14} className={sessionActive ? 'text-blue-500' : 'text-gray-400'} />
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                         {sessionActive ? 'Active Session' : 'No Active Session'}
                       </span>
                       {sessionActive && (
                         <span className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                          <span className="text-blue-500 text-xs font-semibold">LIVE</span>
+                          <span className="text-blue-500 text-xs font-bold">LIVE</span>
                         </span>
                       )}
                     </div>
+
                     {sessionActive ? (
                       <>
                         <h2 className="text-gray-900 font-black text-xl leading-tight">{session.asset_name}</h2>
@@ -731,23 +734,26 @@ export default function DriverPage() {
                       <h2 className="text-gray-700 font-bold text-lg">Ready to drive?</h2>
                     )}
                   </div>
+
+                  {/* Elapsed pill — top right */}
                   {sessionActive && (
-                    <div className="bg-blue-100 border border-blue-200 rounded-xl px-3 py-2 text-center shrink-0">
+                    <div className="bg-blue-100 border border-blue-200 rounded-xl px-3 py-2 text-center shrink-0 min-w-[72px]">
                       <p className="text-blue-600 font-black text-lg leading-none tabular-nums">{elapsed}</p>
                       <p className="text-blue-400 text-xs mt-0.5">elapsed</p>
                     </div>
                   )}
                 </div>
 
+                {/* Started + GPS row */}
                 {sessionActive && (
-                  <div className="flex items-center gap-3 mt-3 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-gray-500">
+                  <div className="flex items-center gap-4 mt-3 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-gray-400">
                       <Clock size={12} />
                       <span className="text-xs">
-                        Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane' })}
+                        Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-gray-500">
+                    <div className="flex items-center gap-1.5 text-gray-400">
                       <MapPin size={12} />
                       <span className="text-xs">GPS tracking active</span>
                     </div>
@@ -779,22 +785,22 @@ export default function DriverPage() {
                 </div>
               )}
 
-              {/* CTA */}
-              <div className="px-5 pb-5">
+              {/* CTA button */}
+              <div className="px-4 pb-4">
                 {sessionActive ? (
                   <button
                     onClick={() => setShowStopConfirm(true)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-red-200"
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-red-200"
                   >
-                    <Square size={18} /> End Drive Session
+                    <Square size={18} className="fill-white" /> End Drive Session
                   </button>
                 ) : (
                   <button
                     onClick={async () => { await loadVehicles(); setShowPicker(true); }}
                     disabled={starting}
-                    className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-blue-200 disabled:opacity-60"
+                    className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-blue-200 disabled:opacity-60"
                   >
-                    {starting ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                    {starting ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} className="fill-white" />}
                     {starting ? 'Starting…' : 'Start Drive Session'}
                   </button>
                 )}
