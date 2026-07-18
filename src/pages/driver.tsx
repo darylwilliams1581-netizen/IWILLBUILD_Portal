@@ -141,55 +141,6 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: {
   );
 }
 
-// ── Stop Confirmation Sheet ───────────────────────────────────────────────────
-
-function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: {
-  sessionName: string;
-  elapsed: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  stopping: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/70 flex items-end"
-      onClick={onCancel}
-    >
-      <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-white rounded-t-3xl border-t border-gray-200 p-6"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
-        </div>
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center mx-auto mb-3">
-            <Square size={22} className="text-red-500" />
-          </div>
-          <h2 className="text-gray-900 font-bold text-lg">End Drive Session?</h2>
-          <p className="text-gray-400 text-sm mt-1">{sessionName} · {elapsed}</p>
-        </div>
-        <div className="space-y-3">
-          <button
-            onClick={onConfirm}
-            disabled={stopping}
-            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors disabled:opacity-60"
-          >
-            {stopping ? <Loader2 size={18} className="animate-spin" /> : <Square size={18} />}
-            {stopping ? 'Ending session…' : 'End Session'}
-          </button>
-          <button onClick={onCancel} className="w-full py-4 text-gray-400 font-semibold rounded-2xl hover:text-gray-700 transition-colors">
-            Keep Driving
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 // ── Tool Sheet ────────────────────────────────────────────────────────────────
 
 function ToolSheet({ title, icon, onClose, children }: {

@@ -1849,7 +1849,14 @@ export default function HomeScreen() {
           <ActiveStatusBar
             status={activeStatus}
             onJobPress={() => setSignInOutOpen(true)}
-            onDrivePress={() => navigate('/driver')}
+            onDrivePress={async () => {
+              if (activeStatus?.driving?.sessionId) {
+                await fetch(`/api/fleet/driver-sessions/${activeStatus.driving.sessionId}/stop`, {
+                  method: 'POST', credentials: 'include',
+                });
+                setActiveStatusKey(k => k + 1);
+              }
+            }}
           />
         )}
       </AnimatePresence>
