@@ -1,29 +1,29 @@
 {
-  "CATEGORIES": [
+  "COST_CATEGORIES": [
     {
       "value": "materials",
       "label": "Materials",
-      "id": "NpB8tQcdNvsV6HaIwSYrF"
+      "id": "L5iTUoZ-n9Lg1Hf8-5t4M"
     },
     {
       "value": "labour",
       "label": "Labour",
-      "id": "0il2pln9ysC0VK-F81ila"
+      "id": "M-WKRQxpxyyIgJKCg37gp"
     },
     {
       "value": "equipment",
       "label": "Equipment",
-      "id": "DY30nQ44adp4ZPJq7T0Gq"
+      "id": "Hb5dGNxEjvKDRwmf7x4AF"
     },
     {
       "value": "subcontract",
       "label": "Subcontract",
-      "id": "r75IZvNg2_vYZuS_WhueW"
+      "id": "EwgQyXOikcX8wl6C13EBW"
     },
     {
       "value": "other",
       "label": "Other",
-      "id": "CNMGelWKjPTvTCjdqOJ4W"
+      "id": "EHxRjltcYJ0UUIFQyvs2l"
     }
   ]
 }

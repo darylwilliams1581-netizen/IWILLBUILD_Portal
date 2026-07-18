@@ -10,32 +10,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Truck,
-  Play,
-  Square,
-  ChevronRight,
-  Loader2,
-  AlertCircle,
-  Clock,
-  MapPin,
-  LogOut,
-  X,
-  Car,
-  ClipboardCheck,
-  CheckCircle2,
-  XCircle,
-  Calculator,
-  Layers,
-  HardHat,
-  LayoutDashboard,
-  LogIn,
-  Receipt,
-  Rocket,
-  DollarSign,
-  Camera,
-  Users,
-  User,
-  Upload,
+  Truck, Play, Square, ChevronRight, Loader2, AlertCircle,
+  Clock, MapPin, LogOut, X, Car, ClipboardCheck, CheckCircle2,
+  XCircle, Calculator, Layers, HardHat, LayoutDashboard, LogIn,
+  Receipt, Rocket, DollarSign, Camera, Users, User, Upload,
 } from 'lucide-react';
 import BuildersCalc from '../components/estimating/BuildersCalc';
 import TakeoffPad from '../components/estimating/TakeoffPad';
@@ -79,26 +57,20 @@ function vehicleTypeIcon(type: string) {
 
 // ── Vehicle Picker Sheet ──────────────────────────────────────────────────────
 
-interface VehiclePickerProps {
+function VehiclePicker({ vehicles, loading, onSelect, onClose }: {
   vehicles: Vehicle[];
   loading: boolean;
   onSelect: (v: Vehicle) => void;
   onClose: () => void;
-}
-
-function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerProps) {
+}) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-black/70 flex items-end"
       onClick={onClose}
     >
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className="w-full bg-white rounded-t-3xl border-t border-gray-200 max-h-[80vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -120,7 +92,6 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
             <X size={18} />
           </button>
         </div>
-
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
           {loading ? (
             <div className="flex items-center justify-center py-10">
@@ -131,35 +102,33 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
               <Car size={32} className="text-gray-300 mx-auto mb-2" />
               <p className="text-gray-400 text-sm">No vehicles available</p>
             </div>
-          ) : (
-            vehicles.map(v => (
-              <button
-                key={v.id}
-                onClick={() => onSelect(v)}
-                disabled={!!v.current_driver}
-                className={`w-full flex items-center gap-3 bg-gray-50 border rounded-2xl px-4 py-3.5 text-left transition-colors ${
-                  v.current_driver
-                    ? 'opacity-50 cursor-not-allowed border-gray-200'
-                    : 'border-gray-200 hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100'
-                }`}
-              >
-                <span className="text-2xl">{vehicleTypeIcon(v.type)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 font-semibold text-sm">{v.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {v.make_model && <span className="text-gray-400 text-xs">{v.make_model}</span>}
-                    {v.rego && !v.rego_not_applicable && (
-                      <span className="text-gray-500 text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">{v.rego}</span>
-                    )}
-                  </div>
-                  {v.current_driver && (
-                    <p className="text-amber-600 text-xs mt-0.5">In use by {v.current_driver}</p>
+          ) : vehicles.map(v => (
+            <button
+              key={v.id}
+              onClick={() => onSelect(v)}
+              disabled={!!v.current_driver}
+              className={`w-full flex items-center gap-3 bg-gray-50 border rounded-2xl px-4 py-3.5 text-left transition-colors ${
+                v.current_driver
+                  ? 'opacity-50 cursor-not-allowed border-gray-200'
+                  : 'border-gray-200 hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100'
+              }`}
+            >
+              <span className="text-2xl">{vehicleTypeIcon(v.type)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-900 font-semibold text-sm">{v.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {v.make_model && <span className="text-gray-400 text-xs">{v.make_model}</span>}
+                  {v.rego && !v.rego_not_applicable && (
+                    <span className="text-gray-500 text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">{v.rego}</span>
                   )}
                 </div>
-                {!v.current_driver && <ChevronRight size={16} className="text-gray-300 shrink-0" />}
-              </button>
-            ))
-          )}
+                {v.current_driver && (
+                  <p className="text-amber-600 text-xs mt-0.5">In use by {v.current_driver}</p>
+                )}
+              </div>
+              {!v.current_driver && <ChevronRight size={16} className="text-gray-300 shrink-0" />}
+            </button>
+          ))}
         </div>
       </motion.div>
     </motion.div>
@@ -168,27 +137,21 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
 
 // ── Stop Confirmation Sheet ───────────────────────────────────────────────────
 
-interface StopConfirmProps {
+function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: {
   sessionName: string;
   elapsed: string;
   onConfirm: () => void;
   onCancel: () => void;
   stopping: boolean;
-}
-
-function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: StopConfirmProps) {
+}) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-black/70 flex items-end"
       onClick={onCancel}
     >
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className="w-full bg-white rounded-t-3xl border-t border-gray-200 p-6"
         onClick={e => e.stopPropagation()}
@@ -223,7 +186,12 @@ function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: St
 
 // ── Tool Sheet ────────────────────────────────────────────────────────────────
 
-function ToolSheet({ title, icon, onClose, children }: { title: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
+function ToolSheet({ title, icon, onClose, children }: {
+  title: string;
+  icon: React.ReactNode;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -237,21 +205,23 @@ function ToolSheet({ title, icon, onClose, children }: { title: string; icon: Re
         style={{ maxHeight: '94vh' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">{icon}</div>
             <h2 className="text-gray-900 font-bold text-base">{title}</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors">
+            <X size={18} />
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">{children}</div>
       </motion.div>
     </motion.div>
   );
 }
-
-// ── Job Cost Sheet ────────────────────────────────────────────────────────────
 
 interface CostJob { id: number; name: string; jobNumber?: string | null; }
 
@@ -267,14 +237,6 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
   const [done, setDone]               = useState(false);
   const [error, setError]             = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const CATEGORIES = [
-    { value: 'materials',   label: 'Materials' },
-    { value: 'labour',      label: 'Labour' },
-    { value: 'equipment',   label: 'Equipment' },
-    { value: 'subcontract', label: 'Subcontract' },
-    { value: 'other',       label: 'Other' },
-  ];
 
   useEffect(() => {
     void (async () => {
@@ -361,7 +323,7 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Category</p>
                 <div className="flex flex-wrap gap-2">
-                  {driver.CATEGORIES.map(c => (
+                  {driver.COST_CATEGORIES.map(c => (
                     <button key={c.value} onClick={() => setCategory(c.value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${category === c.value ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'}`}>{c.label}</button>
                   ))}
                 </div>
@@ -412,12 +374,11 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
 
 // ── Attendance Sheet ──────────────────────────────────────────────────────────
 
-interface AttendanceJob { id: number; name: string; jobNumber?: string | null; status?: string | null; }
-interface OnSiteEntry { user_id: string; signed_in_at: string; actor_type: string; source: string; user_name: string | null; user_email: string | null; }
+interface AttendanceJob { id: number; name: string; jobNumber?: string | null; }
+interface OnSiteEntry { user_id: string; signed_in_at: string; user_name: string | null; user_email: string | null; }
 interface AttendanceStatus {
   signedIn: boolean; lastAction: string | null; lastActionAt: string | null;
   currentlyOnSite: OnSiteEntry[];
-  recentLog: Array<{ id: number; action: string; user_name: string | null; user_email: string | null; created_at: string }>;
 }
 
 function AttendanceSheet({ onClose }: { onClose: () => void }) {
@@ -457,12 +418,14 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
     if (!selectedJob) return;
     setActioning(true); setMessage(null);
     try {
-      const res = await fetch(`/api/jobs/${selectedJob.id}/${action}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const res = await fetch(`/api/jobs/${selectedJob.id}/${action}`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
       const data = await res.json() as { ok: boolean; message?: string };
       setMessage({ text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok });
       if (res.ok) {
-        if (action === 'signin') setStatus(prev => prev ? { ...prev, signedIn: true, lastAction: 'signin' } : prev);
-        else setStatus(prev => prev ? { ...prev, signedIn: false, lastAction: 'signout' } : prev);
         const s = await fetch(`/api/jobs/${selectedJob.id}/signin-status`, { credentials: 'include' });
         if (s.ok) setStatus(await s.json() as AttendanceStatus);
         if (action === 'signin') void hapticSuccess(); else void hapticImpact('medium');
@@ -508,10 +471,19 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
           {selectedJob && (
             <div className="space-y-3">
               <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 ${statusLoading ? 'bg-gray-50 border-gray-200' : signedIn ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
-                {statusLoading ? <Loader2 size={16} className="animate-spin text-gray-400" /> : <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${signedIn ? 'bg-emerald-500' : 'bg-gray-300'}`} />}
+                {statusLoading
+                  ? <Loader2 size={16} className="animate-spin text-gray-400" />
+                  : <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${signedIn ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                }
                 <div>
-                  <p className={`text-sm font-bold ${signedIn ? 'text-emerald-600' : 'text-gray-500'}`}>{statusLoading ? 'Checking…' : signedIn ? 'Signed in' : 'Not signed in'}</p>
-                  {status?.lastActionAt && <p className="text-xs text-gray-400 mt-0.5">Last: {status.lastAction} at {new Date(status.lastActionAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</p>}
+                  <p className={`text-sm font-bold ${signedIn ? 'text-emerald-600' : 'text-gray-500'}`}>
+                    {statusLoading ? 'Checking…' : signedIn ? 'Signed in' : 'Not signed in'}
+                  </p>
+                  {status?.lastActionAt && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Last: {status.lastAction} at {new Date(status.lastActionAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
                 </div>
               </div>
               {message && (
@@ -521,10 +493,10 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3 pb-2">
-                <button onClick={() => void handleAction('signin')} disabled={actioning || statusLoading || signedIn} className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-40 text-white font-bold py-4 rounded-2xl transition-colors">
+                <button onClick={() => void handleAction('signin')} disabled={actioning || statusLoading || signedIn} className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold py-4 rounded-2xl transition-colors">
                   {actioning ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />} Sign In
                 </button>
-                <button onClick={() => void handleAction('signout')} disabled={actioning || statusLoading || !signedIn} className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 disabled:opacity-40 border border-gray-200 text-gray-700 font-bold py-4 rounded-2xl transition-colors">
+                <button onClick={() => void handleAction('signout')} disabled={actioning || statusLoading || !signedIn} className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 border border-gray-200 text-gray-700 font-bold py-4 rounded-2xl transition-colors">
                   {actioning ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />} Sign Out
                 </button>
               </div>
@@ -533,7 +505,9 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-200">
                     <Users size={13} className="text-emerald-500" />
                     <span className="text-xs font-bold text-gray-700">Currently on Site</span>
-                    <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />Live</span>
+                    <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />Live
+                    </span>
                   </div>
                   {status.currentlyOnSite.length === 0 ? (
                     <p className="text-xs text-gray-400 text-center py-4">Nobody on site yet.</p>
@@ -541,7 +515,9 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                     <div className="divide-y divide-gray-200">
                       {status.currentlyOnSite.map(p => (
                         <div key={p.user_id} className="flex items-center gap-3 px-4 py-2.5">
-                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><User size={12} className="text-emerald-600" /></div>
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <User size={12} className="text-emerald-600" />
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">{p.user_name ?? p.user_email ?? 'Unknown'}</p>
                             <p className="text-xs text-gray-400">{new Date(p.signed_in_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</p>
@@ -567,21 +543,22 @@ export default function DriverPage() {
   const navigate = useNavigate();
   const { session, refresh, stopSession } = useDriverSession();
 
-  const [showPicker, setShowPicker]           = useState(false);
-  const [vehicles, setVehicles]               = useState<Vehicle[]>([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(false);
-  const [starting, setStarting]               = useState(false);
-  const [stopping, setStopping]               = useState(false);
-  const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [actionError, setActionError]         = useState('');
+  const [showPicker, setShowPicker]             = useState(false);
+  const [vehicles, setVehicles]                 = useState<Vehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading]   = useState(false);
+  const [starting, setStarting]                 = useState(false);
+  const [stopping, setStopping]                 = useState(false);
+  const [showStopConfirm, setShowStopConfirm]   = useState(false);
+  const [actionError, setActionError]           = useState('');
   const [showBuildersCalc, setShowBuildersCalc] = useState(false);
   const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
   const [showAttendance, setShowAttendance]     = useState(false);
   const [showJobCost, setShowJobCost]           = useState(false);
-  const [elapsed, setElapsed]                 = useState('00m 00s');
-  const [elapsedHours, setElapsedHours]       = useState(0);
+  const [elapsed, setElapsed]                   = useState('00m 00s');
+  const [elapsedHours, setElapsedHours]         = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Live elapsed timer
   useEffect(() => {
     if (session?.start_at) {
       const update = () => {
@@ -602,7 +579,7 @@ export default function DriverPage() {
     setVehiclesLoading(true);
     try {
       const res = await fetch('/api/fleet/vehicles', { credentials: 'include' });
-      const data = await res.json() as { vehicles: Vehicle[] };
+      const data = await res.json() as { vehicles?: Vehicle[] };
       setVehicles(data.vehicles ?? []);
     } catch { setVehicles([]); }
     finally { setVehiclesLoading(false); }
@@ -615,15 +592,25 @@ export default function DriverPage() {
     void hapticImpact('medium');
     try {
       const res = await fetch('/api/fleet/driver-sessions', {
-        method: 'POST', credentials: 'include',
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fleetAssetId: vehicle.id }),
       });
       const data = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok) { setActionError(data.error ?? 'Failed to start session'); void hapticError(); }
-      else { void hapticSuccess(); await refresh(); }
-    } catch { setActionError('Network error — please try again'); void hapticError(); }
-    finally { setStarting(false); }
+      if (!res.ok) {
+        setActionError(data.error ?? 'Failed to start session');
+        void hapticError();
+      } else {
+        void hapticSuccess();
+        await refresh();
+      }
+    } catch {
+      setActionError('Network error — please try again');
+      void hapticError();
+    } finally {
+      setStarting(false);
+    }
   }
 
   async function handleStopSession() {
@@ -634,8 +621,12 @@ export default function DriverPage() {
       await stopSession(session.id);
       void hapticSuccess();
       setShowStopConfirm(false);
-    } catch { setActionError('Failed to end session — please try again'); void hapticError(); }
-    finally { setStopping(false); }
+    } catch {
+      setActionError('Failed to end session — please try again');
+      void hapticError();
+    } finally {
+      setStopping(false);
+    }
   }
 
   const sessionActive = !!session;
@@ -717,7 +708,9 @@ export default function DriverPage() {
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <Clock size={12} />
-                      <span className="text-xs">Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane' })}</span>
+                      <span className="text-xs">
+                        Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane' })}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <MapPin size={12} />
@@ -756,7 +749,7 @@ export default function DriverPage() {
                 {sessionActive ? (
                   <button
                     onClick={() => setShowStopConfirm(true)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 text-red-600 font-bold py-4 rounded-2xl transition-colors"
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-red-200"
                   >
                     <Square size={18} /> End Drive Session
                   </button>
@@ -773,7 +766,7 @@ export default function DriverPage() {
               </div>
             </div>
 
-            {/* ── GPS status card ── */}
+            {/* ── GPS status card (when active) ── */}
             <AnimatePresence>
               {sessionActive && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}>
@@ -782,17 +775,17 @@ export default function DriverPage() {
               )}
             </AnimatePresence>
 
-            {/* ── Quick actions ── */}
+            {/* ── Quick access ── */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 px-1">Quick Access</p>
 
-              {/* Prestart — prominent link */}
+              {/* Prestart link */}
               <button
                 onClick={() => navigate('/prestart')}
                 className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 w-full hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 transition-colors text-left"
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-md shadow-orange-200">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-md shadow-amber-200">
                   <ClipboardCheck size={22} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -820,11 +813,11 @@ export default function DriverPage() {
 
               {/* Tools row */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {[
-                  { label: 'Builders Calc', icon: <Calculator size={20} className="text-white" />, bg: 'bg-blue-500', onClick: () => setShowBuildersCalc(true) },
-                  { label: 'Take-off Pad',  icon: <Layers size={20} className="text-white" />,     bg: 'bg-violet-500', onClick: () => setShowTakeoffPad(true) },
-                  { label: 'Job Cost',      icon: <Receipt size={20} className="text-white" />,     bg: 'bg-amber-500', onClick: () => setShowJobCost(true) },
-                ].map(t => (
+                {([
+                  { label: 'Builders Calc', bg: 'bg-blue-500',   icon: <Calculator size={20} className="text-white" />, onClick: () => setShowBuildersCalc(true) },
+                  { label: 'Take-off Pad',  bg: 'bg-violet-500', icon: <Layers size={20} className="text-white" />,     onClick: () => setShowTakeoffPad(true) },
+                  { label: 'Job Cost',      bg: 'bg-amber-500',  icon: <Receipt size={20} className="text-white" />,    onClick: () => setShowJobCost(true) },
+                ] as const).map(t => (
                   <button key={t.label} onClick={t.onClick} className="flex flex-col items-center gap-2.5 bg-white border border-gray-200 rounded-2xl py-5 px-3 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div className={`w-11 h-11 rounded-2xl ${t.bg} flex items-center justify-center`}>{t.icon}</div>
                     <span className="text-gray-700 text-xs font-bold text-center leading-tight">{t.label}</span>
@@ -849,7 +842,7 @@ export default function DriverPage() {
               </div>
             </div>
 
-            {/* ── Launch button ── */}
+            {/* ── Launch ── */}
             <Link to="/jobs" className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-orange-500/25">
               <Rocket size={20} />
               <span className="text-base">Launch</span>
@@ -863,12 +856,23 @@ export default function DriverPage() {
       {/* ── Sheets ── */}
       <AnimatePresence>
         {showPicker && (
-          <VehiclePicker vehicles={vehicles} loading={vehiclesLoading} onSelect={v => { setShowPicker(false); void handleStartSession(v); }} onClose={() => setShowPicker(false)} />
+          <VehiclePicker
+            vehicles={vehicles}
+            loading={vehiclesLoading}
+            onSelect={v => { setShowPicker(false); void handleStartSession(v); }}
+            onClose={() => setShowPicker(false)}
+          />
         )}
       </AnimatePresence>
       <AnimatePresence>
         {showStopConfirm && session && (
-          <StopConfirm sessionName={session.asset_name} elapsed={elapsed} onConfirm={handleStopSession} onCancel={() => setShowStopConfirm(false)} stopping={stopping} />
+          <StopConfirm
+            sessionName={session.asset_name}
+            elapsed={elapsed}
+            onConfirm={handleStopSession}
+            onCancel={() => setShowStopConfirm(false)}
+            stopping={stopping}
+          />
         )}
       </AnimatePresence>
       <AnimatePresence>

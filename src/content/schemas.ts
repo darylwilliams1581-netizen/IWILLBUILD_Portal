@@ -4,7 +4,7 @@ export const schemas = {
     "ALL_TYPES": z.array(z.string())
   }),
   driver: z.object({
-    "CATEGORIES": z.array(z.object({
+    "COST_CATEGORIES": z.array(z.object({
       "value": z.string(),
       "label": z.string(),
       "id": z.string()

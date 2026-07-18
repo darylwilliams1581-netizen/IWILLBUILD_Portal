@@ -2,7 +2,7 @@
 declare module 'virtual:content' {
   export const asset_manager: { "TABS": Array<string> };
   export const asset_report_share: { "linkUnavailable": string; "linkExpiredMessage": string; "assetDetails": string; "inspectionSummary": string; "defectsLabel": string; "tendersLabel": string; "photosLabel": string; "noExpiry": string };
-  export const driver: { "CATEGORIES": Array<{ "value": string; "label": string; "id": string }> };
+  export const driver: { "COST_CATEGORIES": Array<{ "value": string; "label": string; "id": string }> };
   export const home: { "tabs": Array<string>; "rows": Array<{ "id": string; "label": string; "status": string; "color": string }> };
   export const roadmap: { "phases": Array<string>; "GATES": Array<{ "id": string; "label": string; "status": string; "criteria": Array<string>; "unblock": string }> };
   export const studio: { "ALL_TYPES": Array<string>; "CATEGORIES": Array<string> };
