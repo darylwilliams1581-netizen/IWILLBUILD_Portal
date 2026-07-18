@@ -1159,7 +1159,7 @@ function DrawingsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () 
       open={open} onClose={onClose}
       title="Drawings" subtitle="Select a job to view its drawings"
       iconBg="bg-lime-100" iconFg="text-lime-600" Icon={Layers}
-      onSelect={job => navigate(`/jobs/${job.id}?tab=drawings`)}
+      onSelect={job => navigate(`/jobs/${job.id}/drawings`)}
     />
   );
 }
