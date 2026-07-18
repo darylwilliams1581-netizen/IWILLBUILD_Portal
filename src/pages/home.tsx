@@ -58,7 +58,7 @@ const FIELD_ICONS: AppIcon[] = [
 ];
 
 const SUPERVISOR_ICONS: AppIcon[] = [
-  { label: 'Roster',    icon: UserCheck,      href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
+  { label: 'Sign In',   icon: UserCheck,      href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
   { label: 'Schedule',  icon: CalendarDays,   href: '?panel=schedule-picker',   bg: 'bg-violet-500',   fg: 'text-white' },
   { label: 'Forms',     icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
   { label: 'Ledger',    icon: BookOpen,       href: '?panel=costs-picker',      bg: 'bg-emerald-600',  fg: 'text-white' },
