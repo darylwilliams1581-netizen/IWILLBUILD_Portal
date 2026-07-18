@@ -61,6 +61,7 @@ const AssetManagerPage       = lazy(() => import('./pages/asset-manager'));
 const AssetManagerDetailPage = lazy(() => import('./pages/asset-manager-detail'));
 const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const PhotoSharePage         = lazy(() => import('./pages/photo-share'));
+const JobNotesPage           = lazy(() => import('./pages/job-notes-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
@@ -165,6 +166,7 @@ export const routes: RouteObject[] = [
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   { path: '/jobs/:id/photos', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosPage /></Suspense>), errorElement: routeError },
+  { path: '/jobs/:id/notes',  element: protect(<Suspense fallback={<PageLoader />}><JobNotesPage /></Suspense>),  errorElement: routeError },
   // QR scan landing — unauthenticated allowed (guest check-in form)
   { path: '/jobs/:id/signin', element: <Suspense fallback={<PageLoader />}><JobSignInPage /></Suspense>, errorElement: routeError },
   // Deep-link: open a specific form instance directly — full-page runner in new tab

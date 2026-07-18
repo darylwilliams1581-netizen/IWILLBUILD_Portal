@@ -46,7 +46,7 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Camera',    icon: Camera,      href: '?panel=camera',           bg: 'bg-orange-500',   fg: 'text-white' },
   { label: 'Drive',     icon: Car,         href: '/driver',                 bg: 'bg-blue-500',     fg: 'text-white' },
   { label: 'Forms',     icon: FileText,    href: '/studio?tab=forms',       bg: 'bg-purple-500',   fg: 'text-white' },
-  { label: 'Notes',     icon: StickyNote,  href: '?panel=notes',            bg: 'bg-yellow-400',   fg: 'text-white' },
+  { label: 'Notes',     icon: StickyNote,  href: '?panel=notes-picker',     bg: 'bg-yellow-400',   fg: 'text-white' },
   { label: 'Job Costs', icon: BookOpen,    href: '/jobs?tab=costs',         bg: 'bg-emerald-500',  fg: 'text-white' },
   { label: 'Delays',    icon: Clock,       href: '/jobs?filter=delayed',    bg: 'bg-red-500',      fg: 'text-white' },
   { label: 'Progress',  icon: TrendingUp,  href: '/jobs?filter=inprogress', bg: 'bg-cyan-500',     fg: 'text-white' },
@@ -289,6 +289,106 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
   );
 }
 
+// ── Notes job picker sheet ────────────────────────────────────────────────────
+
+function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
+        const list = Array.isArray(data) ? data : (data.jobs ?? []);
+        setJobs(list);
+      })
+      .catch(() => setJobs([]))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  function handleSelect(job: JobOption) {
+    onClose();
+    navigate(`/jobs/${job.id}/notes`);
+  }
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
+                  <StickyNote size={15} className="text-yellow-500" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-base">Select Job</h2>
+                  <p className="text-gray-400 text-xs">Choose a job to view notes</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-yellow-300 border-t-yellow-500 rounded-full animate-spin" />
+                </div>
+              ) : jobs.length === 0 ? (
+                <div className="text-center py-10">
+                  <HardHat size={32} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">No active jobs found</p>
+                </div>
+              ) : (
+                jobs.map(job => (
+                  <button
+                    key={job.id}
+                    onClick={() => handleSelect(job)}
+                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 active:bg-yellow-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+                      <StickyNote size={16} className="text-yellow-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                      {job.jobNumber && (
+                        <p className="text-gray-400 text-xs font-mono mt-0.5">{job.jobNumber}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="h-4 shrink-0" />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── Profile sheet ─────────────────────────────────────────────────────────────
 
 function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -378,6 +478,7 @@ export default function HomeScreen() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [cameraPickerOpen, setCameraPickerOpen] = useState(false);
+  const [notesPickerOpen, setNotesPickerOpen] = useState(false);
 
   const name = sessionData?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
@@ -391,6 +492,7 @@ export default function HomeScreen() {
 
   function handleNavigate(href: string) {
     if (href === '?panel=notes') { setNotesOpen(true); return; }
+    if (href === '?panel=notes-picker') { setNotesPickerOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     navigate(href);
   }
@@ -493,6 +595,7 @@ export default function HomeScreen() {
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       <CameraJobPickerSheet open={cameraPickerOpen} onClose={() => setCameraPickerOpen(false)} />
+      <NotesJobPickerSheet open={notesPickerOpen} onClose={() => setNotesPickerOpen(false)} />
     </div>
   );
 }
