@@ -212,37 +212,50 @@ export default function JobProgressPage() {
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                {/* Header row */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scope Description</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-28 text-center">Progress</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Notes</span>
+                </div>
                 {lines.map((line, i) => (
                   <div
                     key={line.id}
-                    className={`px-4 py-2.5 ${i !== lines.length - 1 ? 'border-b border-gray-100' : ''} ${dirty.has(line.id) ? 'bg-cyan-50/40' : ''}`}
+                    className={`grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-2 items-center ${i !== lines.length - 1 ? 'border-b border-gray-100' : ''} ${dirty.has(line.id) ? 'bg-cyan-50/50' : ''}`}
                   >
-                    {/* Row: description + pct + slider */}
-                    <div className="flex items-center gap-3">
-                      {/* % badge */}
-                      <span className={`text-xs font-bold tabular-nums w-9 shrink-0 text-right ${line.percentComplete === 100 ? 'text-emerald-600' : 'text-cyan-600'}`}>
+                    {/* Col 1: description */}
+                    <p className="text-gray-800 text-xs font-medium leading-snug">{line.description}</p>
+
+                    {/* Col 2: % badge + thin slider */}
+                    <div className="w-28 flex flex-col items-center gap-1">
+                      <span className={`text-xs font-bold tabular-nums ${line.percentComplete === 100 ? 'text-emerald-600' : 'text-cyan-600'}`}>
                         {line.percentComplete}%
                       </span>
-                      {/* Thin progress track + slider stacked */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-800 text-xs font-medium leading-tight truncate mb-1">{line.description}</p>
-                        <div className="relative h-4 flex items-center">
-                          <div className="absolute inset-x-0 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${line.percentComplete === 100 ? 'bg-emerald-500' : line.percentComplete >= 50 ? 'bg-cyan-500' : 'bg-amber-400'}`}
-                              style={{ width: `${line.percentComplete}%` }}
-                            />
-                          </div>
-                          <input
-                            type="range"
-                            min={0} max={100} step={5}
-                            value={line.percentComplete}
-                            onChange={e => updateLine(line.id, 'percentComplete', parseInt(e.target.value))}
-                            className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-4"
+                      <div className="relative w-full h-4 flex items-center">
+                        <div className="absolute inset-x-0 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-200 ${line.percentComplete === 100 ? 'bg-emerald-500' : line.percentComplete >= 50 ? 'bg-cyan-500' : 'bg-amber-400'}`}
+                            style={{ width: `${line.percentComplete}%` }}
                           />
                         </div>
+                        <input
+                          type="range"
+                          min={0} max={100} step={5}
+                          value={line.percentComplete}
+                          onChange={e => updateLine(line.id, 'percentComplete', parseInt(e.target.value))}
+                          className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-4"
+                        />
                       </div>
                     </div>
+
+                    {/* Col 3: notes */}
+                    <input
+                      type="text"
+                      placeholder="Add note…"
+                      value={line.progressNote ?? ''}
+                      onChange={e => updateLine(line.id, 'progressNote', e.target.value)}
+                      className="w-full text-xs text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-300 transition"
+                    />
                   </div>
                 ))}
               </div>
