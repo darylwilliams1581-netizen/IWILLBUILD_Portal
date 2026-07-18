@@ -66,11 +66,11 @@ export default async function handler(req: Request, res: Response) {
 
     // PDF branding settings
     const [settingsRows] = await db.execute(
-      sql`SELECT pdf_settings FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as [Array<{ pdf_settings?: string }>, unknown];
+      sql`SELECT pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+    ) as unknown as [Array<{ pdf_json?: string }>, unknown];
     let pdfSettings: Record<string, string> = {};
     try {
-      const raw = settingsRows?.[0]?.pdf_settings;
+      const raw = settingsRows?.[0]?.pdf_json;
       if (raw) pdfSettings = JSON.parse(raw) as Record<string, string>;
     } catch { /* ignore */ }
 
@@ -97,14 +97,14 @@ export default async function handler(req: Request, res: Response) {
       job_number:           String(inv.job_number ?? ''),
       job_address:          String(inv.job_address ?? ''),
       subtotal:             Number(inv.subtotal ?? 0),
-      gst_total:            Number(inv.gst_total ?? 0),
+      gst_total:            Number(inv.gst_amount ?? 0),  // DB column is gst_amount
       total:                Number(inv.total ?? 0),
       amount_paid:          amtPaid,
       amount_due:           Math.max(0, Number(inv.total ?? 0) - amtPaid),
       lines: (lineRows ?? []).map((l) => ({
         description: String(l.description ?? ''),
         quantity:    Number(l.quantity ?? 1),
-        unit_price:  Number(l.unit_price ?? 0),
+        unit_price:  Number(l.rate ?? l.unit_price ?? 0),   // DB column is rate
         amount:      Number(l.amount ?? 0),
         gst_amount:  Number(l.gst_amount ?? 0),
         sort_order:  Number(l.sort_order ?? 0),
