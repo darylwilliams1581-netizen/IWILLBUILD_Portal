@@ -63,6 +63,9 @@ const AssetReportSharePage   = lazy(() => import('./pages/asset-report-share'));
 const PhotoSharePage         = lazy(() => import('./pages/photo-share'));
 const JobNotesPage           = lazy(() => import('./pages/job-notes-page'));
 const JobDelaysPage          = lazy(() => import('./pages/job-delays-page'));
+const JobFormsPage           = lazy(() => import('./pages/job-forms-page'));
+const JobProgressPage        = lazy(() => import('./pages/job-progress-page'));
+const FleetDrivePage         = lazy(() => import('./pages/fleet-drive-page'));
 const JobCostsPage           = lazy(() => import('./pages/job-costs-page'));
 const SignInHistoryPage       = lazy(() => import('./pages/signin-history'));
 const FormDetailPage          = lazy(() => import('./pages/form-detail'));
@@ -168,8 +171,11 @@ export const routes: RouteObject[] = [
   { path: '/jobs',          element: protect(<JobsPage />),            errorElement: routeError },
   { path: '/jobs/:id',      element: protect(<JobDetailPage />),       errorElement: routeError },
   { path: '/jobs/:id/photos', element: protect(<Suspense fallback={<PageLoader />}><JobPhotosPage /></Suspense>), errorElement: routeError },
-  { path: '/jobs/:id/notes',   element: protect(<Suspense fallback={<PageLoader />}><JobNotesPage /></Suspense>),   errorElement: routeError },
-  { path: '/jobs/:id/delays',  element: protect(<Suspense fallback={<PageLoader />}><JobDelaysPage /></Suspense>),  errorElement: routeError },
+  { path: '/jobs/:id/notes',    element: protect(<Suspense fallback={<PageLoader />}><JobNotesPage /></Suspense>),     errorElement: routeError },
+  { path: '/jobs/:id/delays',   element: protect(<Suspense fallback={<PageLoader />}><JobDelaysPage /></Suspense>),    errorElement: routeError },
+  { path: '/jobs/:id/forms',    element: protect(<Suspense fallback={<PageLoader />}><JobFormsPage /></Suspense>),     errorElement: routeError },
+  { path: '/jobs/:id/progress', element: protect(<Suspense fallback={<PageLoader />}><JobProgressPage /></Suspense>),  errorElement: routeError },
+  { path: '/fleet/:id/drive',   element: protect(<Suspense fallback={<PageLoader />}><FleetDrivePage /></Suspense>),   errorElement: routeError },
   { path: '/jobs/:id/costs',   element: protect(<Suspense fallback={<PageLoader />}><JobCostsPage /></Suspense>),   errorElement: routeError },
   // QR scan landing — unauthenticated allowed (guest check-in form)
   { path: '/jobs/:id/signin', element: <Suspense fallback={<PageLoader />}><JobSignInPage /></Suspense>, errorElement: routeError },

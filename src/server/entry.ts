@@ -2262,6 +2262,14 @@ app.post("/api/jobs/:id/signout-user", signoutUserPost);
 // Current user active status (job sign-in + drive session)
 import meActiveStatusGet from "./api/me/active-status/GET.js";
 app.get("/api/me/active-status", meActiveStatusGet);
+
+// Forms export CSV
+import jobsIdFormsExportCsvGet from "./api/jobs/[id]/forms/export-csv/GET.js";
+app.get("/api/jobs/:id/forms/export-csv", jobsIdFormsExportCsvGet);
+
+// Progress export CSV
+import jobsIdProgressExportCsvGet from "./api/jobs/[id]/progress/export-csv/GET.js";
+app.get("/api/jobs/:id/progress/export-csv", jobsIdProgressExportCsvGet);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_321);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
