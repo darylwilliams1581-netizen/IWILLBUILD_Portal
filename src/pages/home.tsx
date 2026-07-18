@@ -54,6 +54,7 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Log Cost',  icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
   { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
   { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
+  { label: 'Schedule',  icon: CalendarDays,   href: '?panel=schedule-picker',   bg: 'bg-violet-500',   fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
@@ -1130,6 +1131,18 @@ function ProgressJobPickerSheet({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
+function ScheduleJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <JobPickerSheet
+      open={open} onClose={onClose}
+      title="Job Schedule" subtitle="Select a job to view its schedule"
+      iconBg="bg-violet-100" iconFg="text-violet-600" Icon={CalendarDays}
+      onSelect={job => navigate(`/jobs/${job.id}/schedule`)}
+    />
+  );
+}
+
 function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const [assets, setAssets] = useState<FleetOption[]>([]);
@@ -1755,6 +1768,7 @@ export default function HomeScreen() {
   const [signInOutOpen, setSignInOutOpen] = useState(false);
   const [formsPickerOpen, setFormsPickerOpen] = useState(false);
   const [progressPickerOpen, setProgressPickerOpen] = useState(false);
+  const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
   const [drivePickerOpen, setDrivePickerOpen] = useState(false);
   const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
   const [activeStatusKey, setActiveStatusKey] = useState(0);
@@ -1779,6 +1793,7 @@ export default function HomeScreen() {
     if (href === '?panel=signin') { setSignInOutOpen(true); return; }
     if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
+    if (href === '?panel=schedule-picker') { setSchedulePickerOpen(true); return; }
     if (href === '?panel=drive-picker') { setDrivePickerOpen(true); return; }
 
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
@@ -1902,6 +1917,7 @@ export default function HomeScreen() {
       <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
       <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
       <ProgressJobPickerSheet open={progressPickerOpen} onClose={() => setProgressPickerOpen(false)} />
+      <ScheduleJobPickerSheet open={schedulePickerOpen} onClose={() => setSchedulePickerOpen(false)} />
       {drivePickerOpen && (
         <StartDrivingModal
           onClose={() => setDrivePickerOpen(false)}

@@ -1298,6 +1298,8 @@ async function runStartupMigrations() {
     { name: 'safety_generated_posters', ddl: "CREATE TABLE IF NOT EXISTS safety_generated_posters (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, poster_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NOT NULL, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'safety_registers', ddl: "CREATE TABLE IF NOT EXISTS safety_registers (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, register_type VARCHAR(60) NOT NULL, title VARCHAR(255) NOT NULL, data_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id))" },
     { name: 'job_costs', ddl: "CREATE TABLE IF NOT EXISTS job_costs (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, user_id VARCHAR(36) NULL, purchase_date DATE NULL, merchant VARCHAR(255) NULL, description TEXT NOT NULL, category VARCHAR(60) NOT NULL DEFAULT 'Other', amount DECIMAL(12,2) NOT NULL DEFAULT 0, gst_included TINYINT(1) NOT NULL DEFAULT 0, gst_amount DECIMAL(12,2) NOT NULL DEFAULT 0, amount_ex_gst DECIMAL(12,2) NOT NULL DEFAULT 0, receipt_file_id INT NULL, notes TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (job_id))" },
+    // ── Job Milestones / Schedule ──────────────────────────────────────────────
+    { name: 'job_milestones', ddl: "CREATE TABLE IF NOT EXISTS job_milestones (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, title VARCHAR(255) NOT NULL, description TEXT NULL, due_date DATE NULL, start_date DATE NULL, status VARCHAR(30) NOT NULL DEFAULT 'pending', sort_order INT NOT NULL DEFAULT 0, assigned_to VARCHAR(255) NULL, color VARCHAR(20) NULL DEFAULT 'blue', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_due (company_id, due_date))" },
     { name: 'subscription_cancellation_feedback', ddl: "CREATE TABLE IF NOT EXISTS subscription_cancellation_feedback (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, user_id VARCHAR(36) NOT NULL, subscription_id VARCHAR(100) NULL, plan VARCHAR(30) NOT NULL DEFAULT 'unknown', reason VARCHAR(100) NULL, comment TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_user (user_id))" },
     // ── Dazza Brain tables ─────────────────────────────────────────────────────
     { name: 'dazza_brain_entries', ddl: "CREATE TABLE IF NOT EXISTS dazza_brain_entries (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, title VARCHAR(255) NOT NULL, category VARCHAR(60) NOT NULL DEFAULT 'General', content LONGTEXT NOT NULL, source_label VARCHAR(100) NULL, confidence VARCHAR(20) NULL DEFAULT 'Medium', approved TINYINT(1) NOT NULL DEFAULT 0, active TINYINT(1) NOT NULL DEFAULT 1, approved_by_user_id VARCHAR(36) NULL, usage_count INT NOT NULL DEFAULT 0, last_used_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_approved (company_id, approved, active))" },
@@ -2224,6 +2226,14 @@ app.delete("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_delete_288);
 app.put("/api/jobs/:id/delays/:delayId", jobs_id_delays_delayId_put_289);
 app.get("/api/jobs/:id/files", jobs_id_files_get_290);
 app.get("/api/jobs/:id/forms", jobs_id_forms_get_291);
+import jobsMilestonesGet from "./api/jobs/[id]/milestones/GET.js";
+import jobsMilestonesPost from "./api/jobs/[id]/milestones/POST.js";
+import jobsMilestonesPatch from "./api/jobs/[id]/milestones/[milestoneId]/PATCH.js";
+import jobsMilestonesDelete from "./api/jobs/[id]/milestones/[milestoneId]/DELETE.js";
+app.get("/api/jobs/:id/milestones", jobsMilestonesGet);
+app.post("/api/jobs/:id/milestones", jobsMilestonesPost);
+app.patch("/api/jobs/:id/milestones/:milestoneId", jobsMilestonesPatch);
+app.delete("/api/jobs/:id/milestones/:milestoneId", jobsMilestonesDelete);
 app.post("/api/jobs/:id/forms", jobs_id_forms_post_292);
 import jobsIdFormsSubmissionDelete from "./api/jobs/[id]/forms/[submissionId]/DELETE.js";
 import jobsIdFormsSubmissionReopen from "./api/jobs/[id]/forms/[submissionId]/reopen/POST.js";

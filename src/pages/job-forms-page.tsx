@@ -116,6 +116,8 @@ export default function JobFormsPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
+        <meta name="description" content="View and manage form submissions for this job." />
+        <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/forms`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
