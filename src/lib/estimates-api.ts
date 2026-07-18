@@ -23,6 +23,7 @@ export interface Estimate {
   locked?: number | boolean | null;
   locked_at?: string | null;
   locked_invoice_id?: number | null;
+  invoice_exists?: boolean | null;
 }
 
 export interface EstimateLine {

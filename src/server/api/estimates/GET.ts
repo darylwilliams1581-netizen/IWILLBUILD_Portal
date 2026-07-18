@@ -38,11 +38,15 @@ export default async function handler(req: Request, res: Response) {
     if (!jobId || isNaN(jobId)) return res.status(400).json({ error: 'jobId required' });
 
     // Use raw SQL so we get ALL columns including locked/locked_invoice_id
-    // which were added via ALTER TABLE and are not in the Drizzle schema
+    // which were added via ALTER TABLE and are not in the Drizzle schema.
+    // LEFT JOIN invoices so we can tell the UI whether the linked invoice still exists.
     const [rows] = await db.execute(
-      sql`SELECT * FROM estimates
-          WHERE job_id = ${jobId} AND company_id = ${profile.companyId}
-          ORDER BY created_at DESC`
+      sql`SELECT e.*,
+             CASE WHEN e.locked_invoice_id IS NOT NULL AND i.id IS NOT NULL THEN 1 ELSE 0 END AS invoice_exists
+          FROM estimates e
+          LEFT JOIN invoices i ON i.id = e.locked_invoice_id AND i.company_id = e.company_id
+          WHERE e.job_id = ${jobId} AND e.company_id = ${profile.companyId}
+          ORDER BY e.created_at DESC`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     if (!rows?.length) return res.json({ estimates: [] });
@@ -78,6 +82,7 @@ export default async function handler(req: Request, res: Response) {
       locked:          est.locked,
       locked_at:       est.locked_at,
       locked_invoice_id: est.locked_invoice_id,
+      invoice_exists:  est.invoice_exists === 1 || est.invoice_exists === true,
       // Computed total
       total: computeTotal(
         linesByEstimate.get(est.id as number) ?? [],

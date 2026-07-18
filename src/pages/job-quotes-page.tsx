@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Loader2, AlertCircle, ChevronLeft,
   Mail, Share2, ExternalLink, Copy, Trash2, CheckCircle,
-  Receipt, ChevronDown,
+  Receipt, ChevronDown, Link2, Link2Off,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';
@@ -161,11 +161,45 @@ export default function JobQuotesPage() {
       const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, {
         method: 'POST', credentials: 'include',
       });
-      const data = await res.json() as { invoice?: { id: number } };
-      if (data.invoice?.id) navigate(`/invoices/${data.invoice.id}`);
-      else await load();
+      const data = await res.json() as { invoice_id?: number; invoice?: { id: number }; error?: string };
+      // 201 = new invoice created
+      if (res.status === 201 && data.invoice_id) {
+        navigate(`/invoices/${data.invoice_id}`);
+        return;
+      }
+      // 409 = already locked — navigate to the existing invoice
+      if (res.status === 409 && data.invoice_id) {
+        navigate(`/invoices/${data.invoice_id}`);
+        return;
+      }
+      // Legacy shape fallback
+      if (data.invoice?.id) { navigate(`/invoices/${data.invoice.id}`); return; }
+      await load();
     } catch {
       setError('Failed to convert to invoice');
+    } finally {
+      setConvertingId(null);
+    }
+  }
+
+  async function handleUnlockAndReconvert(estimateId: number) {
+    if (!confirm('The linked invoice was deleted. Unlock this quote and create a new invoice?')) return;
+    setConvertingId(estimateId);
+    try {
+      // Unlock the estimate first
+      const unlockRes = await fetch(`/api/estimates/${estimateId}/unlock`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (!unlockRes.ok) { setError('Failed to unlock quote'); return; }
+      // Now re-convert
+      const res = await fetch(`/api/estimates/${estimateId}/convert-to-invoice`, {
+        method: 'POST', credentials: 'include',
+      });
+      const data = await res.json() as { invoice_id?: number };
+      if (data.invoice_id) { navigate(`/invoices/${data.invoice_id}`); return; }
+      await load();
+    } catch {
+      setError('Failed to re-create invoice');
     } finally {
       setConvertingId(null);
     }
@@ -273,6 +307,7 @@ export default function JobQuotesPage() {
             <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-50" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               {estimates.map((est) => {
                 const isLocked = est.locked === 1 || est.locked === true;
+                const invoiceGone = isLocked && !est.invoice_exists;
                 return (
                   <div key={est.id} className="px-4 py-4">
                     {/* Row 1: icon + title + total */}
@@ -294,14 +329,42 @@ export default function JobQuotesPage() {
                       </span>
                     </div>
 
-                    {/* Row 2: status + actions */}
-                    <div className="flex items-center gap-2 mt-3 ml-12">
+                    {/* Row 2: status + invoice badge + actions */}
+                    <div className="flex items-center gap-2 mt-3 ml-12 flex-wrap">
                       <StatusDropdown
                         estimate={est}
                         canEdit={canEdit}
                         onStatusChange={handleStatusChange}
                       />
 
+                      {/* Locked → invoice exists: show "Sent to Invoice" badge + navigate button */}
+                      {isLocked && est.invoice_exists && (
+                        <button
+                          onClick={() => navigate(`/invoices/${est.locked_invoice_id}`)}
+                          className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-emerald-100"
+                          title="View linked invoice"
+                        >
+                          <Link2 size={11} />
+                          Sent to Invoice
+                        </button>
+                      )}
+
+                      {/* Locked → invoice was deleted: show warning + re-push button */}
+                      {invoiceGone && canEdit && (
+                        <button
+                          onClick={() => handleUnlockAndReconvert(est.id)}
+                          disabled={convertingId === est.id}
+                          className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors hover:bg-amber-100 disabled:opacity-60"
+                          title="Invoice was deleted — click to re-create"
+                        >
+                          {convertingId === est.id
+                            ? <Loader2 size={11} className="animate-spin" />
+                            : <Link2Off size={11} />}
+                          Re-push Invoice
+                        </button>
+                      )}
+
+                      {/* Not yet invoiced: show Invoice button */}
                       {est.status === 'Approved' && canEdit && !isLocked && (
                         <button
                           onClick={() => handleConvertToInvoice(est.id)}
