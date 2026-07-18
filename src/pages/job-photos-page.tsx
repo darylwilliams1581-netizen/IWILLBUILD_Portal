@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode, Download } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos from '@/components/JobPhotos';
+import QRCode from 'qrcode';
 
 interface Job {
   id: number;
@@ -21,6 +22,9 @@ export default function JobPhotosPage() {
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copiedQr, setCopiedQr] = useState(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -39,6 +43,11 @@ export default function JobPhotosPage() {
   const handleShareLink = useCallback((url: string) => {
     setShareUrl(url);
     setCopied(false);
+    setCopiedQr(false);
+    // Generate QR code data URL
+    QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#111827', light: '#ffffff' } })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(null));
   }, []);
 
   const copyLink = async () => {
@@ -48,6 +57,25 @@ export default function JobPhotosPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch { /* silent */ }
+  };
+
+  const copyQr = async () => {
+    if (!qrDataUrl) return;
+    try {
+      const res = await fetch(qrDataUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      setCopiedQr(true);
+      setTimeout(() => setCopiedQr(false), 2500);
+    } catch { /* silent */ }
+  };
+
+  const downloadQr = () => {
+    if (!qrDataUrl) return;
+    const a = document.createElement('a');
+    a.href = qrDataUrl;
+    a.download = `job-${jobId}-share-qr.png`;
+    a.click();
   };
 
   const title = job ? `${job.name} — Photos` : 'Job Photos';
@@ -152,7 +180,8 @@ export default function JobPhotosPage() {
               exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.2 }}
               className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
-              <div className="flex items-center justify-between mb-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="font-heading font-bold text-base text-slate-900">Share Link Generated</h3>
                 <button onClick={() => setShareUrl(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
                   <X size={16} />
@@ -161,10 +190,14 @@ export default function JobPhotosPage() {
               <p className="text-sm text-slate-500 mb-4">
                 Anyone with this link can view the photos for this job. Valid for 90 days.
               </p>
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 mb-4">
+
+              {/* URL row */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 mb-3">
                 <span className="flex-1 text-xs text-slate-600 font-mono truncate">{shareUrl}</span>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Copy link + Preview */}
+              <div className="flex items-center gap-2 mb-4">
                 <button
                   onClick={copyLink}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -182,6 +215,43 @@ export default function JobPhotosPage() {
                   <ExternalLink size={14} /> Preview
                 </a>
               </div>
+
+              {/* QR Code section */}
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <QrCode size={13} /> QR Code
+                </p>
+                {qrDataUrl ? (
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-24 rounded-xl border border-slate-200 overflow-hidden shrink-0 bg-white p-1.5">
+                      <img src={qrDataUrl} alt="QR code for share link" className="w-full h-full" />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <button
+                        onClick={copyQr}
+                        className={`flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                          copiedQr ? 'bg-green-500 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {copiedQr ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy QR</>}
+                      </button>
+                      <button
+                        onClick={downloadQr}
+                        className="flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                      >
+                        <Download size={14} /> Download QR
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2 size={13} className="animate-spin" /> Generating QR…
+                  </div>
+                )}
+              </div>
+
+              {/* hidden canvas for QR generation fallback */}
+              <canvas ref={qrCanvasRef} className="hidden" />
             </motion.div>
           </div>
         )}
