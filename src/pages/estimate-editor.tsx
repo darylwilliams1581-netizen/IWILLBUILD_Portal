@@ -270,7 +270,10 @@ export default function EstimateEditorPage() {
       a.href = url;
       const safeName = (estimate.title ?? 'estimate').replace(/[^a-z0-9]/gi, '-').toLowerCase();
       a.download = `estimate-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
       setExportingCsv(false);
@@ -303,7 +306,10 @@ export default function EstimateEditorPage() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'estimate-template.csv';
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
@@ -639,9 +645,9 @@ export default function EstimateEditorPage() {
                       <button
                         onClick={downloadEstimateTemplate}
                         className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors"
-                        title="Download CSV template"
+                        title="Download CSV import template"
                       >
-                        <FileText size={12} />Template
+                        <FileText size={12} />CSV Import Template
                       </button>
                       <button
                         onClick={() => setShowCsvImport(true)}
