@@ -41,6 +41,7 @@ import { sql } from 'drizzle-orm';
 import { localProvider } from './providers/localProvider.js';
 import { r2Provider } from './providers/r2Provider.js';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult, StorageUsageResult } from './providers/types.js';
+import { getSecret } from '#airo/secrets';
 
 // ── Active provider ───────────────────────────────────────────────────────────
 // Driven by the STORAGE_PROVIDER environment variable:
@@ -50,7 +51,7 @@ import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult, Sto
 // Set STORAGE_PROVIDER=r2 in Settings → Secrets once R2 credentials are added.
 
 function resolveProvider(): StorageProvider {
-  const name = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase().trim();
+  const name = (getSecret('STORAGE_PROVIDER') || process.env.STORAGE_PROVIDER ?? 'local').toLowerCase().trim();
   switch (name) {
     case 'r2':    return r2Provider;
     case 'local':

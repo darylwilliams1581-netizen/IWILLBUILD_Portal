@@ -24,6 +24,7 @@
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
+import { getSecret } from '#airo/secrets';
 
 async function getS3() {
   return import('@aws-sdk/client-s3') as Promise<typeof import('@aws-sdk/client-s3')>;
@@ -40,9 +41,9 @@ let _client: any | null = null;
 async function getClient() {
   if (_client) return _client;
 
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const accountId = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
+  const accessKeyId = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     throw new Error(
@@ -61,7 +62,7 @@ async function getClient() {
 }
 
 function getBucket(): string {
-  const bucket = process.env.R2_BUCKET;
+  const bucket = getSecret('R2_BUCKET') || process.env.R2_BUCKET;
   if (!bucket) throw new Error('[r2Provider] R2_BUCKET env var is not set.');
   return bucket;
 }
@@ -112,7 +113,7 @@ export const r2Provider: StorageProvider = {
       },
     }));
 
-    const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
+    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
     const publicUrl = publicBase
       ? `${publicBase}/${key}`
       : await awsGetSignedUrl(client, new GetObjectCommand({ Bucket: r2Bucket, Key: key }), { expiresIn: 3600 });
@@ -171,7 +172,7 @@ export const r2Provider: StorageProvider = {
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
-    const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
+    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
     if (publicBase) return `${publicBase}/${key}`;
 
     return awsGetSignedUrl(
