@@ -19,7 +19,6 @@ export default function JobPhotosPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Share link sheet
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -48,9 +47,7 @@ export default function JobPhotosPage() {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // fallback: select the input
-    }
+    } catch { /* silent */ }
   };
 
   const title = job ? `${job.name} — Photos` : 'Job Photos';
@@ -64,9 +61,9 @@ export default function JobPhotosPage() {
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
       </Helmet>
 
-      {/* ── Top bar ── */}
+      {/* ── Desktop top bar (md+) ── */}
       <div
-        className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0"
+        className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center gap-3 shrink-0"
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
         <button
@@ -75,7 +72,6 @@ export default function JobPhotosPage() {
         >
           <ArrowLeft size={18} />
         </button>
-
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
             <Camera size={15} className="text-orange-500" />
@@ -97,17 +93,53 @@ export default function JobPhotosPage() {
         </div>
       </div>
 
+      {/* ── Mobile: back arrow floats top-left ── */}
+      <button
+        onClick={() => navigate('/home')}
+        className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors"
+        aria-label="Back"
+      >
+        <ArrowLeft size={18} />
+      </button>
+
       {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-0 md:pb-0">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-orange-400" />
           </div>
         ) : (
-          <div className="px-4 py-4">
+          /* Mobile: no bottom padding here — bottom bar handles safe area */
+          <div className="px-4 py-4 pb-24 md:pb-4">
             <JobPhotos jobId={jobId} onShareLink={handleShareLink} />
           </div>
         )}
+      </div>
+
+      {/* ── Mobile bottom bar (hidden on md+) ── */}
+      <div
+        className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
+        style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+            <Camera size={15} className="text-orange-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+            ) : (
+              <>
+                <p className="text-gray-900 font-bold text-sm leading-tight truncate">
+                  {job?.name ?? 'Job Photos'}
+                </p>
+                {job?.jobNumber && (
+                  <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Share link sheet ── */}

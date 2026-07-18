@@ -133,8 +133,8 @@ export default function PhotoSharePage() {
 
       <div className="min-h-screen bg-slate-50">
 
-        {/* ── Header ── */}
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+        {/* ── Desktop header (md+) ── */}
+        <div className="hidden md:block bg-white border-b border-slate-100 sticky top-0 z-10" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
               <Camera size={16} className="text-orange-500" />
@@ -164,7 +164,7 @@ export default function PhotoSharePage() {
         </div>
 
         {/* ── Gallery ── */}
-        <div className="max-w-5xl mx-auto px-4 py-5">
+        <div className="max-w-5xl mx-auto px-2 py-2 md:px-4 md:py-5 pb-28 md:pb-8">
           {photos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
@@ -174,7 +174,7 @@ export default function PhotoSharePage() {
               <p className="text-xs text-slate-400 mt-1">Photos will appear here once uploaded by the site team.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1 md:gap-2">
               {photos.map((photo, idx) => (
                 <motion.button
                   key={photo.id}
@@ -182,14 +182,14 @@ export default function PhotoSharePage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.4) }}
                   onClick={() => setLightbox(idx)}
-                  className="group relative aspect-square rounded-xl overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  className="group relative aspect-square rounded-lg md:rounded-xl overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 >
                   {photo.url ? (
                     <img
                       src={photo.url}
                       alt={photo.label ?? photo.originalName ?? `Photo ${idx + 1}`}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading={idx < 10 ? 'eager' : 'lazy'}
+                      loading={idx < 9 ? 'eager' : 'lazy'}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -212,9 +212,37 @@ export default function PhotoSharePage() {
           )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="max-w-5xl mx-auto px-4 pb-8 pt-2 text-center">
+        {/* ── Desktop footer ── */}
+        <div className="hidden md:block max-w-5xl mx-auto px-4 pb-8 pt-2 text-center">
           <p className="text-xs text-slate-300">Shared via IWILLBUILD · View only</p>
+        </div>
+
+        {/* ── Mobile bottom bar (hidden on md+) ── */}
+        <div
+          className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-slate-100"
+          style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+              <Camera size={15} className="text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-heading font-bold text-sm text-slate-900 truncate leading-tight">{job.name}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {job.jobNumber && <span className="text-xs text-slate-400 font-mono">{job.jobNumber}</span>}
+                <span className="text-xs text-slate-400">{photos.length} photo{photos.length !== 1 ? 's' : ''}</span>
+                {expiresAt && (
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <Calendar size={10} /> Expires {formatDate(expiresAt)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Building2 size={11} className="text-slate-300" />
+              <span className="text-[10px] text-slate-400 font-semibold">IWILLBUILD</span>
+            </div>
+          </div>
         </div>
       </div>
 
