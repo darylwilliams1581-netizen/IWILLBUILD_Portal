@@ -19,11 +19,13 @@ export default function JobPhotosPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) { setLoading(false); return; }
     fetch(`/api/jobs/${id}`, { credentials: 'include' })
-      .then(r => r.json())
-      .then((data: { job?: Job } | Job) => {
-        const j = 'job' in data ? data.job : data as Job;
+      .then(async r => {
+        const ct = r.headers.get('content-type') ?? '';
+        if (!ct.includes('application/json')) { setLoading(false); return; }
+        const data = await r.json() as { job?: Job } | Job;
+        const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
         setJob(j ?? null);
       })
       .catch(() => setJob(null))

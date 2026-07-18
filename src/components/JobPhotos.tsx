@@ -474,6 +474,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchPhotos = useCallback(async () => {
+    if (!jobId || isNaN(jobId)) { setError('Invalid job ID'); setLoading(false); return; }
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load');
@@ -491,6 +492,7 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
   // ── Upload ─────────────────────────────────────────────────────────────────
 
   const doUpload = async (files: FileList | File[]) => {
+    if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
     const { valid, error: valErr } = validateFiles(arr);
@@ -521,7 +523,14 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         credentials: 'include',
         body: fd,
       });
-      const data = await res.json() as { error?: string };
+      let data: { error?: string } = {};
+      const ct = res.headers.get('content-type') ?? '';
+      if (ct.includes('application/json')) {
+        data = await res.json() as { error?: string };
+      } else {
+        const text = await res.text();
+        throw new Error(text.includes('<!') ? `Server error (${res.status})` : text || 'Upload failed');
+      }
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
       setLabel('');
       await fetchPhotos();
