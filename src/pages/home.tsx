@@ -15,7 +15,7 @@ import {
   Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  HardHat as HardHatIcon, Navigation, ClipboardCheck,
+  HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -46,16 +46,18 @@ interface AppIcon {
 // Solid, saturated colours — light theme needs full-opacity backgrounds
 
 const FIELD_ICONS: AppIcon[] = [
-  { label: 'Camera',    icon: Camera,         href: '?panel=camera',            bg: 'bg-orange-500',   fg: 'text-white' },
-  { label: 'Sign In',   icon: LogIn,          href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
-  { label: 'Drive',     icon: Car,            href: '?panel=drive-picker',      bg: 'bg-blue-500',     fg: 'text-white' },
-  { label: 'Prestart',  icon: ClipboardCheck, href: '?panel=prestart-picker',   bg: 'bg-amber-500',    fg: 'text-white' },
-  { label: 'Forms',     icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
-  { label: 'Notes',     icon: StickyNote,     href: '?panel=notes-picker',      bg: 'bg-yellow-400',   fg: 'text-white' },
-  { label: 'Log Cost',  icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
-  { label: 'Delays',    icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
-  { label: 'Progress',  icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
-  { label: 'Drawings',  icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
+  { label: 'Camera',         icon: Camera,         href: '?panel=camera',            bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Sign In',        icon: LogIn,          href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
+  { label: 'Drive',          icon: Car,            href: '?panel=drive-picker',      bg: 'bg-blue-500',     fg: 'text-white' },
+  { label: 'Prestart',       icon: ClipboardCheck, href: '?panel=prestart-picker',   bg: 'bg-amber-500',    fg: 'text-white' },
+  { label: 'Forms',          icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
+  { label: 'Notes',          icon: StickyNote,     href: '?panel=notes-picker',      bg: 'bg-yellow-400',   fg: 'text-white' },
+  { label: 'Log Cost',       icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
+  { label: 'Delays',         icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
+  { label: 'Progress',       icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
+  { label: 'Drawings',       icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
+  { label: 'Builders Calc',  icon: Ruler,          href: '/builders-calc',           bg: 'bg-violet-500',   fg: 'text-white' },
+  { label: 'Take-off Pad',   icon: ClipboardList,  href: '/takeoff-pad',             bg: 'bg-sky-500',      fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [

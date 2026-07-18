@@ -42,6 +42,8 @@ const SettingsPage       = lazy(() => import('./pages/settings'));
 // FormsPage, SafetyPage, LibraryPage removed — now served as Studio tabs (/studio?tab=*)
 const FilesPage          = lazy(() => import('./pages/files'));
 const EstimatingPage     = lazy(() => import('./pages/estimating'));
+const BuildersCalcPage   = lazy(() => import('./pages/builders-calc-page'));
+const TakeoffPadPage     = lazy(() => import('./pages/takeoff-pad-page'));
 const EstimateEditorPage = lazy(() => import('./pages/estimate-editor'));
 
 const CustomersPage      = lazy(() => import('./pages/customers'));
@@ -195,6 +197,8 @@ export const routes: RouteObject[] = [
   { path: '/forms',         loader: () => redirect('/studio?tab=forms') },
   { path: '/files',         element: protect(<FilesPage />),           errorElement: routeError },
   { path: '/estimating',    element: protect(<EstimatingPage />),      errorElement: routeError },
+  { path: '/builders-calc', element: protect(<BuildersCalcPage />),    errorElement: routeError },
+  { path: '/takeoff-pad',   element: protect(<TakeoffPadPage />),      errorElement: routeError },
   { path: '/estimates/:id', element: protect(<EstimateEditorPage />),  errorElement: routeError },
   { path: '/safety',        loader: () => redirect('/studio?tab=safety') },
   { path: '/library',       loader: () => redirect('/studio?tab=library') },
