@@ -14,7 +14,7 @@ import {
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   Map, Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
-  User, DollarSign, Loader2, Plus, ImageIcon,
+  User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -44,6 +44,7 @@ interface AppIcon {
 
 const FIELD_ICONS: AppIcon[] = [
   { label: 'Camera',    icon: Camera,      href: '?panel=camera',           bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Sign In',   icon: LogIn,       href: '?panel=signin',           bg: 'bg-indigo-500',   fg: 'text-white' },
   { label: 'Drive',     icon: Car,         href: '/driver',                 bg: 'bg-blue-500',     fg: 'text-white' },
   { label: 'Forms',     icon: FileText,    href: '/studio?tab=forms',       bg: 'bg-purple-500',   fg: 'text-white' },
   { label: 'Notes',     icon: StickyNote,  href: '?panel=notes-picker',     bg: 'bg-yellow-400',   fg: 'text-white' },
@@ -809,6 +810,359 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+// ── Sign In / Out sheet ───────────────────────────────────────────────────────
+
+interface OnSiteUser {
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  signed_in_at: string | null;
+  actor_type: string;
+}
+
+interface SignInStatus {
+  signedIn: boolean;
+  lastAction: string | null;
+  lastActionAt: string | null;
+  currentlyOnSite: OnSiteUser[];
+}
+
+function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { role } = usePermissions();
+  const isSupervisor = role === 'owner' || role === 'admin' || role === 'supervisor';
+
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
+
+  const [status, setStatus] = useState<SignInStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const [acting, setActing] = useState(false);
+  const [forcingOut, setForcingOut] = useState<string | null>(null); // userId being forced out
+  const [result, setResult] = useState<{ type: 'signin' | 'signout' | null; name?: string } | null>(null);
+  const [error, setError] = useState('');
+
+  // Load jobs on open
+  useEffect(() => {
+    if (!open) return;
+    setJobsLoading(true);
+    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
+        const list = Array.isArray(data) ? data : (data.jobs ?? []);
+        setJobs(list);
+      })
+      .catch(() => setJobs([]))
+      .finally(() => setJobsLoading(false));
+  }, [open]);
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setSelectedJob(null);
+      setStatus(null);
+      setResult(null);
+      setError('');
+    }
+  }, [open]);
+
+  // Load sign-in status when job selected
+  async function loadStatus(jobId: number) {
+    setStatusLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/signin-status`, { credentials: 'include' });
+      if (!res.ok) throw new Error();
+      const data = await res.json() as SignInStatus;
+      setStatus(data);
+    } catch {
+      setError('Could not load sign-in status');
+    } finally {
+      setStatusLoading(false);
+    }
+  }
+
+  function handleSelectJob(job: JobOption) {
+    setSelectedJob(job);
+    void loadStatus(job.id);
+  }
+
+  async function handleSignIn() {
+    if (!selectedJob) return;
+    setActing(true); setError('');
+    try {
+      const res = await fetch(`/api/jobs/${selectedJob.id}/signin`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorType: 'employee' }),
+      });
+      const data = await res.json() as { ok?: boolean; alreadySignedIn?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Sign in failed');
+      if (data.alreadySignedIn) {
+        setError('You are already signed in to this job.');
+        await loadStatus(selectedJob.id);
+      } else {
+        setResult({ type: 'signin', name: selectedJob.name });
+        await loadStatus(selectedJob.id);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign in failed');
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleSignOut() {
+    if (!selectedJob) return;
+    setActing(true); setError('');
+    try {
+      const res = await fetch(`/api/jobs/${selectedJob.id}/signout`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json() as { ok?: boolean; notSignedIn?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Sign out failed');
+      if (data.notSignedIn) {
+        setError('You are not currently signed in to this job.');
+        await loadStatus(selectedJob.id);
+      } else {
+        setResult({ type: 'signout', name: selectedJob.name });
+        await loadStatus(selectedJob.id);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign out failed');
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleForceSignOut(userId: string, userName: string) {
+    if (!selectedJob) return;
+    setForcingOut(userId); setError('');
+    try {
+      const res = await fetch(`/api/jobs/${selectedJob.id}/signout-user`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, notes: 'Supervisor sign-out via home screen' }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Force sign-out failed');
+      setResult({ type: 'signout', name: userName });
+      await loadStatus(selectedJob.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Force sign-out failed');
+    } finally {
+      setForcingOut(null);
+    }
+  }
+
+  function formatTime(iso: string | null) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  const isSignedIn = status?.signedIn ?? false;
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <LogIn size={15} className="text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-base">Site Sign In / Out</h2>
+                  <p className="text-gray-400 text-xs">Record your attendance on site</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+
+              {/* Job picker */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Select Job</p>
+                {jobsLoading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                    <Loader2 size={14} className="animate-spin" /> Loading jobs…
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {jobs.map(job => (
+                      <button
+                        key={job.id}
+                        onClick={() => handleSelectJob(job)}
+                        className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
+                          selectedJob?.id === job.id
+                            ? 'bg-indigo-50 border-indigo-300'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-indigo-500' : 'bg-gray-300'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                          {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Status + action */}
+              {selectedJob && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+
+                  {statusLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 size={20} className="animate-spin text-indigo-400" />
+                    </div>
+                  ) : status && (
+                    <>
+                      {/* Current status card */}
+                      <div className={`rounded-2xl px-4 py-3.5 flex items-center gap-3 ${isSignedIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isSignedIn ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                          {isSignedIn
+                            ? <CheckCircle2 size={20} className="text-emerald-600" />
+                            : <LogOut size={20} className="text-gray-400" />
+                          }
+                        </div>
+                        <div>
+                          <p className={`font-bold text-sm ${isSignedIn ? 'text-emerald-700' : 'text-gray-500'}`}>
+                            {isSignedIn ? 'Currently signed in' : 'Not signed in'}
+                          </p>
+                          {status.lastActionAt && (
+                            <p className="text-xs text-gray-400">
+                              Last {status.lastAction} at {formatTime(status.lastActionAt)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Result flash */}
+                      {result && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-orange-50 border border-orange-200'}`}
+                        >
+                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-orange-500'} />
+                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-orange-700'}`}>
+                            {result.type === 'signin'
+                              ? `Signed in to ${result.name}`
+                              : `Signed out${result.name ? ` — ${result.name}` : ''}`
+                            }
+                          </p>
+                        </motion.div>
+                      )}
+
+                      {/* Error */}
+                      {error && (
+                        <p className="text-red-500 text-xs font-medium bg-red-50 rounded-xl px-3 py-2">{error}</p>
+                      )}
+
+                      {/* Sign in / out buttons */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          onClick={() => void handleSignIn()}
+                          disabled={acting || isSignedIn}
+                          className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                        >
+                          {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
+                          Sign In
+                        </button>
+                        <button
+                          onClick={() => void handleSignOut()}
+                          disabled={acting || !isSignedIn}
+                          className="h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                        >
+                          {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                          Sign Out
+                        </button>
+                      </div>
+
+                      {/* Supervisor: on-site roster */}
+                      {isSupervisor && status.currentlyOnSite.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                            <UserCheck size={12} />
+                            On Site Now ({status.currentlyOnSite.length})
+                          </p>
+                          <div className="space-y-1.5">
+                            {status.currentlyOnSite.map(u => (
+                              <div
+                                key={u.user_id}
+                                className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                                  <User size={14} className="text-indigo-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-gray-900 font-semibold text-sm truncate">
+                                    {u.user_name ?? u.user_email ?? 'Unknown'}
+                                  </p>
+                                  <p className="text-gray-400 text-xs">
+                                    Signed in {u.signed_in_at ? formatTime(u.signed_in_at) : ''}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
+                                  disabled={forcingOut === u.user_id}
+                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 active:bg-orange-300 disabled:opacity-40 text-orange-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                                >
+                                  {forcingOut === u.user_id
+                                    ? <Loader2 size={11} className="animate-spin" />
+                                    : <LogOut size={11} />
+                                  }
+                                  Sign out
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {isSupervisor && status.currentlyOnSite.length === 0 && (
+                        <p className="text-center text-gray-400 text-xs py-2">No one else currently on site</p>
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── Costs job picker sheet ────────────────────────────────────────────────────
 
 function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -1001,6 +1355,7 @@ export default function HomeScreen() {
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
   const [logCostOpen, setLogCostOpen] = useState(false);
+  const [signInOutOpen, setSignInOutOpen] = useState(false);
 
   const name = sessionData?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
@@ -1018,6 +1373,7 @@ export default function HomeScreen() {
     if (href === '?panel=delays-picker') { setDelaysPickerOpen(true); return; }
     if (href === '?panel=costs-picker') { setCostsPickerOpen(true); return; }
     if (href === '?panel=log-cost') { setLogCostOpen(true); return; }
+    if (href === '?panel=signin') { setSignInOutOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     navigate(href);
   }
@@ -1124,6 +1480,7 @@ export default function HomeScreen() {
       <DelaysJobPickerSheet open={delaysPickerOpen} onClose={() => setDelaysPickerOpen(false)} />
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />
       <LogCostSheet open={logCostOpen} onClose={() => setLogCostOpen(false)} />
+      <SignInOutSheet open={signInOutOpen} onClose={() => setSignInOutOpen(false)} />
     </div>
   );
 }
