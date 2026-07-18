@@ -314,104 +314,90 @@ function CustomerCard({
   }
 
   return (
-    <div className={`bg-white border rounded-xl p-4 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
+    <div className={`bg-white border rounded-xl p-3 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-primary font-black text-sm">{customer.name[0].toUpperCase()}</span>
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <span className="text-primary font-black text-xs">{customer.name[0].toUpperCase()}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="font-bold text-sm text-slate-800 truncate">{customer.name}</h3>
               {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
                   {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
                 </span>
               )}
               {isArchived && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Archived</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">Archived</span>
               )}
             </div>
-            {customer.contact_person && (
-              <p className="flex items-center gap-1 text-xs text-slate-500 mb-1">
-                <User size={10} />{customer.contact_person}
-              </p>
-            )}
-            {customer.address && (
-              <p className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-xs">
-                <MapPin size={10} />{customer.address}
-              </p>
-            )}
-            {customer.abn && (
-              <p className="flex items-center gap-1 text-xs text-slate-400">
-                <FileText size={10} />ABN {customer.abn}
-              </p>
-            )}
-            {typeof customer.job_count === 'number' && customer.job_count > 0 && (
-              <div className="mt-1.5">
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
-                  <Briefcase size={9} />{customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              {customer.contact_person && (
+                <span className="flex items-center gap-1 text-[11px] text-slate-400"><User size={9} />{customer.contact_person}</span>
+              )}
+              {phone && (
+                <span className="flex items-center gap-1 text-[11px] text-slate-400"><Phone size={9} />{phone}</span>
+              )}
+              {typeof customer.job_count === 'number' && customer.job_count > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-full">
+                  <Briefcase size={8} />{customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
                 </span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         {/* Row actions */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Link
             to={`/customers/${customer.id}`}
             className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
             title="View details"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           </Link>
           <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
-            <Building2 size={14} />
+            <Building2 size={13} />
           </button>
           <button
             onClick={onArchive}
             className={`p-1.5 rounded-lg transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
             title={isArchived ? 'Unarchive' : 'Archive'}
           >
-            {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+            {isArchived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
           </button>
         </div>
       </div>
 
-      {/* Call / Email / SMS action buttons */}
+      {/* Call / SMS / Email action buttons */}
       {(phone || email) && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+        <div className="flex gap-1.5 mt-2 pt-2 border-t border-slate-100">
           {phone && (
             <a
               href={`tel:${phone}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-xs font-bold py-2 rounded-lg border border-emerald-200 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-[11px] font-bold py-1.5 rounded-lg border border-emerald-200 transition-colors"
             >
-              <Phone size={13} />
-              <span>Call</span>
-              <span className="text-emerald-500 font-normal hidden sm:inline">{phone}</span>
+              <Phone size={11} />Call
             </a>
           )}
           {phone && (
             <button
               onClick={handleSms}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-violet-50 hover:bg-violet-100 active:bg-violet-200 text-violet-700 text-xs font-bold py-2 rounded-lg border border-violet-200 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 bg-violet-50 hover:bg-violet-100 active:bg-violet-200 text-violet-700 text-[11px] font-bold py-1.5 rounded-lg border border-violet-200 transition-colors"
             >
-              <MessageSquare size={13} />
-              <span>SMS</span>
+              <MessageSquare size={11} />SMS
             </button>
           )}
           {email && (
             <a
               href={`mailto:${email}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 text-xs font-bold py-2 rounded-lg border border-blue-200 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 text-[11px] font-bold py-1.5 rounded-lg border border-blue-200 transition-colors"
             >
-              <Mail size={13} />
-              <span>Email</span>
-              <span className="text-blue-500 font-normal hidden sm:inline truncate max-w-[140px]">{email}</span>
+              <Mail size={11} />Email
             </a>
           )}
         </div>
