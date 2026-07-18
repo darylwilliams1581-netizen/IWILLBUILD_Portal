@@ -7,7 +7,7 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
+
   LogOut,
   Settings,
   FolderOpen,
@@ -27,7 +27,7 @@ import {
   UserCircle,
   MoreHorizontal,
   Smartphone,
-  DollarSign,
+
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -68,15 +68,7 @@ interface NavItem {
   permKey: string | null;
 }
 
-interface NavGroup {
-  label: string;
-  icon: React.ElementType;
-  items: NavItem[];
-}
-
-type NavEntry = NavItem | { group: NavGroup };
-
-function buildNavEntries(_workPlural: string): NavEntry[] {
+function buildNavEntries(_workPlural: string): NavItem[] {
   return [
     { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
     { label: 'Driver App',   icon: Smartphone,      href: '/driver',               permKey: 'fleet' },
@@ -87,26 +79,10 @@ function buildNavEntries(_workPlural: string): NavEntry[] {
     { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
     { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
-    {
-      group: {
-        label: 'Finance',
-        icon: DollarSign,
-        items: [
-          { label: 'Estimating', icon: Calculator, href: '/estimating', permKey: null },
-          { label: 'Invoices',   icon: Receipt,    href: '/invoices',   permKey: 'invoices' },
-        ],
-      },
-    },
-    {
-      group: {
-        label: 'People',
-        icon: Users,
-        items: [
-          { label: 'Customers', icon: Users,       href: '/customers', permKey: 'jobs' },
-          { label: 'Team',      icon: UserCircle,  href: '/team',      permKey: null },
-        ],
-      },
-    },
+    { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
+    { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
+    { label: 'Customers',    icon: Users,           href: '/customers',            permKey: 'jobs' },
+    { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
   ];
 }
 
@@ -172,12 +148,6 @@ function SidebarContent({
   const subInfo   = useSubscriptionStatus();
   const { workPlural } = useTerminology();
   const navEntries = buildNavEntries(workPlural);
-
-  // Track which groups are open — default Finance + People open
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Finance: true, People: true });
-  function toggleGroup(label: string) {
-    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
-  }
 
   const isActive = (href: string) => {
     // Handle query-param tabs like /studio?tab=safety
@@ -250,79 +220,7 @@ function SidebarContent({
       </div>
 
       {/* ── Main nav ── */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((entry, idx) => {
-          // ── Group dropdown ──
-          if ('group' in entry) {
-            const { group } = entry;
-            const visibleItems = group.items.filter(item => {
-              if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return false;
-              return true;
-            });
-            if (visibleItems.length === 0) return null;
-            const isOpen = openGroups[group.label] ?? true;
-            const GroupIcon = group.icon;
-            const anyActive = visibleItems.some(item => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
-            return (
-              <div key={group.label}>
-                <button
-                  onClick={() => !collapsed && toggleGroup(group.label)}
-                  title={collapsed ? group.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-                    anyActive && collapsed ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <GroupIcon size={17} className="shrink-0" />
-                  {!collapsed && (
-                    <>
-                      <span className="text-sm font-semibold truncate flex-1 text-left">{group.label}</span>
-                      <ChevronDown
-                        size={13}
-                        className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`}
-                      />
-                    </>
-                  )}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
-                      {group.label}
-                    </div>
-                  )}
-                </button>
-                <AnimatePresence initial={false}>
-                  {(isOpen && !collapsed) && (
-                    <motion.div
-                      key="group-items"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.18, ease: 'easeInOut' as const }}
-                      className="overflow-hidden"
-                    >
-                      <div className="ml-4 pl-3 border-l border-gray-200 flex flex-col gap-0.5 py-0.5">
-                        {visibleItems.map(item => {
-                          const Icon = item.icon;
-                          const active = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
-                          return (
-                            <Link
-                              key={item.href}
-                              to={item.href}
-                              onClick={onClose}
-                              className={linkClass(active)}
-                            >
-                              <Icon size={15} className="shrink-0" />
-                              <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          }
-
-          // ── Plain nav item ──
-          const item = entry as NavItem;
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((item) => {
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
           if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
           const Icon  = item.icon;
