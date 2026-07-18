@@ -153,7 +153,7 @@ export default function EstimateEditorPage() {
     if (est) {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
-      navigate(-1);
+      navigate('/home');
     }
   }
 

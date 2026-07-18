@@ -210,7 +210,7 @@ export default function JobQuotesPage() {
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
           >
             <ChevronLeft size={18} />
