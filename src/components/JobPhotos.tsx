@@ -316,15 +316,12 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [label, setLabel] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
   const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
-  const [dragOver, setDragOver] = useState(false);
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
 
-  // ── New state ──────────────────────────────────────────────────────────────
   const [viewSize, setViewSize] = useState<ViewSize>('medium');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -365,7 +362,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     setUploading(true); setUploadError(null);
     const fd = new FormData();
     valid.forEach((f) => fd.append('photos', f));
-    if (label.trim()) fd.append('label', label.trim());
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
       let data: { error?: string } = {};
@@ -373,7 +369,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       if (ct.includes('application/json')) { data = await res.json() as { error?: string }; }
       else { const text = await res.text(); throw new Error(text.includes('<!') ? `Server error (${res.status})` : text || 'Upload failed'); }
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      setLabel('');
       await fetchPhotos();
     } catch (e) { setUploadError(e instanceof Error ? e.message : 'Upload failed'); }
     finally {
@@ -483,12 +478,12 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     }
   };
 
-  // ── Drag & drop ────────────────────────────────────────────────────────────
+  // ── Drag & drop (window-level, no visible zone) ────────────────────────────
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragOver(false);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
     if (e.dataTransfer.files.length > 0) void doUpload(e.dataTransfer.files);
-  };
+  }, [doUpload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -496,11 +491,16 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
   const remaining = MAX_PHOTOS - photos.length;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col gap-3"
+      onDragOver={(e) => { e.preventDefault(); }}
+      onDrop={handleDrop}
+    >
 
       {/* ── Toolbar ── */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        {/* Left: select mode toggle */}
+
+        {/* Left: select mode */}
         <div className="flex items-center gap-2">
           {!selectMode ? (
             <button
@@ -535,31 +535,57 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
           )}
         </div>
 
-        {/* Right: view size + share + export all */}
+        {/* Right: upload buttons + tools + view size */}
         {!selectMode && (
-          <div className="flex items-center gap-2">
-            {/* Export all ZIP */}
-            <button onClick={() => void exportZip()} disabled={exportingZip || photos.length === 0}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Choose Files */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || atLimit}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {uploading ? 'Uploading…' : 'Choose Files'}
+            </button>
+            {/* Camera */}
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={uploading || atLimit}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              <Camera size={13} /> Camera
+            </button>
+            {/* Export ZIP */}
+            <button
+              onClick={() => void exportZip()}
+              disabled={exportingZip || photos.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold text-slate-600 rounded-lg transition-colors"
-              title="Export all as ZIP">
+              title="Export all as ZIP"
+            >
               {exportingZip ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
               <span className="hidden sm:inline">Export ZIP</span>
             </button>
             {/* Share link */}
             {onShareLink && (
-              <button onClick={() => void generateShareLink()} disabled={photos.length === 0}
+              <button
+                onClick={() => void generateShareLink()}
+                disabled={photos.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold text-slate-600 rounded-lg transition-colors"
-                title="Share view-only link">
+                title="Share view-only link"
+              >
                 <Share2 size={13} />
                 <span className="hidden sm:inline">Share</span>
               </button>
             )}
-            {/* View size */}
+            {/* View size toggle */}
             <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
               {(['small', 'medium', 'large'] as ViewSize[]).map((size) => (
-                <button key={size} onClick={() => setViewSize(size)}
+                <button
+                  key={size}
+                  onClick={() => setViewSize(size)}
                   className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                  title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}>
+                  title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
+                >
                   {size === 'small' ? <LayoutGrid size={13} /> : size === 'medium' ? <List size={13} /> : <span className="text-[10px] font-bold">LG</span>}
                 </button>
               ))}
@@ -568,45 +594,12 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
         )}
       </div>
 
-      {/* ── Upload zone ── */}
-      {!selectMode && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); if (!atLimit) setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-xl p-5 transition-colors ${
-            atLimit ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
-              : dragOver ? 'border-primary bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'
-          }`}
-        >
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-              <Upload size={18} className="text-slate-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-700">{atLimit ? 'Photo limit reached' : 'Drop photos here or choose files'}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{atLimit ? 'Delete photos to free up space.' : 'JPEG, PNG, WebP · Max 10 per upload · HEIC not supported'}</p>
-              <p className={`text-xs font-semibold mt-1 ${atLimit ? 'text-red-500' : remaining <= 20 ? 'text-amber-600' : 'text-slate-400'}`}>
-                {photos.length} / {MAX_PHOTOS} photos{!atLimit && remaining <= 20 && ` · ${remaining} remaining`}
-              </p>
-            </div>
-            {!atLimit && (
-              <input type="text" placeholder="Caption / label (optional)" value={label} onChange={(e) => setLabel(e.target.value)}
-                className="w-full max-w-xs border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-            )}
-            <div className="flex items-center gap-2 flex-wrap justify-center">
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading || atLimit}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                {uploading ? 'Uploading…' : 'Choose Files'}
-              </button>
-              <button onClick={() => cameraInputRef.current?.click()} disabled={uploading || atLimit}
-                className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                <Camera size={14} /> Camera
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Photo count hint when near limit */}
+      {!atLimit && remaining <= 20 && photos.length > 0 && (
+        <p className="text-xs text-amber-600 font-semibold">{photos.length} / {MAX_PHOTOS} photos · {remaining} remaining</p>
+      )}
+      {atLimit && (
+        <p className="text-xs text-red-500 font-semibold">{MAX_PHOTOS} / {MAX_PHOTOS} photos — limit reached. Delete photos to upload more.</p>
       )}
 
       {/* Errors */}
