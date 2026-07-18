@@ -208,75 +208,103 @@ function CustomerCard({
   workPlural: string;
 }) {
   const isArchived = customer.status === 'archived';
+  const phone = customer.mobile || customer.phone;
+  const email = customer.email;
 
   return (
-    <div className={`bg-white border rounded-xl p-4 flex items-start justify-between gap-3 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
-      <div className="flex items-start gap-3 flex-1 min-w-0">
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <span className="text-primary font-black text-sm">{customer.name[0].toUpperCase()}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            <h3 className="font-bold text-sm text-slate-800 truncate">{customer.name}</h3>
-            {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
-              </span>
-            )}
-            {isArchived && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Archived</span>
-            )}
+    <div className={`bg-white border rounded-xl p-4 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Avatar */}
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <span className="text-primary font-black text-sm">{customer.name[0].toUpperCase()}</span>
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <h3 className="font-bold text-sm text-slate-800 truncate">{customer.name}</h3>
+              {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                  {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
+                </span>
+              )}
+              {isArchived && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Archived</span>
+              )}
+            </div>
             {customer.contact_person && (
-              <span className="flex items-center gap-1 text-xs text-slate-500"><User size={10} />{customer.contact_person}</span>
-            )}
-            {customer.email && (
-              <a href={`mailto:${customer.email}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
-                <Mail size={10} />{customer.email}
-              </a>
-            )}
-            {(customer.phone || customer.mobile) && (
-              <a href={`tel:${customer.phone || customer.mobile}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
-                <Phone size={10} />{customer.phone || customer.mobile}
-              </a>
+              <p className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+                <User size={10} />{customer.contact_person}
+              </p>
             )}
             {customer.address && (
-              <span className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-xs"><MapPin size={10} />{customer.address}</span>
+              <p className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-xs">
+                <MapPin size={10} />{customer.address}
+              </p>
             )}
             {customer.abn && (
-              <span className="flex items-center gap-1 text-xs text-slate-400"><FileText size={10} />ABN {customer.abn}</span>
+              <p className="flex items-center gap-1 text-xs text-slate-400">
+                <FileText size={10} />ABN {customer.abn}
+              </p>
+            )}
+            {typeof customer.job_count === 'number' && customer.job_count > 0 && (
+              <div className="mt-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
+                  <Briefcase size={9} />{customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
+                </span>
+              </div>
             )}
           </div>
-          {typeof customer.job_count === 'number' && customer.job_count > 0 && (
-            <div className="mt-1.5">
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
-                <Briefcase size={9} />{customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
-              </span>
-            </div>
-          )}
+        </div>
+
+        {/* Row actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Link
+            to={`/customers/${customer.id}`}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+            title="View details"
+          >
+            <ChevronRight size={15} />
+          </Link>
+          <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+            <Building2 size={14} />
+          </button>
+          <button
+            onClick={onArchive}
+            className={`p-1.5 rounded-lg transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+            title={isArchived ? 'Unarchive' : 'Archive'}
+          >
+            {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+          </button>
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Link
-          to={`/customers/${customer.id}`}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
-          title="View details"
-        >
-          <ChevronRight size={15} />
-        </Link>
-        <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
-          <Building2 size={14} />
-        </button>
-        <button
-          onClick={onArchive}
-          className={`p-1.5 rounded-lg transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-          title={isArchived ? 'Unarchive' : 'Archive'}
-        >
-          {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-        </button>
-      </div>
+
+      {/* Call / Email action buttons */}
+      {(phone || email) && (
+        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+          {phone && (
+            <a
+              href={`tel:${phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-xs font-bold py-2 rounded-lg border border-emerald-200 transition-colors"
+            >
+              <Phone size={13} />
+              <span>Call</span>
+              <span className="text-emerald-500 font-normal hidden sm:inline">{phone}</span>
+            </a>
+          )}
+          {email && (
+            <a
+              href={`mailto:${email}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 text-xs font-bold py-2 rounded-lg border border-blue-200 transition-colors"
+            >
+              <Mail size={13} />
+              <span>Email</span>
+              <span className="text-blue-500 font-normal hidden sm:inline truncate max-w-[140px]">{email}</span>
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
