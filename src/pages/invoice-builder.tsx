@@ -240,6 +240,12 @@ export default function InvoiceBuilderPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
   const [xeroSyncing, setXeroSyncing] = useState(false);
   const [xeroMsg, setXeroMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
@@ -454,15 +460,22 @@ export default function InvoiceBuilderPage() {
     } finally { setSaving(false); }
   }
 
-  async function handleMarkSent() {
+  function handleMarkSent() {
     if (!invoice) return;
-    if (!confirm('Mark this invoice as Sent?')) return;
-    setSaving(true);
-    try {
-      const updated = await markInvoiceSent(invoice.id);
-      setInvoice(updated); setStatus(updated.status);
-    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
-    finally { setSaving(false); }
+    setConfirmDialog({
+      title: 'Mark as Sent?',
+      message: 'This will update the invoice status to Sent and notify your records.',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setSaving(true);
+        try {
+          const updated = await markInvoiceSent(invoice.id);
+          setInvoice(updated); setStatus(updated.status);
+        } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
+        finally { setSaving(false); }
+      },
+    });
   }
 
   async function handleDuplicate() {
@@ -475,55 +488,75 @@ export default function InvoiceBuilderPage() {
     finally { setSaving(false); }
   }
 
-  async function handleVoid() {
+  function handleVoid() {
     if (!invoice) return;
-    if (!confirm('Void this invoice? This cannot be undone.')) return;
-    setSaving(true);
-    try {
-      const updated = await voidInvoice(invoice.id);
-      setInvoice(updated); setStatus(updated.status);
-    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
-    finally { setSaving(false); }
+    setConfirmDialog({
+      title: 'Void this invoice?',
+      message: 'This cannot be undone. The invoice will be permanently marked as void.',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setSaving(true);
+        try {
+          const updated = await voidInvoice(invoice.id);
+          setInvoice(updated); setStatus(updated.status);
+        } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
+        finally { setSaving(false); }
+      },
+    });
   }
 
-  async function handleRecall() {
+  function handleRecall() {
     if (!invoice) return;
-    if (!confirm('Recall this invoice to draft? This will also unlock the source estimate so it can be adjusted and re-converted.')) return;
-    setSaving(true);
-    setSaveError('');
-    try {
-      const res = await fetch(`/api/invoices/${invoice.id}/unlock`, {
-        method: 'PATCH',
-        credentials: 'include',
-      });
-      const data = await res.json() as { invoice?: Record<string, unknown>; estimate_unlocked?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Failed to recall invoice');
-      // Reload invoice
-      const refreshed = await fetchInvoice(invoice.id);
-      setInvoice(refreshed);
-      setStatus(refreshed.status);
-      setLines((refreshed.lines ?? []).map((l: InvoiceLine, i: number) => ({
-        _key: `${Date.now()}-${i}`,
-        description: l.description ?? '',
-        quantity: String(l.quantity ?? '1'),
-        unit: String(l.unit ?? ''),
-        rate: String(l.rate ?? '0'),
-        amount: parseFloat(String(l.amount ?? '0')),
-      })));
-      setDirty(false);
-    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed to recall'); }
-    finally { setSaving(false); }
+    setConfirmDialog({
+      title: 'Recall to Draft?',
+      message: 'This will return the invoice to draft status and unlock the source estimate so it can be adjusted and re-converted.',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setSaving(true);
+        setSaveError('');
+        try {
+          const res = await fetch(`/api/invoices/${invoice.id}/unlock`, {
+            method: 'PATCH',
+            credentials: 'include',
+          });
+          const data = await res.json() as { invoice?: Record<string, unknown>; estimate_unlocked?: boolean; error?: string };
+          if (!res.ok) throw new Error(data.error ?? 'Failed to recall invoice');
+          const refreshed = await fetchInvoice(invoice.id);
+          setInvoice(refreshed);
+          setStatus(refreshed.status);
+          setLines((refreshed.lines ?? []).map((l: InvoiceLine, i: number) => ({
+            _key: `${Date.now()}-${i}`,
+            description: l.description ?? '',
+            quantity: String(l.quantity ?? '1'),
+            unit: String(l.unit ?? ''),
+            rate: String(l.rate ?? '0'),
+            amount: parseFloat(String(l.amount ?? '0')),
+          })));
+          setDirty(false);
+        } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed to recall'); }
+        finally { setSaving(false); }
+      },
+    });
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!invoice) return;
-    if (!confirm('Permanently delete this invoice? This cannot be undone.')) return;
-    setSaving(true);
-    try {
-      await deleteInvoice(invoice.id);
-      navigate('/invoices');
-    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
-    finally { setSaving(false); }
+    setConfirmDialog({
+      title: 'Delete this invoice?',
+      message: 'This will permanently remove the invoice and all its lines. This cannot be undone.',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setSaving(true);
+        try {
+          await deleteInvoice(invoice.id);
+          navigate('/invoices');
+        } catch (err) { setSaveError(err instanceof Error ? err.message : 'Failed'); }
+        finally { setSaving(false); }
+      },
+    });
   }
 
   async function handleExportPdf() {
@@ -1032,6 +1065,57 @@ export default function InvoiceBuilderPage() {
         />
       )}
       <JobContextTab />
+
+      {/* ── Custom confirm dialog ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {confirmDialog && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmDialog(null)} />
+            <motion.div
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+              initial={{ scale: 0.92, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 12 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              {/* Icon */}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${confirmDialog.danger ? 'bg-red-100' : 'bg-amber-100'}`}>
+                <AlertTriangle size={24} className={confirmDialog.danger ? 'text-red-600' : 'text-amber-600'} />
+              </div>
+              {/* Title */}
+              <h2 className={`text-center text-xl font-bold ${confirmDialog.danger ? 'text-red-700' : 'text-gray-900'}`}>
+                {confirmDialog.title}
+              </h2>
+              {/* Message */}
+              <p className="text-center text-sm text-gray-600 leading-relaxed">
+                {confirmDialog.message}
+              </p>
+              {/* Buttons */}
+              <div className="flex gap-3 mt-1">
+                <button
+                  onClick={() => setConfirmDialog(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDialog.onConfirm}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm text-white transition-colors ${
+                    confirmDialog.danger
+                      ? 'bg-red-600 hover:bg-red-700'
+                      : 'bg-orange-500 hover:bg-orange-600'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
