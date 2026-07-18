@@ -6,7 +6,7 @@ import { driver } from 'virtual:content';
  * Prestart has been split to /prestart.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -541,6 +541,7 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
 
 export default function DriverPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, refresh, stopSession } = useDriverSession();
 
   const [showPicker, setShowPicker]             = useState(false);
@@ -557,6 +558,7 @@ export default function DriverPage() {
   const [elapsed, setElapsed]                   = useState('00m 00s');
   const [elapsedHours, setElapsedHours]         = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStartedRef = useRef(false);
 
   // Live elapsed timer
   useEffect(() => {
@@ -613,8 +615,35 @@ export default function DriverPage() {
     }
   }
 
-  async function handleStopSession() {
-    if (!session) return;
+  // Auto-select vehicle from ?vehicleId= query param (launched from home Drive picker)
+  useEffect(() => {
+    const vehicleId = searchParams.get('vehicleId');
+    if (!vehicleId || autoStartedRef.current || session) return;
+    autoStartedRef.current = true;
+    void (async () => {
+      setVehiclesLoading(true);
+      try {
+        const res = await fetch('/api/fleet/vehicles', { credentials: 'include' });
+        const data = await res.json() as { vehicles?: Vehicle[] };
+        const list = data.vehicles ?? [];
+        setVehicles(list);
+        const match = list.find(v => String(v.id) === vehicleId);
+        if (match && !match.current_driver) {
+          void handleStartSession(match);
+        } else {
+          setShowPicker(true);
+        }
+      } catch {
+        setVehicles([]);
+        setShowPicker(true);
+      } finally {
+        setVehiclesLoading(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleStopSession() {    if (!session) return;
     setStopping(true);
     void hapticImpact('heavy');
     try {

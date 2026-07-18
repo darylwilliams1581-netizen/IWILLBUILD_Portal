@@ -1080,7 +1080,7 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
               ) : assets.map(asset => (
                 <button
                   key={asset.id}
-                  onClick={() => { onClose(); navigate(`/fleet/${asset.id}/drive`); }}
+                  onClick={() => { onClose(); navigate(`/driver?vehicleId=${asset.id}`); }}
                   className="w-full flex items-center gap-3 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-xl px-3 py-3 text-left transition-colors"
                 >
                   <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
