@@ -100,7 +100,7 @@ export default function JobFormRunnerPage() {
         <link rel="canonical" href={typeof window !== 'undefined' ? window.location.href : ''} />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <main>
+      <main className="min-h-screen bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
         <h1 className="sr-only">{templateName}</h1>
       <FormRunner
         jobId={isStandalone ? undefined : jobId}

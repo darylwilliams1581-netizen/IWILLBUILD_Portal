@@ -720,7 +720,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   // ── Completed / read-only view ──────────────────────────────────────────────
   if (readOnly) {
     return (
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-0 max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
           <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
@@ -758,7 +758,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         )}
 
         {/* Fields */}
-        <div className="max-w-2xl w-full flex flex-col gap-5 pb-10">
+        <div className="w-full flex flex-col gap-5 pb-10">
           {fields.map((field) => {
             if (!visibleFields.has(field.id)) return null;
 
@@ -800,7 +800,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
         </div>
 
         {/* Footer */}
-        <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
+        <div className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
           <button onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
             Back to Forms
           </button>
@@ -841,7 +841,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
 
   // ── Editable form ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4" ref={formTopRef}>
+    <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full" ref={formTopRef}>
       {/* Header card */}
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
         <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
@@ -938,7 +938,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       </AnimatePresence>
 
       {/* Fields — current page only */}
-      <div className="max-w-2xl w-full flex flex-col gap-5">
+      <div className="w-full flex flex-col gap-5">
         <AnimatePresence mode="popLayout">
           {currentPageFields.map((field) => {
             if (!visibleFields.has(field.id)) return null;
@@ -960,7 +960,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
       </div>
 
       {/* Footer action bar — sticky on mobile */}
-      <div className="max-w-2xl w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6 sm:mb-6 sticky bottom-0 sm:static z-20">
+      <div className="w-full bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 mb-6 sm:mb-6 sticky bottom-0 sm:static z-20">
         {isMultiPage ? (
           /* Multi-page nav */
           <div className="flex items-center gap-2.5">
