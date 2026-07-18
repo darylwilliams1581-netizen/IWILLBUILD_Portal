@@ -5,7 +5,6 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, TrendingUp, Loader2, Download, Save,
@@ -32,12 +31,7 @@ function ProgressBar({ pct }: { pct: number }) {
   const color = pct === 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-cyan-500' : 'bg-amber-400';
   return (
     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-      <motion.div
-        className={`h-full rounded-full ${color}`}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-      />
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -217,58 +211,39 @@ export default function JobProgressPage() {
                 <p className="text-gray-400 text-xs mt-1">Progress lines are synced from job estimates</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 {lines.map((line, i) => (
-                  <motion.div
+                  <div
                     key={line.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="bg-white rounded-2xl border border-gray-100 px-4 py-4"
-                    style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                    className={`px-4 py-2.5 ${i !== lines.length - 1 ? 'border-b border-gray-100' : ''} ${dirty.has(line.id) ? 'bg-cyan-50/40' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <p className="text-gray-900 font-semibold text-sm flex-1 leading-snug">{line.description}</p>
-                      <span className={`text-sm font-bold shrink-0 ${line.percentComplete === 100 ? 'text-emerald-600' : 'text-cyan-600'}`}>
+                    {/* Row: description + pct + slider */}
+                    <div className="flex items-center gap-3">
+                      {/* % badge */}
+                      <span className={`text-xs font-bold tabular-nums w-9 shrink-0 text-right ${line.percentComplete === 100 ? 'text-emerald-600' : 'text-cyan-600'}`}>
                         {line.percentComplete}%
                       </span>
-                    </div>
-
-                    {/* Qty / unit / rate */}
-                    <div className="flex items-center gap-3 mb-3">
-                      {line.quantity && line.quantity !== '1' && (
-                        <span className="text-gray-400 text-xs">{line.quantity}{line.unit ? ` ${line.unit}` : ''}</span>
-                      )}
-                      {line.rate && line.rate !== '0' && (
-                        <span className="text-gray-400 text-xs">@ ${line.rate}</span>
-                      )}
-                    </div>
-
-                    {/* Slider */}
-                    <div className="mb-3">
-                      <ProgressBar pct={line.percentComplete} />
-                      <input
-                        type="range"
-                        min={0} max={100} step={5}
-                        value={line.percentComplete}
-                        onChange={e => updateLine(line.id, 'percentComplete', parseInt(e.target.value))}
-                        className="w-full mt-1 accent-cyan-500 cursor-pointer"
-                        style={{ height: '4px' }}
-                      />
-                      <div className="flex justify-between text-gray-300 text-[10px] mt-0.5">
-                        <span>0%</span><span>50%</span><span>100%</span>
+                      {/* Thin progress track + slider stacked */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-800 text-xs font-medium leading-tight truncate mb-1">{line.description}</p>
+                        <div className="relative h-4 flex items-center">
+                          <div className="absolute inset-x-0 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${line.percentComplete === 100 ? 'bg-emerald-500' : line.percentComplete >= 50 ? 'bg-cyan-500' : 'bg-amber-400'}`}
+                              style={{ width: `${line.percentComplete}%` }}
+                            />
+                          </div>
+                          <input
+                            type="range"
+                            min={0} max={100} step={5}
+                            value={line.percentComplete}
+                            onChange={e => updateLine(line.id, 'percentComplete', parseInt(e.target.value))}
+                            className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-4"
+                          />
+                        </div>
                       </div>
                     </div>
-
-                    {/* Note */}
-                    <textarea
-                      rows={2}
-                      placeholder="Progress note (optional)…"
-                      value={line.progressNote ?? ''}
-                      onChange={e => updateLine(line.id, 'progressNote', e.target.value)}
-                      className="w-full text-xs text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-300 transition"
-                    />
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
