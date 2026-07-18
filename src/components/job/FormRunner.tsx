@@ -11,6 +11,7 @@ import {
   Send,
   Printer,
   SkipForward,
+  Pencil,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
 import { motion, AnimatePresence } from 'motion/react';
