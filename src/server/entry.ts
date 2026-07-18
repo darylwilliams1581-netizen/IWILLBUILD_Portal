@@ -1327,6 +1327,7 @@ async function runStartupMigrations() {
     // ── Secure share links (legacy — superseded by document_shares) ──────────
     { name: 'shared_links', ddl: "CREATE TABLE IF NOT EXISTS shared_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, max_views INT NULL, view_count INT NOT NULL DEFAULT 0, revoked_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id))" },
     // ── Job Photo Shares — public view-only token links ───────────────────────
+    { name: 'job_progress_reports', ddl: "CREATE TABLE IF NOT EXISTS job_progress_reports (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL UNIQUE, prepared_by VARCHAR(255) NULL, report_date DATE NULL, period_from DATE NULL, period_to DATE NULL, achievements TEXT NULL, planned_next TEXT NULL, outstanding_issues TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id))" },
     { name: 'job_photo_shares', ddl: "CREATE TABLE IF NOT EXISTS job_photo_shares (id INT AUTO_INCREMENT PRIMARY KEY, job_id INT NOT NULL, company_id INT NOT NULL, token_hash VARCHAR(64) NOT NULL, expires_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_job_photo_shares_token (token_hash), UNIQUE KEY uq_job_photo_shares_job (job_id), INDEX idx_jps_company (company_id))" },
     { name: 'share_audit_log', ddl: "CREATE TABLE IF NOT EXISTS share_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, shared_link_id INT NOT NULL DEFAULT 0, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (shared_link_id), INDEX idx_company (company_id, created_at))" },
     // ── Document Engine ───────────────────────────────────────────────────────
@@ -2245,6 +2246,13 @@ app.post("/api/jobs/:id/photos/:photoId/replace", jobs_id_photos_photoId_replace
 app.get("/api/jobs/:id/progress", jobs_id_progress_get_307);
 app.put("/api/jobs/:id/progress", jobs_id_progress_put_308);
 app.post("/api/jobs/:id/progress/sync", jobs_id_progress_sync_post_309);
+
+import jobsProgressReportGet from "./api/jobs/[id]/progress/report/GET.js";
+import jobsProgressReportPut from "./api/jobs/[id]/progress/report/PUT.js";
+import jobsProgressReportPdfGet from "./api/jobs/[id]/progress/report/pdf/GET.js";
+app.get("/api/jobs/:id/progress/report", jobsProgressReportGet);
+app.put("/api/jobs/:id/progress/report", jobsProgressReportPut);
+app.get("/api/jobs/:id/progress/report/pdf", jobsProgressReportPdfGet);
 app.get("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_get_310);
 app.post("/api/jobs/:id/purchase-orders", jobs_id_purchase_orders_post_311);
 app.delete("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_delete_312);
