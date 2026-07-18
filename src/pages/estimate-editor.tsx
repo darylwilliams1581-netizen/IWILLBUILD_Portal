@@ -4,11 +4,10 @@ import { usePermissions } from '@/lib/usePermissions';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, Trash2, ArrowUp, ArrowDown, Copy, Loader2,
-  AlertCircle, Lock, FileText, Printer, Check, Menu, ChevronDown,
+  AlertCircle, Lock, FileText, Printer, Check, ChevronDown,
   Upload, Download, Share2, Calculator, BookOpen,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
-import PortalSidebar from '@/components/PortalSidebar';
 import JobContextTab from '@/components/JobContextTab';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import {
@@ -346,15 +345,11 @@ export default function EstimateEditorPage() {
     await save(updated, lines);
   }
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   const totals = estimate ? estimateTotals(lines, estimate.markupPercent, estimate.gstMode) : null;
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
         <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
@@ -362,34 +357,25 @@ export default function EstimateEditorPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <PortalSidebar />
-
-      <div className="portal-main">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3 h-16" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
-              <Menu size={20} />
-            </button>
             {/* Back button — saves if dirty before navigating */}
             <button
               onClick={() => void handleBack()}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
             >
-              <ChevronLeft size={16} />
-              <span className="hidden sm:inline truncate max-w-[120px]">
-                {job ? (job.jobNumber ?? job.name) : 'Back'}
-              </span>
+              <ChevronLeft size={18} />
             </button>
-            <span className="text-border">|</span>
-            <FileText size={15} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-sm md:text-base truncate">
-              {estimate?.title ?? 'Loading…'}
-            </h1>
-            {/* Unsaved dot */}
-            {dirty && !saving && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />
-            )}
+            <div className="min-w-0">
+              <p className="text-gray-400 text-xs font-medium truncate leading-tight">
+                {job ? (job.jobNumber ?? job.name) : 'Estimate'}
+              </p>
+              <p className="font-bold text-gray-900 text-sm truncate leading-tight">
+                {estimate?.title ?? 'Loading…'}
+                {dirty && !saving && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1.5 mb-0.5" title="Unsaved changes" />}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -931,8 +917,6 @@ export default function EstimateEditorPage() {
             </button>
           </div>
         )}
-
-      </div>
 
       {showPrint && estimate && (
         <EstimatePrintModal estimate={estimate} lines={lines} job={job} onClose={() => setShowPrint(false)} />
