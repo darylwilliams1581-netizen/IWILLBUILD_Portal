@@ -656,6 +656,7 @@ export default function DriverPage() {
       await stopSession(session.id);
       void hapticSuccess();
       setShowStopConfirm(false);
+      navigate('/home');
     } catch {
       setActionError('Failed to end session — please try again');
       void hapticError();
