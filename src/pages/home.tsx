@@ -72,7 +72,7 @@ const SUPERVISOR_ICONS: AppIcon[] = [
 const ESTIMATING_ICONS: AppIcon[] = [
   { label: 'Estimating', icon: Calculator, href: '/estimating', bg: 'bg-indigo-500', fg: 'text-white' },
   { label: 'Invoices',   icon: Receipt,    href: '/invoices',   bg: 'bg-teal-500',   fg: 'text-white' },
-  { label: 'Customers',  icon: Users,      href: '/customers',  bg: 'bg-pink-500',   fg: 'text-white' },
+  { label: 'Stakeholders', icon: Users,      href: '/customers',  bg: 'bg-pink-500',   fg: 'text-white' },
 ];
 
 const ADMIN_ICONS: AppIcon[] = [
