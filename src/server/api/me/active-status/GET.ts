@@ -74,7 +74,6 @@ export default async function handler(req: Request, res: Response) {
         AND fds.user_id = '${safeUserId}'
         AND fds.status = 'active'
       ORDER BY fds.start_at DESC
-      LIMIT 1
     `)) as unknown as [Array<{
       id: number;
       fleet_asset_id: number;
@@ -84,7 +83,14 @@ export default async function handler(req: Request, res: Response) {
       rego: string | null;
     }>, unknown];
 
-    const driveRow = driveRows?.[0] ?? null;
+    const drivingSessions = (driveRows ?? []).map(r => ({
+      sessionId: r.id,
+      assetId:   r.fleet_asset_id,
+      assetName: r.asset_name,
+      assetType: r.asset_type,
+      rego:      r.rego,
+      startAt:   toUtcIso(r.start_at),
+    }));
 
     return res.json({
       ok: true,
@@ -96,16 +102,8 @@ export default async function handler(req: Request, res: Response) {
             signedInAt: toUtcIso(jobRow.signed_in_at),
           }
         : null,
-      driving: driveRow
-        ? {
-            sessionId:  driveRow.id,
-            assetId:    driveRow.fleet_asset_id,
-            assetName:  driveRow.asset_name,
-            assetType:  driveRow.asset_type,
-            rego:       driveRow.rego,
-            startAt:    toUtcIso(driveRow.start_at),
-          }
-        : null,
+      driving:         drivingSessions[0] ?? null,   // legacy compat
+      drivingSessions,                                // full array
     });
   } catch (err) {
     console.error('GET /api/me/active-status error:', err);

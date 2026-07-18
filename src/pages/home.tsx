@@ -830,6 +830,13 @@ interface ActiveStatus {
     rego: string | null;
     startAt: string | null;
   } | null;
+  drivingSessions?: Array<{
+    sessionId: number;
+    assetName: string | null;
+    assetType: string | null;
+    rego: string | null;
+    startAt: string | null;
+  }>;
 }
 
 function useActiveStatus(refreshKey: number) {
@@ -860,14 +867,15 @@ function elapsed(isoStr: string | null): string {
 function ActiveStatusBar({
   status,
   onJobPress,
-  onDrivePress,
+  onDriveStop,
 }: {
   status: ActiveStatus | null;
   onJobPress: () => void;
-  onDrivePress: () => void;
+  onDriveStop: (sessionId: number) => void;
 }) {
-  const hasJob   = !!status?.jobSignIn;
-  const hasDrive = !!status?.driving;
+  const hasJob      = !!status?.jobSignIn;
+  const sessions    = status?.drivingSessions ?? (status?.driving ? [status.driving] : []);
+  const hasDrive    = sessions.length > 0;
 
   if (!hasJob && !hasDrive) return null;
 
@@ -904,29 +912,30 @@ function ActiveStatusBar({
           </button>
         )}
 
-        {/* Driving pill */}
-        {hasDrive && (
+        {/* One driving pill per active session */}
+        {sessions.map(s => (
           <button
-            onClick={onDrivePress}
+            key={s.sessionId}
+            onClick={() => onDriveStop(s.sessionId)}
             className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 shrink-0 hover:bg-blue-100 active:bg-blue-200 transition-colors"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
             <Navigation size={11} className="text-blue-600 shrink-0" />
             <span className="text-blue-700 text-xs font-semibold truncate max-w-[120px]">
-              {status!.driving!.assetName ?? 'Vehicle'}
+              {s.assetName ?? 'Vehicle'}
             </span>
-            {status!.driving!.rego && (
+            {s.rego && (
               <span className="text-blue-400 text-[10px] font-mono shrink-0">
-                {status!.driving!.rego}
+                {s.rego}
               </span>
             )}
-            {status!.driving!.startAt && (
+            {s.startAt && (
               <span className="text-blue-500 text-[10px] font-medium shrink-0">
-                {elapsed(status!.driving!.startAt)}
+                {elapsed(s.startAt)}
               </span>
             )}
           </button>
-        )}
+        ))}
       </div>
     </motion.div>
   );
@@ -1849,13 +1858,11 @@ export default function HomeScreen() {
           <ActiveStatusBar
             status={activeStatus}
             onJobPress={() => setSignInOutOpen(true)}
-            onDrivePress={async () => {
-              if (activeStatus?.driving?.sessionId) {
-                await fetch(`/api/fleet/driver-sessions/${activeStatus.driving.sessionId}/stop`, {
-                  method: 'POST', credentials: 'include',
-                });
-                setActiveStatusKey(k => k + 1);
-              }
+            onDriveStop={async (sessionId) => {
+              await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
+                method: 'POST', credentials: 'include',
+              });
+              setActiveStatusKey(k => k + 1);
             }}
           />
         )}
