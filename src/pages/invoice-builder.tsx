@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Receipt, ArrowLeft, Save, Send, Printer, Copy, Trash2,
+  Receipt, ArrowLeft, Save, Send, Copy, Trash2,
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
   ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
@@ -22,7 +22,7 @@ import {
   type Invoice, type InvoiceLine, type InvoiceStatus,
 } from '@/lib/invoices-api';
 import type { Customer } from '@/lib/customers-api';
-import InvoicePrintModal from '@/components/InvoicePrintModal';
+import InvoicePreviewModal from '@/components/InvoicePreviewModal';
 
 // ── Line item row ─────────────────────────────────────────────────────────────
 
@@ -238,7 +238,6 @@ export default function InvoiceBuilderPage() {
   const [dirty, setDirty] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
@@ -560,21 +559,8 @@ export default function InvoiceBuilderPage() {
   }
 
   async function handleExportPdf() {
-    if (!invoice) return;
-    setExportingPdf(true);
-    try {
-      const res = await fetch(`/api/invoices/${invoice.id}/export-pdf`, { credentials: 'include' });
-      if (!res.ok) { alert('PDF export failed'); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoice.invoiceNumber ?? invoice.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setExportingPdf(false);
-    }
+    // Kept for legacy callers — opens the preview modal instead
+    setShowPrintModal(true);
   }
 
   const s = STATUS_COLORS[status] ?? STATUS_COLORS.draft;
@@ -679,7 +665,7 @@ export default function InvoiceBuilderPage() {
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   {!isNew && canEdit && (
                     <button onClick={() => setShowPrintModal(true)} className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
-                      <Printer size={13} />Print / PDF
+                      <FileText size={13} />Preview / PDF
                     </button>
                   )}
                   {/* Send via Outlook */}
@@ -697,17 +683,6 @@ export default function InvoiceBuilderPage() {
                       size="sm"
                       showCopy
                     />
-                  )}
-                  {!isNew && canEdit && (
-                    <button
-                      onClick={handleExportPdf}
-                      disabled={exportingPdf}
-                      className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                      title="Download PDF"
-                    >
-                      {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                      Download PDF
-                    </button>
                   )}
                   {!isNew && (
                     <button
@@ -1049,7 +1024,7 @@ export default function InvoiceBuilderPage() {
           />
         )}
         {showPrintModal && invoice && (
-          <InvoicePrintModal
+          <InvoicePreviewModal
             invoice={{ ...invoice, lines: lines.map((l, i) => ({ id: i, invoice_id: invoice.id, description: l.description, quantity: l.quantity, unit: l.unit || null, rate: l.rate, amount: String(l.amount), sort_order: i })), subtotal: String(subtotal), gst_amount: String(gst), total: String(total) }}
             onClose={() => setShowPrintModal(false)}
           />
