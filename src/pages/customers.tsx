@@ -4,9 +4,98 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Plus, Search, Loader2, X, Check, AlertCircle,
   Phone, Mail, MapPin, Building2, Archive, ArchiveRestore,
-  ChevronRight, User, FileText, Briefcase, Tag, MessageSquare,
+  ChevronRight, User, FileText, Briefcase, Tag, MessageSquare, Send,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+// ── SMS compose modal (desktop) ───────────────────────────────────────────────
+function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: () => void }) {
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setSending(true); setError('');
+    try {
+      const res = await fetch('/api/stakeholders/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ to, message }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send');
+      setSent(true);
+      setTimeout(onClose, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md"
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-violet-50 rounded-md"><MessageSquare size={15} className="text-violet-600" /></div>
+            <div>
+              <h2 className="font-bold text-sm text-slate-800">Send SMS</h2>
+              <p className="text-xs text-slate-400">{name} · {to}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+        </div>
+        <form onSubmit={handleSend} className="p-5 flex flex-col gap-4">
+          {sent ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-emerald-600 font-semibold text-sm">
+              <Check size={18} /> Message sent!
+            </div>
+          ) : (
+            <>
+              <textarea
+                autoFocus
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={4}
+                placeholder={`Type your message to ${name}…`}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-colors"
+              />
+              <p className="text-xs text-slate-400 -mt-2 text-right">{message.length} chars</p>
+              {error && (
+                <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs">
+                  <AlertCircle size={13} className="shrink-0" />{error}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={sending || !message.trim()}
+                  className="flex-1 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Send SMS
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </motion.div>
+    </div>
+  );
+}
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { useTerminology } from '@/lib/useTerminology';
@@ -210,6 +299,19 @@ function CustomerCard({
   const isArchived = customer.status === 'archived';
   const phone = customer.mobile || customer.phone;
   const email = customer.email;
+  const [smsOpen, setSmsOpen] = useState(false);
+
+  // Detect mobile — native sms: link works; desktop uses Twilio modal
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  function handleSms(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (isMobile) {
+      window.location.href = `sms:${phone}`;
+    } else {
+      setSmsOpen(true);
+    }
+  }
 
   return (
     <div className={`bg-white border rounded-xl p-4 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
@@ -293,14 +395,13 @@ function CustomerCard({
             </a>
           )}
           {phone && (
-            <a
-              href={`sms:${phone}`}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={handleSms}
               className="flex-1 flex items-center justify-center gap-1.5 bg-violet-50 hover:bg-violet-100 active:bg-violet-200 text-violet-700 text-xs font-bold py-2 rounded-lg border border-violet-200 transition-colors"
             >
               <MessageSquare size={13} />
               <span>SMS</span>
-            </a>
+            </button>
           )}
           {email && (
             <a
@@ -315,6 +416,12 @@ function CustomerCard({
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {smsOpen && phone && (
+          <SmsModal to={phone} name={customer.name} onClose={() => setSmsOpen(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
