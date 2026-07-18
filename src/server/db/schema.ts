@@ -257,6 +257,17 @@ export const jobPhotos = mysqlTable('job_photos', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ── Job Photo Shares ──────────────────────────────────────────────────────────
+export const jobPhotoShares = mysqlTable('job_photo_shares', {
+  id:                int('id').primaryKey().autoincrement(),
+  jobId:             int('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  companyId:         int('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  tokenHash:         varchar('token_hash', { length: 64 }).notNull().unique(),
+  expiresAt:         timestamp('expires_at'),
+  createdByUserId:   varchar('created_by_user_id', { length: 36 }),
+  createdAt:         timestamp('created_at').defaultNow(),
+});
+
 export const formTemplates = mysqlTable('form_templates', {
   id: int('id').primaryKey().autoincrement(),
   companyId: int('company_id')

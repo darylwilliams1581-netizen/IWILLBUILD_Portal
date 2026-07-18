@@ -397,6 +397,7 @@ import migrate_job_photos_post_364 from "./api/migrate-job-photos/POST";
 import migrate_job_tabs_post_365 from "./api/migrate-job-tabs/POST";
 import migrate_jobs_post_366 from "./api/migrate-jobs/POST";
 import migrate_ledger_photo_post from "./api/migrate-ledger-photo/POST";
+import migrate_job_photo_shares_post from "./api/migrate-job-photo-shares/POST";
 import migrate_library_post_367 from "./api/migrate-library/POST";
 import migrate_library_downloads_post_368 from "./api/migrate-library-downloads/POST";
 import migrate_notifications_post_369 from "./api/migrate-notifications/POST";
@@ -505,6 +506,7 @@ import public_form_token_get_471 from "./api/public/form/[token]/GET";
 import public_form_token_submit_post_472 from "./api/public/form/[token]/submit/POST";
 import public_swms_token_get_473 from "./api/public/swms/[token]/GET";
 import public_swms_token_signoff_post_474 from "./api/public/swms/[token]/signoff/POST";
+import public_job_photos_token_get from "./api/public/job-photos/[token]/GET";
 import push_subscribe_delete_475 from "./api/push/subscribe/DELETE";
 import push_subscribe_post_476 from "./api/push/subscribe/POST";
 import push_vapid_key_get_477 from "./api/push/vapid-key/GET";
@@ -1315,6 +1317,8 @@ async function runStartupMigrations() {
     { name: 'job_cost_ledger', ddl: "CREATE TABLE IF NOT EXISTS job_cost_ledger (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, job_number VARCHAR(50) NULL, job_title VARCHAR(255) NULL, entry_date DATE NOT NULL, event_type VARCHAR(30) NOT NULL DEFAULT 'MATERIAL', source_module VARCHAR(30) NOT NULL DEFAULT 'manual', source_id VARCHAR(100) NULL, description TEXT NOT NULL, qty DECIMAL(10,3) NOT NULL DEFAULT 1, unit VARCHAR(50) NULL, rate DECIMAL(12,2) NOT NULL DEFAULT 0, subtotal DECIMAL(12,2) NOT NULL DEFAULT 0, gst DECIMAL(12,2) NOT NULL DEFAULT 0, total DECIMAL(12,2) NOT NULL DEFAULT 0, gst_inclusive TINYINT(1) NOT NULL DEFAULT 0, account_code VARCHAR(30) NULL, tax_code VARCHAR(20) NULL DEFAULT 'GST', contact_name VARCHAR(255) NULL, contact_type VARCHAR(30) NULL, reference VARCHAR(100) NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', approved_by VARCHAR(255) NULL, approved_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_by_name VARCHAR(255) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status), INDEX idx_event_type (company_id, event_type), INDEX idx_date (company_id, entry_date))" },
     // ── Secure share links (legacy — superseded by document_shares) ──────────
     { name: 'shared_links', ddl: "CREATE TABLE IF NOT EXISTS shared_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, created_by_user_id VARCHAR(36) NOT NULL, target_type VARCHAR(30) NOT NULL, target_id VARCHAR(100) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, max_views INT NULL, view_count INT NOT NULL DEFAULT 0, revoked_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_token (token_hash), INDEX idx_target (company_id, target_type, target_id))" },
+    // ── Job Photo Shares — public view-only token links ───────────────────────
+    { name: 'job_photo_shares', ddl: "CREATE TABLE IF NOT EXISTS job_photo_shares (id INT AUTO_INCREMENT PRIMARY KEY, job_id INT NOT NULL, company_id INT NOT NULL, token_hash VARCHAR(64) NOT NULL, expires_at DATETIME NULL, created_by_user_id VARCHAR(36) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_job_photo_shares_token (token_hash), UNIQUE KEY uq_job_photo_shares_job (job_id), INDEX idx_jps_company (company_id))" },
     { name: 'share_audit_log', ddl: "CREATE TABLE IF NOT EXISTS share_audit_log (id INT AUTO_INCREMENT PRIMARY KEY, shared_link_id INT NOT NULL DEFAULT 0, company_id INT NOT NULL, event_type VARCHAR(50) NOT NULL, ip_address VARCHAR(100) NULL, user_agent VARCHAR(500) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_link (shared_link_id), INDEX idx_company (company_id, created_at))" },
     // ── Document Engine ───────────────────────────────────────────────────────
     { name: 'documents', ddl: "CREATE TABLE IF NOT EXISTS documents (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NULL, fleet_asset_id INT NULL, customer_id INT NULL, source_module VARCHAR(50) NOT NULL, source_id VARCHAR(100) NOT NULL, document_type VARCHAR(50) NOT NULL, title VARCHAR(500) NOT NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', version INT NOT NULL DEFAULT 1, is_locked TINYINT(1) NOT NULL DEFAULT 0, locked_at DATETIME NULL, completed_at DATETIME NULL, pdf_file_id INT NULL, created_by_user_id VARCHAR(36) NOT NULL, updated_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_source (company_id, source_module, source_id), INDEX idx_type (company_id, document_type), INDEX idx_status (company_id, status))" },
@@ -2285,6 +2289,7 @@ app.post("/api/migrate-job-photos", migrate_job_photos_post_364);
 app.post("/api/migrate-job-tabs", migrate_job_tabs_post_365);
 app.post("/api/migrate-jobs", migrate_jobs_post_366);
 app.post("/api/migrate-ledger-photo", migrate_ledger_photo_post);
+app.post("/api/migrate-job-photo-shares", migrate_job_photo_shares_post);
 app.post("/api/migrate-library", migrate_library_post_367);
 app.post("/api/migrate-library-downloads", migrate_library_downloads_post_368);
 app.post("/api/migrate-notifications", migrate_notifications_post_369);
@@ -2393,6 +2398,7 @@ app.get("/api/public/form/:token", public_form_token_get_471);
 app.post("/api/public/form/:token/submit", public_form_token_submit_post_472);
 app.get("/api/public/swms/:token", public_swms_token_get_473);
 app.post("/api/public/swms/:token/signoff", public_swms_token_signoff_post_474);
+app.get("/api/public/job-photos/:token", public_job_photos_token_get);
 app.delete("/api/push/subscribe", push_subscribe_delete_475);
 app.post("/api/push/subscribe", push_subscribe_post_476);
 app.get("/api/push/vapid-key", push_vapid_key_get_477);

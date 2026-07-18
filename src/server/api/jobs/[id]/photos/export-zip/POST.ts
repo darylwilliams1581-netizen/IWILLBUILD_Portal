@@ -1,6 +1,6 @@
 /**
  * POST /api/jobs/:id/photos/export-zip
- * Stream a ZIP of all (or selected) job photos.
+ * Stream a ZIP archive of all (or selected) job photos.
  * Body: { photoIds?: number[] }  — omit for all photos
  */
 import type { Request, Response } from 'express';
@@ -8,10 +8,8 @@ import { db } from '../../../../../db/client.js';
 import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
-import { getDownloadStream } from '../../../../../storage/storage-service.js';
+import { getDownloadStream, BUCKET_JOB_PHOTOS } from '../../../../../storage/storage-service.js';
 import archiver from 'archiver';
-
-const PHOTO_BUCKET = 'job-photos';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -36,11 +34,14 @@ export default async function handler(req: Request, res: Response) {
 
     const { photoIds } = req.body as { photoIds?: number[] };
 
-    // Fetch photo records
     let rows;
     if (photoIds && photoIds.length > 0) {
       rows = await db.select().from(jobPhotos).where(
-        and(eq(jobPhotos.jobId, jobId), eq(jobPhotos.companyId, profile.companyId), inArray(jobPhotos.id, photoIds))
+        and(
+          eq(jobPhotos.jobId, jobId),
+          eq(jobPhotos.companyId, profile.companyId),
+          inArray(jobPhotos.id, photoIds)
+        )
       );
     } else {
       rows = await db.select().from(jobPhotos).where(
@@ -55,13 +56,18 @@ export default async function handler(req: Request, res: Response) {
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}-photos.zip"`);
 
     const archive = archiver('zip', { zlib: { level: 5 } });
-    archive.on('error', (err) => { console.error('ZIP error:', err); res.end(); });
+    archive.on('error', (err) => {
+      console.error('ZIP archive error:', err);
+      if (!res.headersSent) res.end();
+    });
     archive.pipe(res);
 
     for (const photo of rows) {
       try {
-        const { stream } = await getDownloadStream(photo.filename, PHOTO_BUCKET);
-        const ext = photo.mimeType === 'image/png' ? 'png' : photo.mimeType === 'image/webp' ? 'webp' : 'jpg';
+        const { stream } = await getDownloadStream(photo.filename, BUCKET_JOB_PHOTOS);
+        const ext = photo.mimeType === 'image/png' ? 'png'
+          : photo.mimeType === 'image/webp' ? 'webp'
+          : 'jpg';
         const name = photo.originalName ?? `photo-${photo.id}.${ext}`;
         archive.append(stream as NodeJS.ReadableStream, { name });
       } catch (e) {

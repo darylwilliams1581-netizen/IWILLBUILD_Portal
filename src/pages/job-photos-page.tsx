@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos from '@/components/JobPhotos';
 
 interface Job {
@@ -18,6 +19,10 @@ export default function JobPhotosPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Share link sheet
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!id) { setLoading(false); return; }
     fetch(`/api/jobs/${id}`, { credentials: 'include' })
@@ -32,13 +37,31 @@ export default function JobPhotosPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleShareLink = useCallback((url: string) => {
+    setShareUrl(url);
+    setCopied(false);
+  }, []);
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback: select the input
+    }
+  };
+
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
-        <meta name="robots" content="noindex" />
+        <meta name="description" content="View and manage photos for this job." />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
       </Helmet>
 
       {/* ── Top bar ── */}
@@ -62,9 +85,9 @@ export default function JobPhotosPage() {
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             ) : (
               <>
-                <p className="text-gray-900 font-bold text-sm leading-tight truncate">
+                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
                   {job?.name ?? 'Job Photos'}
-                </p>
+                </h1>
                 {job?.jobNumber && (
                   <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
                 )}
@@ -82,10 +105,55 @@ export default function JobPhotosPage() {
           </div>
         ) : (
           <div className="px-4 py-4">
-            <JobPhotos jobId={jobId} />
+            <JobPhotos jobId={jobId} onShareLink={handleShareLink} />
           </div>
         )}
       </div>
+
+      {/* ── Share link sheet ── */}
+      <AnimatePresence>
+        {shareUrl && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShareUrl(null)} />
+            <motion.div
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.2 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-heading font-bold text-base text-slate-900">Share Link Generated</h3>
+                <button onClick={() => setShareUrl(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">
+                Anyone with this link can view the photos for this job. Valid for 90 days.
+              </p>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 mb-4">
+                <span className="flex-1 text-xs text-slate-600 font-mono truncate">{shareUrl}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyLink}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                    copied ? 'bg-green-500 text-white' : 'bg-slate-900 hover:bg-slate-700 text-white'
+                  }`}
+                >
+                  {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Link</>}
+                </button>
+                <a
+                  href={shareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-600 rounded-xl transition-colors"
+                >
+                  <ExternalLink size={14} /> Preview
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

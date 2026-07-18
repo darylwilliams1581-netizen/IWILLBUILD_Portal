@@ -494,7 +494,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
 
   const atLimit = photos.length >= MAX_PHOTOS;
   const remaining = MAX_PHOTOS - photos.length;
-  const selectedPhotos = photos.filter((p) => selected.has(p.id));
 
   return (
     <div className="flex flex-col gap-4">
@@ -762,7 +761,7 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       </AnimatePresence>
 
       {/* Unused var suppression */}
-      {selectedPhotos.length === 0 && null}
+      {null}
     </div>
   );
 }

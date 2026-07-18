@@ -225,6 +225,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   // QR attendance — token-validated, unauthenticated guests allowed
   { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signin-qr$/ },
   { method: 'POST', pattern: /^\/api\/jobs\/\d+\/signout-qr$/ },
+  // Public job photo share — token-validated, view-only
+  { method: 'GET',  pattern: /^\/api\/public\/job-photos\/[^/]+$/ },
 ];
 
 /**

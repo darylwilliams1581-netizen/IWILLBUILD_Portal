@@ -31,6 +31,8 @@ import jobs_id_photos_photoId_delete_217 from "./api/jobs/[id]/photos/[photoId]/
 import jobs_id_photos_photoId_patch_218 from "./api/jobs/[id]/photos/[photoId]/PATCH";
 import jobs_id_photos_photoId_download_get_219 from "./api/jobs/[id]/photos/[photoId]/download/GET";
 import jobs_id_photos_photoId_replace_post_220 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
+import jobs_id_photos_export_zip_post from "./api/jobs/[id]/photos/export-zip/POST";
+import jobs_id_photos_share_post from "./api/jobs/[id]/photos/share/POST";
 import jobs_id_progress_get_221 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_222 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_sync_post_223 from "./api/jobs/[id]/progress/sync/POST";
@@ -76,6 +78,9 @@ export function register(app: Express): void {
   app.post("/api/jobs/:id/ledger/:entryId/correct", jobs_id_ledger_entryId_correct_post_214);
   app.get("/api/jobs/:id/photos", jobs_id_photos_get_215);
   app.post("/api/jobs/:id/photos", jobs_id_photos_post_216);
+  // ⚠️ Specific sub-paths BEFORE /:photoId to avoid param capture
+  app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post);
+  app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post);
   app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_217);
   app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_218);
   app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_219);

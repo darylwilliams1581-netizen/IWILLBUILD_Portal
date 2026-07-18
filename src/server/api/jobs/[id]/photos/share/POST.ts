@@ -1,11 +1,11 @@
 /**
  * POST /api/jobs/:id/photos/share
- * Generate a view-only share token for a job's photos.
- * Returns { shareUrl, token, expiresAt }
+ * Generate a 90-day view-only share token for a job's photos.
+ * Returns { shareUrl, expiresAt }
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
-import { profiles, jobs } from '../../../../../db/schema.js';
+import { jobPhotoShares, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { generateShareToken, hashToken, expiresAt } from '../../../../../lib/share-tokens.js';
@@ -31,19 +31,27 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // Generate token — store hash in job record (or a dedicated share table if available)
-    // We'll use a simple approach: store in the job_photo_shares table (create if needed)
     const raw = generateShareToken();
     const hash = hashToken(raw);
-    const exp = expiresAt(90); // 90 days
+    const exp = expiresAt(90);
 
-    // Upsert into job_photo_shares
-    await db.run(
-      `INSERT INTO job_photo_shares (job_id, company_id, token_hash, expires_at, created_by_user_id)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(job_id) DO UPDATE SET token_hash = excluded.token_hash, expires_at = excluded.expires_at, created_by_user_id = excluded.created_by_user_id`,
-      [jobId, profile.companyId, hash, exp.toISOString(), session.user.id]
-    );
+    // Upsert — one active share per job (replace on conflict)
+    await db
+      .insert(jobPhotoShares)
+      .values({
+        jobId,
+        companyId: profile.companyId,
+        tokenHash: hash,
+        expiresAt: exp,
+        createdByUserId: session.user.id,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          tokenHash: hash,
+          expiresAt: exp,
+          createdByUserId: session.user.id,
+        },
+      });
 
     const origin = `${req.protocol}://${req.get('host')}`;
     const shareUrl = `${origin}/photos/share/${raw}`;
