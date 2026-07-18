@@ -24,6 +24,7 @@ import { invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
+import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import NotificationBell from '@/components/NotificationBell';
 
@@ -1779,6 +1780,7 @@ export default function HomeScreen() {
     if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
     if (href === '?panel=drive-picker') { setDrivePickerOpen(true); return; }
+
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     navigate(href);
@@ -1900,7 +1902,12 @@ export default function HomeScreen() {
       <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
       <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
       <ProgressJobPickerSheet open={progressPickerOpen} onClose={() => setProgressPickerOpen(false)} />
-      <DriveFleetPickerSheet open={drivePickerOpen} onClose={() => setDrivePickerOpen(false)} />
+      {drivePickerOpen && (
+        <StartDrivingModal
+          onClose={() => setDrivePickerOpen(false)}
+          onStarted={() => { setDrivePickerOpen(false); navigate('/driver'); }}
+        />
+      )}
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
     </div>
   );
