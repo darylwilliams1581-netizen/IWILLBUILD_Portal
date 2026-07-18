@@ -152,7 +152,7 @@ export default async function handler(req: Request, res: Response) {
         NULL                  AS signed_out_at,
         NULL                  AS duration_minutes
       FROM job_attendance ja
-      LEFT JOIN users u ON u.id = ja.user_id
+      LEFT JOIN user u ON u.id = ja.user_id
       LEFT JOIN jobs j  ON j.id = ja.job_id
       WHERE ${jaWhere}
     `)) as unknown as [HistoryRow[], unknown];
@@ -177,7 +177,7 @@ export default async function handler(req: Request, res: Response) {
         ful.ended_at           AS signed_out_at,
         ful.duration_minutes
       FROM fleet_usage_logs ful
-      LEFT JOIN users u       ON u.id  = ful.user_id
+      LEFT JOIN user u       ON u.id  = ful.user_id
       LEFT JOIN jobs j        ON j.id  = ful.job_id
       LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
       WHERE ${fulWhere}

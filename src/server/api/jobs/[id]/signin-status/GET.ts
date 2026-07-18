@@ -79,7 +79,7 @@ export default async function handler(req: Request, res: Response) {
           u.name  AS user_name,
           u.email AS user_email
         FROM job_attendance ja
-        LEFT JOIN users u ON u.id = ja.user_id
+        LEFT JOIN user u ON u.id = ja.user_id
         WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
         GROUP BY ja.user_id, u.name, u.email
         HAVING SUM(CASE WHEN ja.action = 'signin'  THEN 1 ELSE 0 END)
@@ -104,7 +104,7 @@ export default async function handler(req: Request, res: Response) {
           u.name  AS user_name,
           u.email AS user_email
         FROM job_attendance ja
-        LEFT JOIN users u ON u.id = ja.user_id
+        LEFT JOIN user u ON u.id = ja.user_id
         WHERE ja.job_id = ${jobId} AND ja.company_id = ${companyId}
         ORDER BY ja.created_at DESC
         LIMIT 30
