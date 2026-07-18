@@ -104,21 +104,21 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[80vh] overflow-hidden flex flex-col"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 max-h-[80vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <div>
-            <h2 className="text-white font-bold text-base">Select Vehicle</h2>
-            <p className="text-gray-500 text-xs mt-0.5">Choose the vehicle you're driving</p>
+            <h2 className="text-gray-900 font-bold text-base">Select Vehicle</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Choose the vehicle you're driving</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
             <X size={18} />
           </button>
         </div>
@@ -127,11 +127,11 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 size={24} className="animate-spin text-orange-400" />
+              <Loader2 size={24} className="animate-spin text-orange-500" />
             </div>
           ) : vehicles.length === 0 ? (
             <div className="text-center py-10">
-              <Car size={32} className="text-gray-600 mx-auto mb-2" />
+              <Car size={32} className="text-gray-300 mx-auto mb-2" />
               <p className="text-gray-400 text-sm">No vehicles available</p>
             </div>
           ) : (
@@ -140,31 +140,31 @@ function VehiclePicker({ vehicles, loading, onSelect, onClose }: VehiclePickerPr
                 key={v.id}
                 onClick={() => onSelect(v)}
                 disabled={!!v.current_driver}
-                className={`w-full flex items-center gap-3 bg-gray-800 rounded-2xl px-4 py-3.5 text-left transition-colors ${
+                className={`w-full flex items-center gap-3 bg-gray-50 border rounded-2xl px-4 py-3.5 text-left transition-colors ${
                   v.current_driver
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-gray-750 active:bg-gray-700'
+                    ? 'opacity-50 cursor-not-allowed border-gray-200'
+                    : 'border-gray-200 hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100'
                 }`}
               >
                 <span className="text-2xl">{vehicleTypeIcon(v.type)}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm">{v.name}</p>
+                  <p className="text-gray-900 font-semibold text-sm">{v.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     {v.make_model && (
-                      <span className="text-gray-500 text-xs">{v.make_model}</span>
+                      <span className="text-gray-400 text-xs">{v.make_model}</span>
                     )}
                     {v.rego && !v.rego_not_applicable && (
-                      <span className="text-gray-600 text-xs bg-gray-700 px-1.5 py-0.5 rounded font-mono">
+                      <span className="text-gray-500 text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">
                         {v.rego}
                       </span>
                     )}
                   </div>
                   {v.current_driver && (
-                    <p className="text-amber-400 text-xs mt-0.5">In use by {v.current_driver}</p>
+                    <p className="text-amber-600 text-xs mt-0.5">In use by {v.current_driver}</p>
                   )}
                 </div>
                 {!v.current_driver && (
-                  <ChevronRight size={16} className="text-gray-600 shrink-0" />
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
                 )}
               </button>
             ))
@@ -199,18 +199,18 @@ function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: St
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-900 rounded-t-3xl border-t border-gray-800 p-6"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 p-6"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-3">
-            <Square size={22} className="text-red-400" />
+          <div className="w-14 h-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center mx-auto mb-3">
+            <Square size={22} className="text-red-500" />
           </div>
-          <h2 className="text-white font-bold text-lg">End Drive Session?</h2>
+          <h2 className="text-gray-900 font-bold text-lg">End Drive Session?</h2>
           <p className="text-gray-400 text-sm mt-1">
             {sessionName} · {elapsed}
           </p>
@@ -227,7 +227,7 @@ function StopConfirm({ sessionName, elapsed, onConfirm, onCancel, stopping }: St
           </button>
           <button
             onClick={onCancel}
-            className="w-full py-4 text-gray-400 font-semibold rounded-2xl hover:text-white transition-colors"
+            className="w-full py-4 text-gray-400 font-semibold rounded-2xl hover:text-gray-700 transition-colors"
           >
             Keep Driving
           </button>
@@ -260,24 +260,24 @@ function ToolSheet({ title, icon, onClose, children }: ToolSheetProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 flex flex-col"
         style={{ maxHeight: '94vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gray-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
               {icon}
             </div>
-            <h2 className="text-white font-bold text-base">{title}</h2>
+            <h2 className="text-gray-900 font-bold text-base">{title}</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -388,35 +388,35 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 flex flex-col"
         style={{ maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
-              <Receipt size={15} className="text-amber-400" />
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+              <Receipt size={15} className="text-amber-600" />
             </div>
-            <h2 className="text-white font-bold text-base">Job Cost</h2>
+            <h2 className="text-gray-900 font-bold text-base">Job Cost</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors">
             <X size={18} />
           </button>
         </div>
 
         {done ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-emerald-400" />
+            <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-emerald-500" />
             </div>
-            <p className="text-white font-bold text-lg">Cost saved!</p>
-            <p className="text-gray-500 text-sm text-center">Receipt uploaded and cost recorded.</p>
+            <p className="text-gray-900 font-bold text-lg">Cost saved!</p>
+            <p className="text-gray-400 text-sm text-center">Receipt uploaded and cost recorded.</p>
           </div>
         ) : (
           <>
@@ -426,7 +426,7 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Select Job</p>
                 {jobsLoading ? (
-                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
                     <Loader2 size={14} className="animate-spin" /> Loading…
                   </div>
                 ) : (
@@ -437,14 +437,14 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
                         onClick={() => setSelectedJob(job)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors ${
                           selectedJob?.id === job.id
-                            ? 'bg-amber-500/10 border-amber-500/40 text-white'
-                            : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'
+                            ? 'bg-amber-50 border-amber-300 text-gray-900'
+                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-amber-400' : 'bg-gray-600'}`} />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-amber-500' : 'bg-gray-300'}`} />
                         <div className="min-w-0">
                           <p className="font-semibold text-sm truncate">{job.name}</p>
-                          {job.jobNumber && <p className="text-xs text-gray-500 font-mono">{job.jobNumber}</p>}
+                          {job.jobNumber && <p className="text-xs text-gray-400 font-mono">{job.jobNumber}</p>}
                         </div>
                       </button>
                     ))}
@@ -462,8 +462,8 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
                       onClick={() => setCategory(c.value)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                         category === c.value
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                          : 'bg-gray-900 border-gray-800 text-gray-400 hover:bg-gray-800'
+                          ? 'bg-amber-100 border-amber-300 text-amber-700'
+                          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
                       {c.label}
@@ -474,13 +474,13 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
 
               {/* Description */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-2">Description <span className="text-red-400">*</span></p>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Description <span className="text-red-500">*</span></p>
                 <input
                   type="text"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="e.g. Timber framing — Bunnings"
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
                 />
               </div>
 
@@ -488,14 +488,14 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Amount (optional)</p>
                 <div className="relative">
-                  <DollarSign size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <DollarSign size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="number"
                     inputMode="decimal"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                 </div>
               </div>
@@ -515,7 +515,7 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={files.length >= 5}
-                  className="w-full flex items-center justify-center gap-2.5 bg-gray-900 border border-dashed border-gray-700 hover:border-amber-500/50 hover:bg-gray-800 disabled:opacity-40 text-gray-400 hover:text-amber-400 font-semibold py-4 rounded-xl transition-colors text-sm"
+                  className="w-full flex items-center justify-center gap-2.5 bg-gray-50 border border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 disabled:opacity-40 text-gray-400 hover:text-amber-600 font-semibold py-4 rounded-xl transition-colors text-sm"
                 >
                   <Camera size={16} />
                   Take Photo / Upload Receipt
@@ -523,10 +523,10 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
                 {files.length > 0 && (
                   <div className="mt-2 space-y-1.5">
                     {files.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
-                        <Upload size={13} className="text-amber-400 shrink-0" />
-                        <span className="text-gray-300 text-xs flex-1 truncate">{f.name}</span>
-                        <button onClick={() => removeFile(i)} className="text-gray-600 hover:text-red-400 transition-colors">
+                      <div key={i} className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                        <Upload size={13} className="text-amber-500 shrink-0" />
+                        <span className="text-gray-600 text-xs flex-1 truncate">{f.name}</span>
+                        <button onClick={() => removeFile(i)} className="text-gray-400 hover:text-red-500 transition-colors">
                           <X size={13} />
                         </button>
                       </div>
@@ -536,15 +536,15 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 bg-red-950/50 border border-red-800/50 rounded-xl px-3 py-2.5">
-                  <AlertCircle size={14} className="text-red-400 shrink-0" />
-                  <p className="text-red-300 text-sm">{error}</p>
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-red-500 shrink-0" />
+                  <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
             </div>
 
             {/* Submit */}
-            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-800">
+            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-100">
               <button
                 onClick={() => void handleSubmit()}
                 disabled={uploading}
@@ -689,24 +689,24 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-950 rounded-t-3xl border-t border-gray-800 flex flex-col"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 flex flex-col"
         style={{ maxHeight: '90vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
-              <LogIn size={15} className="text-emerald-400" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <LogIn size={15} className="text-emerald-600" />
             </div>
-            <h2 className="text-white font-bold text-base">Job Attendance</h2>
+            <h2 className="text-gray-900 font-bold text-base">Job Attendance</h2>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -717,11 +717,11 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-2">Select Job</p>
             {jobsLoading ? (
-              <div className="flex items-center gap-2 text-gray-500 text-sm py-3">
+              <div className="flex items-center gap-2 text-gray-400 text-sm py-3">
                 <Loader2 size={14} className="animate-spin" /> Loading jobs…
               </div>
             ) : jobs.length === 0 ? (
-              <p className="text-gray-500 text-sm py-3">No active jobs found.</p>
+              <p className="text-gray-400 text-sm py-3">No active jobs found.</p>
             ) : (
               <div className="space-y-2">
                 {jobs.map(job => (
@@ -730,14 +730,14 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                     onClick={() => setSelectedJob(job)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
                       selectedJob?.id === job.id
-                        ? 'bg-orange-500/10 border-orange-500/40 text-white'
-                        : 'bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800'
+                        ? 'bg-orange-50 border-orange-300 text-gray-900'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-orange-400' : 'bg-gray-600'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-orange-500' : 'bg-gray-300'}`} />
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{job.name}</p>
-                      {job.jobNumber && <p className="text-xs text-gray-500 font-mono">{job.jobNumber}</p>}
+                      {job.jobNumber && <p className="text-xs text-gray-400 font-mono">{job.jobNumber}</p>}
                     </div>
                   </button>
                 ))}
@@ -750,20 +750,20 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
             <div className="space-y-3">
               {/* Current status */}
               <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 ${
-                statusLoading ? 'bg-gray-900 border-gray-800' :
-                signedIn ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gray-900 border-gray-800'
+                statusLoading ? 'bg-gray-50 border-gray-200' :
+                signedIn ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
               }`}>
                 {statusLoading ? (
-                  <Loader2 size={16} className="animate-spin text-gray-500" />
+                  <Loader2 size={16} className="animate-spin text-gray-400" />
                 ) : (
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${signedIn ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${signedIn ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                 )}
                 <div>
-                  <p className={`text-sm font-bold ${signedIn ? 'text-emerald-400' : 'text-gray-400'}`}>
+                  <p className={`text-sm font-bold ${signedIn ? 'text-emerald-600' : 'text-gray-500'}`}>
                     {statusLoading ? 'Checking…' : signedIn ? 'Signed in' : 'Not signed in'}
                   </p>
                   {status?.lastActionAt && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-400 mt-0.5">
                       Last: {status.lastAction} at {new Date(status.lastActionAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   )}
@@ -773,7 +773,7 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
               {/* Message */}
               {message && (
                 <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold ${
-                  message.ok ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                  message.ok ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-red-50 border border-red-200 text-red-600'
                 }`}>
                   {message.ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
                   {message.text}
@@ -793,7 +793,7 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
                 <button
                   onClick={() => void handleAction('signout')}
                   disabled={actioning || statusLoading || !signedIn}
-                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-40 border border-gray-700 text-gray-300 font-bold py-4 rounded-2xl transition-colors"
+                  className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 disabled:opacity-40 border border-gray-200 text-gray-700 font-bold py-4 rounded-2xl transition-colors"
                 >
                   {actioning ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                   Sign Out
@@ -802,33 +802,33 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
 
               {/* Currently on site — live roster */}
               {status && (
-                <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800">
-                    <Users size={13} className="text-emerald-400" />
-                    <span className="text-xs font-bold text-gray-300">Currently on Site</span>
-                    <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-200">
+                    <Users size={13} className="text-emerald-500" />
+                    <span className="text-xs font-bold text-gray-700">Currently on Site</span>
+                    <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
                       Live
                     </span>
                   </div>
                   {status.currentlyOnSite.length === 0 ? (
-                    <p className="text-xs text-gray-600 text-center py-4">Nobody on site yet.</p>
+                    <p className="text-xs text-gray-400 text-center py-4">Nobody on site yet.</p>
                   ) : (
-                    <div className="divide-y divide-gray-800">
+                    <div className="divide-y divide-gray-200">
                       {status.currentlyOnSite.map((p) => (
                         <div key={p.user_id} className="flex items-center gap-3 px-4 py-2.5">
-                          <div className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                            <User size={12} className="text-emerald-400" />
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <User size={12} className="text-emerald-600" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
                               {p.user_name ?? p.user_email ?? 'Unknown'}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-400">
                               {new Date(p.signed_in_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          <span className="text-xs font-bold text-emerald-400">On site</span>
+                          <span className="text-xs font-bold text-emerald-600">On site</span>
                         </div>
                       ))}
                     </div>
@@ -911,26 +911,26 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full bg-gray-900 rounded-t-3xl border-t border-gray-800 max-h-[92vh] overflow-hidden flex flex-col"
+        className="w-full bg-white rounded-t-3xl border-t border-gray-200 max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-700" />
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <ClipboardCheck size={16} className="text-orange-400" />
+            <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
+              <ClipboardCheck size={16} className="text-orange-500" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-base">Daily Prestart</h2>
-              <p className="text-gray-500 text-xs">{vehicleName}</p>
+              <h2 className="text-gray-900 font-bold text-base">Daily Prestart</h2>
+              <p className="text-gray-400 text-xs">{vehicleName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white p-1">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
             <X size={18} />
           </button>
         </div>
@@ -938,10 +938,10 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
         {/* Done state */}
         {done ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-12">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-emerald-400" />
+            <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+              <CheckCircle2 size={32} className="text-emerald-500" />
             </div>
-            <p className="text-white font-bold text-lg">Prestart Complete</p>
+            <p className="text-gray-900 font-bold text-lg">Prestart Complete</p>
             <p className="text-gray-400 text-sm">Logged successfully</p>
           </div>
         ) : (
@@ -951,7 +951,7 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
 
               {/* KM / Hours */}
               <div>
-                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
                   Current KM / Hours (optional)
                 </label>
                 <input
@@ -960,13 +960,13 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
                   value={form.kmHours}
                   onChange={e => setForm(f => ({ ...f, kmHours: e.target.value }))}
                   placeholder="e.g. 45230"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400"
                 />
               </div>
 
               {/* Safe to operate */}
               <div>
-                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
                   Is the vehicle safe to operate?
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -975,8 +975,8 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
                     onClick={() => setForm(f => ({ ...f, safeToOperate: true, issueNeedsAttention: false }))}
                     className={`flex items-center justify-center gap-2 rounded-xl py-3 border font-semibold text-sm transition-colors ${
                       form.safeToOperate
-                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                        ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                        : 'bg-gray-100 border-gray-200 text-gray-500'
                     }`}
                   >
                     <CheckCircle2 size={16} />
@@ -987,8 +987,8 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
                     onClick={() => setForm(f => ({ ...f, safeToOperate: false, issueNeedsAttention: true }))}
                     className={`flex items-center justify-center gap-2 rounded-xl py-3 border font-semibold text-sm transition-colors ${
                       !form.safeToOperate
-                        ? 'bg-red-500/10 border-red-500/50 text-red-400'
-                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                        ? 'bg-red-100 border-red-300 text-red-700'
+                        : 'bg-gray-100 border-gray-200 text-gray-500'
                     }`}
                   >
                     <XCircle size={16} />
@@ -1000,7 +1000,7 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
               {/* Issue flag */}
               {form.safeToOperate && (
                 <div>
-                  <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                  <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
                     Any issues to flag?
                   </label>
                   <button
@@ -1008,8 +1008,8 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
                     onClick={() => setForm(f => ({ ...f, issueNeedsAttention: !f.issueNeedsAttention }))}
                     className={`flex items-center gap-2.5 w-full rounded-xl px-4 py-3 border text-sm font-semibold transition-colors ${
                       form.issueNeedsAttention
-                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-400'
-                        : 'bg-gray-800 border-gray-700 text-gray-400'
+                        ? 'bg-amber-100 border-amber-300 text-amber-700'
+                        : 'bg-gray-100 border-gray-200 text-gray-500'
                     }`}
                   >
                     <AlertTriangle size={16} />
@@ -1021,22 +1021,22 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
               {/* Issue comment */}
               {form.issueNeedsAttention && (
                 <div>
-                  <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
-                    Describe the issue <span className="text-red-400">*</span>
+                  <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
+                    Describe the issue <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={form.issueComment}
                     onChange={e => setForm(f => ({ ...f, issueComment: e.target.value }))}
                     placeholder="What's the issue?"
                     rows={3}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400 resize-none"
                   />
                 </div>
               )}
 
               {/* Notes */}
               <div>
-                <label className="text-gray-400 text-xs font-semibold uppercase tracking-wide block mb-2">
+                <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
                   Notes (optional)
                 </label>
                 <textarea
@@ -1044,21 +1044,21 @@ function PrestartSheet({ vehicleId, vehicleName, onClose, onDone }: PrestartShee
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   placeholder="Any other notes…"
                   rows={2}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400 resize-none"
                 />
               </div>
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 bg-red-950/50 border border-red-800/50 rounded-xl px-3 py-2.5">
-                  <AlertCircle size={14} className="text-red-400 shrink-0" />
-                  <p className="text-red-300 text-sm">{error}</p>
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-red-500 shrink-0" />
+                  <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
             </div>
 
             {/* Submit */}
-            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-800">
+            <div className="px-5 pb-8 pt-3 shrink-0 border-t border-gray-100">
               <button
                 onClick={() => void handleSubmit()}
                 disabled={saving}
@@ -1197,33 +1197,31 @@ export default function DriverPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* Full-screen dark shell — no sidebar on mobile driver view */}
-      <div className="min-h-screen bg-gray-950 flex flex-col">
+      {/* Full-screen light shell — no sidebar on mobile driver view */}
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         <h1 className="sr-only">Driver App — IWILLBUILD</h1>
 
         {/* ── Top bar ─────────────────────────────────────────────────────── */}
-        <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
           <div className="flex items-center gap-2.5">
             <Link
-              to="/dashboard"
-              className="w-8 h-8 rounded-xl bg-gray-800 hover:bg-gray-700 active:bg-gray-600 flex items-center justify-center transition-colors shrink-0"
-              aria-label="Back to dashboard"
+              to="/home"
+              className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center transition-colors shrink-0"
+              aria-label="Back to home"
             >
-              <ChevronRight size={16} className="text-gray-400 rotate-180" />
+              <ChevronRight size={16} className="text-gray-500 rotate-180" />
             </Link>
             <div className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center">
               <span className="text-white font-black text-xs">IW</span>
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-tight">Driver</p>
-              <p className="text-gray-500 text-xs">IWILLBUILD</p>
+              <p className="text-gray-900 font-bold text-sm leading-tight">Driver</p>
+              <p className="text-gray-400 text-xs">IWILLBUILD</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* GPS pill — always visible */}
             <DriverGpsStatus variant="pill" active={sessionActive} />
-            {/* Portal link */}
-            <Link to="/dashboard" className="text-gray-500 hover:text-gray-300 p-1">
+            <Link to="/home" className="text-gray-400 hover:text-gray-600 p-1">
               <LogOut size={16} />
             </Link>
           </div>
@@ -1236,44 +1234,44 @@ export default function DriverPage() {
             {/* ── Session card ─────────────────────────────────────────────── */}
             <div className={`rounded-2xl border overflow-hidden transition-colors ${
               sessionActive
-                ? 'bg-orange-950/30 border-orange-800/50'
-                : 'bg-gray-900 border-gray-800'
-            }`}>
+                ? 'bg-orange-50 border-orange-200'
+                : 'bg-white border-gray-200'
+            }`} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
               {/* Session header */}
               <div className="px-5 pt-5 pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Truck size={14} className={sessionActive ? 'text-orange-400' : 'text-gray-500'} />
-                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      <Truck size={14} className={sessionActive ? 'text-orange-500' : 'text-gray-400'} />
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {sessionActive ? 'Active Session' : 'No Active Session'}
                       </span>
                       {sessionActive && (
                         <span className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-                          <span className="text-orange-400 text-xs font-semibold">LIVE</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                          <span className="text-orange-500 text-xs font-semibold">LIVE</span>
                         </span>
                       )}
                     </div>
 
                     {sessionActive ? (
                       <>
-                        <h2 className="text-white font-black text-xl leading-tight">
+                        <h2 className="text-gray-900 font-black text-xl leading-tight">
                           {session.asset_name}
                         </h2>
-                        <p className="text-gray-400 text-sm mt-0.5">{session.driver_name}</p>
+                        <p className="text-gray-500 text-sm mt-0.5">{session.driver_name}</p>
                       </>
                     ) : (
-                      <h2 className="text-gray-300 font-bold text-lg">Ready to drive?</h2>
+                      <h2 className="text-gray-700 font-bold text-lg">Ready to drive?</h2>
                     )}
                   </div>
 
                   {/* Elapsed time badge */}
                   {sessionActive && (
-                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl px-3 py-2 text-center shrink-0">
-                      <p className="text-orange-300 font-black text-lg leading-none tabular-nums">{elapsed}</p>
-                      <p className="text-orange-500/70 text-xs mt-0.5">elapsed</p>
+                    <div className="bg-orange-100 border border-orange-200 rounded-xl px-3 py-2 text-center shrink-0">
+                      <p className="text-orange-600 font-black text-lg leading-none tabular-nums">{elapsed}</p>
+                      <p className="text-orange-400 text-xs mt-0.5">elapsed</p>
                     </div>
                   )}
                 </div>
@@ -1281,13 +1279,13 @@ export default function DriverPage() {
                 {/* Session stats row */}
                 {sessionActive && (
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-gray-400">
+                    <div className="flex items-center gap-1.5 text-gray-500">
                       <Clock size={12} />
                       <span className="text-xs">
                         Started {new Date(session.start_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane' })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-gray-400">
+                    <div className="flex items-center gap-1.5 text-gray-500">
                       <MapPin size={12} />
                       <span className="text-xs">GPS tracking active</span>
                     </div>
@@ -1304,10 +1302,10 @@ export default function DriverPage() {
                     exit={{ opacity: 0, height: 0 }}
                     className="mx-5 mb-3"
                   >
-                    <div className="flex items-center gap-2 bg-red-950/50 border border-red-800/50 rounded-xl px-3 py-2.5">
-                      <AlertCircle size={14} className="text-red-400 shrink-0" />
-                      <p className="text-red-300 text-sm flex-1">{actionError}</p>
-                      <button onClick={() => setActionError('')} className="text-red-500 hover:text-red-300">
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                      <AlertCircle size={14} className="text-red-500 shrink-0" />
+                      <p className="text-red-600 text-sm flex-1">{actionError}</p>
+                      <button onClick={() => setActionError('')} className="text-red-400 hover:text-red-600">
                         <X size={14} />
                       </button>
                     </div>
@@ -1317,11 +1315,11 @@ export default function DriverPage() {
 
               {/* Stale session warning */}
               {sessionActive && elapsedHours >= 8 && (
-                <div className="mx-5 mb-3 flex items-start gap-2 bg-amber-950/50 border border-amber-700/50 rounded-xl px-3 py-2.5">
-                  <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <div className="mx-5 mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                  <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-amber-300 text-xs font-semibold">Session looks stale</p>
-                    <p className="text-amber-400/70 text-xs mt-0.5">This session has been running for {elapsed}. If you forgot to end it, close it now.</p>
+                    <p className="text-amber-700 text-xs font-semibold">Session looks stale</p>
+                    <p className="text-amber-600 text-xs mt-0.5">This session has been running for {elapsed}. If you forgot to end it, close it now.</p>
                   </div>
                 </div>
               )}
@@ -1331,7 +1329,7 @@ export default function DriverPage() {
                 {sessionActive ? (
                   <button
                     onClick={() => setShowStopConfirm(true)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/40 text-red-400 font-bold py-4 rounded-2xl transition-colors"
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 text-red-600 font-bold py-4 rounded-2xl transition-colors"
                   >
                     <Square size={18} />
                     End Drive Session
@@ -1344,7 +1342,7 @@ export default function DriverPage() {
                       setShowPicker(true);
                     }}
                     disabled={starting}
-                    className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-60"
+                    className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-orange-200 disabled:opacity-60"
                   >
                     {starting ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -1359,19 +1357,17 @@ export default function DriverPage() {
                 <button
                   onClick={async () => {
                     if (sessionActive && session) {
-                      // Use the current session's vehicle directly
                       setPrestartVehicle({ id: session.fleet_asset_id, name: session.asset_name } as Vehicle);
                       setShowPrestart(true);
                     } else {
-                      // Pick a vehicle first, then open prestart
                       setPickerMode('prestart');
                       await loadVehicles();
                       setShowPicker(true);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2.5 bg-gray-800 hover:bg-gray-750 active:bg-gray-700 border border-gray-700 text-gray-300 font-semibold py-3.5 rounded-2xl transition-colors"
+                  className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-200 text-gray-700 font-semibold py-3.5 rounded-2xl transition-colors"
                 >
-                  <ClipboardCheck size={17} className="text-orange-400" />
+                  <ClipboardCheck size={17} className="text-orange-500" />
                   Start Prestart
                 </button>
               </div>
@@ -1393,53 +1389,57 @@ export default function DriverPage() {
 
             {/* ── Quick actions ─────────────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">Quick Access</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 px-1">Quick Access</p>
 
               {/* Dashboard — full-width hero button */}
               <Link
-                to="/dashboard"
-                className="flex items-center gap-4 bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 mb-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                to="/home"
+                className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-md shadow-orange-200">
                   <LayoutDashboard size={22} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-bold text-base leading-tight">Dashboard</p>
-                  <p className="text-gray-500 text-xs mt-0.5">Portal overview &amp; activity</p>
+                  <p className="text-gray-900 font-bold text-base leading-tight">Home</p>
+                  <p className="text-gray-400 text-xs mt-0.5">Portal overview &amp; activity</p>
                 </div>
-                <ChevronRight size={16} className="text-gray-600 shrink-0" />
+                <ChevronRight size={16} className="text-gray-300 shrink-0" />
               </Link>
 
               {/* Tools row — Builders Calc + Take-off Pad + Job Cost */}
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <button
                   onClick={() => setShowBuildersCalc(true)}
-                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2.5 bg-white border border-gray-200 rounded-2xl py-5 px-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
-                    <Calculator size={20} className="text-blue-400" />
+                  <div className="w-11 h-11 rounded-2xl bg-blue-500 flex items-center justify-center">
+                    <Calculator size={20} className="text-white" />
                   </div>
-                  <span className="text-white text-xs font-bold text-center leading-tight">Builders Calc</span>
+                  <span className="text-gray-700 text-xs font-bold text-center leading-tight">Builders Calc</span>
                 </button>
 
                 <button
                   onClick={() => setShowTakeoffPad(true)}
-                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2.5 bg-white border border-gray-200 rounded-2xl py-5 px-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
-                    <Layers size={20} className="text-violet-400" />
+                  <div className="w-11 h-11 rounded-2xl bg-violet-500 flex items-center justify-center">
+                    <Layers size={20} className="text-white" />
                   </div>
-                  <span className="text-white text-xs font-bold text-center leading-tight">Take-off Pad</span>
+                  <span className="text-gray-700 text-xs font-bold text-center leading-tight">Take-off Pad</span>
                 </button>
 
                 <button
                   onClick={() => setShowJobCost(true)}
-                  className="flex flex-col items-center gap-2.5 bg-gray-900 border border-gray-800 rounded-2xl py-5 px-3 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2.5 bg-white border border-gray-200 rounded-2xl py-5 px-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
-                    <Receipt size={20} className="text-amber-400" />
+                  <div className="w-11 h-11 rounded-2xl bg-amber-500 flex items-center justify-center">
+                    <Receipt size={20} className="text-white" />
                   </div>
-                  <span className="text-white text-xs font-bold text-center leading-tight">Job Cost</span>
+                  <span className="text-gray-700 text-xs font-bold text-center leading-tight">Job Cost</span>
                 </button>
               </div>
 
@@ -1447,32 +1447,32 @@ export default function DriverPage() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setShowAttendance(true)}
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <LogIn size={16} className="text-emerald-400" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center">
+                    <LogIn size={16} className="text-white" />
                   </div>
-                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Attendance</span>
+                  <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Attendance</span>
                 </button>
 
                 <Link
                   to="/safety"
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                    <HardHat size={16} className="text-orange-400" />
+                  <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
+                    <HardHat size={16} className="text-white" />
                   </div>
-                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Safety</span>
+                  <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Safety</span>
                 </Link>
 
                 <Link
                   to="/fleet"
-                  className="flex flex-col items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl py-3.5 px-2 hover:bg-gray-800 active:bg-gray-750 transition-colors"
+                  className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center">
-                    <Truck size={16} className="text-sky-400" />
+                  <div className="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center">
+                    <Truck size={16} className="text-white" />
                   </div>
-                  <span className="text-gray-300 text-xs font-semibold text-center leading-tight">Fleet</span>
+                  <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Fleet</span>
                 </Link>
               </div>
             </div>

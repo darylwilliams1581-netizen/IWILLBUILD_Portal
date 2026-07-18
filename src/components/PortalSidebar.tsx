@@ -135,21 +135,21 @@ function SidebarUserStrip({
   // Once me or sessionUser is available, always render the real strip.
   if (!me && !sessionUser) {
     return (
-      <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5 opacity-40">
-        <div className="w-7 h-7 rounded-lg bg-white/10 shrink-0" />
-        <div className="min-w-0 flex-1"><div className="h-2.5 w-20 bg-white/10 rounded" /></div>
+      <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5 opacity-40">
+        <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0" />
+        <div className="min-w-0 flex-1"><div className="h-2.5 w-20 bg-gray-200 rounded" /></div>
       </div>
     );
   }
 
   return (
-    <div className="mt-1 px-3 py-2.5 rounded-lg bg-white/5 flex items-center gap-2.5">
+    <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5">
       <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
         {initial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
-        <div className="text-[10px] text-white/35 truncate">{displayEmail}</div>
+        <div className="text-xs font-semibold text-gray-800 truncate">{displayName || 'User'}</div>
+        <div className="text-[10px] text-gray-400 truncate">{displayEmail}</div>
       </div>
       <NotificationBell collapsed={collapsed} />
     </div>
@@ -213,13 +213,13 @@ function SidebarContent({
 
   const linkClass = (active: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-      active ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'
+      active ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
     }`;
 
   return (
     <>
       {/* ── Logo / header ── */}
-      <div className="flex items-center h-16 px-4 border-b border-white/10 shrink-0 gap-2">
+      <div className="flex items-center h-16 px-4 border-b border-gray-200 shrink-0 gap-2">
         {collapsed ? (
           <img
             src="/assets/logo.png"
@@ -243,15 +243,14 @@ function SidebarContent({
           </button>
         )}
         {onClose && (
-          <button onClick={onClose} className="ml-auto p-1 text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors">
             <X size={18} />
           </button>
         )}
       </div>
 
       {/* ── Main nav ── */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
-        {navEntries.map((entry, idx) => {
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((entry, idx) => {
           // ── Group dropdown ──
           if ('group' in entry) {
             const { group } = entry;
@@ -269,7 +268,7 @@ function SidebarContent({
                   onClick={() => !collapsed && toggleGroup(group.label)}
                   title={collapsed ? group.label : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
-                    anyActive && collapsed ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/8 hover:text-white'
+                    anyActive && collapsed ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
                   <GroupIcon size={17} className="shrink-0" />
@@ -283,7 +282,7 @@ function SidebarContent({
                     </>
                   )}
                   {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
                       {group.label}
                     </div>
                   )}
@@ -298,7 +297,7 @@ function SidebarContent({
                       transition={{ duration: 0.18, ease: 'easeInOut' as const }}
                       className="overflow-hidden"
                     >
-                      <div className="ml-4 pl-3 border-l border-white/10 flex flex-col gap-0.5 py-0.5">
+                      <div className="ml-4 pl-3 border-l border-gray-200 flex flex-col gap-0.5 py-0.5">
                         {visibleItems.map(item => {
                           const Icon = item.icon;
                           const active = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
@@ -338,14 +337,14 @@ function SidebarContent({
               title={collapsed ? item.label : undefined}
               className={
                 isDazza
-                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-300 hover:bg-white/8 hover:text-violet-200'}`
+                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
                   : linkClass(active)
               }
             >
               <Icon size={17} className="shrink-0" />
               {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
               {collapsed && (
-                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
                   {item.label}
                 </div>
               )}
@@ -356,11 +355,11 @@ function SidebarContent({
         {/* ── Admin group ── */}
         <div className="mt-3">
           {!collapsed && (
-            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-white/25 select-none">
+            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 select-none">
               Manage
             </p>
           )}
-          {collapsed && <div className="mx-3 border-t border-white/10 mb-2" />}
+          {collapsed && <div className="mx-3 border-t border-gray-200 mb-2" />}
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
@@ -377,14 +376,14 @@ function SidebarContent({
                   title={collapsed ? item.label : undefined}
                   className={
                     isDazza
-                      ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-300 hover:bg-white/8 hover:text-violet-200'}`
+                      ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
                       : linkClass(active)
                   }
                 >
                   <Icon size={17} className="shrink-0" />
                   {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
                   {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
                       {item.label}
                     </div>
                   )}
@@ -403,12 +402,12 @@ function SidebarContent({
                 to="/owner-console"
                 onClick={onClose}
                 title={collapsed ? 'Developer Console' : undefined}
-                className={`${linkClass(active)} border border-orange-500/30`}
+                className={`${linkClass(active)} border border-orange-300`}
               >
-                <ShieldCheck size={17} className="shrink-0 text-orange-400" />
-                {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-300">Developer Console</span>}
+                <ShieldCheck size={17} className="shrink-0 text-orange-500" />
+                {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-600">Developer Console</span>}
                 {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
                     Developer Console
                   </div>
                 )}
@@ -419,19 +418,19 @@ function SidebarContent({
       </nav>
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-white/10" />
+      <div className="mx-3 border-t border-gray-200" />
 
       {/* ── Bottom strip ── */}
       <div className="py-3 px-2 flex flex-col gap-0.5">
         <button
           onClick={handleLogout}
           title={collapsed ? 'Log out' : undefined}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/40 hover:bg-white/8 hover:text-red-400 transition-colors duration-150 group relative w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150 group relative w-full"
         >
           <LogOut size={17} className="shrink-0" />
           {!collapsed && <span className="text-sm font-semibold">Log out</span>}
           {collapsed && (
-            <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
               Log out
             </div>
           )}
@@ -443,28 +442,28 @@ function SidebarContent({
             to="/billing"
             className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
               subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
-                ? 'bg-red-500/20 hover:bg-red-500/30'
+                ? 'bg-red-50 hover:bg-red-100 border border-red-200'
                 : (subInfo.daysLeft ?? 14) <= 5
-                ? 'bg-amber-500/20 hover:bg-amber-500/30'
-                : 'bg-white/5 hover:bg-white/10'
+                ? 'bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
             }`}
           >
             {subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
-              ? <AlertTriangle size={13} className="text-red-400 shrink-0" />
-              : <CreditCard size={13} className="text-amber-400 shrink-0" />
+              ? <AlertTriangle size={13} className="text-red-500 shrink-0" />
+              : <CreditCard size={13} className="text-amber-500 shrink-0" />
             }
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 {subInfo.status === 'trial_expired' ? (
-                  <p className="text-xs font-bold text-red-300">Trial expired</p>
+                  <p className="text-xs font-bold text-red-600">Trial expired</p>
                 ) : subInfo.status === 'cancelled' ? (
-                  <p className="text-xs font-bold text-red-300">Subscription cancelled</p>
+                  <p className="text-xs font-bold text-red-600">Subscription cancelled</p>
                 ) : subInfo.status === 'past_due' ? (
-                  <p className="text-xs text-red-300 font-bold">Payment past due</p>
+                  <p className="text-xs text-red-600 font-bold">Payment past due</p>
                 ) : (
                   <>
-                    <p className="text-xs font-bold text-amber-300">Free trial</p>
-                    <p className="text-[10px] text-white/40">
+                    <p className="text-xs font-bold text-amber-600">Free trial</p>
+                    <p className="text-[10px] text-gray-500">
                       {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
                     </p>
                   </>
@@ -527,7 +526,7 @@ export default function PortalSidebar() {
       <motion.aside
         animate={{ width: collapsed ? 72 : 240 }}
         transition={{ duration: 0.2, ease: 'easeInOut' as const }}
-        className="relative hidden md:flex flex-col h-screen bg-[#1A1D23] text-white shrink-0 overflow-hidden"
+        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-200 shrink-0 overflow-hidden"
         style={{ minWidth: collapsed ? 72 : 240 }}
       >
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
@@ -544,7 +543,7 @@ export default function PortalSidebar() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 bg-black/60 z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 z-40 md:hidden"
             />
             <motion.aside
               key="drawer"
@@ -552,7 +551,7 @@ export default function PortalSidebar() {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.25, ease: 'easeOut' as const }}
-              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-[#1A1D23] text-white flex flex-col z-50 md:hidden shadow-2xl"
+              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
@@ -611,7 +610,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#1A1D23] border-t border-white/10"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Mobile navigation"
     >
@@ -625,7 +624,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
               to={item.href}
               className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
               style={{
-                color: active ? '#f97316' : 'rgba(255,255,255,0.45)',
+                color: active ? '#f97316' : 'rgba(0,0,0,0.4)',
                 WebkitTapHighlightColor: 'transparent',
               }}
               aria-current={active ? 'page' : undefined}
@@ -656,7 +655,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           onClick={onMoreClick}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
           style={{
-            color: 'rgba(255,255,255,0.45)',
+            color: 'rgba(0,0,0,0.4)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
