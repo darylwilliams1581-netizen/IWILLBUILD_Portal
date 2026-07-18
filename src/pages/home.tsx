@@ -15,6 +15,7 @@ import {
   Map, Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
+  HardHat as HardHatIcon, Navigation,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -810,6 +811,124 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+// ── Active status bar ─────────────────────────────────────────────────────────
+
+interface ActiveStatus {
+  jobSignIn: {
+    jobId: number;
+    jobName: string | null;
+    jobNumber: string | null;
+    signedInAt: string | null;
+  } | null;
+  driving: {
+    sessionId: number;
+    assetName: string | null;
+    assetType: string | null;
+    rego: string | null;
+    startAt: string | null;
+  } | null;
+}
+
+function useActiveStatus(refreshKey: number) {
+  const [status, setStatus] = useState<ActiveStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/me/active-status', { credentials: 'include' })
+      .then(r => r.ok ? r.json() as Promise<ActiveStatus & { ok: boolean }> : null)
+      .then(data => { if (!cancelled && data?.ok) setStatus(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  return status;
+}
+
+function elapsed(isoStr: string | null): string {
+  if (!isoStr) return '';
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+}
+
+function ActiveStatusBar({
+  status,
+  onJobPress,
+  onDrivePress,
+}: {
+  status: ActiveStatus | null;
+  onJobPress: () => void;
+  onDrivePress: () => void;
+}) {
+  const hasJob   = !!status?.jobSignIn;
+  const hasDrive = !!status?.driving;
+
+  if (!hasJob && !hasDrive) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.25 }}
+      className="bg-white border-b border-gray-100 px-4 py-2.5"
+    >
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+        {/* Label */}
+        <span className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest shrink-0 mr-0.5">
+          Active
+        </span>
+
+        {/* Job sign-in pill */}
+        {hasJob && (
+          <button
+            onClick={onJobPress}
+            className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 shrink-0 hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <HardHatIcon size={11} className="text-emerald-600 shrink-0" />
+            <span className="text-emerald-700 text-xs font-semibold truncate max-w-[120px]">
+              {status!.jobSignIn!.jobName ?? `Job #${status!.jobSignIn!.jobId}`}
+            </span>
+            {status!.jobSignIn!.signedInAt && (
+              <span className="text-emerald-500 text-[10px] font-medium shrink-0">
+                {elapsed(status!.jobSignIn!.signedInAt)}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Driving pill */}
+        {hasDrive && (
+          <button
+            onClick={onDrivePress}
+            className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-full px-3 py-1 shrink-0 hover:bg-blue-100 active:bg-blue-200 transition-colors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+            <Navigation size={11} className="text-blue-600 shrink-0" />
+            <span className="text-blue-700 text-xs font-semibold truncate max-w-[120px]">
+              {status!.driving!.assetName ?? 'Vehicle'}
+            </span>
+            {status!.driving!.rego && (
+              <span className="text-blue-400 text-[10px] font-mono shrink-0">
+                {status!.driving!.rego}
+              </span>
+            )}
+            {status!.driving!.startAt && (
+              <span className="text-blue-500 text-[10px] font-medium shrink-0">
+                {elapsed(status!.driving!.startAt)}
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Sign In / Out sheet ───────────────────────────────────────────────────────
 
 interface OnSiteUser {
@@ -1356,6 +1475,8 @@ export default function HomeScreen() {
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
   const [logCostOpen, setLogCostOpen] = useState(false);
   const [signInOutOpen, setSignInOutOpen] = useState(false);
+  const [activeStatusKey, setActiveStatusKey] = useState(0);
+  const activeStatus = useActiveStatus(activeStatusKey);
 
   const name = sessionData?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
@@ -1420,6 +1541,17 @@ export default function HomeScreen() {
         </div>
       </div>
 
+      {/* ── Active status sub-header ── */}
+      <AnimatePresence>
+        {(activeStatus?.jobSignIn || activeStatus?.driving) && (
+          <ActiveStatusBar
+            status={activeStatus}
+            onJobPress={() => setSignInOutOpen(true)}
+            onDrivePress={() => navigate('/driver')}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Scrollable icon grid ── */}
       <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-7">
 
@@ -1480,7 +1612,7 @@ export default function HomeScreen() {
       <DelaysJobPickerSheet open={delaysPickerOpen} onClose={() => setDelaysPickerOpen(false)} />
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />
       <LogCostSheet open={logCostOpen} onClose={() => setLogCostOpen(false)} />
-      <SignInOutSheet open={signInOutOpen} onClose={() => setSignInOutOpen(false)} />
+      <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
     </div>
   );
 }

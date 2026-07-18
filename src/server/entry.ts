@@ -2258,6 +2258,10 @@ app.post("/api/jobs/:id/signout-qr", jobs_id_signout_qr_post_320);
 // Supervisor force sign-out a specific user
 import signoutUserPost from "./api/jobs/[id]/signout-user/POST.js";
 app.post("/api/jobs/:id/signout-user", signoutUserPost);
+
+// Current user active status (job sign-in + drive session)
+import meActiveStatusGet from "./api/me/active-status/GET.js";
+app.get("/api/me/active-status", meActiveStatusGet);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_321);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
