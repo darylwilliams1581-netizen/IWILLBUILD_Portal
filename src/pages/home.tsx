@@ -4,7 +4,7 @@
  * dark text — iOS-style feel, not dark like the drive app.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -14,7 +14,7 @@ import {
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   Map, Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
-  User,
+  User, DollarSign, Loader2, Plus, ImageIcon,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -47,7 +47,7 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Drive',     icon: Car,         href: '/driver',                 bg: 'bg-blue-500',     fg: 'text-white' },
   { label: 'Forms',     icon: FileText,    href: '/studio?tab=forms',       bg: 'bg-purple-500',   fg: 'text-white' },
   { label: 'Notes',     icon: StickyNote,  href: '?panel=notes-picker',     bg: 'bg-yellow-400',   fg: 'text-white' },
-  { label: 'Job Costs', icon: BookOpen,    href: '?panel=costs-picker',     bg: 'bg-emerald-500',  fg: 'text-white' },
+  { label: 'Log Cost',  icon: DollarSign,  href: '?panel=log-cost',         bg: 'bg-emerald-500',  fg: 'text-white' },
   { label: 'Delays',    icon: Clock,       href: '?panel=delays-picker',    bg: 'bg-red-500',      fg: 'text-white' },
   { label: 'Progress',  icon: TrendingUp,  href: '/jobs?filter=inprogress', bg: 'bg-cyan-500',     fg: 'text-white' },
 ];
@@ -60,6 +60,7 @@ const ESTIMATING_ICONS: AppIcon[] = [
 
 const ADMIN_ICONS: AppIcon[] = [
   { label: 'Jobs',      icon: HardHat,     href: '/jobs',                  bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Ledger',    icon: BookOpen,    href: '?panel=costs-picker',    bg: 'bg-emerald-600',  fg: 'text-white' },
   { label: 'Scheduler', icon: CalendarDays,href: '/scheduler',             bg: 'bg-blue-600',     fg: 'text-white' },
   { label: 'Fleet',     icon: Truck,       href: '/fleet',                 bg: 'bg-slate-600',    fg: 'text-white' },
   { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
@@ -489,6 +490,325 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
   );
 }
 
+// ── Log Cost sheet (worker receipt capture) ───────────────────────────────────
+
+const COST_TYPES = [
+  { value: 'MATERIAL',      label: 'Material' },
+  { value: 'LABOUR',        label: 'Labour' },
+  { value: 'PLANT',         label: 'Plant / Equipment' },
+  { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
+  { value: 'RECEIPT',       label: 'Receipt / Purchase' },
+  { value: 'OTHER',         label: 'Other' },
+];
+
+function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
+
+  // Form fields
+  const [eventType, setEventType] = useState('MATERIAL');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reference, setReference] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load jobs on open
+  useEffect(() => {
+    if (!open) return;
+    setJobsLoading(true);
+    fetch('/api/jobs?status=active&limit=100', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
+        const list = Array.isArray(data) ? data : (data.jobs ?? []);
+        setJobs(list);
+      })
+      .catch(() => setJobs([]))
+      .finally(() => setJobsLoading(false));
+  }, [open]);
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setSelectedJob(null);
+      setEventType('MATERIAL');
+      setDescription('');
+      setAmount('');
+      setEntryDate(new Date().toISOString().slice(0, 10));
+      setReference('');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setSaved(false);
+      setError('');
+    }
+  }, [open]);
+
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setPhotoFile(f);
+    const reader = new FileReader();
+    reader.onload = ev => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(f);
+  }
+
+  async function handleSubmit() {
+    if (!selectedJob) { setError('Please select a job'); return; }
+    if (!description.trim()) { setError('Description is required'); return; }
+    if (!amount || isNaN(parseFloat(amount))) { setError('Enter a valid amount'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('eventType', eventType);
+      fd.append('description', description.trim());
+      fd.append('qty', '1');
+      fd.append('rate', String(parseFloat(amount)));
+      fd.append('entryDate', entryDate);
+      fd.append('reference', reference.trim());
+      fd.append('status', 'pending');
+      fd.append('sourceModule', 'worker-log');
+      if (photoFile) fd.append('photo', photoFile);
+
+      const res = await fetch(`/api/jobs/${selectedJob.id}/ledger`, {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? 'Save failed');
+      }
+      setSaved(true);
+      setTimeout(() => onClose(), 1400);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <DollarSign size={15} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-gray-900 font-bold text-base">Log a Cost</h2>
+                  <p className="text-gray-400 text-xs">Snap a receipt or enter manually</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+
+              {/* Success state */}
+              {saved ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <DollarSign size={24} className="text-emerald-600" />
+                  </div>
+                  <p className="text-gray-900 font-bold text-base">Cost logged!</p>
+                  <p className="text-gray-400 text-sm text-center">Submitted for admin review</p>
+                </div>
+              ) : (
+                <>
+                  {/* Step 1 — Job picker */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Job</p>
+                    {jobsLoading ? (
+                      <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                        <Loader2 size={14} className="animate-spin" /> Loading jobs…
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                        {jobs.map(job => (
+                          <button
+                            key={job.id}
+                            onClick={() => setSelectedJob(job)}
+                            className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left border transition-colors ${
+                              selectedJob?.id === job.id
+                                ? 'bg-emerald-50 border-emerald-300'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
+                              {job.jobNumber && <p className="text-gray-400 text-xs font-mono">{job.jobNumber}</p>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 2 — Cost details (shown once job selected) */}
+                  {selectedJob && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-3"
+                    >
+                      {/* Receipt photo */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Receipt Photo <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
+                        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhoto} />
+                        {photoPreview ? (
+                          <div className="relative w-full h-36 rounded-xl overflow-hidden border border-gray-200">
+                            <img src={photoPreview} alt="Receipt" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 transition-colors"
+                          >
+                            <ImageIcon size={20} />
+                            <span className="text-xs font-medium">Tap to attach receipt</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Type */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Cost Type</p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {COST_TYPES.map(t => (
+                            <button
+                              key={t.value}
+                              onClick={() => setEventType(t.value)}
+                              className={`rounded-xl px-2 py-2 text-xs font-semibold border transition-colors ${
+                                eventType === t.value
+                                  ? 'bg-emerald-500 text-white border-emerald-500'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                              }`}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Description</p>
+                        <input
+                          type="text"
+                          value={description}
+                          onChange={e => setDescription(e.target.value)}
+                          placeholder="What was purchased / done?"
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                        />
+                      </div>
+
+                      {/* Amount + Date row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Amount (ex GST)</p>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={amount}
+                              onChange={e => setAmount(e.target.value)}
+                              placeholder="0.00"
+                              className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-7 pr-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Date</p>
+                          <input
+                            type="date"
+                            value={entryDate}
+                            onChange={e => setEntryDate(e.target.value)}
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reference */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Reference / Invoice # <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
+                        <input
+                          type="text"
+                          value={reference}
+                          onChange={e => setReference(e.target.value)}
+                          placeholder="e.g. INV-1234"
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                        />
+                      </div>
+
+                      {/* Error */}
+                      {error && (
+                        <p className="text-red-500 text-xs font-medium bg-red-50 rounded-xl px-3 py-2">{error}</p>
+                      )}
+                    </motion.div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer CTA */}
+            {!saved && selectedJob && (
+              <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
+                <button
+                  onClick={() => void handleSubmit()}
+                  disabled={saving}
+                  className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  {saving ? 'Saving…' : 'Submit Cost'}
+                </button>
+                <p className="text-center text-gray-400 text-xs mt-2">Submitted as pending — admin will review</p>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── Costs job picker sheet ────────────────────────────────────────────────────
 
 function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -680,6 +1000,7 @@ export default function HomeScreen() {
   const [notesPickerOpen, setNotesPickerOpen] = useState(false);
   const [delaysPickerOpen, setDelaysPickerOpen] = useState(false);
   const [costsPickerOpen, setCostsPickerOpen] = useState(false);
+  const [logCostOpen, setLogCostOpen] = useState(false);
 
   const name = sessionData?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
@@ -696,6 +1017,7 @@ export default function HomeScreen() {
     if (href === '?panel=notes-picker') { setNotesPickerOpen(true); return; }
     if (href === '?panel=delays-picker') { setDelaysPickerOpen(true); return; }
     if (href === '?panel=costs-picker') { setCostsPickerOpen(true); return; }
+    if (href === '?panel=log-cost') { setLogCostOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     navigate(href);
   }
@@ -801,6 +1123,7 @@ export default function HomeScreen() {
       <NotesJobPickerSheet open={notesPickerOpen} onClose={() => setNotesPickerOpen(false)} />
       <DelaysJobPickerSheet open={delaysPickerOpen} onClose={() => setDelaysPickerOpen(false)} />
       <CostsJobPickerSheet open={costsPickerOpen} onClose={() => setCostsPickerOpen(false)} />
+      <LogCostSheet open={logCostOpen} onClose={() => setLogCostOpen(false)} />
     </div>
   );
 }
