@@ -1,4 +1,10 @@
-import { driver } from 'virtual:content';
+const COST_CATEGORIES = [
+  { value: 'materials',   label: 'Materials' },
+  { value: 'labour',      label: 'Labour' },
+  { value: 'equipment',   label: 'Equipment' },
+  { value: 'subcontract', label: 'Subcontract' },
+  { value: 'other',       label: 'Other' },
+];
 /**
  * /driver — Drive Session Screen
  * ─────────────────────────────────────────────────────────────────────────────
@@ -323,7 +329,7 @@ function JobCostSheet({ onClose }: { onClose: () => void }) {
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Category</p>
                 <div className="flex flex-wrap gap-2">
-                  {driver.COST_CATEGORIES.map(c => (
+                  {COST_CATEGORIES.map(c => (
                     <button key={c.value} onClick={() => setCategory(c.value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${category === c.value ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'}`}>{c.label}</button>
                   ))}
                 </div>
