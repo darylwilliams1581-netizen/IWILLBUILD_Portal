@@ -47,6 +47,8 @@ interface Totals {
 
 interface Props {
   jobId: number;
+  /** Called once on mount with a function the parent can invoke to open Add Entry modal */
+  onRegisterAddEntry?: (fn: () => void) => void;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -367,7 +369,7 @@ function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntryModalPr
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function JobCosts({ jobId }: Props) {
+export default function JobCosts({ jobId, onRegisterAddEntry }: Props) {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(true);
@@ -380,6 +382,11 @@ export default function JobCosts({ jobId }: Props) {
   const [editEntry, setEditEntry] = useState<LedgerEntry | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [approving, setApproving] = useState<number | null>(null);
+
+  // Register the open-add-entry fn with the parent page header
+  useEffect(() => {
+    onRegisterAddEntry?.(() => setShowAdd(true));
+  }, [onRegisterAddEntry]);
 
   const load = useCallback(async () => {
     try {
