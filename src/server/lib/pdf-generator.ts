@@ -842,7 +842,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     if (i % 2 === 0) drawRect(page, MARGIN, y - rowH + 14, PAGE_W - MARGIN * 2, rowH, LIGHT);
 
     descLines.forEach((dl, di) => drawText(page, dl, ICOL.desc.x, y + 1 - di * 11, regularFont, 7, BLACK));
-    drawText(page, String(ln.quantity ?? ''),                    ICOL.qty.x,  y + 1, regularFont, 7, BLACK);
+    const qtyVal = parseFloat(String(ln.quantity ?? '0'));
+    const qtyStr = isNaN(qtyVal) ? String(ln.quantity ?? '') : qtyVal.toFixed(2);
+    drawText(page, qtyStr,                                       ICOL.qty.x,  y + 1, regularFont, 7, BLACK);
     drawText(page, fmtMoney(Number(ln.unit_price ?? 0)),         ICOL.unit.x, y + 1, regularFont, 7, BLACK);
     drawText(page, fmtMoney(Number(ln.gst_amount ?? 0)),         ICOL.gst.x,  y + 1, regularFont, 7, MUTED);
     drawText(page, fmtMoney(Number(ln.amount ?? 0)),             ICOL.amt.x,  y + 1, boldFont,    7, BLACK);

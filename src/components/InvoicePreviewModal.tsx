@@ -39,14 +39,19 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
 
   const inv = invoice as Record<string, unknown>;
 
-  const lines = (invoice.lines ?? []).map((l) => `
+  const lines = (invoice.lines ?? []).map((l) => {
+    const qtyNum = parseFloat(String(l.quantity ?? '0'));
+    const qtyDisplay = isNaN(qtyNum) ? escapeHtml(String(l.quantity)) : qtyNum.toFixed(2);
+    const unitDisplay = l.unit ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">${escapeHtml(String(l.unit))}</div>` : '';
+    return `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#1e293b;">${escapeHtml(l.description).replace(/\n/g, '<br/>')}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:center;color:#475569;">${escapeHtml(l.quantity)}${l.unit ? ' ' + escapeHtml(l.unit) : ''}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:center;color:#475569;">${qtyDisplay}${unitDisplay}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;color:#475569;">${fmtMoney(l.rate)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;font-weight:600;color:#1e293b;">${fmtMoney(l.amount)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
