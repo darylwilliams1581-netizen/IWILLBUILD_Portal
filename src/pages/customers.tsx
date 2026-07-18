@@ -3,8 +3,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Plus, Search, Loader2, X, Check, AlertCircle,
-  Phone, Mail, MapPin, Building2, Archive, ArchiveRestore,
-  ChevronRight, User, FileText, Briefcase, Tag, MessageSquare, Send,
+  Phone, Mail, MapPin, Building2,
+  ChevronRight, FileText, Briefcase, Tag, MessageSquare, Send,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -285,6 +285,8 @@ function CustomerFormModal({
 
 // ── Customer card ─────────────────────────────────────────────────────────────
 
+// ── Customer card ─────────────────────────────────────────────────────────────
+
 function CustomerCard({
   customer,
   onEdit,
@@ -299,9 +301,9 @@ function CustomerCard({
   const isArchived = customer.status === 'archived';
   const phone = customer.mobile || customer.phone;
   const email = customer.email;
+  const [expanded, setExpanded] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
 
-  // Detect mobile — native sms: link works; desktop uses Twilio modal
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
   function handleSms(e: React.MouseEvent) {
@@ -314,101 +316,142 @@ function CustomerCard({
   }
 
   return (
-    <div className={`bg-white border rounded-xl p-3 transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200 hover:border-primary/30 hover:shadow-sm'}`}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          {/* Avatar */}
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-primary font-black text-xs">{customer.name[0].toUpperCase()}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-bold text-sm text-slate-800 truncate">{customer.name}</h3>
-              {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
-                  {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
-                </span>
-              )}
-              {isArchived && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">Archived</span>
-              )}
+    <>
+      <div className={`bg-white border rounded-xl overflow-hidden transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
+        {/* Row — always visible */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors"
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-primary font-black text-xs">{customer.name[0].toUpperCase()}</span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold text-sm text-slate-800 truncate block">{customer.name}</span>
               {customer.contact_person && (
-                <span className="flex items-center gap-1 text-[11px] text-slate-400"><User size={9} />{customer.contact_person}</span>
-              )}
-              {phone && (
-                <span className="flex items-center gap-1 text-[11px] text-slate-400"><Phone size={9} />{phone}</span>
-              )}
-              {typeof customer.job_count === 'number' && customer.job_count > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded-full">
-                  <Briefcase size={8} />{customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
-                </span>
+                <span className="text-[11px] text-slate-400 truncate block">{customer.contact_person}</span>
               )}
             </div>
           </div>
-        </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {(customer as Customer & { stakeholder_type?: string }).stakeholder_type && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 hidden sm:inline">
+                {(customer as Customer & { stakeholder_type?: string }).stakeholder_type}
+              </span>
+            )}
+            {isArchived && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">Archived</span>
+            )}
+            <ChevronRight size={15} className={`text-slate-300 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+          </div>
+        </button>
 
-        {/* Row actions */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Link
-            to={`/customers/${customer.id}`}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
-            title="View details"
-          >
-            <ChevronRight size={14} />
-          </Link>
-          <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
-            <Building2 size={13} />
-          </button>
-          <button
-            onClick={onArchive}
-            className={`p-1.5 rounded-lg transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-            title={isArchived ? 'Unarchive' : 'Archive'}
-          >
-            {isArchived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
-          </button>
-        </div>
+        {/* Expanded detail */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeInOut' as const }}
+              className="overflow-hidden"
+            >
+              <div className="border-t border-slate-100 px-4 py-3 flex flex-col gap-3">
+                {/* Detail rows */}
+                <div className="flex flex-col gap-1.5">
+                  {phone && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Phone size={11} className="text-slate-300 shrink-0" />{phone}
+                    </div>
+                  )}
+                  {email && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Mail size={11} className="text-slate-300 shrink-0" />{email}
+                    </div>
+                  )}
+                  {customer.address && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <MapPin size={11} className="text-slate-300 shrink-0" />{customer.address}
+                    </div>
+                  )}
+                  {customer.abn && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <FileText size={11} className="text-slate-300 shrink-0" />ABN {customer.abn}
+                    </div>
+                  )}
+                  {typeof customer.job_count === 'number' && customer.job_count > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Briefcase size={11} className="text-slate-300 shrink-0" />
+                      {customer.job_count} {customer.job_count === 1 ? workPlural.replace(/s$/, '') : workPlural}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  {phone && (
+                    <a
+                      href={`tel:${phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-bold py-2 rounded-xl transition-colors"
+                    >
+                      <Phone size={12} />Call
+                    </a>
+                  )}
+                  {phone && (
+                    <button
+                      onClick={handleSms}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white text-xs font-bold py-2 rounded-xl transition-colors"
+                    >
+                      <MessageSquare size={12} />SMS
+                    </button>
+                  )}
+                  {email && (
+                    <a
+                      href={`mailto:${email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-bold py-2 rounded-xl transition-colors"
+                    >
+                      <Mail size={12} />Email
+                    </a>
+                  )}
+                  <Link
+                    to={`/customers/${customer.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <Building2 size={12} />View
+                  </Link>
+                </div>
+
+                {/* Edit / Archive */}
+                <div className="flex gap-2 pt-1 border-t border-slate-100">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    className="flex-1 text-xs text-slate-400 hover:text-primary font-semibold py-1 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                    className={`flex-1 text-xs font-semibold py-1 transition-colors ${isArchived ? 'text-slate-400 hover:text-emerald-600' : 'text-slate-400 hover:text-amber-600'}`}
+                  >
+                    {isArchived ? 'Unarchive' : 'Archive'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Call / SMS / Email action buttons */}
-      {(phone || email) && (
-        <div className="flex gap-1.5 mt-2 pt-2 border-t border-slate-100">
-          {phone && (
-            <a
-              href={`tel:${phone}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 flex items-center justify-center gap-1 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-[11px] font-bold py-1.5 rounded-lg border border-emerald-200 transition-colors"
-            >
-              <Phone size={11} />Call
-            </a>
-          )}
-          {phone && (
-            <button
-              onClick={handleSms}
-              className="flex-1 flex items-center justify-center gap-1 bg-violet-50 hover:bg-violet-100 active:bg-violet-200 text-violet-700 text-[11px] font-bold py-1.5 rounded-lg border border-violet-200 transition-colors"
-            >
-              <MessageSquare size={11} />SMS
-            </button>
-          )}
-          {email && (
-            <a
-              href={`mailto:${email}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 text-[11px] font-bold py-1.5 rounded-lg border border-blue-200 transition-colors"
-            >
-              <Mail size={11} />Email
-            </a>
-          )}
-        </div>
-      )}
 
       <AnimatePresence>
         {smsOpen && phone && (
           <SmsModal to={phone} name={customer.name} onClose={() => setSmsOpen(false)} />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
