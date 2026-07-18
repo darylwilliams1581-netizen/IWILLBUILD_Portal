@@ -498,10 +498,10 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     >
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-2">
 
         {/* Left: select mode */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           {!selectMode ? (
             <button
               onClick={() => setSelectMode(true)}
@@ -535,9 +535,23 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
           )}
         </div>
 
-        {/* Right: upload buttons + tools + view size */}
+        {/* Centre: camera button */}
         {!selectMode && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex justify-center">
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={uploading || atLimit}
+              aria-label="Take photo"
+              className="w-12 h-12 rounded-full bg-slate-900 hover:bg-slate-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center shadow-md transition-all"
+            >
+              <Camera size={20} />
+            </button>
+          </div>
+        )}
+
+        {/* Right: upload + tools + view size */}
+        {!selectMode && (
+          <div className="flex items-center gap-2 flex-1 justify-end flex-wrap">
             {/* Choose Files */}
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -546,14 +560,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
             >
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
               {uploading ? 'Uploading…' : 'Choose Files'}
-            </button>
-            {/* Camera */}
-            <button
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={uploading || atLimit}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              <Camera size={13} /> Camera
             </button>
             {/* Export ZIP */}
             <button
