@@ -646,22 +646,6 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
           </div>
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
-        />
       </div>
 
       {/* Upload error */}
@@ -818,9 +802,26 @@ export default function JobPhotos({ jobId }: JobPhotosProps) {
         )}
       </AnimatePresence>
 
+      {/* File inputs — kept at root level so no drag/event container interferes with .click() */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }}
+      />
+
       {/* Delete confirm modal */}
-      <AnimatePresence>
-        {deleteConfirm && (
+      <AnimatePresence>        {deleteConfirm && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60" onClick={() => setDeleteConfirm(null)} />
             <motion.div
