@@ -290,9 +290,12 @@ export default function EstimateEditorPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
+      a.style.display = 'none';
       const safeName = (estimate.title ?? 'estimate').replace(/[^a-z0-9]/gi, '-').toLowerCase();
       a.download = `estimate-${safeName}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
       setExportingPdf(false);

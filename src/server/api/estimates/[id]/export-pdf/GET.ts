@@ -45,14 +45,14 @@ export default async function handler(req: Request, res: Response) {
     const company = companyRows?.[0] ?? {};
 
     // Fetch PDF branding settings
-    const [settingsRows] = await db.execute(
-      sql`SELECT pdf_settings FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
-    ) as unknown as [Array<{ pdf_settings?: string }>, unknown];
     let pdfSettings: Record<string, string> = {};
     try {
-      const raw = settingsRows?.[0]?.pdf_settings;
+      const [settingsRows] = await db.execute(
+        sql`SELECT pdf_json FROM company_settings WHERE company_id = ${profile.companyId} LIMIT 1`
+      ) as unknown as [Array<{ pdf_json?: string }>, unknown];
+      const raw = settingsRows?.[0]?.pdf_json;
       if (raw) pdfSettings = JSON.parse(raw) as Record<string, string>;
-    } catch { /* ignore */ }
+    } catch { /* column missing or no settings row — proceed without branding */ }
 
     // Fetch job details if linked
     let jobName = '';
