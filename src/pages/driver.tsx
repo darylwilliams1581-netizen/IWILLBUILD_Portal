@@ -789,10 +789,12 @@ export default function DriverPage() {
               <div className="px-4 pb-4">
                 {sessionActive ? (
                   <button
-                    onClick={() => setShowStopConfirm(true)}
-                    className="w-full flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-red-200"
+                    onClick={() => void handleStopSession()}
+                    disabled={stopping}
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-red-200 disabled:opacity-60"
                   >
-                    <Square size={18} className="fill-white" /> End Drive Session
+                    {stopping ? <Loader2 size={18} className="animate-spin" /> : <Square size={18} className="fill-white" />}
+                    {stopping ? 'Ending session…' : 'End Drive Session'}
                   </button>
                 ) : (
                   <button
@@ -902,17 +904,6 @@ export default function DriverPage() {
             loading={vehiclesLoading}
             onSelect={v => { setShowPicker(false); void handleStartSession(v); }}
             onClose={() => setShowPicker(false)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showStopConfirm && session && (
-          <StopConfirm
-            sessionName={session.asset_name}
-            elapsed={elapsed}
-            onConfirm={handleStopSession}
-            onCancel={() => setShowStopConfirm(false)}
-            stopping={stopping}
           />
         )}
       </AnimatePresence>
