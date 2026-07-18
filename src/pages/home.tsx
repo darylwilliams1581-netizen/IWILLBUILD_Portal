@@ -59,9 +59,10 @@ const FIELD_ICONS: AppIcon[] = [
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
-  { label: 'Estimating', icon: Calculator, href: '/estimating', bg: 'bg-indigo-500', fg: 'text-white' },
-  { label: 'Invoices',   icon: Receipt,    href: '/invoices',   bg: 'bg-teal-500',   fg: 'text-white' },
-  { label: 'Stakeholders', icon: Users,      href: '/customers',  bg: 'bg-pink-500',   fg: 'text-white' },
+  { label: 'Quotes',       icon: FileText,   href: '?panel=quotes-picker', bg: 'bg-orange-500',  fg: 'text-white' },
+  { label: 'Estimating',   icon: Calculator, href: '/estimating',          bg: 'bg-indigo-500',  fg: 'text-white' },
+  { label: 'Invoices',     icon: Receipt,    href: '/invoices',            bg: 'bg-teal-500',    fg: 'text-white' },
+  { label: 'Stakeholders', icon: Users,      href: '/customers',           bg: 'bg-pink-500',    fg: 'text-white' },
 ];
 
 const ADMIN_ICONS: AppIcon[] = [
@@ -1702,6 +1703,7 @@ export default function HomeScreen() {
   const [logCostOpen, setLogCostOpen] = useState(false);
   const [signInOutOpen, setSignInOutOpen] = useState(false);
   const [formsPickerOpen, setFormsPickerOpen] = useState(false);
+  const [quotesPickerOpen, setQuotesPickerOpen] = useState(false);
   const [progressPickerOpen, setProgressPickerOpen] = useState(false);
   const [drawingsPickerOpen, setDrawingsPickerOpen] = useState(false);
   const [schedulePickerOpen, setSchedulePickerOpen] = useState(false);
@@ -1728,6 +1730,7 @@ export default function HomeScreen() {
     if (href === '?panel=log-cost') { setLogCostOpen(true); return; }
     if (href === '?panel=signin') { setSignInOutOpen(true); return; }
     if (href === '?panel=forms-picker') { setFormsPickerOpen(true); return; }
+    if (href === '?panel=quotes-picker') { setQuotesPickerOpen(true); return; }
     if (href === '?panel=progress-picker') { setProgressPickerOpen(true); return; }
     if (href === '?panel=drawings-picker') { setDrawingsPickerOpen(true); return; }
     if (href === '?panel=schedule-picker') { setSchedulePickerOpen(true); return; }
@@ -1858,6 +1861,16 @@ export default function HomeScreen() {
       <LogCostSheet open={logCostOpen} onClose={() => setLogCostOpen(false)} />
       <SignInOutSheet open={signInOutOpen} onClose={() => { setSignInOutOpen(false); setActiveStatusKey(k => k + 1); }} />
       <FormsJobPickerSheet open={formsPickerOpen} onClose={() => setFormsPickerOpen(false)} />
+      <JobPickerSheet
+        open={quotesPickerOpen}
+        onClose={() => setQuotesPickerOpen(false)}
+        title="Quotes"
+        subtitle="Select a job to view its quotes"
+        iconBg="bg-orange-100"
+        iconFg="text-orange-600"
+        Icon={FileText}
+        onSelect={(job) => { setQuotesPickerOpen(false); navigate(`/jobs/${job.id}/quotes`); }}
+      />
       <ProgressJobPickerSheet open={progressPickerOpen} onClose={() => setProgressPickerOpen(false)} />
       <DrawingsJobPickerSheet open={drawingsPickerOpen} onClose={() => setDrawingsPickerOpen(false)} />
       <ScheduleJobPickerSheet open={schedulePickerOpen} onClose={() => setSchedulePickerOpen(false)} />
