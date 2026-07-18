@@ -9,7 +9,10 @@ import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { getDownloadStream, BUCKET_JOB_PHOTOS } from '../../../../../storage/storage-service.js';
-import archiver from 'archiver';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const archiver = require('archiver') as typeof import('archiver');
 
 export default async function handler(req: Request, res: Response) {
   try {

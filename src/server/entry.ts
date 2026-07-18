@@ -332,6 +332,8 @@ import jobs_id_ledger_entryId_put_299 from "./api/jobs/[id]/ledger/[entryId]/PUT
 import jobs_id_ledger_entryId_correct_post_300 from "./api/jobs/[id]/ledger/[entryId]/correct/POST";
 import jobs_id_photos_get_301 from "./api/jobs/[id]/photos/GET";
 import jobs_id_photos_post_302 from "./api/jobs/[id]/photos/POST";
+import jobs_id_photos_export_zip_post from "./api/jobs/[id]/photos/export-zip/POST";
+import jobs_id_photos_share_post from "./api/jobs/[id]/photos/share/POST";
 import jobs_id_photos_photoId_delete_303 from "./api/jobs/[id]/photos/[photoId]/DELETE";
 import jobs_id_photos_photoId_patch_304 from "./api/jobs/[id]/photos/[photoId]/PATCH";
 import jobs_id_photos_photoId_download_get_305 from "./api/jobs/[id]/photos/[photoId]/download/GET";
@@ -2224,6 +2226,8 @@ app.put("/api/jobs/:id/ledger/:entryId", jobs_id_ledger_entryId_put_299);
 app.post("/api/jobs/:id/ledger/:entryId/correct", jobs_id_ledger_entryId_correct_post_300);
 app.get("/api/jobs/:id/photos", jobs_id_photos_get_301);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post_302);
+app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post);
+app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_303);
 app.patch("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_patch_304);
 app.get("/api/jobs/:id/photos/:photoId/download", jobs_id_photos_photoId_download_get_305);
