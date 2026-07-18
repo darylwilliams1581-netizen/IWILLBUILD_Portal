@@ -1905,7 +1905,7 @@ export default function HomeScreen() {
       {drivePickerOpen && (
         <StartDrivingModal
           onClose={() => setDrivePickerOpen(false)}
-          onStarted={() => { setDrivePickerOpen(false); }}
+          onStarted={() => { setDrivePickerOpen(false); setActiveStatusKey(k => k + 1); }}
         />
       )}
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
