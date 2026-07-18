@@ -1,16 +1,10 @@
 /**
- * HomeScreen — Icon launcher replacing /dashboard as the post-login landing.
- *
- * Layout:
- *   - Greeting + avatar (top)
- *   - Field worker icons (always visible): Camera, Drive, Forms, Notes+Todo, Job Costs, Delays, Progress
- *   - Estimating section (can('estimating'))
- *   - Admin section (isAdmin)
- *   - Platform section (isPlatformOwner)
- *   - Bottom bar → Dashboard slide-up sheet
+ * HomeScreen — Light-theme icon launcher.
+ * Clean white/light-grey background, solid vibrant icon tiles,
+ * dark text — iOS-style feel, not dark like the drive app.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -20,7 +14,7 @@ import {
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   Map, Building2, Layers, Settings, CreditCard, Bot,
   ShieldCheck, LayoutDashboard, X, ChevronUp, LogOut,
-  Bell, User,
+  User,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -38,46 +32,49 @@ interface AppIcon {
   label: string;
   icon: React.ElementType;
   href: string;
-  color: string;       // icon background tint
-  iconColor: string;   // icon foreground
+  /** Solid bg colour class for the tile */
+  bg: string;
+  /** Icon colour class */
+  fg: string;
   badge?: number;
 }
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
+// Solid, saturated colours — light theme needs full-opacity backgrounds
 
 const FIELD_ICONS: AppIcon[] = [
-  { label: 'Camera',     icon: Camera,      href: '/jobs?tab=photos',         color: 'bg-orange-500/20', iconColor: 'text-orange-400' },
-  { label: 'Drive',      icon: Car,         href: '/driver',                  color: 'bg-blue-500/20',   iconColor: 'text-blue-400'   },
-  { label: 'Forms',      icon: FileText,    href: '/studio?tab=forms',        color: 'bg-purple-500/20', iconColor: 'text-purple-400' },
-  { label: 'Notes',      icon: StickyNote,  href: '?panel=notes',             color: 'bg-yellow-500/20', iconColor: 'text-yellow-400' },
-  { label: 'Job Costs',  icon: BookOpen,    href: '/jobs?tab=costs',          color: 'bg-emerald-500/20',iconColor: 'text-emerald-400'},
-  { label: 'Delays',     icon: Clock,       href: '/jobs?filter=delayed',     color: 'bg-red-500/20',    iconColor: 'text-red-400'    },
-  { label: 'Progress',   icon: TrendingUp,  href: '/jobs?filter=inprogress',  color: 'bg-cyan-500/20',   iconColor: 'text-cyan-400'   },
+  { label: 'Camera',    icon: Camera,      href: '/jobs?tab=photos',        bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Drive',     icon: Car,         href: '/driver',                 bg: 'bg-blue-500',     fg: 'text-white' },
+  { label: 'Forms',     icon: FileText,    href: '/studio?tab=forms',       bg: 'bg-purple-500',   fg: 'text-white' },
+  { label: 'Notes',     icon: StickyNote,  href: '?panel=notes',            bg: 'bg-yellow-400',   fg: 'text-white' },
+  { label: 'Job Costs', icon: BookOpen,    href: '/jobs?tab=costs',         bg: 'bg-emerald-500',  fg: 'text-white' },
+  { label: 'Delays',    icon: Clock,       href: '/jobs?filter=delayed',    bg: 'bg-red-500',      fg: 'text-white' },
+  { label: 'Progress',  icon: TrendingUp,  href: '/jobs?filter=inprogress', bg: 'bg-cyan-500',     fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
-  { label: 'Estimating', icon: Calculator,  href: '/estimating',  color: 'bg-indigo-500/20', iconColor: 'text-indigo-400' },
-  { label: 'Invoices',   icon: Receipt,     href: '/invoices',    color: 'bg-teal-500/20',   iconColor: 'text-teal-400'   },
-  { label: 'Customers',  icon: Users,       href: '/customers',   color: 'bg-pink-500/20',   iconColor: 'text-pink-400'   },
+  { label: 'Estimating', icon: Calculator, href: '/estimating', bg: 'bg-indigo-500', fg: 'text-white' },
+  { label: 'Invoices',   icon: Receipt,    href: '/invoices',   bg: 'bg-teal-500',   fg: 'text-white' },
+  { label: 'Customers',  icon: Users,      href: '/customers',  bg: 'bg-pink-500',   fg: 'text-white' },
 ];
 
 const ADMIN_ICONS: AppIcon[] = [
-  { label: 'Jobs',       icon: HardHat,     href: '/jobs',                   color: 'bg-orange-500/20', iconColor: 'text-orange-400' },
-  { label: 'Scheduler',  icon: CalendarDays,href: '/scheduler',              color: 'bg-blue-500/20',   iconColor: 'text-blue-400'   },
-  { label: 'Fleet',      icon: Truck,       href: '/fleet',                  color: 'bg-slate-500/20',  iconColor: 'text-slate-300'  },
-  { label: 'Files',      icon: FolderOpen,  href: '/files',                  color: 'bg-amber-500/20',  iconColor: 'text-amber-400'  },
-  { label: 'Team',       icon: UserCircle,  href: '/team',                   color: 'bg-violet-500/20', iconColor: 'text-violet-400' },
-  { label: 'Plans',      icon: Map,         href: '/plan-manager',           color: 'bg-lime-500/20',   iconColor: 'text-lime-400'   },
-  { label: 'Assets',     icon: Building2,   href: '/studio/asset-manager',   color: 'bg-rose-500/20',   iconColor: 'text-rose-400'   },
-  { label: 'Studio',     icon: Layers,      href: '/studio',                 color: 'bg-fuchsia-500/20',iconColor: 'text-fuchsia-400'},
-  { label: 'Safety',     icon: ShieldCheck, href: '/studio?tab=safety',      color: 'bg-green-500/20',  iconColor: 'text-green-400'  },
+  { label: 'Jobs',      icon: HardHat,     href: '/jobs',                  bg: 'bg-orange-500',   fg: 'text-white' },
+  { label: 'Scheduler', icon: CalendarDays,href: '/scheduler',             bg: 'bg-blue-600',     fg: 'text-white' },
+  { label: 'Fleet',     icon: Truck,       href: '/fleet',                 bg: 'bg-slate-600',    fg: 'text-white' },
+  { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
+  { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
+  { label: 'Plans',     icon: Map,         href: '/plan-manager',          bg: 'bg-lime-500',     fg: 'text-white' },
+  { label: 'Assets',    icon: Building2,   href: '/studio/asset-manager',  bg: 'bg-rose-500',     fg: 'text-white' },
+  { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
+  { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
 ];
 
 const PLATFORM_ICONS: AppIcon[] = [
-  { label: 'Settings',   icon: Settings,    href: '/settings',     color: 'bg-slate-500/20',  iconColor: 'text-slate-300'  },
-  { label: 'Billing',    icon: CreditCard,  href: '/billing',      color: 'bg-emerald-500/20',iconColor: 'text-emerald-400'},
-  { label: 'Dazza AI',   icon: Bot,         href: '/dazza-ai',     color: 'bg-cyan-500/20',   iconColor: 'text-cyan-400'   },
-  { label: 'Console',    icon: ShieldCheck, href: '/owner-console',color: 'bg-red-500/20',    iconColor: 'text-red-400'    },
+  { label: 'Settings',  icon: Settings,    href: '/settings',      bg: 'bg-slate-500',    fg: 'text-white' },
+  { label: 'Billing',   icon: CreditCard,  href: '/billing',       bg: 'bg-emerald-600',  fg: 'text-white' },
+  { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',     fg: 'text-white' },
+  { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',      fg: 'text-white' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -86,19 +83,22 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
   const Icon = item.icon;
   return (
     <motion.button
-      whileTap={{ scale: 0.92 }}
+      whileTap={{ scale: 0.88 }}
       onClick={() => onNavigate(item.href)}
-      className="flex flex-col items-center gap-2 group"
+      className="flex flex-col items-center gap-1.5 group"
     >
-      <div className={`w-16 h-16 rounded-2xl ${item.color} flex items-center justify-center relative border border-white/5 shadow-lg`}>
-        <Icon size={28} className={item.iconColor} strokeWidth={1.8} />
+      <div
+        className={`w-[60px] h-[60px] rounded-[16px] ${item.bg} ${item.fg} flex items-center justify-center relative shadow-md`}
+        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.13)' }}
+      >
+        <Icon size={26} strokeWidth={1.9} />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      <span className="text-[11px] text-white/70 font-medium text-center leading-tight max-w-[72px]">
+      <span className="text-[11px] text-gray-600 font-medium text-center leading-tight max-w-[68px]">
         {item.label}
       </span>
     </motion.button>
@@ -109,9 +109,9 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
 
 function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]; onNavigate: (href: string) => void }) {
   return (
-    <div className="px-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">{label}</p>
-      <div className="grid grid-cols-4 gap-x-2 gap-y-5">
+    <div className="px-5">
+      <p className="text-[11px] font-semibold text-gray-400 mb-3 px-0.5 uppercase tracking-wide">{label}</p>
+      <div className="grid grid-cols-4 gap-x-3 gap-y-5">
         {icons.map((item) => (
           <IconTile key={item.label} item={item} onNavigate={onNavigate} />
         ))}
@@ -120,10 +120,18 @@ function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]
   );
 }
 
-// ── Dashboard slide-up sheet ──────────────────────────────────────────────────
+// ── Shared sheet backdrop + panel ─────────────────────────────────────────────
 
-function DashboardSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { role } = usePermissions();
+function Sheet({
+  open, onClose, title, titleIcon: TitleIcon, titleIconClass, children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  titleIcon: React.ElementType;
+  titleIconClass: string;
+  children: React.ReactNode;
+}) {
   return (
     <AnimatePresence>
       {open && (
@@ -132,78 +140,34 @@ function DashboardSheet({ open, onClose }: { open: boolean; onClose: () => void 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-[#111827] rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden border-t border-white/10"
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
-                <LayoutDashboard size={16} className="text-orange-400" />
-                <span className="text-white font-bold text-sm">Dashboard</span>
+                <TitleIcon size={16} className={titleIconClass} />
+                <span className="text-gray-900 font-bold text-sm">{title}</span>
               </div>
-              <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
-                <X size={18} />
+              <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                <X size={14} />
               </button>
             </div>
             {/* Content */}
-            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
-              <KpiWidgets />
-              <MyTasksPanel userRole={role ?? ''} />
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ── Notes+Todo slide-up sheet ─────────────────────────────────────────────────
-
-function NotesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { role } = usePermissions();
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-[#111827] rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden border-t border-white/10"
-          >
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-              <div className="flex items-center gap-2">
-                <StickyNote size={16} className="text-yellow-400" />
-                <span className="text-white font-bold text-sm">Notes &amp; Tasks</span>
-              </div>
-              <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
             <div className="overflow-y-auto flex-1 px-4 py-4">
-              <MyTasksPanel userRole={role ?? ''} />
+              {children}
             </div>
           </motion.div>
         </>
@@ -239,43 +203,44 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-[#111827] rounded-t-3xl border-t border-white/10 overflow-hidden"
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl overflow-hidden"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 py-4 pb-8">
               {/* Avatar + name */}
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
-                  <User size={24} className="text-orange-400" />
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
+                  <User size={24} className="text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-white font-bold text-base">{name}</p>
-                  <p className="text-white/50 text-xs">{email}</p>
-                  {company && <p className="text-white/40 text-xs mt-0.5">{company}</p>}
+                  <p className="text-gray-900 font-bold text-base">{name}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{email}</p>
+                  {company && <p className="text-gray-400 text-xs mt-0.5">{company}</p>}
                 </div>
               </div>
               {/* Actions */}
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2">
                 <button
                   onClick={() => { onClose(); navigate('/settings'); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white/80 text-sm font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-gray-700 text-sm font-medium"
                 >
-                  <Settings size={16} className="text-white/50" />
+                  <Settings size={16} className="text-gray-400" />
                   Settings
                 </button>
                 <button
                   onClick={() => void handleSignOut()}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 text-sm font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-red-50 hover:bg-red-100 transition-colors text-red-600 text-sm font-medium"
                 >
                   <LogOut size={16} />
                   Sign out
@@ -293,7 +258,7 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { can, isAdmin, isPlatformOwner, me, loading } = usePermissions();
+  const { can, isAdmin, isPlatformOwner, me, loading, role } = usePermissions();
   const { data: sessionData } = useSession();
 
   const [dashOpen, setDashOpen] = useState(false);
@@ -303,99 +268,114 @@ export default function HomeScreen() {
   const name = sessionData?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
 
-  // Greeting based on time of day
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  // Date string
   const dateStr = new Date().toLocaleDateString('en-AU', {
-    weekday: 'short', day: 'numeric', month: 'short',
+    weekday: 'long', day: 'numeric', month: 'long',
   });
 
   function handleNavigate(href: string) {
-    if (href === '?panel=notes') {
-      setNotesOpen(true);
-      return;
-    }
+    if (href === '?panel=notes') { setNotesOpen(true); return; }
     navigate(href);
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Home — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/home" />
       </Helmet>
-      {/* visually hidden h1 for SEO validator */}
       <h1 className="sr-only">IWILLBUILD Home</h1>
+
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-5 pt-safe-top pt-4 pb-3">
-        <div>
-          <p className="text-white/40 text-xs">{dateStr}</p>
-          <p className="text-white font-bold text-lg leading-tight">
-            {greeting}, {firstName}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <NotificationBell />
-          <button
-            onClick={() => setProfileOpen(true)}
-            className="w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center"
-          >
-            <User size={18} className="text-orange-400" />
-          </button>
+      <div className="bg-white border-b border-gray-100 px-5 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 text-xs font-medium">{dateStr}</p>
+            <p className="text-gray-900 font-bold text-xl leading-tight mt-0.5">
+              {greeting}, {firstName}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Notification bell — wrapped to invert for light bg */}
+            <div className="[&_button]:text-gray-500 [&_button:hover]:text-gray-800 [&_button]:bg-gray-100 [&_button]:rounded-full [&_button]:p-2">
+              <NotificationBell />
+            </div>
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"
+            >
+              <User size={18} className="text-orange-500" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Scrollable icon area ── */}
-      <div className="flex-1 overflow-y-auto pb-24 space-y-7 pt-2">
+      {/* ── Scrollable icon grid ── */}
+      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-7">
 
-        {/* Field worker — always visible */}
         <Section label="Field" icons={FIELD_ICONS} onNavigate={handleNavigate} />
 
-        {/* Estimating */}
         {can('estimating') && (
           <Section label="Estimating" icons={ESTIMATING_ICONS} onNavigate={handleNavigate} />
         )}
 
-        {/* Admin */}
         {isAdmin && (
           <Section label="Admin" icons={ADMIN_ICONS} onNavigate={handleNavigate} />
         )}
 
-        {/* Platform owner */}
         {isPlatformOwner && (
           <Section label="Platform" icons={PLATFORM_ICONS} onNavigate={handleNavigate} />
         )}
       </div>
 
       {/* ── Bottom bar — Dashboard ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 pb-safe-bottom">
-        <div className="mx-3 mb-3">
-          <button
-            onClick={() => setDashOpen(true)}
-            className="w-full flex items-center justify-center gap-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-2xl py-3.5 transition-colors backdrop-blur-md"
-          >
-            <LayoutDashboard size={16} className="text-orange-400" />
-            <span className="text-white/80 text-sm font-semibold">Dashboard</span>
-            <ChevronUp size={14} className="text-white/40" />
-          </button>
-        </div>
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3" style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)' }}>
+        <button
+          onClick={() => setDashOpen(true)}
+          className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-2xl py-3.5 transition-colors shadow-sm"
+        >
+          <LayoutDashboard size={16} className="text-white" />
+          <span className="text-white text-sm font-bold">Dashboard</span>
+          <ChevronUp size={14} className="text-white/70" />
+        </button>
       </div>
 
       {/* ── Sheets ── */}
-      <DashboardSheet open={dashOpen} onClose={() => setDashOpen(false)} />
-      <NotesSheet open={notesOpen} onClose={() => setNotesOpen(false)} />
+      <Sheet
+        open={dashOpen}
+        onClose={() => setDashOpen(false)}
+        title="Dashboard"
+        titleIcon={LayoutDashboard}
+        titleIconClass="text-orange-500"
+      >
+        <KpiWidgets />
+        <div className="mt-4">
+          <MyTasksPanel userRole={role ?? ''} />
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={notesOpen}
+        onClose={() => setNotesOpen(false)}
+        title="Notes & Tasks"
+        titleIcon={StickyNote}
+        titleIconClass="text-yellow-500"
+      >
+        <MyTasksPanel userRole={role ?? ''} />
+      </Sheet>
+
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
