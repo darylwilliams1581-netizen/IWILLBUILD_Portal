@@ -11,7 +11,7 @@ import {
   ArrowLeft, FileText, Loader2, Plus,
   CheckCircle2, Clock, Eye, EyeOff,
   Printer, Share2, Trash2, RotateCcw, ExternalLink,
-  ChevronRight, AlertCircle,
+  ChevronRight, AlertCircle, House,
 } from 'lucide-react';
 
 interface Job { id: number; name: string; jobNumber?: string | null }

@@ -8,7 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, TrendingUp, Loader2, Download, Save,
-  CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList,
+  CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, House,
 } from 'lucide-react';
 
 interface Job {

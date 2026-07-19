@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode, Download } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode, Download, House } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos from '@/components/JobPhotos';
@@ -109,8 +109,10 @@ export default function JobPhotosPage() {
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             ) : (
               <>
-                {/* Breadcrumb: Jobs > Job Name > Photos */}
+                {/* Breadcrumb: Home > Jobs > Job Name > Photos */}
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Home"><House size={11} /></button>
+                  <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
                   <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>

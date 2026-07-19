@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, Plus, House } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobCosts from '@/components/job/JobCosts';
 

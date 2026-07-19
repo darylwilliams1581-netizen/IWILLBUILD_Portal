@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Loader2, AlertCircle, ChevronLeft,
   Mail, Share2, ExternalLink, Copy, Trash2, CheckCircle,
-  Receipt, ChevronDown, Link2, Link2Off,
+  Receipt, ChevronDown, Link2, Link2Off, House,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';

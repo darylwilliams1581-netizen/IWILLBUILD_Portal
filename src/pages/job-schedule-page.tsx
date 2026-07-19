@@ -11,7 +11,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, CalendarDays, Loader2, Plus, CheckCircle2,
   Clock, Circle, AlertCircle, Pencil, Trash2, X, Save,
-  ChevronRight, Flag, Calendar,
+  ChevronRight, Flag, Calendar, House,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 

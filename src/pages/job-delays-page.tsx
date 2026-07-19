@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Loader2, Download } from 'lucide-react';
+import { ArrowLeft, Clock, Loader2, Download, House } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import JobDelays from '@/components/job/JobDelays';
 
@@ -86,6 +86,8 @@ export default function JobDelaysPage() {
             ) : (
               <>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Home"><House size={11} /></button>
+                  <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
                   <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
