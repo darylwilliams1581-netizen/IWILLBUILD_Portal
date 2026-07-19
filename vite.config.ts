@@ -168,17 +168,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       name: 'evict-frozen-rootlayout-snapshot',
       configureServer(server: ViteDevServer) {
         server.middlewares.use((req, res, next) => {
-          // Intercept any request for the stale leaflet pre-bundle.
-          // leaflet was removed from source; this URL only appears when a browser
-          // has the old Vite dep chunk in its HTTP disk cache. Return an empty stub
-          // so it never executes. Remove this block once all preview browsers have
-          // refreshed past the stale cache (i.e. when the error stops appearing).
-          if (req.url && req.url.includes('leaflet')) {
-            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-store');
-            res.end('export default {};');
-            return;
-          }
           if (
             req.url &&
             req.url.includes('RootLayout.tsx') &&
@@ -195,6 +184,25 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
                 next();
               }
             }).catch(() => next());
+            return;
+          }
+          next();
+        });
+      },
+    } as Plugin,
+    // Intercept the stale Vite-pre-bundled leaflet chunk that browsers have
+    // disk-cached from before Leaflet was removed. The hash in the URL is
+    // immutable so browsers never re-validate it — returning an empty stub
+    // here is the only way to prevent the cached copy from executing.
+    {
+      name: 'evict-stale-leaflet-prebundle',
+      configureServer(server: ViteDevServer) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url && req.url.includes('leaflet.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.end('// leaflet removed — stub served by evict-stale-leaflet-prebundle');
             return;
           }
           next();
@@ -501,7 +509,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
-    exclude: ["drizzle-orm", "mysql2"],
+    exclude: ["drizzle-orm", "mysql2", "leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },
