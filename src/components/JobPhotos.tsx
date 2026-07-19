@@ -158,8 +158,12 @@ async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: stri
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
       return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, or WebP.` };
     }
-    // Normalise (resize if oversized)
-    prepared.push(await normaliseToJpeg(f));
+    // Normalise (resize if oversized) — fall back to original if canvas fails
+    try {
+      prepared.push(await normaliseToJpeg(f));
+    } catch {
+      prepared.push(f);
+    }
   }
   return { valid: prepared, error: null };
 }
@@ -461,11 +465,15 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       const res = await fetch(`/api/jobs/${jobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
       let data: { error?: string } = {};
       const ct = res.headers.get('content-type') ?? '';
-      if (ct.includes('application/json')) { data = await res.json() as { error?: string }; }
-      else { const text = await res.text(); throw new Error(text.includes('<!') ? `Server error (${res.status})` : text || 'Upload failed'); }
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+      if (ct.includes('application/json')) {
+        data = await res.json() as { error?: string };
+      } else {
+        const text = await res.text();
+        throw new Error(text.includes('<!') ? `Server error (${res.status}) — please try again` : text || `Upload failed (${res.status})`);
+      }
+      if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
       await fetchPhotos();
-    } catch (e) { setUploadError(e instanceof Error ? e.message : 'Upload failed'); }
+    } catch (e) { setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again'); }
     finally {
       setUploading(false); onUploading?.(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

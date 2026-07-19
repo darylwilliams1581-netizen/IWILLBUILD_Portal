@@ -37,10 +37,12 @@ export default async function handler(req: Request, res: Response) {
       else if (ext === 'png') f.mimetype = 'image/png';
       else if (ext === 'webp') f.mimetype = 'image/webp';
     }
+    // Normalise non-standard alias some browsers send
+    if (f.mimetype === 'image/jpg') f.mimetype = 'image/jpeg';
     if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
       return res.status(400).json({
         code: 'invalid_file_type',
-        error: `"${f.originalname}" is not a supported image type. Please upload JPEG, PNG, or WebP.`,
+        error: `"${f.originalname}" is not a supported image type (${f.mimetype}). Please upload JPEG, PNG, or WebP.`,
       });
     }
   }
@@ -167,7 +169,8 @@ export default async function handler(req: Request, res: Response) {
 
     res.status(201).json({ photos: saved });
   } catch (error) {
-    console.error('POST /api/jobs/:id/photos error:', error);
-    res.status(500).json({ error: 'Failed to upload photos' });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/jobs/:id/photos error:', msg);
+    res.status(500).json({ error: msg || 'Failed to upload photos' });
   }
 }

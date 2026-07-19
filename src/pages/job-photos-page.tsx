@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode,
+  ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
   Download, Home, Upload, Share2, LayoutGrid, List, CheckSquare, Send,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -223,21 +223,12 @@ export default function JobPhotosPage() {
               <Home size={16} />
             </button>
 
-            {/* Camera — prominent FAB */}
-            <button
-              onClick={() => photosRef.current?.openCamera()}
-              disabled={uploading || atLimit}
-              aria-label="Take photo"
-              className="w-12 h-12 rounded-full bg-slate-900 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-white flex items-center justify-center shadow-md transition-all touch-manipulation shrink-0"
-            >
-              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={20} />}
-            </button>
-
-            {/* Choose Files */}
+            {/* Choose Files — single orange upload button for all */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               className="w-12 h-12 flex items-center justify-center bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
+              aria-label="Upload photos"
             >
               {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             </button>

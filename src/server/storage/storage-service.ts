@@ -79,8 +79,10 @@ export const MAX_FILE_SIZE_BYTES   = 25 * 1024 * 1024;   // 25 MB
 
 export const ALLOWED_IMAGE_MIMES: Record<string, string> = {
   'image/jpeg': 'jpg',
+  'image/jpg':  'jpg',   // non-standard alias some iOS/Android browsers send
   'image/png':  'png',
   'image/webp': 'webp',
+  'image/gif':  'gif',   // occasionally sent by Android
   // HEIC/HEIF accepted — converted to JPEG by compressImageIfNeeded()
   'image/heic':          'jpg',
   'image/heif':          'jpg',
