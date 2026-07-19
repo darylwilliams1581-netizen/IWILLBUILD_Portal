@@ -12,9 +12,9 @@ import {
   Truck, Clock, Gauge, Users, ZoomIn, ZoomOut, Crosshair,
 } from 'lucide-react';
 
-// ── Leaflet _rawPanBy patch (module-level, synchronous) ───────────────────────
-// getPosition(el) in leaflet.js crashes when el is undefined during map init.
-// Patch Map.prototype._rawPanBy once at import time so it guards _mapPane.
+// ── Leaflet _rawPanBy patch (module-level, runs before any map init) ──────────
+// getPosition(el) crashes when el/_mapPane is undefined during L.map() init.
+// Patching the prototype here guarantees the guard is in place before mount.
 import('leaflet').then((L) => {
   const proto = L.Map?.prototype as {
     _rawPanBy?: (...a: unknown[]) => unknown;
@@ -307,6 +307,23 @@ export default function FleetLiveMap() {
           iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
+
+        // Patch _rawPanBy synchronously here, immediately before L.map() runs,
+        // so the guard is always in place regardless of async timing.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const _proto = (L as any).Map?.prototype;
+        if (_proto && !_proto.__fleetPatched2) {
+          const _orig = _proto._rawPanBy;
+          if (_orig) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            _proto._rawPanBy = function (...a: any[]) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if (!(this as any)._mapPane) return;
+              return _orig.apply(this, a);
+            };
+          }
+          _proto.__fleetPatched2 = true;
+        }
 
         const map = L.map(mapEl, {
           center: [-27.4698, 153.0251] as [number, number],
