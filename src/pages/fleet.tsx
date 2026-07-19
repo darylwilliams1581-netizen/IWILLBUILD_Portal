@@ -37,28 +37,27 @@ import { Navigation } from 'lucide-react';
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
 // ── Module-level Leaflet error suppressor ─────────────────────────────────────
-// Stale browser-cached leaflet.js fires _leaflet_pos errors before React mounts.
-// Install the suppressor immediately at module parse time so it catches errors
-// that occur before componentDidMount can run.
+// Stale browser-cached leaflet.js fires _leaflet_pos errors in async callbacks
+// (not during React render, so error boundaries don't catch them).
+// We patch at three levels: window.onerror, Element.prototype, and window.L.
 if (typeof window !== 'undefined') {
+  // 1. window.onerror — catches uncaught sync errors
   const _prev = window.onerror;
   window.onerror = function(msg, src, line, col, err) {
     const m = String(msg ?? err?.message ?? '');
     if (m.includes('_leaflet_pos') || (typeof src === 'string' && src.includes('leaflet'))) {
-      return true; // suppress — stale cached leaflet.js, not our code
+      return true;
     }
     return typeof _prev === 'function' ? _prev(msg, src, line, col, err) : false;
   };
-  // Also suppress unhandledrejection from leaflet promises
+  // 2. unhandledrejection — catches async leaflet errors
   window.addEventListener('unhandledrejection', (e) => {
     const m = String(e?.reason?.message ?? e?.reason ?? '');
     if (m.includes('_leaflet_pos') || m.includes('leaflet')) e.preventDefault();
   }, { capture: true });
-  // Patch _leaflet_pos on Element.prototype so getPosition(el) never throws,
-  // even when el is undefined (stale cached leaflet calls it before the map pane exists).
+  // 3. Patch Element.prototype._leaflet_pos so getPosition(el) is safe when el exists
   try {
     const desc = Object.getOwnPropertyDescriptor(Element.prototype, '_leaflet_pos');
-    // Only install if not already patched by index.html inline script
     if (!desc || typeof desc.get !== 'function') {
       Object.defineProperty(Element.prototype, '_leaflet_pos', {
         get() { return (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos ?? { x: 0, y: 0 }; },
@@ -67,6 +66,57 @@ if (typeof window !== 'undefined') {
       });
     }
   } catch { /* ignore */ }
+  // 4. Patch window.L methods that crash when map panes aren't ready.
+  //    The private getPosition(el) at leaflet.js:1570 crashes when el is undefined.
+  //    Call chain: _rawPanBy → _getMapPanePos → getPosition(this._mapPane)
+  //    where this._mapPane is undefined on stale cached instances.
+  //    We patch _getMapPanePos AND _rawPanBy with null guards.
+  const patchWindowL = () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const L = (window as any).L;
+      if (!L?.Map?.prototype) return false;
+      if (L.Map.prototype.__lp_patched) return true;
+
+      // Patch _getMapPanePos — guards the direct caller of private getPosition
+      const origGetMapPanePos = L.Map.prototype._getMapPanePos;
+      L.Map.prototype._getMapPanePos = function() {
+        if (!this._mapPane) return { x: 0, y: 0 };
+        try {
+          return origGetMapPanePos ? origGetMapPanePos.call(this) : { x: 0, y: 0 };
+        } catch { return { x: 0, y: 0 }; }
+      };
+
+      // Patch _rawPanBy — the entry point of the crash chain
+      const origRawPanBy = L.Map.prototype._rawPanBy;
+      L.Map.prototype._rawPanBy = function(offset: unknown) {
+        if (!this._mapPane) return;
+        try {
+          origRawPanBy?.call(this, offset);
+        } catch { /* swallow _leaflet_pos errors from stale cache */ }
+      };
+
+      // Patch DomUtil.getPosition as final backstop
+      if (L.DomUtil?.getPosition && !L.DomUtil.__lp_patched) {
+        const origGet = L.DomUtil.getPosition;
+        L.DomUtil.getPosition = function(el: Element | undefined) {
+          if (!el) return { x: 0, y: 0 };
+          try { return origGet(el); } catch { return { x: 0, y: 0 }; }
+        };
+        L.DomUtil.__lp_patched = true;
+      }
+
+      L.Map.prototype.__lp_patched = true;
+      return true;
+    } catch { return false; }
+  };
+  // Try immediately, then poll every 50ms for up to 3s
+  if (!patchWindowL()) {
+    let attempts = 0;
+    const poll = setInterval(() => {
+      if (patchWindowL() || ++attempts > 60) clearInterval(poll);
+    }, 50);
+  }
 }
 
 // ── Leaflet crash boundary ────────────────────────────────────────────────────
@@ -94,6 +144,25 @@ class LeafletCrashBoundary extends React.Component<
         ? this._onerror(msg, _src, _line, _col, err)
         : false;
     };
+    // Re-apply window.L patches now that the component is mounted —
+    // leaflet may have finished loading between module parse and mount.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const L = (window as any).L;
+      if (L?.Map?.prototype && !L.Map.prototype.__lp_patched) {
+        const origGetMapPanePos = L.Map.prototype._getMapPanePos;
+        L.Map.prototype._getMapPanePos = function() {
+          if (!this._mapPane) return { x: 0, y: 0 };
+          try { return origGetMapPanePos?.call(this) ?? { x: 0, y: 0 }; } catch { return { x: 0, y: 0 }; }
+        };
+        const origRawPanBy = L.Map.prototype._rawPanBy;
+        L.Map.prototype._rawPanBy = function(offset: unknown) {
+          if (!this._mapPane) return;
+          try { origRawPanBy?.call(this, offset); } catch { /* swallow */ }
+        };
+        L.Map.prototype.__lp_patched = true;
+      }
+    } catch { /* ignore */ }
   }
 
   componentWillUnmount() {

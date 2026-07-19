@@ -524,6 +524,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
+    // leaflet excluded so Vite never pre-bundles it — the alias + middleware
+    // stub handles any stale cached request. Changing this comment forces a
+    // new dep-bundle hash, invalidating any browser-cached leaflet.js?v=*
+    // url: cache-bust-2026-07-20
     exclude: ["drizzle-orm", "mysql2", "leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.

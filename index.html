@@ -226,14 +226,39 @@
 
     <script>
       // ── Leaflet stale-cache nuclear suppressor ────────────────────────────
-      // The browser HTTP disk cache may serve the real leaflet.js?v=05d76b4a
-      // before any React code runs. Patch every surface leaflet touches so
-      // it can never throw, regardless of execution order.
+      // The browser HTTP disk cache serves the real leaflet.js?v=05d76b4a with
+      // immutable headers — the server stub never gets a chance to run.
+      // Strategy: intercept fetch() so any request for a URL containing
+      // "leaflet" returns an empty ES module stub instead of the cached bundle.
+      // This fires BEFORE the ES module graph is evaluated, so leaflet's
+      // module-private getPosition() function is never defined at all.
       (function () {
         try {
-          // 1. Patch Element.prototype._leaflet_pos so getPosition(el) never
-          //    throws "Cannot read properties of undefined (reading '_leaflet_pos')"
-          //    even when el itself is undefined/null.
+          // 1. Override fetch to intercept the leaflet dep URL.
+          //    ES module loading in browsers uses fetch internally for
+          //    dynamic imports and modulepreload — intercepting it here
+          //    means the real leaflet bytes are discarded before execution.
+          var _origFetch = window.fetch;
+          window.fetch = function(input, init) {
+            try {
+              var url = (typeof input === 'string') ? input
+                      : (input && input.url) ? input.url
+                      : String(input);
+              if (url && url.indexOf('leaflet') !== -1) {
+                // Return a Response containing an empty ES module stub.
+                // The browser will evaluate this instead of the real leaflet.
+                var stub = 'export default {};\nexport const map = () => ({});\nexport const tileLayer = () => ({});\n';
+                return Promise.resolve(new Response(stub, {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/javascript' }
+                }));
+              }
+            } catch(_) {}
+            return _origFetch.apply(this, arguments);
+          };
+
+          // 2. Also patch Element.prototype._leaflet_pos as belt-and-suspenders
+          //    in case any other code path triggers getPosition.
           if (typeof Element !== 'undefined' && !Element.prototype.__lp_patched) {
             Object.defineProperty(Element.prototype, '_leaflet_pos', {
               get: function () { return this.__lp || { x: 0, y: 0 }; },
@@ -243,43 +268,17 @@
             Element.prototype.__lp_patched = true;
           }
 
-          // 2. Intercept TypeError from getPosition(undefined).
-          //    leaflet's getPosition(el) crashes when el is undefined.
-          //    Patch window.onerror to swallow it, AND use a MutationObserver +
-          //    periodic check to patch window.L.DomUtil.getPosition as soon as
-          //    leaflet registers itself on window.L.
+          // 3. Suppress any leaflet errors that still slip through.
           var _prevErr = window.onerror;
           window.onerror = function (msg, src, line, col, err) {
             var m = String(msg || (err && err.message) || '');
             var s = String(src || '');
             if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
-              return true; // suppress
+              return true;
             }
-            return typeof _prevErr === 'function'
-              ? _prevErr(msg, src, line, col, err)
-              : false;
+            return typeof _prevErr === 'function' ? _prevErr(msg, src, line, col, err) : false;
           };
-          // Patch window.L.DomUtil.getPosition as soon as leaflet sets window.L
-          function patchLeafletGetPosition() {
-            try {
-              if (window.L && window.L.DomUtil && typeof window.L.DomUtil.getPosition === 'function') {
-                var orig = window.L.DomUtil.getPosition;
-                window.L.DomUtil.getPosition = function(el) {
-                  if (!el) return { x: 0, y: 0 };
-                  return orig(el);
-                };
-                return true; // patched
-              }
-            } catch(_) {}
-            return false;
-          }
-          // Poll until patched (leaflet may load async)
-          var _lPollCount = 0;
-          var _lPoll = setInterval(function() {
-            if (patchLeafletGetPosition() || ++_lPollCount > 50) clearInterval(_lPoll);
-          }, 100);
 
-          // 3. Suppress unhandledrejection from any leaflet promise chain.
           window.addEventListener('unhandledrejection', function (e) {
             try {
               var m = String((e.reason && e.reason.message) || e.reason || '');
@@ -289,9 +288,9 @@
             } catch (_) {}
           }, true);
 
-          // 4. Nuke all caches once per session so the Vite stub is served
-          //    on the next load instead of the cached real leaflet.js.
-          var PURGE_KEY = '__lf_purge_v9';
+          // 4. Nuke HTTP caches once per session so the server stub is served
+          //    on the next full page load (after cache is cleared).
+          var PURGE_KEY = '__lf_purge_v10';
           try {
             if (!sessionStorage.getItem(PURGE_KEY) && typeof caches !== 'undefined') {
               sessionStorage.setItem(PURGE_KEY, '1');
