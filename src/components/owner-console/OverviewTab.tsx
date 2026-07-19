@@ -99,6 +99,29 @@ export default function OverviewTab({ stats, companies, activity, enteringSuppor
         <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
       </a>
 
+      {/* Google Cloud Console shortcut */}
+      <a
+        href="https://console.cloud.google.com/apis/credentials?project=project-8f83830f-523d-4461-a2a"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#4285F4"/>
+            <path d="M17.6 12.2c0-.4-.04-.8-.1-1.2H12v2.3h3.1c-.1.8-.6 1.5-1.3 1.9v1.6h2.1c1.2-1.1 1.9-2.8 1.9-4.6z" fill="#fff"/>
+            <path d="M12 18c1.6 0 2.9-.5 3.9-1.4l-2.1-1.6c-.5.4-1.1.6-1.8.6-1.4 0-2.6-.9-3-2.2H6.8v1.7C7.8 16.9 9.8 18 12 18z" fill="#fff"/>
+            <path d="M9 13.4c-.1-.4-.2-.8-.2-1.4s.1-1 .2-1.4V8.9H6.8C6.3 9.8 6 10.9 6 12s.3 2.2.8 3.1L9 13.4z" fill="#fff"/>
+            <path d="M12 8.6c.8 0 1.5.3 2 .8l1.5-1.5C14.9 7 13.6 6.4 12 6.4c-2.2 0-4.2 1.1-5.2 2.8l2.2 1.7c.4-1.3 1.6-2.3 3-2.3z" fill="#fff"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">Google Cloud Console</p>
+          <p className="text-xs text-slate-400 truncate">Manage API keys, Maps credentials & billing</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
       {/* System Map shortcut */}
       <a
         href="/docs/IWILLBUILD_SYSTEM_MAP.md"
