@@ -257,11 +257,11 @@ export async function compressImageIfNeeded(
     const out: Buffer = await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
     return { buffer: out, mimeType: 'image/jpeg' };
   } catch {
-    // Jimp failed — if HEIC, we can't serve it as-is; reject it
-    if (isHeic) {
-      throw new Error('HEIC/HEIF image could not be converted. Please shoot in JPEG mode (Camera Settings → Formats → Most Compatible) or convert the file before uploading.');
-    }
-    // For other formats, return original unchanged
+    // Jimp failed to decode this image.
+    // For HEIC/HEIF: store the raw buffer as-is rather than rejecting.
+    // R2 stores any binary; the download proxy streams it back to the client.
+    // iOS Safari can display HEIC natively; other browsers get the proxy URL.
+    console.warn(`[storage] compressImageIfNeeded: Jimp failed for mime=${mimeType} — storing raw buffer`);
     return { buffer, mimeType };
   }
 }

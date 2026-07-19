@@ -26,23 +26,47 @@ export default async function handler(req: Request, res: Response) {
   }
   if (parsed.limitError) return res.status(400).json({ code: 'upload_error', error: parsed.limitError });
 
-  // Validate image types — HEIC/HEIF now accepted (converted server-side).
-  // iOS Safari often sends HEIC files as application/octet-stream — reclassify
-  // by file extension before the MIME check so they aren't rejected.
+  // ── Diagnostic logging — visible in server logs for iOS debugging ─────────
+  console.log(`[photos POST] jobId=${req.params.id} files=${parsed.files.length} fields=${JSON.stringify(Object.keys(parsed.fields))}`);
+  for (const f of parsed.files) {
+    console.log(`[photos POST] file: name="${f.originalname}" mime="${f.mimetype}" size=${f.size} field="${f.fieldname}"`);
+  }
+
+  // ── MIME reclassification ─────────────────────────────────────────────────
+  // iOS Safari sends HEIC as application/octet-stream or image/heic.
+  // Some iOS versions send files with no extension (originalname = "image").
+  // Reclassify by extension first, then fall back to magic-byte sniffing.
   for (const f of parsed.files) {
     const ext = (f.originalname.split('.').pop() ?? '').toLowerCase();
-    if (f.mimetype === 'application/octet-stream' || f.mimetype === '') {
+    const noExt = !f.originalname.includes('.') || ext === f.originalname.toLowerCase();
+
+    // Reclassify blank / octet-stream by extension
+    if (f.mimetype === 'application/octet-stream' || f.mimetype === '' || f.mimetype === 'application/unknown') {
       if (ext === 'heic' || ext === 'heif') f.mimetype = 'image/heic';
       else if (ext === 'jpg' || ext === 'jpeg') f.mimetype = 'image/jpeg';
       else if (ext === 'png') f.mimetype = 'image/png';
       else if (ext === 'webp') f.mimetype = 'image/webp';
+      else if (noExt && f.buffer.length > 3) {
+        // Magic-byte sniff for files with no extension (iOS "image" filename)
+        const sig = f.buffer.slice(0, 12);
+        if (sig[0] === 0xFF && sig[1] === 0xD8) f.mimetype = 'image/jpeg';          // JPEG
+        else if (sig[0] === 0x89 && sig[1] === 0x50) f.mimetype = 'image/png';      // PNG
+        else if (sig[0] === 0x52 && sig[1] === 0x49) f.mimetype = 'image/webp';     // RIFF/WebP
+        else f.mimetype = 'image/jpeg'; // safe default for iOS camera output
+      }
     }
-    // Normalise non-standard alias some browsers send
+    // Normalise non-standard aliases
     if (f.mimetype === 'image/jpg') f.mimetype = 'image/jpeg';
+    // iOS sometimes sends HEIC as image/heif — normalise to image/heic
+    if (f.mimetype === 'image/heif') f.mimetype = 'image/heic';
+
+    console.log(`[photos POST] after reclassify: name="${f.originalname}" mime="${f.mimetype}"`);
+
     if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
+      console.warn(`[photos POST] rejected: name="${f.originalname}" mime="${f.mimetype}"`);
       return res.status(400).json({
         code: 'invalid_file_type',
-        error: `"${f.originalname}" is not a supported image type (${f.mimetype}). Please upload JPEG, PNG, or WebP.`,
+        error: `"${f.originalname}" is not a supported image type (${f.mimetype}). Supported: JPEG, PNG, WebP, HEIC.`,
       });
     }
   }
@@ -130,7 +154,9 @@ export default async function handler(req: Request, res: Response) {
         const result = await compressImageIfNeeded(file.buffer, file.mimetype);
         compressed = result.buffer;
         outMime = result.mimeType;
+        console.log(`[photos POST] compress: "${file.originalname}" ${file.mimetype} → ${outMime} (${file.size}→${compressed.length} bytes)`);
       } catch (convErr) {
+        console.error(`[photos POST] compress failed: "${file.originalname}"`, convErr);
         return res.status(400).json({
           code: 'conversion_failed',
           error: convErr instanceof Error ? convErr.message : 'Image conversion failed.',
@@ -140,6 +166,7 @@ export default async function handler(req: Request, res: Response) {
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
       const storageKey = `${randomUUID()}.${ext}`;
 
+      console.log(`[photos POST] saving: key=${storageKey} bucket=${PHOTO_BUCKET} mime=${outMime}`);
       const result = await saveFile({
         buffer: compressed,
         originalName: file.originalname,
@@ -147,6 +174,7 @@ export default async function handler(req: Request, res: Response) {
         bucket: PHOTO_BUCKET,
         storageKey,
       });
+      console.log(`[photos POST] saved: key=${result.storageKey} url=${result.publicUrl}`);
 
       const [inserted] = await db.insert(jobPhotos).values({
         jobId,
@@ -159,6 +187,7 @@ export default async function handler(req: Request, res: Response) {
         uploadedByUserId: uploaderUserId,
         uploadedByName: uploaderName,
       }).$returningId();
+      console.log(`[photos POST] DB record inserted: id=${inserted.id} jobId=${jobId}`);
 
       saved.push({
         id: inserted.id,

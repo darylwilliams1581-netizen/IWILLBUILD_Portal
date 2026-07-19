@@ -465,14 +465,14 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     const arr = Array.from(files);
     if (arr.length === 0) return;
 
-    // ── iOS diagnostic logging ──────────────────────────────────────────────
+    // ── Full mapping diagnostic logging (all devices) ───────────────────────
     const ios = isIosSafari();
-    if (ios) {
-      arr.forEach((f, i) => {
-        console.log(`[upload] step1 file[${i}] selected: name=${f.name} type=${f.type || '(empty)'} size=${f.size} lastModified=${f.lastModified}`);
-      });
-      console.log(`[upload] step4 iOS bypass detected: ${ios}`);
-    }
+    console.log(`[upload] jobId=${jobId} files=${arr.length} ios=${ios}`);
+    arr.forEach((f, i) => {
+      console.log(`[upload] file[${i}]: name="${f.name}" type="${f.type || '(empty)'}" size=${f.size}`);
+    });
+    console.log(`[upload] endpoint: POST /api/jobs/${jobId}/photos`);
+    console.log(`[upload] FormData field: "photos"`);
     // ───────────────────────────────────────────────────────────────────────
 
     setUploading(true); onUploading?.(true); setUploadError(null);
@@ -481,8 +481,9 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       const result = await prepareFiles(arr);
       if (result.error) { setUploadError(result.error); setUploading(false); onUploading?.(false); return; }
       valid = result.valid;
+      console.log(`[upload] prepareFiles ok: ${valid.length} file(s) ready`);
     } catch (e) {
-      if (ios) console.error('[upload] prepareFiles threw:', e);
+      console.error('[upload] prepareFiles threw:', e);
       setUploadError('Failed to process images. Please try again.');
       setUploading(false); onUploading?.(false); return;
     }
@@ -492,28 +493,28 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added. Select fewer files.`);
       setUploading(false); onUploading?.(false); return;
     }
-    if (ios) console.log(`[upload] step5 raw upload started — ${valid.length} file(s)`);
     const fd = new FormData();
     valid.forEach((f) => fd.append('photos', f));
+    console.log(`[upload] sending ${valid.length} file(s) to /api/jobs/${jobId}/photos`);
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
-      if (ios) console.log(`[upload] step6 server response status: ${res.status}`);
-      let data: { error?: string } = {};
+      console.log(`[upload] server response: ${res.status}`);
+      let data: { error?: string; photos?: unknown[] } = {};
       const ct = res.headers.get('content-type') ?? '';
       if (ct.includes('application/json')) {
-        data = await res.json() as { error?: string };
-        if (ios) console.log('[upload] step7 response parsed:', JSON.stringify(data));
+        data = await res.json() as { error?: string; photos?: unknown[] };
+        console.log('[upload] response body:', JSON.stringify(data).slice(0, 300));
       } else {
         const text = await res.text();
-        if (ios) console.log('[upload] step7 non-json response:', text.slice(0, 200));
+        console.warn('[upload] non-json response:', text.slice(0, 200));
         throw new Error(text.includes('<!') ? `Server error (${res.status}) — please try again` : text || `Upload failed (${res.status})`);
       }
       if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
-      if (ios) console.log('[upload] step8 photo list refresh started');
+      console.log(`[upload] success — refreshing photo list for jobId=${jobId}`);
       await fetchPhotos();
-      if (ios) console.log('[upload] step9 photo list refresh complete — render started');
+      console.log('[upload] photo list refreshed');
     } catch (e) {
-      if (ios) console.error('[upload] fetch/parse threw:', e);
+      console.error('[upload] error:', e);
       setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again');
     }
     finally {
