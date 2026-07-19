@@ -645,8 +645,6 @@ export default function FleetDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const navigate = useNavigate();
-
   const loadAsset = useCallback(async () => {
     if (!id) return;
     try {

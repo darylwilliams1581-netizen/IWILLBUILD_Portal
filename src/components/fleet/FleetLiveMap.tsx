@@ -267,6 +267,20 @@ export default function FleetLiveMap() {
       import('leaflet').then((L) => {
         if (!container || leafletMapRef.current) return;
 
+        // Patch Leaflet's getPosition to guard against uninitialised pane elements.
+        // _rawPanBy calls _getMapPanePos → getPosition before panes are ready,
+        // reading _leaflet_pos off an undefined element and crashing.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const DomUtil = (L as any).DomUtil;
+        if (DomUtil && typeof DomUtil.getPosition === 'function') {
+          const _orig = DomUtil.getPosition as (el: HTMLElement) => { x: number; y: number };
+          DomUtil.getPosition = function patchedGetPosition(el: HTMLElement) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!el || !(el as any)._leaflet_pos) return { x: 0, y: 0 };
+            return _orig.call(this, el);
+          };
+        }
+
         // Fix default icon paths (Leaflet + bundlers issue)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -283,6 +297,7 @@ export default function FleetLiveMap() {
           attributionControl: true,
           fadeAnimation: false,
           markerZoomAnimation: false,
+          zoomAnimation: false,
         });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -448,8 +463,12 @@ export default function FleetLiveMap() {
   }, [fetchSessions]);
 
   // ── Zoom control handlers ───────────────────────────────────────────────────
-  function handleZoomIn() { leafletMapRef.current?.zoomIn(); }
-  function handleZoomOut() { leafletMapRef.current?.zoomOut(); }
+  function handleZoomIn() {
+    try { leafletMapRef.current?.zoomIn(1, { animate: false }); } catch (_) { /* ignore */ }
+  }
+  function handleZoomOut() {
+    try { leafletMapRef.current?.zoomOut(1, { animate: false }); } catch (_) { /* ignore */ }
+  }
   function handleFitAll() {
     if (!leafletMapRef.current) return;
     import('leaflet').then((L) => {
