@@ -7,7 +7,8 @@
  * The SVG element itself is sized to `width × height` (scaled px) via CSS,
  * so the browser handles the scale transform — we never double-apply it.
  */
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import type React from 'react';
 import type { Annotation, AnnotationGeometry, AnnotationStyle, ToolType, Point } from './types';
 
 function uid() {

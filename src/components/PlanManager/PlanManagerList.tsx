@@ -3,7 +3,7 @@
  * Compact dense rows optimised for 50+ drawings.
  * Inline Share and Email actions open the ShareModal directly.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, FileText, Archive, RotateCcw, Trash2, Loader2,

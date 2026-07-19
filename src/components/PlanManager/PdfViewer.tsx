@@ -2,7 +2,7 @@
  * PdfViewer — renders a PDF using react-pdf with zoom/rotate/page nav/thumbnail strip.
  * Overlays AnnotationCanvas on each page.
  */
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';

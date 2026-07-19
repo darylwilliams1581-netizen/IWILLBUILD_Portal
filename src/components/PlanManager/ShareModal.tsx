@@ -1,7 +1,7 @@
 /**
  * ShareModal — generate a view-only share link for a drawing.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Share2, Copy, Check, X, Link, Calendar } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 

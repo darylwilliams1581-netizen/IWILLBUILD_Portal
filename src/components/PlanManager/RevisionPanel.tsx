@@ -1,7 +1,7 @@
 /**
  * RevisionPanel — shows revision history, save/new revision/lock controls, and audit log.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { GitBranch, Lock, Save, Plus, ChevronDown, ChevronUp, Clock, User } from 'lucide-react';
 import type { DrawingRevision } from './types';
 

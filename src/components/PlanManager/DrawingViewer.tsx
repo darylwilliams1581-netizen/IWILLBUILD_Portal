@@ -3,7 +3,8 @@
  * RevisionPanel, and ShareModal for a single drawing.
  * Revision panel is collapsible to maximise PDF viewing area.
  */
-import React, { useState, useCallback, useEffect } from 'react';import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { X, Share2, Upload, AlertCircle, Loader2, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
 import PdfViewer from './PdfViewer';
 import AnnotationToolbar from './AnnotationToolbar';
 import RevisionPanel from './RevisionPanel';
@@ -43,7 +44,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
   const [showShare, setShowShare] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [revPanelOpen, setRevPanelOpen] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Undo: undoTrigger increments to signal the canvas to pop its history
   const [undoTrigger, setUndoTrigger] = useState(0);

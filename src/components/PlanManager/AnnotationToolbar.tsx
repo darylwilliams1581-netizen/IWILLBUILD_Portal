@@ -3,7 +3,8 @@
  * Tools: select, pan, line, arrow, rect, circle, freehand, text, highlight, stamp, dimension.
  * Style controls: color, stroke width, opacity.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type React from 'react';
 import {
   MousePointer2, Hand, Minus, ArrowRight, Square, Circle,
   PenLine, Type, Highlighter, Stamp, Ruler,

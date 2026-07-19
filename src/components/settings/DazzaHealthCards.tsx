@@ -5,7 +5,7 @@
  * Severity: critical (🔴) → warning (🟠) → info (🔵)
  * Findings are pre-sorted Critical → Warning → Info before being passed in.
  */
-import React from 'react';
+import { useState, useEffect } from 'react';
 
 export interface AnnetteFindingCard {
   id: string;
