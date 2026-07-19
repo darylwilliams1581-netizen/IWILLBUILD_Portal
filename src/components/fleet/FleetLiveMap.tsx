@@ -6,6 +6,7 @@
  * Shows a styled pin per active driver with popup: name, vehicle, speed, last seen.
  * Admins/owners/managers only (API enforces this too).
  */
+import '@/lib/leaflet-patch';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Loader2, MapPin, RefreshCw, AlertCircle, Navigation,
@@ -287,33 +288,6 @@ export default function FleetLiveMap() {
           inertia: false,
           tap: false,
         });
-
-        // Immediately seed _leaflet_pos on every pane Leaflet just created.
-        // L.map() creates pane elements synchronously but does NOT set _leaflet_pos
-        // until setView runs. Any code path that calls _rawPanBy before setView
-        // (e.g. invalidateSize) will crash reading undefined._leaflet_pos.
-        // Seeding with point(0,0) makes those reads safe.
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
-          if (panes) {
-            Object.values(panes).forEach((el) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (el && !(el as any)._leaflet_pos) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (el as any)._leaflet_pos = (L as any).point(0, 0);
-              }
-            });
-          }
-          // Also seed the root map pane directly
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapPane = (map as any)._mapPane as HTMLElement | undefined;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if (mapPane && !(mapPane as any)._leaflet_pos) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (mapPane as any)._leaflet_pos = (L as any).point(0, 0);
-          }
-        } catch (_) { /* ignore */ }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

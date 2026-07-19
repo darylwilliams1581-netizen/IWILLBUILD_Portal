@@ -329,12 +329,21 @@ export default function JobDetailPage() {
             >
               <Menu size={20} />
             </button>
+            <button
+              onClick={() => navigate('/home')}
+              className="hidden md:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Home"
+            >
+              <ChevronLeft size={15} />
+              <span>Home</span>
+            </button>
+            <span className="hidden md:inline text-border">|</span>
             <Link
               to="/jobs"
               className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
             >
-              <ChevronLeft size={16} />
-              <span className="hidden sm:inline">Jobs</span>
+              <ChevronLeft size={16} className="md:hidden" />
+              <span>Jobs</span>
             </Link>
             <span className="text-border">|</span>
             <HardHat size={16} className="text-primary shrink-0" />

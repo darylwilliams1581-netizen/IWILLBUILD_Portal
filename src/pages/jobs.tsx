@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
   UserCheck,
+  ArrowLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
@@ -135,6 +136,15 @@ export default function JobsPage() {
             >
               <Menu size={20} />
             </button>
+            <button
+              onClick={() => navigate('/home')}
+              className="hidden md:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Home"
+            >
+              <ArrowLeft size={15} />
+              <span>Home</span>
+            </button>
+            <span className="hidden md:inline text-border">|</span>
             <HardHat size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg">{workPlural}</h1>
             {!loading && (
