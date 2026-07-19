@@ -8,7 +8,7 @@
  * Usage:
  *   <InvoicePreviewModal invoice={invoice} onClose={() => setShowPreview(false)} />
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Download, Loader2, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fmtMoney, STATUS_LABELS, type Invoice } from '@/lib/invoices-api';
@@ -162,7 +162,7 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   useEffect(() => {
     fetch('/api/company/settings', { credentials: 'include' })
@@ -172,16 +172,11 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
       .finally(() => setLoadingSettings(false));
   }, []);
 
-  // Inject HTML into the iframe once settings are loaded
+  // Build HTML for srcdoc once settings are loaded
   useEffect(() => {
     if (loadingSettings) return;
-    const iframe = iframeRef.current;
-    if (!iframe) return;
     const html = buildHtml(invoice, settings);
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    iframe.src = url;
-    return () => URL.revokeObjectURL(url);
+    setPreviewHtml(html);
   }, [loadingSettings, invoice, settings]);
 
   async function handleDownload() {
@@ -285,11 +280,11 @@ export default function InvoicePreviewModal({ invoice, onClose }: Props) {
               </div>
             ) : (
               <iframe
-                ref={iframeRef}
                 title="Invoice preview"
                 className="w-full h-full rounded-xl border border-gray-200 bg-white"
                 style={{ minHeight: '500px' }}
-                sandbox="allow-same-origin"
+                sandbox="allow-same-origin allow-scripts"
+                srcDoc={previewHtml}
               />
             )}
           </div>
