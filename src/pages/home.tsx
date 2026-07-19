@@ -1819,14 +1819,14 @@ export default function HomeScreen() {
         )}
       </div>
 
-      {/* ── Bottom bar — Dashboard ── */}
+      {/* ── Bottom bar — Home ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3" style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)' }}>
         <button
           onClick={() => setDashOpen(true)}
           className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-2xl py-3.5 transition-colors shadow-sm"
         >
           <LayoutDashboard size={16} className="text-white" />
-          <span className="text-white text-sm font-bold">Dashboard</span>
+          <span className="text-white text-sm font-bold">Home</span>
           <ChevronUp size={14} className="text-white/70" />
         </button>
       </div>
@@ -1835,7 +1835,7 @@ export default function HomeScreen() {
       <Sheet
         open={dashOpen}
         onClose={() => setDashOpen(false)}
-        title="Dashboard"
+        title="Home"
         titleIcon={LayoutDashboard}
         titleIconClass="text-orange-500"
       >

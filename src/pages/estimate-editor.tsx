@@ -365,6 +365,7 @@ export default function EstimateEditorPage() {
         <link rel="canonical" href={`https://iwillbuild.com/estimates/${id}`} />
         <meta name="robots" content="noindex" />
       </Helmet>
+      <h1 className="sr-only">{estimate ? `${estimate.title} — Estimate` : 'Estimate Editor'}</h1>
 
         {/* Top bar */}
         <header className="bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3 h-16" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>

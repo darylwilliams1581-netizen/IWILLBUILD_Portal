@@ -40,7 +40,7 @@ export default function JobDrawingsPage() {
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate(`/jobs/${id}`)}
             className="p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             aria-label="Back"
           >
@@ -50,10 +50,16 @@ export default function JobDrawingsPage() {
             <Layers size={16} className="text-lime-600" />
           </div>
           <div className="min-w-0">
+            <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+              <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+              <span>/</span>
+              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
+              <span>/</span>
+              <span className="text-gray-600 font-medium">Drawings</span>
+            </div>
             <h1 className="text-sm font-bold text-slate-900 truncate">
               {job?.name ?? 'Loading…'}
             </h1>
-            <p className="text-xs text-slate-400">Drawings</p>
           </div>
         </div>
 

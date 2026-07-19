@@ -188,8 +188,11 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>My Profile — IWILLBUILD Portal</title>
+        <meta name="description" content="Manage your profile, licences, emergency contact and security settings." />
+        <link rel="canonical" href="https://iwillbuild.com/profile" />
         <meta name="robots" content="noindex" />
       </Helmet>
+      <h1 className="sr-only">My Profile</h1>
 
       {/* Sticky top bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">

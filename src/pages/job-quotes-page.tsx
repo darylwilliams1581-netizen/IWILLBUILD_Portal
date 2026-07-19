@@ -244,15 +244,19 @@ export default function JobQuotesPage() {
       <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate(`/jobs/${id}`)}
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
           >
             <ChevronLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-gray-400 text-xs font-medium truncate">
-              {job?.name ?? '…'}
-            </p>
+            <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+              <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+              <span>/</span>
+              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
+              <span>/</span>
+              <span className="text-gray-600 font-medium">Quotes</span>
+            </div>
             <p className="text-gray-900 font-bold text-xl leading-tight">Quotes</p>
           </div>
           {canEdit && (

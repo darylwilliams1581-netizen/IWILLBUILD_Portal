@@ -57,7 +57,7 @@ export default function JobCostsPage() {
         style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
         <button
-          onClick={() => navigate('/home')}
+          onClick={() => navigate(`/jobs/${id}`)}
           className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0"
         >
           <ArrowLeft size={18} />
@@ -71,12 +71,16 @@ export default function JobCostsPage() {
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             ) : (
               <>
+                <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                  <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+                  <span>/</span>
+                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
+                  <span>/</span>
+                  <span className="text-gray-600 font-medium">Costs</span>
+                </div>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
                   {job?.name ?? 'Job Costs'}
                 </h1>
-                {job?.jobNumber && (
-                  <p className="text-gray-400 text-xs font-mono leading-tight">{job.jobNumber}</p>
-                )}
               </>
             )}
           </div>
@@ -92,7 +96,7 @@ export default function JobCostsPage() {
 
       {/* ── Mobile: back arrow floats top-left ── */}
       <button
-        onClick={() => navigate('/home')}
+        onClick={() => navigate(`/jobs/${id}`)}
         className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors"
         aria-label="Back"
       >
