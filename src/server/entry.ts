@@ -423,6 +423,10 @@ import me_change_password_post_342 from "./api/me/change-password/POST";
 import me_email_status_get_343 from "./api/me/email-status/GET";
 import me_phone_get_344 from "./api/me/phone/GET";
 import me_phone_put_345 from "./api/me/phone/PUT";
+import meProfileExtrasGet from "./api/me/profile-extras/GET";
+import meProfileExtrasPut from "./api/me/profile-extras/PUT";
+import meProfileAttachmentsPost from "./api/me/profile-attachments/POST";
+import meProfileAttachmentsDelete from "./api/me/profile-attachments/DELETE";
 import notes_get_383 from "./api/notes/GET";
 import notes_post_384 from "./api/notes/POST";
 import notes_comments_post_385 from "./api/notes/comments/POST";
@@ -1210,6 +1214,12 @@ async function runStartupMigrations() {
     { table: 'fleet_driver_sessions', column: 'max_speed_kmh',        definition: 'DECIMAL(6,2) NULL' },
     { table: 'fleet_driver_sessions', column: 'collision_count',      definition: 'INT NOT NULL DEFAULT 0' },
     { table: 'fleet_driver_sessions', column: 'summary_computed_at',  definition: 'DATETIME NULL' },
+    // ── profiles: extended personal fields ───────────────────────────────────
+    { table: 'profiles', column: 'licenses',               definition: 'TEXT NULL' },
+    { table: 'profiles', column: 'profile_notes',          definition: 'TEXT NULL' },
+    { table: 'profiles', column: 'emergency_contact_name', definition: 'VARCHAR(255) NULL' },
+    { table: 'profiles', column: 'emergency_contact_phone',definition: 'VARCHAR(50) NULL' },
+    { table: 'profiles', column: 'profile_attachments',    definition: 'TEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -2324,6 +2334,10 @@ app.post("/api/me/change-password", me_change_password_post_342);
 app.get("/api/me/email-status", me_email_status_get_343);
 app.get("/api/me/phone", me_phone_get_344);
 app.put("/api/me/phone", me_phone_put_345);
+app.get("/api/me/profile-extras", meProfileExtrasGet);
+app.put("/api/me/profile-extras", meProfileExtrasPut);
+app.post("/api/me/profile-attachments", meProfileAttachmentsPost);
+app.delete("/api/me/profile-attachments/:attachmentId", meProfileAttachmentsDelete);
 app.post("/api/migrate-account-recovery", _h_migrate_account_recovery_post_14);
 app.post("/api/migrate-asset-manager", _h_migrate_asset_manager_post_15);
 app.post("/api/migrate-attendance", _h_migrate_attendance_post_16);

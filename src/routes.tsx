@@ -39,6 +39,7 @@ const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
 const TeamPage           = lazy(() => import('./pages/team'));
 
 const SettingsPage       = lazy(() => import('./pages/settings'));
+const ProfilePage        = lazy(() => import('./pages/profile'));
 // FormsPage, SafetyPage, LibraryPage removed — now served as Studio tabs (/studio?tab=*)
 const FilesPage          = lazy(() => import('./pages/files'));
 const EstimatingPage     = lazy(() => import('./pages/estimating'));
@@ -232,6 +233,7 @@ export const routes: RouteObject[] = [
   { path: '/team',          element: protect(<TeamPage />),            errorElement: routeError },
   { path: '/team/schedule', loader: () => redirect('/scheduler?tab=team-shifts') },
   { path: '/settings',      element: protect(<SettingsPage />),        errorElement: routeError },
+  { path: '/profile',       element: protect(<ProfilePage />),         errorElement: routeError },
   { path: '/owner-console',     element: protectDev(<OwnerConsolePage />),   errorElement: routeError },
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },

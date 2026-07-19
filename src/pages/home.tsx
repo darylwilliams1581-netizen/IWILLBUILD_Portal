@@ -1776,7 +1776,7 @@ export default function HomeScreen() {
               <NotificationBell />
             </div>
             <button
-              onClick={() => setProfileOpen(true)}
+              onClick={() => navigate('/profile')}
               className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"
             >
               <User size={18} className="text-orange-500" />
