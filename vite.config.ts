@@ -190,63 +190,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         });
       },
     } as Plugin,
-    // ---------------------------------------------------------------------------
-    // Stale leaflet dep-cache eviction plugin
-    // Leaflet was removed from the project but the browser may have a cached
-    // pre-bundle at /node_modules/.vite/deps/leaflet.js?v=05d76b4a. Intercept
-    // any request for that URL and return an empty ES module so the old cached
-    // chunk never executes and throws _leaflet_pos errors.
-    // ---------------------------------------------------------------------------
-    {
-      // Stale Leaflet dep-cache eviction
-      // The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a
-      // cached from before Leaflet was removed. We intercept at three levels:
-      // 1. Vite `load` hook — returns empty module for any leaflet module ID
-      // 2. Vite `transform` hook — strips any leaflet content that slips through
-      // 3. configureServer middleware — intercepts HTTP requests before Vite's
-      //    own dep-serving middleware by prepending (not appending) to the stack
-      name: 'evict-stale-leaflet-dep',
-      enforce: 'pre' as const,
-      resolveId(id: string) {
-        if (/leaflet/i.test(id)) return '\0leaflet-stub';
-        return null;
-      },
-      load(id: string) {
-        if (id === '\0leaflet-stub' || /leaflet/i.test(id)) {
-          return 'export default {};\nexport const map = () => ({});\nexport const tileLayer = () => ({});\n';
-        }
-        return null;
-      },
-      configureServer(server: ViteDevServer) {
-        // UNSHIFT so this handler is literally first in the connect stack —
-        // before Vite's own dep-serving middleware that would serve the real file.
-        const leafletKiller = (req: any, res: any, next: any) => {
-          if (/leaflet/i.test(req.url ?? '')) {
-            res.setHeader('Content-Type', 'application/javascript');
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-            res.end('// leaflet removed\nexport default {};\n');
-            return;
-          }
-          next();
-        };
-        // Push to front of the middleware stack
-        server.middlewares.stack.unshift({ route: '', handle: leafletKiller });
-      },
-      configurePreviewServer(server) {
-        server.middlewares.use((req, res, next) => {
-          const url = req.url ?? '';
-          if (url.includes('leaflet')) {
-            res.setHeader('Content-Type', 'application/javascript');
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-            res.end('// leaflet removed\nexport default {};\n');
-            return;
-          }
-          next();
-        });
-      },
-    } as Plugin,
     react({
       babel: {
         // sourceMapperPlugin is a Babel plugin (not a Vite plugin).
@@ -554,9 +497,8 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   optimizeDeps: {
-    // v3 — hash bump to evict stale leaflet.js?v=05d76b4a from browser cache
     include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
-    exclude: ["drizzle-orm", "mysql2", "leaflet", "react-leaflet"],
+    exclude: ["drizzle-orm", "mysql2"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },

@@ -37,11 +37,8 @@ import { Navigation } from 'lucide-react';
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
 // ── Leaflet crash boundary ────────────────────────────────────────────────────
-// If the browser's HTTP disk cache serves the old leaflet.js?v=05d76b4a and it
-// executes (throwing "_leaflet_pos" errors), this boundary catches the crash and
-// does a single hard reload to flush the disk cache entry.
-const LEAFLET_RELOAD_KEY = '__leaflet_reload_v7';
-
+// Silently catches any _leaflet_pos errors from stale cached leaflet.js.
+// The Google Maps live map is unaffected — it does not use leaflet at all.
 class LeafletCrashBoundary extends React.Component<
   { children: React.ReactNode },
   { crashed: boolean }
@@ -53,27 +50,14 @@ class LeafletCrashBoundary extends React.Component<
   static getDerivedStateFromError() {
     return { crashed: true };
   }
-  componentDidCatch(error: Error) {
-    if (!error?.message?.includes('_leaflet_pos')) return;
-    try {
-      if (sessionStorage.getItem(LEAFLET_RELOAD_KEY)) return; // already tried
-      sessionStorage.setItem(LEAFLET_RELOAD_KEY, '1');
-      // Unregister all SWs then hard-reload to bypass disk cache
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-          .finally(() => { (window.location as any).reload(true); });
-      } else {
-        (window.location as any).reload(true);
-      }
-    } catch { /* ignore */ }
+  componentDidCatch() {
+    // Silently swallow — do not rethrow or reload
   }
   render() {
     if (this.state.crashed) {
       return (
         <div className="flex items-center justify-center flex-1 gap-2 text-slate-400 p-8">
-          <Loader2 size={20} className="animate-spin" />
-          <span className="text-sm">Reloading map…</span>
+          <span className="text-sm">Map unavailable</span>
         </div>
       );
     }

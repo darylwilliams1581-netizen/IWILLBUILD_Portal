@@ -723,25 +723,16 @@ normalizeCommerceApiBaseUrlEnv();
 
 const app = express();
 
-// ── Leaflet cache-bust — FIRST middleware, before everything ──────────────────
-// The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a in its
-// HTTP disk cache from a previous build. Even a conditional GET (If-None-Match)
-// reaches the server, so this intercept fires and returns a stub + Clear-Site-Data
-// header that nukes the cached entry on the client side permanently.
+
+// ── Intercept stale leaflet dep URL ──────────────────────────────────────────
+// The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a cached
+// with immutable headers. When it does make a network request (revalidation,
+// fresh browser), return an empty stub so the module never executes.
 app.use((req: Request, res: Response, next: NextFunction) => {
-	if (/leaflet/i.test(req.path)) {
-		res.setHeader('Content-Type', 'application/javascript');
-		res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-		res.setHeader('Pragma', 'no-cache');
-		res.setHeader('Expires', '0');
-		res.setHeader('Clear-Site-Data', '"cache"');
-		return res.end('// leaflet removed\nexport default {};\n');
-	}
-	// When the fleet page navigates to ?_lkill=N, send Clear-Site-Data so the
-	// browser drops all cached entries (including the disk-cached leaflet module)
-	// before the page renders.
-	if ((req.query as Record<string, string>)['_lkill']) {
-		res.setHeader('Clear-Site-Data', '"cache"');
+	if (req.path.includes('leaflet')) {
+		res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+		res.setHeader('Cache-Control', 'no-store');
+		return res.end('export default {};\n');
 	}
 	next();
 });
@@ -2723,36 +2714,6 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 	registerAdSenseTextRoutes(app, adSenseRuntimeConfig);
 
-	// ── Stale Leaflet dep-cache eviction ─────────────────────────────────────
-	// The browser may have a pre-bundled leaflet.js cached from before Leaflet
-	// was removed. Intercept any request whose path contains "leaflet" and
-	// return an empty ES module with no-store headers so the browser discards
-	// its cached copy on the next load.
-	app.use((req, res, next) => {
-		if (req.path.toLowerCase().includes('leaflet')) {
-			res.set('Content-Type', 'application/javascript');
-			res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-			res.set('Pragma', 'no-cache');
-			res.set('Expires', '0');
-			return res.send('// leaflet removed\nexport default {};\n');
-		}
-		next();
-	});
-
-	// Kill stale browser-cached leaflet chunk — must be before express.static
-	// so the server responds even when the browser sends a conditional GET
-	// for the disk-cached /node_modules/.vite/deps/leaflet.js?v=... URL.
-	app.use((req: Request, res: Response, next: NextFunction) => {
-		if (/leaflet/i.test(req.path)) {
-			res.setHeader('Content-Type', 'application/javascript');
-			res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-			res.setHeader('Pragma', 'no-cache');
-			res.setHeader('Expires', '0');
-			res.setHeader('Clear-Site-Data', '"cache"');
-			return res.end('// leaflet removed\nexport default {};\n');
-		}
-		next();
-	});
 
 	app.use(
 		express.static(clientDir, {
