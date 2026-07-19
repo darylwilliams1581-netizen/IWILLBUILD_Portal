@@ -11,6 +11,7 @@ import {
   ShieldAlert, Upload, Lock, Eye, EyeOff, KeyRound,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
+import SecurityTab from '@/components/settings/SecurityTab';
 
 const inputClass = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -428,6 +429,13 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </section>
+
+        {/* ── Two-Factor Authentication ─────────────────────────────────── */}
+        <section>
+          <div className="bg-white border border-slate-200 rounded-2xl p-6">
+            <SecurityTab />
           </div>
         </section>
 

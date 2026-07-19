@@ -4,6 +4,7 @@ import {
   Lock, Eye, EyeOff, KeyRound, Smartphone, BadgeCheck, RefreshCw,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
+import SecurityTab from '@/components/settings/SecurityTab';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -338,6 +339,11 @@ export default function MyAccountTab() {
       </div>
 
       <PhoneVerificationSection />
+
+      {/* ── Two-Factor Authentication ─────────────────────────────────── */}
+      <div>
+        <SecurityTab />
+      </div>
     </div>
   );
 }
