@@ -2823,6 +2823,14 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 				{ ...result, head: seoHead + result.head },
 				adSenseRuntimeConfig,
 			);
+			// One-time cache eviction: drop the browser disk cache so the stale
+			// leaflet.js?v=05d76b4a immutable entry is purged. Cookie-gated so it
+			// only fires once per browser, then never again.
+			const hasPurged = (req.headers['cookie'] ?? '').includes('_lf_purged=1');
+			if (!hasPurged) {
+				res.set('Clear-Site-Data', '"cache"');
+				res.set('Set-Cookie', '_lf_purged=1; Max-Age=31536000; Path=/; SameSite=Lax; HttpOnly');
+			}
 			res
 				.status(result.status)
 				.set("Content-Type", "text/html; charset=utf-8")

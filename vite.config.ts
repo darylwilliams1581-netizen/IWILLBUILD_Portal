@@ -168,6 +168,17 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       name: 'evict-frozen-rootlayout-snapshot',
       configureServer(server: ViteDevServer) {
         server.middlewares.use((req, res, next) => {
+          // Intercept any request for the stale leaflet pre-bundle.
+          // leaflet was removed from source; this URL only appears when a browser
+          // has the old Vite dep chunk in its HTTP disk cache. Return an empty stub
+          // so it never executes. Remove this block once all preview browsers have
+          // refreshed past the stale cache (i.e. when the error stops appearing).
+          if (req.url && req.url.includes('leaflet')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.end('export default {};');
+            return;
+          }
           if (
             req.url &&
             req.url.includes('RootLayout.tsx') &&

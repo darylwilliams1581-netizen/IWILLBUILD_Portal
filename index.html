@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v37 -->
+  <!-- cache-bust: v39 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -197,16 +197,6 @@
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Register service worker that intercepts stale leaflet.js disk-cache entries.
-      // leaflet.js?v=05d76b4a was pre-bundled by Vite before leaflet was removed;
-      // browsers cache it with immutable headers. The SW intercepts any fetch for
-      // a URL containing "leaflet.js" and returns an empty stub instead.
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
-          .catch(function() {});
-      }
-    </script>
     <script src="/analytics.js"></script>
   </body>
 </html>
