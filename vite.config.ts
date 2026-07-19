@@ -554,8 +554,8 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   optimizeDeps: {
-    // v2 — hash bump to evict stale leaflet.js?v=05d76b4a from browser cache
-    include: ["react", "react-dom", "react-router-dom", "motion/react"],
+    // v3 — hash bump to evict stale leaflet.js?v=05d76b4a from browser cache
+    include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
     exclude: ["drizzle-orm", "mysql2", "leaflet", "react-leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.

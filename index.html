@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v29 -->
+  <!-- cache-bust: v30 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -224,16 +224,17 @@
       //    any cached module executes.
       // 2. window.onerror suppresses any errors that slip through anyway.
       (function () {
-        // Patch _leaflet_pos on Object.prototype so undefined receivers get {x:0,y:0}
+        // Patch _leaflet_pos on HTMLElement.prototype so any DOM element that
+        // leaflet calls getPosition() on returns {x:0,y:0} instead of undefined.
+        // getPosition(el) does: return el._leaflet_pos — if the element exists but
+        // _leaflet_pos was never set, this returns {x:0,y:0} and no throw occurs.
+        // (If el is undefined the throw happens before the getter — that's caught
+        // by window.onerror below.)
         try {
-          if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
-            Object.defineProperty(Object.prototype, '_leaflet_pos', {
-              get: function () {
-                // 'this' in sloppy-mode getter is the receiver; for undefined it's the global
-                // Return undefined for real objects (leaflet sets it via the setter),
-                // but return a safe Point for anything that doesn't have it set.
-                return undefined;
-              },
+          if (typeof HTMLElement !== 'undefined' &&
+              !Object.getOwnPropertyDescriptor(HTMLElement.prototype, '_leaflet_pos')) {
+            Object.defineProperty(HTMLElement.prototype, '_leaflet_pos', {
+              get: function () { return { x: 0, y: 0 }; },
               set: function (v) {
                 Object.defineProperty(this, '_leaflet_pos', {
                   value: v, writable: true, configurable: true, enumerable: false,
