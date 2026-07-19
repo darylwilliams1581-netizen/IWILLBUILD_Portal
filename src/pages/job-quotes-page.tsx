@@ -251,6 +251,8 @@ export default function JobQuotesPage() {
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+              <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center" title="Dashboard"><House size={11} /></button>
+              <span>/</span>
               <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
               <span>/</span>
               <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>

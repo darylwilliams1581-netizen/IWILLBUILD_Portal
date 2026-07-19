@@ -51,7 +51,7 @@ export default function JobDrawingsPage() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-              <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Home"><House size={11} /></button>
+              <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Dashboard"><House size={11} /></button>
               <span>/</span>
               <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
               <span>/</span>

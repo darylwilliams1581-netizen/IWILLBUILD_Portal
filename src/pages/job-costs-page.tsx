@@ -72,6 +72,8 @@ export default function JobCostsPage() {
             ) : (
               <>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center" title="Dashboard"><House size={11} /></button>
+                  <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
                   <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
@@ -101,6 +103,14 @@ export default function JobCostsPage() {
         aria-label="Back"
       >
         <ArrowLeft size={18} />
+      </button>
+      {/* ── Mobile: Dashboard button ── */}
+      <button
+        onClick={() => navigate('/home')}
+        className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors"
+        aria-label="Dashboard"
+      >
+        <House size={16} />
       </button>
 
       {/* ── Mobile: + Add Entry floats top-right ── */}

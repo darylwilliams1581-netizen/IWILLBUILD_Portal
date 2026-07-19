@@ -226,6 +226,8 @@ export default function JobProgressPage() {
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center" title="Dashboard"><House size={11} /></button>
+                  <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
                   <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
@@ -261,6 +263,10 @@ export default function JobProgressPage() {
       {/* ── Mobile: back arrow ── */}
       <button onClick={() => navigate(`/jobs/${id}`)} className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" aria-label="Back">
         <ArrowLeft size={18} />
+      </button>
+      {/* ── Mobile: Dashboard button ── */}
+      <button onClick={() => navigate('/home')} className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors" aria-label="Dashboard">
+        <House size={16} />
       </button>
 
       {/* ── Mobile: save + export top-right ── */}

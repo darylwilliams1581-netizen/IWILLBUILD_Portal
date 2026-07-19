@@ -111,7 +111,7 @@ export default function JobPhotosPage() {
               <>
                 {/* Breadcrumb: Home > Jobs > Job Name > Photos */}
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Home"><House size={11} /></button>
+                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center gap-0.5" title="Dashboard"><House size={11} /></button>
                   <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
@@ -136,8 +136,14 @@ export default function JobPhotosPage() {
       >
         <ArrowLeft size={18} />
       </button>
-
-      {/* ── Content ── */}
+      {/* ── Mobile: Dashboard button ── */}
+      <button
+        onClick={() => navigate('/home')}
+        className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors"
+        aria-label="Dashboard"
+      >
+        <House size={16} />
+      </button>
       <div className="flex-1 overflow-y-auto pb-0 md:pb-0">
         {loading ? (
           <div className="flex items-center justify-center py-20">
