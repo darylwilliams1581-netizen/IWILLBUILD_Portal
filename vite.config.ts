@@ -223,6 +223,14 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     conditions: ['import', 'module', 'browser', 'default'],
     dedupe: ["react", "react-dom", "react-router-dom"],
     alias: [
+      // Alias leaflet to an empty stub in ALL builds (client + SSR).
+      // leaflet is no longer used — this ensures Vite re-bundles a new hash
+      // so browsers with the old immutable-cached leaflet.js get a fresh stub.
+      {
+        find: /^leaflet(\/.*)?$/,
+        replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+        customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+      },
       // Hard-alias react-router-dom to its ESM build so Vite's ssrLoadModule
       // never falls through to the CJS dist/index.js (which uses `module.exports`
       // and throws "module is not defined" in an ESM evaluator context).

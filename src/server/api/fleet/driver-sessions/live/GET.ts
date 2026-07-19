@@ -25,6 +25,38 @@ export default async function handler(req: Request, res: Response) {
   }
 
   try {
+    // Auto-expire stale sessions:
+    // - Sessions with no telemetry that started more than 2 hours ago
+    // - Sessions whose last telemetry ping is more than 4 hours old
+    await db.execute(sql.raw(`
+      UPDATE fleet_driver_sessions
+      SET status = 'completed', end_at = NOW()
+      WHERE company_id = ${companyId}
+        AND status = 'active'
+        AND (
+          -- No GPS ever received and session is older than 2 hours
+          (
+            NOT EXISTS (
+              SELECT 1 FROM fleet_session_telemetry
+              WHERE session_id = fleet_driver_sessions.id
+            )
+            AND start_at < NOW() - INTERVAL 2 HOUR
+          )
+          OR
+          -- Last GPS ping is older than 4 hours
+          (
+            EXISTS (
+              SELECT 1 FROM fleet_session_telemetry
+              WHERE session_id = fleet_driver_sessions.id
+            )
+            AND (
+              SELECT MAX(recorded_at) FROM fleet_session_telemetry
+              WHERE session_id = fleet_driver_sessions.id
+            ) < NOW() - INTERVAL 4 HOUR
+          )
+        )
+    `));
+
     // Get all active sessions with their latest telemetry point
     const [rows] = await db.execute(sql.raw(`
       SELECT
