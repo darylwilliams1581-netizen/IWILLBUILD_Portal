@@ -78,10 +78,10 @@ const ADMIN_ICONS: AppIcon[] = [
   { label: 'Assets',    icon: Building2,   href: '/studio/asset-manager',  bg: 'bg-rose-500',     fg: 'text-white' },
   { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
   { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
+  { label: 'Settings',  icon: Settings,    href: '/settings',              bg: 'bg-slate-500',    fg: 'text-white' },
 ];
 
 const PLATFORM_ICONS: AppIcon[] = [
-  { label: 'Settings',  icon: Settings,    href: '/settings',      bg: 'bg-slate-500',    fg: 'text-white' },
   { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',     fg: 'text-white' },
   { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',      fg: 'text-white' },
 ];
