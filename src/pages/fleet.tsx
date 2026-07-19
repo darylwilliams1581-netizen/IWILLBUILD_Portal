@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-// ── Leaflet disk-cache eviction ───────────────────────────────────────────────
-// The browser may serve leaflet.js from HTTP disk cache without making a network
-// request, bypassing all server-side intercepts. Force a hard navigation to a
-// cache-busted URL once per session so the browser must revalidate — the server
-// then responds with Clear-Site-Data: "cache" which nukes the entry permanently.
-if (typeof window !== 'undefined') {
-  const EVICT_KEY = '__lkill_v8';
-  if (!sessionStorage.getItem(EVICT_KEY)) {
-    sessionStorage.setItem(EVICT_KEY, '1');
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has('_lkill')) {
-      url.searchParams.set('_lkill', '8');
-      window.location.replace(url.toString());
-    }
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {

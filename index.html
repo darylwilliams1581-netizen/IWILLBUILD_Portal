@@ -19,23 +19,31 @@
       // when the map pane hasn't been created. We can't patch undefined's prototype,
       // so instead we wrap the native property accessor on Object.prototype as a
       // last-resort fallback, AND we intercept the module request via SW/fetch.
+      // ── Patch _leaflet_pos on Object.prototype so undefined receivers are safe ──
+      // leaflet.js getPosition(el) at line 1570 reads el._leaflet_pos where el can
+      // be undefined (stale pane ref). JS property lookup on undefined normally
+      // throws — UNLESS Object.prototype has the property defined, in which case
+      // the lookup succeeds and returns the prototype value.
+      // We define it non-configurable so leaflet cannot redefine it on the prototype.
       try {
+        var _safePos = { x: 0, y: 0 };
         var _lposProp = {
           get: function() {
-            // 'this' here is the element (or undefined coerced to global — guard both)
-            if (!this || this === window) return { x: 0, y: 0 };
-            return this.__lpos__ !== undefined ? this.__lpos__ : { x: 0, y: 0 };
+            // When accessed on a real DOM element, return its stored value or safe default
+            if (this && this !== window && this !== globalThis) {
+              return Object.prototype.hasOwnProperty.call(this, '__lpos__') ? this.__lpos__ : _safePos;
+            }
+            return _safePos;
           },
           set: function(v) {
-            if (this && this !== window) this.__lpos__ = v;
+            if (this && this !== window && this !== globalThis) {
+              Object.defineProperty(this, '__lpos__', { value: v, writable: true, configurable: true });
+            }
           },
-          configurable: true,
+          configurable: false, // prevent leaflet from overwriting this on the prototype
         };
-        // Patch Element (covers all DOM nodes incl. SVG)
-        Object.defineProperty(Element.prototype, '_leaflet_pos', _lposProp);
-        // Patch Object.prototype as absolute last resort — catches undefined receivers
-        // that have been coerced to the global object in sloppy-mode functions
         try { Object.defineProperty(Object.prototype, '_leaflet_pos', _lposProp); } catch(_) {}
+        try { Object.defineProperty(Element.prototype, '_leaflet_pos', _lposProp); } catch(_) {}
       } catch(_) {}
     </script>
     <script>
@@ -111,6 +119,10 @@
           var u = new URL(location.href);
           if (u.searchParams.has('_sos')) {
             u.searchParams.delete('_sos');
+            history.replaceState(null, '', u.toString());
+          }
+          if (u.searchParams.has('_lkill')) {
+            u.searchParams.delete('_lkill');
             history.replaceState(null, '', u.toString());
           }
           // Clean up old guard keys from previous versions.
@@ -224,17 +236,20 @@
               e.stopImmediatePropagation && e.stopImmediatePropagation();
               if (!sessionStorage.getItem(LEAFLET_RELOAD_KEY)) {
                 sessionStorage.setItem(LEAFLET_RELOAD_KEY, '1');
-                // Delete all caches then hard-reload
+                // location.reload() reuses the module registry in Chromium — the
+                // cached leaflet module stays registered. Use location.href with a
+                // cache-bust param to force a full navigation that clears the registry.
+                var dest = new URL(location.href);
+                dest.searchParams.set('_lkill', String(Date.now()));
                 if ('caches' in window) {
                   caches.keys().then(function (names) {
                     return Promise.all(names.map(function (n) { return caches.delete(n); }));
-                  }).then(function () {
-                    location.reload();
-                  }).catch(function () { location.reload(); });
+                  }).finally(function () { location.href = dest.toString(); });
                 } else {
-                  location.reload();
+                  location.href = dest.toString();
                 }
               }
+              return true; // suppress the error from the console
             }
           } catch (_) {}
         }, true);
@@ -245,7 +260,7 @@
       // Registers a SW that intercepts leaflet.js?v=05d76b4a at the fetch level,
       // even when the browser serves it from disk cache without a network request.
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=6', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=7', { scope: '/', updateViaCache: 'none' })
           .then(function(reg) {
             reg.update();
             // If a new SW just installed and is waiting, activate it immediately
