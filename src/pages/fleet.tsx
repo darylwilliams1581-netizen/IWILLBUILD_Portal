@@ -40,17 +40,48 @@ const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 // disk cache and execute before the SW can intercept it. This runs once on
 // first render and forces a reload if it finds and deletes a stale entry.
 async function purgeLeafletCache(): Promise<void> {
-  // Clear the error-trap session flag so it can fire again if needed
-  try { sessionStorage.removeItem('__leaflet_reload_done'); } catch { /* ignore */ }
-  if (!('caches' in window)) return;
+  const PURGE_KEY = '__leaflet_purge_v6';
+  // Only run once per session to avoid reload loops
   try {
-    // Nuke ALL caches — removes any stale leaflet entry regardless of cache name
-    const names = await caches.keys();
-    if (names.length > 0) {
-      await Promise.all(names.map((n) => caches.delete(n)));
+    if (sessionStorage.getItem(PURGE_KEY)) return;
+    sessionStorage.setItem(PURGE_KEY, '1');
+  } catch { /* ignore */ }
+
+  let didPurge = false;
+
+  // 1. Unregister ALL service workers so the new v6 SW can take over cleanly
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+      if (regs.length > 0) didPurge = true;
+    } catch { /* ignore */ }
+  }
+
+  // 2. Nuke ALL Cache Storage entries (covers Vite dep cache, old SW caches)
+  if ('caches' in window) {
+    try {
+      const names = await caches.keys();
+      if (names.length > 0) {
+        await Promise.all(names.map((n) => caches.delete(n)));
+        didPurge = true;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 3. Hard reload (bypasses HTTP disk cache) so the browser re-fetches
+  //    leaflet.js from the server — which now returns the empty stub.
+  if (didPurge) {
+    // location.reload(true) is deprecated but still works in all browsers
+    // as a hard reload. Fallback: navigate to self with cache-bust param.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (location as any).reload(true);
+    } catch {
+      const url = new URL(location.href);
+      url.searchParams.set('_lkill', '6');
+      location.replace(url.toString());
     }
-  } catch {
-    // Non-fatal
   }
 }
 

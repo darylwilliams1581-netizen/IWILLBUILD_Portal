@@ -243,6 +243,8 @@ export default async function handler(_req: Request, res: Response) {
     ['service_notes',      `ALTER TABLE am_assets ADD COLUMN service_notes TEXT NULL`],
     ['purchase_date',      `ALTER TABLE am_assets ADD COLUMN purchase_date DATE NULL`],
     ['purchase_price',     `ALTER TABLE am_assets ADD COLUMN purchase_price DECIMAL(12,2) NULL`],
+    ['notes',              `ALTER TABLE am_assets ADD COLUMN notes TEXT NULL`],
+    ['container_id',       `ALTER TABLE am_assets ADD COLUMN container_id INT NULL`],
   ];
   for (const [col, ddl] of equipmentAlters) {
     await run(`am_assets.${col}`, ddl);

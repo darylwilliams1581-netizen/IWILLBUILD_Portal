@@ -1,6 +1,6 @@
 // Service Worker: intercepts the stale cached leaflet.js and returns an empty ES module.
 // Fires even when the browser serves from disk cache (no network request needed).
-const SW_VERSION = 'leaflet-kill-v5';
+const SW_VERSION = 'leaflet-kill-v6';
 const LEAFLET_PATTERN = /leaflet/i;
 
 self.addEventListener('install', (e) => {

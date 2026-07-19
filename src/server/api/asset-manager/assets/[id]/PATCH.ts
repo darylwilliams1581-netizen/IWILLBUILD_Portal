@@ -24,7 +24,8 @@ export default async function handler(req: Request, res: Response) {
     'last_inspection_date','next_inspection_due','calibration_due','certificate_expiry',
     'last_service_date','next_service_date','purchase_date',
   ];
-  const NUM_FIELDS = ['service_interval_days','assigned_job_id'];
+  const NUM_FIELDS = ['service_interval_days','assigned_job_id','container_id'];
+  const LONG_TEXT_FIELDS = ['notes'];
 
   try {
     const [check] = await db.execute(sql`SELECT id FROM am_assets WHERE id = ${id} AND company_id = ${profile.companyId}`) as unknown as [unknown[], unknown];
@@ -47,6 +48,12 @@ export default async function handler(req: Request, res: Response) {
       if (body[f] !== undefined) {
         const v = body[f];
         sets.push(v !== null && v !== '' ? `${f} = ${parseInt(String(v), 10)}` : `${f} = NULL`);
+      }
+    }
+    for (const f of LONG_TEXT_FIELDS) {
+      if (body[f] !== undefined) {
+        const v = body[f];
+        sets.push(v ? `${f} = '${String(v).replace(/'/g, "''")}'` : `${f} = NULL`);
       }
     }
     if (!sets.length) return res.status(400).json({ error: 'No fields to update' });

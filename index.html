@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v25 -->
+  <!-- cache-bust: v26 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -14,17 +14,28 @@
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
       // ── Leaflet _leaflet_pos poison-pill ──────────────────────────────────────
-      // The browser disk-cache may serve the old pre-bundled leaflet.js even
-      // though the file no longer exists on the server. When it executes it calls
-      // getPosition(el) which reads el._leaflet_pos. Patch HTMLElement so any
-      // _leaflet_pos read on an element that doesn't have it returns {x:0,y:0}
-      // instead of undefined, preventing the TypeError entirely.
+      // The browser disk-cache serves the old leaflet.js?v=05d76b4a.
+      // leaflet's getPosition(el) reads el._leaflet_pos — but el can be undefined
+      // when the map pane hasn't been created. We can't patch undefined's prototype,
+      // so instead we wrap the native property accessor on Object.prototype as a
+      // last-resort fallback, AND we intercept the module request via SW/fetch.
       try {
-        Object.defineProperty(HTMLElement.prototype, '_leaflet_pos', {
-          get: function() { return this.__lpos__ || { x: 0, y: 0 }; },
-          set: function(v) { this.__lpos__ = v; },
+        var _lposProp = {
+          get: function() {
+            // 'this' here is the element (or undefined coerced to global — guard both)
+            if (!this || this === window) return { x: 0, y: 0 };
+            return this.__lpos__ !== undefined ? this.__lpos__ : { x: 0, y: 0 };
+          },
+          set: function(v) {
+            if (this && this !== window) this.__lpos__ = v;
+          },
           configurable: true,
-        });
+        };
+        // Patch Element (covers all DOM nodes incl. SVG)
+        Object.defineProperty(Element.prototype, '_leaflet_pos', _lposProp);
+        // Patch Object.prototype as absolute last resort — catches undefined receivers
+        // that have been coerced to the global object in sloppy-mode functions
+        try { Object.defineProperty(Object.prototype, '_leaflet_pos', _lposProp); } catch(_) {}
       } catch(_) {}
     </script>
     <script>
@@ -45,6 +56,13 @@
             var url = (typeof input === 'string') ? input
                     : (input && input.url) ? input.url
                     : String(input);
+            // ── Block stale cached leaflet chunk ──────────────────────────────
+            if (/leaflet\.js/i.test(url)) {
+              return Promise.resolve(new Response(
+                'export default {}; export const map=()=>({}); export const tileLayer=()=>({});',
+                { status: 200, headers: { 'Content-Type': 'application/javascript' } }
+              ));
+            }
             if (url.indexOf('t=' + FROZEN) !== -1 && url.indexOf('.tsx') !== -1) {
               var clean = url.replace(/[?&]t=1783772358219/, function (m) {
                 return m[0] === '?' ? '?' : '';
@@ -227,7 +245,7 @@
       // Registers a SW that intercepts leaflet.js?v=05d76b4a at the fetch level,
       // even when the browser serves it from disk cache without a network request.
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=5', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=6', { scope: '/', updateViaCache: 'none' })
           .then(function(reg) {
             reg.update();
             // If a new SW just installed and is waiting, activate it immediately
