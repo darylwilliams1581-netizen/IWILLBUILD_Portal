@@ -1830,8 +1830,9 @@ export default function HomeScreen() {
 
       {/* ── Top bar ── */}
       <div
-        className="px-5 pt-5 pb-4"
+        className="px-5 pb-4"
         style={{
+          paddingTop: 'calc(env(safe-area-inset-top) + 20px)',
           background: 'linear-gradient(135deg, #1a1f2e 0%, #232b3a 60%, #2a1f14 100%)',
           boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
         }}

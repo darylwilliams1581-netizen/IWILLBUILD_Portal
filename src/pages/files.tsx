@@ -51,7 +51,7 @@ export default function FilesPage() {
       </Helmet>
 
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
+      <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 safe-top">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate('/home')}

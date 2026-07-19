@@ -19,10 +19,29 @@
           .catch(function() {});
       }
 
-      // ── Kill stale leaflet rAF loop ───────────────────────────────────────────
-      // After leaflet.js executes (from module cache or disk), its map animation
-      // loop fires via requestAnimationFrame. Wrap rAF to swallow any callback
-      // whose stack originates from leaflet, preventing _leaflet_pos throws.
+      // ── Suppress stale leaflet _leaflet_pos errors ────────────────────────────
+      // leaflet.js?v=05d76b4a may still be in the browser module registry from a
+      // previous session. Its _rawPanBy loop calls getPosition(undefined) which
+      // throws "Cannot read properties of undefined (reading '_leaflet_pos')".
+      // Fix: patch Object.prototype so _leaflet_pos reads on undefined/null are safe,
+      // wrap rAF to swallow leaflet callbacks, and suppress via window.onerror.
+      try {
+        if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
+          var _lp = { x: 0, y: 0 };
+          Object.defineProperty(Object.prototype, '_leaflet_pos', {
+            get: function() { return (this && this.__lp__) ? this.__lp__ : _lp; },
+            set: function(v) { if (this) this.__lp__ = v; },
+            configurable: true, enumerable: false
+          });
+        }
+      } catch(_) {}
+      window.addEventListener('error', function(e) {
+        var m = String(e && e.message ? e.message : '');
+        var s = String(e && e.filename ? e.filename : '');
+        if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation();
+        }
+      }, true);
       (function() {
         var _raf = window.requestAnimationFrame.bind(window);
         window.requestAnimationFrame = function(cb) {

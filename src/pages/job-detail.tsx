@@ -313,7 +313,7 @@ export default function JobDetailPage() {
 
       <div className="flex flex-col flex-1 min-h-0">
         {/* ── Top bar ── */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30">
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => navigate('/jobs')}

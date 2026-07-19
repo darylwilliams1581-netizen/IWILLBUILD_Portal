@@ -118,6 +118,15 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* ── iOS safe-area top inset ────────────────────────────────────────────────
+   Elements with .safe-top get padding equal to the status-bar height on
+   notched iPhones. Apply this class to any sticky header that sits at the
+   very top of the viewport.                                                 */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+}
+
 /* ── Portal layout helpers ───────────────────────────────────────────────────
    .portal-page    — full-screen flex container used by every portal page
    .portal-main    — the scrollable content area beside the sidebar
