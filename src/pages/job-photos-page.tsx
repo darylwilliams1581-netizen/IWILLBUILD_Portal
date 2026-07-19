@@ -219,10 +219,9 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors touch-manipulation"
+              className="w-12 h-12 flex items-center justify-center bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
             >
-              <Upload size={15} />
-              {uploading ? 'Uploading…' : 'Choose Files'}
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             </button>
 
             {/* Select */}
