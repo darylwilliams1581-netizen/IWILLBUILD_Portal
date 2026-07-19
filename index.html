@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v31 -->
+  <!-- cache-bust: v32 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -12,6 +12,30 @@
       // the identifier is defined when the frozen module body executes.
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
+
+      // ── Kill stale leaflet via Service Worker ─────────────────────────────────
+      // The browser disk-caches leaflet.js?v=05d76b4a with immutable headers.
+      // A SW intercepts fetch BEFORE the disk cache is consulted, so this is the
+      // only reliable way to replace it with a safe stub for existing users.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
+          .catch(function() {});
+      }
+
+      // ── Patch getPosition to never throw on undefined ─────────────────────────
+      // Stale cached leaflet calls getPosition(this._panes.mapPane) where mapPane
+      // can be undefined after the DOM is torn down. We cannot patch undefined
+      // property access directly, but we CAN wrap document.createElement so every
+      // element created by leaflet has _leaflet_pos pre-set, AND we can intercept
+      // the error at the addEventListener capture phase before Vite sees it.
+      (function() {
+        var _orig = document.createElement.bind(document);
+        document.createElement = function(tag, opts) {
+          var el = _orig(tag, opts);
+          el._leaflet_pos = el._leaflet_pos || { x: 0, y: 0 };
+          return el;
+        };
+      })();
 
       // ── Suppress stale leaflet module errors ──────────────────────────────────
       // leaflet.js?v=05d76b4a is disk-cached with immutable headers.
@@ -68,6 +92,18 @@
             }
           } catch(_) {}
         });
+      } catch(_) {}
+      // Patch Object.prototype._leaflet_pos as last resort — covers undefined/null receivers
+      // that slip past the HTMLElement patch (e.g. getPosition(undefined) in stale leaflet).
+      try {
+        if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
+          var _sp2 = { x: 0, y: 0 };
+          Object.defineProperty(Object.prototype, '_leaflet_pos', {
+            get: function() { return (this && this.__lp2__) ? this.__lp2__ : _sp2; },
+            set: function(v) { if (this) this.__lp2__ = v; },
+            configurable: true
+          });
+        }
       } catch(_) {}
     </script>
     <script>
