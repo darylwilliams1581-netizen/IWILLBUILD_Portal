@@ -253,57 +253,71 @@ export default function FleetLiveMap() {
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    import('leaflet').then((L) => {
-      if (!mapRef.current || leafletMapRef.current) return;
+    // Defer until the container actually has dimensions to avoid _leaflet_pos errors
+    const container = mapRef.current;
+    let rafId: number;
 
-      // Fix default icon paths (Leaflet + bundlers issue)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-
-      const map = L.map(mapRef.current, {
-        center: [-27.4698, 153.0251], // Brisbane default
-        zoom: 11,
-        zoomControl: false, // we render our own zoom controls
-        attributionControl: true,
-        // Prevent _leaflet_pos errors on containers that aren't fully laid out yet
-        fadeAnimation: false,
-        markerZoomAnimation: false,
-      });
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map);
-
-      leafletMapRef.current = map;
-
-      // Multiple invalidateSize calls to handle CSS race and _leaflet_pos errors
-      const sizes = [50, 150, 300, 600, 1200];
-      sizes.forEach((ms) => setTimeout(() => {
-        try { map.invalidateSize(); } catch (_) { /* ignore if map removed */ }
-      }, ms));
-
-      // Watch for container resize
-      if (mapRef.current && typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => map.invalidateSize());
-        ro.observe(mapRef.current);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mapRef.current as any).__ro = ro;
+    function tryInit() {
+      if (!container || leafletMapRef.current) return;
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        rafId = requestAnimationFrame(tryInit);
+        return;
       }
 
-      setMapReady(true);
-    }).catch(console.error);
+      import('leaflet').then((L) => {
+        if (!container || leafletMapRef.current) return;
+
+        // Fix default icon paths (Leaflet + bundlers issue)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
+
+        const map = L.map(container, {
+          center: [-27.4698, 153.0251], // Brisbane default
+          zoom: 11,
+          zoomControl: false,
+          attributionControl: true,
+          fadeAnimation: false,
+          markerZoomAnimation: false,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 19,
+        }).addTo(map);
+
+        leafletMapRef.current = map;
+
+        // invalidateSize after mount to handle any remaining layout shifts
+        const sizes = [50, 200, 500, 1000];
+        sizes.forEach((ms) => setTimeout(() => {
+          try { map.invalidateSize(); } catch (_) { /* ignore if removed */ }
+        }, ms));
+
+        // Watch for container resize
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => {
+            try { map.invalidateSize(); } catch (_) { /* ignore */ }
+          });
+          ro.observe(container);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (container as any).__ro = ro;
+        }
+
+        setMapReady(true);
+      }).catch(console.error);
+    }
+
+    rafId = requestAnimationFrame(tryInit);
 
     return () => {
-      if (mapRef.current) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mapRef.current as any).__ro?.disconnect();
-      }
+      cancelAnimationFrame(rafId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (container as any).__ro?.disconnect();
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
@@ -418,7 +432,7 @@ export default function FleetLiveMap() {
     const session = sessions.find(s => s.session_id === selectedId);
     if (!session || session.lat == null || session.lng == null) return;
 
-    leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 16, { animate: true });
+    leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 16, { animate: false });
     const marker = markersRef.current.get(selectedId);
     if (marker) marker.openPopup();
   }, [selectedId, sessions]);

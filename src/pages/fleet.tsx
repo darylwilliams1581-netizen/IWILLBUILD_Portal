@@ -590,6 +590,8 @@ export default function FleetPage() {
               )}
             </>
           )}
+          </div>
+          )}
         </div>
 
         {/* New Asset Modal */}

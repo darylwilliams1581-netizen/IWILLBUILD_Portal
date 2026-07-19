@@ -14,7 +14,6 @@ import {
   Calendar as _Calendar,
   Wrench,
   Archive,
-  Menu,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -28,8 +27,9 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
+import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
 import NotesPanel from '@/components/notes/NotesPanel';
@@ -645,9 +645,7 @@ export default function FleetDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
+  const navigate = useNavigate();
 
   const loadAsset = useCallback(async () => {
     if (!id) return;
@@ -749,7 +747,7 @@ export default function FleetDetailPage() {
   const statusStyle = asset ? getAssetStatusStyle(asset.status) : null;
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{asset ? `${asset.name} — Fleet` : 'Fleet Asset'} — IWILLBUILD Portal</title>
         <meta name="description" content="View asset details, daily prestarts, service dates and rego for this fleet asset." />
@@ -757,22 +755,23 @@ export default function FleetDetailPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <PortalSidebar />
-
-      <div className="portal-main">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
+      <PortalErrorBoundary inline>
+      <div className="flex flex-col flex-1">
+        {/* Sticky top bar */}
+        <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Open menu"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Back to Home"
             >
-              <Menu size={20} />
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Home</span>
             </button>
-            <Link to="/fleet" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0">
-              <ChevronLeft size={16} />
-              <span className="text-sm font-semibold hidden sm:inline">Fleet</span>
+            <span className="text-gray-300">|</span>
+            <Link to="/fleet" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
+              <ChevronLeft size={15} />
+              <span className="hidden sm:inline">Fleet</span>
             </Link>
             <span className="text-slate-300 hidden sm:inline">/</span>
             <div className="flex items-center gap-2 min-w-0">
@@ -1273,7 +1272,8 @@ export default function FleetDetailPage() {
           )}
         </div>
 
-      </div> {/* portal-main */}
+      </div> {/* flex flex-col flex-1 */}
+      </PortalErrorBoundary>
 
       {/* Modals */}
       <AnimatePresence>
@@ -1377,6 +1377,8 @@ export default function FleetDetailPage() {
           }}
         />
       )}
+      </div>
+      </PortalErrorBoundary>
     </div>
   );
 }
