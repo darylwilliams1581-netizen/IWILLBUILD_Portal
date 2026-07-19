@@ -200,9 +200,13 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         server.middlewares.use((req, res, next) => {
           if (req.url && req.url.includes('leaflet.js')) {
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
-            res.end('// leaflet removed — stub served by evict-stale-leaflet-prebundle');
+            res.setHeader('Expires', '0');
+            // Instruct the browser to drop ALL cached scripts for this origin
+            // so the stale leaflet bundle is evicted from disk cache.
+            res.setHeader('Clear-Site-Data', '"cache"');
+            res.end('export default {}; export const map = () => {}; export const tileLayer = () => ({addTo:()=>{}});');
             return;
           }
           next();

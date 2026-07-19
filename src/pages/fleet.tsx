@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'motion/react';

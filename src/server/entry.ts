@@ -2703,6 +2703,21 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 	registerAdSenseTextRoutes(app, adSenseRuntimeConfig);
 
 
+	// Intercept any stale browser-cached leaflet dep bundle and return an
+	// inert stub so it cannot execute. The Clear-Site-Data header evicts the
+	// cached copy from the browser's disk cache on the next request.
+	app.use((req, res, next) => {
+		if (req.path.includes('leaflet.js')) {
+			res.set('Content-Type', 'application/javascript; charset=utf-8');
+			res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+			res.set('Pragma', 'no-cache');
+			res.set('Expires', '0');
+			res.set('Clear-Site-Data', '"cache"');
+			return res.send('export default {}; export const map = () => {}; export const tileLayer = () => ({addTo:()=>{}});');
+		}
+		next();
+	});
+
 	app.use(
 		express.static(clientDir, {
 			index: false,
