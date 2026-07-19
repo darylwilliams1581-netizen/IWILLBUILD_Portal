@@ -279,27 +279,38 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 is a closure-local var that reads
-        // el._leaflet_pos directly — no prototype patch can intercept it.
-        // Fix: MutationObserver seeds _leaflet_pos on every element Leaflet inserts
-        // into the container during construction, before _rawPanBy can fire.
+        // getPosition() (leaflet.js:1570) is a closure-local function that reads
+        // el._leaflet_pos directly. MutationObserver callbacks are async (batched
+        // after the current microtask) so they arrive too late — _rawPanBy has
+        // already crashed before the observer fires.
+        //
+        // The only synchronous hook is patching Map.prototype._initPanes, which
+        // runs inside the L.map() constructor and creates _mapPane before
+        // _resetView → _rawPanBy executes. We wrap it to seed _leaflet_pos on
+        // every pane element immediately after creation, then restore the original.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
         const zero = Lany.point(0, 0);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        function seedEl(el: any) {
-          if (el && el.nodeType === 1 && !el._leaflet_pos) el._leaflet_pos = zero;
-        }
-        const mo = new MutationObserver((mutations) => {
-          for (const m of mutations) {
-            m.addedNodes.forEach((n) => {
-              seedEl(n);
+        const MapProto = Lany.Map?.prototype as Record<string, unknown> | undefined;
+        const origInitPanes = MapProto?._initPanes as ((...a: unknown[]) => void) | undefined;
+
+        if (MapProto && origInitPanes) {
+          MapProto._initPanes = function patchedInitPanes(...args: unknown[]) {
+            origInitPanes.apply(this, args);
+            // Seed _leaflet_pos on every pane the constructor just created
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const panes: Record<string, HTMLElement> = (this as any)._panes ?? {};
+            Object.values(panes).forEach((pane) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (n as Element).querySelectorAll?.('*').forEach(seedEl as any);
+              if (pane && !(pane as any)._leaflet_pos) (pane as any)._leaflet_pos = zero;
             });
-          }
-        });
-        mo.observe(container, { childList: true, subtree: true });
+            // Also seed _mapPane directly in case it isn't in _panes yet
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mapPane: HTMLElement | undefined = (this as any)._mapPane;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (mapPane && !(mapPane as any)._leaflet_pos) (mapPane as any)._leaflet_pos = zero;
+          };
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let map: any;
@@ -316,12 +327,14 @@ export default function FleetLiveMap() {
             tap: false,
           });
         } catch (mapErr) {
-          mo.disconnect();
+          // Restore prototype before retrying
+          if (MapProto && origInitPanes) MapProto._initPanes = origInitPanes;
           console.warn('[FleetLiveMap] L.map() threw during init — retrying next frame', mapErr);
           rafId = requestAnimationFrame(tryInit);
           return;
         }
-        mo.disconnect();
+        // Restore prototype immediately after construction
+        if (MapProto && origInitPanes) MapProto._initPanes = origInitPanes;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
