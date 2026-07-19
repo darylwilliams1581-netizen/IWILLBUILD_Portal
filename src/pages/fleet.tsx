@@ -47,30 +47,11 @@ class LeafletCrashBoundary extends React.Component<
     super(props);
     this.state = { crashed: false };
   }
-  static getDerivedStateFromError(err: unknown) {
-    const msg = String((err instanceof Error) ? (err.stack ?? err.message) : err);
-    if (msg.includes('leaflet') || msg.includes('_leaflet_pos')) {
-      // Leaflet stale-cache error — do not crash the page
-      return { crashed: false };
-    }
+  static getDerivedStateFromError() {
     return { crashed: true };
   }
-  componentDidCatch(err: unknown) {
-    const msg = String((err instanceof Error) ? (err.stack ?? err.message) : err);
-    if (msg.includes('leaflet') || msg.includes('_leaflet_pos')) {
-      return; // swallow silently
-    }
-    // eslint-disable-next-line no-console
-    console.error('[FleetPage error]', err);
-  }
   render() {
-    if (this.state.crashed) {
-      return (
-        <div className="flex items-center justify-center flex-1 gap-2 text-slate-400 p-8">
-          <span className="text-sm">Something went wrong loading the fleet page.</span>
-        </div>
-      );
-    }
+    if (this.state.crashed) return null;
     return this.props.children;
   }
 }
@@ -373,15 +354,7 @@ export default function FleetPage() {
   const { isViewOnly } = useViewOnly();
   const navigate = useNavigate();
 
-  // Kill any stale leaflet animation timers from previous sessions.
-  // Leaflet's _rawPanBy fires on a requestAnimationFrame loop; clearing all
-  // rAF handles on mount stops the loop before it can throw _leaflet_pos errors.
-  useEffect(() => {
-    // Cancel up to 2000 pending rAF handles — covers any leaflet animation loop
-    const id = requestAnimationFrame(() => {});
-    for (let i = Math.max(0, id - 2000); i <= id; i++) cancelAnimationFrame(i);
-    void purgeLeafletCache();
-  }, []);
+  useEffect(() => { void purgeLeafletCache(); }, []);
 
   const load = useCallback(async () => {
     try {
