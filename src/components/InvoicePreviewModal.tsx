@@ -77,11 +77,14 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
     thead th { padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #f8fafc; text-align: left; }
     thead th:last-child, thead th:nth-child(3) { text-align: right; }
     thead th:nth-child(2) { text-align: center; }
-    .totals { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-bottom: 32px; }
+    .totals { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-top: 8px; margin-bottom: 32px; }
     .total-row { display: flex; gap: 40px; font-size: 13px; }
-    .total-row.grand { font-size: 16px; font-weight: 900; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 4px; }
-    .total-row.balance { font-size: 15px; font-weight: 800; color: #dc2626; }
+    .total-row.grand { font-size: 15px; font-weight: 900; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 4px; }
     .total-row.paid-row { color: #16a34a; }
+    .total-row.balance { display: none; }
+    .amount-due-bar { width: 100%; background: #f97316; color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-radius: 8px; margin-top: 16px; margin-bottom: 32px; }
+    .amount-due-bar .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .amount-due-bar .value { font-size: 20px; font-weight: 900; }
     .total-label { color: #64748b; min-width: 120px; text-align: right; }
     .total-value { min-width: 100px; text-align: right; font-weight: 600; }
     .terms { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
@@ -103,7 +106,7 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
     <div class="invoice-meta">
       <div class="invoice-number">INVOICE</div>
       <div style="font-size:18px;font-weight:700;color:#0f172a;margin-top:4px;">${escapeHtml(invoice.invoice_number)}</div>
-      <div class="status-badge">${escapeHtml(STATUS_LABELS[invoice.status as keyof typeof STATUS_LABELS] ?? invoice.status)}</div>
+
     </div>
   </div>
 
@@ -143,12 +146,14 @@ function buildHtml(invoice: Invoice, settings: CompanySettings): string {
   </table>
 
   <div class="totals">
-    <div class="total-row"><span class="total-label">Subtotal</span><span class="total-value">${fmtMoney(subtotal)}</span></div>
+    <div class="total-row"><span class="total-label">Subtotal (ex. GST)</span><span class="total-value">${fmtMoney(subtotal)}</span></div>
     <div class="total-row"><span class="total-label">GST (10%)</span><span class="total-value">${fmtMoney(gst)}</span></div>
-    <div class="total-row grand"><span class="total-label">Total</span><span class="total-value">${fmtMoney(total)}</span></div>
-    ${paid > 0 ? `
-    <div class="total-row paid-row"><span class="total-label">Paid</span><span class="total-value">−${fmtMoney(paid)}</span></div>
-    <div class="total-row balance"><span class="total-label">Balance Due</span><span class="total-value">${fmtMoney(balance)}</span></div>` : ''}
+    <div class="total-row grand"><span class="total-label">Total (inc. GST)</span><span class="total-value">${fmtMoney(total)}</span></div>
+    ${paid > 0 ? `<div class="total-row paid-row"><span class="total-label">Paid</span><span class="total-value">−${fmtMoney(paid)}</span></div>` : ''}
+  </div>
+  <div class="amount-due-bar">
+    <span class="label">Amount Due</span>
+    <span class="value">${fmtMoney(balance)}</span>
   </div>
 
   ${invoice.terms ? `<div class="terms"><strong>Payment Terms:</strong> ${escapeHtml(invoice.terms)}</div>` : ''}
