@@ -12,6 +12,24 @@ import {
   Truck, Clock, Gauge, Users, ZoomIn, ZoomOut, Crosshair,
 } from 'lucide-react';
 
+// ── Leaflet _rawPanBy patch (module-level, synchronous) ───────────────────────
+// getPosition(el) in leaflet.js crashes when el is undefined during map init.
+// Patch Map.prototype._rawPanBy once at import time so it guards _mapPane.
+import('leaflet').then((L) => {
+  const proto = L.Map?.prototype as {
+    _rawPanBy?: (...a: unknown[]) => unknown;
+    __fleetPatched?: boolean;
+  } | undefined;
+  if (!proto || proto.__fleetPatched) return;
+  const orig = proto._rawPanBy;
+  if (!orig) return;
+  proto._rawPanBy = function (...args: unknown[]) {
+    if (!(this as { _mapPane?: unknown })._mapPane) return;
+    return orig.apply(this, args);
+  };
+  proto.__fleetPatched = true;
+});
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface LiveSession {
@@ -231,16 +249,22 @@ export default function FleetLiveMap() {
     document.head.appendChild(style);
   }, []);
 
-  // ── Load Leaflet CSS ───────────────────────────────────────────────────────
+  // ── Load Leaflet CSS before map init ──────────────────────────────────────
   useEffect(() => {
-    const cssId = 'leaflet-css';
-    if (!document.getElementById(cssId)) {
-      const link = document.createElement('link');
-      link.id = cssId;
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
+    const id = 'leaflet-css';
+    const existing = document.getElementById(id) as HTMLLinkElement | null;
+    if (existing) {
+      if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+      return;
     }
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.onload = () => {
+      if (leafletMapRef.current) leafletMapRef.current.invalidateSize();
+    };
+    document.head.appendChild(link);
   }, []);
 
   // ── Load Leaflet (bundled via dynamic import — never runs during SSR) ────────
@@ -253,77 +277,43 @@ export default function FleetLiveMap() {
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return;
 
-    const container = mapRef.current;
-    let rafId: number;
-    let destroyed = false; // guard against post-unmount callbacks
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    let disposed = false;
 
-    function tryInit() {
-      if (destroyed || !container || leafletMapRef.current) return;
-      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-        rafId = requestAnimationFrame(tryInit);
+    const initMap = async () => {
+      if (disposed || !mapRef.current || leafletMapRef.current) return;
+
+      const mapEl = mapRef.current;
+      attempts += 1;
+
+      if (!mapEl || mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0) {
+        if (!disposed && attempts < 15) {
+          retryTimer = setTimeout(initMap, 75);
+        } else if (!disposed) {
+          console.error('[FleetLiveMap] map container not ready after retries');
+        }
         return;
       }
 
-      loadLeafletGlobal().then((L) => {
-        if (destroyed || !container || leafletMapRef.current) return;
+      try {
+        const L = await import('leaflet');
+        if (disposed || !mapRef.current || leafletMapRef.current) return;
 
-        // Fix default icon paths
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          delete (L.Icon.Default.prototype as any)._getIconUrl;
-        } catch (_) { /* ignore */ }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
           iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
-        // ── _leaflet_pos crash fix ────────────────────────────────────────────
-        // _rawPanBy → _getMapPanePos → getPosition(this._mapPane) throws when
-        // _mapPane is undefined. This fires INSIDE the L.map() constructor before
-        // _initPanes has run. Patch the prototype before construction and restore
-        // immediately after so no other map instances are affected.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const MapProto = (L as any).Map?.prototype as Record<string, unknown> | undefined;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const origRawPanByProto = MapProto?._rawPanBy as ((...a: unknown[]) => void) | undefined;
-        if (MapProto && origRawPanByProto) {
-          MapProto._rawPanBy = function safeRawPanBy(...args: unknown[]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!(this as any)._mapPane) return;
-            return origRawPanByProto.apply(this, args);
-          };
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let map: any;
-        try {
-          map = L.map(container, {
-            center: [-27.4698, 153.0251] as [number, number],
-            zoom: 11,
-            zoomControl: false,
-            attributionControl: true,
-            fadeAnimation: false,
-            markerZoomAnimation: false,
-            zoomAnimation: false,
-            inertia: false,
-            tap: false,
-          });
-        } catch (mapErr) {
-          if (MapProto && origRawPanByProto) MapProto._rawPanBy = origRawPanByProto;
-          console.warn('[FleetLiveMap] L.map() threw during init — retrying next frame', mapErr);
-          if (!destroyed) rafId = requestAnimationFrame(tryInit);
-          return;
-        }
-
-        // Restore prototype immediately — only needed during construction
-        if (MapProto && origRawPanByProto) MapProto._rawPanBy = origRawPanByProto;
-
-        if (destroyed) {
-          // Unmounted while L.map() was constructing — tear down immediately
-          try { map.remove(); } catch (_) { /* ignore */ }
-          return;
-        }
+        const map = L.map(mapEl, {
+          center: [-27.4698, 153.0251] as [number, number],
+          zoom: 11,
+          zoomControl: false,
+          attributionControl: true,
+        });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -332,37 +322,31 @@ export default function FleetLiveMap() {
 
         leafletMapRef.current = map;
 
-        // Staggered invalidateSize to handle flex/CSS layout settling
-        const sizes = [0, 50, 200, 500, 1000];
-        sizes.forEach((ms) => setTimeout(() => {
-          if (!destroyed) {
-            try { map.invalidateSize(); } catch (_) { /* ignore */ }
-          }
-        }, ms));
+        setTimeout(() => map.invalidateSize(), 50);
+        setTimeout(() => map.invalidateSize(), 200);
+        setTimeout(() => map.invalidateSize(), 600);
 
-        // Watch for container resize
-        if (typeof ResizeObserver !== 'undefined') {
-          const ro = new ResizeObserver(() => {
-            if (!destroyed) {
-              try { map.invalidateSize(); } catch (_) { /* ignore */ }
-            }
-          });
-          ro.observe(container);
+        if (mapRef.current && typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => map.invalidateSize());
+          ro.observe(mapRef.current);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (container as any).__ro = ro;
+          (mapRef.current as any).__ro = ro;
         }
 
         setMapReady(true);
-      }).catch(console.error);
-    }
+      } catch (error) {
+        console.error('[FleetLiveMap] failed to init map', error);
+        if (!disposed) retryTimer = setTimeout(initMap, 300);
+      }
+    };
 
-    rafId = requestAnimationFrame(tryInit);
+    void initMap();
 
     return () => {
-      destroyed = true;
-      cancelAnimationFrame(rafId);
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (container as any).__ro?.disconnect();
+      if (mapRef.current) (mapRef.current as any).__ro?.disconnect();
       if (leafletMapRef.current) {
         try { leafletMapRef.current.remove(); } catch (_) { /* ignore */ }
         leafletMapRef.current = null;
