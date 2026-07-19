@@ -32,7 +32,6 @@ import SecurityTab from '@/components/settings/SecurityTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import CompanyTab from '@/components/settings/CompanyTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
-import InstallAppTab from '@/components/settings/InstallAppTab';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const tabs = [
@@ -86,7 +85,6 @@ export default function SettingsPage() {
   const tabFromUrl = searchParams.get('tab');
   const validTab = tabs.find((t) => t.id === tabFromUrl)?.id ?? 'account';
   const [activeTab, setActiveTab] = useState(validTab);
-  const [installOpen, setInstallOpen] = useState(false);
   const { me, isAdmin } = usePermissions();
   const isOwner = me?.profile?.role === 'owner';
 
@@ -122,14 +120,6 @@ export default function SettingsPage() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 shrink-0 gap-3">
           <Settings size={20} className="text-primary mr-1" />
           <h1 className="font-heading font-bold text-lg flex-1">Settings</h1>
-          <button
-            onClick={() => setInstallOpen(true)}
-            title="Install App"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 border border-slate-200 hover:border-orange-200 transition-colors"
-          >
-            <Smartphone size={15} />
-            <span className="hidden sm:inline">Install App</span>
-          </button>
         </header>
 
         <div className="flex-1 overflow-auto">
@@ -195,41 +185,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-
-      {/* ── Install App modal ───────────────────────────────────────────── */}
-      {installOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setInstallOpen(false)}
-          />
-          {/* Panel */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
-                <Smartphone size={16} className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <h2 className="font-bold text-slate-900 text-base leading-tight">Install App</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add IWILLBUILD to your home screen</p>
-              </div>
-              <button
-                onClick={() => setInstallOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                aria-label="Close"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {/* Scrollable content */}
-            <div className="overflow-y-auto flex-1 p-5">
-              <InstallAppTab />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,9 +9,11 @@ import {
   ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle,
   FileText, Phone, User, Paperclip, Trash2, Download,
   ShieldAlert, Upload, Lock, Eye, EyeOff, KeyRound,
+  Smartphone, X,
 } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
+import InstallAppTab from '@/components/settings/InstallAppTab';
 
 const inputClass = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -63,6 +65,9 @@ export default function ProfilePage() {
   const [uploadError,    setUploadError]    = useState('');
   const [deletingId,     setDeletingId]     = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Install modal ────────────────────────────────────────────────────────
+  const [installOpen, setInstallOpen] = useState(false);
 
   // ── Password ──────────────────────────────────────────────────────────────
   const [currentPw,   setCurrentPw]   = useState('');
@@ -197,6 +202,23 @@ export default function ProfilePage() {
         </button>
         <span className="text-gray-300">|</span>
         <span className="text-sm font-semibold text-gray-800">My Profile</span>
+
+        {/* Right side — user name + install button */}
+        <div className="ml-auto flex items-center gap-2">
+          {me?.user?.name && (
+            <span className="hidden sm:block text-sm text-slate-500 font-medium truncate max-w-[160px]">
+              {me.user.name}
+            </span>
+          )}
+          <button
+            onClick={() => setInstallOpen(true)}
+            title="Install App on your device"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-primary hover:bg-orange-50 border border-slate-200 hover:border-orange-200 transition-colors"
+          >
+            <Smartphone size={14} />
+            <span className="hidden sm:inline">Install App</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 px-4 py-6 max-w-2xl mx-auto w-full flex flex-col gap-6">
@@ -440,6 +462,39 @@ export default function ProfilePage() {
         </section>
 
       </div>
+
+      {/* ── Install App modal ───────────────────────────────────────────── */}
+      {installOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setInstallOpen(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
+                <Smartphone size={16} className="text-primary" />
+              </div>
+              <div className="flex-1">
+                <h2 className="font-bold text-slate-900 text-base leading-tight">Install App</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Add IWILLBUILD to your home screen</p>
+              </div>
+              <button
+                onClick={() => setInstallOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 p-5">
+              <InstallAppTab />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
