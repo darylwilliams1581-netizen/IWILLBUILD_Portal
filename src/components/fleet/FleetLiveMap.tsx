@@ -286,22 +286,15 @@ export default function FleetLiveMap() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
 
-        /** Install a self-initialising getter on el._leaflet_pos if not already set */
+        /** Force _leaflet_pos to a safe value — always assign, never skip */
         function seedPos(el: HTMLElement | null | undefined) {
           if (!el) return;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if ((el as any)._leaflet_pos !== undefined) return; // already seeded
-          try {
-            Object.defineProperty(el, '_leaflet_pos', {
-              configurable: true,
-              enumerable: true,
-              get() { return this.__lp__ ?? Lany.point(0, 0); },
-              set(v) { this.__lp__ = v; },
-            });
-          } catch (_) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (el as any)._leaflet_pos = Lany.point(0, 0);
-          }
+          const e = el as any;
+          // If already a real point object, leave it alone
+          if (e._leaflet_pos && typeof e._leaflet_pos === 'object' && 'x' in e._leaflet_pos) return;
+          // Otherwise force-assign a safe zero point
+          try { e._leaflet_pos = Lany.point(0, 0); } catch (_) { /* ignore */ }
         }
 
         // Seed the container itself
@@ -322,9 +315,8 @@ export default function FleetLiveMap() {
           };
         }
 
-        // Belt-and-suspenders: guard _getMapPanePos and _rawPanBy
-        if (MapProto && !MapProto.__patchedPanBy) {
-          MapProto.__patchedPanBy = true;
+        // Prototype-level guards — always re-apply (named wrappers are idempotent)
+        if (MapProto) {
           const _origGetPanePos = MapProto._getMapPanePos;
           MapProto._getMapPanePos = function safeGetMapPanePos() {
             try {
@@ -351,13 +343,24 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
-        // ── Extra seed pass after construction (catches any panes added late) ──
+        // ── Instance-level patch (runs AFTER _mapPane exists) ─────────────────
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
+          const m = map as any;
+          const panes = m._panes as Record<string, HTMLElement> | undefined;
           if (panes) Object.values(panes).forEach(seedPos);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          seedPos((map as any)._mapPane as HTMLElement | undefined);
+          seedPos(m._mapPane);
+
+          const protoGetPanePos = Lany.Map.prototype._getMapPanePos;
+          m._getMapPanePos = function safeInstanceGetPanePos() {
+            try { seedPos(this._mapPane); return protoGetPanePos.call(this); }
+            catch (_) { return Lany.point(0, 0); }
+          };
+          const protoRawPanBy = Lany.Map.prototype._rawPanBy;
+          m._rawPanBy = function safeInstanceRawPanBy(offset: unknown) {
+            try { seedPos(this._mapPane); return protoRawPanBy.call(this, offset); }
+            catch (_) { /* swallow */ }
+          };
         } catch (_) { /* ignore */ }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

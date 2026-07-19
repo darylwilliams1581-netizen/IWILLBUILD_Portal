@@ -226,7 +226,7 @@ export default function JobProgressPage() {
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors flex items-center" title="Dashboard"><House size={11} /></button>
+                  <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={22} /></button>
                   <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
