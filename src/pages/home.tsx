@@ -1754,7 +1754,21 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col relative"
+      style={{
+        backgroundColor: '#f9fafb',
+        backgroundImage: 'url(/airo-assets/uploads/uploads-background-f38wenbvln-1784434100763-file-ir3u9cpvlv-15c2674a.jpg)',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center 40%',
+        backgroundSize: '55%',
+        backgroundAttachment: 'local',
+      }}
+    >
+      {/* Subtle white wash so the backdrop doesn't overpower the UI */}
+      <div className="absolute inset-0 bg-white/80 pointer-events-none" />
+      {/* All content above the overlay */}
+      <div className="relative z-10 flex flex-col flex-1">
       <Helmet>
         <title>Home — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
@@ -1891,6 +1905,7 @@ export default function HomeScreen() {
         />
       )}
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
+      </div>{/* end z-10 content wrapper */}
     </div>
   );
 }

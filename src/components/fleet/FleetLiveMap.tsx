@@ -279,49 +279,38 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 is a closure-local `var` that reads
-        // el._leaflet_pos directly. Panes are created during L.map() construction
-        // before setPosition ever seeds _leaflet_pos, so _rawPanBy → _getMapPanePos
-        // → getPosition(mapPane) crashes with "Cannot read properties of undefined".
-        //
-        // Strategy: always re-patch (no guard flag) so HMR remounts stay covered.
-        // We replace _getMapPanePos to never call the closure-local getPosition —
-        // it reads _leaflet_pos directly and seeds it if missing.
-        // We also wrap _rawPanBy to seed all panes before delegating.
-        // Finally we wrap L.map() itself in try/catch as last-resort protection.
+        // getPosition() at leaflet.js:1570 is a closure-local `var` — it reads
+        // el._leaflet_pos directly and cannot be patched via DomUtil.
+        // The crash fires inside _rawPanBy during L.map() construction before any
+        // pane has been positioned. Fix: patch _rawPanBy on the prototype BEFORE
+        // calling L.map() so it seeds _leaflet_pos on every pane and swallows any
+        // remaining error. Re-apply every time (no guard) so HMR stays covered.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
         const MapProto = Lany.Map?.prototype;
         if (MapProto) {
-          // Always overwrite — no guard — so every remount gets a fresh patch
+          const origRawPanBy = MapProto._rawPanBy as (...a: unknown[]) => unknown;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const zero = () => Lany.point(0, 0);
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          function seedPanes(self: any) {
-            if (self._mapPane && !self._mapPane._leaflet_pos) self._mapPane._leaflet_pos = zero();
-            if (self._panes) {
+          MapProto._rawPanBy = function safeRawPanBy(this: any, ...args: unknown[]) {
+            const zero = Lany.point(0, 0);
+            // Seed _mapPane
+            if (this._mapPane && !this._mapPane._leaflet_pos) this._mapPane._leaflet_pos = zero;
+            // Seed all named panes
+            if (this._panes) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              Object.values(self._panes as Record<string, any>).forEach((p: any) => {
-                if (p && !p._leaflet_pos) p._leaflet_pos = zero();
+              Object.values(this._panes as Record<string, any>).forEach((p: any) => {
+                if (p && !p._leaflet_pos) p._leaflet_pos = zero;
               });
             }
-          }
-
-          // Replace _getMapPanePos — reads _leaflet_pos directly, bypasses closure
-          MapProto._getMapPanePos = function patchedGetMapPanePos(this: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const s = this as any;
-            if (!s._mapPane) return zero();
-            if (!s._mapPane._leaflet_pos) s._mapPane._leaflet_pos = zero();
-            return s._mapPane._leaflet_pos;
+            try { return origRawPanBy.apply(this, args); } catch (_) { /* swallow */ }
           };
-
-          // Wrap _rawPanBy to seed panes before the original runs
-          const _origRawPanBy = MapProto._rawPanBy as (...a: unknown[]) => unknown;
-          MapProto._rawPanBy = function patchedRawPanBy(this: unknown, ...args: unknown[]) {
-            seedPanes(this);
-            try { return _origRawPanBy.apply(this, args); } catch (_) { /* swallow */ }
+          // Also override _getMapPanePos to read _leaflet_pos directly,
+          // bypassing the closure-local getPosition entirely.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          MapProto._getMapPanePos = function safeGetMapPanePos(this: any) {
+            if (!this._mapPane) return Lany.point(0, 0);
+            if (!this._mapPane._leaflet_pos) this._mapPane._leaflet_pos = Lany.point(0, 0);
+            return this._mapPane._leaflet_pos;
           };
         }
 
