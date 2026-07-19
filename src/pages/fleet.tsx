@@ -47,11 +47,16 @@ class LeafletCrashBoundary extends React.Component<
     super(props);
     this.state = { crashed: false };
   }
-  static getDerivedStateFromError() {
-    return { crashed: true };
+  static getDerivedStateFromError(err: unknown) {
+    const msg = String((err instanceof Error) ? (err.stack ?? err.message) : err);
+    if (msg.includes('leaflet') || msg.includes('_leaflet_pos')) {
+      return { crashed: true };
+    }
+    // Re-throw non-leaflet errors so they surface normally
+    throw err;
   }
   componentDidCatch() {
-    // Silently swallow — do not rethrow or reload
+    // Silently swallow leaflet errors — do not rethrow or reload
   }
   render() {
     if (this.state.crashed) {
@@ -70,16 +75,15 @@ class LeafletCrashBoundary extends React.Component<
 // disk cache and execute before the SW can intercept it. This runs once on
 // first render and forces a reload if it finds and deletes a stale entry.
 async function purgeLeafletCache(): Promise<void> {
-  const PURGE_KEY = '__leaflet_purge_v6';
+  const PURGE_KEY = '__leaflet_purge_v8';
   // Only run once per session to avoid reload loops
   try {
     if (sessionStorage.getItem(PURGE_KEY)) return;
-    sessionStorage.setItem(PURGE_KEY, '1');
   } catch { /* ignore */ }
 
   let didPurge = false;
 
-  // 1. Unregister ALL service workers so the new v6 SW can take over cleanly
+  // 1. Unregister ALL service workers so the new SW can take over cleanly
   if ('serviceWorker' in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -99,17 +103,17 @@ async function purgeLeafletCache(): Promise<void> {
     } catch { /* ignore */ }
   }
 
-  // 3. Hard reload (bypasses HTTP disk cache) so the browser re-fetches
-  //    leaflet.js from the server — which now returns the empty stub.
+  // 3. Mark done AFTER purge so a failed reload retries
+  try { sessionStorage.setItem(PURGE_KEY, '1'); } catch { /* ignore */ }
+
+  // 4. Hard reload so the browser re-fetches leaflet.js from the server stub
   if (didPurge) {
-    // location.reload(true) is deprecated but still works in all browsers
-    // as a hard reload. Fallback: navigate to self with cache-bust param.
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (location as any).reload(true);
     } catch {
       const url = new URL(location.href);
-      url.searchParams.set('_lkill', '6');
+      url.searchParams.set('_lkill', '8');
       location.replace(url.toString());
     }
   }

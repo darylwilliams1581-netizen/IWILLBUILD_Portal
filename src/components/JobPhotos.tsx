@@ -78,16 +78,79 @@ function formatDateTime(iso: string) {
 }
 
 const HEIC_EXTS = ['heic', 'heif'];
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+/**
+ * Convert any image File to a JPEG via an off-screen canvas.
+ * - iOS Safari can decode HEIC natively via createImageBitmap
+ * - Also resizes to max 1920px on the longest side
+ */
+async function normaliseToJpeg(file: File): Promise<File> {
+  const MAX_PX = 1920;
+  const QUALITY = 0.88;
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file; // browser can't decode — return original unchanged
+  }
+  let { width, height } = bitmap;
+  if (width > MAX_PX || height > MAX_PX) {
+    if (width >= height) { height = Math.round((height / width) * MAX_PX); width = MAX_PX; }
+    else                 { width  = Math.round((width  / height) * MAX_PX); height = MAX_PX; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  return new Promise<File>((resolve) => {
+    canvas.toBlob((blob) => {
+      if (!blob) { resolve(file); return; }
+      const stem = file.name.replace(/\.[^.]+$/, '');
+      resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
+    }, 'image/jpeg', QUALITY);
+  });
+}
+
+/**
+ * Async pre-process: convert HEIC→JPEG, resize oversized images.
+ * Used for the main upload flow.
+ */
+async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: string | null }> {
+  if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
+  const prepared: File[] = [];
+  for (const f of files) {
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    const isHeic = HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type);
+    if (isHeic) {
+      const converted = await normaliseToJpeg(f);
+      if (converted.type !== 'image/jpeg') {
+        return { valid: [], error: `"${f.name}" is a HEIC/HEIF file. On Android, set your camera to JPEG mode: Camera Settings → Formats → Most Compatible.` };
+      }
+      prepared.push(converted);
+      continue;
+    }
+    if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
+      return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, or WebP.` };
+    }
+    // Normalise (resize if oversized)
+    prepared.push(await normaliseToJpeg(f));
+  }
+  return { valid: prepared, error: null };
+}
+
+// Sync validate for single-file replace flow
 function validateFiles(files: File[]): { valid: File[]; error: string | null } {
   for (const f of files) {
     const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-    if (HEIC_EXTS.includes(ext)) {
-      return { valid: [], error: `HEIC/HEIF files are not supported. Convert "${f.name}" to JPEG or PNG first.` };
+    if (HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type)) {
+      return { valid: [], error: `HEIC/HEIF not supported here. Convert "${f.name}" to JPEG first.` };
     }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
-      return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, WebP, or GIF.` };
+      return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, or WebP.` };
     }
   }
   if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
@@ -350,15 +413,22 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
-    const { valid, error: valErr } = validateFiles(arr);
-    if (valErr) { setUploadError(valErr); return; }
-    if (photos.length >= MAX_PHOTOS) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); return; }
+    setUploading(true); setUploadError(null);
+    let valid: File[];
+    try {
+      const result = await prepareFiles(arr);
+      if (result.error) { setUploadError(result.error); setUploading(false); return; }
+      valid = result.valid;
+    } catch {
+      setUploadError('Failed to process images. Please try again.');
+      setUploading(false); return;
+    }
+    if (photos.length >= MAX_PHOTOS) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); setUploading(false); return; }
     if (photos.length + valid.length > MAX_PHOTOS) {
       const rem = MAX_PHOTOS - photos.length;
       setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added. Select fewer files.`);
-      return;
+      setUploading(false); return;
     }
-    setUploading(true); setUploadError(null);
     const fd = new FormData();
     valid.forEach((f) => fd.append('photos', f));
     try {
@@ -689,9 +759,10 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       </AnimatePresence>
 
       {/* File inputs */}
-      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden"
+      {/* accept="image/*" lets iOS pass HEIC through — our prepareFiles() converts it to JPEG */}
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
         onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }} />
-      <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden"
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }} />
 
       {/* Delete confirm */}

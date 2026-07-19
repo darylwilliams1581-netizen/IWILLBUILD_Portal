@@ -24,25 +24,25 @@
       // 3. Prototype patch so _leaflet_pos reads on real elements return a safe value
       window.onerror = function(msg, src, line, col, err) {
         try {
-          var s = src || '';
-          var stack = (err && err.stack) ? err.stack : String(msg || '');
+          var s = String(src || '');
+          var stack = String((err && err.stack) ? err.stack : msg || '');
+          var m = String(msg || '');
           if (s.indexOf('leaflet') !== -1 || stack.indexOf('leaflet') !== -1 ||
-              String(msg).indexOf('_leaflet_pos') !== -1) {
-            return true; // suppress
+              m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
+            return true; // suppress — prevents React error boundary from seeing it
           }
         } catch(_) {}
         return false;
       };
       window.addEventListener('error', function(e) {
         try {
-          var src = (e && e.filename) ? e.filename : '';
-          var stack = (e && e.error && e.error.stack) ? e.error.stack : '';
-          var msg = (e && e.message) ? e.message : '';
+          var src = String((e && e.filename) ? e.filename : '');
+          var stack = String((e && e.error && e.error.stack) ? e.error.stack : '');
+          var msg = String((e && e.message) ? e.message : '');
           if (src.indexOf('leaflet') !== -1 || stack.indexOf('leaflet') !== -1 ||
-              msg.indexOf('_leaflet_pos') !== -1) {
+              msg.indexOf('_leaflet_pos') !== -1 || msg.indexOf('leaflet') !== -1) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            return true;
           }
         } catch(_) {}
       }, true);

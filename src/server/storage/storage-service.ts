@@ -81,6 +81,11 @@ export const ALLOWED_IMAGE_MIMES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png':  'png',
   'image/webp': 'webp',
+  // HEIC/HEIF accepted — converted to JPEG by compressImageIfNeeded()
+  'image/heic':          'jpg',
+  'image/heif':          'jpg',
+  'image/heic-sequence': 'jpg',
+  'image/heif-sequence': 'jpg',
 };
 
 export const ALLOWED_DOCUMENT_MIMES: Record<string, string> = {
@@ -123,15 +128,6 @@ export function validateUpload(file: {
   size: number;
 }, options: { isImage?: boolean } = {}): ValidationResult {
   const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';
-
-  // HEIC/HEIF always rejected
-  if (ext === 'heic' || ext === 'heif') {
-    return {
-      ok: false,
-      code: 'heic_rejected',
-      error: `HEIC/HEIF files are not supported. Please convert "${file.originalname}" to JPEG or PNG before uploading.`,
-    };
-  }
 
   // Blocked executables / scripts
   if (BLOCKED_EXTENSIONS.has(ext)) {
@@ -217,10 +213,15 @@ async function getJimp() {
 const MAX_DIMENSION = 1920;
 const JPEG_QUALITY  = 82;
 
+// HEIC/HEIF MIME types — always output as JPEG
+const HEIC_MIMES = new Set([
+  'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+]);
+
 /**
  * Compress an image buffer using Jimp.
  * - Resizes to max 1920px on the longest side
- * - Converts to JPEG at quality 82 (PNG stays PNG)
+ * - Converts to JPEG at quality 82 (PNG stays PNG, HEIC→JPEG)
  * - Returns original buffer unchanged if Jimp fails
  */
 export async function compressImageIfNeeded(
@@ -231,6 +232,9 @@ export async function compressImageIfNeeded(
   if (!ALLOWED_IMAGE_MIMES[mimeType]) {
     return { buffer, mimeType };
   }
+
+  // HEIC/HEIF: always output as JPEG regardless of Jimp support
+  const isHeic = HEIC_MIMES.has(mimeType);
 
   try {
     const { CustomJimp, JimpMime } = await getJimp();
@@ -247,11 +251,15 @@ export async function compressImageIfNeeded(
       return { buffer: out, mimeType: 'image/png' };
     }
 
-    // JPEG / WebP → compress as JPEG
+    // JPEG / WebP / HEIC → output as JPEG
     const out: Buffer = await img.getBuffer(JimpMime.jpeg, { quality: JPEG_QUALITY });
     return { buffer: out, mimeType: 'image/jpeg' };
   } catch {
-    // Jimp failed — return original unchanged
+    // Jimp failed — if HEIC, we can't serve it as-is; reject it
+    if (isHeic) {
+      throw new Error('HEIC/HEIF image could not be converted. Please shoot in JPEG mode (Camera Settings → Formats → Most Compatible) or convert the file before uploading.');
+    }
+    // For other formats, return original unchanged
     return { buffer, mimeType };
   }
 }

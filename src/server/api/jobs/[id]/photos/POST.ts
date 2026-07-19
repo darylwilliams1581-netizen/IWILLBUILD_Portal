@@ -26,12 +26,12 @@ export default async function handler(req: Request, res: Response) {
   }
   if (parsed.limitError) return res.status(400).json({ code: 'upload_error', error: parsed.limitError });
 
-  // Validate image types
+  // Validate image types — HEIC/HEIF now accepted (converted server-side)
   for (const f of parsed.files) {
     if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
       return res.status(400).json({
         code: 'invalid_file_type',
-        error: `"${f.originalname}" is not a supported image type. Please upload JPEG, PNG, or WebP. HEIC/HEIF files must be converted first.`,
+        error: `"${f.originalname}" is not a supported image type. Please upload JPEG, PNG, or WebP.`,
       });
     }
   }
@@ -113,10 +113,18 @@ export default async function handler(req: Request, res: Response) {
     const saved: Array<{ id: number; filename: string; url: string }> = [];
 
     for (const file of files) {
-      const { buffer: compressed, mimeType: outMime } = await compressImageIfNeeded(
-        file.buffer,
-        file.mimetype,
-      );
+      let compressed: Buffer = file.buffer;
+      let outMime: string = file.mimetype;
+      try {
+        const result = await compressImageIfNeeded(file.buffer, file.mimetype);
+        compressed = result.buffer;
+        outMime = result.mimeType;
+      } catch (convErr) {
+        return res.status(400).json({
+          code: 'conversion_failed',
+          error: convErr instanceof Error ? convErr.message : 'Image conversion failed.',
+        });
+      }
 
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
       const storageKey = `${randomUUID()}.${ext}`;
