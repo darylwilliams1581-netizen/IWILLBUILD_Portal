@@ -279,71 +279,41 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 is a module-private closure that reads
-        // el._leaflet_pos directly. No prototype patch can intercept it.
-        // Strategy: intercept _initContainer / _initPanes on the prototype so that
-        // _mapPane has _leaflet_pos set BEFORE getPosition is ever called.
+        // getPosition() at leaflet.js:1570 reads el._leaflet_pos directly.
+        // It IS L.DomUtil.getPosition — patch it on the exported object so every
+        // internal call goes through our safe version.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
 
-        /** Seed _leaflet_pos = L.point(0,0) on an element if not already set */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        function seedPos(el: any) {
-          if (!el) return;
-          if (el._leaflet_pos && typeof el._leaflet_pos.x === 'number') return;
-          try { el._leaflet_pos = Lany.point(0, 0); } catch (_) { /* ignore */ }
-        }
-
-        /** Install a property trap on an element so _leaflet_pos is always valid */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        function trapPos(el: any) {
-          if (!el || el.__posTrapped) return;
-          el.__posTrapped = true;
-          let _val = el._leaflet_pos ?? Lany.point(0, 0);
-          try {
-            Object.defineProperty(el, '_leaflet_pos', {
-              get() { return _val; },
-              set(v) { _val = (v && typeof v.x === 'number') ? v : Lany.point(0, 0); },
-              configurable: true,
-            });
-          } catch (_) { /* ignore if already defined non-configurable */ }
-        }
-
-        // Patch prototype BEFORE L.map() — _rawPanBy is called during construction.
-        // _getMapPanePos calls closure-local getPosition(this._mapPane) which crashes
-        // if _mapPane is undefined or _mapPane._leaflet_pos is undefined.
-        const MapProto = Lany.Map?.prototype;
-        if (MapProto && !MapProto.__patchedGetMapPanePos) {
-          MapProto.__patchedGetMapPanePos = true;
-          const _orig = MapProto._getMapPanePos;
-          MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const self = this as any;
-            // Ensure _mapPane exists and has _leaflet_pos before the closure reads it
-            if (self._mapPane) trapPos(self._mapPane);
-            else return Lany.point(0, 0);
-            try { return _orig.call(this); }
-            catch (_) { return Lany.point(0, 0); }
+        if (!Lany.__domUtilPatched) {
+          Lany.__domUtilPatched = true;
+          const origGetPos = Lany.DomUtil.getPosition.bind(Lany.DomUtil);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          Lany.DomUtil.getPosition = function safeGetPosition(el: any) {
+            if (!el) return Lany.point(0, 0);
+            if (!el._leaflet_pos) el._leaflet_pos = Lany.point(0, 0);
+            try { return origGetPos(el); } catch (_) { return Lany.point(0, 0); }
           };
-        }
-
-        // Also patch _initPanes so every pane is trapped on creation
-        if (MapProto && !MapProto.__patchedInitPanes2) {
-          MapProto.__patchedInitPanes2 = true;
-          const _origInitPanes = MapProto._initPanes;
-          MapProto._initPanes = function patchedInitPanes2(this: unknown) {
-            _origInitPanes.call(this);
-            try {
+          // Also patch the module-level alias used inside _getMapPanePos
+          // by replacing the prototype method to call our safe version
+          const MapProto = Lany.Map?.prototype;
+          if (MapProto) {
+            MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const self = this as any;
-              trapPos(self._mapPane);
-              const panes = self._panes as Record<string, HTMLElement> | undefined;
-              if (panes) Object.values(panes).forEach(trapPos);
-            } catch (_) { /* ignore */ }
-          };
+              if (!self._mapPane) return Lany.point(0, 0);
+              if (!self._mapPane._leaflet_pos) self._mapPane._leaflet_pos = Lany.point(0, 0);
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return (Lany.DomUtil.getPosition as any)(self._mapPane);
+              } catch (_) { return Lany.point(0, 0); }
+            };
+          }
         }
 
         const map = L.map(container, {
+          center: [-27.4698, 153.0251] as [number, number],
+          zoom: 11,
           zoomControl: false,
           attributionControl: true,
           fadeAnimation: false,
@@ -353,26 +323,12 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
-        // Belt-and-suspenders: trap panes again after construction
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const m = map as any;
-          trapPos(m._mapPane);
-          const panes = m._panes as Record<string, HTMLElement> | undefined;
-          if (panes) Object.values(panes).forEach(trapPos);
-        } catch (_) { /* ignore */ }
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           maxZoom: 19,
         }).addTo(map);
 
         leafletMapRef.current = map;
-
-        // setView after panes are seeded — safe to call now
-        try {
-          map.setView([-27.4698, 153.0251], 11, { animate: false });
-        } catch (_) { /* ignore */ }
 
         // Now safe to call invalidateSize — panes are initialised
         const sizes = [0, 50, 200, 500, 1000];

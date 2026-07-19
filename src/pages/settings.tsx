@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Settings,
@@ -15,9 +15,8 @@ import {
   Receipt,
   User,
   Truck,
-  Smartphone,
+  House,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
@@ -79,6 +78,7 @@ function TabSkeleton() {
 
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tabFromUrl = searchParams.get('tab');
   const validTab = tabs.find((t) => t.id === tabFromUrl)?.id ?? 'account';
   const [activeTab, setActiveTab] = useState(validTab);
@@ -93,7 +93,7 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Settings — IWILLBUILD Portal</title>
         <meta name="description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
@@ -110,17 +110,31 @@ export default function SettingsPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
+      {/* Header */}
+      <header
+        className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
+      >
+        <button
+          onClick={() => navigate('/home')}
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm shrink-0"
+          title="Dashboard"
+        >
+          <House size={18} />
+        </button>
+        <div className="flex-1 flex flex-col items-center justify-center min-w-0">
+          <h1 className="text-gray-900 font-bold text-sm leading-tight">Settings</h1>
+          <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+            <button onClick={() => navigate('/home')} className="hover:text-orange-500 transition-colors">Home</button>
+            <span>/</span>
+            <span className="text-gray-500 font-medium">Settings</span>
+          </div>
+        </div>
+        <div className="w-9 shrink-0" />
+      </header>
 
-      <div className="portal-main">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6 shrink-0 gap-3">
-          <Settings size={20} className="text-primary mr-1" />
-          <h1 className="font-heading font-bold text-lg flex-1">Settings</h1>
-        </header>
-
-        <div className="flex-1 overflow-auto">
-          <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6">
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6 max-w-6xl mx-auto w-full">
 
             {/* Mobile: dropdown tab selector */}
             <div className="md:hidden">
@@ -180,7 +194,6 @@ export default function SettingsPage() {
 
           </div>
         </div>
-      </div>
     </div>
   );
 }
