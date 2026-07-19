@@ -279,36 +279,36 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 reads el._leaflet_pos directly.
-        // It IS L.DomUtil.getPosition — patch it on the exported object so every
-        // internal call goes through our safe version.
+        // getPosition() at leaflet.js:1570 is a closure-local variable — patching
+        // L.DomUtil.getPosition has no effect on it. The only reliable fix is to
+        // override _getMapPanePos on the prototype so it never calls that closure,
+        // instead reading _leaflet_pos directly (which is all getPosition does).
+        // We always re-apply — no guard flag — so HMR remounts stay protected.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
-
-        if (!Lany.__domUtilPatched) {
-          Lany.__domUtilPatched = true;
-          const origGetPos = Lany.DomUtil.getPosition.bind(Lany.DomUtil);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Lany.DomUtil.getPosition = function safeGetPosition(el: any) {
-            if (!el) return Lany.point(0, 0);
-            if (!el._leaflet_pos) el._leaflet_pos = Lany.point(0, 0);
-            try { return origGetPos(el); } catch (_) { return Lany.point(0, 0); }
+        const MapProto = Lany.Map?.prototype;
+        if (MapProto) {
+          // Override _getMapPanePos to bypass the closure-local getPosition entirely
+          MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const self = this as any;
+            if (!self._mapPane) return Lany.point(0, 0);
+            // Seed _leaflet_pos if missing — same as what setPosition() would do
+            if (!self._mapPane._leaflet_pos) {
+              self._mapPane._leaflet_pos = Lany.point(0, 0);
+            }
+            return self._mapPane._leaflet_pos;
           };
-          // Also patch the module-level alias used inside _getMapPanePos
-          // by replacing the prototype method to call our safe version
-          const MapProto = Lany.Map?.prototype;
-          if (MapProto) {
-            MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const self = this as any;
-              if (!self._mapPane) return Lany.point(0, 0);
-              if (!self._mapPane._leaflet_pos) self._mapPane._leaflet_pos = Lany.point(0, 0);
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return (Lany.DomUtil.getPosition as any)(self._mapPane);
-              } catch (_) { return Lany.point(0, 0); }
-            };
-          }
+          // Also guard _rawPanBy which calls _getMapPanePos during construction
+          const origRawPanBy = MapProto._rawPanBy;
+          MapProto._rawPanBy = function safeRawPanBy(this: unknown, ...args: unknown[]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const self = this as any;
+            if (self._mapPane && !self._mapPane._leaflet_pos) {
+              self._mapPane._leaflet_pos = Lany.point(0, 0);
+            }
+            try { return origRawPanBy.apply(this, args); } catch (_) { /* ignore */ }
+          };
         }
 
         const map = L.map(container, {

@@ -1804,13 +1804,6 @@ export default function HomeScreen() {
       {/* ── Scrollable icon grid ── */}
       <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-7">
 
-        {/* KPI strip — admins/owners only */}
-        {isAdmin && (
-          <div className="px-4">
-            <KpiWidgets compact />
-          </div>
-        )}
-
         <Section label="Field" icons={FIELD_ICONS} onNavigate={handleNavigate} />
 
         {can('estimating') && (
