@@ -48,7 +48,8 @@ export default function Header() {
         borderBottom: '1px solid #e2e8f0',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
-        paddingTop: 'env(safe-area-inset-top)',
+        paddingTop: 'max(env(safe-area-inset-top), 12px)',
+        paddingBottom: 12,
       }}
     >
       <div
@@ -57,7 +58,7 @@ export default function Header() {
           maxWidth: 1180,
           margin: '0 auto',
           padding: '0 22px',
-          minHeight: 64,
+          minHeight: 52,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',

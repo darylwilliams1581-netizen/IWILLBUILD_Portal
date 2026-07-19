@@ -168,6 +168,16 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       name: 'evict-frozen-rootlayout-snapshot',
       configureServer(server: ViteDevServer) {
         server.middlewares.use((req, res, next) => {
+          // ── Intercept stale leaflet pre-bundle ──────────────────────────────
+          // The Vite dep cache may contain a real leaflet.js pre-bundle from
+          // before leaflet was removed. Intercept any request for it and return
+          // an empty stub so the browser never executes the real leaflet code.
+          if (req.url && req.url.includes('leaflet')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.end('export default {}; export const map = () => ({}); export const tileLayer = () => ({});\n');
+            return;
+          }
           if (
             req.url &&
             req.url.includes('RootLayout.tsx') &&

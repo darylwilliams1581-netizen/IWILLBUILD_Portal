@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v32 -->
+  <!-- cache-bust: v33 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -39,6 +39,12 @@
         var m = String(e && e.message ? e.message : '');
         var s = String(e && e.filename ? e.filename : '');
         if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation(); return false;
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        var m = String(e && e.reason ? e.reason : '');
+        if (m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
           e.preventDefault(); e.stopImmediatePropagation();
         }
       }, true);
