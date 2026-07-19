@@ -1,11 +1,12 @@
 /**
- * AMAssetsTab — Equipment list with multi-select bulk assign + container grouping
+ * AMAssetsTab — Equipment list with multi-select bulk assign
+ * Grouping: Container / Truck / Person headers collapse their assigned items.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Search, Wrench, Archive, RotateCcw, Trash2,
   Check, ChevronDown, Loader2, AlertTriangle, Package,
-  HardHat, Truck, ShieldCheck, Tag, X, User, Briefcase,
+  Truck, ShieldCheck, Tag, X, User, Briefcase,
   Car, MapPin, CheckSquare, Square, ChevronRight,
 } from 'lucide-react';
 
@@ -35,17 +36,23 @@ interface Asset {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const EQUIPMENT_TYPES = [
-  { value: 'equipment',   label: 'Equipment',    icon: Wrench,     color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  { value: 'plant',       label: 'Plant',        icon: Truck,      color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { value: 'tools',       label: 'Tools',        icon: Wrench,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { value: 'safety',      label: 'Safety Gear',  icon: ShieldCheck,color: 'bg-green-100 text-green-700 border-green-200' },
-  { value: 'hire',        label: 'Hire Item',    icon: Tag,        color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  { value: 'container',   label: 'Container',    icon: Package,    color: 'bg-slate-100 text-slate-700 border-slate-300' },
-  { value: 'other',       label: 'Other',        icon: Package,    color: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { value: 'equipment', label: 'Equipment',   icon: Wrench,     color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { value: 'plant',     label: 'Plant',       icon: Truck,      color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { value: 'tools',     label: 'Tools',       icon: Wrench,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'safety',    label: 'Safety Gear', icon: ShieldCheck,color: 'bg-green-100 text-green-700 border-green-200' },
+  { value: 'hire',      label: 'Hire Item',   icon: Tag,        color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  { value: 'container', label: 'Container',   icon: Package,    color: 'bg-slate-100 text-slate-700 border-slate-300' },
+  { value: 'truck',     label: 'Truck',       icon: Truck,      color: 'bg-amber-100 text-amber-700 border-amber-300' },
+  { value: 'other',     label: 'Other',       icon: Package,    color: 'bg-slate-100 text-slate-600 border-slate-200' },
 ];
 
-const STATUS_OPTS = ['active', 'in-use', 'under-repair', 'retired'];
-const CONDITION_OPTS = ['excellent', 'good', 'fair', 'poor'];
+// ── Group types ───────────────────────────────────────────────────────────────
+// These asset_types act as "parent" headers that other items nest under.
+const GROUP_TYPES = ['container', 'truck'] as const;
+type GroupType = typeof GROUP_TYPES[number];
+
+// Items are also grouped by assigned_person_name (virtual groups, no asset row)
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Badges ────────────────────────────────────────────────────────────────────
 
@@ -62,10 +69,10 @@ function TypeBadge({ type }: { type: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    active:        'bg-emerald-100 text-emerald-700 border-emerald-200',
-    'in-use':      'bg-blue-100 text-blue-700 border-blue-200',
-    'under-repair':'bg-amber-100 text-amber-700 border-amber-200',
-    retired:       'bg-slate-100 text-slate-500 border-slate-200',
+    active:         'bg-emerald-100 text-emerald-700 border-emerald-200',
+    'in-use':       'bg-blue-100 text-blue-700 border-blue-200',
+    'under-repair': 'bg-amber-100 text-amber-700 border-amber-200',
+    retired:        'bg-slate-100 text-slate-500 border-slate-200',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
@@ -77,11 +84,11 @@ function StatusBadge({ status }: { status: string }) {
 // ── Bulk Assign Modal ─────────────────────────────────────────────────────────
 
 const ASSIGN_TYPES = [
-  { id: 'container', label: 'Container', icon: Package,   color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
-  { id: 'car',       label: 'Car',       icon: Car,       color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
-  { id: 'truck',     label: 'Truck',     icon: Truck,     color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200' },
-  { id: 'person',    label: 'Person',    icon: User,      color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
-  { id: 'job',       label: 'Job',       icon: Briefcase, color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
+  { id: 'container', label: 'Container', icon: Package, color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
+  { id: 'car',       label: 'Car',       icon: Car,     color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
+  { id: 'truck',     label: 'Truck',     icon: Truck,   color: 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200' },
+  { id: 'person',    label: 'Person',    icon: User,    color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
+  { id: 'job',       label: 'Job',       icon: Briefcase,color:'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
 ];
 
 function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
@@ -94,8 +101,9 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // For container assignment, list existing containers
   const containers = assets.filter((a) => a.asset_type === 'container');
+  const trucks     = assets.filter((a) => a.asset_type === 'truck');
+  const people     = [...new Set(assets.map((a) => a.assigned_person_name).filter(Boolean))] as string[];
 
   const selectedNames = assets
     .filter((a) => selectedIds.includes(a.id))
@@ -104,10 +112,10 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
   async function save() {
     if (!type || !value.trim()) return;
     setSaving(true);
-    const body: Record<string, string | null> = {};
-    if (type === 'person') body.assigned_person_name = value.trim();
-    else if (type === 'job') body.assigned_job_id = value.trim();
-    else if (type === 'container') body.container_id = value.trim();
+    const body: Record<string, string | number | null> = {};
+    if (type === 'person')    body.assigned_person_name = value.trim();
+    else if (type === 'job')  body.assigned_job_id = parseInt(value.trim(), 10) || value.trim() as unknown as number;
+    else if (type === 'container' || type === 'truck') body.container_id = parseInt(value.trim(), 10);
     else body.current_location = `${type.charAt(0).toUpperCase() + type.slice(1)}: ${value.trim()}`;
 
     await Promise.all(
@@ -130,8 +138,12 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}</h2>
-            <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{selectedNames.slice(0, 3).join(', ')}{selectedNames.length > 3 ? ` +${selectedNames.length - 3} more` : ''}</p>
+            <h2 className="text-sm font-bold text-slate-900">
+              Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">
+              {selectedNames.slice(0, 3).join(', ')}{selectedNames.length > 3 ? ` +${selectedNames.length - 3} more` : ''}
+            </p>
           </div>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
         </div>
@@ -140,7 +152,9 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
         <div className="grid grid-cols-5 gap-2">
           {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
             <button key={id} onClick={() => { setType(id); setValue(''); }}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color}`}>
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${
+                type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color
+              }`}>
               <Icon size={18} /><span>{label}</span>
             </button>
           ))}
@@ -150,36 +164,63 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
         {type && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-slate-500">
-              {type === 'person' ? 'Person name' :
-               type === 'job' ? 'Job number or name' :
-               type === 'container' ? 'Container' :
+              {type === 'person'    ? 'Person name' :
+               type === 'job'      ? 'Job number' :
+               type === 'container'? 'Container' :
+               type === 'truck'    ? 'Truck' :
                `${type.charAt(0).toUpperCase() + type.slice(1)} name / ID`}
             </label>
-            {type === 'container' && containers.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
-                <select value={value} onChange={(e) => setValue(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
-                  <option value="">— select container —</option>
-                  {containers.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {c.name}{c.asset_number ? ` (${c.asset_number})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-400">Or type a container ID manually:</p>
-                <input value={value} onChange={(e) => setValue(e.target.value)}
-                  placeholder="Container ID"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-              </div>
-            ) : (
+
+            {/* Container picker */}
+            {type === 'container' && (
+              <select value={value} onChange={(e) => setValue(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                <option value="">— select container —</option>
+                {containers.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}{c.asset_number ? ` (${c.asset_number})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Truck picker */}
+            {type === 'truck' && (
+              <select value={value} onChange={(e) => setValue(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                <option value="">— select truck —</option>
+                {trucks.map((t) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.name}{t.asset_number ? ` (${t.asset_number})` : ''}
+                  </option>
+                ))}
+                <option value="new">+ New truck name…</option>
+              </select>
+            )}
+
+            {/* Person picker */}
+            {type === 'person' && people.length > 0 && (
+              <select value={value} onChange={(e) => setValue(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white">
+                <option value="">— select person —</option>
+                {people.map((p) => <option key={p} value={p}>{p}</option>)}
+                <option value="">+ Type a new name below</option>
+              </select>
+            )}
+
+            {/* Free-text fallback for all types */}
+            {(type === 'job' || type === 'car' ||
+              (type === 'person') ||
+              (type === 'truck' && trucks.length === 0) ||
+              (type === 'container' && containers.length === 0)) && (
               <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && save()}
                 placeholder={
-                  type === 'person' ? 'e.g. John Smith' :
-                  type === 'job' ? 'e.g. 1042' :
-                  type === 'container' ? 'Container ID' :
-                  type === 'car' ? 'e.g. ABC-123' :
-                  'e.g. Truck 4'
+                  type === 'person'    ? 'e.g. John Smith' :
+                  type === 'job'       ? 'e.g. 1042' :
+                  type === 'truck'     ? 'e.g. Truck 4' :
+                  type === 'car'       ? 'e.g. ABC-123' :
+                  'Container ID'
                 }
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
             )}
@@ -222,16 +263,16 @@ function AddForm({ onSave, onCancel, saving }: {
     <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">New Equipment</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Name *</label>
-          <input value={form.name} onChange={set('name')} placeholder="e.g. Angle Grinder"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Asset No.</label>
-          <input value={form.asset_number} onChange={set('asset_number')} placeholder="e.g. EQ-001"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
+        {[
+          { k: 'name' as const,           label: 'Name *',       ph: 'e.g. Angle Grinder' },
+          { k: 'asset_number' as const,   label: 'Asset No.',    ph: 'e.g. EQ-001' },
+        ].map(({ k, label, ph }) => (
+          <div key={k}>
+            <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+            <input value={form[k]} onChange={set(k)} placeholder={ph}
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+          </div>
+        ))}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Category</label>
           <select value={form.asset_type} onChange={set('asset_type')}
@@ -247,26 +288,18 @@ function AddForm({ onSave, onCancel, saving }: {
             <option value="hire">Hire</option>
           </select>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Make</label>
-          <input value={form.make} onChange={set('make')} placeholder="e.g. Makita"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Model</label>
-          <input value={form.model} onChange={set('model')} placeholder="e.g. GA9020"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Serial No.</label>
-          <input value={form.serial_number} onChange={set('serial_number')} placeholder="e.g. SN123456"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Location</label>
-          <input value={form.current_location} onChange={set('current_location')} placeholder="e.g. Site A / Depot"
-            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
-        </div>
+        {[
+          { k: 'make' as const,           label: 'Make',         ph: 'e.g. Makita' },
+          { k: 'model' as const,          label: 'Model',        ph: 'e.g. GA9020' },
+          { k: 'serial_number' as const,  label: 'Serial No.',   ph: 'e.g. SN123456' },
+          { k: 'current_location' as const,label:'Location',     ph: 'e.g. Site A / Depot' },
+        ].map(({ k, label, ph }) => (
+          <div key={k}>
+            <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+            <input value={form[k]} onChange={set(k)} placeholder={ph}
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+          </div>
+        ))}
       </div>
       <div className="flex items-center gap-2 justify-end pt-1">
         <button onClick={onCancel} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
@@ -280,19 +313,161 @@ function AddForm({ onSave, onCancel, saving }: {
   );
 }
 
-// ── Container row (expandable) ────────────────────────────────────────────────
+// ── Shared child row (used inside container, truck, person groups) ─────────────
 
-function ContainerRow({
-  container, children, selected, onToggleSelect, onSelect, isExpanded, onToggleExpand,
-  onArchive, onDelete, confirmDelete, onConfirmDelete, onCancelDelete, showArchived,
-}: {
-  container: Asset;
-  children: Asset[];
+function ChildRow({ asset, isLast, onSelect }: {
+  asset: Asset; isLast: boolean; onSelect: (id: number) => void;
+}) {
+  const t = EQUIPMENT_TYPES.find((x) => x.value === asset.asset_type);
+  const Icon = t?.icon ?? Package;
+  return (
+    <div
+      onClick={() => onSelect(asset.id)}
+      className={`px-4 py-2.5 flex items-center gap-3 hover:bg-orange-50/40 transition-colors cursor-pointer group/child ${
+        !isLast ? 'border-b border-slate-100' : ''
+      }`}
+    >
+      <div className="w-4 shrink-0" />
+      <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
+        <Icon size={13} className="text-slate-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-slate-700">{asset.name}</span>
+          {asset.asset_number && <span className="text-[10px] text-slate-400 font-mono">{asset.asset_number}</span>}
+          <TypeBadge type={asset.asset_type} />
+          <StatusBadge status={asset.status} />
+        </div>
+        {(asset.current_location || asset.make || asset.model) && (
+          <div className="flex items-center gap-2 mt-0.5">
+            {asset.current_location && <span className="text-[10px] text-slate-400">{asset.current_location}</span>}
+            {(asset.make || asset.model) && (
+              <span className="text-[10px] text-slate-400">{[asset.make, asset.model].filter(Boolean).join(' ')}</span>
+            )}
+          </div>
+        )}
+      </div>
+      <ChevronRight size={12} className="text-slate-300 shrink-0 group-hover/child:text-orange-400 transition-colors" />
+    </div>
+  );
+}
+
+// ── Generic group header row (Container / Truck / Person) ─────────────────────
+
+interface GroupHeaderProps {
+  id: string;                  // unique key
+  label: string;               // display name
+  icon: React.ReactNode;
+  headerColor: string;         // tailwind classes for the icon bg
+  count: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  selected: boolean;
+  onToggleSelect: (e: React.MouseEvent) => void;
+  onSelect?: () => void;       // navigate to asset detail (asset groups only)
+  meta?: React.ReactNode;      // extra badges / location chips
+  onArchive?: () => void;
+  onRestore?: () => void;
+  onDeleteRequest?: () => void;
+  onDeleteConfirm?: () => void;
+  onDeleteCancel?: () => void;
+  confirmingDelete?: boolean;
+  showArchived: boolean;
+  children: React.ReactNode;
+}
+
+function GroupHeader({
+  label, icon, headerColor, count, isExpanded, onToggleExpand,
+  selected, onToggleSelect, onSelect, meta,
+  onArchive, onRestore, onDeleteRequest, onDeleteConfirm, onDeleteCancel,
+  confirmingDelete, showArchived, children,
+}: GroupHeaderProps) {
+  const hasChildren = count > 0;
+  return (
+    <div className="flex flex-col">
+      <div
+        className={`border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
+          selected ? 'border-orange-400 bg-orange-50/40' : 'border-slate-200 bg-white'
+        } ${isExpanded && hasChildren ? 'rounded-b-none border-b-0' : ''}`}
+      >
+        {/* Checkbox */}
+        <button onClick={onToggleSelect} className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors">
+          {selected ? <CheckSquare size={16} className="text-orange-500" /> : <Square size={16} />}
+        </button>
+
+        {/* Expand toggle */}
+        <button onClick={onToggleExpand} className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+          <ChevronRight size={16} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+        </button>
+
+        {/* Icon */}
+        <div
+          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${headerColor} ${onSelect ? 'cursor-pointer' : ''}`}
+          onClick={onSelect}
+        >
+          {icon}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-slate-800">{label}</span>
+            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full font-semibold">
+              {count} item{count !== 1 ? 's' : ''}
+            </span>
+            {meta}
+          </div>
+        </div>
+
+        {/* Actions (asset groups only) */}
+        {(onArchive || onRestore || onDeleteRequest) && (
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}>
+            {showArchived ? (
+              <button onClick={onRestore}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Restore">
+                <RotateCcw size={14} />
+              </button>
+            ) : (
+              <button onClick={onArchive}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
+                <Archive size={14} />
+              </button>
+            )}
+            {confirmingDelete ? (
+              <div className="flex items-center gap-1">
+                <button onClick={onDeleteConfirm}
+                  className="px-2 py-1 text-[10px] font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">Confirm</button>
+                <button onClick={onDeleteCancel}
+                  className="px-2 py-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={onDeleteRequest}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Children panel */}
+      {isExpanded && hasChildren && (
+        <div className="border border-t-0 border-slate-200 rounded-b-xl overflow-hidden">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Flat asset row (ungrouped items) ──────────────────────────────────────────
+
+function AssetRow({ asset, selected, onToggleSelect, onSelect, onArchive, onDelete, confirmDelete, onConfirmDelete, onCancelDelete, showArchived }: {
+  asset: Asset;
   selected: boolean;
   onToggleSelect: (id: number, e: React.MouseEvent) => void;
   onSelect: (id: number) => void;
-  isExpanded: boolean;
-  onToggleExpand: (id: number) => void;
   onArchive: (id: number, archive: boolean) => void;
   onDelete: (id: number) => void;
   confirmDelete: number | null;
@@ -300,127 +475,83 @@ function ContainerRow({
   onCancelDelete: () => void;
   showArchived: boolean;
 }) {
+  const t = EQUIPMENT_TYPES.find((x) => x.value === asset.asset_type);
+  const Icon = t?.icon ?? Package;
+  const isOverdue = (d: string | null) => !!d && new Date(d) < new Date();
+
   return (
-    <div className="flex flex-col gap-0">
-      {/* Container header row */}
-      <div
-        className={`bg-slate-50 border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
-          selected ? 'border-orange-400 bg-orange-50/40' : 'border-slate-300'
-        } ${isExpanded && children.length > 0 ? 'rounded-b-none border-b-0' : ''}`}
-      >
-        {/* Checkbox */}
-        <button
-          onClick={(e) => onToggleSelect(container.id, e)}
-          className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors"
-        >
-          {selected ? <CheckSquare size={16} className="text-orange-500" /> : <Square size={16} />}
-        </button>
+    <div className={`bg-white border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
+      selected ? 'border-orange-400 bg-orange-50/40' : 'border-slate-200'
+    }`}>
+      <button onClick={(e) => onToggleSelect(asset.id, e)} className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors">
+        {selected ? <CheckSquare size={16} className="text-orange-500" /> : <Square size={16} />}
+      </button>
 
-        {/* Expand toggle */}
-        <button
-          onClick={() => onToggleExpand(container.id)}
-          className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          <ChevronRight size={16} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-        </button>
+      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 cursor-pointer"
+        onClick={() => onSelect(asset.id)}>
+        <Icon size={16} className="text-slate-500" />
+      </div>
 
-        {/* Icon */}
-        <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center shrink-0 cursor-pointer"
-          onClick={() => onSelect(container.id)}>
-          <Package size={16} className="text-slate-600" />
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(container.id)}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-slate-800">{container.name}</span>
-            {container.asset_number && (
-              <span className="text-[10px] text-slate-400 font-mono">{container.asset_number}</span>
-            )}
-            <TypeBadge type="container" />
-            <StatusBadge status={container.status} />
-            <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-full font-semibold">
-              {children.length} item{children.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            {container.current_location && (
-              <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{container.current_location}</span>
-            )}
-            {container.assigned_job_id && (
-              <span className="text-xs text-slate-400 flex items-center gap-1"><Briefcase size={10} />Job #{container.assigned_job_id}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}>
-          {showArchived ? (
-            <button onClick={() => onArchive(container.id, false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Restore">
-              <RotateCcw size={14} />
-            </button>
-          ) : (
-            <button onClick={() => onArchive(container.id, true)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
-              <Archive size={14} />
-            </button>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(asset.id)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-slate-800 truncate">{asset.name}</span>
+          {asset.asset_number && <span className="text-[10px] text-slate-400 font-mono">{asset.asset_number}</span>}
+          <TypeBadge type={asset.asset_type} />
+          <StatusBadge status={asset.status} />
+          {asset.purchase_or_hire === 'hire' && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-yellow-50 text-yellow-700 border-yellow-200">Hire</span>
           )}
-          {confirmDelete === container.id ? (
-            <div className="flex items-center gap-1">
-              <button onClick={() => onDelete(container.id)}
-                className="px-2 py-1 text-[10px] font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">Confirm</button>
-              <button onClick={onCancelDelete}
-                className="px-2 py-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
-            </div>
-          ) : (
-            <button onClick={() => onConfirmDelete(container.id)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
-              <Trash2 size={14} />
-            </button>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+          {(asset.make || asset.model) && (
+            <span className="text-xs text-slate-400">{[asset.make, asset.model].filter(Boolean).join(' ')}</span>
+          )}
+          {asset.current_location && (
+            <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{asset.current_location}</span>
+          )}
+          {asset.assigned_person_name && (
+            <span className="text-xs text-slate-400">👤 {asset.assigned_person_name}</span>
+          )}
+          {asset.assigned_job_id && (
+            <span className="text-xs text-slate-400 flex items-center gap-1"><Briefcase size={10} />Job #{asset.assigned_job_id}</span>
+          )}
+          {asset.next_inspection_due && (
+            <span className={`text-xs font-medium ${isOverdue(asset.next_inspection_due) ? 'text-red-500' : 'text-amber-500'}`}>
+              Insp: {new Date(asset.next_inspection_due).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}
+            </span>
           )}
         </div>
       </div>
 
-      {/* Children */}
-      {isExpanded && children.length > 0 && (
-        <div className="border border-t-0 border-slate-300 rounded-b-xl overflow-hidden">
-          {children.map((child, idx) => (
-            <div key={child.id}
-              className={`px-4 py-2.5 flex items-center gap-3 hover:bg-orange-50/40 transition-colors cursor-pointer group/child ${
-                idx < children.length - 1 ? 'border-b border-slate-100' : ''
-              }`}
-            >
-              {/* indent */}
-              <div className="w-4 shrink-0" />
-              <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center shrink-0"
-                onClick={() => onSelect(child.id)}>
-                {(() => {
-                  const t = EQUIPMENT_TYPES.find((x) => x.value === child.asset_type);
-                  const Icon = t?.icon ?? Package;
-                  return <Icon size={13} className="text-slate-500" />;
-                })()}
-              </div>
-              <div className="flex-1 min-w-0" onClick={() => onSelect(child.id)}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-700">{child.name}</span>
-                  {child.asset_number && <span className="text-[10px] text-slate-400 font-mono">{child.asset_number}</span>}
-                  <TypeBadge type={child.asset_type} />
-                  <StatusBadge status={child.status} />
-                </div>
-                {(child.assigned_person_name || child.current_location) && (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {child.current_location && <span className="text-[10px] text-slate-400">{child.current_location}</span>}
-                    {child.assigned_person_name && <span className="text-[10px] text-slate-400">👤 {child.assigned_person_name}</span>}
-                  </div>
-                )}
-              </div>
-              <ChevronDown size={12} className="text-slate-300 -rotate-90 shrink-0 group-hover/child:text-orange-400 transition-colors" />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}>
+        {showArchived ? (
+          <button onClick={() => onArchive(asset.id, false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Restore">
+            <RotateCcw size={14} />
+          </button>
+        ) : (
+          <button onClick={() => onArchive(asset.id, true)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
+            <Archive size={14} />
+          </button>
+        )}
+        {confirmDelete === asset.id ? (
+          <div className="flex items-center gap-1">
+            <button onClick={() => onDelete(asset.id)}
+              className="px-2 py-1 text-[10px] font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">Confirm</button>
+            <button onClick={onCancelDelete}
+              className="px-2 py-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => onConfirmDelete(asset.id)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+
+      <ChevronRight size={14} className="text-slate-300 shrink-0 group-hover:text-orange-400 transition-colors" />
     </div>
   );
 }
@@ -442,8 +573,8 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
 
-  // Container expand state
-  const [expandedContainers, setExpandedContainers] = useState<Set<number>>(new Set());
+  // Expand state — keyed by "container-{id}", "truck-{id}", "person-{name}"
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -459,7 +590,6 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
   }, [search, typeFilter, showArchived]);
 
   useEffect(() => { load(); }, [load]);
-  // Clear selection on reload
   useEffect(() => { setSelectedIds([]); }, [assets]);
 
   async function handleAdd(form: FormData) {
@@ -496,38 +626,63 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
 
   function toggleSelect(id: number, e: React.MouseEvent) {
     e.stopPropagation();
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
   function toggleAll() {
-    if (selectedIds.length === assets.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(assets.map((a) => a.id));
-    }
+    setSelectedIds(selectedIds.length === assets.length ? [] : assets.map((a) => a.id));
   }
 
-  function toggleContainer(id: number) {
-    setExpandedContainers((prev) => {
+  function toggleExpand(key: string) {
+    setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   }
 
-  const isOverdue = (dateStr: string | null) => {
-    if (!dateStr) return false;
-    return new Date(dateStr) < new Date();
-  };
+  // ── Grouping logic ────────────────────────────────────────────────────────
+  // 1. Container assets  → children = items with container_id === container.id
+  // 2. Truck assets      → children = items with container_id === truck.id
+  // 3. Person groups     → virtual header, children = items with assigned_person_name === name
+  //                        (only items NOT already in a container/truck group)
+  // 4. Ungrouped         → everything else
 
-  // Group: containers + their children, then ungrouped items
-  const containers = assets.filter((a) => a.asset_type === 'container');
-  const containerIds = new Set(containers.map((c) => c.id));
-  const childrenOf = (cid: number) => assets.filter((a) => a.container_id === cid);
-  const childIds = new Set(assets.filter((a) => a.container_id !== null).map((a) => a.id));
-  const ungrouped = assets.filter((a) => !containerIds.has(a.id) && !childIds.has(a.id));
+  const containerAssets = assets.filter((a) => a.asset_type === 'container');
+  const truckAssets      = assets.filter((a) => a.asset_type === 'truck');
+
+  // IDs of assets that are children of a container or truck
+  const groupedByAssetIds = new Set(
+    assets.filter((a) => a.container_id !== null).map((a) => a.id)
+  );
+  // IDs of the group-header assets themselves
+  const groupHeaderIds = new Set([
+    ...containerAssets.map((a) => a.id),
+    ...truckAssets.map((a) => a.id),
+  ]);
+
+  // Items eligible for person grouping = not a group header, not already in a container/truck
+  const personEligible = assets.filter(
+    (a) => !groupHeaderIds.has(a.id) && !groupedByAssetIds.has(a.id)
+  );
+
+  // Unique person names that have at least one item
+  const personNames = [...new Set(
+    personEligible.map((a) => a.assigned_person_name).filter(Boolean) as string[]
+  )].sort();
+
+  // IDs of items that fall into a person group
+  const personGroupedIds = new Set(
+    personEligible.filter((a) => a.assigned_person_name).map((a) => a.id)
+  );
+
+  // Truly ungrouped = not a header, not in container/truck, not in person group
+  const ungrouped = assets.filter(
+    (a) => !groupHeaderIds.has(a.id) && !groupedByAssetIds.has(a.id) && !personGroupedIds.has(a.id)
+  );
+
+  const childrenOf = (parentId: number) => assets.filter((a) => a.container_id === parentId);
+  const personItems = (name: string) => personEligible.filter((a) => a.assigned_person_name === name);
 
   return (
     <div className="p-4 md:p-6 flex flex-col gap-4">
@@ -536,42 +691,33 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)}
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search equipment..."
-            className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
-          />
+            className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
         </div>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
           className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 text-slate-600">
           <option value="">All categories</option>
           {EQUIPMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        <button
-          onClick={() => setShowArchived((v) => !v)}
+        <button onClick={() => setShowArchived((v) => !v)}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
             showArchived ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <Archive size={13} />
-          {showArchived ? 'Archived' : 'Active'}
+          }`}>
+          <Archive size={13} />{showArchived ? 'Archived' : 'Active'}
         </button>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
-        >
+        <button onClick={() => setShowAdd((v) => !v)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
           {showAdd ? <X size={13} /> : <Plus size={13} />}
           {showAdd ? 'Cancel' : 'Add'}
         </button>
       </div>
 
-      {/* Add form */}
       {showAdd && <AddForm onSave={handleAdd} onCancel={() => setShowAdd(false)} saving={saving} />}
 
-      {/* ── Bulk action bar ── */}
+      {/* Bulk action bar */}
       {assets.length > 0 && (
         <div className="flex items-center gap-3 px-1">
-          {/* Select all checkbox */}
           <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors">
             {selectedIds.length === assets.length && assets.length > 0
               ? <CheckSquare size={15} className="text-orange-500" />
@@ -581,22 +727,14 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
             }
             <span>{selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}</span>
           </button>
-
           {selectedIds.length > 0 && (
             <>
               <div className="h-4 w-px bg-slate-200" />
-              <button
-                onClick={() => setShowBulkAssign(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
+              <button onClick={() => setShowBulkAssign(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
                 <Briefcase size={12} /> Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}
               </button>
-              <button
-                onClick={() => setSelectedIds([])}
-                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                Clear
-              </button>
+              <button onClick={() => setSelectedIds([])} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Clear</button>
             </>
           )}
         </div>
@@ -624,17 +762,132 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
             </div>
           )}
 
-          {/* Containers (with children) */}
-          {containers.map((container) => (
-            <ContainerRow
-              key={container.id}
-              container={container}
-              children={childrenOf(container.id)}
-              selected={selectedIds.includes(container.id)}
+          {/* ── Container groups ── */}
+          {containerAssets.map((container) => {
+            const key = `container-${container.id}`;
+            const kids = childrenOf(container.id);
+            return (
+              <GroupHeader
+                key={key}
+                id={key}
+                label={container.name + (container.asset_number ? ` (${container.asset_number})` : '')}
+                icon={<Package size={16} className="text-slate-600" />}
+                headerColor="bg-slate-200"
+                count={kids.length}
+                isExpanded={expanded.has(key)}
+                onToggleExpand={() => toggleExpand(key)}
+                selected={selectedIds.includes(container.id)}
+                onToggleSelect={(e) => toggleSelect(container.id, e)}
+                onSelect={() => onSelectAsset(container.id)}
+                meta={
+                  <>
+                    <TypeBadge type="container" />
+                    <StatusBadge status={container.status} />
+                    {container.current_location && (
+                      <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{container.current_location}</span>
+                    )}
+                  </>
+                }
+                onArchive={() => handleArchive(container.id, true)}
+                onRestore={() => handleArchive(container.id, false)}
+                onDeleteRequest={() => setConfirmDelete(container.id)}
+                onDeleteConfirm={() => handleDelete(container.id)}
+                onDeleteCancel={() => setConfirmDelete(null)}
+                confirmingDelete={confirmDelete === container.id}
+                showArchived={showArchived}
+              >
+                {kids.map((child, idx) => (
+                  <ChildRow key={child.id} asset={child} isLast={idx === kids.length - 1} onSelect={onSelectAsset} />
+                ))}
+              </GroupHeader>
+            );
+          })}
+
+          {/* ── Truck groups ── */}
+          {truckAssets.map((truck) => {
+            const key = `truck-${truck.id}`;
+            const kids = childrenOf(truck.id);
+            return (
+              <GroupHeader
+                key={key}
+                id={key}
+                label={truck.name + (truck.asset_number ? ` (${truck.asset_number})` : '')}
+                icon={<Truck size={16} className="text-amber-600" />}
+                headerColor="bg-amber-100"
+                count={kids.length}
+                isExpanded={expanded.has(key)}
+                onToggleExpand={() => toggleExpand(key)}
+                selected={selectedIds.includes(truck.id)}
+                onToggleSelect={(e) => toggleSelect(truck.id, e)}
+                onSelect={() => onSelectAsset(truck.id)}
+                meta={
+                  <>
+                    <TypeBadge type="truck" />
+                    <StatusBadge status={truck.status} />
+                    {truck.current_location && (
+                      <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{truck.current_location}</span>
+                    )}
+                    {truck.assigned_job_id && (
+                      <span className="text-xs text-slate-400 flex items-center gap-1"><Briefcase size={10} />Job #{truck.assigned_job_id}</span>
+                    )}
+                  </>
+                }
+                onArchive={() => handleArchive(truck.id, true)}
+                onRestore={() => handleArchive(truck.id, false)}
+                onDeleteRequest={() => setConfirmDelete(truck.id)}
+                onDeleteConfirm={() => handleDelete(truck.id)}
+                onDeleteCancel={() => setConfirmDelete(null)}
+                confirmingDelete={confirmDelete === truck.id}
+                showArchived={showArchived}
+              >
+                {kids.map((child, idx) => (
+                  <ChildRow key={child.id} asset={child} isLast={idx === kids.length - 1} onSelect={onSelectAsset} />
+                ))}
+              </GroupHeader>
+            );
+          })}
+
+          {/* ── Person groups (virtual — no asset row) ── */}
+          {personNames.map((name) => {
+            const key = `person-${name}`;
+            const kids = personItems(name);
+            return (
+              <GroupHeader
+                key={key}
+                id={key}
+                label={name}
+                icon={<User size={16} className="text-emerald-600" />}
+                headerColor="bg-emerald-100"
+                count={kids.length}
+                isExpanded={expanded.has(key)}
+                onToggleExpand={() => toggleExpand(key)}
+                selected={kids.every((k) => selectedIds.includes(k.id)) && kids.length > 0}
+                onToggleSelect={(e) => {
+                  e.stopPropagation();
+                  const allSelected = kids.every((k) => selectedIds.includes(k.id));
+                  setSelectedIds((prev) =>
+                    allSelected
+                      ? prev.filter((id) => !kids.map((k) => k.id).includes(id))
+                      : [...new Set([...prev, ...kids.map((k) => k.id)])]
+                  );
+                }}
+                showArchived={showArchived}
+              >
+                {kids.map((child, idx) => (
+                  <ChildRow key={child.id} asset={child} isLast={idx === kids.length - 1} onSelect={onSelectAsset} />
+                ))}
+              </GroupHeader>
+            );
+          })}
+
+          {/* ── Ungrouped flat items ── */}
+          {ungrouped.map((a) => (
+            <AssetRow
+              key={a.id}
+              asset={a}
+              selected={selectedIds.includes(a.id)}
               onToggleSelect={toggleSelect}
               onSelect={onSelectAsset}
-              isExpanded={expandedContainers.has(container.id)}
-              onToggleExpand={toggleContainer}
               onArchive={handleArchive}
               onDelete={handleDelete}
               confirmDelete={confirmDelete}
@@ -642,108 +895,6 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
               onCancelDelete={() => setConfirmDelete(null)}
               showArchived={showArchived}
             />
-          ))}
-
-          {/* Ungrouped items */}
-          {ungrouped.map((a) => (
-            <div key={a.id}
-              className={`bg-white border rounded-xl px-4 py-3 flex items-center gap-3 hover:border-orange-300 hover:shadow-sm transition-all group ${
-                selectedIds.includes(a.id) ? 'border-orange-400 bg-orange-50/40' : 'border-slate-200'
-              }`}
-            >
-              {/* Checkbox */}
-              <button
-                onClick={(e) => toggleSelect(a.id, e)}
-                className="shrink-0 text-slate-300 hover:text-orange-500 transition-colors"
-              >
-                {selectedIds.includes(a.id)
-                  ? <CheckSquare size={16} className="text-orange-500" />
-                  : <Square size={16} />
-                }
-              </button>
-
-              {/* Icon */}
-              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 cursor-pointer"
-                onClick={() => onSelectAsset(a.id)}>
-                {(() => {
-                  const t = EQUIPMENT_TYPES.find((x) => x.value === a.asset_type);
-                  const Icon = t?.icon ?? Package;
-                  return <Icon size={16} className="text-slate-500" />;
-                })()}
-              </div>
-
-              {/* Main info */}
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectAsset(a.id)}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-800 truncate">{a.name}</span>
-                  {a.asset_number && (
-                    <span className="text-[10px] text-slate-400 font-mono">{a.asset_number}</span>
-                  )}
-                  <TypeBadge type={a.asset_type} />
-                  <StatusBadge status={a.status} />
-                  {a.purchase_or_hire === 'hire' && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-yellow-50 text-yellow-700 border-yellow-200">
-                      Hire
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  {(a.make || a.model) && (
-                    <span className="text-xs text-slate-400">{[a.make, a.model].filter(Boolean).join(' ')}</span>
-                  )}
-                  {a.current_location && (
-                    <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin size={10} />{a.current_location}</span>
-                  )}
-                  {a.assigned_person_name && (
-                    <span className="text-xs text-slate-400">👤 {a.assigned_person_name}</span>
-                  )}
-                  {a.assigned_job_id && (
-                    <span className="text-xs text-slate-400 flex items-center gap-1"><Briefcase size={10} />Job #{a.assigned_job_id}</span>
-                  )}
-                  {a.next_inspection_due && (
-                    <span className={`text-xs font-medium ${isOverdue(a.next_inspection_due) ? 'text-red-500' : 'text-amber-500'}`}>
-                      Insp: {new Date(a.next_inspection_due).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' })}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}>
-                {showArchived ? (
-                  <button onClick={() => handleArchive(a.id, false)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Restore">
-                    <RotateCcw size={14} />
-                  </button>
-                ) : (
-                  <button onClick={() => handleArchive(a.id, true)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
-                    <Archive size={14} />
-                  </button>
-                )}
-                {confirmDelete === a.id ? (
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleDelete(a.id)}
-                      className="px-2 py-1 text-[10px] font-semibold bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
-                      Confirm
-                    </button>
-                    <button onClick={() => setConfirmDelete(null)}
-                      className="px-2 py-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700 transition-colors">
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={() => setConfirmDelete(a.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-
-              {/* Chevron */}
-              <ChevronDown size={14} className="text-slate-300 -rotate-90 shrink-0 group-hover:text-orange-400 transition-colors" />
-            </div>
           ))}
         </div>
       )}

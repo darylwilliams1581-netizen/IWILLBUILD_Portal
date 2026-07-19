@@ -1,5 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+// ── Leaflet disk-cache eviction ───────────────────────────────────────────────
+// The browser may serve leaflet.js from HTTP disk cache without making a network
+// request, bypassing all server-side intercepts. Force a hard navigation to a
+// cache-busted URL once per session so the browser must revalidate — the server
+// then responds with Clear-Site-Data: "cache" which nukes the entry permanently.
+if (typeof window !== 'undefined') {
+  const EVICT_KEY = '__lkill_v8';
+  if (!sessionStorage.getItem(EVICT_KEY)) {
+    sessionStorage.setItem(EVICT_KEY, '1');
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('_lkill')) {
+      url.searchParams.set('_lkill', '8');
+      window.location.replace(url.toString());
+    }
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -34,6 +53,51 @@ import { Navigation } from 'lucide-react';
 
 // Google Maps-based live map (no leaflet dependency)
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
+
+// ── Leaflet crash boundary ────────────────────────────────────────────────────
+// If the browser's HTTP disk cache serves the old leaflet.js?v=05d76b4a and it
+// executes (throwing "_leaflet_pos" errors), this boundary catches the crash and
+// does a single hard reload to flush the disk cache entry.
+const LEAFLET_RELOAD_KEY = '__leaflet_reload_v7';
+
+class LeafletCrashBoundary extends React.Component<
+  { children: React.ReactNode },
+  { crashed: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { crashed: false };
+  }
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  componentDidCatch(error: Error) {
+    if (!error?.message?.includes('_leaflet_pos')) return;
+    try {
+      if (sessionStorage.getItem(LEAFLET_RELOAD_KEY)) return; // already tried
+      sessionStorage.setItem(LEAFLET_RELOAD_KEY, '1');
+      // Unregister all SWs then hard-reload to bypass disk cache
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+          .finally(() => { (window.location as any).reload(true); });
+      } else {
+        (window.location as any).reload(true);
+      }
+    } catch { /* ignore */ }
+  }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <div className="flex items-center justify-center flex-1 gap-2 text-slate-400 p-8">
+          <Loader2 size={20} className="animate-spin" />
+          <span className="text-sm">Reloading map…</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── Purge any browser-cached leaflet chunks on mount ─────────────────────────
 // The old pre-bundled leaflet.js?v=05d76b4a may live in the browser's HTTP
@@ -460,14 +524,16 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
-            <Suspense fallback={
-              <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
-                <Loader2 size={20} className="animate-spin" />
-                <span className="text-sm">Loading map…</span>
-              </div>
-            }>
-              <FleetLiveMap key="fleet-live-map" />
-            </Suspense>
+            <LeafletCrashBoundary>
+              <Suspense fallback={
+                <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="text-sm">Loading map…</span>
+                </div>
+              }>
+                <FleetLiveMap key="fleet-live-map" />
+              </Suspense>
+            </LeafletCrashBoundary>
           )}
 
           {/* ── Assets view ── */}

@@ -737,6 +737,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 		res.setHeader('Clear-Site-Data', '"cache"');
 		return res.end('// leaflet removed\nexport default {};\n');
 	}
+	// When the fleet page navigates to ?_lkill=N, send Clear-Site-Data so the
+	// browser drops all cached entries (including the disk-cached leaflet module)
+	// before the page renders.
+	if ((req.query as Record<string, string>)['_lkill']) {
+		res.setHeader('Clear-Site-Data', '"cache"');
+	}
 	next();
 });
 
