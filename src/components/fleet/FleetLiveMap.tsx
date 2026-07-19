@@ -416,11 +416,13 @@ export default function FleetLiveMap() {
       if (!hasFitRef.current) {
         const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
         if (gpsPoints.length > 0) {
-          const bounds = L.latLngBounds(
-            gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
-          );
-          map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 });
-          hasFitRef.current = true;
+          try {
+            const bounds = L.latLngBounds(
+              gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
+            );
+            map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15, animate: false });
+            hasFitRef.current = true;
+          } catch (_) { /* ignore _leaflet_pos errors during layout */ }
         }
       }
     }).catch(console.error);
@@ -431,10 +433,11 @@ export default function FleetLiveMap() {
     if (!selectedId || !leafletMapRef.current) return;
     const session = sessions.find(s => s.session_id === selectedId);
     if (!session || session.lat == null || session.lng == null) return;
-
-    leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 16, { animate: false });
-    const marker = markersRef.current.get(selectedId);
-    if (marker) marker.openPopup();
+    try {
+      leafletMapRef.current.setView([Number(session.lat), Number(session.lng)], 16, { animate: false });
+      const marker = markersRef.current.get(selectedId);
+      if (marker) marker.openPopup();
+    } catch (_) { /* ignore _leaflet_pos errors during layout */ }
   }, [selectedId, sessions]);
 
   // ── Initial load + auto-refresh every 5s ───────────────────────────────────
@@ -455,7 +458,7 @@ export default function FleetLiveMap() {
       const bounds = L.latLngBounds(
         gpsPoints.map(s => [Number(s.lat), Number(s.lng)] as [number, number])
       );
-      leafletMapRef.current?.fitBounds(bounds, { padding: [80, 80], maxZoom: 15, animate: true });
+      try { leafletMapRef.current?.fitBounds(bounds, { padding: [80, 80], maxZoom: 15, animate: false }); } catch (_) { /* ignore _leaflet_pos */ }
     }).catch(console.error);
   }
 

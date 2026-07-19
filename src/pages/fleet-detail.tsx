@@ -1273,7 +1273,6 @@ export default function FleetDetailPage() {
         </div>
 
       </div> {/* flex flex-col flex-1 */}
-      </PortalErrorBoundary>
 
       {/* Modals */}
       <AnimatePresence>
@@ -1377,7 +1376,6 @@ export default function FleetDetailPage() {
           }}
         />
       )}
-      </div>
       </PortalErrorBoundary>
     </div>
   );
