@@ -1,19 +1,18 @@
 /**
  * /files — Main company files page.
- * Uses the shared FilePanel component (same as job/fleet tabs).
+ * Standalone full-page layout — matches fleet.tsx pattern.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FolderOpen, Menu } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
+import { FolderOpen, ArrowLeft } from 'lucide-react';
 import FilePanel from '@/components/FilePanel';
-import JobContextTab from '@/components/JobContextTab';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageError from '@/components/ui/PageError';
 
 export default function FilesPage() {
+  const navigate = useNavigate();
   const [files, setFiles] = useState<CompanyFile[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -33,13 +32,8 @@ export default function FilesPage() {
 
   const totalSize = files.reduce((s, f) => s + f.sizeBytes, 0);
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   return (
-    <>
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Files — IWILLBUILD Portal</title>
         <meta name="description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
@@ -55,31 +49,33 @@ export default function FilesPage() {
         <meta name="twitter:description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
-      <PortalSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu size={20} />
-            </button>
-            <FolderOpen size={20} className="text-primary" />
-            <h1 className="font-heading font-bold text-lg">Files</h1>
-            {loaded && (
-              <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
-                {files.length} file{files.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <FleetHeaderIcon />
-        </header>
+      {/* Sticky top bar */}
+      <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <span className="text-slate-300">|</span>
+          <FolderOpen size={18} className="text-primary shrink-0" />
+          <h1 className="font-heading font-bold text-base truncate">Files</h1>
+          {loaded && (
+            <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
+              {files.length} file{files.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-6">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="max-w-4xl mx-auto w-full">
+
           {/* Loading skeleton for stats */}
           {!loaded && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -119,14 +115,13 @@ export default function FilesPage() {
             </div>
           )}
 
-          {/* Shared FilePanel — full category filter shown on main files page */}
+          {/* Shared FilePanel */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-visible">
             <FilePanel showCategoryFilter={true} />
           </div>
+
         </div>
       </div>
     </div>
-    <JobContextTab />
-    </>
   );
 }

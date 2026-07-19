@@ -267,17 +267,23 @@ export default function FleetLiveMap() {
       import('leaflet').then((L) => {
         if (!container || leafletMapRef.current) return;
 
-        // Patch Leaflet's getPosition to guard against uninitialised pane elements.
-        // _rawPanBy calls _getMapPanePos → getPosition before panes are ready,
-        // reading _leaflet_pos off an undefined element and crashing.
+        // Patch Map.prototype._getMapPanePos — the actual call site in the stack trace.
+        // Leaflet's _rawPanBy calls this before panes have _leaflet_pos set, crashing.
+        // Patching DomUtil.getPosition doesn't work because Leaflet calls the
+        // module-scoped function directly, bypassing the DomUtil property.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const DomUtil = (L as any).DomUtil;
-        if (DomUtil && typeof DomUtil.getPosition === 'function') {
-          const _orig = DomUtil.getPosition as (el: HTMLElement) => { x: number; y: number };
-          DomUtil.getPosition = function patchedGetPosition(el: HTMLElement) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!el || !(el as any)._leaflet_pos) return { x: 0, y: 0 };
-            return _orig.call(this, el);
+        const MapProto = (L as any).Map?.prototype;
+        if (MapProto && typeof MapProto._getMapPanePos === 'function') {
+          const _origGetMapPanePos = MapProto._getMapPanePos;
+          MapProto._getMapPanePos = function patchedGetMapPanePos() {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pane = this._mapPane as any;
+              if (!pane || !pane._leaflet_pos) return (L as any).point(0, 0);
+              return _origGetMapPanePos.call(this);
+            } catch (_) {
+              return (L as any).point(0, 0);
+            }
           };
         }
 
@@ -299,6 +305,16 @@ export default function FleetLiveMap() {
           inertia: false,
           tap: false,
         });
+
+        // Immediately seed _leaflet_pos on the map pane so _rawPanBy never
+        // reads undefined._leaflet_pos. L.map() creates the pane synchronously
+        // but _rawPanBy can fire before setView initialises the position.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapPane = (map as any)._mapPane as HTMLElement | undefined;
+        if (mapPane && !(mapPane as any)._leaflet_pos) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (mapPane as any)._leaflet_pos = (L as any).point(0, 0);
+        }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
