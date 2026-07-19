@@ -278,8 +278,22 @@ export default function FleetLiveMap() {
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
+        // ── _leaflet_pos crash fix ────────────────────────────────────────────
+        // _rawPanBy → _getMapPanePos → getPosition(this._mapPane) throws when
+        // _mapPane is undefined. This fires INSIDE the L.map() constructor before
+        // _initPanes has run. Patch the prototype before construction and restore
+        // immediately after so no other map instances are affected.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const Lany = L as any;
+        const MapProto = (L as any).Map?.prototype as Record<string, unknown> | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const origRawPanByProto = MapProto?._rawPanBy as ((...a: unknown[]) => void) | undefined;
+        if (MapProto && origRawPanByProto) {
+          MapProto._rawPanBy = function safeRawPanBy(...args: unknown[]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(this as any)._mapPane) return;
+            return origRawPanByProto.apply(this, args);
+          };
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let map: any;
@@ -296,10 +310,14 @@ export default function FleetLiveMap() {
             tap: false,
           });
         } catch (mapErr) {
+          if (MapProto && origRawPanByProto) MapProto._rawPanBy = origRawPanByProto;
           console.warn('[FleetLiveMap] L.map() threw during init — retrying next frame', mapErr);
           if (!destroyed) rafId = requestAnimationFrame(tryInit);
           return;
         }
+
+        // Restore prototype immediately — only needed during construction
+        if (MapProto && origRawPanByProto) MapProto._rawPanBy = origRawPanByProto;
 
         if (destroyed) {
           // Unmounted while L.map() was constructing — tear down immediately
