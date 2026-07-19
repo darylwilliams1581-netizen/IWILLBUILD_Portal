@@ -724,19 +724,6 @@ normalizeCommerceApiBaseUrlEnv();
 
 const app = express();
 
-// ── Intercept any stale leaflet dep URL ──────────────────────────────────────
-// leaflet.js?v=05d76b4a may be in the browser HTTP disk cache with immutable
-// headers. On the rare occasion the browser does revalidate, return an empty
-// ES module stub so it never executes.
-app.use((req: Request, res: Response, next: NextFunction) => {
-	if (req.path.includes('leaflet')) {
-		res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-		res.setHeader('Cache-Control', 'no-store');
-		return res.end('export default {};\nexport const map=()=>({});\nexport const tileLayer=()=>({});\n');
-	}
-	next();
-});
-
 // ── Harden Express defaults ───────────────────────────────────────────────────
 // Remove the "X-Powered-By: Express" fingerprint header
 app.disable('x-powered-by');
@@ -2836,16 +2823,6 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 				{ ...result, head: seoHead + result.head },
 				adSenseRuntimeConfig,
 			);
-			// ── Leaflet stale-cache eviction ─────────────────────────────────────
-			// leaflet.js?v=05d76b4a is stuck in the browser HTTP disk cache with
-			// immutable headers. Send Clear-Site-Data once (tracked via cookie) to
-			// force the browser to evict it. After eviction the server stub is served.
-			const cookieHeader = req.headers['cookie'] ?? '';
-			const leafletEvicted = cookieHeader.includes('_lf_evicted=1');
-			if (!leafletEvicted) {
-				res.set('Clear-Site-Data', '"cache"');
-				res.set('Set-Cookie', '_lf_evicted=1; Max-Age=31536000; Path=/; SameSite=Lax; HttpOnly');
-			}
 			res
 				.status(result.status)
 				.set("Content-Type", "text/html; charset=utf-8")

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v35 -->
+  <!-- cache-bust: v37 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -13,97 +13,7 @@
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
-      // ── Leaflet stale-cache suppressor ───────────────────────────────────────
-      // leaflet.js?v=05d76b4a is stuck in the browser HTTP disk cache with
-      // immutable headers. JS prototype patches cannot prevent
-      // "Cannot read properties of undefined (reading '_leaflet_pos')" because
-      // undefined property access throws before any prototype getter runs.
-      //
-      // Strategy: detect the error via window.onerror, nuke all caches, then
-      // do a hard location.href navigation (not reload — reload reuses the
-      // module registry in Chromium). After one navigation the cache is clear
-      // and the server stub is served instead of the real leaflet.
-      (function() {
-        var NUKE_KEY = '__lf_nuke_v11';
-        var NUKE_COUNT_KEY = '__lf_nuke_count_v11';
 
-        function isLeafletError(msg, src) {
-          var m = String(msg || '');
-          var s = String(src || '');
-          return m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1;
-        }
-
-        function nukeAndReload() {
-          try {
-            var count = parseInt(sessionStorage.getItem(NUKE_COUNT_KEY) || '0', 10);
-            if (count >= 3) return; // give up after 3 attempts
-            sessionStorage.setItem(NUKE_COUNT_KEY, String(count + 1));
-          } catch(_) {}
-
-          // 1. Nuke all Cache Storage
-          try {
-            if (typeof caches !== 'undefined') {
-              caches.keys().then(function(names) {
-                return Promise.all(names.map(function(n) { return caches.delete(n); }));
-              }).then(function() {
-                doNav();
-              }).catch(doNav);
-            } else {
-              doNav();
-            }
-          } catch(_) { doNav(); }
-        }
-
-        function doNav() {
-          try {
-            var u = new URL(location.href);
-            u.searchParams.set('_lf', Date.now().toString());
-            location.href = u.toString();
-          } catch(_) {
-            location.reload();
-          }
-        }
-
-        // Strip _lf param left by a previous nuke-nav
-        try {
-          var u2 = new URL(location.href);
-          if (u2.searchParams.has('_lf')) {
-            u2.searchParams.delete('_lf');
-            history.replaceState(null, '', u2.toString());
-            // We just came back from a nuke — mark session as clean
-            sessionStorage.setItem(NUKE_KEY, '1');
-          }
-        } catch(_) {}
-
-        // If this session is already clean, skip installing the error handler
-        var alreadyClean = false;
-        try { alreadyClean = !!sessionStorage.getItem(NUKE_KEY); } catch(_) {}
-        if (alreadyClean) return;
-
-        // Install error handler BEFORE any modules load
-        var _prevOnerror = window.onerror;
-        window.onerror = function(msg, src, line, col, err) {
-          if (isLeafletError(msg, src)) {
-            nukeAndReload();
-            return true; // suppress
-          }
-          return typeof _prevOnerror === 'function'
-            ? _prevOnerror(msg, src, line, col, err) : false;
-        };
-        window.addEventListener('error', function(e) {
-          if (isLeafletError(e && e.message, e && e.filename)) {
-            e.preventDefault(); e.stopImmediatePropagation();
-            nukeAndReload();
-          }
-        }, true);
-        window.addEventListener('unhandledrejection', function(e) {
-          var m = String(e && e.reason ? (e.reason.message || e.reason) : '');
-          if (m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
-            e.preventDefault();
-            nukeAndReload();
-          }
-        }, true);
-      })();
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
@@ -287,6 +197,16 @@
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker that intercepts stale leaflet.js disk-cache entries.
+      // leaflet.js?v=05d76b4a was pre-bundled by Vite before leaflet was removed;
+      // browsers cache it with immutable headers. The SW intercepts any fetch for
+      // a URL containing "leaflet.js" and returns an empty stub instead.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
+          .catch(function() {});
+      }
+    </script>
     <script src="/analytics.js"></script>
   </body>
 </html>

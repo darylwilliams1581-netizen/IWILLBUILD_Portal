@@ -1,8 +1,7 @@
 /**
  * FleetLiveMap — Live GPS tracking map using Google Maps JS API.
- * Google Maps script-tag loader (no npm leaflet dependency).
+ * Uses VITE_GOOGLE_MAPS_API_KEY. No Leaflet dependency.
  * Auto-refreshes every 5 seconds.
- * v2 — bundle hash bump to evict stale browser-cached leaflet chunk.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
