@@ -493,7 +493,13 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom", "motion/react"], exclude: ["drizzle-orm", "mysql2"],
+    include: ["react", "react-dom", "react-router-dom", "motion/react"],
+    // Exclude leaflet from pre-bundling so it is served as raw ESM modules.
+    // When Vite pre-bundles leaflet, getPosition becomes a closure-local variable
+    // inside the single bundled file — no prototype patch can intercept it.
+    // Serving raw ESM means each module is a separate file, so our prototype
+    // patches on Map.prototype._getMapPanePos and _rawPanBy work correctly.
+    exclude: ["drizzle-orm", "mysql2", "leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },

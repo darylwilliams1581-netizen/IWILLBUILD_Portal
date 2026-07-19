@@ -281,35 +281,50 @@ export default function FleetLiveMap() {
         // Patch _rawPanBy on the prototype BEFORE L.map() so any internal call
         // during construction is safe. This is the only reliable intercept point
         // because Leaflet's internal getPosition is closure-local (not the export).
+        // Patch Leaflet internals BEFORE L.map() to prevent _leaflet_pos crashes.
+        // getPosition() is a closure-local fn in the bundle — we can't replace it,
+        // but we can guard every call site that leads to it.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const MapProto = (L as any).Map?.prototype;
-        if (MapProto && !MapProto.__airo_rawpan_patched) {
-          // Patch _getMapPanePos — called by _rawPanBy; crashes when _mapPane
-          // or its _leaflet_pos is not yet initialised.
+        const Lany = L as any;
+        const zero = Lany.point(0, 0);
+
+        // 1. Patch DomUtil.getPosition (some paths call it via the object ref)
+        if (Lany.DomUtil && typeof Lany.DomUtil.getPosition === 'function') {
+          const _origDomGet = Lany.DomUtil.getPosition;
+          Lany.DomUtil.getPosition = function(el: HTMLElement) {
+            if (!el) return zero;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(el as any)._leaflet_pos) (el as any)._leaflet_pos = Lany.point(0, 0);
+            return _origDomGet(el);
+          };
+        }
+
+        // 2. Patch Map.prototype._getMapPanePos — guards _mapPane being undefined
+        const MapProto = Lany.Map?.prototype;
+        if (MapProto) {
           const _origGetPanePos = MapProto._getMapPanePos;
           MapProto._getMapPanePos = function safeGetMapPanePos() {
             try {
+              const pane = this._mapPane;
+              if (!pane) return Lany.point(0, 0);
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const pane = this._mapPane as any;
-              if (!pane) return (L as any).point(0, 0);
-              if (!pane._leaflet_pos) pane._leaflet_pos = (L as any).point(0, 0);
+              if (!(pane as any)._leaflet_pos) (pane as any)._leaflet_pos = Lany.point(0, 0);
               return _origGetPanePos.call(this);
             } catch (_) {
-              return (L as any).point(0, 0);
+              return Lany.point(0, 0);
             }
           };
 
+          // 3. Patch _rawPanBy as belt-and-suspenders
           const _origRawPan = MapProto._rawPanBy;
           MapProto._rawPanBy = function safeRawPanBy(offset: unknown) {
             try {
+              const pane = this._mapPane;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const pane = this._mapPane as any;
-              if (pane && !pane._leaflet_pos) pane._leaflet_pos = (L as any).point(0, 0);
+              if (pane && !(pane as any)._leaflet_pos) (pane as any)._leaflet_pos = Lany.point(0, 0);
               return _origRawPan.call(this, offset);
             } catch (_) { /* swallow */ }
           };
-
-          MapProto.__airo_rawpan_patched = true;
         }
 
         const map = L.map(container, {
@@ -322,15 +337,7 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
-        // ── Seed _leaflet_pos on every pane element immediately after L.map() ──
-        // Leaflet's internal getPosition() is a closure-local function that reads
-        // el._leaflet_pos directly. It is NOT the same reference as
-        // L.DomUtil.getPosition, so patching the export has no effect.
-        // The only reliable fix is to ensure every pane element already has
-        // _leaflet_pos set before anything (ResizeObserver, invalidateSize, etc.)
-        // can call _rawPanBy → _getMapPanePos → getPosition.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const zero = (L as any).point(0, 0);
+        // ── Seed _leaflet_pos on every pane element after L.map() ──
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
