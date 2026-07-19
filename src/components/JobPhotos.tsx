@@ -101,22 +101,25 @@ function formatDateTime(iso: string) {
 
 const HEIC_EXTS = ['heic', 'heif'];
 const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
-// image/jpg is a non-standard alias iOS Safari sends for JPEG files — must be included
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+// image/jpg is a non-standard alias iOS Safari sends for JPEG files.
+// image/heic / image/heif are sent by iPhone camera — converted to JPEG via canvas.
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
 
 /**
  * Convert any image File to a JPEG via an off-screen canvas.
  * - iOS Safari can decode HEIC natively via createImageBitmap
  * - Also resizes to max 1920px on the longest side
  */
-async function normaliseToJpeg(file: File): Promise<File> {
+async function normaliseToJpeg(file: File): Promise<File | null> {
   const MAX_PX = 1920;
   const QUALITY = 0.88;
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    return file; // browser can't decode — return original unchanged
+    // Browser cannot decode this format (e.g. HEIC on Android/desktop).
+    // Return null so the caller can show a safe message instead of crashing.
+    return null;
   }
   let { width, height } = bitmap;
   if (width > MAX_PX || height > MAX_PX) {
@@ -149,11 +152,18 @@ async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: stri
     const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
     const isHeic = HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type);
     if (isHeic) {
+      // iOS Safari can decode HEIC via createImageBitmap; other browsers cannot.
       const converted = await normaliseToJpeg(f);
-      if (converted.type !== 'image/jpeg') {
-        return { valid: [], error: `"${f.name}" is a HEIC/HEIF file. On Android, set your camera to JPEG mode: Camera Settings → Formats → Most Compatible.` };
+      if (converted === null) {
+        // Browser cannot decode HEIC — upload the raw file and let the server handle it.
+        // Server accepts HEIC and stores it; preview will show a placeholder.
+        prepared.push(f);
+      } else if (converted.type !== 'image/jpeg') {
+        // Conversion produced a non-JPEG — still push it through; server will handle.
+        prepared.push(converted);
+      } else {
+        prepared.push(converted);
       }
-      prepared.push(converted);
       continue;
     }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
@@ -161,7 +171,8 @@ async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: stri
     }
     // Normalise (resize if oversized) — fall back to original if canvas fails
     try {
-      prepared.push(await normaliseToJpeg(f));
+      const normalised = await normaliseToJpeg(f);
+      prepared.push(normalised ?? f);
     } catch {
       prepared.push(f);
     }
@@ -172,10 +183,6 @@ async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: stri
 // Sync validate for single-file replace flow
 function validateFiles(files: File[]): { valid: File[]; error: string | null } {
   for (const f of files) {
-    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-    if (HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type)) {
-      return { valid: [], error: `HEIC/HEIF not supported here. Convert "${f.name}" to JPEG first.` };
-    }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
       return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
     }
@@ -239,8 +246,6 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
   }
 
   async function doReplace(file: File) {
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'heic' || ext === 'heif') { setError('HEIC/HEIF not supported — convert to JPEG first.'); return; }
     setReplacing(true); setError('');
     try {
       const fd = new FormData(); fd.append('photo', file);
@@ -303,7 +308,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
               {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
               {replacing ? 'Replacing…' : 'Choose file to replace'}
             </button>
-            <input ref={replaceRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+            <input ref={replaceRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
           </div>
           <div className="flex flex-col gap-1 pt-1">

@@ -1051,17 +1051,39 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
   async function doUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     const arr = Array.from(files);
-    for (const f of arr) {
-      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-      if (ext === 'heic' || ext === 'heif') {
-        setUploadMsg('HEIC/HEIF not supported — convert to JPEG first.');
-        return;
-      }
-    }
     setUploading(true);
     setUploadMsg('');
+    // Convert HEIC/HEIF to JPEG via canvas (iOS Safari supports this natively).
+    // For browsers that can't decode HEIC, upload the raw file — server handles it.
+    const prepared: File[] = [];
+    for (const f of arr) {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      const isHeic = ['heic', 'heif'].includes(ext) || ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'].includes(f.type);
+      if (isHeic) {
+        try {
+          const bitmap = await createImageBitmap(f);
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.88));
+            if (blob) {
+              const stem = f.name.replace(/\.[^.]+$/, '');
+              prepared.push(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
+              continue;
+            }
+          }
+          bitmap.close();
+        } catch { /* fall through — push raw */ }
+        prepared.push(f); // server will handle raw HEIC
+        continue;
+      }
+      prepared.push(f);
+    }
     const fd = new FormData();
-    arr.forEach((f) => fd.append('photos', f));
+    prepared.forEach((f) => fd.append('photos', f));
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos`, {
         method: 'POST',
@@ -1070,7 +1092,7 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      setUploadMsg(`${arr.length} photo${arr.length !== 1 ? 's' : ''} uploaded`);
+      setUploadMsg(`${prepared.length} photo${prepared.length !== 1 ? 's' : ''} uploaded`);
       setTimeout(() => setUploadMsg(''), 3000);
     } catch (e) {
       setUploadMsg(e instanceof Error ? e.message : 'Upload failed');
@@ -1112,8 +1134,8 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
           </span>
         )}
       </div>
-      <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={(e) => doUpload(e.target.files)} />
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => doUpload(e.target.files)} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => doUpload(e.target.files)} />
+      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => doUpload(e.target.files)} />
     </div>
   );
 }
