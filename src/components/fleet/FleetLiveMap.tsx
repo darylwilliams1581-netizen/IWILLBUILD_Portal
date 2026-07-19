@@ -231,7 +231,7 @@ export default function FleetLiveMap() {
     document.head.appendChild(style);
   }, []);
 
-  // ── Load Leaflet CSS before map init ───────────────────────────────────────
+  // ── Load Leaflet CSS ───────────────────────────────────────────────────────
   useEffect(() => {
     const cssId = 'leaflet-css';
     if (!document.getElementById(cssId)) {
@@ -243,23 +243,10 @@ export default function FleetLiveMap() {
     }
   }, []);
 
-  // ── Load Leaflet JS from CDN (avoids Vite-bundled closure that breaks _leaflet_pos) ──
-  function loadLeafletGlobal(): Promise<typeof import('leaflet')> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).L) return Promise.resolve((window as any).L);
-    return new Promise((resolve, reject) => {
-      const existing = document.getElementById('leaflet-js');
-      if (existing) {
-        existing.addEventListener('load', () => resolve((window as any).L));
-        return;
-      }
-      const script = document.createElement('script');
-      script.id = 'leaflet-js';
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => resolve((window as any).L);
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
+  // ── Load Leaflet (bundled via dynamic import — never runs during SSR) ────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function loadLeafletGlobal(): Promise<any> {
+    return import('leaflet');
   }
 
   // ── Init Leaflet map ────────────────────────────────────────────────────────
@@ -292,66 +279,63 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // The pre-bundled Leaflet uses a closure-local `getPosition(el)` that reads
-        // `el._leaflet_pos` directly. No prototype patch can intercept it.
-        // The only reliable fix is to ensure every DOM element that Leaflet touches
-        // already has `_leaflet_pos` set before Leaflet reads it.
-        //
-        // Strategy:
-        //   1. Seed `_leaflet_pos` on the container element BEFORE L.map().
-        //   2. Override `Map.prototype._initPanes` to seed every pane it creates.
-        //   3. Wrap `_rawPanBy` and `_getMapPanePos` as belt-and-suspenders.
+        // The bundled leaflet.js uses a closure-local `getPosition(el)` that reads
+        // `el._leaflet_pos` directly — no prototype patch can intercept it.
+        // Strategy: use Object.defineProperty on every pane element so that reading
+        // `_leaflet_pos` auto-initialises to L.point(0,0) if the property is missing.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
-        const zero = Lany.point(0, 0);
 
-        // 1. Seed the container itself — Leaflet sets it as _mapPane during init
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (container as any)._leaflet_pos = zero;
+        /** Install a self-initialising getter on el._leaflet_pos if not already set */
+        function seedPos(el: HTMLElement | null | undefined) {
+          if (!el) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if ((el as any)._leaflet_pos !== undefined) return; // already seeded
+          try {
+            Object.defineProperty(el, '_leaflet_pos', {
+              configurable: true,
+              enumerable: true,
+              get() { return this.__lp__ ?? Lany.point(0, 0); },
+              set(v) { this.__lp__ = v; },
+            });
+          } catch (_) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (el as any)._leaflet_pos = Lany.point(0, 0);
+          }
+        }
 
-        // 2. Wrap _initPanes so every pane div gets _leaflet_pos immediately
+        // Seed the container itself
+        seedPos(container);
+
+        // Patch _initPanes so every pane is seeded immediately after creation
         const MapProto = Lany.Map?.prototype;
-        if (MapProto) {
+        if (MapProto && !MapProto.__patchedInitPanes) {
+          MapProto.__patchedInitPanes = true;
           const _origInitPanes = MapProto._initPanes;
           MapProto._initPanes = function patchedInitPanes() {
             _origInitPanes.call(this);
-            // Seed all pane elements right after they are created
             try {
+              seedPos(this._mapPane);
               const panes = this._panes as Record<string, HTMLElement> | undefined;
-              if (panes) {
-                Object.values(panes).forEach((el) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  if (el && !(el as any)._leaflet_pos) (el as any)._leaflet_pos = Lany.point(0, 0);
-                });
-              }
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (this._mapPane && !(this._mapPane as any)._leaflet_pos) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (this._mapPane as any)._leaflet_pos = Lany.point(0, 0);
-              }
+              if (panes) Object.values(panes).forEach(seedPos);
             } catch (_) { /* ignore */ }
           };
+        }
 
-          // 3. Belt-and-suspenders: guard _getMapPanePos and _rawPanBy
+        // Belt-and-suspenders: guard _getMapPanePos and _rawPanBy
+        if (MapProto && !MapProto.__patchedPanBy) {
+          MapProto.__patchedPanBy = true;
           const _origGetPanePos = MapProto._getMapPanePos;
           MapProto._getMapPanePos = function safeGetMapPanePos() {
             try {
-              const pane = this._mapPane;
-              if (!pane) return Lany.point(0, 0);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (!(pane as any)._leaflet_pos) (pane as any)._leaflet_pos = Lany.point(0, 0);
+              seedPos(this._mapPane);
               return _origGetPanePos.call(this);
-            } catch (_) {
-              return Lany.point(0, 0);
-            }
+            } catch (_) { return Lany.point(0, 0); }
           };
-
           const _origRawPan = MapProto._rawPanBy;
           MapProto._rawPanBy = function safeRawPanBy(offset: unknown) {
             try {
-              const pane = this._mapPane;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (pane && !(pane as any)._leaflet_pos) (pane as any)._leaflet_pos = Lany.point(0, 0);
+              seedPos(this._mapPane);
               return _origRawPan.call(this, offset);
             } catch (_) { /* swallow */ }
           };
@@ -371,16 +355,9 @@ export default function FleetLiveMap() {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
-          if (panes) {
-            Object.values(panes).forEach((el) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (el && !(el as any)._leaflet_pos) (el as any)._leaflet_pos = zero;
-            });
-          }
+          if (panes) Object.values(panes).forEach(seedPos);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapPane = (map as any)._mapPane as HTMLElement | undefined;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if (mapPane && !(mapPane as any)._leaflet_pos) (mapPane as any)._leaflet_pos = zero;
+          seedPos((map as any)._mapPane as HTMLElement | undefined);
         } catch (_) { /* ignore */ }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
