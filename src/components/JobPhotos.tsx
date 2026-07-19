@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Camera,
@@ -47,6 +47,28 @@ interface JobPhotosProps {
   jobId: number;
   /** Called when a share link is generated so the parent can show it */
   onShareLink?: (url: string) => void;
+  /** Called whenever photo count changes so the parent can update its UI */
+  onPhotoCount?: (count: number) => void;
+  /** Called when uploading state changes */
+  onUploading?: (uploading: boolean) => void;
+  /** Called when selection changes (count of selected items) */
+  onSelectionChange?: (count: number) => void;
+}
+
+/** Imperative handle exposed to the parent via ref */
+export interface JobPhotosHandle {
+  openFilePicker: () => void;
+  openCamera: () => void;
+  generateShareLink: () => void;
+  setViewSize: (size: ViewSize) => void;
+  viewSize: ViewSize;
+  selectMode: boolean;
+  setSelectMode: (v: boolean) => void;
+  selectedCount: number;
+  photoCount: number;
+  uploading: boolean;
+  downloadSelected: () => void;
+  exitSelectMode: () => void;
 }
 
 type ViewSize = 'small' | 'medium' | 'large';
@@ -372,7 +394,10 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
 
 const MAX_PHOTOS = 200;
 
-export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
+const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos(
+  { jobId, onShareLink, onPhotoCount, onUploading, onSelectionChange },
+  ref,
+) {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -388,7 +413,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -400,10 +424,12 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       const res = await fetch(`/api/jobs/${jobId}/photos`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json() as { photos: JobPhoto[] };
-      setPhotos(data.photos ?? []);
+      const list = data.photos ?? [];
+      setPhotos(list);
+      onPhotoCount?.(list.length);
     } catch { setError('Failed to load photos'); }
     finally { setLoading(false); }
-  }, [jobId]);
+  }, [jobId, onPhotoCount]);
 
   useEffect(() => { void fetchPhotos(); }, [fetchPhotos]);
 
@@ -413,21 +439,21 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
-    setUploading(true); setUploadError(null);
+    setUploading(true); onUploading?.(true); setUploadError(null);
     let valid: File[];
     try {
       const result = await prepareFiles(arr);
-      if (result.error) { setUploadError(result.error); setUploading(false); return; }
+      if (result.error) { setUploadError(result.error); setUploading(false); onUploading?.(false); return; }
       valid = result.valid;
     } catch {
       setUploadError('Failed to process images. Please try again.');
-      setUploading(false); return;
+      setUploading(false); onUploading?.(false); return;
     }
-    if (photos.length >= MAX_PHOTOS) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); setUploading(false); return; }
+    if (photos.length >= MAX_PHOTOS) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); setUploading(false); onUploading?.(false); return; }
     if (photos.length + valid.length > MAX_PHOTOS) {
       const rem = MAX_PHOTOS - photos.length;
       setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added. Select fewer files.`);
-      setUploading(false); return;
+      setUploading(false); onUploading?.(false); return;
     }
     const fd = new FormData();
     valid.forEach((f) => fd.append('photos', f));
@@ -441,7 +467,7 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       await fetchPhotos();
     } catch (e) { setUploadError(e instanceof Error ? e.message : 'Upload failed'); }
     finally {
-      setUploading(false);
+      setUploading(false); onUploading?.(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
@@ -477,20 +503,20 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     setSelected((prev) => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id); else n.add(id);
+      onSelectionChange?.(n.size);
       return n;
     });
   };
 
-  const toggleSelectAll = () => {
-    if (selected.size === photos.length) setSelected(new Set());
-    else setSelected(new Set(photos.map((p) => p.id)));
-  };
-
-  const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()); };
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelected(new Set());
+    onSelectionChange?.(0);
+  }, [onSelectionChange]);
 
   // ── Download selected ──────────────────────────────────────────────────────
 
-  const downloadSelected = () => {
+  const downloadSelected = useCallback(() => {
     const targets = photos.filter((p) => selected.has(p.id));
     targets.forEach((p, i) => {
       setTimeout(() => {
@@ -500,11 +526,11 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
         a.click();
       }, i * 300);
     });
-  };
+  }, [photos, selected]);
 
   // ── Share link ─────────────────────────────────────────────────────────────
 
-  const generateShareLink = async () => {
+  const generateShareLink = useCallback(async () => {
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
         method: 'POST', credentials: 'include',
@@ -516,14 +542,31 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate share link');
     }
-  };
+  }, [jobId, onShareLink]);
 
-  // ── Drag & drop (window-level, no visible zone) ────────────────────────────
+  // ── Drag & drop ────────────────────────────────────────────────────────────
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files.length > 0) void doUpload(e.dataTransfer.files);
   }, [doUpload]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Imperative handle ──────────────────────────────────────────────────────
+
+  useImperativeHandle(ref, () => ({
+    openFilePicker: () => fileInputRef.current?.click(),
+    openCamera: () => cameraInputRef.current?.click(),
+    generateShareLink: () => void generateShareLink(),
+    setViewSize,
+    get viewSize() { return viewSize; },
+    get selectMode() { return selectMode; },
+    setSelectMode,
+    get selectedCount() { return selected.size; },
+    get photoCount() { return photos.length; },
+    get uploading() { return uploading; },
+    downloadSelected,
+    exitSelectMode,
+  }), [viewSize, selectMode, selected.size, photos.length, uploading, generateShareLink, downloadSelected, exitSelectMode]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -536,97 +579,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       onDragOver={(e) => { e.preventDefault(); }}
       onDrop={handleDrop}
     >
-
-      {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between gap-2">
-
-        {/* Left: select mode */}
-        <div className="flex items-center gap-2 flex-1">
-          {!selectMode ? (
-            <button
-              onClick={() => setSelectMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 rounded-lg transition-colors"
-            >
-              <CheckSquare size={13} /> Select
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={toggleSelectAll} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 rounded-lg transition-colors">
-                {selected.size === photos.length ? <CheckSquare size={13} className="text-primary" /> : <Square size={13} />}
-                {selected.size === photos.length ? 'Deselect all' : 'Select all'}
-              </button>
-              {selected.size > 0 && (
-                <>
-                  <button onClick={downloadSelected} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors">
-                    <Download size={13} /> Download ({selected.size})
-                  </button>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 rounded-lg transition-colors">
-                    <Send size={13} /> Send ({selected.size})
-                  </button>
-                </>
-              )}
-              <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-500 rounded-lg transition-colors">
-                <X size={13} /> Done
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Centre: camera button */}
-        {!selectMode && (
-          <div className="flex justify-center">
-            <button
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={uploading || atLimit}
-              aria-label="Take photo"
-              className="w-12 h-12 rounded-full bg-slate-900 hover:bg-slate-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center shadow-md transition-all"
-            >
-              <Camera size={20} />
-            </button>
-          </div>
-        )}
-
-        {/* Right: upload + tools + view size */}
-        {!selectMode && (
-          <div className="flex items-center gap-2 flex-1 justify-end flex-wrap">
-            {/* Choose Files */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || atLimit}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-              {uploading ? 'Uploading…' : 'Choose Files'}
-            </button>
-            {/* Share link */}
-            {onShareLink && (
-              <button
-                onClick={() => void generateShareLink()}
-                disabled={photos.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold text-slate-600 rounded-lg transition-colors"
-                title="Share view-only link"
-              >
-                <Share2 size={13} />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-            )}
-            {/* View size toggle */}
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-              {(['small', 'medium', 'large'] as ViewSize[]).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setViewSize(size)}
-                  className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                  title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
-                >
-                  {size === 'small' ? <LayoutGrid size={13} /> : size === 'medium' ? <List size={13} /> : <span className="text-[10px] font-bold">LG</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Photo count hint when near limit */}
       {!atLimit && remaining <= 20 && photos.length > 0 && (
         <p className="text-xs text-amber-600 font-semibold">{photos.length} / {MAX_PHOTOS} photos · {remaining} remaining</p>
@@ -666,9 +618,18 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       {!loading && photos.length > 0 && (
         <>
           {selectMode && (
-            <p className="text-xs text-slate-500 font-semibold">
-              {selected.size === 0 ? 'Tap photos to select' : `${selected.size} of ${photos.length} selected`}
-            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => {
+                if (selected.size === photos.length) setSelected(new Set());
+                else setSelected(new Set(photos.map((p) => p.id)));
+              }} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 rounded-lg transition-colors">
+                {selected.size === photos.length ? <CheckSquare size={13} className="text-primary" /> : <Square size={13} />}
+                {selected.size === photos.length ? 'Deselect all' : 'Select all'}
+              </button>
+              <p className="text-xs text-slate-500 font-semibold ml-1">
+                {selected.size === 0 ? 'Tap photos to select' : `${selected.size} of ${photos.length} selected`}
+              </p>
+            </div>
           )}
           <div className={`grid gap-3 ${VIEW_COLS[viewSize]}`}>
             <AnimatePresence>
@@ -759,7 +720,6 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
       </AnimatePresence>
 
       {/* File inputs */}
-      {/* accept="image/*" lets iOS pass HEIC through — our prepareFiles() converts it to JPEG */}
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
         onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -786,9 +746,8 @@ export default function JobPhotos({ jobId, onShareLink }: JobPhotosProps) {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Unused var suppression */}
-      {null}
     </div>
   );
-}
+});
+
+export default JobPhotos;

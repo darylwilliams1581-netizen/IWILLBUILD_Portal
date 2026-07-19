@@ -54,6 +54,17 @@ if (typeof window !== 'undefined') {
     const m = String(e?.reason?.message ?? e?.reason ?? '');
     if (m.includes('_leaflet_pos') || m.includes('leaflet')) e.preventDefault();
   }, { capture: true });
+  // Patch _leaflet_pos on any DOM node that lacks it so getPosition() never throws
+  try {
+    const origGetPos = Object.getOwnPropertyDescriptor(Element.prototype, '_leaflet_pos');
+    if (!origGetPos) {
+      Object.defineProperty(Element.prototype, '_leaflet_pos', {
+        get() { return (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos ?? { x: 0, y: 0 }; },
+        set(v) { (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos = v; },
+        configurable: true,
+      });
+    }
+  } catch { /* ignore */ }
 }
 
 // ── Leaflet crash boundary ────────────────────────────────────────────────────
@@ -87,12 +98,17 @@ class LeafletCrashBoundary extends React.Component<
     window.onerror = this._onerror;
   }
 
-  static getDerivedStateFromError() {
+  static getDerivedStateFromError(error: Error) {
+    const m = String(error?.message ?? error ?? '');
+    // Swallow leaflet errors silently — don't mark as crashed
+    if (m.includes('_leaflet_pos') || m.includes('leaflet')) {
+      return { crashed: false };
+    }
     return { crashed: true };
   }
 
   componentDidCatch(error: Error) {
-    const m = error?.message ?? '';
+    const m = String(error?.message ?? error ?? '');
     if (!m.includes('_leaflet_pos') && !m.includes('leaflet')) {
       console.error('[FleetPage] Unexpected render error:', error);
     }
