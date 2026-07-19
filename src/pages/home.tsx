@@ -102,19 +102,20 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
       className="flex flex-col items-center gap-1.5 group"
     >
       <div
-        className={`w-[62px] h-[62px] rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative`}
+        className={`w-[54px] h-[54px] sm:w-[62px] sm:h-[62px] rounded-[16px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative`}
         style={{
           boxShadow: '0 4px 12px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.18)',
         }}
       >
-        <Icon size={26} strokeWidth={1.9} />
+        <Icon size={22} strokeWidth={1.9} className="sm:hidden" />
+        <Icon size={26} strokeWidth={1.9} className="hidden sm:block" />
         {item.badge != null && item.badge > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      <span className="text-[11px] text-gray-600 font-semibold text-center leading-tight max-w-[68px]">
+      <span className="text-[10px] sm:text-[11px] text-gray-600 font-semibold text-center leading-tight max-w-[60px] sm:max-w-[68px]">
         {item.label}
       </span>
     </motion.button>
@@ -127,7 +128,7 @@ function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]
   return (
     <div className="px-4">
       <div
-        className="rounded-2xl px-4 pt-3.5 pb-5"
+        className="rounded-2xl px-3 sm:px-4 pt-3.5 pb-5"
         style={{
           background: 'rgba(255,255,255,0.82)',
           backdropFilter: 'blur(12px)',
@@ -135,7 +136,7 @@ function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]
         }}
       >
         <p className="text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-widest">{label}</p>
-        <div className="grid grid-cols-4 gap-x-2 gap-y-5">
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-1.5 sm:gap-x-2 gap-y-4 sm:gap-y-5">
           {icons.map((item) => (
             <IconTile key={item.label} item={item} onNavigate={onNavigate} />
           ))}
