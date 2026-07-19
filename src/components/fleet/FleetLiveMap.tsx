@@ -6,7 +6,6 @@
  * Shows a styled pin per active driver with popup: name, vehicle, speed, last seen.
  * Admins/owners/managers only (API enforces this too).
  */
-import '@/lib/leaflet-patch';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Loader2, MapPin, RefreshCw, AlertCircle, Navigation,
@@ -289,6 +288,30 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
+        // ── Seed _leaflet_pos on every pane element immediately after L.map() ──
+        // Leaflet's internal getPosition() is a closure-local function that reads
+        // el._leaflet_pos directly. It is NOT the same reference as
+        // L.DomUtil.getPosition, so patching the export has no effect.
+        // The only reliable fix is to ensure every pane element already has
+        // _leaflet_pos set before anything (ResizeObserver, invalidateSize, etc.)
+        // can call _rawPanBy → _getMapPanePos → getPosition.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const zero = (L as any).point(0, 0);
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
+          if (panes) {
+            Object.values(panes).forEach((el) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if (el && !(el as any)._leaflet_pos) (el as any)._leaflet_pos = zero;
+            });
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mapPane = (map as any)._mapPane as HTMLElement | undefined;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (mapPane && !(mapPane as any)._leaflet_pos) (mapPane as any)._leaflet_pos = zero;
+        } catch (_) { /* ignore */ }
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           maxZoom: 19,
@@ -296,7 +319,7 @@ export default function FleetLiveMap() {
 
         leafletMapRef.current = map;
 
-        // Now safe to setView — panes already have _leaflet_pos seeded above
+        // setView after panes are seeded — safe to call now
         try {
           map.setView([-27.4698, 153.0251], 11, { animate: false });
         } catch (_) { /* ignore */ }

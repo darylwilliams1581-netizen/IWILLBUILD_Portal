@@ -1,35 +1,50 @@
 /**
- * Patches Leaflet's Map.prototype._getMapPanePos to guard against the
- * "_leaflet_pos is undefined" TypeError that fires when invalidateSize or
- * _rawPanBy is called before setView has initialised the map pane position.
+ * Patches Leaflet's internal getPosition utility to guard against the
+ * "_leaflet_pos is undefined" TypeError.
  *
- * Import this module ONCE before any Leaflet map is created.
- * The patch is idempotent — safe to import multiple times.
+ * getPosition(el) reads el._leaflet_pos directly. If setView hasn't run yet
+ * (e.g. invalidateSize fires first via ResizeObserver), _leaflet_pos is
+ * undefined and the read crashes.
+ *
+ * We patch it by intercepting the DOMUtil.getPosition export on the Leaflet
+ * module object after the dynamic import resolves — called from FleetLiveMap
+ * immediately after `import('leaflet')`.
  */
-import L from 'leaflet';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MapProto = (L as any).Map?.prototype;
+export function patchLeaflet(L: any) {
+  if (!L || L.__airo_pos_patched) return;
 
-if (MapProto && !MapProto.__airo_pos_patched) {
-  const _orig = MapProto._getMapPanePos as () => unknown;
-
-  MapProto._getMapPanePos = function patchedGetMapPanePos() {
-    try {
+  // Patch DOMUtil.getPosition — the lowest-level reader of _leaflet_pos
+  if (L.DomUtil && typeof L.DomUtil.getPosition === 'function') {
+    const _origGet = L.DomUtil.getPosition as (el: HTMLElement) => unknown;
+    L.DomUtil.getPosition = function patchedGetPosition(el: HTMLElement) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pane = this._mapPane as any;
-      if (!pane) return (L as any).point(0, 0);
-      // Seed _leaflet_pos if missing so getPosition() never reads undefined
-      if (!pane._leaflet_pos) {
+      if (!el || !(el as any)._leaflet_pos) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pane._leaflet_pos = (L as any).point(0, 0);
+        (el as any)._leaflet_pos = L.point(0, 0);
       }
-      return _orig.call(this);
-    } catch (_) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (L as any).point(0, 0);
-    }
-  };
+      return _origGet(el);
+    };
+  }
 
-  MapProto.__airo_pos_patched = true;
+  // Also patch Map.prototype._getMapPanePos as a belt-and-suspenders guard
+  const MapProto = L.Map?.prototype;
+  if (MapProto && typeof MapProto._getMapPanePos === 'function') {
+    const _origPane = MapProto._getMapPanePos as () => unknown;
+    MapProto._getMapPanePos = function patchedGetMapPanePos() {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pane = this._mapPane as any;
+        if (pane && !pane._leaflet_pos) {
+          pane._leaflet_pos = L.point(0, 0);
+        }
+        return _origPane.call(this);
+      } catch (_) {
+        return L.point(0, 0);
+      }
+    };
+  }
+
+  L.__airo_pos_patched = true;
 }

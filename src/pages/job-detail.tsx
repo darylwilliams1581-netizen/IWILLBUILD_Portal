@@ -1,20 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   HardHat,
   ChevronLeft,
   Edit2,
-  Check,
-  X,
-  MapPin,
-  User,
-  Calendar,
-  FileText,
-  Loader2,
-  AlertCircle,
-  Menu,
   ChevronDown,
   Camera,
   Calculator,
@@ -41,7 +32,6 @@ import {
   Building2,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
-import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
@@ -301,15 +291,11 @@ export default function JobDetailPage() {
     if (tab !== 'forms') setFormRunnerActive(false);
   }
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   const statusStyle = job ? getStatusStyle(job.status) : null;
   const activeNavItem = ALL_NAV_ITEMS.find((i) => i.key === activeTab);
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{job ? `${job.jobNumber ?? job.name} — IWILLBUILD` : 'Job — IWILLBUILD'}</title>
         <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWILLBUILD Portal'} />
@@ -317,35 +303,17 @@ export default function JobDetailPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <PortalSidebar />
-
-      <div className="portal-main">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* ── Top bar ── */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+              onClick={() => navigate('/jobs')}
+              className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+              aria-label="Back to Jobs"
             >
-              <Menu size={20} />
+              <ChevronLeft size={20} />
             </button>
-            <button
-              onClick={() => navigate('/home')}
-              className="hidden md:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label="Home"
-            >
-              <ChevronLeft size={15} />
-              <span>Home</span>
-            </button>
-            <span className="hidden md:inline text-border">|</span>
-            <Link
-              to="/jobs"
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0"
-            >
-              <ChevronLeft size={16} className="md:hidden" />
-              <span>Jobs</span>
-            </Link>
-            <span className="text-border">|</span>
             <HardHat size={16} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-sm md:text-base truncate">
               {job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : 'Loading…'}

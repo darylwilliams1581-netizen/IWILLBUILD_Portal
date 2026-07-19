@@ -7,7 +7,6 @@ import {
   Search,
   MapPin,
   ChevronRight,
-  Menu,
   Loader2,
   AlertCircle,
   UserCheck,
@@ -15,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
-import PortalSidebar from '@/components/PortalSidebar';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
@@ -100,12 +98,8 @@ export default function JobsPage() {
     completed: jobs.filter((j) => ['Completed', 'Closed'].includes(j.status)).length,
   };
 
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
-
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Jobs — IWILLBUILD Portal</title>
         <meta name="description" content="Manage and track all construction jobs — schedules, crews, attendance, forms and files in one place." />
@@ -122,29 +116,20 @@ export default function JobsPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
       <NewJobModal open={showNewJob} onClose={() => setShowNewJob(false)} onCreated={handleCreated} />
 
       <PortalErrorBoundary inline>
-      <div className="portal-main">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Menu size={20} />
-            </button>
-            <button
               onClick={() => navigate('/home')}
-              className="hidden md:flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label="Home"
+              className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Back to Home"
             >
-              <ArrowLeft size={15} />
-              <span>Home</span>
+              <ArrowLeft size={20} />
             </button>
-            <span className="hidden md:inline text-border">|</span>
             <HardHat size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg">{workPlural}</h1>
             {!loading && (
