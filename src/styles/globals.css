@@ -125,7 +125,6 @@ body {
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
-}
 
 /* ── Portal layout helpers ───────────────────────────────────────────────────
    .portal-page    — full-screen flex container used by every portal page
