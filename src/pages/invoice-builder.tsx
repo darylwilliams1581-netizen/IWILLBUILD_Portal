@@ -6,10 +6,10 @@ import {
   Plus, GripVertical, X, ChevronDown, Loader2, AlertCircle,
   Check, DollarSign, CreditCard, Ban, AlertTriangle,
   ChevronUp, User, Building2, RefreshCw, CheckCircle2, XCircle, Download, Share2,
-  RotateCcw, Lock,
+  RotateCcw, Lock, Mail,
 } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
-import OutlookEmailButton from '@/components/OutlookEmailButton';
+import SendInvoiceEmailModal from '@/components/SendInvoiceEmailModal';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import JobContextTab from '@/components/JobContextTab';
@@ -239,6 +239,7 @@ export default function InvoiceBuilderPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
     message: string;
@@ -671,21 +672,16 @@ export default function InvoiceBuilderPage() {
                       <FileText size={13} />Preview / PDF
                     </button>
                   )}
-                  {/* Send via Outlook */}
+                  {/* Send via Email */}
                   {!isNew && invoice && (
-                    <OutlookEmailButton
-                      context={{
-                        kind: 'invoice',
-                        invoiceNumber: invoice.invoiceNumber ?? `#${invoice.id}`,
-                        customerName: invoice.customerName ?? undefined,
-                        totalAmount: fmtMoney(Number(invoice.totalAmount ?? 0)),
-                        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined,
-                        status: STATUS_LABELS[invoice.status as InvoiceStatus] ?? invoice.status,
-                        link: `${window.location.origin}/view/invoice/${invoice.id}`,
-                      }}
-                      size="sm"
-                      showCopy
-                    />
+                    <button
+                      onClick={() => setShowEmailModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Mail size={13} />
+                      <span className="hidden sm:inline">Send Email</span>
+                      <span className="sm:hidden">Email</span>
+                    </button>
                   )}
                   {!isNew && (
                     <button
@@ -1033,6 +1029,15 @@ export default function InvoiceBuilderPage() {
           />
         )}
       </AnimatePresence>
+      {showEmailModal && invoice && (
+        <SendInvoiceEmailModal
+          invoiceId={invoice.id}
+          invoiceNumber={invoice.invoice_number ?? `#${invoice.id}`}
+          defaultEmail={''}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
+
       {showShare && invoice && (
         <ShareLinkModal
           open={showShare}
