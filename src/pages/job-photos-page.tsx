@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode, Download, House } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Home } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos from '@/components/JobPhotos';
@@ -102,7 +102,7 @@ export default function JobPhotosPage() {
         </button>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           {/* Centered label */}
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
@@ -140,7 +140,7 @@ export default function JobPhotosPage() {
         className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors"
         aria-label="Dashboard"
       >
-        <House size={16} />
+        <Home size={16} />
       </button>
       <div className="flex-1 overflow-y-auto pb-0 md:pb-0">
         {loading ? (
