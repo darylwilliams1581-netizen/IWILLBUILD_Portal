@@ -35,6 +35,33 @@ import { Navigation } from 'lucide-react';
 // Google Maps-based live map (no leaflet dependency)
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
+// ── Purge any browser-cached leaflet chunks on mount ─────────────────────────
+// The old pre-bundled leaflet.js?v=05d76b4a may live in the browser's HTTP
+// disk cache and execute before the SW can intercept it. This runs once on
+// first render and forces a reload if it finds and deletes a stale entry.
+async function purgeLeafletCache(): Promise<void> {
+  if (!('caches' in window)) return;
+  try {
+    const names = await caches.keys();
+    let found = false;
+    await Promise.all(
+      names.map(async (name) => {
+        const cache = await caches.open(name);
+        const keys = await cache.keys();
+        for (const req of keys) {
+          if (/leaflet/i.test(req.url)) {
+            await cache.delete(req);
+            found = true;
+          }
+        }
+      })
+    );
+    if (found) window.location.reload();
+  } catch {
+    // Non-fatal — SW will handle it on next load
+  }
+}
+
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
 // ── New Asset Modal ───────────────────────────────────────────────────────────
@@ -283,6 +310,9 @@ export default function FleetPage() {
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
   const navigate = useNavigate();
+
+  // Purge any stale browser-cached leaflet chunks on first mount
+  useEffect(() => { void purgeLeafletCache(); }, []);
 
   const load = useCallback(async () => {
     try {

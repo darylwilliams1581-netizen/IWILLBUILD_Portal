@@ -1,6 +1,6 @@
 // Service Worker: intercepts the stale cached leaflet.js and returns an empty ES module.
 // Fires even when the browser serves from disk cache (no network request needed).
-const SW_VERSION = 'leaflet-kill-v4';
+const SW_VERSION = 'leaflet-kill-v5';
 const LEAFLET_PATTERN = /leaflet/i;
 
 self.addEventListener('install', (e) => {
@@ -25,12 +25,15 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    self.clients.claim().then(() => {
-      // Force all controlled pages to reload so this SW intercepts their requests
-      return self.clients.matchAll({ type: 'window' }).then((clients) =>
-        Promise.all(clients.map((client) => client.navigate(client.url)))
-      );
-    })
+    // Nuke ALL caches so no stale Vite dep bundle (leaflet.js?v=...) survives
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() =>
+        self.clients.matchAll({ type: 'window' }).then((clients) =>
+          Promise.all(clients.map((c) => c.navigate(c.url)))
+        )
+      )
   );
 });
 

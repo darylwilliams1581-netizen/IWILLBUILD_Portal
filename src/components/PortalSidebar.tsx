@@ -73,7 +73,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
     { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
     { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
-    { label: 'Asset Manager',icon: Building2,       href: '/studio/asset-manager', permKey: null },
+    { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', permKey: null },
     { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
