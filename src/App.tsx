@@ -1,5 +1,5 @@
 // v18 2026-07-13 — removed Suspense from route tree wrapper (SSR mismatch fix)
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useEffect } from 'react';
 import {
   Outlet,
   RouterProvider,
@@ -20,6 +20,31 @@ const CookieBanner = lazy(() =>
 );
 
 export default function App() {
+  // Suppress stale-cache leaflet errors globally. The browser has an old
+  // pre-bundled leaflet.js on disk (v=05d76b4a) that was cached before Leaflet
+  // was removed. The server stub intercepts new requests but cannot evict a
+  // file the browser serves directly from disk. This handler prevents the
+  // stale chunk's runtime errors from reaching React's error boundary.
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      const src = e.filename ?? '';
+      const msg = e.message ?? '';
+      if (src.includes('leaflet') || msg.includes('_leaflet') || msg.includes('leaflet')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    const onUnhandled = (e: PromiseRejectionEvent) => {
+      const msg = String(e.reason ?? '');
+      if (msg.includes('leaflet') || msg.includes('_leaflet')) e.preventDefault();
+    };
+    window.addEventListener('error', onError, true);
+    window.addEventListener('unhandledrejection', onUnhandled);
+    return () => {
+      window.removeEventListener('error', onError, true);
+      window.removeEventListener('unhandledrejection', onUnhandled);
+    };
+  }, []);
   const router = useMemo(() => {
     // This layout element MUST exactly mirror the route tree in entry-server.tsx.
     // No Suspense wrapper here — renderToString resolves it synchronously and

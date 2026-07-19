@@ -13,7 +13,21 @@
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
-
+      // Suppress stale-cache leaflet errors. The browser disk cache may hold
+      // leaflet.js?v=05d76b4a from before Leaflet was removed. The server stub
+      // intercepts new requests but cannot evict a file already on disk.
+      // This inline handler runs before any module executes.
+      window.addEventListener('error', function(e) {
+        var src = e.filename || '';
+        var msg = e.message || '';
+        if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        var msg = String(e.reason || '');
+        if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
+      });
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
