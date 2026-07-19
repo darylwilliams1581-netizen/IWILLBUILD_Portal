@@ -248,11 +248,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
-        {
-          find: /^leaflet(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
         // lucide-react and @heroicons are icon libraries — they are never used
         // in server-side logic, only in React component render output.
         // Aliasing them to an icon-stub during SSR build replaces their ~53 MB

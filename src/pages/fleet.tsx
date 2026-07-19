@@ -32,6 +32,7 @@ import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { lazy, Suspense } from 'react';
 import { Navigation } from 'lucide-react';
 
+// Google Maps-based live map (replaces Leaflet)
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
