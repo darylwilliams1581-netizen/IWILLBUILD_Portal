@@ -279,40 +279,27 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 is a closure-local `var` — it reads
-        // el._leaflet_pos directly and cannot be patched via DomUtil.
-        // The crash fires inside _rawPanBy during L.map() construction before any
-        // pane has been positioned. Fix: patch _rawPanBy on the prototype BEFORE
-        // calling L.map() so it seeds _leaflet_pos on every pane and swallows any
-        // remaining error. Re-apply every time (no guard) so HMR stays covered.
+        // getPosition() at leaflet.js:1570 is a closure-local var that reads
+        // el._leaflet_pos directly — no prototype patch can intercept it.
+        // Fix: MutationObserver seeds _leaflet_pos on every element Leaflet inserts
+        // into the container during construction, before _rawPanBy can fire.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
-        const MapProto = Lany.Map?.prototype;
-        if (MapProto) {
-          const origRawPanBy = MapProto._rawPanBy as (...a: unknown[]) => unknown;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          MapProto._rawPanBy = function safeRawPanBy(this: any, ...args: unknown[]) {
-            const zero = Lany.point(0, 0);
-            // Seed _mapPane
-            if (this._mapPane && !this._mapPane._leaflet_pos) this._mapPane._leaflet_pos = zero;
-            // Seed all named panes
-            if (this._panes) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              Object.values(this._panes as Record<string, any>).forEach((p: any) => {
-                if (p && !p._leaflet_pos) p._leaflet_pos = zero;
-              });
-            }
-            try { return origRawPanBy.apply(this, args); } catch (_) { /* swallow */ }
-          };
-          // Also override _getMapPanePos to read _leaflet_pos directly,
-          // bypassing the closure-local getPosition entirely.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          MapProto._getMapPanePos = function safeGetMapPanePos(this: any) {
-            if (!this._mapPane) return Lany.point(0, 0);
-            if (!this._mapPane._leaflet_pos) this._mapPane._leaflet_pos = Lany.point(0, 0);
-            return this._mapPane._leaflet_pos;
-          };
+        const zero = Lany.point(0, 0);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function seedEl(el: any) {
+          if (el && el.nodeType === 1 && !el._leaflet_pos) el._leaflet_pos = zero;
         }
+        const mo = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            m.addedNodes.forEach((n) => {
+              seedEl(n);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (n as Element).querySelectorAll?.('*').forEach(seedEl as any);
+            });
+          }
+        });
+        mo.observe(container, { childList: true, subtree: true });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let map: any;
@@ -329,10 +316,12 @@ export default function FleetLiveMap() {
             tap: false,
           });
         } catch (mapErr) {
+          mo.disconnect();
           console.warn('[FleetLiveMap] L.map() threw during init — retrying next frame', mapErr);
           rafId = requestAnimationFrame(tryInit);
           return;
         }
+        mo.disconnect();
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
