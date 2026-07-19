@@ -190,6 +190,27 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         });
       },
     } as Plugin,
+    // ---------------------------------------------------------------------------
+    // Stale leaflet dep-cache eviction plugin
+    // Leaflet was removed from the project but the browser may have a cached
+    // pre-bundle at /node_modules/.vite/deps/leaflet.js?v=05d76b4a. Intercept
+    // any request for that URL and return an empty ES module so the old cached
+    // chunk never executes and throws _leaflet_pos errors.
+    // ---------------------------------------------------------------------------
+    {
+      name: 'evict-stale-leaflet-dep',
+      configureServer(server: ViteDevServer) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url && req.url.includes('leaflet.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.end('// leaflet removed\nexport default {};\n');
+            return;
+          }
+          next();
+        });
+      },
+    } as Plugin,
     react({
       babel: {
         // sourceMapperPlugin is a Babel plugin (not a Vite plugin).
@@ -485,6 +506,14 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         },
       ] : []),
       { find: '@', replacement: path.resolve(__dirname, './src') },
+      // Leaflet was removed from the project. Alias it to the browser-only stub
+      // so any stale import (or cached pre-bundle request) resolves to an empty
+      // module instead of crashing with _leaflet_pos errors.
+      {
+        find: /^leaflet(\/.*)?$/,
+        replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
+        customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
+      },
     ],
   },
 

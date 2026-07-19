@@ -94,18 +94,9 @@ export default function LoginPage() {
       const rawFrom =
         (location.state as { from?: { pathname: string } })?.from?.pathname ||
         (fromParam ? decodeURIComponent(fromParam) : null) ||
-        '/dashboard';
-
-      // Never redirect back to the login page itself (loop guard), and never
-      // redirect back to a public/auth page — always land on the dashboard in
-      // those cases. Also guard against redirecting to an error state by only
-      // accepting internal app paths that start with '/'.
+        '/home';
       const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const isSafe =
-        rawFrom.startsWith('/') &&
-        !SAFE_BLOCKLIST.some((blocked) => rawFrom.startsWith(blocked));
-
-      const from = isSafe ? rawFrom : '/dashboard';
+      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home';
       authLog('already_authenticated', { redirectTo: from });
       navigate(from, { replace: true });
     }
@@ -224,9 +215,9 @@ export default function LoginPage() {
       const rawFrom =
         (location.state as { from?: { pathname: string } })?.from?.pathname ||
         (fromParam ? decodeURIComponent(fromParam) : null) ||
-        '/dashboard';
+        '/home';
       const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/dashboard';
+      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home';
       authLog('redirect', { to: from });
       navigate(from, { replace: true });
     } catch (err) {
@@ -289,9 +280,9 @@ export default function LoginPage() {
       });
       const d = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code. Please try again.'); return; }
-      const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+      const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
       const SAFE_BLOCKLIST_2FA = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from2fa = rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some((b) => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/dashboard';
+      const from2fa = rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some((b) => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/home';
       navigate(from2fa, { replace: true });
     } catch { setError('Something went wrong. Please try again.'); }
     finally { setTfaLoading(false); }
@@ -311,9 +302,9 @@ export default function LoginPage() {
         <ForcedPasswordChangeModal
           onSuccess={() => {
             setMustChangePassword(false);
-            const rawFromPwChange = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+            const rawFromPwChange = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
             const SAFE_BLOCKLIST_PW = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-            const fromPwChange = rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some((b) => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/dashboard';
+            const fromPwChange = rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some((b) => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/home';
             navigate(fromPwChange, { replace: true });
           }}
         />
