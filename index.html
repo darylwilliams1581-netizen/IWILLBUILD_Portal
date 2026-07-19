@@ -12,6 +12,20 @@
       // the identifier is defined when the frozen module body executes.
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
+
+      // ── Leaflet _leaflet_pos poison-pill ──────────────────────────────────────
+      // The browser disk-cache may serve the old pre-bundled leaflet.js even
+      // though the file no longer exists on the server. When it executes it calls
+      // getPosition(el) which reads el._leaflet_pos. Patch HTMLElement so any
+      // _leaflet_pos read on an element that doesn't have it returns {x:0,y:0}
+      // instead of undefined, preventing the TypeError entirely.
+      try {
+        Object.defineProperty(HTMLElement.prototype, '_leaflet_pos', {
+          get: function() { return this.__lpos__ || { x: 0, y: 0 }; },
+          set: function(v) { this.__lpos__ = v; },
+          configurable: true,
+        });
+      } catch(_) {}
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
@@ -170,6 +184,42 @@
             history.replaceState(null, '', u.toString());
           }
         } catch (e) {}
+      })();
+    </script>
+    <script>
+      // ── Leaflet disk-cache error trap ─────────────────────────────────────────
+      // The browser may serve the old leaflet.js?v=05d76b4a from its HTTP disk
+      // cache without ever hitting the network. When it executes it throws
+      // "_leaflet_pos" TypeErrors. Catch them here and force a hard reload with
+      // a cache-bust param so the browser re-fetches everything fresh.
+      (function () {
+        var LEAFLET_RELOAD_KEY = '__leaflet_reload_done';
+        function isLeafletError(msg, src) {
+          if (msg && msg.indexOf('_leaflet_pos') !== -1) return true;
+          if (src && src.indexOf('leaflet') !== -1) return true;
+          return false;
+        }
+        window.addEventListener('error', function (e) {
+          try {
+            if (isLeafletError(e.message, e.filename)) {
+              e.preventDefault && e.preventDefault();
+              e.stopImmediatePropagation && e.stopImmediatePropagation();
+              if (!sessionStorage.getItem(LEAFLET_RELOAD_KEY)) {
+                sessionStorage.setItem(LEAFLET_RELOAD_KEY, '1');
+                // Delete all caches then hard-reload
+                if ('caches' in window) {
+                  caches.keys().then(function (names) {
+                    return Promise.all(names.map(function (n) { return caches.delete(n); }));
+                  }).then(function () {
+                    location.reload();
+                  }).catch(function () { location.reload(); });
+                } else {
+                  location.reload();
+                }
+              }
+            }
+          } catch (_) {}
+        }, true);
       })();
     </script>
     <script>

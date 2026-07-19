@@ -40,25 +40,17 @@ const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 // disk cache and execute before the SW can intercept it. This runs once on
 // first render and forces a reload if it finds and deletes a stale entry.
 async function purgeLeafletCache(): Promise<void> {
+  // Clear the error-trap session flag so it can fire again if needed
+  try { sessionStorage.removeItem('__leaflet_reload_done'); } catch { /* ignore */ }
   if (!('caches' in window)) return;
   try {
+    // Nuke ALL caches — removes any stale leaflet entry regardless of cache name
     const names = await caches.keys();
-    let found = false;
-    await Promise.all(
-      names.map(async (name) => {
-        const cache = await caches.open(name);
-        const keys = await cache.keys();
-        for (const req of keys) {
-          if (/leaflet/i.test(req.url)) {
-            await cache.delete(req);
-            found = true;
-          }
-        }
-      })
-    );
-    if (found) window.location.reload();
+    if (names.length > 0) {
+      await Promise.all(names.map((n) => caches.delete(n)));
+    }
   } catch {
-    // Non-fatal — SW will handle it on next load
+    // Non-fatal
   }
 }
 

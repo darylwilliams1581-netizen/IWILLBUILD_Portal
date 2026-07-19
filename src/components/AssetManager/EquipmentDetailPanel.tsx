@@ -1,13 +1,13 @@
 /**
  * EquipmentDetailPanel
- * Full-screen detail view for a single equipment/tool/plant/hire item.
+ * Clean card view — no tabs. Edit button opens a full user form modal.
+ * Assign button opens assign modal (container / car / truck / person / job).
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
   ChevronLeft, Loader2, AlertCircle, Edit2, Check, X,
-  MapPin, Wrench, Package, Briefcase, FileText, DollarSign,
-  Image, Link2, Tag, Truck, User, Container, Car,
-  ChevronDown,
+  MapPin, Package, Briefcase, Tag, Truck, User, Car,
+  StickyNote, Calendar, Wrench, Hash,
 } from 'lucide-react';
 import { EQUIPMENT_TYPES } from './AMAssetsTab';
 
@@ -40,28 +40,15 @@ interface Equipment {
   service_notes: string | null;
   purchase_date: string | null;
   purchase_price: number | null;
+  notes: string | null;
   created_at: string;
   updated_at: string | null;
 }
 
-type Tab = 'overview' | 'inspections' | 'defects' | 'service' | 'documents' | 'photos' | 'jobs' | 'costs' | 'notes';
-
-const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'overview',    label: 'Overview',     icon: Package },
-  { id: 'inspections', label: 'Inspections',  icon: FileText },
-  { id: 'defects',     label: 'Defects',      icon: FileText },
-  { id: 'service',     label: 'Service',      icon: Wrench },
-  { id: 'documents',   label: 'Documents',    icon: FileText },
-  { id: 'photos',      label: 'Photos',       icon: Image },
-  { id: 'jobs',        label: 'Linked Jobs',  icon: Link2 },
-  { id: 'costs',       label: 'Costs',        icon: DollarSign },
-  { id: 'notes',       label: 'Notes',        icon: FileText },
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(d: string | null) {
-  if (!d) return '—';
+  if (!d) return '';
   return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -71,10 +58,10 @@ function isOverdue(d: string | null) {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    active:        'bg-emerald-100 text-emerald-700',
-    'in-use':      'bg-blue-100 text-blue-700',
-    'under-repair':'bg-amber-100 text-amber-700',
-    retired:       'bg-slate-100 text-slate-500',
+    active:          'bg-emerald-100 text-emerald-700',
+    'in-use':        'bg-blue-100 text-blue-700',
+    'under-repair':  'bg-amber-100 text-amber-700',
+    retired:         'bg-slate-100 text-slate-500',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[status] ?? 'bg-slate-100 text-slate-500'}`}>
@@ -92,15 +79,13 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// ── Info row ──────────────────────────────────────────────────────────────────
+// ── Info chip ─────────────────────────────────────────────────────────────────
 
-function Row({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
+function Chip({ icon: Icon, label, warn }: { icon: React.ElementType; label: string; warn?: boolean }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2 border-b border-slate-100 last:border-0">
-      <span className="text-xs text-slate-400 shrink-0 w-36">{label}</span>
-      <span className={`text-xs font-medium text-right ${warn ? 'text-red-500' : 'text-slate-700'}`}>
-        {value || '—'}
-      </span>
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${warn ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
+      <Icon size={12} className="shrink-0" />
+      <span>{label}</span>
     </div>
   );
 }
@@ -108,18 +93,15 @@ function Row({ label, value, warn }: { label: string; value: React.ReactNode; wa
 // ── Assign modal ──────────────────────────────────────────────────────────────
 
 const ASSIGN_TYPES = [
-  { id: 'container', label: 'Container', icon: Container,  color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
-  { id: 'car',       label: 'Car',       icon: Car,        color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
-  { id: 'truck',     label: 'Truck',     icon: Truck,      color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200' },
-  { id: 'person',    label: 'Person',    icon: User,       color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
-  { id: 'job',       label: 'Job',       icon: Briefcase,  color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
+  { id: 'container', label: 'Container', icon: Package,  color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
+  { id: 'car',       label: 'Car',       icon: Car,      color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
+  { id: 'truck',     label: 'Truck',     icon: Truck,    color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200' },
+  { id: 'person',    label: 'Person',    icon: User,     color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
+  { id: 'job',       label: 'Job',       icon: Briefcase,color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
 ];
 
-function AssignModal({ assetId, current, onClose, onSaved }: {
-  assetId: number;
-  current: { person?: string | null; jobId?: number | null };
-  onClose: () => void;
-  onSaved: () => void;
+function AssignModal({ assetId, onClose, onSaved }: {
+  assetId: number; onClose: () => void; onSaved: () => void;
 }) {
   const [type, setType] = useState<string | null>(null);
   const [value, setValue] = useState('');
@@ -144,64 +126,36 @@ function AssignModal({ assetId, current, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-
-      {/* Sheet */}
       <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Assign to</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
         </div>
-
-        {/* Type selector */}
         <div className="grid grid-cols-5 gap-2">
           {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
             <button key={id} onClick={() => { setType(id); setValue(''); }}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${
-                type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color
-              }`}>
-              <Icon size={18} />
-              <span>{label}</span>
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color}`}>
+              <Icon size={18} /><span>{label}</span>
             </button>
           ))}
         </div>
-
-        {/* Value input */}
         {type && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-slate-500">
-              {type === 'person' ? 'Person name' :
-               type === 'job'    ? 'Job number or name' :
-               `${type.charAt(0).toUpperCase() + type.slice(1)} name / ID`}
+              {type === 'person' ? 'Person name' : type === 'job' ? 'Job number or name' : `${type.charAt(0).toUpperCase() + type.slice(1)} name / ID`}
             </label>
-            <input
-              autoFocus
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+            <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && save()}
-              placeholder={
-                type === 'person' ? 'e.g. John Smith' :
-                type === 'job'    ? 'e.g. 1042' :
-                type === 'car'    ? 'e.g. ABC-123' :
-                type === 'truck'  ? 'e.g. Truck 4 / 1TRK456' :
-                'e.g. Container C3'
-              }
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
-            />
+              placeholder={type === 'person' ? 'e.g. John Smith' : type === 'job' ? 'e.g. 1042' : type === 'car' ? 'e.g. ABC-123' : type === 'truck' ? 'e.g. Truck 4' : 'e.g. Container C3'}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
           </div>
         )}
-
         <div className="flex gap-2 justify-end pt-1">
-          <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">
-            Cancel
-          </button>
+          <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
           <button onClick={save} disabled={!type || !value.trim() || saving}
-            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-40">
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-            Assign
+            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg disabled:opacity-40">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Assign
           </button>
         </div>
       </div>
@@ -209,59 +163,241 @@ function AssignModal({ assetId, current, onClose, onSaved }: {
   );
 }
 
-// ── Edit field ────────────────────────────────────────────────────────────────
+// ── Edit form modal ───────────────────────────────────────────────────────────
 
-function EditableField({ label, value, field, onSave }: {
-  label: string; value: string; field: string; onSave: (f: string, v: string) => Promise<void>;
+const STATUS_OPTIONS = ['active', 'in-use', 'under-repair', 'retired'];
+const CONDITION_OPTIONS = ['Excellent', 'Good', 'Fair', 'Poor'];
+
+function EditModal({ eq, onClose, onSaved }: {
+  eq: Equipment; onClose: () => void; onSaved: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value);
+  const [form, setForm] = useState({
+    name:                  eq.name,
+    asset_number:          eq.asset_number ?? '',
+    asset_type:            eq.asset_type,
+    status:                eq.status,
+    make:                  eq.make ?? '',
+    model:                 eq.model ?? '',
+    serial_number:         eq.serial_number ?? '',
+    purchase_or_hire:      eq.purchase_or_hire ?? 'owned',
+    hire_company:          eq.hire_company ?? '',
+    hire_start_date:       eq.hire_start_date?.slice(0, 10) ?? '',
+    hire_end_date:         eq.hire_end_date?.slice(0, 10) ?? '',
+    condition_rating:      eq.condition_rating ?? '',
+    current_location:      eq.current_location ?? '',
+    last_inspection_date:  eq.last_inspection_date?.slice(0, 10) ?? '',
+    next_inspection_due:   eq.next_inspection_due?.slice(0, 10) ?? '',
+    calibration_due:       eq.calibration_due?.slice(0, 10) ?? '',
+    certificate_expiry:    eq.certificate_expiry?.slice(0, 10) ?? '',
+    last_service_date:     eq.last_service_date?.slice(0, 10) ?? '',
+    next_service_date:     eq.next_service_date?.slice(0, 10) ?? '',
+    service_interval_days: eq.service_interval_days ? String(eq.service_interval_days) : '',
+    service_notes:         eq.service_notes ?? '',
+    notes:                 eq.notes ?? '',
+    purchase_date:         eq.purchase_date?.slice(0, 10) ?? '',
+    purchase_price:        eq.purchase_price ? String(eq.purchase_price) : '',
+  });
   const [saving, setSaving] = useState(false);
+
+  function set(k: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
+  }
 
   async function save() {
     setSaving(true);
-    await onSave(field, val);
+    const body: Record<string, string | number | null> = {};
+    for (const [k, v] of Object.entries(form)) {
+      if (k === 'service_interval_days' || k === 'purchase_price') {
+        body[k] = v ? Number(v) : null;
+      } else {
+        body[k] = v || null;
+      }
+    }
+    await fetch(`/api/asset-manager/assets/${eq.id}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     setSaving(false);
-    setEditing(false);
+    onSaved();
+    onClose();
   }
 
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1.5 py-2 border-b border-slate-100">
-        <span className="text-xs text-slate-400 shrink-0 w-36">{label}</span>
-        <input value={val} onChange={(e) => setVal(e.target.value)} autoFocus
-          className="flex-1 text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-        <button onClick={save} disabled={saving}
-          className="p-1 text-emerald-600 hover:text-emerald-700">
-          {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-        </button>
-        <button onClick={() => { setEditing(false); setVal(value); }}
-          className="p-1 text-slate-400 hover:text-slate-600"><X size={12} /></button>
-      </div>
-    );
-  }
+  const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white';
+  const lbl = 'block text-xs font-medium text-slate-500 mb-1';
 
   return (
-    <div className="flex items-center justify-between gap-4 py-2 border-b border-slate-100 last:border-0 group">
-      <span className="text-xs text-slate-400 shrink-0 w-36">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs font-medium text-slate-700">{value || '—'}</span>
-        <button onClick={() => setEditing(true)}
-          className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-300 hover:text-orange-500 transition-all">
-          <Edit2 size={11} />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+          <h2 className="text-sm font-bold text-slate-900">Edit Equipment</h2>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
+
+          {/* Name */}
+          <div className="sm:col-span-2">
+            <label className={lbl}>Name *</label>
+            <input value={form.name} onChange={set('name')} className={inp} placeholder="e.g. Angle Grinder 9&quot;" />
+          </div>
+
+          {/* Asset number */}
+          <div>
+            <label className={lbl}>Asset number</label>
+            <input value={form.asset_number} onChange={set('asset_number')} className={inp} placeholder="e.g. EQ-001" />
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className={lbl}>Type</label>
+            <select value={form.asset_type} onChange={set('asset_type')} className={inp}>
+              {EQUIPMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className={lbl}>Status</label>
+            <select value={form.status} onChange={set('status')} className={inp}>
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          {/* Condition */}
+          <div>
+            <label className={lbl}>Condition</label>
+            <select value={form.condition_rating} onChange={set('condition_rating')} className={inp}>
+              <option value="">— select —</option>
+              {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* Make / Model / Serial */}
+          <div>
+            <label className={lbl}>Make</label>
+            <input value={form.make} onChange={set('make')} className={inp} placeholder="e.g. Makita" />
+          </div>
+          <div>
+            <label className={lbl}>Model</label>
+            <input value={form.model} onChange={set('model')} className={inp} placeholder="e.g. GA9020" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Serial number</label>
+            <input value={form.serial_number} onChange={set('serial_number')} className={inp} placeholder="e.g. SN123456" />
+          </div>
+
+          {/* Owned / Hire */}
+          <div>
+            <label className={lbl}>Owned / Hire</label>
+            <select value={form.purchase_or_hire} onChange={set('purchase_or_hire')} className={inp}>
+              <option value="owned">Owned</option>
+              <option value="hire">Hire</option>
+            </select>
+          </div>
+          {form.purchase_or_hire === 'hire' && (
+            <>
+              <div>
+                <label className={lbl}>Hire company</label>
+                <input value={form.hire_company} onChange={set('hire_company')} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Hire start</label>
+                <input type="date" value={form.hire_start_date} onChange={set('hire_start_date')} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Hire end</label>
+                <input type="date" value={form.hire_end_date} onChange={set('hire_end_date')} className={inp} />
+              </div>
+            </>
+          )}
+
+          {/* Location */}
+          <div className="sm:col-span-2">
+            <label className={lbl}>Current location</label>
+            <input value={form.current_location} onChange={set('current_location')} className={inp} placeholder="e.g. Site office, Truck 4" />
+          </div>
+
+          {/* Divider */}
+          <div className="sm:col-span-2 border-t border-slate-100 pt-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Compliance</p>
+          </div>
+
+          <div>
+            <label className={lbl}>Last inspection</label>
+            <input type="date" value={form.last_inspection_date} onChange={set('last_inspection_date')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Next inspection due</label>
+            <input type="date" value={form.next_inspection_due} onChange={set('next_inspection_due')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Calibration due</label>
+            <input type="date" value={form.calibration_due} onChange={set('calibration_due')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Certificate expiry</label>
+            <input type="date" value={form.certificate_expiry} onChange={set('certificate_expiry')} className={inp} />
+          </div>
+
+          {/* Divider */}
+          <div className="sm:col-span-2 border-t border-slate-100 pt-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Service</p>
+          </div>
+
+          <div>
+            <label className={lbl}>Last service</label>
+            <input type="date" value={form.last_service_date} onChange={set('last_service_date')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Next service</label>
+            <input type="date" value={form.next_service_date} onChange={set('next_service_date')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Service interval (days)</label>
+            <input type="number" value={form.service_interval_days} onChange={set('service_interval_days')} className={inp} placeholder="e.g. 90" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Service notes</label>
+            <textarea value={form.service_notes} onChange={set('service_notes')} rows={2} className={inp + ' resize-none'} />
+          </div>
+
+          {/* Divider */}
+          <div className="sm:col-span-2 border-t border-slate-100 pt-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Purchase</p>
+          </div>
+
+          <div>
+            <label className={lbl}>Purchase date</label>
+            <input type="date" value={form.purchase_date} onChange={set('purchase_date')} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Purchase price ($)</label>
+            <input type="number" value={form.purchase_price} onChange={set('purchase_price')} className={inp} placeholder="0.00" />
+          </div>
+
+          {/* Notes */}
+          <div className="sm:col-span-2 border-t border-slate-100 pt-2">
+            <label className={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={set('notes')} rows={3} className={inp + ' resize-none'} placeholder="Any additional notes..." />
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 shrink-0">
+          <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
+          <button onClick={save} disabled={!form.name.trim() || saving}
+            className="flex items-center gap-1.5 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg disabled:opacity-40">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save changes
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
-
-// ── Placeholder tab ───────────────────────────────────────────────────────────
-
-function PlaceholderTab({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-      <Package size={28} className="mb-2 opacity-40" />
-      <p className="text-sm">{label} — coming soon</p>
     </div>
   );
 }
@@ -274,8 +410,8 @@ export default function EquipmentDetailPanel({
   const [eq, setEq] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<Tab>('overview');
   const [showAssign, setShowAssign] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -289,15 +425,6 @@ export default function EquipmentDetailPanel({
   }, [assetId]);
 
   useEffect(() => { load(); }, [load]);
-
-  async function patch(field: string, value: string) {
-    await fetch(`/api/asset-manager/assets/${assetId}`, {
-      method: 'PATCH', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value || null }),
-    });
-    load();
-  }
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center py-20 text-slate-400">
@@ -317,7 +444,7 @@ export default function EquipmentDetailPanel({
   const TypeIcon = typeInfo?.icon ?? Package;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50">
 
       {/* ── Back bar ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shrink-0">
@@ -327,142 +454,148 @@ export default function EquipmentDetailPanel({
         </button>
       </div>
 
-      {/* ── Header ── */}
-      <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 shrink-0">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-            <TypeIcon size={20} className="text-orange-500" />
-          </div>          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold text-slate-900">{eq.name}</h1>
-              {eq.asset_number && (
-                <span className="text-xs text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
-                  {eq.asset_number}
-                </span>
-              )}
+      {/* ── Scrollable body ── */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
+
+        {/* ── Identity card ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+              <TypeIcon size={26} className="text-orange-500" />
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <TypeBadge type={eq.asset_type} />
-              <StatusBadge status={eq.status} />
-              {eq.purchase_or_hire === 'hire' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">
-                  <Tag size={10} /> Hire
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-xs text-slate-400">
-              {eq.current_location && (
-                <span className="flex items-center gap-1"><MapPin size={11} />{eq.current_location}</span>
-              )}
-              {eq.assigned_person_name && (
-                <span className="flex items-center gap-1">👤 {eq.assigned_person_name}</span>
-              )}
-              {eq.assigned_job_id && (
-                <span className="flex items-center gap-1"><Briefcase size={11} />Job #{eq.assigned_job_id}</span>
-              )}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h1 className="text-lg font-bold text-slate-900 leading-tight">{eq.name}</h1>
+                  {eq.asset_number && (
+                    <span className="text-xs text-slate-400 font-mono"># {eq.asset_number}</span>
+                  )}
+                </div>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setShowAssign(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
+                    <User size={12} /> Assign
+                  </button>
+                  <button onClick={() => setShowEdit(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors">
+                    <Edit2 size={12} /> Edit
+                  </button>
+                </div>
+              </div>
+
+              {/* Badges */}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <TypeBadge type={eq.asset_type} />
+                <StatusBadge status={eq.status} />
+                {eq.purchase_or_hire === 'hire' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">
+                    <Tag size={10} /> Hire
+                  </span>
+                )}
+                {eq.condition_rating && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                    {eq.condition_rating}
+                  </span>
+                )}
+              </div>
+
+              {/* Location / assignment chips */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {eq.current_location && <Chip icon={MapPin} label={eq.current_location} />}
+                {eq.assigned_person_name && <Chip icon={User} label={eq.assigned_person_name} />}
+                {eq.assigned_job_id && <Chip icon={Briefcase} label={`Job #${eq.assigned_job_id}`} />}
+              </div>
             </div>
           </div>
 
-          {/* Assign button */}
-          <button
-            onClick={() => setShowAssign(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors shrink-0 self-start"
-          >
-            <ChevronDown size={13} className="-rotate-90" />
-            Assign
-          </button>
+          {/* Make / Model / Serial row */}
+          {(eq.make || eq.model || eq.serial_number) && (
+            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
+              {eq.make && (
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Make</p>
+                  <p className="text-xs font-semibold text-slate-700">{eq.make}</p>
+                </div>
+              )}
+              {eq.model && (
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Model</p>
+                  <p className="text-xs font-semibold text-slate-700">{eq.model}</p>
+                </div>
+              )}
+              {eq.serial_number && (
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Serial</p>
+                  <p className="text-xs font-mono text-slate-700">{eq.serial_number}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ── Tab bar ── */}
-      <div className="flex items-center gap-0.5 px-4 border-b border-slate-200 bg-white overflow-x-auto shrink-0">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 whitespace-nowrap transition-all ${
-              tab === id ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}>
-            <Icon size={12} />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab content ── */}
-      <div className="flex-1 overflow-y-auto">
-        {tab === 'overview' && <OverviewTab eq={eq} onPatch={patch} />}
-        {tab === 'inspections' && <PlaceholderTab label="Inspections" />}
-        {tab === 'defects'     && <PlaceholderTab label="Defects" />}
-        {tab === 'service'     && <ServiceTab eq={eq} onPatch={patch} />}
-        {tab === 'documents'   && <PlaceholderTab label="Documents" />}
-        {tab === 'photos'      && <PlaceholderTab label="Photos" />}
-        {tab === 'jobs'        && <PlaceholderTab label="Linked Jobs" />}
-        {tab === 'costs'       && <PlaceholderTab label="Costs" />}
-        {tab === 'notes'       && <PlaceholderTab label="Notes" />}
-      </div>
-
-      {/* ── Assign modal ── */}
-      {showAssign && (
-        <AssignModal
-          assetId={assetId}
-          current={{ person: eq.assigned_person_name, jobId: eq.assigned_job_id }}
-          onClose={() => setShowAssign(false)}
-          onSaved={load}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Overview tab ──────────────────────────────────────────────────────────────
-
-function OverviewTab({ eq, onPatch }: { eq: Equipment; onPatch: (f: string, v: string) => Promise<void> }) {
-  return (
-    <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-
-      {/* Overview card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Overview</h3>
-        <EditableField label="Make"         value={eq.make ?? ''}          field="make"         onSave={onPatch} />
-        <EditableField label="Model"        value={eq.model ?? ''}         field="model"        onSave={onPatch} />
-        <EditableField label="Serial No."   value={eq.serial_number ?? ''} field="serial_number" onSave={onPatch} />
-        <Row label="Owned / Hire"  value={eq.purchase_or_hire === 'hire' ? `Hire${eq.hire_company ? ` — ${eq.hire_company}` : ''}` : 'Owned'} />
-        {eq.purchase_or_hire === 'hire' && (
-          <>
-            <Row label="Hire start" value={fmt(eq.hire_start_date)} />
-            <Row label="Hire end"   value={fmt(eq.hire_end_date)} warn={isOverdue(eq.hire_end_date)} />
-          </>
+        {/* ── Compliance card ── */}
+        {(eq.next_inspection_due || eq.calibration_due || eq.certificate_expiry || eq.last_inspection_date) && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Compliance</h2>
+            <div className="flex flex-wrap gap-2">
+              {eq.last_inspection_date && <Chip icon={Calendar} label={`Last inspection: ${fmt(eq.last_inspection_date)}`} />}
+              {eq.next_inspection_due && <Chip icon={Calendar} label={`Next inspection: ${fmt(eq.next_inspection_due)}`} warn={isOverdue(eq.next_inspection_due)} />}
+              {eq.calibration_due && <Chip icon={Wrench} label={`Calibration: ${fmt(eq.calibration_due)}`} warn={isOverdue(eq.calibration_due)} />}
+              {eq.certificate_expiry && <Chip icon={Hash} label={`Certificate: ${fmt(eq.certificate_expiry)}`} warn={isOverdue(eq.certificate_expiry)} />}
+            </div>
+          </div>
         )}
-        <EditableField label="Condition"    value={eq.condition_rating ?? ''} field="condition_rating" onSave={onPatch} />
-        <Row label="Created"    value={fmt(eq.created_at)} />
-        <Row label="Updated"    value={fmt(eq.updated_at)} />
+
+        {/* ── Service card ── */}
+        {(eq.last_service_date || eq.next_service_date || eq.service_notes) && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Service</h2>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {eq.last_service_date && <Chip icon={Wrench} label={`Last: ${fmt(eq.last_service_date)}`} />}
+              {eq.next_service_date && <Chip icon={Wrench} label={`Next: ${fmt(eq.next_service_date)}`} warn={isOverdue(eq.next_service_date)} />}
+              {eq.service_interval_days && <Chip icon={Calendar} label={`Every ${eq.service_interval_days} days`} />}
+            </div>
+            {eq.service_notes && (
+              <p className="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">{eq.service_notes}</p>
+            )}
+          </div>
+        )}
+
+        {/* ── Notes card ── */}
+        {eq.notes && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <StickyNote size={12} /> Notes
+            </h2>
+            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{eq.notes}</p>
+          </div>
+        )}
+
+        {/* ── Hire card ── */}
+        {eq.purchase_or_hire === 'hire' && (eq.hire_company || eq.hire_start_date || eq.hire_end_date) && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Hire details</h2>
+            <div className="flex flex-wrap gap-2">
+              {eq.hire_company && <Chip icon={Briefcase} label={eq.hire_company} />}
+              {eq.hire_start_date && <Chip icon={Calendar} label={`From: ${fmt(eq.hire_start_date)}`} />}
+              {eq.hire_end_date && <Chip icon={Calendar} label={`Until: ${fmt(eq.hire_end_date)}`} warn={isOverdue(eq.hire_end_date)} />}
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* Compliance card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Compliance</h3>
-        <Row label="Last inspection"  value={fmt(eq.last_inspection_date)} />
-        <Row label="Next inspection"  value={fmt(eq.next_inspection_due)}  warn={isOverdue(eq.next_inspection_due)} />
-        <Row label="Calibration due"  value={fmt(eq.calibration_due)}      warn={isOverdue(eq.calibration_due)} />
-        <Row label="Certificate exp." value={fmt(eq.certificate_expiry)}   warn={isOverdue(eq.certificate_expiry)} />
-        <Row label="Open defects"     value="—" />
-      </div>
-
-    </div>
-  );
-}
-
-// ── Service tab ───────────────────────────────────────────────────────────────
-
-function ServiceTab({ eq, onPatch }: { eq: Equipment; onPatch: (f: string, v: string) => Promise<void> }) {
-  return (
-    <div className="p-4 md:p-6">
-      <div className="bg-white border border-slate-200 rounded-xl p-4 max-w-lg">
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Service</h3>
-        <Row label="Last service"    value={fmt(eq.last_service_date)} />
-        <Row label="Next service"    value={fmt(eq.next_service_date)} warn={isOverdue(eq.next_service_date)} />
-        <Row label="Interval (days)" value={eq.service_interval_days ? String(eq.service_interval_days) : null} />
-        <EditableField label="Service notes" value={eq.service_notes ?? ''} field="service_notes" onSave={onPatch} />
-      </div>
+      {/* ── Modals ── */}
+      {showAssign && (
+        <AssignModal assetId={assetId} onClose={() => setShowAssign(false)} onSaved={load} />
+      )}
+      {showEdit && eq && (
+        <EditModal eq={eq} onClose={() => setShowEdit(false)} onSaved={load} />
+      )}
     </div>
   );
 }
