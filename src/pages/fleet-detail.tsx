@@ -755,59 +755,27 @@ export default function FleetDetailPage() {
 
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1">
-        {/* Sticky top bar */}
-        <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <button
-              onClick={() => navigate('/home')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label="Back to Home"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Home</span>
-            </button>
-            <span className="text-gray-300">|</span>
-            <Link to="/fleet" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
-              <ChevronLeft size={15} />
-              <span className="hidden sm:inline">Fleet</span>
-            </Link>
-            <span className="text-slate-300 hidden sm:inline">/</span>
-            <div className="flex items-center gap-2 min-w-0">
-              <Truck size={16} className="text-primary shrink-0" />
-              <h1 className="font-heading font-bold text-base truncate">
-                {asset?.name ?? 'Asset'}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {asset && (
-              <>
-                <button
-                  onClick={() => setShowPrestartModal(true)}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors"
-                >
-                  <ClipboardList size={14} />
-                  <span className="hidden sm:inline">Start Prestart</span>
-                </button>
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="flex items-center gap-2 border border-border hover:bg-muted text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
-                >
-                  <Edit2 size={14} />
-                  <span className="hidden sm:inline">Edit</span>
-                </button>
-                {(isAdmin || isOwner) && (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
-                    title="Delete asset"
-                  >
-                    <Trash2 size={14} />
-                    <span className="hidden sm:inline">Delete</span>
-                  </button>
-                )}
-              </>
-            )}
+        {/* Slim top bar — nav only */}
+        <header className="sticky top-0 z-30 bg-white border-b border-border flex items-center gap-2 px-4 py-2 shrink-0">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <span className="text-gray-300 text-xs">|</span>
+          <Link to="/fleet" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            <ChevronLeft size={13} />
+            <span className="hidden sm:inline">Fleet</span>
+          </Link>
+          <span className="text-slate-300 text-xs hidden sm:inline">/</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Truck size={14} className="text-primary shrink-0" />
+            <h1 className="font-heading font-bold text-sm truncate">
+              {asset?.name ?? 'Asset'}
+            </h1>
           </div>
         </header>
 
@@ -1271,6 +1239,33 @@ export default function FleetDetailPage() {
           )}
           </div> {/* max-w-3xl mx-auto */}
         </div>
+
+        {/* ── Floating bottom action bar ── */}
+        {asset && (
+          <div className="shrink-0 px-4 py-3 bg-white border-t border-border flex items-center gap-2">
+            <button
+              onClick={() => setShowPrestartModal(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              <ClipboardList size={15} /> Start Prestart
+            </button>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-border hover:bg-muted text-sm font-semibold rounded-xl transition-colors"
+            >
+              <Edit2 size={15} />
+            </button>
+            {(isAdmin || isOwner) && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors"
+                title="Delete asset"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
+        )}
 
       </div> {/* flex flex-col flex-1 */}
 

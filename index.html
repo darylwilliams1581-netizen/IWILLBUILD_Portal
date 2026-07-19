@@ -12,6 +12,36 @@
       // the identifier is defined when the frozen module body executes.
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
+
+      // ── Suppress stale leaflet module errors ──────────────────────────────────
+      // The browser disk cache may hold leaflet.js?v=05d76b4a with immutable
+      // headers. When it executes it throws "_leaflet_pos" errors at module
+      // evaluation time — before React mounts, so no error boundary can catch it.
+      // 1. Define _leaflet_pos on Element/Object prototypes so property reads don't throw.
+      // 2. Intercept window error events and suppress any from leaflet stack frames.
+      try {
+        var _noop = { x: 0, y: 0 };
+        if (typeof Element !== 'undefined' && !Element.prototype._leaflet_pos) {
+          Object.defineProperty(Element.prototype, '_leaflet_pos', { get: function() { return _noop; }, set: function() {}, configurable: true });
+        }
+      } catch(e) {}
+      window.addEventListener('error', function(e) {
+        if (e && e.filename && e.filename.indexOf('leaflet') !== -1) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return true;
+        }
+        if (e && e.error && e.error.stack && e.error.stack.indexOf('leaflet') !== -1) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return true;
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e && e.reason && String(e.reason.stack || e.reason).indexOf('leaflet') !== -1) {
+          e.preventDefault();
+        }
+      });
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────

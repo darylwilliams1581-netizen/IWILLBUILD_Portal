@@ -447,7 +447,7 @@ export default function EquipmentDetailPanel({
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50">
 
       {/* ── Back bar ── */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-200 bg-white shrink-0">
         <button onClick={onBack}
           className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors">
           <ChevronLeft size={14} /> Equipment
@@ -467,24 +467,11 @@ export default function EquipmentDetailPanel({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h1 className="text-lg font-bold text-slate-900 leading-tight">{eq.name}</h1>
-                  {eq.asset_number && (
-                    <span className="text-xs text-slate-400 font-mono"># {eq.asset_number}</span>
-                  )}
-                </div>
-                {/* Action buttons */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => setShowAssign(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
-                    <User size={12} /> Assign
-                  </button>
-                  <button onClick={() => setShowEdit(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors">
-                    <Edit2 size={12} /> Edit
-                  </button>
-                </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 leading-tight">{eq.name}</h1>
+                {eq.asset_number && (
+                  <span className="text-xs text-slate-400 font-mono"># {eq.asset_number}</span>
+                )}
               </div>
 
               {/* Badges */}
@@ -587,6 +574,18 @@ export default function EquipmentDetailPanel({
           </div>
         )}
 
+      </div>
+
+      {/* ── Floating action bar ── */}
+      <div className="shrink-0 px-4 py-3 bg-white border-t border-slate-200 flex items-center gap-3">
+        <button onClick={() => setShowAssign(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors">
+          <User size={14} /> Assign
+        </button>
+        <button onClick={() => setShowEdit(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors">
+          <Edit2 size={14} /> Edit
+        </button>
       </div>
 
       {/* ── Modals ── */}
