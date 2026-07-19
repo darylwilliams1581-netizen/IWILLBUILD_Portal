@@ -13,21 +13,64 @@
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
-      // Suppress stale-cache leaflet errors. The browser disk cache may hold
-      // leaflet.js?v=05d76b4a from before Leaflet was removed. The server stub
-      // intercepts new requests but cannot evict a file already on disk.
-      // This inline handler runs before any module executes.
+      // ── Leaflet stale-cache suppression ──────────────────────────────────
+      // The browser disk cache may hold leaflet.js?v=05d76b4a from before
+      // Leaflet was removed. Four layers of defence:
+
+      // Layer 1: error event handler (capture phase) — suppresses any error
+      // whose filename or message mentions leaflet/_leaflet.
       window.addEventListener('error', function(e) {
         var src = e.filename || '';
         var msg = e.message || '';
-        if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) {
-          e.preventDefault(); e.stopImmediatePropagation();
+        if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1 || msg.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);
       window.addEventListener('unhandledrejection', function(e) {
         var msg = String(e.reason || '');
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
       });
+
+      // Layer 2: Neutralize window.L if the stale module sets it as a global.
+      // Leaflet sets window.L = { ... } at module evaluation time.
+      // We define a non-configurable getter that always returns a no-op proxy
+      // so any L.map(), L.tileLayer() etc. calls are silently swallowed.
+      try {
+        var _leafletNoOp = new Proxy({}, {
+          get: function(t, k) {
+            if (k === 'map' || k === 'tileLayer' || k === 'marker' || k === 'icon' || k === 'latLng' || k === 'latLngBounds') {
+              return function() { return new Proxy({}, { get: function(t2, k2) { return typeof k2 === 'symbol' ? undefined : function() { return new Proxy({}, { get: function() { return function() {}; } }); }; } }); };
+            }
+            return function() {};
+          }
+        });
+        Object.defineProperty(window, 'L', {
+          get: function() { return _leafletNoOp; },
+          set: function() { /* swallow leaflet's self-assignment */ },
+          configurable: true
+        });
+      } catch(e2) {}
+
+      // Layer 3: Override fetch so any request for the stale leaflet chunk
+      // returns an inert stub before the browser even checks disk cache.
+      var _origFetch = window.fetch;
+      window.fetch = function(input, init) {
+        var url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (url.indexOf('leaflet.js') !== -1) {
+          return Promise.resolve(new Response('export default {}; export const map = () => {};', {
+            status: 200,
+            headers: { 'Content-Type': 'application/javascript' }
+          }));
+        }
+        return _origFetch.apply(this, arguments);
+      };
+
+      // Layer 4: Service Worker — intercepts the cached leaflet.js request
+      // BEFORE the browser serves it from disk cache on subsequent loads.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw-leaflet-evict.js', { scope: '/' })
+          .catch(function() {});
+      }
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
@@ -207,7 +250,7 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-DX0uz6w3.js"></script>
+    <script type="module" crossorigin src="/assets/index-B0CgZhxR.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-C23BF34b.js">
     <link rel="modulepreload" crossorigin href="/assets/document-vendor-DpbyYtnj.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-Dbl8kTil.css">

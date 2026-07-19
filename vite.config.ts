@@ -192,10 +192,25 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     } as Plugin,
     // Intercept the stale Vite-pre-bundled leaflet chunk that browsers have
     // disk-cached from before Leaflet was removed. The hash in the URL is
-    // immutable so browsers never re-validate it — returning an empty stub
-    // here is the only way to prevent the cached copy from executing.
+    // immutable so browsers never re-validate it.
+    // Two-pronged fix:
+    //   1. resolveId + load — intercepts the module ID at bundle time so Vite
+    //      prebundles an empty stub instead of the real leaflet package.
+    //   2. configureServer middleware — intercepts any HTTP request for
+    //      leaflet.js (stale disk-cached chunk) and returns the same stub.
     {
       name: 'evict-stale-leaflet-prebundle',
+      enforce: 'pre' as const,
+      resolveId(id: string) {
+        if (id === 'leaflet' || id.includes('/leaflet/') || id.endsWith('/leaflet')) {
+          return '\0virtual:leaflet-stub';
+        }
+      },
+      load(id: string) {
+        if (id === '\0virtual:leaflet-stub') {
+          return 'export default {}; export const map = () => ({}); export const tileLayer = () => ({addTo:()=>({})}); export const marker = () => ({}); export const icon = () => ({}); export const latLng = () => ({}); export const latLngBounds = () => ({});';
+        }
+      },
       configureServer(server: ViteDevServer) {
         server.middlewares.use((req, res, next) => {
           if (req.url && req.url.includes('leaflet.js')) {
@@ -203,14 +218,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
-            // Instruct the browser to drop ALL cached scripts for this origin
-            // so the stale leaflet bundle is evicted from disk cache.
             res.setHeader('Clear-Site-Data', '"cache"');
             res.end('export default {}; export const map = () => {}; export const tileLayer = () => ({addTo:()=>{}});');
             return;
           }
-          // Serve the leaflet-eviction SW with Service-Worker-Allowed: / so it
-          // can intercept requests under /node_modules/.vite/deps/.
           if (req.url && req.url.includes('sw-leaflet-evict.js')) {
             res.setHeader('Service-Worker-Allowed', '/');
           }

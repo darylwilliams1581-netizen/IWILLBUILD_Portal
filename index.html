@@ -14,11 +14,21 @@
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
       // ── Leaflet stale-cache suppression ──────────────────────────────────
-      // The browser disk cache may hold leaflet.js?v=05d76b4a from before
-      // Leaflet was removed. Four layers of defence:
+      // The browser disk cache holds leaflet.js?v=05d76b4a. It executes before
+      // any SW can intercept it. The crash is:
+      //   getPosition(el) → el._leaflet_pos → undefined → TypeError
+      // Fix: define _leaflet_pos on HTMLElement.prototype so it always returns
+      // a safe {x:0,y:0} point object instead of undefined. This runs before
+      // leaflet.js executes because this is a synchronous inline script.
+      try {
+        Object.defineProperty(HTMLElement.prototype, '_leaflet_pos', {
+          get: function() { return this.__lpos__ || { x: 0, y: 0 }; },
+          set: function(v) { this.__lpos__ = v; },
+          configurable: true
+        });
+      } catch(e0) {}
 
-      // Layer 1: error event handler (capture phase) — suppresses any error
-      // whose filename or message mentions leaflet/_leaflet.
+      // Layer 1: error event handler (capture phase) — belt-and-suspenders.
       window.addEventListener('error', function(e) {
         var src = e.filename || '';
         var msg = e.message || '';
@@ -31,42 +41,30 @@
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
       });
 
-      // Layer 2: Neutralize window.L if the stale module sets it as a global.
-      // Leaflet sets window.L = { ... } at module evaluation time.
-      // We define a non-configurable getter that always returns a no-op proxy
-      // so any L.map(), L.tileLayer() etc. calls are silently swallowed.
+      // Layer 2: Neutralize window.L so L.map() etc. are no-ops.
       try {
-        var _leafletNoOp = new Proxy({}, {
-          get: function(t, k) {
-            if (k === 'map' || k === 'tileLayer' || k === 'marker' || k === 'icon' || k === 'latLng' || k === 'latLngBounds') {
-              return function() { return new Proxy({}, { get: function(t2, k2) { return typeof k2 === 'symbol' ? undefined : function() { return new Proxy({}, { get: function() { return function() {}; } }); }; } }); };
-            }
-            return function() {};
-          }
-        });
+        var _noop = function() { return _noopProxy; };
+        var _noopProxy = new Proxy({}, { get: function(t,k) { return typeof k==='symbol'?undefined:_noop; } });
         Object.defineProperty(window, 'L', {
-          get: function() { return _leafletNoOp; },
-          set: function() { /* swallow leaflet's self-assignment */ },
+          get: function() { return _noopProxy; },
+          set: function() {},
           configurable: true
         });
       } catch(e2) {}
 
-      // Layer 3: Override fetch so any request for the stale leaflet chunk
-      // returns an inert stub before the browser even checks disk cache.
+      // Layer 3: fetch override — intercepts dynamic import() of leaflet.
       var _origFetch = window.fetch;
       window.fetch = function(input, init) {
         var url = typeof input === 'string' ? input : (input && input.url) || '';
         if (url.indexOf('leaflet.js') !== -1) {
           return Promise.resolve(new Response('export default {}; export const map = () => {};', {
-            status: 200,
-            headers: { 'Content-Type': 'application/javascript' }
+            status: 200, headers: { 'Content-Type': 'application/javascript' }
           }));
         }
         return _origFetch.apply(this, arguments);
       };
 
-      // Layer 4: Service Worker — intercepts the cached leaflet.js request
-      // BEFORE the browser serves it from disk cache on subsequent loads.
+      // Layer 4: Service Worker — evicts the cached chunk on next load.
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw-leaflet-evict.js', { scope: '/' })
           .catch(function() {});
