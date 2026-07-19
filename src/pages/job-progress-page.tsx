@@ -8,7 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft, TrendingUp, Loader2, Download, Save,
-  CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, House,
+  CheckCircle2, FileText, User, Calendar, AlertTriangle, Star, ClipboardList, Home,
 } from 'lucide-react';
 
 interface Job {
@@ -219,7 +219,7 @@ export default function JobProgressPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
@@ -262,7 +262,7 @@ export default function JobProgressPage() {
       </button>
       {/* ── Mobile: Dashboard button ── */}
       <button onClick={() => navigate('/home')} className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors" aria-label="Dashboard">
-        <House size={16} />
+        <Home size={16} />
       </button>
 
       {/* ── Mobile: save + export top-right ── */}

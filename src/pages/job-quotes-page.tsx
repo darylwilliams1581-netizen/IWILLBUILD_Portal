@@ -4,7 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   FileText, Plus, Loader2, AlertCircle, ChevronLeft,
   Mail, Share2, ExternalLink, Copy, Trash2, CheckCircle,
-  Receipt, ChevronDown, Link2, Link2Off, House,
+  Receipt, ChevronDown, Link2, Link2Off, Home,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';
@@ -250,7 +250,7 @@ export default function JobQuotesPage() {
             <ChevronLeft size={18} />
           </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             <p className="text-gray-900 font-bold text-xl leading-tight text-center">Quotes</p>

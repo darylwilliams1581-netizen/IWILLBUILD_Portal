@@ -11,7 +11,7 @@ import {
   ArrowLeft, FileText, Loader2, Plus,
   CheckCircle2, Clock, Eye, EyeOff,
   Printer, Share2, Trash2, RotateCcw, ExternalLink,
-  ChevronRight, AlertCircle, House,
+  ChevronRight, AlertCircle, Home,
 } from 'lucide-react';
 
 interface Job { id: number; name: string; jobNumber?: string | null }
@@ -127,7 +127,7 @@ export default function JobFormsPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (

@@ -15,7 +15,7 @@ import {
   Receipt,
   User,
   Truck,
-  House,
+  Home,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
@@ -120,7 +120,7 @@ export default function SettingsPage() {
           className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm shrink-0"
           title="Dashboard"
         >
-          <House size={18} />
+          <Home size={18} />
         </button>
         <div className="flex-1 flex flex-col items-center justify-center min-w-0">
           <h1 className="text-gray-900 font-bold text-sm leading-tight">Settings</h1>

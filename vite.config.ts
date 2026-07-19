@@ -490,7 +490,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
 
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom", "motion/react"],
-    exclude: ["drizzle-orm", "mysql2"],
+    exclude: ["drizzle-orm", "mysql2", "leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },

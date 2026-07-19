@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, StickyNote, Loader2, Download, House } from 'lucide-react';
+import { ArrowLeft, StickyNote, Loader2, Download, Home } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import NotesPanel from '@/components/notes/NotesPanel';
 
@@ -77,7 +77,7 @@ export default function JobNotesPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? (
@@ -120,7 +120,7 @@ export default function JobNotesPage() {
         className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors"
         aria-label="Dashboard"
       >
-        <House size={16} />
+        <Home size={16} />
       </button>
 
       {/* ── Mobile: export CSV floats top-right ── */}

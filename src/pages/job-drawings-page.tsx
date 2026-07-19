@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Layers, House } from 'lucide-react';
+import { ArrowLeft, Layers, Home } from 'lucide-react';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 
 interface Job { id: number; name: string; job_number?: string }
@@ -47,7 +47,7 @@ export default function JobDrawingsPage() {
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             <h1 className="text-sm font-bold text-slate-900 truncate text-center w-full">{job?.name ?? 'Loading…'}</h1>
