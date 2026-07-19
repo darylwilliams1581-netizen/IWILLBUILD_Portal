@@ -53,6 +53,16 @@
     /* Border Radius */
     --radius: 0.5rem;
 
+    /* ── iOS safe-area custom properties ──────────────────────────────────────
+       Expose safe-area insets as CSS variables so any element can use them
+       without inline style hacks. The max() ensures a sensible minimum on
+       desktop where env() resolves to 0.
+       --safe-top    : status bar / notch / Dynamic Island height
+       --safe-bottom : home indicator height
+    */
+    --safe-top: max(env(safe-area-inset-top), 0px);
+    --safe-bottom: max(env(safe-area-inset-bottom), 0px);
+
     /* Shadows */
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -105,6 +115,25 @@ html {
   scroll-behavior: smooth;
   /* Prevent horizontal overflow at the root */
   overflow-x: hidden;
+  /* ── Fix min-h-screen on iOS Safari ─────────────────────────────────────
+     100vh on iOS Safari = full screen height INCLUDING the area behind the
+     status bar and home indicator. 100dvh = the actual visible viewport.
+     Overriding --vh here means Tailwind's min-h-screen resolves to 100dvh
+     on every page without touching any TSX file.
+  */
+  height: 100%;
+}
+
+/* Make min-h-screen use dvh (dynamic viewport height) on supporting browsers.
+   Falls back to 100vh on older browsers — acceptable since they don't have
+   the notch/home-indicator problem either. */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh !important;
+  }
+  .h-screen {
+    height: 100dvh !important;
+  }
 }
 
 /* ── Mobile overflow guard ───────────────────────────────────────────────────
@@ -121,9 +150,10 @@ body {
 /* ── iOS safe-area top inset ────────────────────────────────────────────────
    Elements with .safe-top get padding equal to the status-bar height on
    notched iPhones. Apply this class to any sticky header that sits at the
-   very top of the viewport.                                                 */
+   very top of the viewport.
+   max(var(--safe-top), 12px) ensures desktop gets a minimum 12px top padding. */
 .safe-top {
-  padding-top: env(safe-area-inset-top);
+  padding-top: max(var(--safe-top), 12px);
 }
 
 /* ── Portal layout helpers ───────────────────────────────────────────────────
@@ -152,7 +182,7 @@ body {
    The top strip is rendered inside portal-main so no top padding needed here. */
 @media (max-width: 767px) {
   .portal-main {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: calc(56px + var(--safe-bottom));
   }
 }
 
@@ -172,9 +202,10 @@ body {
 
 /* ── Sticky bottom action bar safe area ─────────────────────────────────────
    Adds bottom padding equal to the home-indicator height on iPhone.
+   max(var(--safe-bottom), 0.75rem) ensures a sensible minimum on desktop.
 */
 .safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  padding-bottom: max(var(--safe-bottom), 0.75rem);
 }
 
 /* ── Horizontal scroll container (tabs, filter pills) ───────────────────────

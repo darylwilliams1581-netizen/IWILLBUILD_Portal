@@ -175,7 +175,23 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           if (req.url && req.url.includes('leaflet')) {
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-            res.end('export default {}; export const map = () => ({}); export const tileLayer = () => ({});\n');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.end(
+              'export default {};\n' +
+              'export const map = () => ({});\n' +
+              'export const tileLayer = () => ({});\n' +
+              'if (typeof window !== "undefined") {\n' +
+              '  try {\n' +
+              '    if (window.L && window.L.DomUtil) {\n' +
+              '      window.L.DomUtil.getPosition = function(el) {\n' +
+              '        if (!el) return { x: 0, y: 0 };\n' +
+              '        return el._leaflet_pos || { x: 0, y: 0 };\n' +
+              '      };\n' +
+              '    }\n' +
+              '  } catch(_) {}\n' +
+              '}\n'
+            );
             return;
           }
           if (

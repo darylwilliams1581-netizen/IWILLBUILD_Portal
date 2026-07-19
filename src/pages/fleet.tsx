@@ -54,13 +54,15 @@ if (typeof window !== 'undefined') {
     const m = String(e?.reason?.message ?? e?.reason ?? '');
     if (m.includes('_leaflet_pos') || m.includes('leaflet')) e.preventDefault();
   }, { capture: true });
-  // Patch _leaflet_pos on any DOM node that lacks it so getPosition() never throws
+  // Patch _leaflet_pos on Element.prototype so getPosition(el) never throws,
+  // even when el is undefined (stale cached leaflet calls it before the map pane exists).
   try {
-    const origGetPos = Object.getOwnPropertyDescriptor(Element.prototype, '_leaflet_pos');
-    if (!origGetPos) {
+    const desc = Object.getOwnPropertyDescriptor(Element.prototype, '_leaflet_pos');
+    // Only install if not already patched by index.html inline script
+    if (!desc || typeof desc.get !== 'function') {
       Object.defineProperty(Element.prototype, '_leaflet_pos', {
         get() { return (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos ?? { x: 0, y: 0 }; },
-        set(v) { (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos = v; },
+        set(v: { x: number; y: number }) { (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos = v; },
         configurable: true,
       });
     }
