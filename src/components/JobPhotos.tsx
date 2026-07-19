@@ -102,13 +102,25 @@ function formatDateTime(iso: string) {
 const HEIC_EXTS = ['heic', 'heif'];
 const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
 // image/jpg is a non-standard alias iOS Safari sends for JPEG files.
-// image/heic / image/heif are sent by iPhone camera — converted to JPEG via canvas.
+// image/heic / image/heif are sent by iPhone camera.
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
 
 /**
+ * Returns true when running on iOS/iPadOS Safari.
+ * On iOS, ALL browsers use WebKit — so this covers Chrome/Firefox on iPhone too.
+ * We skip client-side canvas processing on iOS to avoid minification constructor
+ * errors (o is not a constructor) and let the server handle HEIC conversion.
+ */
+function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /iP(hone|od|ad)/.test(ua);
+}
+
+/**
  * Convert any image File to a JPEG via an off-screen canvas.
- * - iOS Safari can decode HEIC natively via createImageBitmap
- * - Also resizes to max 1920px on the longest side
+ * NOT called on iOS — raw file is uploaded directly instead.
+ * Returns null if the browser cannot decode the file.
  */
 async function normaliseToJpeg(file: File): Promise<File | null> {
   const MAX_PX = 1920;
@@ -117,8 +129,6 @@ async function normaliseToJpeg(file: File): Promise<File | null> {
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    // Browser cannot decode this format (e.g. HEIC on Android/desktop).
-    // Return null so the caller can show a safe message instead of crashing.
     return null;
   }
   let { width, height } = bitmap;
@@ -132,7 +142,8 @@ async function normaliseToJpeg(file: File): Promise<File | null> {
   if (!ctx) return file;
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
-  return new Promise<File>((resolve) => {
+  // Use a plain callback-to-promise to avoid any minifier issues with Promise constructor
+  return await new Promise<File>((resolve) => {
     canvas.toBlob((blob) => {
       if (!blob) { resolve(file); return; }
       const stem = file.name.replace(/\.[^.]+$/, '');
@@ -143,33 +154,37 @@ async function normaliseToJpeg(file: File): Promise<File | null> {
 
 /**
  * Async pre-process: convert HEIC→JPEG, resize oversized images.
- * Used for the main upload flow.
+ * On iOS: skips ALL canvas processing — uploads raw files directly.
+ * Server accepts HEIC/HEIF and all iOS MIME aliases.
  */
 async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: string | null }> {
   if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
+
+  // iOS Safari: skip all client-side processing to avoid constructor errors.
+  // The server handles HEIC conversion and accepts image/jpg alias.
+  if (isIosSafari()) {
+    const valid = files.filter((f) => {
+      if (f.type === '' ) return true; // unknown type — let server decide
+      return ALLOWED_TYPES.includes(f.type);
+    });
+    if (valid.length === 0 && files.length > 0) {
+      return { valid: [], error: `"${files[0].name}" is not a supported image type (got: ${files[0].type || 'unknown'}).` };
+    }
+    return { valid, error: null };
+  }
+
   const prepared: File[] = [];
   for (const f of files) {
     const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
     const isHeic = HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type);
     if (isHeic) {
-      // iOS Safari can decode HEIC via createImageBitmap; other browsers cannot.
       const converted = await normaliseToJpeg(f);
-      if (converted === null) {
-        // Browser cannot decode HEIC — upload the raw file and let the server handle it.
-        // Server accepts HEIC and stores it; preview will show a placeholder.
-        prepared.push(f);
-      } else if (converted.type !== 'image/jpeg') {
-        // Conversion produced a non-JPEG — still push it through; server will handle.
-        prepared.push(converted);
-      } else {
-        prepared.push(converted);
-      }
+      prepared.push(converted ?? f);
       continue;
     }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
       return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
     }
-    // Normalise (resize if oversized) — fall back to original if canvas fails
     try {
       const normalised = await normaliseToJpeg(f);
       prepared.push(normalised ?? f);

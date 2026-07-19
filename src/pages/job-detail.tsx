@@ -1053,35 +1053,45 @@ function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () 
     const arr = Array.from(files);
     setUploading(true);
     setUploadMsg('');
-    // Convert HEIC/HEIF to JPEG via canvas (iOS Safari supports this natively).
-    // For browsers that can't decode HEIC, upload the raw file — server handles it.
-    const prepared: File[] = [];
-    for (const f of arr) {
-      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-      const isHeic = ['heic', 'heif'].includes(ext) || ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'].includes(f.type);
-      if (isHeic) {
-        try {
-          const bitmap = await createImageBitmap(f);
-          const canvas = document.createElement('canvas');
-          canvas.width = bitmap.width; canvas.height = bitmap.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(bitmap, 0, 0);
-            bitmap.close();
-            const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.88));
-            if (blob) {
-              const stem = f.name.replace(/\.[^.]+$/, '');
-              prepared.push(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
-              continue;
+
+    // iOS Safari: skip ALL client-side canvas processing.
+    // Minified constructors (File, Promise, etc.) can throw "o is not a constructor".
+    // Server accepts HEIC/HEIF and image/jpg alias natively.
+    const isIos = /iP(hone|od|ad)/.test(navigator.userAgent);
+    let prepared: File[];
+
+    if (isIos) {
+      prepared = arr; // upload raw — server handles everything
+    } else {
+      prepared = [];
+      for (const f of arr) {
+        const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+        const isHeic = ['heic', 'heif'].includes(ext) || ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'].includes(f.type);
+        if (isHeic) {
+          try {
+            const bitmap = await createImageBitmap(f);
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width; canvas.height = bitmap.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(bitmap, 0, 0);
+              bitmap.close();
+              const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.88));
+              if (blob) {
+                const stem = f.name.replace(/\.[^.]+$/, '');
+                prepared.push(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
+                continue;
+              }
             }
-          }
-          bitmap.close();
-        } catch { /* fall through — push raw */ }
-        prepared.push(f); // server will handle raw HEIC
-        continue;
+            bitmap.close();
+          } catch { /* fall through — push raw */ }
+          prepared.push(f);
+          continue;
+        }
+        prepared.push(f);
       }
-      prepared.push(f);
     }
+
     const fd = new FormData();
     prepared.forEach((f) => fd.append('photos', f));
     try {
