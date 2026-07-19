@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -35,210 +36,6 @@ import { Navigation } from 'lucide-react';
 
 // Google Maps-based live map (no leaflet dependency)
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
-
-// ── Module-level Leaflet error suppressor ─────────────────────────────────────
-// Stale browser-cached leaflet.js fires _leaflet_pos errors in async callbacks
-// (not during React render, so error boundaries don't catch them).
-// We patch at three levels: window.onerror, Element.prototype, and window.L.
-if (typeof window !== 'undefined') {
-  // 1. window.onerror — catches uncaught sync errors
-  const _prev = window.onerror;
-  window.onerror = function(msg, src, line, col, err) {
-    const m = String(msg ?? err?.message ?? '');
-    if (m.includes('_leaflet_pos') || (typeof src === 'string' && src.includes('leaflet'))) {
-      return true;
-    }
-    return typeof _prev === 'function' ? _prev(msg, src, line, col, err) : false;
-  };
-  // 2. unhandledrejection — catches async leaflet errors
-  window.addEventListener('unhandledrejection', (e) => {
-    const m = String(e?.reason?.message ?? e?.reason ?? '');
-    if (m.includes('_leaflet_pos') || m.includes('leaflet')) e.preventDefault();
-  }, { capture: true });
-  // 3. Patch Element.prototype._leaflet_pos so getPosition(el) is safe when el exists
-  try {
-    const desc = Object.getOwnPropertyDescriptor(Element.prototype, '_leaflet_pos');
-    if (!desc || typeof desc.get !== 'function') {
-      Object.defineProperty(Element.prototype, '_leaflet_pos', {
-        get() { return (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos ?? { x: 0, y: 0 }; },
-        set(v: { x: number; y: number }) { (this as HTMLElement & { __lpos?: { x: number; y: number } }).__lpos = v; },
-        configurable: true,
-      });
-    }
-  } catch { /* ignore */ }
-  // 4. Patch window.L methods that crash when map panes aren't ready.
-  //    The private getPosition(el) at leaflet.js:1570 crashes when el is undefined.
-  //    Call chain: _rawPanBy → _getMapPanePos → getPosition(this._mapPane)
-  //    where this._mapPane is undefined on stale cached instances.
-  //    We patch _getMapPanePos AND _rawPanBy with null guards.
-  const patchWindowL = () => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const L = (window as any).L;
-      if (!L?.Map?.prototype) return false;
-      if (L.Map.prototype.__lp_patched) return true;
-
-      // Patch _getMapPanePos — guards the direct caller of private getPosition
-      const origGetMapPanePos = L.Map.prototype._getMapPanePos;
-      L.Map.prototype._getMapPanePos = function() {
-        if (!this._mapPane) return { x: 0, y: 0 };
-        try {
-          return origGetMapPanePos ? origGetMapPanePos.call(this) : { x: 0, y: 0 };
-        } catch { return { x: 0, y: 0 }; }
-      };
-
-      // Patch _rawPanBy — the entry point of the crash chain
-      const origRawPanBy = L.Map.prototype._rawPanBy;
-      L.Map.prototype._rawPanBy = function(offset: unknown) {
-        if (!this._mapPane) return;
-        try {
-          origRawPanBy?.call(this, offset);
-        } catch { /* swallow _leaflet_pos errors from stale cache */ }
-      };
-
-      // Patch DomUtil.getPosition as final backstop
-      if (L.DomUtil?.getPosition && !L.DomUtil.__lp_patched) {
-        const origGet = L.DomUtil.getPosition;
-        L.DomUtil.getPosition = function(el: Element | undefined) {
-          if (!el) return { x: 0, y: 0 };
-          try { return origGet(el); } catch { return { x: 0, y: 0 }; }
-        };
-        L.DomUtil.__lp_patched = true;
-      }
-
-      L.Map.prototype.__lp_patched = true;
-      return true;
-    } catch { return false; }
-  };
-  // Try immediately, then poll every 50ms for up to 3s
-  if (!patchWindowL()) {
-    let attempts = 0;
-    const poll = setInterval(() => {
-      if (patchWindowL() || ++attempts > 60) clearInterval(poll);
-    }, 50);
-  }
-}
-
-// ── Leaflet crash boundary ────────────────────────────────────────────────────
-// Silently catches any _leaflet_pos errors from stale cached leaflet.js.
-// The Google Maps live map is unaffected — it does not use leaflet at all.
-class LeafletCrashBoundary extends React.Component<
-  { children: React.ReactNode },
-  { crashed: boolean }
-> {
-  private _onerror: OnErrorEventHandler = null;
-
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { crashed: false };
-  }
-
-  componentDidMount() {
-    // Suppress _leaflet_pos errors at the window level so they never reach
-    // the React error boundary or the browser console.
-    this._onerror = window.onerror;
-    window.onerror = (msg, _src, _line, _col, err) => {
-      const m = String(msg ?? err?.message ?? '');
-      if (m.includes('_leaflet_pos') || m.includes('leaflet')) return true; // suppress
-      return typeof this._onerror === 'function'
-        ? this._onerror(msg, _src, _line, _col, err)
-        : false;
-    };
-    // Re-apply window.L patches now that the component is mounted —
-    // leaflet may have finished loading between module parse and mount.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const L = (window as any).L;
-      if (L?.Map?.prototype && !L.Map.prototype.__lp_patched) {
-        const origGetMapPanePos = L.Map.prototype._getMapPanePos;
-        L.Map.prototype._getMapPanePos = function() {
-          if (!this._mapPane) return { x: 0, y: 0 };
-          try { return origGetMapPanePos?.call(this) ?? { x: 0, y: 0 }; } catch { return { x: 0, y: 0 }; }
-        };
-        const origRawPanBy = L.Map.prototype._rawPanBy;
-        L.Map.prototype._rawPanBy = function(offset: unknown) {
-          if (!this._mapPane) return;
-          try { origRawPanBy?.call(this, offset); } catch { /* swallow */ }
-        };
-        L.Map.prototype.__lp_patched = true;
-      }
-    } catch { /* ignore */ }
-  }
-
-  componentWillUnmount() {
-    window.onerror = this._onerror;
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    const m = String(error?.message ?? error ?? '');
-    // Swallow leaflet errors silently — don't mark as crashed
-    if (m.includes('_leaflet_pos') || m.includes('leaflet')) {
-      return { crashed: false };
-    }
-    return { crashed: true };
-  }
-
-  componentDidCatch(error: Error) {
-    const m = String(error?.message ?? error ?? '');
-    if (!m.includes('_leaflet_pos') && !m.includes('leaflet')) {
-      console.error('[FleetPage] Unexpected render error:', error);
-    }
-  }
-
-  render() {
-    if (this.state.crashed) return null;
-    return this.props.children;
-  }
-}
-
-// ── Purge any browser-cached leaflet chunks on mount ─────────────────────────
-// The old pre-bundled leaflet.js?v=05d76b4a may live in the browser's HTTP
-// disk cache and execute before the SW can intercept it. This runs once on
-// first render and forces a reload if it finds and deletes a stale entry.
-async function purgeLeafletCache(): Promise<void> {
-  const PURGE_KEY = '__leaflet_purge_v8';
-  // Only run once per session to avoid reload loops
-  try {
-    if (sessionStorage.getItem(PURGE_KEY)) return;
-  } catch { /* ignore */ }
-
-  let didPurge = false;
-
-  // 1. Unregister ALL service workers so the new SW can take over cleanly
-  if ('serviceWorker' in navigator) {
-    try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-      if (regs.length > 0) didPurge = true;
-    } catch { /* ignore */ }
-  }
-
-  // 2. Nuke ALL Cache Storage entries (covers Vite dep cache, old SW caches)
-  if ('caches' in window) {
-    try {
-      const names = await caches.keys();
-      if (names.length > 0) {
-        await Promise.all(names.map((n) => caches.delete(n)));
-        didPurge = true;
-      }
-    } catch { /* ignore */ }
-  }
-
-  // 3. Mark done AFTER purge so a failed reload retries
-  try { sessionStorage.setItem(PURGE_KEY, '1'); } catch { /* ignore */ }
-
-  // 4. Hard reload so the browser re-fetches leaflet.js from the server stub
-  if (didPurge) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (location as any).reload(true);
-    } catch {
-      const url = new URL(location.href);
-      url.searchParams.set('_lkill', '8');
-      location.replace(url.toString());
-    }
-  }
-}
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
@@ -489,7 +286,7 @@ export default function FleetPage() {
   const { isViewOnly } = useViewOnly();
   const navigate = useNavigate();
 
-  useEffect(() => { void purgeLeafletCache(); }, []);
+  
 
   const load = useCallback(async () => {
     try {
@@ -574,7 +371,6 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0 pb-20">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
-            <LeafletCrashBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
                   <Loader2 size={20} className="animate-spin" />
@@ -583,7 +379,6 @@ export default function FleetPage() {
               }>
                 <FleetLiveMap key="fleet-live-map" />
               </Suspense>
-            </LeafletCrashBoundary>
           )}
 
           {/* ── Assets view ── */}

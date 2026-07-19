@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v33 -->
+  <!-- cache-bust: v35 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -13,51 +13,96 @@
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
 
-      // ── Leaflet stub service worker ───────────────────────────────────────────
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
-          .catch(function() {});
-      }
-
-      // ── Suppress stale leaflet _leaflet_pos errors ────────────────────────────
-      // leaflet.js?v=05d76b4a may still be in the browser module registry from a
-      // previous session. Its _rawPanBy loop calls getPosition(undefined) which
-      // throws "Cannot read properties of undefined (reading '_leaflet_pos')".
-      // Fix: patch Object.prototype so _leaflet_pos reads on undefined/null are safe,
-      // wrap rAF to swallow leaflet callbacks, and suppress via window.onerror.
-      try {
-        if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
-          var _lp = { x: 0, y: 0 };
-          Object.defineProperty(Object.prototype, '_leaflet_pos', {
-            get: function() { return (this && this.__lp__) ? this.__lp__ : _lp; },
-            set: function(v) { if (this) this.__lp__ = v; },
-            configurable: true, enumerable: false
-          });
-        }
-      } catch(_) {}
-      window.addEventListener('error', function(e) {
-        var m = String(e && e.message ? e.message : '');
-        var s = String(e && e.filename ? e.filename : '');
-        if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
-          e.preventDefault(); e.stopImmediatePropagation(); return false;
-        }
-      }, true);
-      window.addEventListener('unhandledrejection', function(e) {
-        var m = String(e && e.reason ? e.reason : '');
-        if (m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
-          e.preventDefault(); e.stopImmediatePropagation();
-        }
-      }, true);
+      // ── Leaflet stale-cache suppressor ───────────────────────────────────────
+      // leaflet.js?v=05d76b4a is stuck in the browser HTTP disk cache with
+      // immutable headers. JS prototype patches cannot prevent
+      // "Cannot read properties of undefined (reading '_leaflet_pos')" because
+      // undefined property access throws before any prototype getter runs.
+      //
+      // Strategy: detect the error via window.onerror, nuke all caches, then
+      // do a hard location.href navigation (not reload — reload reuses the
+      // module registry in Chromium). After one navigation the cache is clear
+      // and the server stub is served instead of the real leaflet.
       (function() {
-        var _raf = window.requestAnimationFrame.bind(window);
-        window.requestAnimationFrame = function(cb) {
-          return _raf(function(ts) {
-            try { cb(ts); } catch(e) {
-              var s = String(e && e.stack ? e.stack : e);
-              if (s.indexOf('leaflet') === -1 && s.indexOf('_leaflet_pos') === -1) throw e;
+        var NUKE_KEY = '__lf_nuke_v11';
+        var NUKE_COUNT_KEY = '__lf_nuke_count_v11';
+
+        function isLeafletError(msg, src) {
+          var m = String(msg || '');
+          var s = String(src || '');
+          return m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1;
+        }
+
+        function nukeAndReload() {
+          try {
+            var count = parseInt(sessionStorage.getItem(NUKE_COUNT_KEY) || '0', 10);
+            if (count >= 3) return; // give up after 3 attempts
+            sessionStorage.setItem(NUKE_COUNT_KEY, String(count + 1));
+          } catch(_) {}
+
+          // 1. Nuke all Cache Storage
+          try {
+            if (typeof caches !== 'undefined') {
+              caches.keys().then(function(names) {
+                return Promise.all(names.map(function(n) { return caches.delete(n); }));
+              }).then(function() {
+                doNav();
+              }).catch(doNav);
+            } else {
+              doNav();
             }
-          });
+          } catch(_) { doNav(); }
+        }
+
+        function doNav() {
+          try {
+            var u = new URL(location.href);
+            u.searchParams.set('_lf', Date.now().toString());
+            location.href = u.toString();
+          } catch(_) {
+            location.reload();
+          }
+        }
+
+        // Strip _lf param left by a previous nuke-nav
+        try {
+          var u2 = new URL(location.href);
+          if (u2.searchParams.has('_lf')) {
+            u2.searchParams.delete('_lf');
+            history.replaceState(null, '', u2.toString());
+            // We just came back from a nuke — mark session as clean
+            sessionStorage.setItem(NUKE_KEY, '1');
+          }
+        } catch(_) {}
+
+        // If this session is already clean, skip installing the error handler
+        var alreadyClean = false;
+        try { alreadyClean = !!sessionStorage.getItem(NUKE_KEY); } catch(_) {}
+        if (alreadyClean) return;
+
+        // Install error handler BEFORE any modules load
+        var _prevOnerror = window.onerror;
+        window.onerror = function(msg, src, line, col, err) {
+          if (isLeafletError(msg, src)) {
+            nukeAndReload();
+            return true; // suppress
+          }
+          return typeof _prevOnerror === 'function'
+            ? _prevOnerror(msg, src, line, col, err) : false;
         };
+        window.addEventListener('error', function(e) {
+          if (isLeafletError(e && e.message, e && e.filename)) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            nukeAndReload();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          var m = String(e && e.reason ? (e.reason.message || e.reason) : '');
+          if (m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
+            e.preventDefault();
+            nukeAndReload();
+          }
+        }, true);
       })();
     </script>
     <script>
@@ -224,96 +269,7 @@
       })();
     </script>
 
-    <script>
-      // ── Leaflet stale-cache nuclear suppressor ────────────────────────────
-      // The browser HTTP disk cache serves the real leaflet.js?v=05d76b4a with
-      // immutable headers — the server stub never gets a chance to run.
-      // Strategy: intercept fetch() so any request for a URL containing
-      // "leaflet" returns an empty ES module stub instead of the cached bundle.
-      // This fires BEFORE the ES module graph is evaluated, so leaflet's
-      // module-private getPosition() function is never defined at all.
-      (function () {
-        try {
-          // 1. Override fetch to intercept the leaflet dep URL.
-          //    ES module loading in browsers uses fetch internally for
-          //    dynamic imports and modulepreload — intercepting it here
-          //    means the real leaflet bytes are discarded before execution.
-          var _origFetch = window.fetch;
-          window.fetch = function(input, init) {
-            try {
-              var url = (typeof input === 'string') ? input
-                      : (input && input.url) ? input.url
-                      : String(input);
-              if (url && url.indexOf('leaflet') !== -1) {
-                // Return a Response containing an empty ES module stub.
-                // The browser will evaluate this instead of the real leaflet.
-                var stub = 'export default {};\nexport const map = () => ({});\nexport const tileLayer = () => ({});\n';
-                return Promise.resolve(new Response(stub, {
-                  status: 200,
-                  headers: { 'Content-Type': 'application/javascript' }
-                }));
-              }
-            } catch(_) {}
-            return _origFetch.apply(this, arguments);
-          };
 
-          // 2. Also patch Element.prototype._leaflet_pos as belt-and-suspenders
-          //    in case any other code path triggers getPosition.
-          if (typeof Element !== 'undefined' && !Element.prototype.__lp_patched) {
-            Object.defineProperty(Element.prototype, '_leaflet_pos', {
-              get: function () { return this.__lp || { x: 0, y: 0 }; },
-              set: function (v) { this.__lp = v; },
-              configurable: true,
-            });
-            Element.prototype.__lp_patched = true;
-          }
-
-          // 3. Suppress any leaflet errors that still slip through.
-          var _prevErr = window.onerror;
-          window.onerror = function (msg, src, line, col, err) {
-            var m = String(msg || (err && err.message) || '');
-            var s = String(src || '');
-            if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
-              return true;
-            }
-            return typeof _prevErr === 'function' ? _prevErr(msg, src, line, col, err) : false;
-          };
-
-          window.addEventListener('unhandledrejection', function (e) {
-            try {
-              var m = String((e.reason && e.reason.message) || e.reason || '');
-              if (m.indexOf('_leaflet_pos') !== -1 || m.indexOf('leaflet') !== -1) {
-                e.preventDefault();
-              }
-            } catch (_) {}
-          }, true);
-
-          // 4. Nuke HTTP caches once per session so the server stub is served
-          //    on the next full page load (after cache is cleared).
-          var PURGE_KEY = '__lf_purge_v10';
-          try {
-            if (!sessionStorage.getItem(PURGE_KEY) && typeof caches !== 'undefined') {
-              sessionStorage.setItem(PURGE_KEY, '1');
-              caches.keys().then(function (names) {
-                names.forEach(function (n) { caches.delete(n); });
-              }).catch(function () {});
-            }
-          } catch (_) {}
-        } catch (_) {}
-      })();
-
-      // Unregister the old leaflet-kill service worker — it is no longer needed.
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(reg) {
-            if (reg.scope && reg.active && reg.active.scriptURL &&
-                reg.active.scriptURL.indexOf('leaflet-kill') !== -1) {
-              reg.unregister();
-            }
-          });
-        }).catch(function(){});
-      }
-    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />

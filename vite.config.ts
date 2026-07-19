@@ -511,24 +511,12 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         },
       ] : []),
       { find: '@', replacement: path.resolve(__dirname, './src') },
-      // Leaflet was removed from the project. Alias it to the browser-only stub
-      // so any stale import (or cached pre-bundle request) resolves to an empty
-      // module instead of crashing with _leaflet_pos errors.
-      {
-        find: /^leaflet(\/.*)?$/,
-        replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-        customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-      },
     ],
   },
 
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
-    // leaflet excluded so Vite never pre-bundles it — the alias + middleware
-    // stub handles any stale cached request. Changing this comment forces a
-    // new dep-bundle hash, invalidating any browser-cached leaflet.js?v=*
-    // url: cache-bust-2026-07-20
-    exclude: ["drizzle-orm", "mysql2", "leaflet"],
+    exclude: ["drizzle-orm", "mysql2"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },
