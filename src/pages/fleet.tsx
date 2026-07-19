@@ -285,6 +285,33 @@ export default function FleetPage() {
   const { isViewOnly } = useViewOnly();
   const navigate = useNavigate();
 
+  // Suppress stale-cache leaflet errors — the browser has an old pre-bundled
+  // leaflet.js chunk on disk that was cached before Leaflet was removed from
+  // the project. The server stub intercepts new requests but cannot evict a
+  // file the browser serves directly from disk without re-requesting it.
+  useEffect(() => {
+    const handler = (event: ErrorEvent) => {
+      const msg = event.message ?? '';
+      const src = event.filename ?? '';
+      if (src.includes('leaflet') || msg.includes('_leaflet') || msg.includes('leaflet')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      const msg = String(event.reason ?? '');
+      if (msg.includes('leaflet') || msg.includes('_leaflet')) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('error', handler, true);
+    window.addEventListener('unhandledrejection', rejectionHandler);
+    return () => {
+      window.removeEventListener('error', handler, true);
+      window.removeEventListener('unhandledrejection', rejectionHandler);
+    };
+  }, []);
+
   
 
   const load = useCallback(async () => {
