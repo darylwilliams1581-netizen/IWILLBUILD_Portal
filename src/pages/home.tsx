@@ -26,6 +26,7 @@ import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import KpiWidgets from '@/components/dashboard/KpiWidgets';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
+import NotificationList from '@/components/NotificationList';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import NotificationBell from '@/components/NotificationBell';
@@ -1843,6 +1844,9 @@ export default function HomeScreen() {
         <DashboardBanner userId={sessionData?.user?.id ?? 'anon'} />
         <div className="mt-4">
           <KpiWidgets />
+        </div>
+        <div className="mt-4">
+          <NotificationList />
         </div>
         <div className="mt-4">
           <MyTasksPanel userRole={role ?? ''} />
