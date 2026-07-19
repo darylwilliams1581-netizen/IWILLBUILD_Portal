@@ -74,42 +74,51 @@
   },
   "reference/screenshot-1": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-1-92eb72d3.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-09T11:55:16.522Z",
-    "lastUpdated": "2026-07-09T11:55:16.522Z",
+    "lastUpdated": "2026-07-18T03:09:02.649Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg": "f38wenbvln_1783594061277_file_vzt_7l38GG.jpg"
+      "/airo-assets/uploads/reference-screenshot-1-278c84c6.jpg": "f38wenbvln_1783594061277_file_vzt_7l38GG.jpg",
+      "/airo-assets/uploads/reference-screenshot-1-92eb72d3.jpg": "f38wenbvln_1784343947364_file_zzCfY2DAOu.jpg"
     },
-    "uploadContentHash": "c1a68dc98faee8f150aa7983d979ccea1531d44fc3f480c4ab0ab9362e432a66"
+    "uploadContentHash": "6d5451e17170a80ad1190543f1b28b58ca488d9b63972711b2ced9297432df91"
   },
   "reference/screenshot-2": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-2-c6e67c2e.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-09T11:55:22.380Z",
-    "lastUpdated": "2026-07-09T11:55:22.380Z",
+    "lastUpdated": "2026-07-18T03:28:36.531Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg": "f38wenbvln_1783594193977_file_raBuSs8RYT.jpg"
+      "/airo-assets/uploads/reference-screenshot-2-a8aacda0.jpg": "f38wenbvln_1783594193977_file_raBuSs8RYT.jpg",
+      "/airo-assets/uploads/reference-screenshot-2-c6e67c2e.jpg": "f38wenbvln_1784344893943_file__t3X6FIBe5.jpg"
     },
-    "uploadContentHash": "861f6573e82e37df720be4eafa0a45da842b89725ea0bc36bacbbdca6f376d8c"
+    "uploadContentHash": "5ea73d64c519880c5201c221dfbd9091ee4e5b9be411e8b6973feb0f748d17e4"
   },
   "reference/screenshot-3": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-3-6636035e.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-09T11:55:25.438Z",
-    "lastUpdated": "2026-07-09T11:55:25.438Z",
+    "lastUpdated": "2026-07-18T03:28:39.798Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg"
+      "/airo-assets/uploads/reference-screenshot-3-6e61144d.jpg": "f38wenbvln_1783596446684_file_Lz0wOjgBH8.jpg",
+      "/airo-assets/uploads/reference-screenshot-3-6636035e.jpg": "f38wenbvln_1784345167397_file_B8mQhe-nJS.jpg"
     },
-    "uploadContentHash": "5166a0cbaff30338512c95ceca4928f3b2a6c4268327a59225c7000b67fd3016"
+    "uploadContentHash": "493efaece8adff0672b662d9e8bbbc08fe22090f7383099caaaf31e39f2a3afd"
   },
   "reference/studio-issue-1": {
     "mediaType": "image",
@@ -214,5 +223,70 @@
       "/airo-assets/uploads/debug-screenshot-081835-8cdfa686.png": "f38wenbvln_1783808435872_file_1l2fUl5smK.png"
     },
     "uploadContentHash": "8ab5ccbd231350e827edfb638b20d0c77bc20fa56c55b10b77dc504ea56a98b6"
+  },
+  "reference/screenshot-4": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-4-9f8a76e7.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T03:34:52.619Z",
+    "lastUpdated": "2026-07-18T03:34:52.619Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-4-9f8a76e7.jpg": "f38wenbvln_1784345540485_file_8FMRF3QQBy.jpg"
+    },
+    "uploadContentHash": "2ad9b86657994c4582037262345431ab930c6229fb60e2890cc9e0b86915bddc"
+  },
+  "reference/screenshot-5": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-5-7505549b.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:42:59.359Z",
+    "lastUpdated": "2026-07-18T04:42:59.359Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-5-7505549b.jpg": "f38wenbvln_1784348941394_file_VZ8lvduSum.jpg"
+    },
+    "uploadContentHash": "8a25e59a01a649ad94de4aa55e89b980ff498c2806466cbba0ee1b8bd0b35d4a"
+  },
+  "reference/screenshot-6": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:00.000Z",
+    "lastUpdated": "2026-07-18T04:43:00.000Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg": "f38wenbvln_1784348858184_file_gQrVQXlVEY.jpg"
+    },
+    "uploadContentHash": "97ac4eb533ac6f816e15e681caf02b6a57e1aa9986522e4a9e87363a8861d7df"
+  },
+  "reference/screenshot-7": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:00.544Z",
+    "lastUpdated": "2026-07-18T04:43:00.544Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg": "f38wenbvln_1784348030849_file_kqzmruj29g.jpg"
+    },
+    "uploadContentHash": "4e7c91328f153cb3e96d162d3c72c76a10ca8f043d0825d4d63be211bc1839d6"
+  },
+  "reference/screenshot-8": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-18T04:43:01.246Z",
+    "lastUpdated": "2026-07-18T04:43:01.246Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg"
+    },
+    "uploadContentHash": "6053f9dff57f9ef898f4f3ddb48788f6e16e93b3c52b03e473f49757f7b49f3a"
   }
 }

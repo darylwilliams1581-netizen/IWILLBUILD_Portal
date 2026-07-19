@@ -133,6 +133,7 @@ export const Library = NullIcon;
 export const Lightbulb = NullIcon;
 export const Link = NullIcon;
 export const Link2 = NullIcon;
+export const Link2Off = NullIcon;
 export const List = NullIcon;
 export const ListChecks = NullIcon;
 export const ListOrdered = NullIcon;
@@ -383,6 +384,9 @@ export const QrCode = NullIcon;
 export const BellOff = NullIcon;
 export const BellRing = NullIcon;
 export const ClipboardCheck = NullIcon;
+
+// ── Additional icons ──────────────────────────────────────────────────────────
+export const AlarmClock = NullIcon;
 
 // lucide-react utility exports
 export const createLucideIcon = () => NullIcon;

@@ -9,10 +9,7 @@ import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { getDownloadStream, BUCKET_JOB_PHOTOS } from '../../../../../storage/storage-service.js';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const archiver = require('archiver') as typeof import('archiver');
+import JSZip from 'jszip';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -54,16 +51,8 @@ export default async function handler(req: Request, res: Response) {
 
     if (rows.length === 0) return res.status(404).json({ error: 'No photos found' });
 
+    const zip = new JSZip();
     const safeName = (job.name ?? `job-${jobId}`).replace(/[^a-z0-9_-]/gi, '_').slice(0, 40);
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-photos.zip"`);
-
-    const archive = archiver('zip', { zlib: { level: 5 } });
-    archive.on('error', (err) => {
-      console.error('ZIP archive error:', err);
-      if (!res.headersSent) res.end();
-    });
-    archive.pipe(res);
 
     for (const photo of rows) {
       try {
@@ -72,13 +61,25 @@ export default async function handler(req: Request, res: Response) {
           : photo.mimeType === 'image/webp' ? 'webp'
           : 'jpg';
         const name = photo.originalName ?? `photo-${photo.id}.${ext}`;
-        archive.append(stream as NodeJS.ReadableStream, { name });
+        // Collect stream into buffer
+        const chunks: Buffer[] = [];
+        await new Promise<void>((resolve, reject) => {
+          (stream as NodeJS.ReadableStream).on('data', (chunk: Buffer) => chunks.push(chunk));
+          (stream as NodeJS.ReadableStream).on('end', resolve);
+          (stream as NodeJS.ReadableStream).on('error', reject);
+        });
+        zip.file(name, Buffer.concat(chunks));
       } catch (e) {
         console.warn(`ZIP: skipping photo ${photo.id}:`, e);
       }
     }
 
-    await archive.finalize();
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 5 } });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-photos.zip"`);
+    res.setHeader('Content-Length', zipBuffer.length);
+    res.end(zipBuffer);
   } catch (error) {
     console.error('POST /api/jobs/:id/photos/export-zip error:', error);
     if (!res.headersSent) res.status(500).json({ error: 'Export failed' });
