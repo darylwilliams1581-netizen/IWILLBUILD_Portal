@@ -257,16 +257,16 @@ export default function JobProgressPage() {
       </div>
 
       {/* ── Mobile: back arrow ── */}
-      <button onClick={() => navigate(`/jobs/${id}`)} className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" aria-label="Back">
+      <button onClick={() => navigate(`/jobs/${id}`)} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '12px' }} aria-label="Back">
         <ArrowLeft size={18} />
       </button>
       {/* ── Mobile: Dashboard button ── */}
-      <button onClick={() => navigate('/home')} className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors" aria-label="Dashboard">
+      <button onClick={() => navigate('/home')} className="md:hidden fixed z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', left: '60px' }} aria-label="Dashboard">
         <Home size={16} />
       </button>
 
       {/* ── Mobile: save + export top-right ── */}
-      <div className="md:hidden fixed top-3 right-3 z-20 flex items-center gap-2">
+      <div className="md:hidden fixed z-20 flex items-center gap-2" style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)', right: '12px' }}>
         {anyDirty && (
           <button onClick={() => { void saveAll(); void saveReport(); }} disabled={saving || reportSaving} className="h-9 px-3 rounded-xl bg-cyan-500 shadow-sm flex items-center gap-1.5 text-xs font-semibold text-white active:bg-cyan-600 disabled:opacity-40 transition-colors">
             {(saving || reportSaving) ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}

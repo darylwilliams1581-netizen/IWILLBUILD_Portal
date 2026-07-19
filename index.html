@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v39 -->
+  <!-- cache-bust: v40 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -193,6 +193,34 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
+    <script>
+      // ── Leaflet kill SW v3 — re-register to evict browser-disk-cached leaflet.js ──
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=3', { scope: '/' })
+          .catch(function () {});
+      }
+
+      // ── Belt-and-suspenders: patch Object.prototype so stale disk-cached
+      //    leaflet.js can never crash even if the SW hasn't activated yet.
+      //    Leaflet reads ._leaflet_pos off DOM nodes; we return a safe default.
+      (function () {
+        try {
+          var _orig = Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos');
+          if (!_orig) {
+            Object.defineProperty(Object.prototype, '_leaflet_pos', {
+              get: function () { return undefined; },
+              set: function (v) {
+                Object.defineProperty(this, '_leaflet_pos', {
+                  value: v, writable: true, configurable: true, enumerable: false
+                });
+              },
+              configurable: true,
+              enumerable: false
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>

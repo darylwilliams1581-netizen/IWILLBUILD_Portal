@@ -114,7 +114,7 @@ export default function JobPhotosPage() {
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
       </Helmet>
 
-      {/* ── Safe-area top bar (all screen sizes) ── */}
+      {/* ── Safe-area top bar ── */}
       <div
         className="bg-white border-b border-gray-100 shrink-0 sticky top-0 z-10"
         style={{
@@ -123,31 +123,31 @@ export default function JobPhotosPage() {
         }}
       >
         <div className="flex items-center gap-2 px-3 pb-3">
-          {/* Back */}
+          {/* Back — desktop only */}
           <button
             onClick={() => navigate(`/jobs/${id}`)}
-            className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0 touch-manipulation"
+            className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0 touch-manipulation"
             aria-label="Back"
           >
             <ArrowLeft size={18} />
           </button>
 
-          {/* Home */}
+          {/* Home — desktop only */}
           <button
             onClick={() => navigate('/home')}
-            className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 hover:bg-orange-100 active:bg-orange-200 transition-colors shrink-0 touch-manipulation"
+            className="hidden md:flex w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 items-center justify-center text-orange-500 hover:bg-orange-100 active:bg-orange-200 transition-colors shrink-0 touch-manipulation"
             aria-label="Dashboard"
           >
             <Home size={16} />
           </button>
 
-          {/* Title */}
-          <div className="flex-1 min-w-0 px-1">
+          {/* Title — centered on mobile, left-aligned on desktop */}
+          <div className="flex-1 min-w-0 flex flex-col items-center md:items-start px-1">
             {loading ? (
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             ) : (
               <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
+                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center md:text-left w-full">
                   {job?.name ?? 'Job Photos'}
                 </h1>
                 <p className="text-xs text-gray-400 leading-tight">
@@ -205,7 +205,25 @@ export default function JobPhotosPage() {
         {!selectMode && (
           <div className="flex items-center gap-2 px-3 pt-2 pb-1">
 
-            {/* Camera — prominent centre FAB */}
+            {/* Back — mobile only */}
+            <button
+              onClick={() => navigate(`/jobs/${id}`)}
+              aria-label="Back"
+              className="md:hidden w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
+            >
+              <ArrowLeft size={16} />
+            </button>
+
+            {/* Home — mobile only */}
+            <button
+              onClick={() => navigate('/home')}
+              aria-label="Dashboard"
+              className="md:hidden w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0"
+            >
+              <Home size={16} />
+            </button>
+
+            {/* Camera — prominent FAB */}
             <button
               onClick={() => photosRef.current?.openCamera()}
               disabled={uploading || atLimit}

@@ -106,28 +106,24 @@ export default function JobNotesPage() {
           </button>
         </div>
 
-      {/* ── Mobile: back arrow floats top-left ── */}
-      <button
-        onClick={() => navigate(`/jobs/${id}`)}
-        className="md:hidden fixed top-3 left-3 z-20 w-9 h-9 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors"
-        aria-label="Back"
+      {/* ── Mobile safe-area top bar ── */}
+      <div
+        className="md:hidden bg-white border-b border-gray-100 shrink-0"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)', boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}
       >
-        <ArrowLeft size={18} />
-      </button>
-      {/* ── Mobile: Home button floats top-left (next to back) ── */}
-      <button
-        onClick={() => navigate('/home')}
-        className="md:hidden fixed top-3 left-14 z-20 w-9 h-9 rounded-xl bg-orange-50/90 backdrop-blur-sm shadow-sm border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors"
-        aria-label="Dashboard"
-      >
-        <Home size={16} />
-      </button>
+        <div className="flex items-center justify-center px-4 pb-3">
+          <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center">
+            {loading ? <span className="inline-block h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (job?.name ?? 'Job Notes')}
+          </h1>
+        </div>
+      </div>
 
       {/* ── Mobile: export CSV floats top-right ── */}
       <button
         onClick={exportCsv}
         disabled={exporting}
         className="md:hidden fixed top-3 right-3 z-20 h-9 px-3 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm border border-gray-100 flex items-center gap-1.5 text-xs font-semibold text-gray-600 active:bg-gray-100 disabled:opacity-40 transition-colors"
+        style={{ top: 'max(calc(env(safe-area-inset-top) + 8px), 12px)' }}
         aria-label="Export CSV"
       >
         {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
@@ -156,10 +152,13 @@ export default function JobNotesPage() {
         className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
         style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
-            <StickyNote size={15} className="text-yellow-500" />
-          </div>
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+            <ArrowLeft size={16} />
+          </button>
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0">
+            <Home size={16} />
+          </button>
           <div className="flex-1 min-w-0">
             {loading ? (
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />

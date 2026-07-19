@@ -371,14 +371,16 @@ export default function FleetPage() {
         <div className="flex-1 overflow-hidden flex flex-col min-h-0 pb-20">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
-              <Suspense fallback={
-                <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
-                  <Loader2 size={20} className="animate-spin" />
-                  <span className="text-sm">Loading map…</span>
-                </div>
-              }>
-                <FleetLiveMap key="fleet-live-map" />
-              </Suspense>
+              <PortalErrorBoundary inline>
+                <Suspense fallback={
+                  <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
+                    <Loader2 size={20} className="animate-spin" />
+                    <span className="text-sm">Loading map…</span>
+                  </div>
+                }>
+                  <FleetLiveMap key="fleet-live-map" />
+                </Suspense>
+              </PortalErrorBoundary>
           )}
 
           {/* ── Assets view ── */}

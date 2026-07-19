@@ -122,18 +122,22 @@ export default function JobFormsPage() {
       </Helmet>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0 sticky top-0 z-10" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
-        <button onClick={() => navigate(`/jobs/${id}`)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+      <div
+        className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)', paddingTop: 'max(env(safe-area-inset-top), 0px)' }}
+      >
+        <div className="flex items-center gap-3 w-full px-4 py-3">
+        <button onClick={() => navigate(`/jobs/${id}`)} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </button>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="hidden md:flex items-center gap-1.5 shrink-0">
             <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Forms'}</h1>
-                <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
+                <div className="hidden md:flex items-center gap-1 text-xs text-gray-400 leading-tight">
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
                   <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
@@ -158,6 +162,28 @@ export default function JobFormsPage() {
         >
           <Plus size={13} /> New Form
         </button>
+        </div>
+      </div>
+
+      {/* ── Mobile bottom bar ── */}
+      <div
+        className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100"
+        style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+            <ArrowLeft size={16} />
+          </button>
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0">
+            <Home size={16} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-gray-900 font-bold text-sm leading-tight truncate">{job?.name ?? 'Job Forms'}</p>
+          </div>
+          <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
+            <Plus size={13} /> New Form
+          </button>
+        </div>
       </div>
 
       {/* ── Content ── */}
