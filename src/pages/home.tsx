@@ -74,6 +74,7 @@ const ADMIN_ICONS: AppIcon[] = [
   { label: 'Fleet',     icon: Truck,       href: '/fleet',                 bg: 'bg-slate-600',    fg: 'text-white' },
   { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
   { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
+  { label: 'Billing',   icon: CreditCard,  href: '/billing',               bg: 'bg-teal-600',     fg: 'text-white' },
   { label: 'Assets',    icon: Building2,   href: '/studio/asset-manager',  bg: 'bg-rose-500',     fg: 'text-white' },
   { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
   { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
@@ -81,7 +82,6 @@ const ADMIN_ICONS: AppIcon[] = [
 
 const PLATFORM_ICONS: AppIcon[] = [
   { label: 'Settings',  icon: Settings,    href: '/settings',      bg: 'bg-slate-500',    fg: 'text-white' },
-  { label: 'Billing',   icon: CreditCard,  href: '/billing',       bg: 'bg-emerald-600',  fg: 'text-white' },
   { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',     fg: 'text-white' },
   { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',      fg: 'text-white' },
 ];

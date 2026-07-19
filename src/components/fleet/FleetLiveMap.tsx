@@ -278,6 +278,40 @@ export default function FleetLiveMap() {
 
         // Do NOT pass center/zoom to constructor — doing so triggers _resetView
         // → _rawPanBy before panes have _leaflet_pos, causing a crash.
+        // Patch _rawPanBy on the prototype BEFORE L.map() so any internal call
+        // during construction is safe. This is the only reliable intercept point
+        // because Leaflet's internal getPosition is closure-local (not the export).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const MapProto = (L as any).Map?.prototype;
+        if (MapProto && !MapProto.__airo_rawpan_patched) {
+          // Patch _getMapPanePos — called by _rawPanBy; crashes when _mapPane
+          // or its _leaflet_pos is not yet initialised.
+          const _origGetPanePos = MapProto._getMapPanePos;
+          MapProto._getMapPanePos = function safeGetMapPanePos() {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pane = this._mapPane as any;
+              if (!pane) return (L as any).point(0, 0);
+              if (!pane._leaflet_pos) pane._leaflet_pos = (L as any).point(0, 0);
+              return _origGetPanePos.call(this);
+            } catch (_) {
+              return (L as any).point(0, 0);
+            }
+          };
+
+          const _origRawPan = MapProto._rawPanBy;
+          MapProto._rawPanBy = function safeRawPanBy(offset: unknown) {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pane = this._mapPane as any;
+              if (pane && !pane._leaflet_pos) pane._leaflet_pos = (L as any).point(0, 0);
+              return _origRawPan.call(this, offset);
+            } catch (_) { /* swallow */ }
+          };
+
+          MapProto.__airo_rawpan_patched = true;
+        }
+
         const map = L.map(container, {
           zoomControl: false,
           attributionControl: true,
