@@ -279,35 +279,48 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // getPosition() at leaflet.js:1570 is a closure-local variable — patching
-        // L.DomUtil.getPosition has no effect on it. The only reliable fix is to
-        // override _getMapPanePos on the prototype so it never calls that closure,
-        // instead reading _leaflet_pos directly (which is all getPosition does).
-        // We always re-apply — no guard flag — so HMR remounts stay protected.
+        // getPosition() at leaflet.js:1570 is a closure-local `var` captured at
+        // module parse time — patching DomUtil.getPosition has NO effect on it.
+        // The crash fires inside _rawPanBy → _getMapPanePos → getPosition(mapPane)
+        // when mapPane._leaflet_pos is undefined (pane created but never positioned).
+        // Fix: patch _rawPanBy on the prototype to seed _leaflet_pos on the mapPane
+        // BEFORE the closure-local getPosition reads it.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
         const MapProto = Lany.Map?.prototype;
         if (MapProto) {
-          // Override _getMapPanePos to bypass the closure-local getPosition entirely
-          MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const self = this as any;
-            if (!self._mapPane) return Lany.point(0, 0);
-            // Seed _leaflet_pos if missing — same as what setPosition() would do
-            if (!self._mapPane._leaflet_pos) {
-              self._mapPane._leaflet_pos = Lany.point(0, 0);
-            }
-            return self._mapPane._leaflet_pos;
-          };
-          // Also guard _rawPanBy which calls _getMapPanePos during construction
-          const origRawPanBy = MapProto._rawPanBy;
+          const origRawPanBy = MapProto._rawPanBy as (...a: unknown[]) => unknown;
           MapProto._rawPanBy = function safeRawPanBy(this: unknown, ...args: unknown[]) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const self = this as any;
+            // Seed _leaflet_pos on every pane that is missing it
+            if (self._panes) {
+              Object.values(self._panes as Record<string, HTMLElement>).forEach((pane) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (pane && !(pane as any)._leaflet_pos) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (pane as any)._leaflet_pos = Lany.point(0, 0);
+                }
+              });
+            }
             if (self._mapPane && !self._mapPane._leaflet_pos) {
               self._mapPane._leaflet_pos = Lany.point(0, 0);
             }
             try { return origRawPanBy.apply(this, args); } catch (_) { /* ignore */ }
+          };
+
+          // Also guard _getMapPanePos as belt-and-suspenders
+          MapProto._getMapPanePos = function safeGetMapPanePos(this: unknown) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const self = this as any;
+            if (!self._mapPane) return Lany.point(0, 0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(self._mapPane as any)._leaflet_pos) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (self._mapPane as any)._leaflet_pos = Lany.point(0, 0);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (self._mapPane as any)._leaflet_pos;
           };
         }
 
