@@ -2700,6 +2700,22 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 	registerAdSenseTextRoutes(app, adSenseRuntimeConfig);
 
+	// ── Stale Leaflet dep-cache eviction ─────────────────────────────────────
+	// The browser may have a pre-bundled leaflet.js cached from before Leaflet
+	// was removed. Intercept any request whose path contains "leaflet" and
+	// return an empty ES module with no-store headers so the browser discards
+	// its cached copy on the next load.
+	app.use((req, res, next) => {
+		if (req.path.toLowerCase().includes('leaflet')) {
+			res.set('Content-Type', 'application/javascript');
+			res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+			res.set('Pragma', 'no-cache');
+			res.set('Expires', '0');
+			return res.send('// leaflet removed\nexport default {};\n');
+		}
+		next();
+	});
+
 	app.use(
 		express.static(clientDir, {
 			index: false,

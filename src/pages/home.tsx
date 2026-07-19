@@ -94,13 +94,16 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
   const Icon = item.icon;
   return (
     <motion.button
-      whileTap={{ scale: 0.88 }}
+      whileTap={{ scale: 0.85 }}
+      whileHover={{ scale: 1.04 }}
       onClick={() => onNavigate(item.href)}
       className="flex flex-col items-center gap-1.5 group"
     >
       <div
-        className={`w-[60px] h-[60px] rounded-[16px] ${item.bg} ${item.fg} flex items-center justify-center relative shadow-md`}
-        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.13)' }}
+        className={`w-[62px] h-[62px] rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative`}
+        style={{
+          boxShadow: '0 4px 12px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.18)',
+        }}
       >
         <Icon size={26} strokeWidth={1.9} />
         {item.badge != null && item.badge > 0 && (
@@ -109,7 +112,7 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
           </span>
         )}
       </div>
-      <span className="text-[11px] text-gray-600 font-medium text-center leading-tight max-w-[68px]">
+      <span className="text-[11px] text-gray-600 font-semibold text-center leading-tight max-w-[68px]">
         {item.label}
       </span>
     </motion.button>
@@ -120,12 +123,21 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
 
 function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]; onNavigate: (href: string) => void }) {
   return (
-    <div className="px-5">
-      <p className="text-[11px] font-semibold text-gray-400 mb-3 px-0.5 uppercase tracking-wide">{label}</p>
-      <div className="grid grid-cols-4 gap-x-3 gap-y-5">
-        {icons.map((item) => (
-          <IconTile key={item.label} item={item} onNavigate={onNavigate} />
-        ))}
+    <div className="px-4">
+      <div
+        className="rounded-2xl px-4 pt-3.5 pb-5"
+        style={{
+          background: 'rgba(255,255,255,0.82)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)',
+        }}
+      >
+        <p className="text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-widest">{label}</p>
+        <div className="grid grid-cols-4 gap-x-2 gap-y-5">
+          {icons.map((item) => (
+            <IconTile key={item.label} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1747,14 +1759,50 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(160deg, #f0f4f8 0%, #e8edf3 35%, #f5f0eb 70%, #f0f4f8 100%)' }}
+      >
         <div className="w-8 h-8 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(160deg, #f0f4f8 0%, #e8edf3 35%, #f5f0eb 70%, #f0f4f8 100%)',
+      }}
+    >
+      {/* Subtle grid texture overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px)
+          `,
+          backgroundSize: '32px 32px',
+          opacity: 0.6,
+        }}
+      />
+      {/* Radial glow — top right warm accent */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: '-80px', right: '-80px',
+          width: '320px', height: '320px',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%)',
+        }}
+      />
+      {/* Radial glow — bottom left cool accent */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          bottom: '80px', left: '-60px',
+          width: '260px', height: '260px',
+          background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)',
+        }}
+      />
       {/* Backdrop watermark */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -1763,9 +1811,10 @@ export default function HomeScreen() {
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center 40%',
           backgroundSize: '55%',
-          opacity: 0.12,
+          opacity: 0.07,
         }}
       />
+
       {/* All content above the overlay */}
       <div className="relative z-10 flex flex-col flex-1">
       <Helmet>
@@ -1777,24 +1826,30 @@ export default function HomeScreen() {
       <h1 className="sr-only">IWILLBUILD Home</h1>
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-100 px-5 pt-5 pb-4" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05)' }}>
+      <div
+        className="px-5 pt-5 pb-4"
+        style={{
+          background: 'linear-gradient(135deg, #1a1f2e 0%, #232b3a 60%, #2a1f14 100%)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-gray-400 text-xs font-medium">{dateStr}</p>
-            <p className="text-gray-900 font-bold text-xl leading-tight mt-0.5">
+            <p className="text-orange-300/70 text-xs font-medium">{dateStr}</p>
+            <p className="text-white font-bold text-xl leading-tight mt-0.5">
               {greeting}, {firstName}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Notification bell — wrapped to invert for light bg */}
-            <div className="[&_button]:text-gray-500 [&_button:hover]:text-gray-800 [&_button]:bg-gray-100 [&_button]:rounded-full [&_button]:p-2">
+            {/* Notification bell */}
+            <div className="[&_button]:text-gray-300 [&_button:hover]:text-white [&_button]:bg-white/10 [&_button]:rounded-full [&_button]:p-2">
               <NotificationBell />
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"
+              className="w-10 h-10 rounded-full bg-orange-500/20 border border-orange-400/30 flex items-center justify-center"
             >
-              <User size={18} className="text-orange-500" />
+              <User size={18} className="text-orange-300" />
             </button>
           </div>
         </div>
@@ -1817,7 +1872,7 @@ export default function HomeScreen() {
       </AnimatePresence>
 
       {/* ── Scrollable icon grid ── */}
-      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-7">
+      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-4">
 
         <Section label="Field" icons={FIELD_ICONS} onNavigate={handleNavigate} />
 
@@ -1835,13 +1890,24 @@ export default function HomeScreen() {
       </div>
 
       {/* ── Bottom bar — Home ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3" style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)' }}>
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3"
+        style={{
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(16px)',
+          boxShadow: '0 -1px 0 rgba(0,0,0,0.08), 0 -4px 16px rgba(0,0,0,0.06)',
+        }}
+      >
         <button
           onClick={() => setDashOpen(true)}
-          className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-2xl py-3.5 transition-colors shadow-sm"
+          className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 transition-colors"
+          style={{
+            background: 'linear-gradient(135deg, #f97316 0%, #ea6c0a 100%)',
+            boxShadow: '0 4px 14px rgba(249,115,22,0.35)',
+          }}
         >
           <LayoutDashboard size={16} className="text-white" />
-          <span className="text-white text-sm font-bold">Home</span>
+          <span className="text-white text-sm font-bold">Dashboard</span>
           <ChevronUp size={14} className="text-white/70" />
         </button>
       </div>

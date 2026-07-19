@@ -198,10 +198,57 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // chunk never executes and throws _leaflet_pos errors.
     // ---------------------------------------------------------------------------
     {
+      // Stale Leaflet dep-cache eviction
+      // The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a
+      // cached from before Leaflet was removed. We intercept at three levels:
+      // 1. Vite `load` hook — returns empty module for any leaflet module ID
+      // 2. Vite `transform` hook — strips any leaflet content that slips through
+      // 3. configureServer middleware — intercepts HTTP requests before Vite's
+      //    own dep-serving middleware by prepending (not appending) to the stack
       name: 'evict-stale-leaflet-dep',
+      enforce: 'pre' as const,
+      resolveId(id: string) {
+        if (/leaflet/i.test(id)) return '\0leaflet-stub';
+        return null;
+      },
+      load(id: string) {
+        if (id === '\0leaflet-stub' || /leaflet/i.test(id)) {
+          return 'export default {};\nexport const map = () => ({});\nexport const tileLayer = () => ({});\n';
+        }
+        return null;
+      },
       configureServer(server: ViteDevServer) {
+        // Prepend so this runs BEFORE Vite's own static dep serving
+        server.middlewares.use('/node_modules/.vite/deps', (req, res, next) => {
+          const url = req.url ?? '';
+          if (url.includes('leaflet')) {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.end('// leaflet removed\nexport default {};\n');
+            return;
+          }
+          next();
+        });
+        // Also catch the full path variant
         server.middlewares.use((req, res, next) => {
-          if (req.url && req.url.includes('leaflet.js')) {
+          const url = req.url ?? '';
+          if (url.includes('leaflet')) {
+            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.end('// leaflet removed\nexport default {};\n');
+            return;
+          }
+          next();
+        });
+      },
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url ?? '';
+          if (url.includes('leaflet')) {
             res.setHeader('Content-Type', 'application/javascript');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
             res.end('// leaflet removed\nexport default {};\n');
