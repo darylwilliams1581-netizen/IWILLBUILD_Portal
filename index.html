@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v22 -->
+  <!-- cache-bust: v23 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -170,6 +170,43 @@
             history.replaceState(null, '', u.toString());
           }
         } catch (e) {}
+      })();
+    </script>
+    <script>
+      // ── Leaflet stale-cache neutraliser ───────────────────────────────────────
+      // The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a
+      // cached from before Leaflet was removed. Even though the server returns
+      // an empty stub, the browser can serve the real file from disk cache
+      // without making a network request. We neutralise it by:
+      // 1. Pre-defining window.L as a frozen no-op proxy so leaflet's self-init
+      //    code finds "L already defined" and exits early.
+      // 2. Overriding XMLHttpRequest and fetch for any leaflet.js URL to return
+      //    an empty ES module body, preventing the cached script from executing.
+      (function () {
+        // Freeze window.L so leaflet cannot overwrite it
+        try {
+          Object.defineProperty(window, 'L', {
+            get: function () { return {}; },
+            set: function () { /* no-op — prevent leaflet from installing itself */ },
+            configurable: false,
+          });
+        } catch (_) {}
+
+        // Intercept fetch for the stale leaflet dep URL
+        var _fetch = window.fetch;
+        window.fetch = function (input, init) {
+          try {
+            var url = typeof input === 'string' ? input
+                    : (input && input.url) ? input.url : String(input);
+            if (url.indexOf('leaflet') !== -1) {
+              return Promise.resolve(new Response(
+                'export default {};\n',
+                { status: 200, headers: { 'Content-Type': 'application/javascript' } }
+              ));
+            }
+          } catch (_) {}
+          return _fetch.apply(this, arguments);
+        };
       })();
     </script>
     <meta name="referrer" content="same-origin" />

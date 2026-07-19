@@ -16,6 +16,7 @@ import {
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,
+  History,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -84,8 +85,9 @@ const ADMIN_ICONS: AppIcon[] = [
 ];
 
 const PLATFORM_ICONS: AppIcon[] = [
-  { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',     fg: 'text-white' },
-  { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',      fg: 'text-white' },
+  { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',   fg: 'text-white' },
+  { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',    fg: 'text-white' },
+  { label: 'Old View',  icon: History,     href: '/dashboard',     bg: 'bg-slate-500',  fg: 'text-white' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
