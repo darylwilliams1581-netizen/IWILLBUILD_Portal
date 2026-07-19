@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v23 -->
+  <!-- cache-bust: v25 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -177,7 +177,24 @@
       // Registers a SW that intercepts leaflet.js?v=05d76b4a at the fetch level,
       // even when the browser serves it from disk cache without a network request.
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
+        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=4', { scope: '/' })
+          .then(function(reg) {
+            reg.update();
+            // If a new SW just installed and is waiting, activate it immediately
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+            reg.addEventListener('updatefound', function() {
+              var newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              }
+            });
+          })
           .catch(function() {});
       }
     </script>

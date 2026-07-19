@@ -30,7 +30,8 @@ import {
   RefreshCw,
   ShieldAlert,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
@@ -506,6 +507,7 @@ export default function TeamPage() {
   const [actionMsg, setActionMsg] = useState('');
 
   const { isOwner, isAdmin } = usePermissions();
+  const navigate = useNavigate();
 
   const canManageVerification = isOwner || isAdmin;
 
@@ -623,7 +625,7 @@ export default function TeamPage() {
   ];
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <Helmet>
         <title>Team — IWILLBUILD Portal</title>
         <meta name="description" content="Manage team members, roles and access for the IWILLBUILD portal." />
@@ -640,14 +642,19 @@ export default function TeamPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
-
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <Users size={20} className="text-primary" />
-            <h1 className="font-heading font-bold text-lg">Team</h1>
+            <button
+              onClick={() => navigate('/home')}
+              className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Back to Home"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <Users size={18} className="text-primary shrink-0" />
+            <h1 className="font-heading font-bold text-base md:text-lg">Team</h1>
             {!loading && (
               <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">
                 {members.filter(m => m.status !== 'inactive').length} member{members.filter(m => m.status !== 'inactive').length !== 1 ? 's' : ''}
