@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v21 -->
+  <!-- cache-bust: v32 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -12,6 +12,47 @@
       // the identifier is defined when the frozen module body executes.
       window.SOSAlertPopup = function SOSAlertPopup() { return null; };
       globalThis.SOSAlertPopup = window.SOSAlertPopup;
+
+      // ── Leaflet stub service worker ───────────────────────────────────────────
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/leaflet-kill-sw.js', { scope: '/' })
+          .catch(function() {});
+      }
+
+      // ── Suppress stale leaflet _leaflet_pos errors ────────────────────────────
+      // leaflet.js?v=05d76b4a may still be in the browser module registry from a
+      // previous session. Its _rawPanBy loop calls getPosition(undefined) which
+      // throws "Cannot read properties of undefined (reading '_leaflet_pos')".
+      // Fix: patch Object.prototype so _leaflet_pos reads on undefined/null are safe,
+      // wrap rAF to swallow leaflet callbacks, and suppress via window.onerror.
+      try {
+        if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
+          var _lp = { x: 0, y: 0 };
+          Object.defineProperty(Object.prototype, '_leaflet_pos', {
+            get: function() { return (this && this.__lp__) ? this.__lp__ : _lp; },
+            set: function(v) { if (this) this.__lp__ = v; },
+            configurable: true, enumerable: false
+          });
+        }
+      } catch(_) {}
+      window.addEventListener('error', function(e) {
+        var m = String(e && e.message ? e.message : '');
+        var s = String(e && e.filename ? e.filename : '');
+        if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation();
+        }
+      }, true);
+      (function() {
+        var _raf = window.requestAnimationFrame.bind(window);
+        window.requestAnimationFrame = function(cb) {
+          return _raf(function(ts) {
+            try { cb(ts); } catch(e) {
+              var s = String(e && e.stack ? e.stack : e);
+              if (s.indexOf('leaflet') === -1 && s.indexOf('_leaflet_pos') === -1) throw e;
+            }
+          });
+        };
+      })();
     </script>
     <script>
       // ── Frozen HMR snapshot pre-empt v18 ─────────────────────────────────────
@@ -79,6 +120,10 @@
           var u = new URL(location.href);
           if (u.searchParams.has('_sos')) {
             u.searchParams.delete('_sos');
+            history.replaceState(null, '', u.toString());
+          }
+          if (u.searchParams.has('_lkill')) {
+            u.searchParams.delete('_lkill');
             history.replaceState(null, '', u.toString());
           }
           // Clean up old guard keys from previous versions.
@@ -172,7 +217,20 @@
         } catch (e) {}
       })();
     </script>
-    <meta name="referrer" content="same-origin" />
+
+    <script>
+      // Unregister the old leaflet-kill service worker — it is no longer needed.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) {
+            if (reg.scope && reg.active && reg.active.scriptURL &&
+                reg.active.scriptURL.indexOf('leaflet-kill') !== -1) {
+              reg.unregister();
+            }
+          });
+        }).catch(function(){});
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.svg" />
@@ -186,11 +244,11 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-CsUIj70i.js"></script>
+    <script type="module" crossorigin src="/assets/index-DM22-dxv.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-vendor-C23BF34b.js">
     <link rel="modulepreload" crossorigin href="/assets/document-vendor-BWJGTITm.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-CJcKS1eY.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-DoQLNqhv.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-fYQac5B7.css">
   </head>
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>
