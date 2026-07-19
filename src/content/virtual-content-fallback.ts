@@ -53,4 +53,8 @@ export const roadmap: {
   }>;
 } = { phases: [], GATES: [] };
 
-export const studio: { ALL_TYPES: string[] } = { ALL_TYPES: [] };
+export const studio: { ALL_TYPES: string[]; CATEGORIES: string[] } = { ALL_TYPES: [], CATEGORIES: [] };
+
+export const driver: {
+  COST_CATEGORIES: Array<{ value: string; label: string; id: string }>;
+} = { COST_CATEGORIES: [] };
