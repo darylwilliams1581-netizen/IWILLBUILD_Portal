@@ -28,6 +28,7 @@ import DataBackupTab from '@/components/settings/DataBackupTab';
 import IntegrationsTab from '@/components/settings/IntegrationsTab';
 import AccountingTab from '@/components/settings/AccountingTab';
 import CompanyTab from '@/components/settings/CompanyTab';
+import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 import { Skeleton } from '@/components/ui/skeleton';
 

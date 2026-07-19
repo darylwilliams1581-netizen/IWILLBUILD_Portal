@@ -308,22 +308,25 @@ export default function FleetLiveMap() {
           };
         }
 
-        // Store original proto methods BEFORE any wrapping (used by instance patch below)
-        const _origGetPanePos = MapProto?.__origGetPanePos ?? MapProto?._getMapPanePos;
-        const _origRawPanBy   = MapProto?.__origRawPanBy   ?? MapProto?._rawPanBy;
-        if (MapProto && !MapProto.__origGetPanePos) MapProto.__origGetPanePos = _origGetPanePos;
-        if (MapProto && !MapProto.__origRawPanBy)   MapProto.__origRawPanBy   = _origRawPanBy;
-
-        // Patch DomUtil.getPosition — this is the closure-local function that reads
-        // el._leaflet_pos directly. Patching it at the module level guards every call site.
-        if (Lany.DomUtil && !Lany.DomUtil.__patchedGetPosition) {
-          Lany.DomUtil.__patchedGetPosition = true;
-          const _origDomGetPos = Lany.DomUtil.getPosition;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          Lany.DomUtil.getPosition = function safeGetPosition(el: any) {
-            if (!el) return Lany.point(0, 0);
-            if (!el._leaflet_pos) el._leaflet_pos = Lany.point(0, 0);
-            return _origDomGetPos(el);
+        // ── Prototype patches — MUST run before L.map() because _rawPanBy is called
+        // during map construction (inside setView). Instance patches are too late.
+        // _rawPanBy → _getMapPanePos → closure-local getPosition(el) reads el._leaflet_pos.
+        // We replace _rawPanBy entirely so it never reaches that closure.
+        if (MapProto && !MapProto.__patchedRawPanBy) {
+          MapProto.__patchedRawPanBy = true;
+          MapProto._rawPanBy = function safeRawPanBy(offset: { x: number; y: number }) {
+            try {
+              const pane = this._mapPane as HTMLElement | undefined;
+              if (!pane) return;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const e = pane as any;
+              if (!e._leaflet_pos || typeof e._leaflet_pos !== 'object') {
+                e._leaflet_pos = Lany.point(0, 0);
+              }
+              const cur = e._leaflet_pos;
+              const next = Lany.point(cur.x + (offset?.x ?? 0), cur.y + (offset?.y ?? 0));
+              Lany.DomUtil.setPosition(pane, next);
+            } catch (_) { /* swallow */ }
           };
         }
 
@@ -337,23 +340,13 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
-        // ── Instance-level patch (runs AFTER _mapPane exists) ─────────────────
-        // Calls the stored ORIGINAL proto methods — never the wrapped versions.
+        // Seed all panes after construction as a belt-and-suspenders guard
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const m = map as any;
+          seedPos(m._mapPane);
           const panes = m._panes as Record<string, HTMLElement> | undefined;
           if (panes) Object.values(panes).forEach(seedPos);
-          seedPos(m._mapPane);
-
-          m._getMapPanePos = function safeGetPanePos() {
-            try { seedPos(this._mapPane); return _origGetPanePos.call(this); }
-            catch (_) { return Lany.point(0, 0); }
-          };
-          m._rawPanBy = function safeRawPanBy(offset: unknown) {
-            try { seedPos(this._mapPane); return _origRawPanBy.call(this, offset); }
-            catch (_) { /* swallow */ }
-          };
         } catch (_) { /* ignore */ }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
