@@ -11,7 +11,7 @@ import {
 import ShareLinkModal from '@/components/ShareLinkModal';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+
 import JobContextTab from '@/components/JobContextTab';
 import CustomerSelector from '@/components/CustomerSelector';
 import { usePermissions } from '@/lib/usePermissions';
@@ -574,21 +574,18 @@ export default function InvoiceBuilderPage() {
   const inp = 'w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white disabled:bg-slate-50 disabled:text-muted-foreground';
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5';
 
-  function openMobileMenu() { window.dispatchEvent(new Event('portal:open-menu')); }
+
 
   if (!permLoading && !canInvoices) {
     return (
-      <div className="portal-page">
-        <PortalSidebar />
-        <div className="portal-content flex items-center justify-center py-20">
-          <p className="text-muted-foreground text-sm">No invoice permission.</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">No invoice permission.</p>
       </div>
     );
   }
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWILLBUILD Portal</title>
         <meta name="description" content={isNew ? 'Create a new invoice.' : `Edit invoice ${invoiceNumber}.`} />
@@ -596,16 +593,22 @@ export default function InvoiceBuilderPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <PortalSidebar />
+      {/* Standalone top bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={() => navigate('/invoices')}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft size={16} />
+          <span>Invoices</span>
+        </button>
+        <span className="text-gray-300">|</span>
+        <span className="text-sm font-semibold text-gray-800 truncate">
+          {isNew ? 'New Invoice' : invoiceNumber ? `Invoice ${invoiceNumber}` : 'Invoice'}
+        </span>
+      </div>
 
-      <div className="portal-content">
-        {/* Back + title */}
-        <div className="flex items-center gap-3 mb-5">
-          <MobileMenuButton onClick={openMobileMenu} />
-          <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={14} />Invoices
-          </button>
-        </div>
+      <div className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full">
 
         {loading && (
           <div className="flex items-center justify-center py-20">
@@ -620,7 +623,7 @@ export default function InvoiceBuilderPage() {
         )}
 
         {!loading && !error && (
-          <div className="flex flex-col gap-5 max-w-4xl">
+          <div className="flex flex-col gap-5">
 
             {/* Sent banner */}
             {!isNew && isSent && (
