@@ -219,6 +219,79 @@ export default async function handler(_req: Request, res: Response) {
     )
   `);
 
+  // ── am_assets equipment columns (idempotent ALTER) ────────────────────────
+  const equipmentAlters: [string, string][] = [
+    ['asset_number',       `ALTER TABLE am_assets ADD COLUMN asset_number VARCHAR(100) NULL`],
+    ['make',               `ALTER TABLE am_assets ADD COLUMN make VARCHAR(150) NULL`],
+    ['model',              `ALTER TABLE am_assets ADD COLUMN model VARCHAR(150) NULL`],
+    ['serial_number',      `ALTER TABLE am_assets ADD COLUMN serial_number VARCHAR(150) NULL`],
+    ['purchase_or_hire',   `ALTER TABLE am_assets ADD COLUMN purchase_or_hire VARCHAR(20) NOT NULL DEFAULT 'owned'`],
+    ['hire_company',       `ALTER TABLE am_assets ADD COLUMN hire_company VARCHAR(255) NULL`],
+    ['hire_start_date',    `ALTER TABLE am_assets ADD COLUMN hire_start_date DATE NULL`],
+    ['hire_end_date',      `ALTER TABLE am_assets ADD COLUMN hire_end_date DATE NULL`],
+    ['condition_rating',   `ALTER TABLE am_assets ADD COLUMN condition_rating VARCHAR(30) NULL`],
+    ['current_location',   `ALTER TABLE am_assets ADD COLUMN current_location VARCHAR(255) NULL`],
+    ['assigned_job_id',    `ALTER TABLE am_assets ADD COLUMN assigned_job_id INT NULL`],
+    ['assigned_person_name',`ALTER TABLE am_assets ADD COLUMN assigned_person_name VARCHAR(255) NULL`],
+    ['last_inspection_date',`ALTER TABLE am_assets ADD COLUMN last_inspection_date DATE NULL`],
+    ['next_inspection_due', `ALTER TABLE am_assets ADD COLUMN next_inspection_due DATE NULL`],
+    ['calibration_due',    `ALTER TABLE am_assets ADD COLUMN calibration_due DATE NULL`],
+    ['certificate_expiry', `ALTER TABLE am_assets ADD COLUMN certificate_expiry DATE NULL`],
+    ['last_service_date',  `ALTER TABLE am_assets ADD COLUMN last_service_date DATE NULL`],
+    ['next_service_date',  `ALTER TABLE am_assets ADD COLUMN next_service_date DATE NULL`],
+    ['service_interval_days',`ALTER TABLE am_assets ADD COLUMN service_interval_days INT NULL`],
+    ['service_notes',      `ALTER TABLE am_assets ADD COLUMN service_notes TEXT NULL`],
+    ['purchase_date',      `ALTER TABLE am_assets ADD COLUMN purchase_date DATE NULL`],
+    ['purchase_price',     `ALTER TABLE am_assets ADD COLUMN purchase_price DECIMAL(12,2) NULL`],
+  ];
+  for (const [col, ddl] of equipmentAlters) {
+    await run(`am_assets.${col}`, ddl);
+  }
+
+  // ── am_equipment_costs ─────────────────────────────────────────────────────
+  await run('am_equipment_costs', `
+    CREATE TABLE IF NOT EXISTS am_equipment_costs (
+      id             INT AUTO_INCREMENT PRIMARY KEY,
+      asset_id       INT           NOT NULL,
+      company_id     INT           NOT NULL,
+      cost_type      VARCHAR(60)   NOT NULL DEFAULT 'service',
+      description    VARCHAR(500)  NOT NULL,
+      amount         DECIMAL(12,2) NOT NULL DEFAULT 0,
+      cost_date      DATE          NOT NULL,
+      supplier       VARCHAR(255)  NULL,
+      invoice_ref    VARCHAR(100)  NULL,
+      notes          TEXT          NULL,
+      created_by     VARCHAR(36)   NULL,
+      created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_asset   (asset_id),
+      INDEX idx_company (company_id)
+    )
+  `);
+
+  // ── am_service_logs ────────────────────────────────────────────────────────
+  await run('am_service_logs', `
+    CREATE TABLE IF NOT EXISTS am_service_logs (
+      id                INT           AUTO_INCREMENT PRIMARY KEY,
+      asset_id          INT           NOT NULL,
+      company_id        INT           NOT NULL,
+      service_type      VARCHAR(60)   NOT NULL DEFAULT 'routine',
+      title             VARCHAR(255)  NOT NULL,
+      service_date      DATE          NOT NULL,
+      next_service_date DATE          NULL,
+      provider          VARCHAR(255)  NULL,
+      cost              DECIMAL(12,2) NULL,
+      notes             TEXT          NULL,
+      created_by        VARCHAR(36)   NULL,
+      created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_asset   (asset_id),
+      INDEX idx_company (company_id)
+    )
+  `);
+
+
+
   const failed = results.filter(r => r.startsWith('✗'));
   return res.status(failed.length ? 500 : 200).json({ results, ok: failed.length === 0 });
 }
