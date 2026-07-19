@@ -46,22 +46,18 @@ export default function JobDrawingsPage() {
           >
             <ArrowLeft size={20} />
           </button>
-          <div className="w-8 h-8 rounded-xl bg-lime-100 flex items-center justify-center shrink-0">
-            <Layers size={16} className="text-lime-600" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
           </div>
-          <div className="min-w-0">
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
+            <h1 className="text-sm font-bold text-slate-900 truncate text-center w-full">{job?.name ?? 'Loading…'}</h1>
             <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-              <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={22} /></button>
-              <span>/</span>
               <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
               <span>/</span>
-              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
+              <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
               <span>/</span>
-              <span className="text-gray-600 font-medium">Drawings</span>
+              <span className="text-gray-500 font-medium">Drawings</span>
             </div>
-            <h1 className="text-sm font-bold text-slate-900 truncate">
-              {job?.name ?? 'Loading…'}
-            </h1>
           </div>
         </div>
 

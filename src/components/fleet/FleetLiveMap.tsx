@@ -279,28 +279,21 @@ export default function FleetLiveMap() {
         });
 
         // ── Leaflet _leaflet_pos crash fix ─────────────────────────────────────
-        // The bundled leaflet.js uses a closure-local `getPosition(el)` that reads
-        // `el._leaflet_pos` directly — no prototype patch can intercept it.
-        // Strategy: use Object.defineProperty on every pane element so that reading
-        // `_leaflet_pos` auto-initialises to L.point(0,0) if the property is missing.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
 
-        /** Force _leaflet_pos to a safe value — always assign, never skip */
+        /** Force _leaflet_pos to a safe zero point if missing or invalid */
         function seedPos(el: HTMLElement | null | undefined) {
           if (!el) return;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const e = el as any;
-          // If already a real point object, leave it alone
           if (e._leaflet_pos && typeof e._leaflet_pos === 'object' && 'x' in e._leaflet_pos) return;
-          // Otherwise force-assign a safe zero point
           try { e._leaflet_pos = Lany.point(0, 0); } catch (_) { /* ignore */ }
         }
 
-        // Seed the container itself
         seedPos(container);
 
-        // Patch _initPanes so every pane is seeded immediately after creation
+        // Patch _initPanes once so every new pane gets seeded on creation
         const MapProto = Lany.Map?.prototype;
         if (MapProto && !MapProto.__patchedInitPanes) {
           MapProto.__patchedInitPanes = true;
@@ -315,21 +308,22 @@ export default function FleetLiveMap() {
           };
         }
 
-        // Prototype-level guards — always re-apply (named wrappers are idempotent)
-        if (MapProto) {
-          const _origGetPanePos = MapProto._getMapPanePos;
-          MapProto._getMapPanePos = function safeGetMapPanePos() {
-            try {
-              seedPos(this._mapPane);
-              return _origGetPanePos.call(this);
-            } catch (_) { return Lany.point(0, 0); }
-          };
-          const _origRawPan = MapProto._rawPanBy;
-          MapProto._rawPanBy = function safeRawPanBy(offset: unknown) {
-            try {
-              seedPos(this._mapPane);
-              return _origRawPan.call(this, offset);
-            } catch (_) { /* swallow */ }
+        // Store original proto methods BEFORE any wrapping (used by instance patch below)
+        const _origGetPanePos = MapProto?.__origGetPanePos ?? MapProto?._getMapPanePos;
+        const _origRawPanBy   = MapProto?.__origRawPanBy   ?? MapProto?._rawPanBy;
+        if (MapProto && !MapProto.__origGetPanePos) MapProto.__origGetPanePos = _origGetPanePos;
+        if (MapProto && !MapProto.__origRawPanBy)   MapProto.__origRawPanBy   = _origRawPanBy;
+
+        // Patch DomUtil.getPosition — this is the closure-local function that reads
+        // el._leaflet_pos directly. Patching it at the module level guards every call site.
+        if (Lany.DomUtil && !Lany.DomUtil.__patchedGetPosition) {
+          Lany.DomUtil.__patchedGetPosition = true;
+          const _origDomGetPos = Lany.DomUtil.getPosition;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          Lany.DomUtil.getPosition = function safeGetPosition(el: any) {
+            if (!el) return Lany.point(0, 0);
+            if (!el._leaflet_pos) el._leaflet_pos = Lany.point(0, 0);
+            return _origDomGetPos(el);
           };
         }
 
@@ -344,6 +338,7 @@ export default function FleetLiveMap() {
         });
 
         // ── Instance-level patch (runs AFTER _mapPane exists) ─────────────────
+        // Calls the stored ORIGINAL proto methods — never the wrapped versions.
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const m = map as any;
@@ -351,14 +346,12 @@ export default function FleetLiveMap() {
           if (panes) Object.values(panes).forEach(seedPos);
           seedPos(m._mapPane);
 
-          const protoGetPanePos = Lany.Map.prototype._getMapPanePos;
-          m._getMapPanePos = function safeInstanceGetPanePos() {
-            try { seedPos(this._mapPane); return protoGetPanePos.call(this); }
+          m._getMapPanePos = function safeGetPanePos() {
+            try { seedPos(this._mapPane); return _origGetPanePos.call(this); }
             catch (_) { return Lany.point(0, 0); }
           };
-          const protoRawPanBy = Lany.Map.prototype._rawPanBy;
-          m._rawPanBy = function safeInstanceRawPanBy(offset: unknown) {
-            try { seedPos(this._mapPane); return protoRawPanBy.call(this, offset); }
+          m._rawPanBy = function safeRawPanBy(offset: unknown) {
+            try { seedPos(this._mapPane); return _origRawPanBy.call(this, offset); }
             catch (_) { /* swallow */ }
           };
         } catch (_) { /* ignore */ }

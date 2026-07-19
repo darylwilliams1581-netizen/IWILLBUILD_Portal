@@ -76,40 +76,34 @@ export default function JobDelaysPage() {
         >
           <ArrowLeft size={18} />
         </button>
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-            <Clock size={15} className="text-red-500" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={18} /></button>
           </div>
-          <div className="min-w-0">
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? (
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
             ) : (
               <>
+                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Delays'}</h1>
                 <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><House size={22} /></button>
-                  <span>/</span>
                   <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
                   <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[120px]">{job?.name ?? '...'}</button>
+                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
                   <span>/</span>
-                  <span className="text-gray-600 font-medium">Delays</span>
+                  <span className="text-gray-500 font-medium">Delays</span>
                 </div>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate">
-                  {job?.name ?? 'Job Delays'}
-                </h1>
               </>
             )}
           </div>
+          <button
+            onClick={exportCsv}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors shrink-0"
+          >
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            <span>Export CSV</span>
+          </button>
         </div>
-        <button
-          onClick={exportCsv}
-          disabled={exporting}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 text-xs font-semibold text-gray-600 rounded-lg transition-colors"
-        >
-          {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          Export CSV
-        </button>
-      </div>
 
       {/* ── Mobile: back arrow floats top-left ── */}
       <button
