@@ -597,11 +597,18 @@ export default function InvoiceBuilderPage() {
       {/* Standalone top bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => navigate('/invoices')}
+          onClick={() => navigate('/home')}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft size={16} />
-          <span>Invoices</span>
+          <span>Home</span>
+        </button>
+        <span className="text-gray-300">|</span>
+        <button
+          onClick={() => navigate('/invoices')}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Invoices
         </button>
         <span className="text-gray-300">|</span>
         <span className="text-sm font-semibold text-gray-800 truncate">

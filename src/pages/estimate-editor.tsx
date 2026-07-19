@@ -376,6 +376,14 @@ export default function EstimateEditorPage() {
             >
               <ChevronLeft size={18} />
             </button>
+            <button
+              onClick={() => navigate('/home')}
+              className="hidden sm:flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+              aria-label="Home"
+            >
+              <span>Home</span>
+            </button>
+            <span className="hidden sm:inline text-gray-200 text-xs">|</span>
             <div className="min-w-0">
               <p className="text-gray-400 text-xs font-medium truncate leading-tight">
                 {job ? (job.jobNumber ?? job.name) : 'Estimate'}

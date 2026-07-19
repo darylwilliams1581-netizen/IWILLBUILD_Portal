@@ -267,26 +267,6 @@ export default function FleetLiveMap() {
       import('leaflet').then((L) => {
         if (!container || leafletMapRef.current) return;
 
-        // Patch Map.prototype._getMapPanePos — the actual call site in the stack trace.
-        // Leaflet's _rawPanBy calls this before panes have _leaflet_pos set, crashing.
-        // Patching DomUtil.getPosition doesn't work because Leaflet calls the
-        // module-scoped function directly, bypassing the DomUtil property.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const MapProto = (L as any).Map?.prototype;
-        if (MapProto && typeof MapProto._getMapPanePos === 'function') {
-          const _origGetMapPanePos = MapProto._getMapPanePos;
-          MapProto._getMapPanePos = function patchedGetMapPanePos() {
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const pane = this._mapPane as any;
-              if (!pane || !pane._leaflet_pos) return (L as any).point(0, 0);
-              return _origGetMapPanePos.call(this);
-            } catch (_) {
-              return (L as any).point(0, 0);
-            }
-          };
-        }
-
         // Fix default icon paths (Leaflet + bundlers issue)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -296,6 +276,8 @@ export default function FleetLiveMap() {
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
+        // Do NOT pass center/zoom to constructor — doing so triggers _resetView
+        // → _rawPanBy before panes have _leaflet_pos, causing a crash.
         const map = L.map(container, {
           zoomControl: false,
           attributionControl: true,
@@ -306,15 +288,32 @@ export default function FleetLiveMap() {
           tap: false,
         });
 
-        // Immediately seed _leaflet_pos on the map pane so _rawPanBy never
-        // reads undefined._leaflet_pos. L.map() creates the pane synchronously
-        // but _rawPanBy can fire before setView initialises the position.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapPane = (map as any)._mapPane as HTMLElement | undefined;
-        if (mapPane && !(mapPane as any)._leaflet_pos) {
+        // Immediately seed _leaflet_pos on every pane Leaflet just created.
+        // L.map() creates pane elements synchronously but does NOT set _leaflet_pos
+        // until setView runs. Any code path that calls _rawPanBy before setView
+        // (e.g. invalidateSize) will crash reading undefined._leaflet_pos.
+        // Seeding with point(0,0) makes those reads safe.
+        try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (mapPane as any)._leaflet_pos = (L as any).point(0, 0);
-        }
+          const panes = (map as any)._panes as Record<string, HTMLElement> | undefined;
+          if (panes) {
+            Object.values(panes).forEach((el) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if (el && !(el as any)._leaflet_pos) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (el as any)._leaflet_pos = (L as any).point(0, 0);
+              }
+            });
+          }
+          // Also seed the root map pane directly
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mapPane = (map as any)._mapPane as HTMLElement | undefined;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (mapPane && !(mapPane as any)._leaflet_pos) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (mapPane as any)._leaflet_pos = (L as any).point(0, 0);
+          }
+        } catch (_) { /* ignore */ }
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -323,9 +322,7 @@ export default function FleetLiveMap() {
 
         leafletMapRef.current = map;
 
-        // setView MUST come before invalidateSize — setView initialises the map
-        // panes (_leaflet_pos), so any subsequent invalidateSize/_rawPanBy call
-        // has valid pane elements to read from.
+        // Now safe to setView — panes already have _leaflet_pos seeded above
         try {
           map.setView([-27.4698, 153.0251], 11, { animate: false });
         } catch (_) { /* ignore */ }

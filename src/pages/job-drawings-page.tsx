@@ -40,7 +40,7 @@ export default function JobDrawingsPage() {
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className="p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             aria-label="Back"
           >
