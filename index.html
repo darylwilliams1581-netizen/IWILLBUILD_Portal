@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v26 -->
+  <!-- cache-bust: v27 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -218,12 +218,17 @@
     </script>
     <script>
       // ── Leaflet disk-cache error trap ─────────────────────────────────────────
-      // The browser may serve the old leaflet.js?v=05d76b4a from its HTTP disk
-      // cache without ever hitting the network. When it executes it throws
-      // "_leaflet_pos" TypeErrors. Catch them here and force a hard reload with
-      // a cache-bust param so the browser re-fetches everything fresh.
       (function () {
         var LEAFLET_RELOAD_KEY = '__leaflet_reload_done';
+
+        // If we just arrived via a _lkill cache-bust navigation, clear the guard
+        // so the trap can fire again if leaflet still executes from disk cache.
+        try {
+          if (new URL(location.href).searchParams.has('_lkill')) {
+            sessionStorage.removeItem(LEAFLET_RELOAD_KEY);
+          }
+        } catch (_) {}
+
         function isLeafletError(msg, src) {
           if (msg && msg.indexOf('_leaflet_pos') !== -1) return true;
           if (src && src.indexOf('leaflet') !== -1) return true;
@@ -236,9 +241,6 @@
               e.stopImmediatePropagation && e.stopImmediatePropagation();
               if (!sessionStorage.getItem(LEAFLET_RELOAD_KEY)) {
                 sessionStorage.setItem(LEAFLET_RELOAD_KEY, '1');
-                // location.reload() reuses the module registry in Chromium — the
-                // cached leaflet module stays registered. Use location.href with a
-                // cache-bust param to force a full navigation that clears the registry.
                 var dest = new URL(location.href);
                 dest.searchParams.set('_lkill', String(Date.now()));
                 if ('caches' in window) {
@@ -249,7 +251,7 @@
                   location.href = dest.toString();
                 }
               }
-              return true; // suppress the error from the console
+              return true;
             }
           } catch (_) {}
         }, true);

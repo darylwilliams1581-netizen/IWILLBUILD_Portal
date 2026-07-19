@@ -61,6 +61,7 @@ const FIELD_ICONS: AppIcon[] = [
   { label: 'Drawings',       icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
   { label: 'Builders Calc',  icon: Ruler,          href: '/builders-calc',           bg: 'bg-violet-500',   fg: 'text-white' },
   { label: 'Take-off Pad',   icon: ClipboardList,  href: '/takeoff-pad',             bg: 'bg-sky-500',      fg: 'text-white' },
+  { label: 'Equipment',      icon: Wrench,         href: '/studio/asset-manager',    bg: 'bg-rose-500',     fg: 'text-white' },
 ];
 
 const ESTIMATING_ICONS: AppIcon[] = [
@@ -78,7 +79,6 @@ const ADMIN_ICONS: AppIcon[] = [
   { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
   { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
   { label: 'Billing',   icon: CreditCard,  href: '/billing',               bg: 'bg-teal-600',     fg: 'text-white' },
-  { label: 'Equipment', icon: Wrench,      href: '/studio/asset-manager',  bg: 'bg-rose-500',     fg: 'text-white' },
   { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
   { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
   { label: 'Settings',  icon: Settings,    href: '/settings',              bg: 'bg-slate-500',    fg: 'text-white' },
