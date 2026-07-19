@@ -21,6 +21,13 @@ interface SharePhoto {
   url: string | null;
 }
 
+/** Resolve the best available URL for a photo — signed URL if present, proxy fallback otherwise */
+function photoUrl(token: string, photo: SharePhoto): string | null {
+  if (photo.url) return photo.url;
+  // Fall back to the public proxy route (no auth required, token-gated)
+  return `/api/public/job-photos/${token}/photo/${photo.id}`;
+}
+
 interface ShareData {
   job: { id: number; name: string; jobNumber: string | null };
   photos: SharePhoto[];
@@ -121,6 +128,7 @@ export default function PhotoSharePage() {
   }
 
   const { job, expiresAt } = data;
+  const tok = token ?? '';
 
   return (
     <>
@@ -184,9 +192,9 @@ export default function PhotoSharePage() {
                   onClick={() => setLightbox(idx)}
                   className="group relative aspect-square rounded-lg md:rounded-xl overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 >
-                  {photo.url ? (
+                  {photoUrl(tok, photo) ? (
                     <img
-                      src={photo.url}
+                      src={photoUrl(tok, photo)!}
                       alt={photo.label ?? photo.originalName ?? `Photo ${idx + 1}`}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading={idx < 9 ? 'eager' : 'lazy'}
@@ -263,9 +271,9 @@ export default function PhotoSharePage() {
                 {lightbox + 1} / {photos.length}
               </span>
               <div className="flex items-center gap-2">
-                {photos[lightbox].url && (
+                {photoUrl(tok, photos[lightbox]) && (
                   <a
-                    href={photos[lightbox].url!}
+                    href={photoUrl(tok, photos[lightbox])!}
                     download={photos[lightbox].originalName ?? `photo-${photos[lightbox].id}.jpg`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -291,7 +299,7 @@ export default function PhotoSharePage() {
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.15 }}
-                src={photos[lightbox].url ?? ''}
+                src={photoUrl(tok, photos[lightbox]) ?? ''}
                 alt={photos[lightbox].label ?? photos[lightbox].originalName ?? `Photo ${lightbox + 1}`}
                 className="max-w-full max-h-full object-contain rounded-lg select-none"
                 draggable={false}

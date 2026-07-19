@@ -46,8 +46,12 @@ export default async function handler(req: Request, res: Response) {
       rows.map(async (p) => {
         let url: string | null = null;
         try {
-          url = await getSignedUrl(p.filename, BUCKET_JOB_PHOTOS, 3600);
-        } catch { /* best-effort */ }
+          url = await getSignedUrl(p.filename, BUCKET_JOB_PHOTOS, 86400); // 24h for public share links
+        } catch (urlErr) {
+          console.error(`[public job-photos] getSignedUrl failed for ${p.filename}:`, urlErr);
+          // Fall back to public proxy route (no auth required, token-gated)
+          url = `/api/public/job-photos/${req.params.token}/photo/${p.id}`;
+        }
         return { ...p, url };
       })
     );

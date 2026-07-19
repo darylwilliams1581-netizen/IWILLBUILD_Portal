@@ -518,6 +518,7 @@ import public_form_token_submit_post_472 from "./api/public/form/[token]/submit/
 import public_swms_token_get_473 from "./api/public/swms/[token]/GET";
 import public_swms_token_signoff_post_474 from "./api/public/swms/[token]/signoff/POST";
 import public_job_photos_token_get from "./api/public/job-photos/[token]/GET";
+import public_job_photos_token_photo_id_get from "./api/public/job-photos/[token]/photo/[photoId]/GET";
 import push_subscribe_delete_475 from "./api/push/subscribe/DELETE";
 import push_subscribe_post_476 from "./api/push/subscribe/POST";
 import push_vapid_key_get_477 from "./api/push/vapid-key/GET";
@@ -2484,6 +2485,7 @@ app.post("/api/public/form/:token/submit", public_form_token_submit_post_472);
 app.get("/api/public/swms/:token", public_swms_token_get_473);
 app.post("/api/public/swms/:token/signoff", public_swms_token_signoff_post_474);
 app.get("/api/public/job-photos/:token", public_job_photos_token_get);
+app.get("/api/public/job-photos/:token/photo/:photoId", public_job_photos_token_photo_id_get);
 app.delete("/api/push/subscribe", push_subscribe_delete_475);
 app.post("/api/push/subscribe", push_subscribe_post_476);
 app.get("/api/push/vapid-key", push_vapid_key_get_477);

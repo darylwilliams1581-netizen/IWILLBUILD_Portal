@@ -36,6 +36,26 @@ import { Navigation } from 'lucide-react';
 // Google Maps-based live map (no leaflet dependency)
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
 
+// ── Module-level Leaflet error suppressor ─────────────────────────────────────
+// Stale browser-cached leaflet.js fires _leaflet_pos errors before React mounts.
+// Install the suppressor immediately at module parse time so it catches errors
+// that occur before componentDidMount can run.
+if (typeof window !== 'undefined') {
+  const _prev = window.onerror;
+  window.onerror = function(msg, src, line, col, err) {
+    const m = String(msg ?? err?.message ?? '');
+    if (m.includes('_leaflet_pos') || (typeof src === 'string' && src.includes('leaflet'))) {
+      return true; // suppress — stale cached leaflet.js, not our code
+    }
+    return typeof _prev === 'function' ? _prev(msg, src, line, col, err) : false;
+  };
+  // Also suppress unhandledrejection from leaflet promises
+  window.addEventListener('unhandledrejection', (e) => {
+    const m = String(e?.reason?.message ?? e?.reason ?? '');
+    if (m.includes('_leaflet_pos') || m.includes('leaflet')) e.preventDefault();
+  }, { capture: true });
+}
+
 // ── Leaflet crash boundary ────────────────────────────────────────────────────
 // Silently catches any _leaflet_pos errors from stale cached leaflet.js.
 // The Google Maps live map is unaffected — it does not use leaflet at all.
@@ -43,13 +63,41 @@ class LeafletCrashBoundary extends React.Component<
   { children: React.ReactNode },
   { crashed: boolean }
 > {
+  private _onerror: OnErrorEventHandler = null;
+
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { crashed: false };
   }
+
+  componentDidMount() {
+    // Suppress _leaflet_pos errors at the window level so they never reach
+    // the React error boundary or the browser console.
+    this._onerror = window.onerror;
+    window.onerror = (msg, _src, _line, _col, err) => {
+      const m = String(msg ?? err?.message ?? '');
+      if (m.includes('_leaflet_pos') || m.includes('leaflet')) return true; // suppress
+      return typeof this._onerror === 'function'
+        ? this._onerror(msg, _src, _line, _col, err)
+        : false;
+    };
+  }
+
+  componentWillUnmount() {
+    window.onerror = this._onerror;
+  }
+
   static getDerivedStateFromError() {
     return { crashed: true };
   }
+
+  componentDidCatch(error: Error) {
+    const m = error?.message ?? '';
+    if (!m.includes('_leaflet_pos') && !m.includes('leaflet')) {
+      console.error('[FleetPage] Unexpected render error:', error);
+    }
+  }
+
   render() {
     if (this.state.crashed) return null;
     return this.props.children;

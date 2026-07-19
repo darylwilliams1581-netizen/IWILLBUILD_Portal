@@ -44,8 +44,10 @@ export default async function handler(req: Request, res: Response) {
         let url: string | null = null;
         try {
           url = await getSignedUrl(p.filename, PHOTO_BUCKET, 3600);
-        } catch {
-          // If URL generation fails, fall back to null — client shows placeholder
+        } catch (urlErr) {
+          console.error(`[photos GET] getSignedUrl failed for ${p.filename}:`, urlErr);
+          // Fall back to the proxy route so the client can still display the photo
+          url = `/api/jobs/${jobId}/photos/${p.id}/download`;
         }
         return { ...p, url };
       })

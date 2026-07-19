@@ -26,8 +26,17 @@ export default async function handler(req: Request, res: Response) {
   }
   if (parsed.limitError) return res.status(400).json({ code: 'upload_error', error: parsed.limitError });
 
-  // Validate image types — HEIC/HEIF now accepted (converted server-side)
+  // Validate image types — HEIC/HEIF now accepted (converted server-side).
+  // iOS Safari often sends HEIC files as application/octet-stream — reclassify
+  // by file extension before the MIME check so they aren't rejected.
   for (const f of parsed.files) {
+    const ext = (f.originalname.split('.').pop() ?? '').toLowerCase();
+    if (f.mimetype === 'application/octet-stream' || f.mimetype === '') {
+      if (ext === 'heic' || ext === 'heif') f.mimetype = 'image/heic';
+      else if (ext === 'jpg' || ext === 'jpeg') f.mimetype = 'image/jpeg';
+      else if (ext === 'png') f.mimetype = 'image/png';
+      else if (ext === 'webp') f.mimetype = 'image/webp';
+    }
     if (!ALLOWED_IMAGE_MIMES[f.mimetype]) {
       return res.status(400).json({
         code: 'invalid_file_type',
