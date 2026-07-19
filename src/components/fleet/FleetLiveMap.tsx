@@ -291,13 +291,13 @@ export default function FleetLiveMap() {
         });
 
         const map = L.map(container, {
-          center: [-27.4698, 153.0251], // Brisbane default
-          zoom: 11,
           zoomControl: false,
           attributionControl: true,
           fadeAnimation: false,
           markerZoomAnimation: false,
           zoomAnimation: false,
+          inertia: false,
+          tap: false,
         });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -307,8 +307,15 @@ export default function FleetLiveMap() {
 
         leafletMapRef.current = map;
 
-        // invalidateSize after mount to handle any remaining layout shifts
-        const sizes = [50, 200, 500, 1000];
+        // setView MUST come before invalidateSize — setView initialises the map
+        // panes (_leaflet_pos), so any subsequent invalidateSize/_rawPanBy call
+        // has valid pane elements to read from.
+        try {
+          map.setView([-27.4698, 153.0251], 11, { animate: false });
+        } catch (_) { /* ignore */ }
+
+        // Now safe to call invalidateSize — panes are initialised
+        const sizes = [0, 50, 200, 500, 1000];
         sizes.forEach((ms) => setTimeout(() => {
           try { map.invalidateSize(); } catch (_) { /* ignore if removed */ }
         }, ms));

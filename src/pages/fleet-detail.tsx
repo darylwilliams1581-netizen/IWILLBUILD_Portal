@@ -813,6 +813,7 @@ export default function FleetDetailPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-3xl mx-auto w-full">
           {loading && (
             <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="animate-spin text-primary" />
@@ -1268,6 +1269,7 @@ export default function FleetDetailPage() {
               />
             </motion.div>
           )}
+          </div> {/* max-w-3xl mx-auto */}
         </div>
 
       </div> {/* flex flex-col flex-1 */}
