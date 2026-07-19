@@ -209,6 +209,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             res.end('export default {}; export const map = () => {}; export const tileLayer = () => ({addTo:()=>{}});');
             return;
           }
+          // Serve the leaflet-eviction SW with Service-Worker-Allowed: / so it
+          // can intercept requests under /node_modules/.vite/deps/.
+          if (req.url && req.url.includes('sw-leaflet-evict.js')) {
+            res.setHeader('Service-Worker-Allowed', '/');
+          }
           next();
         });
       },

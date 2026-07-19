@@ -2715,6 +2715,13 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			res.set('Clear-Site-Data', '"cache"');
 			return res.send('export default {}; export const map = () => {}; export const tileLayer = () => ({addTo:()=>{}});');
 		}
+		// Serve the leaflet-eviction service worker with correct headers.
+		// Service-Worker-Allowed: / lets it intercept requests under /node_modules/.
+		if (req.path === '/sw-leaflet-evict.js') {
+			res.set('Content-Type', 'application/javascript; charset=utf-8');
+			res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+			res.set('Service-Worker-Allowed', '/');
+		}
 		next();
 	});
 
