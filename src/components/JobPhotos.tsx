@@ -464,13 +464,25 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
+
+    // ── iOS diagnostic logging ──────────────────────────────────────────────
+    const ios = isIosSafari();
+    if (ios) {
+      arr.forEach((f, i) => {
+        console.log(`[upload] step1 file[${i}] selected: name=${f.name} type=${f.type || '(empty)'} size=${f.size} lastModified=${f.lastModified}`);
+      });
+      console.log(`[upload] step4 iOS bypass detected: ${ios}`);
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     setUploading(true); onUploading?.(true); setUploadError(null);
     let valid: File[];
     try {
       const result = await prepareFiles(arr);
       if (result.error) { setUploadError(result.error); setUploading(false); onUploading?.(false); return; }
       valid = result.valid;
-    } catch {
+    } catch (e) {
+      if (ios) console.error('[upload] prepareFiles threw:', e);
       setUploadError('Failed to process images. Please try again.');
       setUploading(false); onUploading?.(false); return;
     }
@@ -480,21 +492,30 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added. Select fewer files.`);
       setUploading(false); onUploading?.(false); return;
     }
+    if (ios) console.log(`[upload] step5 raw upload started — ${valid.length} file(s)`);
     const fd = new FormData();
     valid.forEach((f) => fd.append('photos', f));
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
+      if (ios) console.log(`[upload] step6 server response status: ${res.status}`);
       let data: { error?: string } = {};
       const ct = res.headers.get('content-type') ?? '';
       if (ct.includes('application/json')) {
         data = await res.json() as { error?: string };
+        if (ios) console.log('[upload] step7 response parsed:', JSON.stringify(data));
       } else {
         const text = await res.text();
+        if (ios) console.log('[upload] step7 non-json response:', text.slice(0, 200));
         throw new Error(text.includes('<!') ? `Server error (${res.status}) — please try again` : text || `Upload failed (${res.status})`);
       }
       if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
+      if (ios) console.log('[upload] step8 photo list refresh started');
       await fetchPhotos();
-    } catch (e) { setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again'); }
+      if (ios) console.log('[upload] step9 photo list refresh complete — render started');
+    } catch (e) {
+      if (ios) console.error('[upload] fetch/parse threw:', e);
+      setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again');
+    }
     finally {
       setUploading(false); onUploading?.(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

@@ -7,7 +7,9 @@ import {
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
-import QRCode from 'qrcode';
+// qrcode is loaded lazily (dynamic import) to prevent its module-level
+// constructor code from running on iOS Safari at page parse time, which
+// causes "o is not a constructor" in the minified bundle.
 
 interface Job {
   id: number;
@@ -57,7 +59,13 @@ export default function JobPhotosPage() {
     setShareUrl(url);
     setCopied(false);
     setCopiedQr(false);
-    QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#111827', light: '#ffffff' } })
+    // Lazy-load qrcode so its module-level constructor code doesn't run at
+    // page parse time on iOS Safari (causes "o is not a constructor").
+    import('qrcode').then((mod) => {
+      const QRCode = mod.default ?? mod;
+      return (QRCode as { toDataURL: (url: string, opts: object) => Promise<string> })
+        .toDataURL(url, { width: 300, margin: 2, color: { dark: '#111827', light: '#ffffff' } });
+    })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, []);

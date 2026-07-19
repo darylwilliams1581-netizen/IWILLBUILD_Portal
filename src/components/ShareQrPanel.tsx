@@ -3,7 +3,8 @@
  * Used inside ShareLinkModal after creation, and in the share management list.
  */
 import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
+// qrcode is loaded lazily to prevent module-level constructor code from
+// running at parse time on iOS Safari ("o is not a constructor").
 import { Copy, Download, Printer, Trash2, CheckCircle2, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { openPrintWindow } from '@/lib/print-html';
@@ -29,11 +30,16 @@ export default function ShareQrPanel({
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    QRCode.toCanvas(canvasRef.current, shareUrl, {
-      width: 200,
-      margin: 2,
-      color: { dark: '#111827', light: '#ffffff' },
-      errorCorrectionLevel: 'M',
+    const canvas = canvasRef.current;
+    import('qrcode').then((mod) => {
+      const QRCode = mod.default ?? mod;
+      return (QRCode as { toCanvas: (el: HTMLCanvasElement, url: string, opts: object) => Promise<void> })
+        .toCanvas(canvas, shareUrl, {
+          width: 200,
+          margin: 2,
+          color: { dark: '#111827', light: '#ffffff' },
+          errorCorrectionLevel: 'M',
+        });
     }).catch(() => setQrError(true));
   }, [shareUrl]);
 
