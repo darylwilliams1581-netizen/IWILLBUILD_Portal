@@ -512,8 +512,12 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
   },
 
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime"],
-    exclude: ["drizzle-orm", "mysql2", "leaflet"],
+    // NOTE: leaflet is NOT listed here — it was removed from the project.
+    // The old leaflet.js?v=05d76b4a hash was cached in browsers; changing
+    // this include list changes the metadata hash so Vite generates a new
+    // version query string, making the old cached URL unreachable.
+    include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime", "react-router-dom > react-router"],
+    exclude: ["drizzle-orm", "mysql2"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },
@@ -768,6 +772,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     sourcemap: false,
     reportCompressedSize: false,
     minify: 'esbuild',
+    // Target iOS Safari 15+ (covers iPhone 6s and later on iOS 15+).
+    // Without an explicit target Vite defaults to "modules" which can emit
+    // syntax that older Safari versions reject with "o is not a constructor"
+    // or similar minification-mangled errors.
+    target: ['es2020', 'safari15', 'chrome90', 'firefox90'],
     chunkSizeWarningLimit: 3000,
     rollupOptions: {
       output: {
