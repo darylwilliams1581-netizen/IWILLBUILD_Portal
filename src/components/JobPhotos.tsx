@@ -101,7 +101,8 @@ function formatDateTime(iso: string) {
 
 const HEIC_EXTS = ['heic', 'heif'];
 const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// image/jpg is a non-standard alias iOS Safari sends for JPEG files — must be included
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 /**
  * Convert any image File to a JPEG via an off-screen canvas.
@@ -156,7 +157,7 @@ async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: stri
       continue;
     }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
-      return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, or WebP.` };
+      return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
     }
     // Normalise (resize if oversized) — fall back to original if canvas fails
     try {
@@ -176,7 +177,7 @@ function validateFiles(files: File[]): { valid: File[]; error: string | null } {
       return { valid: [], error: `HEIC/HEIF not supported here. Convert "${f.name}" to JPEG first.` };
     }
     if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
-      return { valid: [], error: `"${f.name}" is not a supported image type. Use JPEG, PNG, or WebP.` };
+      return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
     }
   }
   if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
