@@ -10,10 +10,10 @@ import {
   CreditCard, CheckCircle2, AlertTriangle, Clock, Zap,
   Users, User, Crown, ArrowRight, Loader2, RefreshCw,
   ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw,
-  CalendarClock, Receipt, Info,
+  CalendarClock, Receipt, ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import PortalSidebar from '@/components/PortalSidebar';
+import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -379,6 +379,7 @@ function UpgradeConfirmModal({
 export default function BillingPage() {
   const { isAdmin, isOwner } = usePermissions();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -562,7 +563,7 @@ export default function BillingPage() {
   const canManage = isAdmin || isOwner;
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <Helmet>
         <title>Subscription — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
@@ -579,16 +580,23 @@ export default function BillingPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
+      {/* Sticky top bar */}
+      <header className="h-16 bg-white border-b border-border flex items-center px-4 md:px-6 shrink-0 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/home')}
+            className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <CreditCard size={18} className="text-primary shrink-0" />
+          <h1 className="font-heading font-bold text-base md:text-lg">Subscription</h1>
+        </div>
+      </header>
 
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-heading font-black text-2xl text-slate-900">Subscription</h1>
-            <p className="text-sm text-slate-500 mt-1">Manage your plan and payment details</p>
-          </div>
 
           {/* Banners */}
           <AnimatePresence>
