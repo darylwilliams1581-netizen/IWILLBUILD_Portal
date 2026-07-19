@@ -723,6 +723,23 @@ normalizeCommerceApiBaseUrlEnv();
 
 const app = express();
 
+// ── Leaflet cache-bust — FIRST middleware, before everything ──────────────────
+// The browser may have /node_modules/.vite/deps/leaflet.js?v=05d76b4a in its
+// HTTP disk cache from a previous build. Even a conditional GET (If-None-Match)
+// reaches the server, so this intercept fires and returns a stub + Clear-Site-Data
+// header that nukes the cached entry on the client side permanently.
+app.use((req: Request, res: Response, next: NextFunction) => {
+	if (/leaflet/i.test(req.path)) {
+		res.setHeader('Content-Type', 'application/javascript');
+		res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+		res.setHeader('Pragma', 'no-cache');
+		res.setHeader('Expires', '0');
+		res.setHeader('Clear-Site-Data', '"cache"');
+		return res.end('// leaflet removed\nexport default {};\n');
+	}
+	next();
+});
+
 // ── Harden Express defaults ───────────────────────────────────────────────────
 // Remove the "X-Powered-By: Express" fingerprint header
 app.disable('x-powered-by');
@@ -2712,6 +2729,21 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			res.set('Pragma', 'no-cache');
 			res.set('Expires', '0');
 			return res.send('// leaflet removed\nexport default {};\n');
+		}
+		next();
+	});
+
+	// Kill stale browser-cached leaflet chunk — must be before express.static
+	// so the server responds even when the browser sends a conditional GET
+	// for the disk-cached /node_modules/.vite/deps/leaflet.js?v=... URL.
+	app.use((req: Request, res: Response, next: NextFunction) => {
+		if (/leaflet/i.test(req.path)) {
+			res.setHeader('Content-Type', 'application/javascript');
+			res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+			res.setHeader('Pragma', 'no-cache');
+			res.setHeader('Expires', '0');
+			res.setHeader('Clear-Site-Data', '"cache"');
+			return res.end('// leaflet removed\nexport default {};\n');
 		}
 		next();
 	});

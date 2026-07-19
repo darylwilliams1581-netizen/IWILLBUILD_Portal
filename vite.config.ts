@@ -218,10 +218,10 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
         return null;
       },
       configureServer(server: ViteDevServer) {
-        // Prepend so this runs BEFORE Vite's own static dep serving
-        server.middlewares.use('/node_modules/.vite/deps', (req, res, next) => {
-          const url = req.url ?? '';
-          if (url.includes('leaflet')) {
+        // UNSHIFT so this handler is literally first in the connect stack —
+        // before Vite's own dep-serving middleware that would serve the real file.
+        const leafletKiller = (req: any, res: any, next: any) => {
+          if (/leaflet/i.test(req.url ?? '')) {
             res.setHeader('Content-Type', 'application/javascript');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
@@ -230,20 +230,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
             return;
           }
           next();
-        });
-        // Also catch the full path variant
-        server.middlewares.use((req, res, next) => {
-          const url = req.url ?? '';
-          if (url.includes('leaflet')) {
-            res.setHeader('Content-Type', 'application/javascript');
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-            res.end('// leaflet removed\nexport default {};\n');
-            return;
-          }
-          next();
-        });
+        };
+        // Push to front of the middleware stack
+        server.middlewares.stack.unshift({ route: '', handle: leafletKiller });
       },
       configurePreviewServer(server) {
         server.middlewares.use((req, res, next) => {

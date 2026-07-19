@@ -5,14 +5,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   ChevronLeft, Loader2, AlertCircle, Edit2, Check, X,
-  QrCode, AlertTriangle, Camera, StickyNote, ClipboardCheck,
   MapPin, Wrench, Package, Briefcase, FileText, DollarSign,
-  Image, Link2, ShieldCheck, Tag, Truck, Calendar,
+  Image, Link2, Tag, Truck, User, Container, Car,
+  ChevronDown,
 } from 'lucide-react';
 import { EQUIPMENT_TYPES } from './AMAssetsTab';
-import AssetNotes from './AssetNotes';
-import AssetPhotos from './AssetPhotos';
-import AssetLinkedJobs from './AssetLinkedJobs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,14 +48,14 @@ type Tab = 'overview' | 'inspections' | 'defects' | 'service' | 'documents' | 'p
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'overview',    label: 'Overview',     icon: Package },
-  { id: 'inspections', label: 'Inspections',  icon: ClipboardCheck },
-  { id: 'defects',     label: 'Defects',      icon: AlertTriangle },
+  { id: 'inspections', label: 'Inspections',  icon: FileText },
+  { id: 'defects',     label: 'Defects',      icon: FileText },
   { id: 'service',     label: 'Service',      icon: Wrench },
   { id: 'documents',   label: 'Documents',    icon: FileText },
   { id: 'photos',      label: 'Photos',       icon: Image },
   { id: 'jobs',        label: 'Linked Jobs',  icon: Link2 },
   { id: 'costs',       label: 'Costs',        icon: DollarSign },
-  { id: 'notes',       label: 'Notes',        icon: StickyNote },
+  { id: 'notes',       label: 'Notes',        icon: FileText },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -108,17 +105,107 @@ function Row({ label, value, warn }: { label: string; value: React.ReactNode; wa
   );
 }
 
-// ── Quick action button ───────────────────────────────────────────────────────
+// ── Assign modal ──────────────────────────────────────────────────────────────
 
-function QuickAction({ icon: Icon, label, onClick, color = 'bg-slate-100 text-slate-600 hover:bg-slate-200' }: {
-  icon: React.ElementType; label: string; onClick?: () => void; color?: string;
+const ASSIGN_TYPES = [
+  { id: 'container', label: 'Container', icon: Container,  color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
+  { id: 'car',       label: 'Car',       icon: Car,        color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
+  { id: 'truck',     label: 'Truck',     icon: Truck,      color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200' },
+  { id: 'person',    label: 'Person',    icon: User,       color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
+  { id: 'job',       label: 'Job',       icon: Briefcase,  color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
+];
+
+function AssignModal({ assetId, current, onClose, onSaved }: {
+  assetId: number;
+  current: { person?: string | null; jobId?: number | null };
+  onClose: () => void;
+  onSaved: () => void;
 }) {
+  const [type, setType] = useState<string | null>(null);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!type || !value.trim()) return;
+    setSaving(true);
+    const body: Record<string, string | null> = {};
+    if (type === 'person') body.assigned_person_name = value.trim();
+    else if (type === 'job') body.assigned_job_id = value.trim();
+    else body.current_location = `${type.charAt(0).toUpperCase() + type.slice(1)}: ${value.trim()}`;
+    await fetch(`/api/asset-manager/assets/${assetId}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  }
+
   return (
-    <button onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold transition-colors ${color}`}>
-      <Icon size={18} />
-      <span className="leading-tight text-center">{label}</span>
-    </button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      {/* Sheet */}
+      <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900">Assign to</h2>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Type selector */}
+        <div className="grid grid-cols-5 gap-2">
+          {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
+            <button key={id} onClick={() => { setType(id); setValue(''); }}
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${
+                type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color
+              }`}>
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Value input */}
+        {type && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-slate-500">
+              {type === 'person' ? 'Person name' :
+               type === 'job'    ? 'Job number or name' :
+               `${type.charAt(0).toUpperCase() + type.slice(1)} name / ID`}
+            </label>
+            <input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && save()}
+              placeholder={
+                type === 'person' ? 'e.g. John Smith' :
+                type === 'job'    ? 'e.g. 1042' :
+                type === 'car'    ? 'e.g. ABC-123' :
+                type === 'truck'  ? 'e.g. Truck 4 / 1TRK456' :
+                'e.g. Container C3'
+              }
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+            />
+          </div>
+        )}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button onClick={save} disabled={!type || !value.trim() || saving}
+            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-40">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+            Assign
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -188,6 +275,7 @@ export default function EquipmentDetailPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('overview');
+  const [showAssign, setShowAssign] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -244,8 +332,7 @@ export default function EquipmentDetailPanel({
         <div className="flex items-start gap-3">
           <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
             <TypeIcon size={20} className="text-orange-500" />
-          </div>
-          <div className="flex-1 min-w-0">
+          </div>          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-base font-bold text-slate-900">{eq.name}</h1>
               {eq.asset_number && (
@@ -275,17 +362,15 @@ export default function EquipmentDetailPanel({
               )}
             </div>
           </div>
-        </div>
 
-        {/* Quick actions */}
-        <div className="mt-4 grid grid-cols-4 sm:grid-cols-7 gap-2">
-          <QuickAction icon={QrCode}         label="Scan QR"       color="bg-slate-100 text-slate-600 hover:bg-slate-200" />
-          <QuickAction icon={AlertTriangle}  label="Defect"        color="bg-red-50 text-red-600 hover:bg-red-100" onClick={() => setTab('defects')} />
-          <QuickAction icon={Camera}         label="Add Photo"     color="bg-blue-50 text-blue-600 hover:bg-blue-100" onClick={() => setTab('photos')} />
-          <QuickAction icon={StickyNote}     label="Add Note"      color="bg-amber-50 text-amber-600 hover:bg-amber-100" onClick={() => setTab('notes')} />
-          <QuickAction icon={ClipboardCheck} label="Inspection"    color="bg-emerald-50 text-emerald-600 hover:bg-emerald-100" onClick={() => setTab('inspections')} />
-          <QuickAction icon={MapPin}         label="Move"          color="bg-purple-50 text-purple-600 hover:bg-purple-100" />
-          <QuickAction icon={Briefcase}      label="Assign Job"    color="bg-orange-50 text-orange-600 hover:bg-orange-100" onClick={() => setTab('jobs')} />
+          {/* Assign button */}
+          <button
+            onClick={() => setShowAssign(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors shrink-0 self-start"
+          >
+            <ChevronDown size={13} className="-rotate-90" />
+            Assign
+          </button>
         </div>
       </div>
 
@@ -309,11 +394,21 @@ export default function EquipmentDetailPanel({
         {tab === 'defects'     && <PlaceholderTab label="Defects" />}
         {tab === 'service'     && <ServiceTab eq={eq} onPatch={patch} />}
         {tab === 'documents'   && <PlaceholderTab label="Documents" />}
-        {tab === 'photos'      && <AssetPhotos assetId={assetId} />}
-        {tab === 'jobs'        && <AssetLinkedJobs assetId={assetId} />}
+        {tab === 'photos'      && <PlaceholderTab label="Photos" />}
+        {tab === 'jobs'        && <PlaceholderTab label="Linked Jobs" />}
         {tab === 'costs'       && <PlaceholderTab label="Costs" />}
-        {tab === 'notes'       && <AssetNotes assetId={assetId} />}
+        {tab === 'notes'       && <PlaceholderTab label="Notes" />}
       </div>
+
+      {/* ── Assign modal ── */}
+      {showAssign && (
+        <AssignModal
+          assetId={assetId}
+          current={{ person: eq.assigned_person_name, jobId: eq.assigned_job_id }}
+          onClose={() => setShowAssign(false)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

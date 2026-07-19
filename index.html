@@ -177,7 +177,7 @@
       // Registers a SW that intercepts leaflet.js?v=05d76b4a at the fetch level,
       // even when the browser serves it from disk cache without a network request.
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=4', { scope: '/' })
+        navigator.serviceWorker.register('/leaflet-kill-sw.js?v=5', { scope: '/', updateViaCache: 'none' })
           .then(function(reg) {
             reg.update();
             // If a new SW just installed and is waiting, activate it immediately
