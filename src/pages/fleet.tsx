@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -12,12 +12,12 @@ import {
   Archive as _Archive,
   Wrench as _Wrench,
   XCircle as _XCircle,
-  Menu,
+  Menu as _Menu,
   X,
   AlertCircle,
   CheckCircle2,
+  ArrowLeft,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import {
   fetchFleet,
@@ -281,10 +281,7 @@ export default function FleetPage() {
   const [successName, setSuccessName] = useState('');
   const [view, setView] = useState<'assets' | 'live-map'>('assets');
   const { isViewOnly } = useViewOnly();
-
-  function openMobileMenu() {
-    window.dispatchEvent(new Event('portal:open-menu'));
-  }
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     try {
@@ -320,7 +317,7 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
         <title>Fleet — IWILLBUILD Portal</title>
         <meta name="description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />
@@ -337,20 +334,20 @@ export default function FleetPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
-
       <PortalErrorBoundary inline>
-      <div className="portal-main">
-        {/* Top bar */}
-        <header className="h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-2">
+      <div className="flex flex-col flex-1">
+        {/* Sticky top bar */}
+        <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-2">
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <button
-              onClick={openMobileMenu}
-              className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              aria-label="Open menu"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Back to Home"
             >
-              <Menu size={20} />
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Home</span>
             </button>
+            <span className="text-gray-300">|</span>
             <Truck size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg truncate">Fleet</h1>
             {!loading && (
@@ -415,7 +412,7 @@ export default function FleetPage() {
                 <span className="text-sm">Loading map…</span>
               </div>
             }>
-              <FleetLiveMap />
+              <FleetLiveMap key="fleet-live-map" />
             </Suspense>
           )}
 
@@ -594,25 +591,23 @@ export default function FleetPage() {
             </>
           )}
         </div>
+
+        {/* New Asset Modal */}
+        <AnimatePresence>
+          {showModal && (
+            <NewAssetModal
+              onClose={() => setShowModal(false)}
+              onCreated={(asset) => {
+                setAssets((prev) => [asset, ...prev]);
+                setShowModal(false);
+                setSuccessName(asset.name);
+                setTimeout(() => setSuccessName(''), 5000);
+              }}
+            />
           )}
-        </div>
+        </AnimatePresence>
       </div>
       </PortalErrorBoundary>
-
-      {/* New Asset Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <NewAssetModal
-            onClose={() => setShowModal(false)}
-            onCreated={(asset) => {
-              setAssets((prev) => [asset, ...prev]);
-              setShowModal(false);
-              setSuccessName(asset.name);
-              setTimeout(() => setSuccessName(''), 5000);
-            }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

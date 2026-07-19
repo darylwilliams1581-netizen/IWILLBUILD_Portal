@@ -270,6 +270,9 @@ export default function FleetLiveMap() {
         zoom: 11,
         zoomControl: false, // we render our own zoom controls
         attributionControl: true,
+        // Prevent _leaflet_pos errors on containers that aren't fully laid out yet
+        fadeAnimation: false,
+        markerZoomAnimation: false,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -279,10 +282,11 @@ export default function FleetLiveMap() {
 
       leafletMapRef.current = map;
 
-      // Multiple invalidateSize calls to handle CSS race
-      setTimeout(() => map.invalidateSize(), 50);
-      setTimeout(() => map.invalidateSize(), 200);
-      setTimeout(() => map.invalidateSize(), 600);
+      // Multiple invalidateSize calls to handle CSS race and _leaflet_pos errors
+      const sizes = [50, 150, 300, 600, 1200];
+      sizes.forEach((ms) => setTimeout(() => {
+        try { map.invalidateSize(); } catch (_) { /* ignore if map removed */ }
+      }, ms));
 
       // Watch for container resize
       if (mapRef.current && typeof ResizeObserver !== 'undefined') {
