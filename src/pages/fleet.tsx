@@ -436,74 +436,34 @@ export default function FleetPage() {
 
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1">
-        {/* Sticky top bar */}
-        <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 gap-2">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <button
-              onClick={() => navigate('/home')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label="Back to Home"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Home</span>
-            </button>
-            <span className="text-gray-300">|</span>
-            <Truck size={18} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-base md:text-lg truncate">Fleet</h1>
-            {!loading && (
-              <span className="hidden sm:inline text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
-                {assets.length} asset{assets.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {attentionCount > 0 && (
-              <span className="hidden md:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
-                <AlertTriangle size={10} />
-                {attentionCount} need attention
-              </span>
-            )}
-          </div>
-
-          {/* Right-side controls */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* View toggle */}
-            <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
-              <button
-                onClick={() => setView('assets')}
-                title="Assets list"
-                className={[
-                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Truck size={12} />
-                <span className="hidden sm:inline">Assets</span>
-              </button>
-              <button
-                onClick={() => setView('live-map')}
-                title="Live GPS map"
-                className={[
-                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                <Navigation size={12} />
-                <span className="hidden sm:inline">Live Map</span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => !isViewOnly && setShowModal(true)}
-              disabled={isViewOnly}
-              title={isViewOnly ? 'Subscribe to continue' : undefined}
-              className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 md:px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={15} />
-              <span className="hidden sm:inline">Add Asset</span>
-            </button>
-          </div>
+        {/* Slim top bar — title + back only, no controls (avoids iPhone status bar overlap) */}
+        <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <span className="text-gray-300">|</span>
+          <Truck size={17} className="text-primary shrink-0" />
+          <h1 className="font-heading font-bold text-base truncate flex-1">Fleet</h1>
+          {!loading && (
+            <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full shrink-0">
+              {assets.length} asset{assets.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {attentionCount > 0 && (
+            <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+              <AlertTriangle size={10} />
+              {attentionCount}
+            </span>
+          )}
         </header>
 
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        {/* Content — extra bottom padding so floating bar doesn't overlap */}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 pb-20">
           {/* ── Live Map view ── */}
           {view === 'live-map' && (
             <LeafletCrashBoundary>
@@ -711,6 +671,49 @@ export default function FleetPage() {
           )}
         </AnimatePresence>
       </div>
+
+        {/* ── Floating bottom action bar ── */}
+        {/* Sits above iPhone home indicator; avoids status-bar overlap at top */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-3 px-4 bg-white/95 backdrop-blur-sm border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+          style={{ paddingTop: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
+        >
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200 flex-1 max-w-[200px]">
+            <button
+              onClick={() => setView('assets')}
+              title="Assets list"
+              className={[
+                'flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-xs font-semibold transition-colors',
+                view === 'assets' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500',
+              ].join(' ')}
+            >
+              <Truck size={14} />
+              <span>Assets</span>
+            </button>
+            <button
+              onClick={() => setView('live-map')}
+              title="Live GPS map"
+              className={[
+                'flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-xs font-semibold transition-colors',
+                view === 'live-map' ? 'bg-primary text-white shadow-sm' : 'text-slate-500',
+              ].join(' ')}
+            >
+              <Navigation size={14} />
+              <span>Live Map</span>
+            </button>
+          </div>
+
+          {/* Add Asset */}
+          <button
+            onClick={() => !isViewOnly && setShowModal(true)}
+            disabled={isViewOnly}
+            title={isViewOnly ? 'Subscribe to continue' : undefined}
+            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+          >
+            <Plus size={16} />
+            <span>Add Asset</span>
+          </button>
+        </div>
       </PortalErrorBoundary>
     </div>
   );

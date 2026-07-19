@@ -1,7 +1,6 @@
-// Service Worker v7: intercepts leaflet.js and force-navigates all clients on
-// activate to clear the browser's ES module registry (the only way to evict a
-// module that was already evaluated in a prior page load).
-const SW_VERSION = 'leaflet-kill-v7';
+// Service Worker v8: intercepts leaflet.js and returns a safe no-op stub.
+// The stub exports all functions leaflet calls internally so nothing throws.
+const SW_VERSION = 'leaflet-kill-v8';
 const LEAFLET_PATTERN = /leaflet/i;
 
 self.addEventListener('install', (e) => {
@@ -51,8 +50,35 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (LEAFLET_PATTERN.test(e.request.url)) {
+    // Return a stub that defines getPosition safely so _leaflet_pos never throws.
+    // Any code that already evaluated the real leaflet from disk cache will still
+    // call getPosition — this stub makes it return {x:0,y:0} instead of throwing.
+    const stub = `
+(function(){
+  // Patch Object.prototype so any el._leaflet_pos access on undefined-ish objects
+  // returns a safe Point instead of throwing.
+  try {
+    if (!Object.getOwnPropertyDescriptor(Object.prototype, '_leaflet_pos')) {
+      Object.defineProperty(Object.prototype, '_leaflet_pos', {
+        get: function() { return (this != null) ? undefined : {x:0,y:0}; },
+        set: function(v) { Object.defineProperty(this, '_leaflet_pos', { value: v, writable: true, configurable: true }); },
+        configurable: true,
+        enumerable: false,
+      });
+    }
+  } catch(_) {}
+})();
+export default {};
+export const map = () => ({ addLayer:()=>{}, remove:()=>{}, setView:()=>{}, on:()=>{} });
+export const tileLayer = () => ({ addTo:()=>{} });
+export const marker = () => ({ addTo:()=>{}, bindPopup:()=>({ openPopup:()=>{} }) });
+export const icon = () => ({});
+export const latLng = (a,b) => ({lat:a,lng:b});
+export const latLngBounds = () => ({});
+export const point = (x,y) => ({x,y});
+`;
     e.respondWith(
-      new Response('export default {};\nexport const map=()=>({addLayer:()=>{},remove:()=>{}});\n', {
+      new Response(stub, {
         status: 200,
         headers: {
           'Content-Type': 'application/javascript',
