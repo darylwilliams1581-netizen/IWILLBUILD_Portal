@@ -278,32 +278,8 @@ export default function FleetLiveMap() {
           shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
-        // ── _leaflet_pos crash fix ─────────────────────────────────────────────
-        // setPosition(el, point) at leaflet.js:1560 writes el._leaflet_pos = point.
-        // If el (this._mapPane) is undefined the write throws. This happens when
-        // _rawPanBy fires on a map whose _mapPane was never created (e.g. the map
-        // was removed before _initPanes ran, or a stale callback fires post-unmount).
-        //
-        // Patch: wrap _rawPanBy on the prototype to guard against undefined _mapPane,
-        // and wrap setPosition in DomUtil to guard against undefined el.
-        // Both patches are applied before L.map() and restored immediately after.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Lany = L as any;
-        const MapProto = Lany.Map?.prototype as Record<string, unknown> | undefined;
-
-        // Patch: guard _getMapPanePos against undefined _mapPane.
-        // getPosition(el) at leaflet.js:1570 reads el._leaflet_pos — if el is
-        // undefined it throws. _getMapPanePos is the only caller that can pass
-        // undefined (when _mapPane hasn't been created yet). Returning Point(0,0)
-        // is safe — it's the same fallback the source already uses for missing pos.
-        const origGetMapPanePos = MapProto?._getMapPanePos as ((...a: unknown[]) => unknown) | undefined;
-        if (MapProto && origGetMapPanePos) {
-          MapProto._getMapPanePos = function safeGetMapPanePos(...args: unknown[]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!(this as any)._mapPane) return Lany.point(0, 0);
-            return origGetMapPanePos.apply(this, args);
-          };
-        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let map: any;
@@ -320,14 +296,10 @@ export default function FleetLiveMap() {
             tap: false,
           });
         } catch (mapErr) {
-          if (MapProto && origGetMapPanePos) MapProto._getMapPanePos = origGetMapPanePos;
           console.warn('[FleetLiveMap] L.map() threw during init — retrying next frame', mapErr);
           if (!destroyed) rafId = requestAnimationFrame(tryInit);
           return;
         }
-
-        // Restore prototype immediately after construction
-        if (MapProto && origGetMapPanePos) MapProto._getMapPanePos = origGetMapPanePos;
 
         if (destroyed) {
           // Unmounted while L.map() was constructing — tear down immediately

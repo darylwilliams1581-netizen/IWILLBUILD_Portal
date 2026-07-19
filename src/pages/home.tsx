@@ -1759,7 +1759,7 @@ export default function HomeScreen() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'url(/airo-assets/uploads/uploads-background-f38wenbvln-1784434100763-file-ir3u9cpvlv-15c2674a.jpg)',
+          backgroundImage: 'url(/airo-assets/images/uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv)',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center 40%',
           backgroundSize: '55%',
