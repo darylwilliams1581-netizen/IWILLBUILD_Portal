@@ -24,7 +24,6 @@ import {
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
 import StructurePanel from './StructurePanel';
-import BlockInspector from './BlockInspector';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
@@ -476,9 +475,6 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             {/* Canvas — always visible for insert tabs */}
             <div className="flex-1 flex min-h-0 overflow-hidden">
               <StructurePanel />
-              {activeTab === 'structure' && (
-                <BlockInspectorWrapper />
-              )}
             </div>
           </>
         )}
@@ -508,17 +504,6 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 /** Slim left panel wrapper used by non-structure tabs */
-// Thin stateful wrapper so BlockInspector collapse state lives here
-function BlockInspectorWrapper() {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <BlockInspector
-      collapsed={collapsed}
-      onToggleCollapse={() => setCollapsed((v) => !v)}
-    />
-  );
-}
-
 function RibbonPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">

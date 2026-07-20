@@ -20,7 +20,12 @@
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Node.prototype as any).removeChild = function safeRemoveChildProto<T extends Node>(this: Node, child: T): T {
-      try { if (child && child.parentNode) (child as unknown as ChildNode).remove(); } catch { /* swallow */ }
+      // Guard: only call the real native when child is actually present.
+      // This prevents the stale shim's patchedRemoveChild (which calls this as
+      // its _realNative) from triggering a NotFoundError on the true native.
+      if (child && child.parentNode === this) {
+        try { _hostRemoveChild.call(this, child); } catch { /* swallow */ }
+      }
       return child;
     };
   } catch { /* ignore */ }
@@ -74,10 +79,9 @@
     // patchedRemoveChild then falls through to call the REAL native (which throws).
     // Unconditional try/catch is the only safe approach.
     function swallowingRemoveChildEarly<T extends Node>(this: Node, child: T): T {
-      // Do NOT call any captured native — it may be the stale shim's function.
-      // Use child.remove() which calls the browser's ChildNode.remove() and
-      // bypasses Node.prototype.removeChild entirely. Wrap in try/catch for safety.
-      try { if (child && child.parentNode) (child as unknown as ChildNode).remove(); } catch { /* swallow */ }
+      // Use _hostRemoveChild — captured from Node.prototype BEFORE any patching.
+      // Do NOT use child.remove() — that re-enters Node.prototype.removeChild.
+      try { _realNative.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     }
 

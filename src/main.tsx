@@ -13,7 +13,9 @@ import './sos-shim';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
     const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-      try { if (child && child.parentNode) (child as unknown as ChildNode).remove(); } catch { /* swallow */ }
+      // trueNative is from index.html captured before any patching — call it
+      // directly so we never re-enter any shim wrapper.
+      try { if (trueNative) trueNative.call(this, child); } catch { /* swallow */ }
       return child;
     };
     try {
