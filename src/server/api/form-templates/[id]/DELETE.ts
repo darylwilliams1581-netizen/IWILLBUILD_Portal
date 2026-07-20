@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
-import { formTemplates, profiles } from '../../../db/schema.js';
+import { formTemplates, formTemplateFields, jobFormSubmissions, profiles } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 
@@ -31,13 +31,24 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!existing) return res.status(404).json({ error: 'Template not found' });
 
+    // Explicitly delete child rows first — MySQL FK constraints may not have
+    // been applied at table-creation time (runStartupMigrations only patches
+    // columns, not constraints), so we can't rely on ON DELETE CASCADE.
+    await db
+      .delete(jobFormSubmissions)
+      .where(eq(jobFormSubmissions.templateId, templateId));
+
+    await db
+      .delete(formTemplateFields)
+      .where(eq(formTemplateFields.templateId, templateId));
+
     await db
       .delete(formTemplates)
       .where(eq(formTemplates.id, templateId));
 
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch (error) {
     console.error('DELETE /api/form-templates/:id error:', error);
-    res.status(500).json({ error: 'Failed to delete form template' });
+    return res.status(500).json({ error: 'Failed to delete form template' });
   }
 }

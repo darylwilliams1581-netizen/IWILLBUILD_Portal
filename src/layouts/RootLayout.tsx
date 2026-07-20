@@ -7,7 +7,8 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Component, type ReactElement, type ReactNode, useEffect, useRef } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -192,42 +193,51 @@ function PortalBanners() {
 }
 
 // ── ClientOnly ────────────────────────────────────────────────────────────────
-// Strategy: render a <div> whose innerHTML React is told to ignore entirely
-// (dangerouslySetInnerHTML={{ __html: '' }} + suppressHydrationWarning).
-// React will NOT attempt to reconcile children of this node during hydration,
-// so it never calls removeChild on nodes that don't exist in the SSR output.
-// After hydration, we swap to rendering children normally via a portal-like
-// ref.innerHTML replacement — but actually we just flip `mounted` state after
-// the hydration commit using useLayoutEffect (fires sync after DOM mutations,
-// before the browser paints, but crucially AFTER hydrateRoot finishes).
+// Root cause: React 19 hydrateRoot commits the fiber tree and then runs a
+// cleanup pass that calls removeChild on any DOM nodes it thinks it owns but
+// that are no longer in the vdom. If anything causes child nodes to appear
+// inside a div that React committed as empty — even via portal or state update
+// in useEffect — React's cleanup pass tries to remove them and throws
+// "removeChild: node is not a child".
 //
-// Why useLayoutEffect and not useEffect?
-//   useEffect in React 19 can fire in the same microtask as hydrateRoot's
-//   commit, which means the state update that injects children can race with
-//   React's own post-hydration cleanup — causing removeChild. useLayoutEffect
-//   fires synchronously after the commit but is still deferred past the
-//   hydration reconciliation phase, making it safe.
-//
-// Why dangerouslySetInnerHTML?
-//   It is the only React API that tells the reconciler "do not touch my
-//   children". Without it, React inspects the SSR DOM children (empty) vs the
-//   vdom children (null) and still tries to remove phantom nodes.
+// The ONLY safe pattern: give React a div with dangerouslySetInnerHTML so the
+// reconciler permanently opts out of managing that div's children. Then use a
+// separate createRoot to render children into it — createRoot is completely
+// independent of the hydrateRoot tree and has no cleanup interaction with it.
+// The separate root is created in useEffect (post-paint, post-hydration-commit)
+// so it never races with hydrateRoot's cleanup pass.
 function ClientOnly({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<Root | null>(null);
 
-  useLayoutEffect(() => {
-    setMounted(true);
+  useEffect(() => {
+    if (!hostRef.current) return;
+    // Create an independent React root inside the host div.
+    // This root is entirely separate from the hydrateRoot tree — React's
+    // hydration cleanup pass never touches nodes owned by a different root.
+    if (!rootRef.current) {
+      rootRef.current = createRoot(hostRef.current);
+    }
+    rootRef.current.render(children as ReactElement);
+  });
+
+  useEffect(() => {
+    return () => {
+      // Unmount on component removal — use setTimeout to avoid "unmount during
+      // render" warnings if the parent tree is also being torn down.
+      const root = rootRef.current;
+      if (root) {
+        setTimeout(() => root.unmount(), 0);
+        rootRef.current = null;
+      }
+    };
   }, []);
 
-  if (!mounted) {
-    // During SSR and the initial hydration pass: render a div that React will
-    // not attempt to reconcile children for. The server also renders this same
-    // empty div, so the HTML matches exactly — no mismatch, no removeChild.
-    // eslint-disable-next-line react/no-danger
-    return <div data-client-only dangerouslySetInnerHTML={{ __html: '' }} />;
-  }
-
-  return <div data-client-only>{children}</div>;
+  // dangerouslySetInnerHTML tells React's reconciler: "do not touch children
+  // of this node". The host div is always empty in SSR HTML, and React sees
+  // the same empty vdom on hydration — perfect match, no mismatch warning.
+  // eslint-disable-next-line react/no-danger
+  return <div data-client-only ref={hostRef} dangerouslySetInnerHTML={{ __html: '' }} />;
 }
 
 // DeferredMount is an alias kept for backwards compat with existing usages.
