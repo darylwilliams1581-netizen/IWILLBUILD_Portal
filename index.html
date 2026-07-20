@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v58 -->
+  <!-- cache-bust: v59 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -13,6 +13,16 @@
       // capture picks up our safe wrapper, so its patchedRemoveChild never throws.
       (function () {
         try {
+          // Capture the TRUE browser native BEFORE any patching, store on window
+          // so sos-shim.ts can use it directly without going through any wrapper.
+          try {
+            var _capIframe = document.createElement('iframe');
+            _capIframe.style.display = 'none';
+            document.head.appendChild(_capIframe);
+            window.__sosTrueNativeRC = _capIframe.contentWindow && _capIframe.contentWindow.Node && _capIframe.contentWindow.Node.prototype.removeChild;
+            document.head.removeChild(_capIframe);
+          } catch(e) {}
+
           var _realRC = Node.prototype.removeChild;
           function safeRemoveChild(child) {
             try { return _realRC.call(this, child); } catch (e) { /* swallow */ }

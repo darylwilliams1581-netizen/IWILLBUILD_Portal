@@ -226,26 +226,6 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           placeholder="Untitled document"
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
-        <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
-        {/* Doc type dropdown */}
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
-          >
-            {docTypeLabel}<ChevronDown size={10} />
-          </button>
-          {showDocTypeMenu && (
-            <div className="absolute top-8 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
-              {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
-                <button key={key} onClick={() => { useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']); setShowDocTypeMenu(false); }}
-                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${templateType === key ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)"><Undo2 size={13} /></button>
@@ -272,6 +252,26 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
       {/* ── Row 2: Ribbon tab strip ───────────────────────────────────────────── */}
       <div className="flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
+        {/* Doc type pill — sits before the tabs */}
+        <div className="relative flex-shrink-0 self-center mr-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
+          >
+            {docTypeLabel}<ChevronDown size={10} />
+          </button>
+          {showDocTypeMenu && (
+            <div className="absolute top-9 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
+              {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
+                <button key={key} onClick={() => { useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']); setShowDocTypeMenu(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${templateType === key ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="w-px h-5 bg-slate-200 self-center mr-2 flex-shrink-0" />
         {RIBBON_TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>

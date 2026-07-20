@@ -40,22 +40,24 @@
 //      creates to capture its _native already has our swallowing wrapper — making
 //      the stale shim's captured _native itself safe.
 {
-  // Get the real browser native removeChild from a clean iframe prototype.
-  // The iframe's Node.prototype is a separate object; no stale shim can have
-  // patched it, so its removeChild is always the genuine host method.
-  let trueNative: ((child: Node) => Node) | null = null;
-  try {
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.head.appendChild(iframe);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    trueNative = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? null;
-    // Use the iframe's own native to remove itself — avoids calling the
-    // potentially-stale patchedRemoveChild on the main window's prototype.
-    if (trueNative && iframe.parentNode === document.head) {
-      trueNative.call(document.head, iframe);
-    }
-  } catch { /* ignore — fall back to error interception */ }
+  // Use the true browser native captured in index.html BEFORE any patching.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sosTrueNative: ((child: Node) => Node) | null = (window as any).__sosTrueNativeRC ?? null;
+
+  // Also try to get a fresh true native from a new iframe as fallback.
+  let trueNative: ((child: Node) => Node) | null = sosTrueNative;
+  if (!trueNative) {
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.head.appendChild(iframe);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      trueNative = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? null;
+      if (trueNative && iframe.parentNode === document.head) {
+        trueNative.call(document.head, iframe);
+      }
+    } catch { /* ignore */ }
+  }
 
   if (trueNative) {
     const _realNative = trueNative;
@@ -72,12 +74,9 @@
     // patchedRemoveChild then falls through to call the REAL native (which throws).
     // Unconditional try/catch is the only safe approach.
     function swallowingRemoveChildEarly<T extends Node>(this: Node, child: T): T {
-      // Unconditional try/catch — do NOT guard with parentNode === this.
-      // When the stale shim calls this as its captured _native, `this` is the
-      // #app div but `child` may have been moved. A parentNode guard would skip
-      // the call, causing the stale shim to fall through to the real native which
-      // throws NotFoundError. Always attempt the call and swallow any error.
-      try { _realNative.call(this, child); } catch { /* swallow NotFoundError */ }
+      // Use sosTrueNative — captured in index.html before ANY patching ran.
+      // This is guaranteed to be the real browser method, not any shim wrapper.
+      try { (sosTrueNative ?? trueNative)!.call(this, child); } catch { /* swallow */ }
       return child;
     }
 

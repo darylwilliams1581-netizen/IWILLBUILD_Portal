@@ -2,6 +2,32 @@
 // sos-shim MUST be the first import — sets globalThis.SOSAlertPopup before
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';
+
+// ── Overwrite stale patchedRemoveChild on #app BEFORE React hydrates ─────────
+// The stale shim (t=1784519099416) installed patchedRemoveChild as an own
+// property on the #app div during a previous page load. That property survives
+// HMR because the #app div is never recreated. We must overwrite it NOW —
+// synchronously, before hydrateRoot — with a safe no-throw wrapper.
+{
+  const appEl = document.getElementById('app');
+  if (appEl) {
+    const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
+      try {
+        // Walk up the prototype chain to find the true host native, skipping
+        // any patched versions on Node.prototype.
+        const proto = Object.getPrototypeOf(Object.getPrototypeOf(appEl));
+        const native = proto && Object.getOwnPropertyDescriptor(proto, 'removeChild')?.value;
+        if (native) { native.call(this, child); }
+      } catch { /* swallow NotFoundError */ }
+      return child;
+    };
+    try {
+      Object.defineProperty(appEl, 'removeChild', {
+        value: safeRC, writable: true, configurable: true, enumerable: false,
+      });
+    } catch { /* ignore */ }
+  }
+}
 import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
