@@ -14,15 +14,21 @@ import {
   AlertCircle, FileText, Library, Layers,
   ChevronDown, Trash2, Printer, Download, Upload,
   Settings, Table2, FormInput, Cpu, LayoutTemplate,
+  Hash, Type, List, Minus, AlignLeft,
+  LayoutGrid, PenLine, Zap, Camera,
+  CheckSquare, Calendar, Briefcase, MapPin, User,
+  Building2, ClipboardList,
+  Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert,
+  Image, AlignCenter, AlignRight,
 } from 'lucide-react';
+import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
-import DocSidebar from './DocSidebar';
 import StructurePanel from './StructurePanel';
 import DocxImporter from './DocxImporter';
 import BlocksJsonImporter from './BlocksJsonImporter';
 import DocumentPdfTab from './DocumentPdfTab';
 import { usePermissions } from '@/lib/usePermissions';
-import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings } from './types';
+import type { DocumentTemplate, DocumentBlock, BuilderTab, TemplatePdfSettings, BannerVariant } from './types';
 import { DEFAULT_TEMPLATE_PDF_SETTINGS } from './types';
 
 interface Props {
@@ -60,10 +66,23 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
-  const [leftCollapsed, setLeftCollapsed]           = useState(true);
   const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const { isPlatformOwner } = usePermissions();
+
+  /** Convenience: append a single block to the document */
+  const appendBlock = useCallback((block: DocumentBlock) => {
+    appendBlocks([block]);
+  }, [appendBlocks]);
+
+  /** Insert a system field token as an inline rich_text block */
+  const appendSysToken = useCallback((key: string, label: string) => {
+    appendBlocks([{
+      id: nanoid(10),
+      type: 'rich_text',
+      html: `<p><span class="sys-field-token" data-sys-field="${key}" contenteditable="false">⚙ ${label}</span></p>`,
+    }]);
+  }, [appendBlocks]);
 
   // Load template on mount
   useEffect(() => {
@@ -181,6 +200,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     { id: 'tables',        label: 'Tables',        icon: <Table2 size={13} /> },
     { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
     { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
+    { id: 'advanced',      label: 'Advanced',      icon: <ShieldAlert size={13} /> },
     { id: 'view',          label: 'View',          icon: <LayoutTemplate size={13} /> },
   ];
 
@@ -191,19 +211,10 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     >
       {/* ── Row 1: Title bar ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
-
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors flex-shrink-0"
-          title="Close"
-        >
+        <button onClick={onClose} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors flex-shrink-0" title="Close">
           <X size={14} />
         </button>
-
         <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
-
-        {/* Doc name — inline editable */}
         <FileText size={13} className="text-slate-400 flex-shrink-0" />
         <input
           type="text"
@@ -212,120 +223,45 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           onClick={(e) => e.stopPropagation()}
           className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none w-48 min-w-0 hover:bg-white focus:bg-white focus:ring-1 focus:ring-primary/40 rounded px-1.5 py-0.5 transition-colors"
           placeholder="Untitled document"
-          title="Click to rename"
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
-
         <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
-
         {/* Doc type dropdown */}
         <div className="relative flex-shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
             className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
           >
-            {docTypeLabel}
-            <ChevronDown size={10} />
+            {docTypeLabel}<ChevronDown size={10} />
           </button>
           {showDocTypeMenu && (
-            <div
-              className="absolute top-8 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="absolute top-8 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
               {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']);
-                    setShowDocTypeMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                    templateType === key
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
+                <button key={key} onClick={() => { useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']); setShowDocTypeMenu(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${templateType === key ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
                   {label}
                 </button>
               ))}
             </div>
           )}
         </div>
-
         <div className="flex-1" />
-
-        {/* Action buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Undo / Redo */}
-          <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)">
-            <Undo2 size={13} />
-          </button>
-          <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)">
-            <Redo2 size={13} />
-          </button>
-
+          <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)"><Undo2 size={13} /></button>
+          <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)"><Redo2 size={13} /></button>
           <div className="w-px h-4 bg-slate-300" />
-
-          {/* Import */}
-          <button
-            onClick={() => setShowDocxImporter(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Import DOCX"
-          >
-            <Upload size={12} /> Import
-          </button>
-
-          {/* Print */}
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Print"
-          >
-            <Printer size={12} /> Print
-          </button>
-
-          {/* Download */}
-          <button
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Download PDF"
-          >
-            <Download size={12} /> Download
-          </button>
-
+          <button onClick={() => setShowDocxImporter(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Upload size={12} /> Import</button>
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
+          <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Download size={12} /> Download</button>
           <div className="w-px h-4 bg-slate-300" />
-
-          {/* Delete */}
-          {templateId && (
-            <button
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
-              title="Delete document"
-            >
-              <Trash2 size={12} /> Delete
-            </button>
-          )}
-
-          {/* Publish to Library */}
+          {templateId && <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={12} /> Delete</button>}
           {isPlatformOwner && templateId && (
-            <button
-              onClick={() => setShowPublishModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"
-            >
-              <Library size={12} /> Publish
-            </button>
+            <button onClick={() => setShowPublishModal(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"><Library size={12} /> Publish</button>
           )}
-
-          {/* Save */}
           <button
             onClick={() => void handleSave()}
             disabled={isSaving || (!isDirty && !!templateId)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
-              saveStatus === 'saved'
-                ? 'bg-green-500 text-white'
-                : saveStatus === 'error'
-                ? 'bg-red-500 text-white'
-                : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
-            }`}
-            title="Save (⌘S)"
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
           >
             {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
             {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
@@ -334,102 +270,162 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       </div>
 
       {/* ── Row 2: Ribbon tab strip ───────────────────────────────────────────── */}
-      <div className="flex items-end gap-0 px-3 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
         {RIBBON_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-primary text-primary bg-primary/5'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+            {tab.icon}{tab.label}
           </button>
         ))}
-
-        {/* Preview toggle — far right of ribbon */}
         <div className="flex-1" />
-        <button
-          onClick={() => useDocumentStore.getState().setMode('preview')}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent transition-colors mb-0"
-        >
+        <button onClick={() => useDocumentStore.getState().setMode('preview')}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent transition-colors">
           <Eye size={13} /> Preview
         </button>
       </div>
 
-      {/* ── Tab panels ───────────────────────────────────────────────────────── */}
-
-      {/* FILE tab — settings, PDF output */}
+      {/* ── FILE tab ─────────────────────────────────────────────────────────── */}
       {activeTab === 'file' && (
         <div className="flex flex-1 overflow-hidden bg-slate-50">
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto py-6 px-4">
-              <DocumentPdfTab
-                settings={pdfSettings}
-                onChange={(next) => setPdfSettings(next)}
-                templateName={templateName}
-              />
+              <DocumentPdfTab settings={pdfSettings} onChange={(next) => setPdfSettings(next)} templateName={templateName} />
             </div>
           </div>
         </div>
       )}
 
-      {/* STRUCTURE tab — full-width block canvas */}
+      {/* ── STRUCTURE tab — full-width canvas, no sidebar ────────────────────── */}
       {activeTab === 'structure' && (
         <div className="flex flex-1 overflow-hidden">
-          <DocSidebar
-            onImportDocx={() => setShowDocxImporter(true)}
-            collapsed={leftCollapsed}
-            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
-          />
+          {/* Slim insert strip for structure blocks */}
+          <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+            <div className="px-2 pt-2.5 pb-1">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Import</p>
+              <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
+            </div>
+            <div className="px-2 pt-2 pb-1">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Structure</p>
+              <RibbonInsertBtn icon={<Hash size={12} />} label="Document Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
+              <RibbonInsertBtn icon={<Hash size={12} />} label="Section Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
+              <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
+              <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
+              <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
+              <RibbonInsertBtn icon={<Minus size={12} />} label="Section Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
+              <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
+            </div>
+            <div className="h-4" />
+          </div>
           <div className="flex-1 flex flex-col overflow-hidden">
             <StructurePanel />
           </div>
         </div>
       )}
 
-      {/* TABLES tab */}
+      {/* ── TABLES tab ───────────────────────────────────────────────────────── */}
       {activeTab === 'tables' && (
-        <RibbonPlaceholder
-          icon={<Table2 size={32} className="text-slate-300" />}
-          title="Tables"
-          description="Insert and manage tables — coming soon."
-        />
+        <div className="flex flex-1 overflow-hidden">
+          <RibbonPanel title="Tables">
+            <RibbonGroup label="Insert Table">
+              <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
+              <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
+              <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
+              <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
+            </RibbonGroup>
+          </RibbonPanel>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StructurePanel />
+          </div>
+        </div>
       )}
 
-      {/* FORM FIELDS tab */}
+      {/* ── FORM FIELDS tab ──────────────────────────────────────────────────── */}
       {activeTab === 'form_fields' && (
-        <RibbonPlaceholder
-          icon={<FormInput size={32} className="text-slate-300" />}
-          title="Form Fields"
-          description="Add input fields, checkboxes, signatures and dropdowns — coming soon."
-        />
+        <div className="flex flex-1 overflow-hidden">
+          <RibbonPanel title="Form Fields">
+            <RibbonGroup label="Insert Field">
+              <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
+              <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
+              <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
+              <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
+              <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
+              <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
+              <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
+              <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
+            </RibbonGroup>
+          </RibbonPanel>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StructurePanel />
+          </div>
+        </div>
       )}
 
-      {/* SYSTEM FIELDS tab */}
+      {/* ── SYSTEM FIELDS tab ────────────────────────────────────────────────── */}
       {activeTab === 'system_fields' && (
-        <RibbonPlaceholder
-          icon={<Cpu size={32} className="text-slate-300" />}
-          title="System Fields"
-          description="Insert dynamic fields like job number, date, worker name, company — coming soon."
-        />
+        <div className="flex flex-1 overflow-hidden">
+          <RibbonPanel title="System Fields">
+            <p className="px-3 pb-2 text-[10px] text-slate-400 leading-tight">Inserts a live data token — resolves to job data on export.</p>
+            <RibbonGroup label="Job">
+              <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
+              <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
+              <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
+              <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
+              <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
+              <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
+            </RibbonGroup>
+            <RibbonGroup label="Company">
+              <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
+              <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
+            </RibbonGroup>
+            <RibbonGroup label="Document">
+              <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
+              <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
+              <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Document Number" onClick={() => appendSysToken('doc.number',    'Document Number')} />
+              <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
+            </RibbonGroup>
+          </RibbonPanel>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StructurePanel />
+          </div>
+        </div>
       )}
 
-      {/* VIEW tab */}
+      {/* ── ADVANCED tab ─────────────────────────────────────────────────────── */}
+      {activeTab === 'advanced' && (
+        <div className="flex flex-1 overflow-hidden">
+          <RibbonPanel title="Advanced">
+            <RibbonGroup label="Banners">
+              <RibbonInsertBtn icon={<Info size={12} />}         label="Info"         accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<AlertTriangle size={12} />} label="Warning"     accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<AlertOctagon size={12} />}  label="Danger"      accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<CheckCircle size={12} />}   label="Success"     accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<Shield size={12} />}        label="Safety"      accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<ShieldAlert size={12} />}   label="Safety First" accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<ShieldAlert size={12} />}   label="First Aid"   accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
+              <RibbonInsertBtn icon={<ShieldAlert size={12} />}   label="Custom"                      onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
+            </RibbonGroup>
+            <RibbonGroup label="Image">
+              <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
+            </RibbonGroup>
+            <RibbonGroup label="Layout">
+              <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
+              <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
+            </RibbonGroup>
+          </RibbonPanel>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StructurePanel />
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW tab ─────────────────────────────────────────────────────────── */}
       {activeTab === 'view' && (
         <div className="flex flex-1 overflow-hidden bg-slate-50">
           <div className="max-w-xl mx-auto py-8 px-4 w-full">
             <h2 className="text-sm font-bold text-slate-700 mb-4">Layout &amp; Theme</h2>
             <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
               <p className="text-xs text-slate-500">Page size, margins, fonts and colour theme for this document.</p>
-              <DocumentPdfTab
-                settings={pdfSettings}
-                onChange={(next) => setPdfSettings(next)}
-                templateName={templateName}
-              />
+              <DocumentPdfTab settings={pdfSettings} onChange={(next) => setPdfSettings(next)} templateName={templateName} />
             </div>
           </div>
         </div>
@@ -438,51 +434,104 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showDocxImporter && (
-          <DocxImporter
-            templateId={templateId}
-            hasExistingBlocks={blocks.length > 0}
-            onClose={() => setShowDocxImporter(false)}
-            onImported={handleDocxImported}
-            onSaveFirst={handleSaveFirst}
-          />
+          <DocxImporter templateId={templateId} hasExistingBlocks={blocks.length > 0} onClose={() => setShowDocxImporter(false)} onImported={handleDocxImported} onSaveFirst={handleSaveFirst} />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {showBlocksImporter && (
-          <BlocksJsonImporter
-            templateId={templateId}
-            hasExistingBlocks={blocks.length > 0}
-            onClose={() => setShowBlocksImporter(false)}
-            onImported={handleDocxImported}
-            onSaveFirst={handleSaveFirst}
-          />
+          <BlocksJsonImporter templateId={templateId} hasExistingBlocks={blocks.length > 0} onClose={() => setShowBlocksImporter(false)} onImported={handleDocxImported} onSaveFirst={handleSaveFirst} />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {showPublishModal && templateId && (
-          <PublishToLibraryModal
-            templateId={templateId}
-            templateName={templateName}
-            onClose={() => setShowPublishModal(false)}
-          />
+          <PublishToLibraryModal templateId={templateId} templateName={templateName} onClose={() => setShowPublishModal(false)} />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// ── Small helpers ─────────────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
-function RibbonPlaceholder({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+/** Slim left panel wrapper used by non-structure tabs */
+function RibbonPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-1 items-center justify-center bg-slate-50">
-      <div className="flex flex-col items-center gap-3 text-center max-w-xs">
-        {icon}
-        <p className="text-sm font-semibold text-slate-500">{title}</p>
-        <p className="text-xs text-slate-400">{description}</p>
+    <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+      <div className="px-3 pt-2.5 pb-1 border-b border-slate-100 bg-slate-50">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
       </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-0.5">
+        {children}
+        <div className="h-4" />
+      </div>
+    </div>
+  );
+}
+
+function RibbonGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-1">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-1">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function RibbonInsertBtn({ icon, label, onClick, primary = false, accent }: {
+  icon: React.ReactNode; label: string; onClick: () => void; primary?: boolean; accent?: string;
+}) {
+  const accentMap: Record<string, string> = {
+    blue: 'text-blue-600 hover:bg-blue-50', amber: 'text-amber-600 hover:bg-amber-50',
+    red: 'text-red-600 hover:bg-red-50', green: 'text-green-600 hover:bg-green-50',
+    orange: 'text-orange-600 hover:bg-orange-50', yellow: 'text-yellow-700 hover:bg-yellow-50',
+  };
+  const accentCls = accent ? accentMap[accent] ?? '' : '';
+  return (
+    <button onClick={onClick}
+      className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors text-left ${
+        primary ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+        : accentCls ? `text-slate-600 ${accentCls}`
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+      }`}>
+      <span className={`flex-shrink-0 ${primary ? 'text-primary' : accentCls ? '' : 'text-slate-400'}`}>{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+/** Image insert panel — size + align pickers then insert */
+function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => void }) {
+  const [size, setSize]   = useState<'small' | 'medium' | 'large' | 'full'>('medium');
+  const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
+  const SIZE_LABELS = { small: 'Small', medium: 'Medium', large: 'Large', full: 'Full width' };
+  return (
+    <div className="mx-1 mb-1 rounded-lg border border-slate-200 bg-slate-50 p-2 flex flex-col gap-2">
+      <div>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Size</p>
+        <div className="grid grid-cols-2 gap-1">
+          {(Object.keys(SIZE_LABELS) as (keyof typeof SIZE_LABELS)[]).map((s) => (
+            <button key={s} onClick={() => setSize(s)}
+              className={`py-1 rounded text-[10px] font-semibold transition-colors ${size === s ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'}`}>
+              {SIZE_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Align</p>
+        <div className="flex gap-1">
+          {(['left', 'center', 'right'] as const).map((a) => (
+            <button key={a} onClick={() => setAlign(a)} title={a}
+              className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${align === a ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'}`}>
+              {a === 'left' && <AlignLeft size={12} />}{a === 'center' && <AlignCenter size={12} />}{a === 'right' && <AlignRight size={12} />}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button onClick={() => onInsert({ id: nanoid(10), type: 'image', src: '', alt: '', size, align, preserveAspectRatio: true })}
+        className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5">
+        <Image size={11} /> Insert image
+      </button>
     </div>
   );
 }

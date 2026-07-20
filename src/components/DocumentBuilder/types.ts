@@ -651,7 +651,7 @@ export interface BuilderSelection {
 export type BuilderMode = 'edit' | 'preview' | 'fill';
 
 /** Which top-level tab is active in the builder */
-export type BuilderTab = 'file' | 'structure' | 'tables' | 'form_fields' | 'system_fields' | 'view';
+export type BuilderTab = 'file' | 'structure' | 'tables' | 'form_fields' | 'system_fields' | 'advanced' | 'view';
 
 /** Which tab is active in the BlockInspector right panel */
 export type InspectorTab = 'settings' | 'logic';
