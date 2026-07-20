@@ -231,9 +231,15 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           </div>
 
           <FileText size={13} className="text-slate-400 flex-shrink-0" />
-          <span className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">
-            {templateName}
-          </span>
+          <input
+            type="text"
+            value={templateName}
+            onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-semibold text-slate-700 bg-transparent border-none outline-none w-[180px] min-w-0 truncate hover:bg-slate-100 focus:bg-slate-100 focus:ring-1 focus:ring-primary/40 rounded px-1 py-0.5 transition-colors"
+            placeholder="Untitled document"
+            title="Click to rename"
+          />
           {isDirty && (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />
           )}
