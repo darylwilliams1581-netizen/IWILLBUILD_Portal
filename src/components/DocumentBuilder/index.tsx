@@ -230,7 +230,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           value={templateName}
           onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none w-48 min-w-0 hover:bg-white focus:bg-white focus:ring-1 focus:ring-primary/40 rounded px-1.5 py-0.5 transition-colors"
+          className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none w-80 min-w-0 hover:bg-white focus:bg-white focus:ring-1 focus:ring-primary/40 rounded px-1.5 py-0.5 transition-colors"
           placeholder="Untitled document"
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}

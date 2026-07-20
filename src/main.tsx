@@ -3,32 +3,32 @@
 // the frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219) executes.
 import './sos-shim';
 
-// ── Overwrite stale patchedRemoveChild on #app BEFORE React hydrates ─────────
-// The stale shim (t=1784519099416) installed patchedRemoveChild as an own
-// property on the #app div. Overwrite it with a safe wrapper that calls the
-// true browser native captured in index.html before any patching ran.
+// ── Seal #app.removeChild against the stale shim (t=1784519099416) ───────────
+// The stale shim re-runs on every HMR cycle AFTER main.tsx, reinstalling its
+// throwing patchedRemoveChild as an own property on #app via Object.defineProperty.
+// We seal it with a NON-CONFIGURABLE getter so the stale shim's defineProperty
+// call throws a TypeError (can't redefine non-configurable) — which the stale
+// shim itself wraps in try/catch and ignores. Our safe wrapper stays in place.
 {
   const appEl = document.getElementById('app');
   if (appEl) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
     const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-      // Always attempt — never skip — so React's DOM reconciler stays consistent.
-      // Swallow NotFoundError if child is no longer a child of this node.
       try { if (trueNative) trueNative.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     };
-    // Try defineProperty first (overwrites even non-writable own props if configurable).
-    // Fall back to direct assignment in case defineProperty itself throws.
     try {
+      // configurable: false — the stale shim cannot redefine this property.
+      // The stale shim's own defineProperty call will throw TypeError silently.
       Object.defineProperty(appEl, 'removeChild', {
-        value: safeRC, writable: true, configurable: true, enumerable: false,
+        get() { return safeRC; },
+        set(_v) { /* ignore — stale shim tries to assign; we block it */ },
+        configurable: false,
+        enumerable: false,
       });
-    } catch {
-      try { (appEl as unknown as Record<string, unknown>).removeChild = safeRC; } catch { /* ignore */ }
-    }
-    // Belt-and-suspenders: also patch Node.prototype so any call that bypasses
-    // the own property (e.g. via prototype chain after own prop is deleted) is safe.
+    } catch { /* already sealed from a prior run — that's fine */ }
+    // Also seal Node.prototype as belt-and-suspenders.
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (Node.prototype as any).removeChild = safeRC;

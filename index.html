@@ -25,21 +25,30 @@
 
           var _realRC = Node.prototype.removeChild;
           function safeRemoveChild(child) {
-            // Always attempt — never skip — so React's DOM reconciler stays consistent.
             try { return _realRC.call(this, child); } catch (e) { /* swallow NotFoundError */ }
             return child;
           }
-          // Patch main window Node.prototype
-          Node.prototype.removeChild = safeRemoveChild;
+          // Install as a getter on Node.prototype so value-descriptor overwrites can't replace it.
+          try {
+            Object.defineProperty(Node.prototype, 'removeChild', {
+              get: function() { return safeRemoveChild; },
+              set: function(_v) { /* ignore — our wrapper always wins */ },
+              configurable: true,
+              enumerable: false,
+            });
+          } catch(e) {
+            Node.prototype.removeChild = safeRemoveChild;
+          }
 
           // Intercept Object.defineProperty so the stale shim can't install
           // its throwing patchedRemoveChild on any Node (e.g. the #app div).
           var _origDefProp = Object.defineProperty;
           Object.defineProperty = function(obj, prop, descriptor) {
-            if (prop === 'removeChild' && obj != null && obj instanceof Node) {
+            if (prop === 'removeChild' && obj != null && typeof obj === 'object' && obj instanceof Node) {
+              // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
               return _origDefProp(obj, prop, {
-                value: safeRemoveChild,
-                writable: true,
+                get: function() { return safeRemoveChild; },
+                set: function(_v) { /* ignore — our wrapper always wins */ },
                 configurable: true,
                 enumerable: false,
               });
