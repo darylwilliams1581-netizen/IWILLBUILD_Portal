@@ -55,6 +55,7 @@ const STALE_TS = [
   '1784516836299',
   '1784516840163',
   '1784516846345',
+  '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
 ];
 
 function isSosError(e: unknown): boolean {

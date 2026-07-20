@@ -1,4 +1,4 @@
-// RootLayout.tsx — IWILLBUILD Portal — v55 2026-07-20
+// RootLayout.tsx — IWILLBUILD Portal — v56 2026-07-20
 // SOSAlertPopup is exported at EXACTLY line 122 of this file.
 // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) references
 // SOSAlertPopup as a bare identifier at its own line 122. Because both the
@@ -232,6 +232,7 @@ const STALE_SNAPSHOTS = [
   '1784516836299',
   '1784516840163',
   '1784516846345',
+  '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
 ];
 
 function isStaleSnapshot(error: Error): boolean {
@@ -275,31 +276,26 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
   return (
-    <SosInnerBoundary>
-      <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
-        <Helmet>
-          <title>IWILLBUILD Portal</title>
-          <meta
-            name="description"
-            content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
-          />
-        </Helmet>
-        {/* Router-dependent components stay in the main tree so useLocation/
-            useNavigate hooks work. Only truly router-independent, client-only
-            components go inside DeferredMount. */}
-        <ScrollRestoration />
-        <ActivePing />
-        <PortalBanners pathname={location.pathname} />
-        {/* OfflineBanner and PwaInstallPrompt have no router deps and caused
-            the original removeChild mismatch — defer them past hydration. */}
-        <DeferredMount>
-          <OfflineBanner />
-          <PwaInstallPrompt />
-        </DeferredMount>
-        <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
+    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+      <Helmet>
+        <title>IWILLBUILD Portal</title>
+        <meta
+          name="description"
+          content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
+        />
+      </Helmet>
+      <ScrollRestoration />
+      <ActivePing />
+      <PortalBanners pathname={location.pathname} />
+      <DeferredMount>
+        <OfflineBanner />
+        <PwaInstallPrompt />
+      </DeferredMount>
+      <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
+        <SosInnerBoundary>
           {children}
-        </div>
+        </SosInnerBoundary>
       </div>
-    </SosInnerBoundary>
+    </div>
   );
 }

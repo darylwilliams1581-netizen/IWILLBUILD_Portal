@@ -269,7 +269,6 @@ export default function JobPhotosPage() {
               aria-label="Upload photos from library"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-              <span>Upload</span>
             </button>
 
             {/* Select */}
