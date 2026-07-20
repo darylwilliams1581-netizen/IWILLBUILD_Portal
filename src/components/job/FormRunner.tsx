@@ -10,7 +10,6 @@ import {
   Save,
   Send,
   Printer,
-  SkipForward,
   Pencil,
 } from 'lucide-react';
 import type { Job } from '@/lib/jobs-api';
@@ -23,9 +22,7 @@ import SignaturePad, {
   parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
-import { parseSkipRules } from '@/lib/skip-logic-types';
-import { evaluateSkipRules } from '@/lib/skip-logic-engine';
-import type { SkipAuditEntry } from '@/lib/skip-logic-types';
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,14 +160,6 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   const [currentPage, setCurrentPage] = useState(0);
   const formTopRef = useRef<HTMLDivElement>(null);
 
-  // ── Skip logic state ─────────────────────────────────────────────────────────
-  // Set of field ids that have been skipped (auto-unrequired at validation time)
-  const [skippedFieldIds, setSkippedFieldIds] = useState<Set<number>>(new Set());
-  // Toast shown when a skip fires
-  const [skipToast, setSkipToast] = useState<string | null>(null);
-  // Back-stack: ordered list of [pageIndex, fieldId] pairs the user actually visited
-  const [backStack, setBackStack] = useState<Array<{ page: number; fieldId: number }>>([]);
-
   const visibleFields = useFormLogic(fields, answers);
 
   // Split fields into pages at page_break boundaries
@@ -205,132 +194,10 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   function setAnswer(fieldId: number, value: AnswerValue) {
     setAnswers((prev) => {
       const next = { ...prev, [fieldId]: value };
-
-      // Evaluate skip rules for this field after the answer is set
-      const field = fields.find((f) => f.id === fieldId);
-      if (field) {
-        const skipRules = parseSkipRules(field.logicJson);
-        if (skipRules.length > 0) {
-          const result = evaluateSkipRules(fieldId, skipRules, next as Record<number, unknown>);
-          if (result.jumpTo !== null) {
-            // Fire skip asynchronously so state update completes first
-            setTimeout(() => {
-              handleSkipFired(fieldId, result.jumpTo!, result.firedRule?.id ?? '', result.triggerValue, field.label, result.firedRule?.action ?? null);
-            }, 0);
-          }
-        }
-      }
-
       return next;
     });
     setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });
     setSavedAt(null);
-  }
-
-  function handleSkipFired(
-    sourceFieldId: number,
-    jumpTo: number | 'end',
-    ruleId: string,
-    triggerValue: string,
-    sourceFieldLabel: string,
-    action: { targetType: string; targetFieldId?: number; targetLabel?: string } | null,
-  ) {
-    if (jumpTo === 'end') {
-      // Mark all remaining fields as skipped
-      const sourceIdx = fields.findIndex((f) => f.id === sourceFieldId);
-      const remaining = fields.slice(sourceIdx + 1).map((f) => f.id);
-      setSkippedFieldIds((prev) => new Set([...prev, ...remaining]));
-      setSkipToast('Skipping to end of form…');
-      setTimeout(() => setSkipToast(null), 2500);
-      // Jump to last page and auto-complete
-      setCurrentPage(pages.length - 1);
-      scrollToTop();
-      // Fire audit log
-      void fireSkipAudit({
-        sourceFieldId,
-        sourceFieldLabel,
-        ruleId,
-        triggerValue,
-        targetType: 'end',
-        targetFieldId: null,
-        targetFieldLabel: null,
-      });
-      return;
-    }
-
-    // Jump to a specific field
-    const targetField = fields.find((f) => f.id === jumpTo);
-    if (!targetField) return;
-
-    // Find which page the target field is on
-    let targetPage = 0;
-    for (let p = 0; p < pages.length; p++) {
-      if (pages[p].some((f) => f.id === jumpTo)) {
-        targetPage = p;
-        break;
-      }
-    }
-
-    // Mark all fields between source and target as skipped
-    const sourceIdx = fields.findIndex((f) => f.id === sourceFieldId);
-    const targetIdx = fields.findIndex((f) => f.id === jumpTo);
-    if (targetIdx > sourceIdx) {
-      const skipped = fields.slice(sourceIdx + 1, targetIdx).map((f) => f.id);
-      setSkippedFieldIds((prev) => new Set([...prev, ...skipped]));
-    }
-
-    // Push current position to back-stack
-    setBackStack((prev) => [...prev, { page: currentPage, fieldId: sourceFieldId }]);
-
-    const targetLabel = action?.targetLabel ?? targetField.label ?? `Field #${jumpTo}`;
-    setSkipToast(`Skipped to: ${targetLabel}`);
-    setTimeout(() => setSkipToast(null), 2500);
-
-    setCurrentPage(targetPage);
-    scrollToTop();
-
-    // Fire audit log
-    void fireSkipAudit({
-      sourceFieldId,
-      sourceFieldLabel,
-      ruleId,
-      triggerValue,
-      targetType: action?.targetType ?? 'field',
-      targetFieldId: jumpTo,
-      targetFieldLabel: targetLabel,
-    });
-  }
-
-  async function fireSkipAudit(data: {
-    sourceFieldId: number;
-    sourceFieldLabel: string;
-    ruleId: string;
-    triggerValue: string;
-    targetType: string;
-    targetFieldId: number | null;
-    targetFieldLabel: string | null;
-  }) {
-    try {
-      const entry: Partial<SkipAuditEntry> = {
-        submissionId: submission.id,
-        templateId: submission.templateId,
-        jobId: jobId,
-        ruleId: data.ruleId,
-        sourceFieldId: data.sourceFieldId,
-        sourceFieldLabel: data.sourceFieldLabel,
-        triggerValue: data.triggerValue,
-        targetType: data.targetType as SkipAuditEntry['targetType'],
-        targetFieldId: data.targetFieldId ?? undefined,
-        targetFieldLabel: data.targetFieldLabel ?? undefined,
-        triggeredAt: new Date().toISOString(),
-      };
-      await fetch('/api/forms/skip-audit', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry),
-      });
-    } catch { /* non-fatal */ }
   }
 
   async function saveProgress() {
@@ -360,8 +227,6 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
     const newErrors: Record<number, string> = {};
     for (const field of checkFields) {
       if (!visibleFields.has(field.id)) continue;
-      // Skipped fields are auto-unrequired — never block submission
-      if (skippedFieldIds.has(field.id)) continue;
       if (['section', 'instruction', 'instruction_image', 'page_break'].includes(field.fieldType)) continue;
       if (!field.required) continue;
       const val = answers[field.id];
@@ -697,16 +562,8 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
   }
 
   function goToPrevPage() {
-    // If we have a back-stack entry, use it (respects skip jumps)
-    if (backStack.length > 0) {
-      const prev = backStack[backStack.length - 1];
-      setBackStack((s) => s.slice(0, -1));
-      setCurrentPage(prev.page);
-      scrollToTop();
-    } else {
-      setCurrentPage((p) => Math.max(p - 1, 0));
-      scrollToTop();
-    }
+    setCurrentPage((p) => Math.max(p - 1, 0));
+    scrollToTop();
   }
 
   if (loading) {
@@ -920,22 +777,6 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           <AlertCircle size={13} /> {apiError}
         </div>
       )}
-
-      {/* Skip logic toast */}
-      <AnimatePresence>
-        {skipToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center gap-2 text-xs font-semibold text-primary bg-orange-50 border border-primary/20 rounded-xl px-3 py-2"
-          >
-            <SkipForward size={13} className="text-primary shrink-0" />
-            {skipToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Fields — current page only */}
       <div className="w-full flex flex-col gap-5">

@@ -11,37 +11,43 @@
 (window as any).SOSAlertPopup = function SOSAlertPopup() { return null; };
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// The stale sos-shim snapshot (t=1784519099416) runs BEFORE this module and:
-//   1. Saves the real browser native as __sosNativeRemoveChild (configurable:false)
-//   2. Installs its own patchedRemoveChild on Node.prototype (configurable:false)
-//   3. Its patchedRemoveChild calls native (the real browser native) → throws NotFoundError
+// Call chain when the stale shim (t=1784519099416) is in the browser cache:
+//   React → node.removeChild(child)
+//     → stale patchedRemoveChild  [locked on Node.prototype, configurable:false]
+//       → __sosNativeRemoveChild.call(this, child)  [= real browser native]
+//         → throws NotFoundError
 //
-// We cannot overwrite either property because configurable:false blocks us.
-// Solution: intercept at the throw site — wrap window.reportError AND add a
-// capture-phase 'error' listener BEFORE React mounts so we swallow the error
-// before React's own listener re-dispatches it as an unhandled error.
+// The stale patchedRemoveChild has NO try/catch (older version).
+// We cannot replace Node.prototype.removeChild (configurable:false).
+// We cannot replace __sosNativeRemoveChild (writable:false, configurable:false).
 //
-// Additionally: patch __sosNativeRemoveChild to point at a swallowing wrapper
-// IF the stale snapshot left it writable (it uses writable:true in some versions).
+// Only lever left: make the real browser native not throw by wrapping it at
+// the Reflect level — not possible for host methods.
+//
+// Fallback: intercept the error via window.reportError + capture-phase listener
+// and trigger a reload. The SosInnerBoundary in RootLayout also catches it and
+// renders null + reloads, preventing the error UI from persisting.
 {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = Node.prototype as any;
 
-  // Capture the true browser native — may already be the stale patchedRemoveChild.
-  // We need the real one, stored under __sosTrueNativeRemoveChild if available.
-  const trulyNative: typeof Node.prototype.removeChild =
-    proto.__sosTrueNativeRemoveChild ?? proto.removeChild;
-
-  if (!proto.__sosTrueNativeRemoveChild) {
+  // Best-effort: capture the real browser native before any patching.
+  // If the stale shim already ran, proto.removeChild is its patchedRemoveChild.
+  // proto.__sosNativeRemoveChild is the real native (set by stale shim, writable:false).
+  // We want trulyNative = the real browser native for our own swallower.
+  const trulyNative: typeof Node.prototype.removeChild = (() => {
+    // Try to get the real native via a known-clean iframe's prototype
     try {
-      Object.defineProperty(proto, '__sosTrueNativeRemoveChild', {
-        value: trulyNative,
-        writable: false,
-        configurable: false,
-        enumerable: false,
-      });
-    } catch { /* already defined */ }
-  }
+      const iframe = document.createElement('iframe');
+      document.head.appendChild(iframe);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fn = (iframe.contentWindow as any)?.Node?.prototype?.removeChild;
+      document.head.removeChild(iframe);
+      if (typeof fn === 'function') return fn as typeof Node.prototype.removeChild;
+    } catch { /* ignore */ }
+    // Fall back: use whatever is on the prototype (may be stale patchedRemoveChild)
+    return proto.removeChild as typeof Node.prototype.removeChild;
+  })();
 
   function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
     if (!child || child.parentNode !== this) return child;
@@ -53,23 +59,7 @@
     }
   }
 
-  // Try to point __sosNativeRemoveChild at the swallower so the stale snapshot's
-  // `native.call(this, child)` calls swallowingRemoveChild instead of the real native.
-  const nativeDesc = Object.getOwnPropertyDescriptor(proto, '__sosNativeRemoveChild');
-  if (!nativeDesc) {
-    try {
-      Object.defineProperty(proto, '__sosNativeRemoveChild', {
-        value: swallowingRemoveChild,
-        writable: true,
-        configurable: false,
-        enumerable: false,
-      });
-    } catch { /* ignore */ }
-  } else if (nativeDesc.writable) {
-    try { proto.__sosNativeRemoveChild = swallowingRemoveChild; } catch { /* ignore */ }
-  }
-
-  // Try to install swallowingRemoveChild as removeChild if still configurable.
+  // Install swallowingRemoveChild as removeChild if not already locked.
   const rcDesc = Object.getOwnPropertyDescriptor(proto, 'removeChild');
   if (!rcDesc || rcDesc.configurable) {
     try {
@@ -79,8 +69,17 @@
         configurable: false,
         enumerable: false,
       });
-    } catch { /* stale snapshot locked it — fall through to error interception */ }
+    } catch { /* stale snapshot locked it — rely on error interception */ }
   }
+
+  // Best-effort: redirect __sosNativeRemoveChild to swallower so the stale
+  // patchedRemoveChild calls our swallower instead of the real throwing native.
+  // The stale shim sets this writable:false — the assignment will silently fail
+  // in sloppy mode or throw in strict mode; we catch both.
+  try {
+    const desc = Object.getOwnPropertyDescriptor(proto, '__sosNativeRemoveChild');
+    if (desc?.writable) proto.__sosNativeRemoveChild = swallowingRemoveChild;
+  } catch { /* ignore */ }
 }
 
 // ── Stale HMR snapshot reload guard ──────────────────────────────────────────
@@ -98,26 +97,51 @@ const STALE_TS_SHIM = [
   '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
-const SOS_SHIM_WINDOW_MS = 20_000;
+const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
+const SOS_SHIM_WINDOW_MS = 8_000;   // shorter window — reload more aggressively
+const SOS_SHIM_MAX_RELOADS = 3;     // give up after 3 rapid reloads (avoid infinite loop)
 
 function shimSosRecentReload(): boolean {
   try {
     const ts = parseInt(localStorage.getItem(SOS_SHIM_LS_KEY) ?? '0', 10);
-    return ts > 0 && Date.now() - ts < SOS_SHIM_WINDOW_MS;
+    const count = parseInt(localStorage.getItem(SOS_SHIM_COUNT_KEY) ?? '0', 10);
+    const recent = ts > 0 && Date.now() - ts < SOS_SHIM_WINDOW_MS;
+    if (recent && count >= SOS_SHIM_MAX_RELOADS) return true; // give up
+    return false;
   } catch { return false; }
 }
 
+function doStaleReload(): void {
+  try {
+    const count = parseInt(localStorage.getItem(SOS_SHIM_COUNT_KEY) ?? '0', 10);
+    localStorage.setItem(SOS_SHIM_LS_KEY, String(Date.now()));
+    localStorage.setItem(SOS_SHIM_COUNT_KEY, String(count + 1));
+  } catch (_) {}
+  // Use location.replace to avoid adding to history, and force cache bypass
+  window.location.reload();
+}
+
+// Reset the reload counter after a clean load (5 seconds with no stale errors)
+setTimeout(() => {
+  try { localStorage.removeItem(SOS_SHIM_COUNT_KEY); } catch (_) {}
+}, 5000);
+
 function isStaleSnapshotError(msg: string, src: string, err?: Error | null): boolean {
   const text = msg + src + (err?.stack ?? '');
-  return STALE_TS_SHIM.some((ts) => text.includes(ts));
+  if (STALE_TS_SHIM.some((ts) => text.includes(ts))) return true;
+  // Also catch any NotFoundError thrown from a patchedRemoveChild in any stale shim
+  // (the stack always contains "patchedRemoveChild" and "sos-shim.ts")
+  if (
+    (msg.includes('removeChild') || (err?.name === 'NotFoundError')) &&
+    text.includes('patchedRemoveChild') &&
+    text.includes('sos-shim.ts')
+  ) return true;
+  return false;
 }
 
 function handleStaleError(msg: string, src: string, err?: Error | null): boolean {
   if (!isStaleSnapshotError(msg, src, err)) return false;
-  if (!shimSosRecentReload()) {
-    try { localStorage.setItem(SOS_SHIM_LS_KEY, String(Date.now())); } catch (_) {}
-    window.location.reload();
-  }
+  if (!shimSosRecentReload()) doStaleReload();
   return true;
 }
 
@@ -134,7 +158,9 @@ function handleStaleError(msg: string, src: string, err?: Error | null): boolean
   // catching it here in capture phase prevents React from re-throwing it.
   window.addEventListener('error', (ev) => {
     const err = ev.error instanceof Error ? ev.error : null;
-    if (handleStaleError(String(ev.message ?? ''), String(ev.filename ?? ''), err)) {
+    // Check message, filename, AND the error's stack (filename may be empty for reportError events)
+    const src = String(ev.filename ?? '') + (err?.stack ?? '');
+    if (handleStaleError(String(ev.message ?? ''), src, err)) {
       ev.preventDefault();
       ev.stopImmediatePropagation();
     }
@@ -156,10 +182,7 @@ window.addEventListener('unhandledrejection', (ev) => {
   const text = (err?.message ?? '') + (err?.stack ?? '') + String(ev.reason ?? '');
   if (STALE_TS_SHIM.some((ts) => text.includes(ts))) {
     ev.preventDefault();
-    if (!shimSosRecentReload()) {
-      try { localStorage.setItem(SOS_SHIM_LS_KEY, String(Date.now())); } catch (_) {}
-      window.location.reload();
-    }
+    if (!shimSosRecentReload()) doStaleReload();
   }
 });
 
