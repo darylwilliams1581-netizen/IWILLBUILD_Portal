@@ -623,6 +623,8 @@ import team_invites_post_574 from "./api/team/invites/POST";
 import team_invites_id_cancel_post_575 from "./api/team/invites/[id]/cancel/POST";
 import team_invites_id_resend_post_576 from "./api/team/invites/[id]/resend/POST";
 import team_members_get_577 from "./api/team/members/GET";
+import team_member_icon_perms_get from "./api/team/members/[id]/icon-permissions/GET";
+import team_member_icon_perms_put from "./api/team/members/[id]/icon-permissions/PUT";
 import team_resend_verification_post_578 from "./api/team/resend-verification/POST";
 import team_schedule_migrate_post_579 from "./api/team/schedule/migrate/POST";
 import team_shifts_get_580 from "./api/team/shifts/GET";
@@ -1231,6 +1233,8 @@ async function runStartupMigrations() {
     { table: 'job_photos', column: 'preview_size_bytes',    definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_width',           definition: 'INT NULL' },
     { table: 'job_photos', column: 'image_height',          definition: 'INT NULL' },
+    // ── profiles: home screen icon permissions (JSON array of allowed icon keys) ─
+    { table: 'profiles', column: 'home_icon_permissions',   definition: 'TEXT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {
@@ -2586,6 +2590,8 @@ app.post("/api/team/invites", team_invites_post_574);
 app.post("/api/team/invites/:id/cancel", team_invites_id_cancel_post_575);
 app.post("/api/team/invites/:id/resend", team_invites_id_resend_post_576);
 app.get("/api/team/members", team_members_get_577);
+app.get("/api/team/members/:id/icon-permissions", team_member_icon_perms_get);
+app.put("/api/team/members/:id/icon-permissions", team_member_icon_perms_put);
 app.post("/api/team/resend-verification", team_resend_verification_post_578);
 app.post("/api/team/schedule/migrate", team_schedule_migrate_post_579);
 app.get("/api/team/shifts", team_shifts_get_580);

@@ -35,6 +35,7 @@ import { useNavigate } from 'react-router-dom';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
+import HomeIconPermissions from '@/components/team/HomeIconPermissions';
 
 // ── Role definitions ──────────────────────────────────────────────────────────
 type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
@@ -459,6 +460,15 @@ function EditMemberModal({
                 );
               })}
             </div>
+          </div>
+
+          {/* Home Screen Icon Permissions */}
+          <div className="border-t border-slate-100 pt-4">
+            <HomeIconPermissions
+              memberId={member.userId}
+              memberRole={member.role}
+              canEdit={callerIsOwner || callerIsAdmin}
+            />
           </div>
 
           {error && (

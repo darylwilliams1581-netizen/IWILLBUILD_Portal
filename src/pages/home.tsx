@@ -4,7 +4,7 @@
  * dark text — iOS-style feel, not dark like the drive app.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ComponentType, type ReactNode, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -31,12 +31,15 @@ import NotificationList from '@/components/NotificationList';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import NotificationBell from '@/components/NotificationBell';
+import {
+  resolveHomeIcons, type HomeIconDef,
+} from '@/lib/homeIcons';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AppIcon {
   label: string;
-  icon: React.ElementType;
+  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   href: string;
   /** Solid bg colour class for the tile */
   bg: string;
@@ -47,41 +50,8 @@ interface AppIcon {
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
 // Solid, saturated colours — light theme needs full-opacity backgrounds
-
-const FIELD_ICONS: AppIcon[] = [
-  { label: 'Camera',         icon: Camera,         href: '?panel=camera',            bg: 'bg-orange-500',   fg: 'text-white' },
-  { label: 'Sign In',        icon: LogIn,          href: '?panel=signin',            bg: 'bg-indigo-500',   fg: 'text-white' },
-  { label: 'Drive',          icon: Car,            href: '?panel=drive-picker',      bg: 'bg-blue-500',     fg: 'text-white' },
-  { label: 'Prestart',       icon: ClipboardCheck, href: '?panel=prestart-picker',   bg: 'bg-amber-500',    fg: 'text-white' },
-  { label: 'Forms',          icon: FileText,       href: '?panel=forms-picker',      bg: 'bg-purple-500',   fg: 'text-white' },
-  { label: 'Notes',          icon: StickyNote,     href: '?panel=notes-picker',      bg: 'bg-yellow-400',   fg: 'text-white' },
-  { label: 'Log Cost',       icon: DollarSign,     href: '?panel=log-cost',          bg: 'bg-emerald-500',  fg: 'text-white' },
-  { label: 'Delays',         icon: Clock,          href: '?panel=delays-picker',     bg: 'bg-red-500',      fg: 'text-white' },
-  { label: 'Progress',       icon: TrendingUp,     href: '?panel=progress-picker',   bg: 'bg-cyan-500',     fg: 'text-white' },
-  { label: 'Drawings',       icon: Layers,         href: '?panel=drawings-picker',   bg: 'bg-lime-500',     fg: 'text-white' },
-  { label: 'Builders Calc',  icon: Ruler,          href: '/builders-calc',           bg: 'bg-violet-500',   fg: 'text-white' },
-  { label: 'Take-off Pad',   icon: ClipboardList,  href: '/takeoff-pad',             bg: 'bg-sky-500',      fg: 'text-white' },
-  { label: 'Equipment',      icon: Wrench,         href: '/studio/asset-manager',    bg: 'bg-rose-500',     fg: 'text-white' },
-];
-
-const ESTIMATING_ICONS: AppIcon[] = [
-  { label: 'Quotes',       icon: FileText,   href: '?panel=quotes-picker', bg: 'bg-orange-500',  fg: 'text-white' },
-  { label: 'Estimating',   icon: Calculator, href: '/estimating',          bg: 'bg-indigo-500',  fg: 'text-white' },
-  { label: 'Invoices',     icon: Receipt,    href: '/invoices',            bg: 'bg-teal-500',    fg: 'text-white' },
-  { label: 'Stakeholders', icon: Users,      href: '/customers',           bg: 'bg-pink-500',    fg: 'text-white' },
-];
-
-const ADMIN_ICONS: AppIcon[] = [
-  { label: 'Jobs',      icon: HardHat,     href: '/jobs',                  bg: 'bg-orange-500',   fg: 'text-white' },
-  { label: 'Ledger',    icon: BookOpen,    href: '?panel=costs-picker',    bg: 'bg-emerald-600',  fg: 'text-white' },
-  { label: 'Scheduler', icon: CalendarDays,href: '/scheduler',             bg: 'bg-blue-600',     fg: 'text-white' },
-  { label: 'Fleet',     icon: Truck,       href: '/fleet',                 bg: 'bg-slate-600',    fg: 'text-white' },
-  { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
-  { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
-  { label: 'Billing',   icon: CreditCard,  href: '/billing',               bg: 'bg-teal-600',     fg: 'text-white' },
-  { label: 'Studio',    icon: Layers,      href: '/studio',   bg: 'bg-fuchsia-500',  fg: 'text-white' },
-  { label: 'Settings',  icon: Settings,    href: '/settings',              bg: 'bg-slate-500',    fg: 'text-white' },
-];
+// NOTE: Field/Safety/Tools/Management icons are now defined in src/lib/homeIcons.ts
+// These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
 const PLATFORM_ICONS: AppIcon[] = [
   { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',   fg: 'text-white' },
@@ -123,7 +93,7 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
 
 // ── Section ───────────────────────────────────────────────────────────────────
 
-function Section({ label, icons, onNavigate }: { label: string; icons: AppIcon[]; onNavigate: (href: string) => void }) {
+function Section({ label, icons, onNavigate }: { label: string; icons: { label: string; icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; href: string; bg: string; fg: string; badge?: number }[]; onNavigate: (href: string) => void }) {
   return (
     <div className="px-4">
       <div
@@ -153,9 +123,9 @@ function Sheet({
   open: boolean;
   onClose: () => void;
   title: string;
-  titleIcon: React.ElementType;
+  titleIcon: ComponentType<{ size?: number; className?: string }>;
   titleIconClass: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <AnimatePresence>
@@ -573,7 +543,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
     }
   }, [open]);
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     setPhotoFile(f);
@@ -1711,6 +1681,43 @@ export default function HomeScreen() {
   const { can, isAdmin, isPlatformOwner, me, loading, role } = usePermissions();
   const { data: sessionData } = useSession();
 
+  // ── Home icon permissions ──────────────────────────────────────────────────
+  const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
+  const [iconPermsLoaded, setIconPermsLoaded] = useState(false);
+
+  useEffect(() => {
+    const userId = me?.user?.id ?? sessionData?.user?.id;
+    if (!userId || loading) return;
+    fetch(`/api/team/members/${userId}/icon-permissions`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { allowedKeys?: string[] | null } | null) => {
+        setIconPermissions(data?.allowedKeys ?? null);
+      })
+      .catch(() => setIconPermissions(null))
+      .finally(() => setIconPermsLoaded(true));
+  }, [me?.user?.id, sessionData?.user?.id, loading]);
+
+  // Determine if this is a solo user (only member of their company)
+  const [isSolo, setIsSolo] = useState(false);
+  useEffect(() => {
+    if (!me?.user?.id || loading) return;
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { members?: unknown[] } | null) => {
+        setIsSolo((data?.members?.length ?? 0) <= 1);
+      })
+      .catch(() => setIsSolo(false));
+  }, [me?.user?.id, loading]);
+
+  // Resolve which icons to show — filtered, no gaps
+  // Use a mounted flag so SSR and first client render both show the same
+  // default set, preventing the removeChild hydration mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const allowedIcons = mounted
+    ? resolveHomeIcons(iconPermissions, role ?? '', isSolo)
+    : resolveHomeIcons(null, '', false); // SSR-safe default (field icons only)
+
   const [dashOpen, setDashOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -1892,16 +1899,39 @@ export default function HomeScreen() {
       {/* ── Scrollable icon grid ── */}
       <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-4">
 
-        <Section label="Field" icons={FIELD_ICONS} onNavigate={handleNavigate} />
+        {/* Field icons — filtered by permissions, auto-packed (no gaps) */}
+        {(() => {
+          const fieldIcons = allowedIcons.filter(i => i.group === 'field');
+          return fieldIcons.length > 0 ? (
+            <Section label="Field" icons={fieldIcons} onNavigate={handleNavigate} />
+          ) : null;
+        })()}
 
-        {can('estimating') && (
-          <Section label="Estimating" icons={ESTIMATING_ICONS} onNavigate={handleNavigate} />
-        )}
+        {/* Safety icons */}
+        {(() => {
+          const safetyIcons = allowedIcons.filter(i => i.group === 'safety');
+          return safetyIcons.length > 0 ? (
+            <Section label="Safety" icons={safetyIcons} onNavigate={handleNavigate} />
+          ) : null;
+        })()}
 
-        {isAdmin && (
-          <Section label="Admin" icons={ADMIN_ICONS} onNavigate={handleNavigate} />
-        )}
+        {/* Tools icons */}
+        {(() => {
+          const toolsIcons = allowedIcons.filter(i => i.group === 'tools');
+          return toolsIcons.length > 0 ? (
+            <Section label="Tools" icons={toolsIcons} onNavigate={handleNavigate} />
+          ) : null;
+        })()}
 
+        {/* Management icons — only for admins/owners */}
+        {isAdmin && (() => {
+          const mgmtIcons = allowedIcons.filter(i => i.group === 'management');
+          return mgmtIcons.length > 0 ? (
+            <Section label="Management" icons={mgmtIcons} onNavigate={handleNavigate} />
+          ) : null;
+        })()}
+
+        {/* Platform icons — platform owner only, not permission-controlled */}
         {isPlatformOwner && (
           <Section label="Platform" icons={PLATFORM_ICONS} onNavigate={handleNavigate} />
         )}

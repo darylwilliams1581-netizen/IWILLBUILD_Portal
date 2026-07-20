@@ -139,6 +139,9 @@ export const profiles = mysqlTable('profiles', {
   // which would crash on production DBs that haven't run the startup migration yet.
   // Notification preferences stored as JSON blob (user-scoped)
   notificationPrefs: text('notification_prefs'),
+  // Home screen icon permissions — JSON array of allowed icon keys.
+  // null = not set yet (use role-based defaults). Set at invite time or via Team & Permissions.
+  homeIconPermissions: text('home_icon_permissions'),
   // Activity tracking
   lastLoginAt: timestamp('last_login_at'),
   lastActiveAt: timestamp('last_active_at'),
