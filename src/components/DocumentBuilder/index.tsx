@@ -37,6 +37,8 @@ interface Props {
   template?: DocumentTemplate | null;
   onClose: () => void;
   onSaved?: (id: number) => void;
+  /** Open directly in 'build' (default) or 'use' mode */
+  initialMode?: 'build' | 'use';
 }
 
 /** Top-level mode: building the template vs using/filling it */
@@ -56,7 +58,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   handover:   'Handover',
 };
 
-export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
+export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build' }: Props) {
   const {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
@@ -76,7 +78,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const [zoomLevel, setZoomLevel]                   = useState(100); // percent
 
   /** Top-level app mode: build the template or use/fill it */
-  const [appMode, setAppMode] = useState<AppMode>('build');
+  const [appMode] = useState<AppMode>(initialMode);
   /** Build sub-mode: 'edit' (canvas) or 'preview' (rendered) */
   const [buildSubMode, setBuildSubMode] = useState<'edit' | 'preview'>('edit');
 
@@ -259,29 +261,14 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
 
-        {/* ── Mode switcher ── */}
+        {/* ── Mode indicator (read-only — mode is set from the list) ── */}
         <div className="flex-1 flex justify-center">
-          <div className="flex items-center bg-slate-200 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setAppMode('build')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                appMode === 'build'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Wrench size={11} /> Build Mode
-            </button>
-            <button
-              onClick={() => setAppMode('use')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                appMode === 'use'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <PlayCircle size={11} /> Use Mode
-            </button>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+            appMode === 'use'
+              ? 'bg-primary/10 text-primary border-primary/20'
+              : 'bg-slate-100 text-slate-500 border-slate-200'
+          }`}>
+            {appMode === 'use' ? <><PlayCircle size={11} /> Use Mode</> : <><Wrench size={11} /> Build Mode</>}
           </div>
         </div>
 

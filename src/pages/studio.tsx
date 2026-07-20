@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Layers, Plus, Lock, Copy, Share2, Pencil,
+  Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
   ShieldCheck, ClipboardList, BookOpen, ArrowLeft, FileUp, Library,
 } from 'lucide-react';
@@ -115,6 +115,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
   const isActive = Boolean(doc.is_active);
 
   function openBuilder() { navigate(`/studio/builder/${doc.id}`); }
+  function openUse()     { navigate(`/studio/builder/${doc.id}?mode=use`); }
 
   async function handleDuplicate(e: React.MouseEvent) {
     e.stopPropagation();
@@ -183,6 +184,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
             <ToolBtn icon={Library}  label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
           )}
           <ToolBtn icon={Pencil}     label="Edit"              onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
+          <ToolBtn icon={PlayCircle} label="Use"               onClick={(e) => { e.stopPropagation(); openUse(); }} />
           <ToolBtn icon={Trash2}     label="Delete"            onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button
             title={expanded ? 'Collapse' : 'Expand'}
@@ -206,7 +208,10 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           </div>
           <div className="flex items-center gap-2 mt-1">
             <button onClick={openBuilder} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
-              <Pencil size={11} />Open in builder
+              <Pencil size={11} />Edit
+            </button>
+            <button onClick={openUse} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors">
+              <PlayCircle size={11} />Use
             </button>
           </div>
         </div>

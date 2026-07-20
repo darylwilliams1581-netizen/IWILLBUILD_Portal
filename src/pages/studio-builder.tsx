@@ -50,6 +50,9 @@ export default function StudioBuilderPage() {
   const docTypeParam = searchParams.get('type') ?? 'custom-document';
   const mapped = TYPE_MAP[docTypeParam] ?? { type: 'custom' as StudioDocumentType, name: 'New Document' };
 
+  // ?mode=use opens directly in Use Mode (fill/complete); default is Build Mode
+  const initialMode = searchParams.get('mode') === 'use' ? 'use' : 'build';
+
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +163,7 @@ export default function StudioBuilderPage() {
         template={templateToLoad}
         onClose={handleClose}
         onSaved={handleSaved}
+        initialMode={initialMode}
       />
       <JobContextTab />
     </>
