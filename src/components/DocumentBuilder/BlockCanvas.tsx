@@ -143,6 +143,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
           <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
             <div
               ref={pageRef}
+              data-doc-page
               className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
               style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
               onClick={deselect}
@@ -177,6 +178,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
         <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
         <div
           ref={pageRef}
+          data-doc-page
           className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
           style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
           onClick={(e) => {

@@ -61,15 +61,22 @@
           // before the stale shim reads contentWindow.Node.prototype.removeChild.
           function patchIframeProto(el) {
             try {
-              var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
+              var iWin = el.contentWindow;
+              var iProto = iWin && iWin.Node && iWin.Node.prototype;
               if (iProto) {
+                var iNative = iProto.removeChild;
+                function iSafe(child) {
+                  try { return iNative.call(this, child); } catch(e) { return child; }
+                }
                 try {
                   Object.defineProperty(iProto, 'removeChild', {
-                    get: function() { return safeRemoveChild; },
+                    get: function() { return iSafe; },
                     set: function(_v) {},
                     configurable: true, enumerable: false,
                   });
-                } catch(e) { iProto.removeChild = safeRemoveChild; }
+                } catch(e) { iProto.removeChild = iSafe; }
+                // Also patch the window-level Node so __sosTrueNativeRC capture gets iSafe
+                try { iWin.__sosTrueNativeRC = iSafe; } catch(e) {}
               }
             } catch(e) {}
           }
@@ -79,12 +86,15 @@
             if (child && child.tagName === 'IFRAME') { patchIframeProto(child); }
             return result;
           };
-          // Also intercept createElement so the iframe proto is patched as early as possible.
+          // Also intercept createElement — patch proto immediately on creation
+          // (some browsers expose contentWindow before the iframe is appended).
           var _origCE = document.createElement.bind(document);
           document.createElement = function(tag) {
             var el = _origCE.apply(document, arguments);
             if (typeof tag === 'string' && tag.toLowerCase() === 'iframe') {
+              // Patch on load (after append) and also try immediately
               el.addEventListener('load', function() { patchIframeProto(el); });
+              patchIframeProto(el);
             }
             return el;
           };

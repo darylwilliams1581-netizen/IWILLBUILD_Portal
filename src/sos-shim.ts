@@ -394,10 +394,10 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784620000000';
+const SOS_SHIM_VERSION = '1784700000001';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
-const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
+const SOS_SHIM_MAX_RELOADS = 3;
 
 // Reset counter when shim version changes (new deploy evicts old stale module)
 try {
@@ -448,9 +448,13 @@ function isStaleSnapshotError(msg: string, src: string, err?: Error | null): boo
 
 function handleStaleError(msg: string, src: string, err?: Error | null): boolean {
   if (!isStaleSnapshotError(msg, src, err)) return false;
-  // Always suppress — even if we've hit the reload limit.
-  // When under the limit, also trigger a reload to evict the stale module.
-  if (!shimSosRecentReload()) doStaleReload();
+  // For the specific known stale shim timestamp, always reload (up to limit).
+  const isKnownStaleShim = src.includes('1784519099416') || (err?.stack ?? '').includes('1784519099416');
+  if (isKnownStaleShim && !shimSosRecentReload()) {
+    doStaleReload();
+  } else if (!shimSosRecentReload()) {
+    doStaleReload();
+  }
   return true; // always swallow — never let this reach React's error boundary
 }
 

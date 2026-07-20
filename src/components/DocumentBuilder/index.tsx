@@ -199,6 +199,55 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     }
   }, [getSerialised, markSaved, onSaved, pdfSettings]);
 
+  // ── Print: inject a @media print rule that hides everything except the
+  //    document page, triggers print, then removes the rule.
+  const handlePrint = useCallback(() => {
+    const pageEl = document.querySelector<HTMLElement>('[data-doc-page]');
+    if (!pageEl) { window.print(); return; }
+
+    // Give the page a unique print ID so we can target it precisely
+    const printId = 'doc-print-target';
+    pageEl.id = printId;
+
+    // Walk up and mark every ancestor so we can show only this branch
+    const ancestors: HTMLElement[] = [];
+    let el: HTMLElement | null = pageEl.parentElement;
+    while (el && el !== document.body) {
+      el.dataset.printAncestor = '1';
+      ancestors.push(el);
+      el = el.parentElement;
+    }
+
+    const style = document.createElement('style');
+    style.id = 'doc-print-style';
+    style.textContent = `
+      @media print {
+        body > * { display: none !important; }
+        body [data-print-ancestor] { display: flex !important; overflow: visible !important; height: auto !important; min-height: 0 !important; }
+        body #${printId} {
+          display: block !important;
+          position: static !important;
+          transform: none !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          width: 100% !important;
+          overflow: visible !important;
+        }
+        body #${printId} * { visibility: visible !important; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    window.print();
+
+    // Clean up after print dialog closes
+    setTimeout(() => {
+      document.getElementById('doc-print-style')?.remove();
+      pageEl.removeAttribute('id');
+      ancestors.forEach((a) => delete a.dataset.printAncestor);
+    }, 500);
+  }, []);
+
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
   // Ribbon tab definitions — Layout + Theme first, then insert tabs
@@ -240,7 +289,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)"><Redo2 size={13} /></button>
           <div className="w-px h-4 bg-slate-300" />
           <button onClick={() => setShowDocxImporter(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Upload size={12} /> Import</button>
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
+          <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
           <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Download size={12} /> Download</button>
           <div className="w-px h-4 bg-slate-300" />
           {templateId && <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={12} /> Delete</button>}
