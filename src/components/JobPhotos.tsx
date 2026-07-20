@@ -77,20 +77,22 @@ type ViewSize = 'small' | 'medium' | 'large';
 
 const MAX_PHOTOS = 200;
 const PAGE_SIZE = 30;
+/** Max files a user can select in a single batch */
+const BATCH_LIMIT = 10;
 
 // auto-fill columns — tiles snap to minmax width, no fixed column count
 const VIEW_COLS: Record<ViewSize, string> = {
-  small:  '[grid-template-columns:repeat(auto-fill,minmax(88px,1fr))]',
+  small:  '[grid-template-columns:repeat(auto-fill,minmax(80px,1fr))]',
   medium: '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]',
   large:  '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]',
 };
 const VIEW_GAP: Record<ViewSize, string> = {
-  small:  'gap-[4px]',
+  small:  'gap-[2px]',
   medium: 'gap-[8px]',
   large:  'gap-[12px]',
 };
 const VIEW_RADIUS: Record<ViewSize, string> = {
-  small:  'rounded-md',
+  small:  'rounded-sm',
   medium: 'rounded-xl',
   large:  'rounded-xl',
 };
@@ -484,6 +486,9 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const [summaryDismissed, setSummaryDismissed] = useState(false);
 
+  // Over-limit batch dialog — shown when user selects > BATCH_LIMIT files
+  const [overLimitFiles, setOverLimitFiles] = useState<File[] | null>(null);
+
   const [viewSize, setViewSizeState] = useState<ViewSize>(() => {
     try {
       const saved = localStorage.getItem('jobPhotosZoom');
@@ -645,23 +650,32 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   // ── Enqueue selected files ─────────────────────────────────────────────────
 
+  /** Actually enqueue files — called after any over-limit confirmation */
+  const enqueueValidated = useCallback((files: File[]) => {
+    if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
+    if (files.length === 0) return;
+    const atLimit = totalCount >= MAX_PHOTOS;
+    if (atLimit) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); return; }
+    const remaining = MAX_PHOTOS - totalCount;
+    const toAdd = files.slice(0, remaining);
+    if (toAdd.length < files.length) {
+      setUploadError(`Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added. Uploading first ${remaining}.`);
+    }
+    setSummaryDismissed(false);
+    enqueueFiles(toAdd);
+  }, [jobId, totalCount, enqueueFiles]);
+
   const doUpload = useCallback((files: FileList | File[]) => {
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
-
-    const atLimit = totalCount >= MAX_PHOTOS;
-    if (atLimit) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); return; }
-
-    const remaining = MAX_PHOTOS - totalCount;
-    const toAdd = arr.slice(0, remaining);
-    if (toAdd.length < arr.length) {
-      setUploadError(`Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added. Uploading first ${remaining}.`);
+    // If user selected more than BATCH_LIMIT, show friendly dialog
+    if (arr.length > BATCH_LIMIT) {
+      setOverLimitFiles(arr);
+      return;
     }
-
-    setSummaryDismissed(false);
-    enqueueFiles(toAdd);
-  }, [jobId, totalCount, enqueueFiles]);
+    enqueueValidated(arr);
+  }, [jobId, enqueueValidated]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
@@ -940,9 +954,47 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
       {/* File inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); }} />
+        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); e.target.value = ''; }} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); }} />
+        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); e.target.value = ''; }} />
+
+      {/* Over-limit batch dialog */}
+      <AnimatePresence>
+        {overLimitFiles && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setOverLimitFiles(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.14 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+              <h3 className="font-heading font-bold text-base text-slate-900 mb-2">
+                Too many photos selected
+              </h3>
+              <p className="text-sm text-slate-500 mb-5">
+                You selected <span className="font-semibold text-slate-700">{overLimitFiles.length} photos</span>. Upload up to {BATCH_LIMIT} at a time to keep things fast and reliable.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => { const files = overLimitFiles.slice(0, BATCH_LIMIT); setOverLimitFiles(null); enqueueValidated(files); }}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  Upload first {BATCH_LIMIT}
+                </button>
+                <button
+                  onClick={() => { setOverLimitFiles(null); fileInputRef.current?.click(); }}
+                  className="w-full py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
+                >
+                  Choose again
+                </button>
+                <button
+                  onClick={() => setOverLimitFiles(null)}
+                  className="w-full py-2 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirm */}
       <AnimatePresence>

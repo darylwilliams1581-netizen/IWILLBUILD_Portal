@@ -8,22 +8,23 @@
  *
  * Mount once in RootLayout — it is always present but only visible when offline.
  */
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 
 export default function OfflineBanner() {
-  const [mounted, setMounted] = useState(false);
+  // No internal mounted guard — DeferredMount in RootLayout already ensures
+  // this component only renders after hydration. A self-managed mounted flag
+  // causes the component to return null on the first client render inside the
+  // DeferredMount wrapper, which changes child node counts and triggers the
+  // removeChild hydration mismatch.
   const [isOnline, setIsOnline]   = useState(true);
   const [syncing,  setSyncing]    = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Sync with real network state on first mount
     setIsOnline(navigator.onLine);
-  }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
     function handleOnline() {
       setSyncing(true);
       setIsOnline(true);
@@ -41,9 +42,7 @@ export default function OfflineBanner() {
       window.removeEventListener('online',  handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [mounted]);
-
-  if (!mounted) return null;
+  }, []);
 
   const visible = !isOnline || syncing;
 

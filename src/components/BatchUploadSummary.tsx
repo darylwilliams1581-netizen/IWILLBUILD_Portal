@@ -57,7 +57,7 @@ export default function BatchUploadSummary({
 
           <span className="flex-1">
             {isUploading ? (
-              <>Uploading {doneCount + 1} of {totalCount} photo{totalCount !== 1 ? 's' : ''}…</>
+              <>Uploading {uploadedCount + 1} of {totalCount} photo{totalCount !== 1 ? 's' : ''}…</>
             ) : failedCount > 0 && uploadedCount > 0 ? (
               <>{uploadedCount} uploaded, {failedCount} failed</>
             ) : failedCount > 0 ? (

@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
-  Download, Home, Upload, Share2, LayoutGrid, List, CheckSquare, Send,
-  Grid2x2, Grid3x3,
+  Download, Home, Upload, Share2, LayoutGrid, CheckSquare, Send,
+  Grid2x2, Grid3x3, Camera,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -173,17 +173,39 @@ export default function JobPhotosPage() {
           </div>
 
           {/* Desktop-only: view size toggle */}
-          <div className="hidden md:flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shrink-0">
-            {(['small', 'medium', 'large'] as const).map((size) => (
-              <button
-                key={size}
-                onClick={() => handleSetViewSize(size)}
-                className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
-              >
-                {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
-              </button>
-            ))}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {/* Upload */}
+            <button
+              onClick={() => photosRef.current?.openFilePicker()}
+              disabled={uploading || atLimit}
+              title="Upload up to 10 photos at a time"
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              Photos
+            </button>
+            {/* Camera */}
+            <button
+              onClick={() => photosRef.current?.openCamera()}
+              disabled={uploading || atLimit}
+              title="Take a photo"
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <Camera size={14} /> Camera
+            </button>
+            {/* View size */}
+            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+              {(['small', 'medium', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleSetViewSize(size)}
+                  className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
+                >
+                  {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -218,7 +240,7 @@ export default function JobPhotosPage() {
       >
         {/* Normal mode */}
         {!selectMode && (
-          <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
 
             {/* Back — mobile only */}
             <button
@@ -238,14 +260,27 @@ export default function JobPhotosPage() {
               <Home size={16} />
             </button>
 
-            {/* Choose Files — single orange upload button for all */}
+            {/* Upload from library */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
-              className="w-12 h-12 flex items-center justify-center bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
-              aria-label="Upload photos"
+              title="Upload up to 10 photos at a time"
+              className="flex-1 h-12 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
+              aria-label="Upload photos from library"
             >
-              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+              {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+              <span className="hidden sm:inline">Photos</span>
+            </button>
+
+            {/* Camera */}
+            <button
+              onClick={() => photosRef.current?.openCamera()}
+              disabled={uploading || atLimit}
+              title="Take a photo"
+              className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
+              aria-label="Take a photo"
+            >
+              <Camera size={18} />
             </button>
 
             {/* Select */}
