@@ -69,15 +69,14 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// The stale sos-shim snapshot (t=1784519099416) runs after this module and
-// does `proto.removeChild = <re-throwing wrapper>`, overwriting our patch.
-// Fix: store the true native once, then define removeChild as a non-writable
-// non-configurable property so no subsequent assignment can overwrite it.
+// The stale sos-shim snapshot (t=1784519099416) chains into this wrapper and
+// re-throws. Fix: check parentNode BEFORE calling native — if the child is not
+// actually a child of this node, return it immediately without any native call.
+// This breaks the chain regardless of how many stale wrappers are stacked.
 {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = Node.prototype as any;
 
-  // Store the true native exactly once (before any patching).
   if (!proto.__sosNativeRemoveChild) {
     Object.defineProperty(proto, '__sosNativeRemoveChild', {
       value: proto.removeChild,
@@ -90,18 +89,21 @@ window.addEventListener('unhandledrejection', (ev) => {
   const native = proto.__sosNativeRemoveChild as typeof Node.prototype.removeChild;
 
   function patchedRemoveChild<T extends Node>(this: Node, child: T): T {
+    // Guard: if child is not actually a child of this node, skip the call.
+    // This prevents NotFoundError from propagating through stale wrapper chains.
+    if (!child || child.parentNode !== this) {
+      return child;
+    }
     try {
       return native.call(this, child) as T;
     } catch (e) {
       if (e instanceof Error && e.name === 'NotFoundError') {
-        return child; // node already gone — safe to swallow
+        return child;
       }
       throw e;
     }
   }
 
-  // Define as non-configurable + non-writable so stale snapshots that do
-  // `proto.removeChild = ...` (simple assignment) are silently ignored.
   const existing = Object.getOwnPropertyDescriptor(proto, 'removeChild');
   if (!existing || existing.configurable) {
     Object.defineProperty(proto, 'removeChild', {

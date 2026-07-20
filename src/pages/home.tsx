@@ -1855,6 +1855,21 @@ export default function HomeScreen() {
             >
               <User size={18} className="text-orange-300" />
             </button>
+            {/* Log out */}
+            <button
+              onClick={async () => {
+                await signOut();
+                invalidateMeCache();
+                invalidateTerminologyCache();
+                invalidateSubscriptionCache();
+                invalidateSupportModeCache();
+                navigate('/login');
+              }}
+              title="Log out"
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/30 transition-colors"
+            >
+              <LogOut size={16} className="text-gray-300" />
+            </button>
           </div>
         </div>
       </div>

@@ -233,13 +233,16 @@ const STALE_SNAPSHOTS = [
   '1784516840163',
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
+  '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
 ];
 
 function isStaleSnapshot(error: Error): boolean {
   const text = (error.message ?? '') + (error.stack ?? '');
   return (
     text.includes('SOSAlertPopup') ||
-    STALE_SNAPSHOTS.some((ts) => text.includes(ts))
+    STALE_SNAPSHOTS.some((ts) => text.includes(ts)) ||
+    // Stale sos-shim snapshots throw NotFoundError from removeChild chains
+    (error.name === 'NotFoundError' && text.includes('removeChild'))
   );
 }
 
@@ -284,18 +287,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
           content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
         />
       </Helmet>
-      <ScrollRestoration />
-      <ActivePing />
-      <PortalBanners pathname={location.pathname} />
-      <DeferredMount>
-        <OfflineBanner />
-        <PwaInstallPrompt />
-      </DeferredMount>
-      <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
-        <SosInnerBoundary>
+      <SosInnerBoundary>
+        <ScrollRestoration />
+        <ActivePing />
+        <PortalBanners pathname={location.pathname} />
+        <DeferredMount>
+          <OfflineBanner />
+          <PwaInstallPrompt />
+        </DeferredMount>
+        <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
           {children}
-        </SosInnerBoundary>
-      </div>
+        </div>
+      </SosInnerBoundary>
     </div>
   );
 }
