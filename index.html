@@ -57,14 +57,41 @@
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
       });
 
-      // Layer 2: Neutralize window.L so L.map() etc. are no-ops.
+      // Layer 2: Intercept window.L assignment so we can patch getPosition
+      // the instant leaflet sets it. The stale disk-cached leaflet.js executes
+      // synchronously and calls getPosition(undefined) during map pan — patching
+      // getPosition to guard against undefined el stops the crash.
       try {
-        var _noop = function() { return _noopProxy; };
-        var _noopProxy = new Proxy({}, { get: function(t,k) { return typeof k==='symbol'?undefined:_noop; } });
+        var _leafletReal = undefined;
         Object.defineProperty(window, 'L', {
-          get: function() { return _noopProxy; },
-          set: function() {},
-          configurable: true
+          configurable: true,
+          get: function() { return _leafletReal; },
+          set: function(val) {
+            _leafletReal = val;
+            if (val && typeof val === 'object') {
+              // Patch DomUtil.getPosition to guard against undefined el
+              if (val.DomUtil && typeof val.DomUtil.getPosition === 'function') {
+                var _orig = val.DomUtil.getPosition;
+                val.DomUtil.getPosition = function(el) {
+                  if (!el) return { x: 0, y: 0 };
+                  return _orig.call(this, el);
+                };
+              }
+              // Also patch after a tick in case DomUtil is set up lazily
+              setTimeout(function() {
+                if (_leafletReal && _leafletReal.DomUtil && typeof _leafletReal.DomUtil.getPosition === 'function') {
+                  var fn = _leafletReal.DomUtil.getPosition;
+                  if (!fn._patched) {
+                    _leafletReal.DomUtil.getPosition = function(el) {
+                      if (!el) return { x: 0, y: 0 };
+                      return fn.call(this, el);
+                    };
+                    _leafletReal.DomUtil.getPosition._patched = true;
+                  }
+                }
+              }, 0);
+            }
+          }
         });
       } catch(e2) {}
 

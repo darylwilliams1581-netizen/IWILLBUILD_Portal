@@ -211,9 +211,21 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           return 'export default {}; export const map = () => ({}); export const tileLayer = () => ({addTo:()=>({})}); export const marker = () => ({}); export const icon = () => ({}); export const latLng = () => ({}); export const latLngBounds = () => ({});';
         }
       },
+      // Transform hook: intercept the pre-bundled leaflet dep chunk when Vite
+      // serves it (catches the ?v= versioned path that configureServer may miss
+      // if the browser has it in disk cache and revalidates with a 304).
+      transform(_code: string, id: string) {
+        if (id.includes('leaflet') && (id.includes('node_modules') || id.includes('.vite/deps'))) {
+          return { code: 'export default {}; export const map = () => ({}); export const tileLayer = () => ({addTo:()=>({})});', map: null };
+        }
+      },
       configureServer(server: ViteDevServer) {
         server.middlewares.use((req, res, next) => {
-          if (req.url && req.url.includes('leaflet.js')) {
+          // Match leaflet.js with or without Vite's ?v= cache-bust query param
+          // e.g. /node_modules/.vite/deps/leaflet.js?v=05d76b4a
+          const url = req.url ?? '';
+          const urlBase = url.split('?')[0];
+          if (urlBase.endsWith('leaflet.js') || url.includes('leaflet.js?')) {
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
@@ -530,7 +542,11 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // this include list changes the metadata hash so Vite generates a new
     // version query string, making the old cached URL unreachable.
     include: ["react", "react-dom", "react-router-dom", "motion/react", "react/jsx-runtime", "react-router-dom > react-router"],
-    exclude: ["drizzle-orm", "mysql2"],
+    // Explicitly exclude leaflet so it is never pre-bundled. Combined with the
+    // resolveId stub in the evict-stale-leaflet-prebundle plugin, any import of
+    // leaflet resolves to an empty stub. Adding it here also changes the dep
+    // metadata hash, invalidating the old leaflet.js?v=05d76b4a disk-cache entry.
+    exclude: ["drizzle-orm", "mysql2", "leaflet"],
     // Force react-router-dom through Vite's ESM pre-bundler so ssrLoadModule
     // always gets the ESM build (not the CJS fallback) in dev SSR mode.
     esbuildOptions: { target: "esnext" },

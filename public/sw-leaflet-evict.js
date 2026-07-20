@@ -1,30 +1,65 @@
 /**
- * Service Worker: intercept stale leaflet.js disk-cache hits.
+ * Service Worker: intercept and permanently evict stale leaflet.js disk-cache.
  *
- * The browser has leaflet.js?v=05d76b4a cached on disk from before Leaflet
- * was removed. Because the URL contains an immutable hash the browser serves
- * it directly from disk without a network round-trip, so no server middleware
- * can intercept it. This SW runs before the disk cache and returns an inert
- * stub instead, preventing the stale module from executing.
+ * The browser disk cache holds leaflet.js?v=05d76b4a from before Leaflet was
+ * removed. Because the URL has an immutable hash the browser serves it from
+ * disk without a network round-trip. This SW:
+ *   1. On activate: deletes ALL cache storage entries containing 'leaflet'
+ *   2. On fetch: intercepts any leaflet.js request and returns an inert stub
+ *
+ * skipWaiting + clients.claim ensures the SW takes control immediately on
+ * first registration without waiting for a page reload.
  */
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      // Claim all clients immediately so fetch handler fires on current page
+      await self.clients.claim();
+
+      // Delete any cached leaflet entries from ALL cache storage buckets
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(async (name) => {
+          const cache = await caches.open(name);
+          const keys = await cache.keys();
+          await Promise.all(
+            keys
+              .filter(req => req.url.includes('leaflet'))
+              .map(req => cache.delete(req))
+          );
+        })
+      );
+    })()
+  );
+});
+
+const STUB_JS = [
+  '/* leaflet evicted by sw-leaflet-evict.js */',
+  'export default {};',
+  'export const map = () => ({});',
+  'export const tileLayer = () => ({ addTo: () => ({}) });',
+  'export const marker = () => ({ addTo: () => ({}) });',
+  'export const icon = () => ({});',
+  'export const latLng = () => ({});',
+  'export const latLngBounds = () => ({});',
+  'export const DomUtil = { getPosition: () => ({ x: 0, y: 0 }), setPosition: () => {} };',
+].join('\n');
 
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   if (url.includes('leaflet.js') || url.includes('leaflet.css')) {
     event.respondWith(
       new Response(
-        url.includes('.css')
-          ? '/* leaflet evicted */'
-          : '/* leaflet evicted */\nexport default {};\nexport const map = () => ({});\nexport const tileLayer = () => ({ addTo: () => ({}) });\nexport const marker = () => ({ addTo: () => ({}) });\nexport const icon = () => ({});\nexport const latLng = () => ({});\nexport const latLngBounds = () => ({});\n',
+        url.includes('.css') ? '/* leaflet evicted */' : STUB_JS,
         {
           status: 200,
           headers: {
             'Content-Type': url.includes('.css')
               ? 'text/css; charset=utf-8'
               : 'application/javascript; charset=utf-8',
-            'Cache-Control': 'no-store',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
           },
         }
       )
