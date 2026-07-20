@@ -373,25 +373,20 @@ export default function HomePage() {
               </h1>
             </div>
 
-            <p style={{
-              color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
-              margin: '0 0 32px', maxWidth: 600,
-            }}>
-              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. As the platform grows, accounting integrations help approved invoices, customers and supporting documents flow into Xero, QuickBooks and MYOB.
-            </p>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+            {/* ── CTA block — top of body, stacked on mobile ── */}
+            <div className="hero-cta-block" style={{ marginBottom: 28 }}>
               <Link to="/signup" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 backgroundColor: '#f97316', borderRadius: 9, color: '#fff',
-                padding: '14px 26px', fontWeight: 800, fontSize: 15,
+                padding: '15px 26px', fontWeight: 800, fontSize: 16,
                 textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.4)',
+                marginBottom: 10,
               }}>
                 Start 30-day free trial
                 <ArrowRight size={16} />
               </Link>
               <Link to="/login" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 background: 'rgba(255,255,255,.08)', border: '1.5px solid rgba(255,255,255,.2)',
                 borderRadius: 9, color: '#fff',
                 padding: '14px 24px', fontWeight: 700, fontSize: 15,
@@ -399,10 +394,16 @@ export default function HomePage() {
               }}>
                 Sign in
               </Link>
+              <p style={{ color: '#64748b', fontSize: 13, margin: '10px 0 0' }}>
+                No setup fee. Cancel anytime. View-only access keeps your records available if you cancel.
+              </p>
             </div>
 
-            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
-              No setup fee. Cancel anytime. View-only access keeps your records available if you cancel.
+            <p style={{
+              color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
+              margin: '0', maxWidth: 600,
+            }}>
+              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. As the platform grows, accounting integrations help approved invoices, customers and supporting documents flow into Xero, QuickBooks and MYOB.
             </p>
           </div>
 
@@ -812,6 +813,29 @@ export default function HomePage() {
         @media (max-width: 900px) {
           .hero-grid, .dazza-grid {
             grid-template-columns: 1fr !important;
+          }
+        }
+        /* CTA block: stacked full-width on mobile, inline row on desktop */
+        .hero-cta-block {
+          display: flex;
+          flex-direction: column;
+          max-width: 340px;
+        }
+        @media (min-width: 640px) {
+          .hero-cta-block {
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            max-width: none;
+          }
+          .hero-cta-block a {
+            flex: 0 0 auto;
+            margin-bottom: 0 !important;
+          }
+          .hero-cta-block p {
+            width: 100%;
+            margin-top: 6px !important;
           }
         }
         @media (max-width: 480px) {

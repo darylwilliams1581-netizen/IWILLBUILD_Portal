@@ -317,5 +317,18 @@
       "/airo-assets/uploads/ui-camera-fab-icon-70e100e1.jpg": "f38wenbvln_1784519260658_file_-1cDOmgNji.jpg"
     },
     "uploadContentHash": "48af44704e874ef29fa6224d70ea02ea49deaaf2dc8ca4a5421356640bfa780c"
+  },
+  "reference/cta-style": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-cta-style-d861f093.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-20T04:02:34.347Z",
+    "lastUpdated": "2026-07-20T04:02:34.347Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-cta-style-d861f093.jpg": "f38wenbvln_1784520111532_file_AE4Jh39Ws-.jpg"
+    },
+    "uploadContentHash": "3d406ba11048ffba09ce598036ff95e12b30596a60844c7a98df231a26ecd73f"
   }
 }

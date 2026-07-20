@@ -69,34 +69,27 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// Stale HMR snapshots of sos-shim.ts (e.g. t=1784519099416) may have installed
-// a patchedRemoveChild that re-throws. We fix this by storing the true native
-// function on a non-enumerable property BEFORE any patch is installed, then
-// always calling that stored native — so no matter how many stale snapshots
-// run, they all call the same original native function.
-//
-// Key insight: __sosNativeRemoveChild is only written ONCE (when it doesn't
-// exist yet). Every subsequent shim execution (current or stale) reads the
-// same stored native and installs a fresh swallowing wrapper.
+// The stale sos-shim snapshot (t=1784519099416) runs after this module and
+// does `proto.removeChild = <re-throwing wrapper>`, overwriting our patch.
+// Fix: store the true native once, then define removeChild as a non-writable
+// non-configurable property so no subsequent assignment can overwrite it.
 {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = Node.prototype as any;
 
+  // Store the true native exactly once (before any patching).
   if (!proto.__sosNativeRemoveChild) {
-    // First execution — store the true native before any patching.
     Object.defineProperty(proto, '__sosNativeRemoveChild', {
       value: proto.removeChild,
-      writable: true,
-      configurable: true,
+      writable: false,
+      configurable: false,
       enumerable: false,
     });
   }
 
-  // Always overwrite removeChild with the latest swallowing version.
-  // All versions (current + stale snapshots) call __sosNativeRemoveChild,
-  // which is always the original native — never a wrapper.
   const native = proto.__sosNativeRemoveChild as typeof Node.prototype.removeChild;
-  proto.removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
+
+  function patchedRemoveChild<T extends Node>(this: Node, child: T): T {
     try {
       return native.call(this, child) as T;
     } catch (e) {
@@ -105,7 +98,19 @@ window.addEventListener('unhandledrejection', (ev) => {
       }
       throw e;
     }
-  };
+  }
+
+  // Define as non-configurable + non-writable so stale snapshots that do
+  // `proto.removeChild = ...` (simple assignment) are silently ignored.
+  const existing = Object.getOwnPropertyDescriptor(proto, 'removeChild');
+  if (!existing || existing.configurable) {
+    Object.defineProperty(proto, 'removeChild', {
+      value: patchedRemoveChild,
+      writable: false,
+      configurable: false,
+      enumerable: false,
+    });
+  }
 }
 
 // ── Leaflet stale-cache patch ─────────────────────────────────────────────────

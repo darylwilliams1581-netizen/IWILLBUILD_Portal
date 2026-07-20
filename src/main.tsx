@@ -56,12 +56,14 @@ const STALE_TS = [
   '1784516840163',
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
+  '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
 ];
 
 function isSosError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
   const text = (e.message ?? '') + (e.stack ?? '');
-  return text.includes('SOSAlertPopup') || STALE_TS.some((ts) => text.includes(ts));
+  return text.includes('SOSAlertPopup') || STALE_TS.some((ts) => text.includes(ts))
+    || (e.name === 'NotFoundError' && text.includes('removeChild'));
 }
 
 interface BoundaryState { caught: boolean; }
