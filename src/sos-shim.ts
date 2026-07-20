@@ -122,12 +122,17 @@
           obj instanceof Node
         ) {
           // Always substitute our safe wrapper for any removeChild being installed
-          // on a Node instance, and keep it configurable so we can overwrite later.
-          return _origDefProp(obj, prop, {
-            ...descriptor,
-            value: swallowingRemoveChildEarly,
-            configurable: true,
-          });
+          // on a Node instance. Use configurable:false so the stale shim cannot
+          // call defineProperty a second time to overwrite our wrapper.
+          try {
+            return _origDefProp(obj, prop, {
+              get() { return swallowingRemoveChildEarly; },
+              set(_v) { /* ignore */ },
+              configurable: false,
+              enumerable: false,
+            });
+          } catch { /* already non-configurable — our wrapper is already locked in */ }
+          return obj;
         }
         return _origDefProp(obj, prop, descriptor);
       };
@@ -397,7 +402,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784700000002';
+const SOS_SHIM_VERSION = '1784700000004';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 3;

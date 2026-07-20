@@ -246,14 +246,9 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)"><Undo2 size={13} /></button>
           <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)"><Redo2 size={13} /></button>
           <div className="w-px h-4 bg-slate-300" />
-          <button onClick={() => setShowDocxImporter(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Upload size={12} /> Import</button>
           <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
           <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Download size={12} /> Download</button>
           <div className="w-px h-4 bg-slate-300" />
-          {templateId && <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={12} /> Delete</button>}
-          {isPlatformOwner && templateId && (
-            <button onClick={() => setShowPublishModal(true)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"><Library size={12} /> Publish</button>
-          )}
           <button
             onClick={() => void handleSave()}
             disabled={isSaving || (!isDirty && !!templateId)}
@@ -393,13 +388,11 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           <>
             {/* STRUCTURE insert strip */}
             {activeTab === 'structure' && (
-              <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
-                <div className="px-2 pt-2.5 pb-1">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Import</p>
+              <RibbonPanel title="Structure">
+                <RibbonGroup label="Import">
                   <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
-                </div>
-                <div className="px-2 pt-2 pb-1">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Structure</p>
+                </RibbonGroup>
+                <RibbonGroup label="Blocks">
                   <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
                   <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
                   <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
@@ -407,9 +400,8 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
                   <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
                   <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
                   <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
-                </div>
-                <div className="h-4" />
-              </div>
+                </RibbonGroup>
+              </RibbonPanel>
             )}
 
             {/* TABLES insert strip */}
