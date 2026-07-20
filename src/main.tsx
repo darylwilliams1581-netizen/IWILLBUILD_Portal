@@ -148,15 +148,15 @@ const tree = (
 // pre-SSR fallback.
 if (rootElement.firstElementChild) {
   hydrateRoot(rootElement, tree, {
-    // Browser extensions (Grammarly, LastPass, etc.) inject style attributes onto
-    // DOM nodes before React hydrates, causing spurious hydration mismatches.
-    // These are recoverable — React re-renders on the client and the UI is correct.
+    // Browser extensions (Grammarly, LastPass, password managers, etc.) inject
+    // DOM nodes and style attributes before React hydrates, causing hydration
+    // mismatches — including "removeChild" NotFoundErrors on login pages where
+    // password managers inject input decorators. These are recoverable — React
+    // re-renders the affected subtree on the client and the UI is correct.
     // Suppress them here so they don't surface as errors in the dev error boundary.
     onRecoverableError(_error: unknown) {
-      // Recoverable errors (hydration mismatches caused by browser extensions
-      // injecting style attributes before React hydrates) are silently swallowed.
-      // React already re-renders the affected subtree on the client — the UI is
-      // correct. Logging these as errors would be misleading.
+      // Silently swallow all recoverable hydration errors. React already
+      // re-renders the affected subtree — the UI is correct.
     },
   });
 } else {

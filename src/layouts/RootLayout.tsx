@@ -267,7 +267,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <PortalBanners />
       <ClientOnly><ScrollRestoration /></ClientOnly>
       <ActivePing />
-      <ClientOnly><Toaster position="top-right" richColors /></ClientOnly>
+      <Toaster position="top-right" richColors />
       <ClientOnly><PwaInstallPrompt /></ClientOnly>
       <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>

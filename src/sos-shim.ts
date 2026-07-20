@@ -43,3 +43,32 @@ try {
     return false;
   };
 }
+
+// ── React hydration removeChild guard ────────────────────────────────────────
+// Password managers (1Password, Bitwarden, LastPass) and browser extensions
+// inject DOM nodes into form inputs before React hydrates. React then calls
+// removeChild on a node the extension has already moved, producing:
+//   NotFoundError: Failed to execute 'removeChild' on 'Node'
+// React 19 throws this as a non-recoverable error (not passed to
+// onRecoverableError). Patch Node.prototype.removeChild to silently swallow
+// the NotFoundError during the hydration window (first 8 seconds after load).
+{
+  const _origRemoveChild = Node.prototype.removeChild;
+  let _hydrating = true;
+  setTimeout(() => { _hydrating = false; }, 8000);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (Node.prototype as any).removeChild = function <T extends Node>(child: T): T {
+    if (_hydrating) {
+      try {
+        return _origRemoveChild.call(this, child) as T;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'NotFoundError' &&
+            e.message.includes('removeChild')) {
+          return child; // extension moved the node — no-op
+        }
+        throw e;
+      }
+    }
+    return _origRemoveChild.call(this, child) as T;
+  };
+}

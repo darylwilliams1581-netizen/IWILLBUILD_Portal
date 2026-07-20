@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v40 -->
+  <!-- cache-bust: v41 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -307,6 +307,41 @@
             history.replaceState(null, '', u.toString());
           }
         } catch (e) {}
+      })();
+    </script>
+    <script>
+      // ── React hydration removeChild guard ─────────────────────────────────────
+      // Password managers (1Password, Bitwarden, LastPass) and browser extensions
+      // inject DOM nodes into form inputs before React hydrates. When React tries
+      // to reconcile the server-rendered tree it calls removeChild on a node that
+      // the extension has already moved, producing:
+      //   NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be
+      //   removed is not a child of this node.
+      //
+      // React 19 throws this as a non-recoverable error (not passed to
+      // onRecoverableError). The fix: patch Node.prototype.removeChild to silently
+      // ignore the NotFoundError during the hydration window (first 8 seconds).
+      // After that window, the original behaviour is restored.
+      (function () {
+        var _origRemoveChild = Node.prototype.removeChild;
+        var _hydrating = true;
+        // Restore after hydration window
+        setTimeout(function () { _hydrating = false; }, 8000);
+        Node.prototype.removeChild = function (child) {
+          if (_hydrating) {
+            try {
+              return _origRemoveChild.call(this, child);
+            } catch (e) {
+              // Only swallow the specific "not a child" error from extension interference.
+              // Re-throw anything else.
+              if (e && e.name === 'NotFoundError' && String(e.message).indexOf('removeChild') !== -1) {
+                return child; // no-op — extension moved the node, React is confused
+              }
+              throw e;
+            }
+          }
+          return _origRemoveChild.call(this, child);
+        };
       })();
     </script>
 
