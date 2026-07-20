@@ -1,8 +1,30 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v57 -->
+  <!-- cache-bust: v58 -->
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // ── removeChild NotFoundError guard — MUST run before any module ──────────
+      // The stale Vite HMR snapshot (sos-shim.ts?t=1784519099416) installs a
+      // patchedRemoveChild on the #app div that calls the raw browser native,
+      // throwing NotFoundError when React unmounts nodes during navigation.
+      // Patching Node.prototype.removeChild HERE — in a synchronous inline script
+      // before any <script type="module"> — means the stale shim's iframe native
+      // capture picks up our safe wrapper, so its patchedRemoveChild never throws.
+      (function () {
+        try {
+          var _realRC = Node.prototype.removeChild;
+          Node.prototype.removeChild = function safeRemoveChild(child) {
+            try {
+              if (child && child.parentNode === this) {
+                return _realRC.call(this, child);
+              }
+            } catch (e) { /* swallow NotFoundError */ }
+            return child;
+          };
+        } catch (e) {}
+      })();
+    </script>
     <script>
       // ── SOSAlertPopup global shim — runs before ANY module executes ───────────
       // Vite dev mode wraps modules in an async function (not strict-mode at the

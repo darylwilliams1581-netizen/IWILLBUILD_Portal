@@ -11,11 +11,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
-  AlertCircle, FileText, FileOutput, Library, Layers,
-  ChevronDown, FileType2,
+  AlertCircle, FileText, Library, Layers,
+  ChevronDown, Trash2, Printer, Download, Upload,
+  Settings, Table2, FormInput, Cpu, LayoutTemplate,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
-import PageEditor from './PageEditor';
 import DocSidebar from './DocSidebar';
 import StructurePanel from './StructurePanel';
 import DocxImporter from './DocxImporter';
@@ -31,7 +31,6 @@ interface Props {
   onSaved?: (id: number) => void;
 }
 
-type EditorMode = 'page' | 'structure';
 
 // Document type labels for the toolbar badge
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -57,12 +56,11 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
   const [showBlocksImporter, setShowBlocksImporter] = useState(false);
   const [saveStatus, setSaveStatus]                 = useState<'idle' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab]                   = useState<BuilderTab>('content');
-  const [editorMode, setEditorMode]                 = useState<EditorMode>('structure');
+  const [activeTab, setActiveTab]                   = useState<BuilderTab>('structure');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
-  const [leftCollapsed, setLeftCollapsed]           = useState(false);
+  const [leftCollapsed, setLeftCollapsed]           = useState(true);
   const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const { isPlatformOwner } = usePermissions();
@@ -176,194 +174,196 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
+  // Ribbon tab definitions
+  const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'file',          label: 'File',          icon: <Settings size={13} /> },
+    { id: 'structure',     label: 'Structure',     icon: <Layers size={13} /> },
+    { id: 'tables',        label: 'Tables',        icon: <Table2 size={13} /> },
+    { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
+    { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
+    { id: 'view',          label: 'View',          icon: <LayoutTemplate size={13} /> },
+  ];
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-white"
       onClick={() => setShowDocTypeMenu(false)}
     >
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
+      {/* ── Row 1: Title bar ─────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
 
-        {/* ── Left zone: close + doc type + title ── */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors flex-shrink-0"
+          title="Close"
+        >
+          <X size={14} />
+        </button>
+
+        <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
+
+        {/* Doc name — inline editable */}
+        <FileText size={13} className="text-slate-400 flex-shrink-0" />
+        <input
+          type="text"
+          value={templateName}
+          onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-semibold text-slate-800 bg-transparent border-none outline-none w-48 min-w-0 hover:bg-white focus:bg-white focus:ring-1 focus:ring-primary/40 rounded px-1.5 py-0.5 transition-colors"
+          placeholder="Untitled document"
+          title="Click to rename"
+        />
+        {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
+
+        <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
+
+        {/* Doc type dropdown */}
+        <div className="relative flex-shrink-0">
           <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
-            title="Close"
+            onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
           >
-            <X size={15} />
+            {docTypeLabel}
+            <ChevronDown size={10} />
           </button>
-
-          {/* Doc type pill */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-colors"
-              title="Change document type"
+          {showDocTypeMenu && (
+            <div
+              className="absolute top-8 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <FileType2 size={10} />
-              {docTypeLabel}
-              <ChevronDown size={9} />
-            </button>
-            {showDocTypeMenu && (
-              <div
-                className="absolute top-7 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[140px]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']);
-                      setShowDocTypeMenu(false);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                      templateType === key
-                        ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <FileText size={13} className="text-slate-400 flex-shrink-0" />
-          <input
-            type="text"
-            value={templateName}
-            onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-semibold text-slate-700 bg-transparent border-none outline-none w-[180px] min-w-0 truncate hover:bg-slate-100 focus:bg-slate-100 focus:ring-1 focus:ring-primary/40 rounded px-1 py-0.5 transition-colors"
-            placeholder="Untitled document"
-            title="Click to rename"
-          />
-          {isDirty && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />
+              {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']);
+                    setShowDocTypeMenu(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                    templateType === key
+                      ? 'bg-primary/10 text-primary font-semibold'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* ── Centre zone: Content / PDF Output tabs ── */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
-          <TabBtn
-            active={activeTab === 'content'}
-            onClick={() => setActiveTab('content')}
-            icon={<FileText size={11} />}
-            label="Content"
-          />
-          <TabBtn
-            active={activeTab === 'pdf_output'}
-            onClick={() => setActiveTab('pdf_output')}
-            icon={<FileOutput size={11} />}
-            label="PDF Output"
-          />
-        </div>
-
-        {/* ── Right zone spacer ── */}
         <div className="flex-1" />
 
-        {/* Undo / Redo + mode switcher */}
-        {activeTab === 'content' && (
-          <>
-            <button
-              onClick={undo}
-              disabled={!canUndo()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Undo (⌘Z)"
-            >
-              <Undo2 size={13} />
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Redo (⌘Y)"
-            >
-              <Redo2 size={13} />
-            </button>
-
-            {/* Editor mode switcher — Structure + Preview only */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
-              <ModeBtn
-                active={editorMode === 'structure'}
-                onClick={() => setEditorMode('structure')}
-                icon={<Layers size={11} />}
-                label="Structure"
-                title="Structure mode — block editing"
-              />
-              <ModeBtn
-                active={false}
-                onClick={() => {
-                  useDocumentStore.getState().setMode('preview');
-                  setEditorMode('structure');
-                }}
-                icon={<Eye size={11} />}
-                label="Preview"
-                title="Preview document"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Publish to Library — platform owner only */}
-        {isPlatformOwner && templateId && (
-          <button
-            onClick={() => setShowPublishModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all flex-shrink-0"
-            title="Publish to global library"
-          >
-            <Library size={12} />
-            Publish
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Undo / Redo */}
+          <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)">
+            <Undo2 size={13} />
           </button>
-        )}
+          <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)">
+            <Redo2 size={13} />
+          </button>
 
-        {/* Save */}
-        <button
-          onClick={() => void handleSave()}
-          disabled={isSaving || (!isDirty && !!templateId && activeTab === 'content')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all flex-shrink-0 ${
-            saveStatus === 'saved'
-              ? 'bg-green-500 text-white'
-              : saveStatus === 'error'
-              ? 'bg-red-500 text-white'
-              : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
-          }`}
-          title="Save (⌘S)"
-        >
-          {isSaving ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : saveStatus === 'saved' ? (
-            <CheckCircle size={13} />
-          ) : saveStatus === 'error' ? (
-            <AlertCircle size={13} />
-          ) : (
-            <Save size={13} />
+          <div className="w-px h-4 bg-slate-300" />
+
+          {/* Import */}
+          <button
+            onClick={() => setShowDocxImporter(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+            title="Import DOCX"
+          >
+            <Upload size={12} /> Import
+          </button>
+
+          {/* Print */}
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+            title="Print"
+          >
+            <Printer size={12} /> Print
+          </button>
+
+          {/* Download */}
+          <button
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+            title="Download PDF"
+          >
+            <Download size={12} /> Download
+          </button>
+
+          <div className="w-px h-4 bg-slate-300" />
+
+          {/* Delete */}
+          {templateId && (
+            <button
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
+              title="Delete document"
+            >
+              <Trash2 size={12} /> Delete
+            </button>
           )}
-          {isSaving
-            ? 'Saving…'
-            : saveStatus === 'saved'
-            ? 'Saved'
-            : saveStatus === 'error'
-            ? 'Error'
-            : 'Save'}
+
+          {/* Publish to Library */}
+          {isPlatformOwner && templateId && (
+            <button
+              onClick={() => setShowPublishModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"
+            >
+              <Library size={12} /> Publish
+            </button>
+          )}
+
+          {/* Save */}
+          <button
+            onClick={() => void handleSave()}
+            disabled={isSaving || (!isDirty && !!templateId)}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
+              saveStatus === 'saved'
+                ? 'bg-green-500 text-white'
+                : saveStatus === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+            title="Save (⌘S)"
+          >
+            {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
+            {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Row 2: Ribbon tab strip ───────────────────────────────────────────── */}
+      <div className="flex items-end gap-0 px-3 bg-white border-b border-slate-200 flex-shrink-0">
+        {RIBBON_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+
+        {/* Preview toggle — far right of ribbon */}
+        <div className="flex-1" />
+        <button
+          onClick={() => useDocumentStore.getState().setMode('preview')}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent transition-colors mb-0"
+        >
+          <Eye size={13} /> Preview
         </button>
       </div>
 
-      {/* ── Main layout ──────────────────────────────────────────────────────── */}
-      {activeTab === 'content' ? (
-        <div className="flex flex-1 overflow-hidden">
-          <DocSidebar
-            onImportDocx={() => setShowDocxImporter(true)}
-            collapsed={leftCollapsed}
-            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
-          />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {editorMode === 'page' ? <PageEditor /> : <StructurePanel />}
-          </div>
-        </div>
-      ) : (
+      {/* ── Tab panels ───────────────────────────────────────────────────────── */}
+
+      {/* FILE tab — settings, PDF output */}
+      {activeTab === 'file' && (
         <div className="flex flex-1 overflow-hidden bg-slate-50">
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto py-6 px-4">
@@ -377,7 +377,65 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         </div>
       )}
 
-      {/* ── DOCX Importer modal ───────────────────────────────────────────────── */}
+      {/* STRUCTURE tab — full-width block canvas */}
+      {activeTab === 'structure' && (
+        <div className="flex flex-1 overflow-hidden">
+          <DocSidebar
+            onImportDocx={() => setShowDocxImporter(true)}
+            collapsed={leftCollapsed}
+            onToggleCollapse={() => setLeftCollapsed((v) => !v)}
+          />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StructurePanel />
+          </div>
+        </div>
+      )}
+
+      {/* TABLES tab */}
+      {activeTab === 'tables' && (
+        <RibbonPlaceholder
+          icon={<Table2 size={32} className="text-slate-300" />}
+          title="Tables"
+          description="Insert and manage tables — coming soon."
+        />
+      )}
+
+      {/* FORM FIELDS tab */}
+      {activeTab === 'form_fields' && (
+        <RibbonPlaceholder
+          icon={<FormInput size={32} className="text-slate-300" />}
+          title="Form Fields"
+          description="Add input fields, checkboxes, signatures and dropdowns — coming soon."
+        />
+      )}
+
+      {/* SYSTEM FIELDS tab */}
+      {activeTab === 'system_fields' && (
+        <RibbonPlaceholder
+          icon={<Cpu size={32} className="text-slate-300" />}
+          title="System Fields"
+          description="Insert dynamic fields like job number, date, worker name, company — coming soon."
+        />
+      )}
+
+      {/* VIEW tab */}
+      {activeTab === 'view' && (
+        <div className="flex flex-1 overflow-hidden bg-slate-50">
+          <div className="max-w-xl mx-auto py-8 px-4 w-full">
+            <h2 className="text-sm font-bold text-slate-700 mb-4">Layout &amp; Theme</h2>
+            <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+              <p className="text-xs text-slate-500">Page size, margins, fonts and colour theme for this document.</p>
+              <DocumentPdfTab
+                settings={pdfSettings}
+                onChange={(next) => setPdfSettings(next)}
+                templateName={templateName}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modals ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showDocxImporter && (
           <DocxImporter
@@ -390,7 +448,6 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Blocks JSON Importer modal ────────────────────────────────────────── */}
       <AnimatePresence>
         {showBlocksImporter && (
           <BlocksJsonImporter
@@ -403,7 +460,6 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Publish to Library modal ──────────────────────────────────────────── */}
       <AnimatePresence>
         {showPublishModal && templateId && (
           <PublishToLibraryModal
@@ -419,45 +475,15 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
-function TabBtn({
-  active, onClick, icon, label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
+function RibbonPlaceholder({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-      }`}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function ModeBtn({
-  active, onClick, icon, label, title,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  title: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-      }`}
-    >
-      {icon} {label}
-    </button>
+    <div className="flex flex-1 items-center justify-center bg-slate-50">
+      <div className="flex flex-col items-center gap-3 text-center max-w-xs">
+        {icon}
+        <p className="text-sm font-semibold text-slate-500">{title}</p>
+        <p className="text-xs text-slate-400">{description}</p>
+      </div>
+    </div>
   );
 }
 

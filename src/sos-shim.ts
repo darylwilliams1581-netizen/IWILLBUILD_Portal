@@ -42,18 +42,40 @@
   } catch { /* ignore — fall back to error interception */ }
 
   if (trueNative) {
-    const _native = trueNative; // close over the clean reference
-    // Expose on window so RootLayout's useEffect can use it for instance patching
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__sosRemoveChildNative = _native;
+    const _realNative = trueNative;
 
-    // swallowingRemoveChild — calls the TRUE iframe native directly.
-    // NEVER throws under any circumstance.
-    // Defined early so the createElement intercept below can use it.
+    // Safe wrapper — NEVER throws. This is what we expose everywhere, including
+    // as the iframe's Node.prototype.removeChild so the stale shim captures THIS
+    // function as its _native. That means the stale shim's patchedRemoveChild
+    // calls this safe wrapper, which swallows the error instead of throwing.
     function swallowingRemoveChildEarly<T extends Node>(this: Node, child: T): T {
-      try { if (child && child.parentNode === this) _native.call(this, child); } catch { /* swallow */ }
+      try { if (child && child.parentNode === this) _realNative.call(this, child); } catch { /* swallow */ }
       return child;
     }
+
+    // Expose the SAFE wrapper (not the real native) so any code that captures
+    // __sosRemoveChildNative also gets the safe version.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__sosRemoveChildNative = swallowingRemoveChildEarly;
+
+    // Also overwrite the iframe's own Node.prototype.removeChild with the safe
+    // wrapper RIGHT NOW, before the stale shim can read it.
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'display:none;position:absolute;width:0;height:0';
+      document.head.appendChild(iframe);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const iProto = (iframe.contentWindow as any)?.Node?.prototype;
+      if (iProto) {
+        try {
+          Object.defineProperty(iProto, 'removeChild', {
+            value: swallowingRemoveChildEarly,
+            writable: true, configurable: true, enumerable: false,
+          });
+        } catch { /* ignore */ }
+      }
+      try { _realNative.call(document.head, iframe); } catch { /* ignore */ }
+    } catch { /* ignore */ }
 
     // ── Intercept Object.defineProperty ─────────────────────────────────────
     // The stale shim calls Object.defineProperty(appEl, 'removeChild', { value: patchedRemoveChild })
@@ -306,7 +328,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784548000000';
+const SOS_SHIM_VERSION = '1784549000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
