@@ -648,6 +648,7 @@ import jobs_id_attendance_close_post from "./api/jobs/[id]/attendance/[attendanc
 import sosGetHandler from "./api/sos/GET.js";
 import sosTriggerPostHandler from "./api/sos/trigger/POST.js";
 import sosAcknowledgePostHandler from "./api/sos/acknowledge/POST.js";
+import adminSetUserCompanyPost from "./api/admin/set-user-company/POST.js";
 
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
@@ -2568,6 +2569,7 @@ app.post("/api/signup", signup_post_552);
 app.get("/api/sos", sos_get_553);
 app.post("/api/sos/acknowledge", sos_acknowledge_post_554);
 app.post("/api/sos/trigger", sos_trigger_post_555);
+app.post("/api/admin/set-user-company", adminSetUserCompanyPost);
 app.post("/api/stripe/create-checkout-session", stripe_create_checkout_session_post_556);
 app.get("/api/stripe/session/:sessionId", stripe_session_sessionId_get_557);
 app.post("/api/subscription/create-checkout", subscription_create_checkout_post_558);

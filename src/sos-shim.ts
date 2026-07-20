@@ -45,31 +45,34 @@
     // swallowingRemoveChild — always calls the TRUE iframe native directly,
     // bypassing any stale patchedRemoveChild that may be on Node.prototype
     // or on a specific element instance.
-    // Guards child.parentNode first so the native never sees a detached child.
+    // Swallows ALL errors — the stale shim may call this and re-throw if we
+    // let any exception escape, so we must never throw under any circumstance.
     function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
       if (!child || child.parentNode !== this) return child;
       try {
         return _native.call(this, child) as T;
-      } catch (e) {
-        if (e instanceof Error && e.name === 'NotFoundError') return child;
-        throw e;
+      } catch {
+        // Swallow unconditionally — NotFoundError, HierarchyRequestError, anything.
+        // Returning child is safe: React only cares that the call doesn't throw.
+        return child;
       }
     }
 
-    // Try to install on every prototype level (may be locked by stale shim).
-    for (const subProto of [
-      EventTarget.prototype,
-      Node.prototype,
-      Element.prototype,
-      HTMLElement.prototype,
-      HTMLDivElement.prototype,
-    ]) {
+    // ── Patch ALL existing and future iframes ────────────────────────────────
+    // The stale shim captured an iframe's Node.prototype.removeChild as its
+    // _native. When that _native throws NotFoundError, the stale shim propagates
+    // it. We can't change what the stale shim captured — but we CAN patch every
+    // iframe's Node.prototype so the captured reference itself becomes safe.
+    // We do this by replacing removeChild on each iframe's Node.prototype with
+    // swallowingRemoveChild (which never throws).
+    function patchIframeProto(iframe: HTMLIFrameElement) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sp = subProto as any;
-        const d = Object.getOwnPropertyDescriptor(sp, 'removeChild');
+        const iWin = iframe.contentWindow as any;
+        if (!iWin?.Node?.prototype) return;
+        const iProto = iWin.Node.prototype;
+        const d = Object.getOwnPropertyDescriptor(iProto, 'removeChild');
         if (!d || d.configurable) {
-          Object.defineProperty(sp, 'removeChild', {
+          Object.defineProperty(iProto, 'removeChild', {
             value: swallowingRemoveChild,
             writable: false,
             configurable: false,
@@ -79,47 +82,50 @@
       } catch { /* ignore */ }
     }
 
-    // ── Instance-level patch via MutationObserver ─────────────────────────────
-    // The stale shim (t=1784519099416) installs patchedRemoveChild as an OWN
-    // PROPERTY on individual div INSTANCES (not prototypes). Instance own
-    // properties always win over prototype properties, so prototype shadowing
-    // above is not enough. Fix: use a MutationObserver to watch every new node
-    // added to the DOM and immediately overwrite any stale patchedRemoveChild
-    // own-property with our safe wrapper.
+    // Patch all iframes already in the DOM (including the stale shim's iframe)
+    document.querySelectorAll('iframe').forEach(patchIframeProto);
+
+    // Patch future iframes as they're added
+    const iframeMo = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        m.addedNodes.forEach((n) => {
+          if (n instanceof HTMLIFrameElement) patchIframeProto(n);
+          // Also check descendants
+          if (n instanceof Element) {
+            n.querySelectorAll('iframe').forEach(patchIframeProto);
+          }
+        });
+      }
+    });
+    iframeMo.observe(document.documentElement, { childList: true, subtree: true });
+
+    // ── Instance-level patch via MutationObserver ────────────────────────────
+    // Belt-and-suspenders: also patch own-property removeChild on DOM instances.
     function patchInstance(node: Node) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const n = node as any;
         const d = Object.getOwnPropertyDescriptor(n, 'removeChild');
-        // Only overwrite if it's a stale patchedRemoveChild (not our wrapper)
-        if (d && d.value && d.value !== swallowingRemoveChild &&
-            (d.value.name === 'patchedRemoveChild' || d.value.name === 'swallowingRemoveChild')) {
-          try {
-            if (d.configurable) {
-              Object.defineProperty(n, 'removeChild', {
-                value: swallowingRemoveChild,
-                writable: d.writable ?? false,
-                configurable: true,
-                enumerable: false,
-              });
-            } else {
-              // Non-configurable own property — can't redefine, but we can
-              // shadow it by wrapping the call at a higher level via Proxy if
-              // available, otherwise rely on the error-interception below.
-            }
-          } catch { /* ignore */ }
-        }
+        if (!d || d.value === swallowingRemoveChild) return;
+        try {
+          if (d.configurable) {
+            Object.defineProperty(n, 'removeChild', {
+              value: swallowingRemoveChild, writable: true, configurable: true, enumerable: false,
+            });
+          } else {
+            // Non-configurable — try delete (succeeds if writable)
+            delete n.removeChild;
+            Object.defineProperty(n, 'removeChild', {
+              value: swallowingRemoveChild, writable: true, configurable: true, enumerable: false,
+            });
+          }
+        } catch { /* truly locked */ }
       } catch { /* ignore */ }
     }
 
-    // Patch existing DOM nodes
     document.querySelectorAll('*').forEach(patchInstance);
-
-    // Patch all future nodes as they're added
     const mo = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        m.addedNodes.forEach(patchInstance);
-      }
+      for (const m of mutations) m.addedNodes.forEach(patchInstance);
     });
     mo.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -144,7 +150,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784534000000';
+const SOS_SHIM_VERSION = '1784536000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
