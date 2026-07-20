@@ -10,11 +10,10 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen, Menu, FileUp, Library,
+  ShieldCheck, ClipboardList, BookOpen, ArrowLeft, FileUp, Library,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
-import PortalSidebar from '@/components/PortalSidebar';
 import { toast } from 'sonner';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
@@ -468,7 +467,7 @@ export default function StudioPage() {
   }, [navigate]);
 
   return (
-    <div className="portal-page">
+    <div className="flex flex-col flex-1 min-h-0">
       <Helmet>
         <title>Studio — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD Studio — build quotes, contracts, safety documents and more." />
@@ -476,85 +475,72 @@ export default function StudioPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <PortalSidebar />
+      {/* ── Sticky header — matches fleet/jobs pattern ── */}
+      <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
+        <button
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          aria-label="Back to Home"
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline">Home</span>
+        </button>
+        <span className="text-gray-300">|</span>
+        <Layers size={17} className="text-primary shrink-0" />
+        <h1 className="font-heading font-bold text-base truncate flex-1">Studio</h1>
 
-      <div className="portal-main">
-
-        {/* ── Header ── */}
-        <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => window.dispatchEvent(new Event('portal:open-menu'))}
-                className="md:hidden p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                aria-label="Open menu"
-              >
-                <Menu size={20} />
-              </button>
-              <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-                <Layers size={18} className="text-orange-500" />
-              </div>
-              <div>
-                <h1 className="text-base md:text-lg font-bold text-slate-900 leading-tight">IWILLBUILD Studio</h1>
-                <p className="text-xs text-slate-500 hidden sm:block">Build documents, forms and packs for your jobs</p>
-              </div>
-            </div>
-
-            {activeTab === 'documents' && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => void handleOpenImporter()}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors"
-                >
-                  <FileUp size={14} />
-                  <span className="hidden sm:inline">Import</span>
-                </button>
-                <button
-                  onClick={() => navigate('/studio/builder/new')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
-                >
-                  <Plus size={15} />
-                  New document
-                </button>
-              </div>
-            )}
+        {/* Action buttons — only on documents tab */}
+        {activeTab === 'documents' && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => void handleOpenImporter()}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors"
+            >
+              <FileUp size={14} />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+            <button
+              onClick={() => navigate('/studio/builder/new')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors"
+            >
+              <Plus size={15} />
+              <span className="hidden sm:inline">New document</span>
+            </button>
           </div>
-        </div>
+        )}
+      </header>
 
-        {/* ── Top-level tab bar ── */}
-        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
-          <div className="flex gap-0.5 py-2 min-w-max">
-            {STUDIO_TABS.filter(({ id }) => id !== 'share' || isPlatformOwner).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => switchTab(id)}
-                className={[
-                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-                  activeTab === id
-                    ? 'bg-orange-50 text-primary font-semibold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-                ].join(' ')}
-              >
-                <Icon size={14} className={activeTab === id ? 'text-primary' : 'text-muted-foreground'} />
-                {label}
-                {activeTab === id && (
-                  <span className="ml-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
+      {/* ── Tab bar ── */}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
+        <div className="flex gap-0.5 py-2 min-w-max">
+          {STUDIO_TABS.filter(({ id }) => id !== 'share' || isPlatformOwner).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => switchTab(id)}
+              className={[
+                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+                activeTab === id
+                  ? 'bg-orange-50 text-primary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+              ].join(' ')}
+            >
+              <Icon size={14} className={activeTab === id ? 'text-primary' : 'text-muted-foreground'} />
+              {label}
+              {activeTab === id && (
+                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              )}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* ── Tab content ── */}
-        {/* forms tab needs overflow-y-auto so the builder/preview can scroll to the bottom;
-            other tabs manage their own internal scroll within overflow-hidden */}
-        <div className={`flex-1 min-h-0 ${activeTab === 'forms' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-          {activeTab === 'documents' && <DocumentsTab />}
-          {activeTab === 'forms'     && <FormsContent />}
-          {activeTab === 'library'   && <LibraryContent />}
-          {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
-          {activeTab === 'safety'    && <SafetyContent />}
-        </div>
+      {/* ── Tab content ── */}
+      <div className={`flex-1 min-h-0 ${activeTab === 'forms' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        {activeTab === 'documents' && <DocumentsTab />}
+        {activeTab === 'forms'     && <FormsContent />}
+        {activeTab === 'library'   && <LibraryContent />}
+        {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
+        {activeTab === 'safety'    && <SafetyContent />}
       </div>
 
       {/* ── Import DOCX/PDF modal ── */}

@@ -32,7 +32,11 @@
     document.head.appendChild(iframe);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     trueNative = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? null;
-    document.head.removeChild(iframe);
+    // Use the iframe's own native to remove itself — avoids calling the
+    // potentially-stale patchedRemoveChild on the main window's prototype.
+    if (trueNative && iframe.parentNode === document.head) {
+      trueNative.call(document.head, iframe);
+    }
   } catch { /* ignore — fall back to error interception */ }
 
   if (trueNative) {
@@ -75,14 +79,27 @@ const STALE_TS_SHIM = [
   '1784516836299',
   '1784516840163',
   '1784516846345',
-  '1784518714435', // SosInnerBoundary wrapping full layout
+  '1784518714435',
   '1784519099416', // sos-shim.ts stale — re-throwing patchedRemoveChild
-  '1784522000000', // placeholder for next stale version
+  '1784522000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
-const SOS_SHIM_WINDOW_MS = 8_000;   // shorter window — reload more aggressively
-const SOS_SHIM_MAX_RELOADS = 3;     // give up after 3 rapid reloads (avoid infinite loop)
+// Key that tracks which shim version last reset the counter.
+// When the shim is updated, this changes and the counter resets automatically.
+const SOS_SHIM_VERSION = '1784524403918';
+const SOS_SHIM_VER_KEY = 'sos_shim_version';
+const SOS_SHIM_WINDOW_MS = 8_000;
+const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
+
+// Reset counter when shim version changes (new deploy evicts old stale module)
+try {
+  if (localStorage.getItem(SOS_SHIM_VER_KEY) !== SOS_SHIM_VERSION) {
+    localStorage.removeItem(SOS_SHIM_COUNT_KEY);
+    localStorage.removeItem(SOS_SHIM_LS_KEY);
+    localStorage.setItem(SOS_SHIM_VER_KEY, SOS_SHIM_VERSION);
+  }
+} catch (_) {}
 
 function shimSosRecentReload(): boolean {
   try {

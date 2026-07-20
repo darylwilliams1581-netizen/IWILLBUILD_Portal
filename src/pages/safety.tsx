@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search,
   Loader2, X, Check, ChevronRight, Download, Trash2, Copy,
-  ClipboardList, BookOpen, Library, Image, Menu, AlertCircle, ExternalLink,
+  ClipboardList, BookOpen, Library, Image, AlertCircle, ExternalLink,
   Users, Calendar, Building2, ChevronDown, Wand2, Send,
   Sparkles, FileDown, Package, RefreshCw, Printer, CheckSquare, Square,
   ChevronLeft, Share2, Pencil,
@@ -12,7 +12,6 @@ import {
 import ShareLinkModal from '@/components/ShareLinkModal';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
-import PortalSidebar from '@/components/PortalSidebar';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
