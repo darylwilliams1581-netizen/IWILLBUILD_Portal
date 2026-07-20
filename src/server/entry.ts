@@ -399,6 +399,7 @@ import jobs_id_signin_status_get_318 from "./api/jobs/[id]/signin-status/GET";
 import jobs_id_signout_post_319 from "./api/jobs/[id]/signout/POST";
 import jobs_id_signout_qr_post_320 from "./api/jobs/[id]/signout-qr/POST";
 import jobs_id_swms_get_321 from "./api/jobs/[id]/swms/GET";
+import jobs_id_field_docs_get from "./api/jobs/[id]/field-docs/GET";
 import jobs_id_swms_post_322 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_323 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import jobs_id_todos_get_324 from "./api/jobs/[id]/todos/GET";
@@ -1184,6 +1185,7 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'pdf_settings_json',   definition: 'LONGTEXT NULL' },
     { table: 'document_templates', column: 'source_docx_path',    definition: 'VARCHAR(500) NULL' },
     { table: 'document_templates', column: 'source_docx_name',    definition: 'VARCHAR(255) NULL' },
+    { table: 'document_templates', column: 'use_type',            definition: "VARCHAR(50) NOT NULL DEFAULT 'reference_document'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
@@ -2329,6 +2331,7 @@ app.get("/api/jobs/:id/forms/export-csv", jobsIdFormsExportCsvGet);
 import jobsIdProgressExportCsvGet from "./api/jobs/[id]/progress/export-csv/GET.js";
 app.get("/api/jobs/:id/progress/export-csv", jobsIdProgressExportCsvGet);
 app.get("/api/jobs/:id/swms", jobs_id_swms_get_321);
+app.get("/api/jobs/:id/field-docs", jobs_id_field_docs_get);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
 app.get("/api/jobs/:id/todos", jobs_id_todos_get_324);

@@ -93,8 +93,13 @@ const STALE_TS = [
   '1784545944754',
   '1784546299827',
   '1784546491474',
+  '1784585282530',
+  '1784589710474',
+  '1784590013856',
   '1784700000000', // cover previous shim version range
   '1784748000000', // cover recent edit window
+  '1784800000000', // July 21 2026 edit window
+  '1784850000000',
 ];
 
 function isSosError(e: unknown): boolean {

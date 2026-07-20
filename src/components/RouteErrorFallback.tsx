@@ -49,7 +49,7 @@ export default function RouteErrorFallback() {
   // patchedRemoveChild. React Router's RenderErrorBoundary catches it before
   // SosInterceptBoundary/StaleShimBoundary (which sit outside RouterProvider).
   // Detect it here and trigger a one-shot reload to evict the stale module.
-  const STALE_TS = ['1784519099416', '1784518714435', '1784516505220'];
+  const STALE_TS = ['1784519099416', '1784518714435', '1784516505220', '1784585282530', '1784589710474', '1784590013856', '1784800000000'];
   function isStaleShimError(e: unknown): boolean {
     if (!(e instanceof Error)) return false;
     const text = (e.message ?? '') + (e.stack ?? '');

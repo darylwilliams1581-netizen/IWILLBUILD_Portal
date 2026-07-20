@@ -1,0 +1,708 @@
+/**
+ * /job-docs — Field Docs
+ * Field worker view: pick a job, then view/review/complete/sign-on to SWMS docs.
+ * Tabs: Documents | Sign-ons
+ */
+import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Helmet } from '@dr.pogodin/react-helmet';
+import {
+  Search, Plus, Loader2, FileCheck, Building2, Users,
+  ChevronDown, ChevronUp, CheckCircle2, Clock, X,
+  AlertCircle, Check, CheckSquare, Square, Copy, Link2,
+  ClipboardCheck, FileText, UserCheck,
+} from 'lucide-react';
+import { fmtDate, statusBadge, JOB_SWMS_STATUSES } from '@/components/safety/safety-types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Job {
+  id: number;
+  name: string;
+  job_number: string | null;
+  status: string | null;
+}
+
+interface FieldDoc {
+  id: number;
+  title: string;
+  status: string;
+  revision_number: string;
+  review_date: string | null;
+  approved_at: string | null;
+  work_activity: string | null;
+  sign_off_requirements: string | null;
+  signoff_count: number;
+  job_name: string | null;
+  job_number: string | null;
+}
+
+interface Signon {
+  id: number;
+  worker_name: string;
+  company_name: string | null;
+  role: string | null;
+  white_card_number: string | null;
+  signed_at: string;
+  doc_title: string | null;
+}
+
+// ── Job Picker ────────────────────────────────────────────────────────────────
+
+function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/jobs', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setJobs((d.jobs ?? []).filter((j: Job) => j.status !== 'archived')))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = jobs.filter(j =>
+    !search ||
+    j.name.toLowerCase().includes(search.toLowerCase()) ||
+    (j.job_number ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+      <Helmet>
+        <title>Field Docs | IWILLBUILD</title>
+        <meta name="description" content="View, review and sign on to job documents in the field." />
+        <link rel="canonical" href="https://iwillbuild.com/job-docs" />
+      </Helmet>
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
+            <FileCheck size={28} className="text-teal-600" />
+          </div>
+          <h1 className="font-heading font-bold text-2xl text-slate-800 mb-1">Field Docs</h1>
+          <p className="text-sm text-slate-500 text-center">Select a job to view its documents</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search jobs…"
+                autoFocus
+                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 bg-slate-50"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto">
+            {loading && (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 size={20} className="animate-spin text-teal-600" />
+              </div>
+            )}
+            {!loading && filtered.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-8">No active jobs found</p>
+            )}
+            {!loading && filtered.map(j => (
+              <button
+                key={j.id}
+                onClick={() => onSelect(j)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-teal-50 transition-colors border-b border-slate-100 last:border-0 group"
+              >
+                <div className="w-9 h-9 bg-slate-100 group-hover:bg-teal-100 rounded-xl flex items-center justify-center shrink-0 transition-colors">
+                  <Building2 size={15} className="text-slate-500 group-hover:text-teal-600 transition-colors" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{j.name}</p>
+                  {j.job_number && <p className="text-xs text-slate-400">{j.job_number}</p>}
+                </div>
+                <ChevronDown size={14} className="text-slate-300 group-hover:text-teal-500 -rotate-90 transition-colors shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Doc Modal ─────────────────────────────────────────────────────────────
+
+function AddDocModal({ jobId, onClose, onAdded }: {
+  jobId: number;
+  onClose: () => void;
+  onAdded: (docs: FieldDoc[]) => void;
+}) {
+  const [templates, setTemplates] = useState<Array<{ id: number; title: string; status: string }>>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/safety/swms', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setTemplates((d.swms ?? []).filter((s: { status: string }) => s.status !== 'archived')))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = templates.filter(t =>
+    !search || t.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function toggle(id: number) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleAdd() {
+    if (selected.size === 0) { setError('Select at least one document'); return; }
+    setSaving(true); setError('');
+    try {
+      const r = await fetch('/api/safety/job-swms', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, templateIds: Array.from(selected) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
+      onAdded(d.jobSwms ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.2, ease: 'easeOut' as const }}
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-teal-50 rounded-lg"><FileCheck size={16} className="text-teal-600" /></div>
+            <div>
+              <h2 className="font-heading font-bold text-base">Add Document to Job</h2>
+              <p className="text-xs text-slate-400">Select from your SWMS library</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search documents…"
+              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+            />
+          </div>
+
+          {loading && <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-teal-600" /></div>}
+
+          {!loading && (
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              {filtered.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-6">No templates found — create some in the SWMS Library first</p>
+              )}
+              {filtered.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => toggle(t.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selected.has(t.id) ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
+                >
+                  {selected.has(t.id)
+                    ? <CheckSquare size={14} className="text-teal-600 shrink-0" />
+                    : <Square size={14} className="text-slate-300 shrink-0" />}
+                  <span className="flex-1 truncate font-medium text-slate-800">{t.title}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm">
+              <AlertCircle size={14} className="shrink-0" />{error}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 pb-5 flex gap-3 border-t border-slate-100 pt-4 shrink-0">
+          <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
+          <button
+            onClick={() => void handleAdd()}
+            disabled={saving || selected.size === 0}
+            className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Add {selected.size > 0 ? `${selected.size} Doc${selected.size > 1 ? 's' : ''}` : 'Docs'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Sign-on Panel ─────────────────────────────────────────────────────────────
+
+function SignonPanel({ docId, onClose }: { docId: number; onClose: () => void }) {
+  const [signons, setSignons] = useState<Signon[]>([]);
+  const [shareUrl, setShareUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/safety/job-swms/${docId}/signoffs`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/safety/job-swms/${docId}/share-token`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
+    ]).then(([sd, td]) => {
+      setSignons((sd as { signoffs?: Signon[] }).signoffs ?? []);
+      setShareUrl((td as { url?: string }).url ?? '');
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [docId]);
+
+  async function regenerate() {
+    setGenerating(true);
+    try {
+      const r = await fetch(`/api/safety/job-swms/${docId}/share-token`, { method: 'POST', credentials: 'include' });
+      const d = await r.json() as { url?: string };
+      setShareUrl(d.url ?? '');
+    } finally { setGenerating(false); }
+  }
+
+  function copyLink() {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+      className="overflow-hidden"
+    >
+      <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 space-y-4">
+        {/* Share link */}
+        <div>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Sign-on Link</p>
+          <p className="text-xs text-slate-500 mb-2">Share with workers — they can read and sign on their phone, no login needed.</p>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Generating…</div>
+          ) : shareUrl ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-600 truncate font-mono">{shareUrl}</div>
+              <button
+                onClick={copyLink}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 ${copied ? 'bg-emerald-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+              >
+                {copied ? <><CheckCircle2 size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+              </button>
+            </div>
+          ) : (
+            <button onClick={regenerate} disabled={generating} className="flex items-center gap-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors">
+              {generating ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
+              Generate link
+            </button>
+          )}
+        </div>
+
+        {/* Signons list */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Signed ({signons.length})</p>
+            <button onClick={onClose} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+              <ChevronUp size={12} /> Hide
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Loading…</div>
+          ) : signons.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No sign-ons yet. Share the link above with workers.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {signons.map(s => (
+                <div key={s.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800">{s.worker_name}</p>
+                    <p className="text-[10px] text-slate-500">
+                      {[s.role, s.company_name, s.white_card_number ? `WC: ${s.white_card_number}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0">
+                    <Clock size={9} />{fmtDate(s.signed_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Doc Card ──────────────────────────────────────────────────────────────────
+
+function DocCard({ doc, onStatusChange }: {
+  doc: FieldDoc;
+  onStatusChange: (id: number, status: string) => void;
+}) {
+  const [signonOpen, setSignonOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  async function changeStatus(newStatus: string) {
+    setUpdating(true);
+    try {
+      const r = await fetch(`/api/safety/job-swms/${doc.id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: doc.title,
+          workActivity: doc.work_activity ?? '',
+          revisionNumber: doc.revision_number,
+          reviewDate: doc.review_date?.slice(0, 10) ?? '',
+          status: newStatus,
+        }),
+      });
+      if (r.ok) onStatusChange(doc.id, newStatus);
+    } finally { setUpdating(false); }
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-slate-300 transition-colors">
+      <div className="p-4">
+        {/* Header row */}
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(doc.status)}`}>
+                {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+              </span>
+              <span className="text-xs text-slate-400">Rev {doc.revision_number}</span>
+              {doc.review_date && (
+                <span className="text-xs text-slate-400">Review: {fmtDate(doc.review_date)}</span>
+              )}
+            </div>
+            <h3 className="font-bold text-sm text-slate-800 leading-snug">{doc.title}</h3>
+            {doc.work_activity && (
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{doc.work_activity}</p>
+            )}
+          </div>
+
+          {/* Sign-on count badge */}
+          <button
+            onClick={() => setSignonOpen(v => !v)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 ${
+              signonOpen
+                ? 'bg-emerald-100 text-emerald-700'
+                : doc.signoff_count > 0
+                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+            title="Sign-ons"
+          >
+            <Users size={12} />
+            <span>{doc.signoff_count}</span>
+            {signonOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          </button>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+          {/* Review */}
+          {(doc.status === 'draft') && (
+            <button
+              onClick={() => void changeStatus('reviewed')}
+              disabled={updating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+            >
+              {updating ? <Loader2 size={11} className="animate-spin" /> : <ClipboardCheck size={11} />}
+              Review
+            </button>
+          )}
+
+          {/* Complete */}
+          {(doc.status === 'draft' || doc.status === 'reviewed') && (
+            <button
+              onClick={() => void changeStatus('approved')}
+              disabled={updating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+            >
+              {updating ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+              Complete
+            </button>
+          )}
+
+          {/* Sign On */}
+          <button
+            onClick={() => setSignonOpen(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              signonOpen
+                ? 'bg-teal-600 text-white'
+                : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+            }`}
+          >
+            <UserCheck size={11} />
+            Sign On
+          </button>
+
+          {doc.signoff_count === 0 && (
+            <span className="ml-auto text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              Unsigned
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Sign-on panel */}
+      <AnimatePresence>
+        {signonOpen && (
+          <SignonPanel key={doc.id} docId={doc.id} onClose={() => setSignonOpen(false)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function JobFieldDocsPage() {
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [docs, setDocs] = useState<FieldDoc[]>([]);
+  const [signons, setSignons] = useState<Signon[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'docs' | 'signons'>('docs');
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const loadDocs = useCallback((jobId: number) => {
+    setLoading(true);
+    fetch(`/api/jobs/${jobId}/field-docs`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        setDocs(d.docs ?? []);
+        setSignons(d.signons ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (selectedJob) loadDocs(selectedJob.id);
+  }, [selectedJob, loadDocs]);
+
+  function handleStatusChange(id: number, newStatus: string) {
+    setDocs(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
+  }
+
+  const filteredDocs = docs.filter(d =>
+    !search || d.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ── No job selected → picker ──
+  if (!selectedJob) {
+    return <JobPicker onSelect={job => { setSelectedJob(job); }} />;
+  }
+
+  // ── Job selected → docs view ──
+  return (
+    <div className="flex flex-col h-full">
+      {/* Top bar */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
+        <button
+          onClick={() => { setSelectedJob(null); setDocs([]); setSignons([]); }}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          title="Back to job picker"
+        >
+          <ChevronDown size={16} className="rotate-90" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
+              <FileCheck size={14} className="text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-400 leading-none mb-0.5">Field Docs</p>
+              <h1 className="font-heading font-bold text-sm text-slate-800 truncate leading-tight">
+                {selectedJob.name}
+                {selectedJob.job_number && <span className="font-normal text-slate-400 ml-1.5">{selectedJob.job_number}</span>}
+              </h1>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors shrink-0"
+        >
+          <Plus size={13} />
+          Add
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white border-b border-slate-200 px-4 flex gap-1 shrink-0">
+        {([
+          { key: 'docs',    label: 'Documents', icon: FileText,  count: docs.length },
+          { key: 'signons', label: 'Sign-ons',  icon: UserCheck, count: signons.length },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-colors ${
+              activeTab === tab.key
+                ? 'border-teal-600 text-teal-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <tab.icon size={13} />
+            {tab.label}
+            {tab.count > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* ── Documents tab ── */}
+        {activeTab === 'docs' && (
+          <div className="p-4 flex flex-col gap-3">
+            {/* Search */}
+            {docs.length > 3 && (
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search documents…"
+                  className="w-full pl-8 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 bg-white"
+                />
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={22} className="animate-spin text-teal-600" />
+              </div>
+            )}
+
+            {!loading && filteredDocs.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
+                  <FileCheck size={24} className="text-teal-600" />
+                </div>
+                <p className="font-heading font-bold text-slate-700 mb-1">No documents yet</p>
+                <p className="text-sm text-slate-400 mb-5 max-w-xs">Add SWMS documents to this job so workers can review and sign on.</p>
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  <Plus size={15} />Add Document
+                </button>
+              </div>
+            )}
+
+            {!loading && filteredDocs.map(doc => (
+              <DocCard key={doc.id} doc={doc} onStatusChange={handleStatusChange} />
+            ))}
+          </div>
+        )}
+
+        {/* ── Sign-ons tab ── */}
+        {activeTab === 'signons' && (
+          <div className="p-4 flex flex-col gap-3">
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={22} className="animate-spin text-teal-600" />
+              </div>
+            )}
+
+            {!loading && signons.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                  <Users size={24} className="text-slate-400" />
+                </div>
+                <p className="font-heading font-bold text-slate-700 mb-1">No sign-ons yet</p>
+                <p className="text-sm text-slate-400 max-w-xs">Workers sign on via the share link on each document.</p>
+              </div>
+            )}
+
+            {!loading && signons.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <p className="text-sm font-semibold text-slate-700">{signons.length} sign-on{signons.length !== 1 ? 's' : ''} recorded</p>
+                </div>
+                {signons.map(s => (
+                  <div key={s.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle2 size={15} className="text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{s.worker_name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {[s.role, s.company_name, s.white_card_number ? `WC: ${s.white_card_number}` : null].filter(Boolean).join(' · ')}
+                      </p>
+                      {s.doc_title && (
+                        <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                          <FileText size={9} />{s.doc_title}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400 shrink-0 mt-0.5">
+                      <Clock size={9} />{fmtDate(s.signed_at)}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Add doc modal */}
+      <AnimatePresence>
+        {showAdd && (
+          <AddDocModal
+            jobId={selectedJob.id}
+            onClose={() => setShowAdd(false)}
+            onAdded={newDocs => {
+              setDocs(prev => [...(newDocs as unknown as FieldDoc[]), ...prev]);
+              setShowAdd(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -57,6 +57,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'progress',      label: 'Progress',       icon: TrendingUp,       href: '?panel=progress-picker',  bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
   { key: 'drawings',      label: 'Drawings',       icon: Layers,           href: '?panel=drawings-picker',  bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
   { key: 'equipment',     label: 'Equipment',      icon: Wrench,           href: '/studio/asset-manager',   bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
+  { key: 'field_docs',   label: 'Docs',           icon: FileCheck,        href: '/job-docs',               bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────

@@ -39,6 +39,7 @@ const StudioDocumentsPage = lazy(() => import('./pages/studio-documents'));
 const StudioFormsPage    = lazy(() => import('./pages/studio-forms'));
 const StudioLibraryPage  = lazy(() => import('./pages/studio-library'));
 const SafetyPostersPage  = lazy(() => import('./pages/safety-posters'));
+const JobFieldDocsPage   = lazy(() => import('./pages/job-field-docs'));
 
 const TeamPage           = lazy(() => import('./pages/team'));
 
@@ -200,6 +201,7 @@ export const routes: RouteObject[] = [
   { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),     errorElement: routeError },
   { path: '/studio/library',       element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),   errorElement: routeError },
   { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
+  { path: '/job-docs',             element: protect(<Suspense fallback={<PageLoader />}><JobFieldDocsPage /></Suspense>),    errorElement: routeError },
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
   { path: '/plan-manager',                element: protect(<PlanManagerPage />),        errorElement: routeError },
   { path: '/plan-manager/share/:token',   element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },

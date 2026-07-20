@@ -418,15 +418,20 @@ const STALE_TS_SHIM = [
   '1784546299827',
   '1784546491474',
   '1784549200000',
+  '1784585282530',
+  '1784589710474',
+  '1784590013856',
   '1784600000000',
   '1784700000000', // cover any shim from previous version range
   '1784748000000', // cover recent edit window
+  '1784800000000', // cover July 21 2026 edits
+  '1784850000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784800000003';
+const SOS_SHIM_VERSION = '1784800000004';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 3;

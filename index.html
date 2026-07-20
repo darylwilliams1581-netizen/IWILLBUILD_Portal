@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v66 -->
+  <!-- cache-bust: v68 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -120,24 +120,39 @@
 
           // ── Continuously seal #app div's own removeChild property ─────────────
           // The stale shim re-installs its patchedRemoveChild on #app after each
-          // React navigation. Poll every 20ms for the first 10s to overwrite it.
+          // React navigation. Poll every 5ms for the first 10s to overwrite it.
+          // We use configurable:false so the stale shim's defineProperty call
+          // fails silently and our safe wrapper stays locked in.
           function sealAppDiv() {
             try {
               var appEl = document.getElementById('app');
               if (!appEl) return;
               var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              if (d && d.get && d.get.call(appEl) === safeRemoveChild) return; // already sealed
+              // Already sealed with our safe wrapper and non-configurable — done.
+              if (d && !d.configurable && d.get && d.get.call(appEl) === safeRemoveChild) return;
+              // Install with configurable:false so the stale shim cannot overwrite it.
               try {
                 _origDefProp(appEl, 'removeChild', {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) {},
-                  configurable: true, enumerable: false,
+                  configurable: false, enumerable: false,
                 });
               } catch(e) {
                 try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
               }
             } catch(e) {}
           }
+          // Also seal every DOM node that gets a removeChild own-property installed
+          // (the stale shim may target nodes other than #app in some code paths).
+          try {
+            var _sealObserver = new MutationObserver(function() { sealAppDiv(); });
+            document.addEventListener('DOMContentLoaded', function() {
+              var appEl = document.getElementById('app');
+              if (appEl) {
+                _sealObserver.observe(appEl, { childList: true, subtree: false });
+              }
+            }, { once: true });
+          } catch(e) {}
           var _sealInterval = setInterval(sealAppDiv, 5);
           setTimeout(function() { clearInterval(_sealInterval); }, 10000);
           // Also seal on DOMContentLoaded
@@ -203,7 +218,9 @@
         // Suppress the stale HMR shim's NotFoundError from removeChild.
         // The stale module (t=1784519099416) calls the true browser native which
         // throws NotFoundError — we must swallow it before React's error boundary sees it.
-        if (msg.indexOf('removeChild') !== -1 || (src.indexOf('1784519099416') !== -1)) {
+        var staleTs = ['1784519099416','1784585282530','1784589710474','1784590013856','1784800000000'];
+        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; });
+        if (msg.indexOf('removeChild') !== -1 || isStale) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);

@@ -25,7 +25,7 @@ const CookieBanner = lazy(() =>
 // SosInnerBoundary (which is inside RootLayout, lower in the tree). This
 // boundary sits ABOVE RouterProvider so it intercepts first, suppresses the
 // error, and triggers a reload to evict the stale module.
-const STALE_TS = ['1784519099416', '1784518714435', '1784516505220'];
+const STALE_TS = ['1784519099416', '1784518714435', '1784516505220', '1784585282530', '1784589710474', '1784590013856', '1784800000000'];
 function isStaleRemoveChildError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const text = (err.message ?? '') + (err.stack ?? '');

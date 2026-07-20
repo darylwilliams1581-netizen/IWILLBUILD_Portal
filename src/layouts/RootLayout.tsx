@@ -234,6 +234,10 @@ const STALE_SNAPSHOTS = [
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
   '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
+  '1784585282530',
+  '1784589710474',
+  '1784590013856',
+  '1784800000000', // July 21 2026 edit window
 ];
 
 function isStaleSnapshot(error: Error): boolean {

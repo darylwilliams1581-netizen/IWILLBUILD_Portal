@@ -70,6 +70,7 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/studio/forms", changefreq: "monthly", priority: 0.5 },
   { path: "/studio/library", changefreq: "monthly", priority: 0.5 },
   { path: "/safety/posters", changefreq: "monthly", priority: 0.5 },
+  { path: "/job-docs", changefreq: "monthly", priority: 0.8 },
   { path: "/plan-manager", changefreq: "monthly", priority: 0.7 },
   { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.6 },
   { path: "/signin-history", changefreq: "monthly", priority: 0.5 },
