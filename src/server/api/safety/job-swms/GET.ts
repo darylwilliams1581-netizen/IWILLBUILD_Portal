@@ -42,7 +42,7 @@ export default async function handler(req: Request, res: Response) {
       query = sql`${query} AND js.status = ${statusFilter}`;
     }
 
-    query = sql`${query} ORDER BY js.updated_at DESC`;
+    query = sql`${query} ORDER BY js.created_at DESC`; // fixed: updated_at does not exist
 
     const [rows] = await db.execute(query) as unknown as [Array<Record<string, unknown>>, unknown];
     res.json({ jobSwms: rows ?? [] });
