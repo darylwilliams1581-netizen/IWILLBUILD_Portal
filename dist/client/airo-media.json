@@ -278,16 +278,19 @@
   },
   "reference/screenshot-8": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:01.246Z",
-    "lastUpdated": "2026-07-18T04:43:01.246Z",
+    "lastUpdated": "2026-07-20T03:45:17.176Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg"
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg",
+      "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg": "f38wenbvln_1784518145049_file_6NcchjcUGF.jpg"
     },
-    "uploadContentHash": "6053f9dff57f9ef898f4f3ddb48788f6e16e93b3c52b03e473f49757f7b49f3a"
+    "uploadContentHash": "192f1868b19498e33cfedfe17822a2dd52cd6dc6045b5b5488d0220bc72007db"
   },
   "uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv": {
     "mediaType": "image",
@@ -301,5 +304,31 @@
       "/airo-assets/uploads/uploads-background-f38wenbvln-1784434100763-file-ir3u9cpvlv-15c2674a.jpg": "f38wenbvln_1784434100763_file_IR3U9cPVLv.jpg"
     },
     "uploadContentHash": "f04343a62eb2e1a56a86eef5b9bb503868cb83f5820818355e675a5a1ab16658"
+  },
+  "ui/camera-fab-icon": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/ui-camera-fab-icon-70e100e1.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-20T03:50:41.641Z",
+    "lastUpdated": "2026-07-20T03:50:41.641Z",
+    "uploadSources": {
+      "/airo-assets/uploads/ui-camera-fab-icon-70e100e1.jpg": "f38wenbvln_1784519260658_file_-1cDOmgNji.jpg"
+    },
+    "uploadContentHash": "48af44704e874ef29fa6224d70ea02ea49deaaf2dc8ca4a5421356640bfa780c"
+  },
+  "reference/cta-style": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-cta-style-d861f093.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-20T04:02:34.347Z",
+    "lastUpdated": "2026-07-20T04:02:34.347Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-cta-style-d861f093.jpg": "f38wenbvln_1784520111532_file_AE4Jh39Ws-.jpg"
+    },
+    "uploadContentHash": "3d406ba11048ffba09ce598036ff95e12b30596a60844c7a98df231a26ecd73f"
   }
 }
