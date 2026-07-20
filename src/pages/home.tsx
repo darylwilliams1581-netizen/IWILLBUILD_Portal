@@ -1897,43 +1897,49 @@ export default function HomeScreen() {
       </AnimatePresence>
 
       {/* ── Scrollable icon grid ── */}
-      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-4">
+      {/* suppressHydrationWarning + mounted guard: SSR renders an empty shell;
+          client fills it after first paint — prevents the stale-shim removeChild
+          NotFoundError caused by SSR/client icon-count mismatch. */}
+      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-4" suppressHydrationWarning>
+        {mounted && (
+          <>
+            {/* Field icons — filtered by permissions, auto-packed (no gaps) */}
+            {(() => {
+              const fieldIcons = allowedIcons.filter(i => i.group === 'field');
+              return fieldIcons.length > 0 ? (
+                <Section label="Field" icons={fieldIcons} onNavigate={handleNavigate} />
+              ) : null;
+            })()}
 
-        {/* Field icons — filtered by permissions, auto-packed (no gaps) */}
-        {(() => {
-          const fieldIcons = allowedIcons.filter(i => i.group === 'field');
-          return fieldIcons.length > 0 ? (
-            <Section label="Field" icons={fieldIcons} onNavigate={handleNavigate} />
-          ) : null;
-        })()}
+            {/* Safety icons */}
+            {(() => {
+              const safetyIcons = allowedIcons.filter(i => i.group === 'safety');
+              return safetyIcons.length > 0 ? (
+                <Section label="Safety" icons={safetyIcons} onNavigate={handleNavigate} />
+              ) : null;
+            })()}
 
-        {/* Safety icons */}
-        {(() => {
-          const safetyIcons = allowedIcons.filter(i => i.group === 'safety');
-          return safetyIcons.length > 0 ? (
-            <Section label="Safety" icons={safetyIcons} onNavigate={handleNavigate} />
-          ) : null;
-        })()}
+            {/* Tools icons */}
+            {(() => {
+              const toolsIcons = allowedIcons.filter(i => i.group === 'tools');
+              return toolsIcons.length > 0 ? (
+                <Section label="Tools" icons={toolsIcons} onNavigate={handleNavigate} />
+              ) : null;
+            })()}
 
-        {/* Tools icons */}
-        {(() => {
-          const toolsIcons = allowedIcons.filter(i => i.group === 'tools');
-          return toolsIcons.length > 0 ? (
-            <Section label="Tools" icons={toolsIcons} onNavigate={handleNavigate} />
-          ) : null;
-        })()}
+            {/* Management icons — only for admins/owners */}
+            {isAdmin && (() => {
+              const mgmtIcons = allowedIcons.filter(i => i.group === 'management');
+              return mgmtIcons.length > 0 ? (
+                <Section label="Management" icons={mgmtIcons} onNavigate={handleNavigate} />
+              ) : null;
+            })()}
 
-        {/* Management icons — only for admins/owners */}
-        {isAdmin && (() => {
-          const mgmtIcons = allowedIcons.filter(i => i.group === 'management');
-          return mgmtIcons.length > 0 ? (
-            <Section label="Management" icons={mgmtIcons} onNavigate={handleNavigate} />
-          ) : null;
-        })()}
-
-        {/* Platform icons — platform owner only, not permission-controlled */}
-        {isPlatformOwner && (
-          <Section label="Platform" icons={PLATFORM_ICONS} onNavigate={handleNavigate} />
+            {/* Platform icons — platform owner only, not permission-controlled */}
+            {isPlatformOwner && (
+              <Section label="Platform" icons={PLATFORM_ICONS} onNavigate={handleNavigate} />
+            )}
+          </>
         )}
       </div>
 

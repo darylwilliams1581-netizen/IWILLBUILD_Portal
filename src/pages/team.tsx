@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
+
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
@@ -672,7 +672,6 @@ export default function TeamPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <FleetHeaderIcon />
             <button
               onClick={() => !isViewOnly && setShowInvite(true)}
               disabled={isViewOnly}
@@ -786,6 +785,27 @@ export default function TeamPage() {
                           <span className="flex items-center gap-1"><Mail size={10} />{member.email}</span>
                           {member.phone && <span className="flex items-center gap-1"><Phone size={10} />{member.phone}</span>}
                         </div>
+
+                        {/* Permission chips */}
+                        {(() => {
+                          const isOwnerMember = member.role === 'owner' || member.role === 'admin';
+                          const chips = PERMISSIONS
+                            .filter(p => isOwnerMember ? true : member.permissions?.[p.key])
+                            .map(p => p.label);
+                          if (chips.length === 0) return null;
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {chips.map(label => (
+                                <span
+                                  key={label}
+                                  className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"
+                                >
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Actions */}

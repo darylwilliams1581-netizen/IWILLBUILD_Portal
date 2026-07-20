@@ -63,7 +63,32 @@
           configurable: false,
           enumerable: false,
         });
-      } catch { /* stale snapshot locked it — rely on error interception below */ }
+      } catch { /* stale snapshot locked it — fall through to subclass shadow */ }
+    }
+
+    // If Node.prototype slot is locked (configurable:false) by the stale shim,
+    // shadow it on Element.prototype and HTMLDivElement.prototype — these are
+    // separate objects in the prototype chain and may not be locked.
+    // React calls removeChild on div/element nodes, so shadowing here intercepts
+    // the call before it reaches the locked stale patchedRemoveChild on Node.prototype.
+    const rcDescAfter = Object.getOwnPropertyDescriptor(proto, 'removeChild');
+    const isLocked = rcDescAfter && !rcDescAfter.configurable && rcDescAfter.value !== swallowingRemoveChild;
+    if (isLocked) {
+      for (const subProto of [Element.prototype, HTMLElement.prototype, HTMLDivElement.prototype]) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sp = subProto as any;
+          const d = Object.getOwnPropertyDescriptor(sp, 'removeChild');
+          if (!d || d.configurable) {
+            Object.defineProperty(sp, 'removeChild', {
+              value: swallowingRemoveChild,
+              writable: false,
+              configurable: false,
+              enumerable: false,
+            });
+          }
+        } catch { /* ignore */ }
+      }
     }
   }
 }
@@ -87,7 +112,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784524403918';
+const SOS_SHIM_VERSION = '1784529800000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
