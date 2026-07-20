@@ -10,7 +10,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen, Menu, FileUp, Library,
+  ClipboardList, BookOpen, Menu, FileUp, Library,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
@@ -22,7 +22,6 @@ import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
 
 // Tab content — lazy-imported to keep bundle lean
-import SafetyContent from '@/components/safety/SafetyContent';
 import { FormsPage as FormsContent } from '@/pages/forms';
 import { LibraryPage as LibraryContent } from '@/pages/library';
 
@@ -71,7 +70,6 @@ const STUDIO_TABS = [
   { id: 'forms',     label: 'Forms',     icon: ClipboardList },
   { id: 'library',   label: 'Library',   icon: BookOpen },
   { id: 'share',     label: 'Share',     icon: Library },
-  { id: 'safety',    label: 'Safety',    icon: ShieldCheck },
 ] as const;
 
 type StudioTabId = typeof STUDIO_TABS[number]['id'];
@@ -397,8 +395,8 @@ export default function StudioPage() {
   const tabParam = searchParams.get('tab');
   // Share tab only visible to platform owners (developers)
   const validTabs: StudioTabId[] = isPlatformOwner
-    ? ['documents', 'forms', 'library', 'share', 'safety']
-    : ['documents', 'forms', 'library', 'safety'];
+    ? ['documents', 'forms', 'library', 'share']
+    : ['documents', 'forms', 'library'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(
     validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'documents'
   );
@@ -553,7 +551,6 @@ export default function StudioPage() {
           {activeTab === 'forms'     && <FormsContent />}
           {activeTab === 'library'   && <LibraryContent />}
           {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
-          {activeTab === 'safety'    && <SafetyContent />}
         </div>
       </div>
 

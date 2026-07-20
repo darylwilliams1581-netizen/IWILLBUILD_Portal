@@ -79,8 +79,8 @@ const ADMIN_ICONS: AppIcon[] = [
   { label: 'Files',     icon: FolderOpen,  href: '/files',                 bg: 'bg-amber-500',    fg: 'text-white' },
   { label: 'Team',      icon: UserCircle,  href: '/team',                  bg: 'bg-violet-500',   fg: 'text-white' },
   { label: 'Billing',   icon: CreditCard,  href: '/billing',               bg: 'bg-teal-600',     fg: 'text-white' },
-  { label: 'Studio',    icon: Layers,      href: '/studio',                bg: 'bg-fuchsia-500',  fg: 'text-white' },
-  { label: 'Safety',    icon: ShieldCheck, href: '/studio?tab=safety',     bg: 'bg-green-600',    fg: 'text-white' },
+  { label: 'Studio',    icon: Layers,      href: '/studio',   bg: 'bg-fuchsia-500',  fg: 'text-white' },
+  { label: 'Safety',    icon: ShieldCheck, href: '/safety',   bg: 'bg-green-600',    fg: 'text-white' },
   { label: 'Settings',  icon: Settings,    href: '/settings',              bg: 'bg-slate-500',    fg: 'text-white' },
 ];
 

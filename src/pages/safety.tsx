@@ -919,23 +919,41 @@ export function SafetyDashboardTab() {
   );
 }
 
-// ── /safety route — redirect to Studio Safety tab ────────────────────────────
-import { Navigate } from 'react-router-dom';
+// ── /safety standalone page ───────────────────────────────────────────────────
+import { useNavigate as _useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import SafetyContent from '@/components/safety/SafetyContent';
 
 export default function SafetyPage() {
+  const navigate = _useNavigate();
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       <Helmet>
-        <title>Safety Management — IWILLBUILD</title>
+        <title>Safety — IWILLBUILD</title>
         <meta name="description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
-        <meta name="robots" content="noindex, follow" />
-        <meta property="og:title" content="Safety Management — IWILLBUILD" />
-        <meta property="og:description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
-        <meta property="og:url" content="https://iwillbuild.com/safety" />
+        <meta name="robots" content="noindex" />
       </Helmet>
-      <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}>Safety Management</h1>
-      <Navigate to="/studio?tab=safety" replace />
-    </>
+
+      {/* Header — matches fleet/jobs pattern */}
+      <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
+        <button
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          aria-label="Back to Home"
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline">Home</span>
+        </button>
+        <span className="text-gray-300">|</span>
+        <ShieldCheck size={17} className="text-primary shrink-0" />
+        <h1 className="font-heading font-bold text-base truncate flex-1">Safety</h1>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SafetyContent />
+      </div>
+    </div>
   );
 }
