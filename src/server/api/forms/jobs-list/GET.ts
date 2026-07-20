@@ -16,13 +16,14 @@ export default async function handler(req: Request, res: Response) {
   try {
     const [rows] = await db.execute(
       sql.raw(`
-        SELECT id, title, client, address, status
+        SELECT id, job_number, name AS title, client, address, status
         FROM jobs
         WHERE company_id = ${companyId}
-        ORDER BY created_at DESC
-        LIMIT 200
+          AND status NOT IN ('completed', 'cancelled', 'archived')
+        ORDER BY job_number ASC, created_at DESC
+        LIMIT 300
       `)
-    ) as unknown as [Array<{ id: number; title: string; client: string | null; address: string | null; status: string }>, unknown];
+    ) as unknown as [Array<{ id: number; job_number: string | null; title: string; client: string | null; address: string | null; status: string }>, unknown];
 
     return res.json({ ok: true, jobs: rows ?? [] });
   } catch (err) {

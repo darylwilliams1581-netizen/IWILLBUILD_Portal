@@ -5,7 +5,7 @@ import {
   FileText, Plus, Pencil, Trash2,
   LayoutDashboard, Briefcase, Truck, ChevronRight, X, Zap, BookOpen, Loader2, Check,
   Clock, Link2, Copy, CheckCircle2, Inbox, Library,
-  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
+  User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink, Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
@@ -619,24 +619,39 @@ export function FormsPage() {
   const [seedMsg, setSeedMsg] = useState('');
   const [completingId, setCompletingId] = useState<number | null>(null);
   const [jobPickerTemplate, setJobPickerTemplate] = useState<FormTemplate | null>(null);
-  const [jobNumberInput, setJobNumberInput] = useState('');
   const [jobPickerError, setJobPickerError] = useState('');
   const [jobPickerLoading, setJobPickerLoading] = useState(false);
+  // Job selector state
+  type JobOption = { id: number; job_number: string | null; title: string; client: string | null };
+  const [jobOptions, setJobOptions] = useState<JobOption[]>([]);
+  const [jobOptionsLoading, setJobOptionsLoading] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [jobSearch, setJobSearch] = useState('');
   const { isPlatformOwner } = usePermissions();
 
   async function handleComplete(templateId: number) {
-    // Find the template and open the job picker modal
     const tpl = templates.find(t => t.id === templateId) ?? null;
     setJobPickerTemplate(tpl);
-    setJobNumberInput('');
     setJobPickerError('');
+    setSelectedJobId(null);
+    setJobSearch('');
+    // Fetch active jobs for the selector
+    setJobOptionsLoading(true);
+    try {
+      const res = await fetch('/api/forms/jobs-list', { credentials: 'include' });
+      const data = await res.json() as { ok?: boolean; jobs?: JobOption[] };
+      setJobOptions(data.jobs ?? []);
+    } catch {
+      setJobOptions([]);
+    } finally {
+      setJobOptionsLoading(false);
+    }
   }
 
   async function handleJobPickerSubmit() {
     if (!jobPickerTemplate) return;
-    const jobNum = jobNumberInput.trim();
-    if (!jobNum || isNaN(Number(jobNum))) {
-      setJobPickerError('Please enter a valid job number.');
+    if (!selectedJobId) {
+      setJobPickerError('Please select a job.');
       return;
     }
     setJobPickerLoading(true);
@@ -647,11 +662,11 @@ export function FormsPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: jobPickerTemplate.id, jobId: Number(jobNum) }),
+        body: JSON.stringify({ templateId: jobPickerTemplate.id, jobId: selectedJobId }),
       });
       const data = await res.json() as { ok?: boolean; submission?: { id: number; jobId?: number | null }; error?: string };
       if (!res.ok || !data.submission) throw new Error(data.error ?? 'Failed to start form');
-      const jobId = data.submission.jobId ?? Number(jobNum);
+      const jobId = data.submission.jobId ?? selectedJobId;
       setJobPickerTemplate(null);
       window.open(`/jobs/${jobId}/forms/${data.submission.id}`, '_blank', 'noopener');
     } catch (e) {
@@ -943,7 +958,7 @@ export function FormsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="font-heading font-bold text-base text-slate-900">Complete Form</h2>
-                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">Enter the job number to link this form to.</p>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">Select the job to link this form to.</p>
                 </div>
                 <button onClick={() => setJobPickerTemplate(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors shrink-0">
                   <X size={16} />
@@ -956,17 +971,59 @@ export function FormsPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600">Job Number</label>
-                <input
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 1042"
-                  value={jobNumberInput}
-                  onChange={e => { setJobNumberInput(e.target.value); setJobPickerError(''); }}
-                  onKeyDown={e => { if (e.key === 'Enter') void handleJobPickerSubmit(); }}
-                  autoFocus
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                />
+                <label className="text-xs font-semibold text-slate-600">Job</label>
+                {/* Search input */}
+                <div className="relative">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by job number or name…"
+                    value={jobSearch}
+                    onChange={e => { setJobSearch(e.target.value); setJobPickerError(''); }}
+                    autoFocus
+                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
+                {/* Job list */}
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {jobOptionsLoading ? (
+                    <div className="flex items-center justify-center py-6 text-slate-400 text-sm gap-2">
+                      <Loader2 size={14} className="animate-spin" /> Loading jobs…
+                    </div>
+                  ) : (() => {
+                    const q = jobSearch.toLowerCase();
+                    const filtered = jobOptions.filter(j =>
+                      !q ||
+                      (j.job_number ?? '').toLowerCase().includes(q) ||
+                      j.title.toLowerCase().includes(q) ||
+                      (j.client ?? '').toLowerCase().includes(q)
+                    );
+                    if (filtered.length === 0) return (
+                      <div className="py-6 text-center text-sm text-slate-400">No active jobs found</div>
+                    );
+                    return filtered.map(job => (
+                      <button
+                        key={job.id}
+                        type="button"
+                        onClick={() => { setSelectedJobId(job.id); setJobPickerError(''); }}
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors ${selectedJobId === job.id ? 'bg-orange-50' : 'hover:bg-slate-50'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${selectedJobId === job.id ? 'border-primary bg-primary' : 'border-slate-300'}`}>
+                          {selectedJobId === job.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {job.job_number && (
+                              <span className="text-xs font-bold text-primary shrink-0">#{job.job_number}</span>
+                            )}
+                            <span className="text-sm font-medium text-slate-800 truncate">{job.title}</span>
+                          </div>
+                          {job.client && <p className="text-xs text-slate-400 truncate">{job.client}</p>}
+                        </div>
+                      </button>
+                    ));
+                  })()}
+                </div>
                 {jobPickerError && (
                   <p className="text-xs text-red-600 flex items-center gap-1.5 mt-0.5">
                     <X size={11} className="shrink-0" /> {jobPickerError}
@@ -980,7 +1037,7 @@ export function FormsPage() {
                 </button>
                 <button
                   onClick={() => void handleJobPickerSubmit()}
-                  disabled={jobPickerLoading || !jobNumberInput.trim()}
+                  disabled={jobPickerLoading || !selectedJobId}
                   className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {jobPickerLoading

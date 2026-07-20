@@ -378,14 +378,21 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', sealAppRoot, { once: true });
     }
-    // Re-seal after every microtask tick for the first 2 seconds (stale shim
-    // may run in a later microtask after DOMContentLoaded).
+    // Re-seal every 5ms for 10 seconds AND on every animation frame.
+    // The stale shim's own sealLoop runs every 10ms — we must be faster.
     let sealCount = 0;
     function sealLoop() {
       sealAppRoot();
-      if (++sealCount < 200) setTimeout(sealLoop, 10);
+      if (++sealCount < 2000) setTimeout(sealLoop, 5);
     }
     sealLoop();
+    // rAF loop — fires before every paint, ensuring #app is sealed before React commits
+    let rafActive = true;
+    setTimeout(() => { rafActive = false; }, 10000);
+    (function rafSeal() {
+      sealAppRoot();
+      if (rafActive) requestAnimationFrame(rafSeal);
+    })();
   }
 }
 

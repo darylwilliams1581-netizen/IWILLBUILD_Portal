@@ -257,13 +257,16 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
   componentDidCatch(error: Error) {
     if (isStaleSnapshot(error)) {
-      try { console.error(error); } catch (_) {}
+      try { console.warn('[SosInnerBoundary] stale snapshot error swallowed:', error.message); } catch (_) {}
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
       } else if (!sosRecentReload()) {
         try { localStorage.setItem(SOS_LS_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
+      // Whether we reload or not, reset state so children render on next tick.
+      // This prevents a permanent blank screen when the reload limit is exhausted.
+      setTimeout(() => this.setState({ caught: false }), 0);
     } else {
       this._rethrow = error;
     }
@@ -271,6 +274,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
   render() {
     if (this._rethrow) { const e = this._rethrow; this._rethrow = null; throw e; }
+    // While caught=true, render null briefly — componentDidCatch will reset it.
     if (this.state.caught) return null;
     return this.props.children;
   }
@@ -282,8 +286,14 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 // instances that calls its stale _native and throws NotFoundError. Overwrite it
 // with a safe swallowing wrapper before React's commit phase can invoke it.
 function patchRemoveChild(el: HTMLDivElement | Element) {
+  // Use the true browser native captured in index.html before any shim ran.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
   function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-    try { return (Node.prototype.removeChild as (c: T) => T).call(this, child); } catch { /* swallow NotFoundError */ }
+    try {
+      if (trueNative) trueNative.call(this, child);
+      // If no true native, just swallow — better than throwing
+    } catch { /* swallow NotFoundError */ }
     return child;
   }
   // Walk the element and all its ancestors up to (but not including) documentElement.

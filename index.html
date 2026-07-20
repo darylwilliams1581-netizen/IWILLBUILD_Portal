@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v64 -->
+  <!-- cache-bust: v65 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -139,10 +139,17 @@
               }
             } catch(e) {}
           }
-          var _sealInterval = setInterval(sealAppDiv, 20);
+          var _sealInterval = setInterval(sealAppDiv, 5);
           setTimeout(function() { clearInterval(_sealInterval); }, 10000);
           // Also seal on DOMContentLoaded
           document.addEventListener('DOMContentLoaded', sealAppDiv, { once: true });
+          // rAF loop — runs before every paint, ensuring #app is sealed before React commits
+          var _sealRafActive = true;
+          setTimeout(function() { _sealRafActive = false; }, 10000);
+          (function rafSeal() {
+            sealAppDiv();
+            if (_sealRafActive) requestAnimationFrame(rafSeal);
+          })();
         } catch (e) {}
       })();
     </script>
