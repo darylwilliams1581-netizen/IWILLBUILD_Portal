@@ -1,4 +1,4 @@
-// RootLayout.tsx — IWILLBUILD Portal — v57 2026-07-20
+// RootLayout.tsx — IWILLBUILD Portal — v58 2026-07-20
 // SOSAlertPopup is exported at EXACTLY line 122 of this file.
 // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) references
 // SOSAlertPopup as a bare identifier at its own line 122. Because both the

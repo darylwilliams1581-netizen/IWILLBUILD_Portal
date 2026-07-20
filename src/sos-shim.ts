@@ -69,34 +69,36 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// Stale HMR snapshots of this file may have already patched Node.prototype.removeChild.
-// We must find the true native original by unwinding any patchedRemoveChild wrappers,
-// then install a single fresh patch that swallows NotFoundError.
+// Stale HMR snapshots of sos-shim.ts (e.g. t=1784519099416) may have installed
+// a patchedRemoveChild that re-throws. We fix this by storing the true native
+// function on a non-enumerable property BEFORE any patch is installed, then
+// always calling that stored native — so no matter how many stale snapshots
+// run, they all call the same original native function.
+//
+// Key insight: __sosNativeRemoveChild is only written ONCE (when it doesn't
+// exist yet). Every subsequent shim execution (current or stale) reads the
+// same stored native and installs a fresh swallowing wrapper.
 {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = Node.prototype as any;
 
-  // Walk back to the true native removeChild — skip any function named patchedRemoveChild.
-  let candidate = proto.__sosOrigRemoveChild ?? proto.removeChild;
-  while (typeof candidate === 'function' && candidate.name === 'patchedRemoveChild') {
-    // Each stale wrapper stored its own _orig on the prototype under a versioned key —
-    // but we can't access those closures. Instead, create a temporary iframe whose
-    // Node.prototype.removeChild is guaranteed native.
-    try {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      candidate = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? candidate;
-      document.body.removeChild(iframe);
-    } catch { /* ignore */ }
-    break; // one attempt is enough
+  if (!proto.__sosNativeRemoveChild) {
+    // First execution — store the true native before any patching.
+    Object.defineProperty(proto, '__sosNativeRemoveChild', {
+      value: proto.removeChild,
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
   }
-  proto.__sosOrigRemoveChild = candidate;
 
+  // Always overwrite removeChild with the latest swallowing version.
+  // All versions (current + stale snapshots) call __sosNativeRemoveChild,
+  // which is always the original native — never a wrapper.
+  const native = proto.__sosNativeRemoveChild as typeof Node.prototype.removeChild;
   proto.removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
     try {
-      return candidate.call(this, child) as T;
+      return native.call(this, child) as T;
     } catch (e) {
       if (e instanceof Error && e.name === 'NotFoundError') {
         return child; // node already gone — safe to swallow

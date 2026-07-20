@@ -192,7 +192,7 @@ export default function Header() {
         </nav>
 
         {/* ── Desktop CTAs ── */}
-        <div className="hidden md:flex" style={{ alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div className="hidden md:flex" style={{ display: 'none', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <Link
             to="/login"
             style={{
@@ -220,18 +220,8 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* ── Mobile hamburger ── */}
-        <div className="md:hidden" style={{ alignItems: 'center', gap: 8 }}>
-          <Link
-            to="/login"
-            style={{
-              padding: '7px 12px', borderRadius: 7,
-              border: '1.5px solid #1263d8', color: '#1263d8',
-              fontWeight: 700, fontSize: 13, textDecoration: 'none',
-            }}
-          >
-            Sign in
-          </Link>
+        {/* ── Mobile hamburger (logo + burger only — Sign in lives in the panel) ── */}
+        <div className="md:hidden" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -295,6 +285,17 @@ export default function Header() {
                 How it works
               </Link>
             )}
+            <Link
+              to="/login"
+              style={{
+                display: 'block', textAlign: 'center',
+                padding: '12px', borderRadius: 9,
+                border: '1.5px solid #1263d8', color: '#1263d8',
+                fontWeight: 700, fontSize: 14, textDecoration: 'none',
+              }}
+            >
+              Sign in
+            </Link>
             <Link
               to="/signup"
               style={{
