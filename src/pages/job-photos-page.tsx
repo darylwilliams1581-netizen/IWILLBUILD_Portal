@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Copy, Check, X, ExternalLink, QrCode,
   Download, Home, Upload, Share2, LayoutGrid, List, CheckSquare, Send,
+  Grid2x2, Grid3x3,
 } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,7 +33,13 @@ export default function JobPhotosPage() {
   const [uploading, setUploading] = useState(false);
   const [selectMode, setSelectModeLocal] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
-  const [viewSize, setViewSizeLocal] = useState<'small' | 'medium' | 'large'>('medium');
+  const [viewSize, setViewSizeLocal] = useState<'small' | 'medium' | 'large'>(() => {
+    try {
+      const saved = localStorage.getItem('jobPhotosZoom');
+      if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
+    } catch (_) {}
+    return 'medium';
+  });
 
   // Share sheet state
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -174,7 +181,7 @@ export default function JobPhotosPage() {
                 className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
                 title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
               >
-                {size === 'small' ? <LayoutGrid size={13} /> : size === 'medium' ? <List size={13} /> : <span className="text-[10px] font-bold">LG</span>}
+                {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
               </button>
             ))}
           </div>
@@ -188,7 +195,7 @@ export default function JobPhotosPage() {
             <Loader2 size={24} className="animate-spin text-orange-400" />
           </div>
         ) : (
-          <div className="px-4 py-4 pb-36">
+          <div className="px-2 py-2 pb-36 sm:px-4 sm:py-4">
             <JobPhotos
               ref={photosRef}
               jobId={jobId}
@@ -270,7 +277,7 @@ export default function JobPhotosPage() {
                     onClick={() => handleSetViewSize(size)}
                     className={`px-2 py-1.5 text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
                   >
-                    {size === 'small' ? <LayoutGrid size={12} /> : size === 'medium' ? <List size={12} /> : <span className="text-[9px] font-bold">LG</span>}
+                    {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
                   </button>
                 ))}
               </div>

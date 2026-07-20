@@ -128,10 +128,25 @@ function formatDateTime(iso: string) {
   });
 }
 
+// auto-fill columns — tiles snap to minmax width, no fixed column count
 const VIEW_COLS: Record<ViewSize, string> = {
-  small:  'grid-cols-3 sm:grid-cols-4 md:grid-cols-5',
-  medium: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
-  large:  'grid-cols-1 sm:grid-cols-2',
+  small:  '[grid-template-columns:repeat(auto-fill,minmax(88px,1fr))]',
+  medium: '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]',
+  large:  '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]',
+};
+
+// gap between cards per zoom level
+const VIEW_GAP: Record<ViewSize, string> = {
+  small:  'gap-[4px]',
+  medium: 'gap-[8px]',
+  large:  'gap-[12px]',
+};
+
+// card border-radius per zoom level
+const VIEW_RADIUS: Record<ViewSize, string> = {
+  small:  'rounded-md',
+  medium: 'rounded-xl',
+  large:  'rounded-xl',
 };
 
 // ── Edit Modal ────────────────────────────────────────────────────────────────
@@ -356,7 +371,18 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
   const [summaryDismissed, setSummaryDismissed] = useState(false);
 
-  const [viewSize, setViewSize] = useState<ViewSize>('medium');
+  const [viewSize, setViewSizeState] = useState<ViewSize>(() => {
+    try {
+      const saved = localStorage.getItem('jobPhotosZoom');
+      if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
+    } catch (_) {}
+    return 'medium';
+  });
+
+  const setViewSize = (s: ViewSize) => {
+    setViewSizeState(s);
+    try { localStorage.setItem('jobPhotosZoom', s); } catch (_) {}
+  };
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -583,7 +609,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
               </button>
             )}
           </div>
-          <div className={`grid gap-2 ${VIEW_COLS[viewSize]}`}>
+          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
             <AnimatePresence>
               {queue.map((item) => (
                 <PendingPhotoCard
@@ -600,9 +626,9 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
       {/* Loading */}
       {loading && (
-        <div className={`grid gap-3 ${VIEW_COLS[viewSize]}`}>
+        <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 animate-pulse">
+            <div key={i} className={`${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border border-slate-200 animate-pulse`}>
               <div className="aspect-square bg-slate-200" />
               {viewSize !== 'small' && (
                 <div className="px-2.5 py-2 bg-white border-t border-slate-100">
@@ -640,7 +666,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
               </p>
             </div>
           )}
-          <div className={`grid gap-3 ${VIEW_COLS[viewSize]}`}>
+          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
             <AnimatePresence>
               {photos.map((photo, i) => {
                 const bust = cacheBust[photo.id];
@@ -650,7 +676,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                     key={photo.id} layout
                     initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}
-                    className={`group relative flex flex-col rounded-xl overflow-hidden bg-slate-100 border transition-all ${
+                    className={`group relative flex flex-col ${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border transition-all ${
                       isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200'
                     }`}
                   >
@@ -680,7 +706,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                       {/* Select overlay */}
                       {selectMode && (
                         <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>
-                          <div className={`absolute top-2 left-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                             isSelected ? 'bg-primary border-primary' : 'bg-white/80 border-white'
                           }`}>
                             {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
@@ -689,11 +715,18 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                       )}
                       {/* Hover overlay (non-select mode) */}
                       {!selectMode && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />}
+                      {/* Small-view: action buttons overlaid on hover */}
+                      {!selectMode && viewSize === 'small' && (
+                        <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+                          <button onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Metadata strip — hidden in small view */}
+                    {/* Metadata strip — medium and large only */}
                     {viewSize !== 'small' && (
-                      <div className="px-2.5 py-2 bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5">
+                      <div className={`bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
                         <div className="flex items-start justify-between gap-1">
                           <div className="min-w-0 flex-1">
                             {photo.label
@@ -709,7 +742,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                             </div>
                           )}
                         </div>
-                        {photo.uploadedByName && (
+                        {viewSize === 'large' && photo.uploadedByName && (
                           <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
                         )}
                         <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>

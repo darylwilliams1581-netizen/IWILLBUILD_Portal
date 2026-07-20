@@ -1,4 +1,4 @@
-// RootLayout.tsx — IWILLBUILD Portal — v53 2026-07-13
+// RootLayout.tsx — IWILLBUILD Portal — v54 2026-07-20
 // SOSAlertPopup is exported at EXACTLY line 122 of this file.
 // The frozen Vite HMR snapshot (RootLayout.tsx?t=1783772358219) references
 // SOSAlertPopup as a bare identifier at its own line 122. Because both the
@@ -192,31 +192,24 @@ function PortalBanners() {
 }
 
 // ── ClientOnly ────────────────────────────────────────────────────────────────
-// Renders nothing on the server; renders children only after hydration.
-// Prevents SSR/client node-count mismatches for components that use
-// browser-only APIs (navigator, localStorage, portals, etc.).
+// Renders a stable <div> on both server and client so the DOM node count never
+// changes during hydration. The wrapper is always present in the SSR HTML and
+// in the initial client render (mounted=false → empty div), so React hydrates
+// a stable single DOM node and never calls removeChild on the parent container.
+// display:contents is intentionally avoided — it makes the div transparent to
+// React's host-fiber reconciler in React 19 and can still trigger removeChild.
 function ClientOnly({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-  return <>{children}</>;
+  return (
+    <div suppressHydrationWarning style={{ display: mounted ? 'contents' : undefined }}>
+      {mounted ? children : null}
+    </div>
+  );
 }
 
-// ── DeferredMount ─────────────────────────────────────────────────────────────
-// Like ClientOnly but defers past the hydration commit entirely using
-// requestAnimationFrame. useEffect fires in the same commit as hydration in
-// React 19, which can still trigger removeChild mismatches when multiple
-// null-rendering nodes are consolidated. rAF fires after the browser has
-// painted the first frame, guaranteeing hydration is fully committed.
-function DeferredMount({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  if (!ready) return null;
-  return <>{children}</>;
-}
+// DeferredMount is an alias kept for backwards compat with existing usages.
+const DeferredMount = ClientOnly;
 
 // Sits inside AiroErrorBoundary so it intercepts the SOSAlertPopup
 // ReferenceError from the frozen RootLayout snapshot before AiroErrorBoundary
