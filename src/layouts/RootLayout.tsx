@@ -281,35 +281,58 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 // (t=1784519099416) installs a non-configurable own `removeChild` on DOM
 // instances that calls its stale _native and throws NotFoundError. Overwrite it
 // with a safe swallowing wrapper before React's commit phase can invoke it.
-function patchRemoveChild(el: HTMLDivElement) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosRemoveChildNative;
+function patchRemoveChild(el: HTMLDivElement | Element) {
   function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-    try {
-      if (child && child.parentNode === this) {
-        if (trueNative) trueNative.call(this, child);
-        else Node.prototype.removeChild.call(this, child);
-      }
-    } catch { /* swallow */ }
+    try { return (Node.prototype.removeChild as (c: T) => T).call(this, child); } catch { /* swallow NotFoundError */ }
     return child;
   }
-  // Patch every ancestor up to document.body as well — the stale shim may have
-  // installed its handler on any element in the path React walks during unmount.
+  // Walk the element and all its ancestors up to (but not including) documentElement.
+  // For each node that has an own `removeChild` property (installed by the stale shim),
+  // try to replace it. If the property is non-configurable (stale shim locked it),
+  // `delete` won't work — instead wrap the existing value so it swallows errors.
   const targets: Node[] = [el];
   let p: Node | null = el.parentNode;
   while (p && p !== document.documentElement) { targets.push(p); p = p.parentNode; }
   for (const node of targets) {
     const d = Object.getOwnPropertyDescriptor(node, 'removeChild');
-    if (!d) continue; // no own property — prototype chain is fine
+    if (!d) continue; // no own property — prototype chain is fine, skip
+    // Try to replace with our safe wrapper.
     try {
-      if (d.configurable) {
-        Object.defineProperty(node, 'removeChild', { value: safeRemoveChild, writable: true, configurable: true, enumerable: false });
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (node as any).removeChild;
-        Object.defineProperty(node, 'removeChild', { value: safeRemoveChild, writable: true, configurable: true, enumerable: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (node as any).removeChild = safeRemoveChild;
+    } catch { /* assignment blocked — property is non-writable */ }
+    // If the own property is still not our wrapper, the stale shim locked it with
+    // configurable:false + writable:false. We can't replace it, but we CAN wrap the
+    // stale function's value so that when React calls node.removeChild(child) it
+    // invokes a function that catches the NotFoundError.
+    // Strategy: shadow it on the node's direct [[Prototype]] with a writable copy.
+    const d2 = Object.getOwnPropertyDescriptor(node, 'removeChild');
+    if (d2 && d2.value !== safeRemoveChild) {
+      const staleHandler = d2.value as ((this: Node, c: Node) => Node) | undefined;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const proto = Object.getPrototypeOf(node) as any;
+      if (proto && proto !== Node.prototype) {
+        try {
+          Object.defineProperty(proto, 'removeChild', {
+            value: safeRemoveChild, writable: true, configurable: true, enumerable: false,
+          });
+        } catch { /* proto also locked */ }
       }
-    } catch { /* truly locked */ }
+      // Last resort: wrap the stale handler in-place by redefining via the original
+      // Object.defineProperty captured before any shim ran (exposed as __origDefProp).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const origDP: typeof Object.defineProperty | undefined = (window as any).__origDefProp;
+      if (origDP && staleHandler) {
+        try {
+          origDP(node, 'removeChild', {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            get() { return safeRemoveChild; },
+            set(_v: unknown) { /* ignore */ },
+            configurable: false, enumerable: false,
+          });
+        } catch { /* truly immutable */ }
+      }
+    }
   }
 }
 
@@ -326,6 +349,21 @@ export default function RootLayout({ children }: RootLayoutProps) {
     if (!el) return;
     patchRemoveChild(el);
   }, []);
+
+  // Also patch the #app host element and re-patch on every navigation.
+  // The stale shim re-installs its own `removeChild` on #app after each route
+  // transition; polling every 50ms for 3s after mount/navigation catches it.
+  useEffect(() => {
+    function patchAppHost() {
+      const app = document.getElementById('app');
+      if (app) patchRemoveChild(app);
+      if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
+    }
+    patchAppHost();
+    const id = setInterval(patchAppHost, 50);
+    const stop = setTimeout(() => clearInterval(id), 3000);
+    return () => { clearInterval(id); clearTimeout(stop); };
+  }, [location.pathname]);
 
   return (
     <div ref={patchRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">

@@ -129,7 +129,6 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
   // ── Filters ───────────────────────────────────────────────────────────────
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState(initialTypeFilter ?? '');
-  const [catFilter, setCatFilter]   = useState('');
   const [page, setPage]             = useState(1);
 
   // ── Installed tab ─────────────────────────────────────────────────────────
@@ -189,7 +188,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
 
   // Initial load
   useEffect(() => {
-    void fetchItems({ search, type: typeFilter, category: catFilter, page });
+    void fetchItems({ search, type: typeFilter, page });
     void fetchInstalled();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -199,15 +198,15 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       setPage(1);
-      void fetchItems({ search, type: typeFilter, category: catFilter, page: 1 });
+      void fetchItems({ search, type: typeFilter, page: 1 });
     }, 350);
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, typeFilter, catFilter]);
+  }, [search, typeFilter]);
 
   // Re-fetch when page changes
   useEffect(() => {
-    void fetchItems({ search, type: typeFilter, category: catFilter, page });
+    void fetchItems({ search, type: typeFilter, page });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
@@ -365,7 +364,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
 
                   {/* Refresh */}
                   <button
-                    onClick={() => void fetchItems({ search, type: typeFilter, category: catFilter, page })}
+                    onClick={() => void fetchItems({ search, type: typeFilter, page })}
                     disabled={loading}
                     className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
                   >

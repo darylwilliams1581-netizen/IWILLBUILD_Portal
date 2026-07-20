@@ -4,7 +4,6 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle,
@@ -20,18 +19,6 @@ import { usePermissions } from '@/lib/usePermissions';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface DocTemplate {
-  id: number;
-  name: string;
-  template_type: string | null;
-  is_active: number | boolean;
-  source_docx_name: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
