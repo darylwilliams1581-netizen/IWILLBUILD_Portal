@@ -11,75 +11,57 @@
 (window as any).SOSAlertPopup = function SOSAlertPopup() { return null; };
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// Call chain when the stale shim (t=1784519099416) is in the browser cache:
-//   React → node.removeChild(child)
-//     → stale patchedRemoveChild  [locked on Node.prototype, configurable:false]
-//       → __sosNativeRemoveChild.call(this, child)  [= real browser native]
-//         → throws NotFoundError
+// The stale sos-shim snapshot (t=1784519099416) locked Node.prototype.removeChild
+// with configurable:false. Its patchedRemoveChild calls the real browser native
+// which throws NotFoundError when the child has already been removed.
 //
-// The stale patchedRemoveChild has NO try/catch (older version).
-// We cannot replace Node.prototype.removeChild (configurable:false).
-// We cannot replace __sosNativeRemoveChild (writable:false, configurable:false).
-//
-// Only lever left: make the real browser native not throw by wrapping it at
-// the Reflect level — not possible for host methods.
-//
-// Fallback: intercept the error via window.reportError + capture-phase listener
-// and trigger a reload. The SosInnerBoundary in RootLayout also catches it and
-// renders null + reloads, preventing the error UI from persisting.
+// Strategy:
+//   1. Extract the TRUE browser native via a sandboxed iframe (unaffected by
+//      any Object.defineProperty on the main window's Node.prototype).
+//   2. Install a swallowing wrapper that calls the true native directly.
+//      If the slot is already locked (stale shim ran first), the defineProperty
+//      fails silently — fall through to error-interception reload below.
 {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const proto = Node.prototype as any;
+  // Get the real browser native removeChild from a clean iframe prototype.
+  // The iframe's Node.prototype is a separate object; no stale shim can have
+  // patched it, so its removeChild is always the genuine host method.
+  let trueNative: ((child: Node) => Node) | null = null;
+  try {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.head.appendChild(iframe);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    trueNative = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? null;
+    document.head.removeChild(iframe);
+  } catch { /* ignore — fall back to error interception */ }
 
-  // Best-effort: capture the real browser native before any patching.
-  // If the stale shim already ran, proto.removeChild is its patchedRemoveChild.
-  // proto.__sosNativeRemoveChild is the real native (set by stale shim, writable:false).
-  // We want trulyNative = the real browser native for our own swallower.
-  const trulyNative: typeof Node.prototype.removeChild = (() => {
-    // Try to get the real native via a known-clean iframe's prototype
-    try {
-      const iframe = document.createElement('iframe');
-      document.head.appendChild(iframe);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fn = (iframe.contentWindow as any)?.Node?.prototype?.removeChild;
-      document.head.removeChild(iframe);
-      if (typeof fn === 'function') return fn as typeof Node.prototype.removeChild;
-    } catch { /* ignore */ }
-    // Fall back: use whatever is on the prototype (may be stale patchedRemoveChild)
-    return proto.removeChild as typeof Node.prototype.removeChild;
-  })();
+  if (trueNative) {
+    const _native = trueNative; // close over the clean reference
 
-  function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
-    if (!child || child.parentNode !== this) return child;
-    try {
-      return trulyNative.call(this, child) as T;
-    } catch (e) {
-      if (e instanceof Error && e.name === 'NotFoundError') return child;
-      throw e;
+    function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
+      if (!child || child.parentNode !== this) return child;
+      try {
+        return _native.call(this, child) as T;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'NotFoundError') return child;
+        throw e;
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proto = Node.prototype as any;
+    const rcDesc = Object.getOwnPropertyDescriptor(proto, 'removeChild');
+    if (!rcDesc || rcDesc.configurable) {
+      try {
+        Object.defineProperty(proto, 'removeChild', {
+          value: swallowingRemoveChild,
+          writable: false,
+          configurable: false,
+          enumerable: false,
+        });
+      } catch { /* stale snapshot locked it — rely on error interception below */ }
     }
   }
-
-  // Install swallowingRemoveChild as removeChild if not already locked.
-  const rcDesc = Object.getOwnPropertyDescriptor(proto, 'removeChild');
-  if (!rcDesc || rcDesc.configurable) {
-    try {
-      Object.defineProperty(proto, 'removeChild', {
-        value: swallowingRemoveChild,
-        writable: false,
-        configurable: false,
-        enumerable: false,
-      });
-    } catch { /* stale snapshot locked it — rely on error interception */ }
-  }
-
-  // Best-effort: redirect __sosNativeRemoveChild to swallower so the stale
-  // patchedRemoveChild calls our swallower instead of the real throwing native.
-  // The stale shim sets this writable:false — the assignment will silently fail
-  // in sloppy mode or throw in strict mode; we catch both.
-  try {
-    const desc = Object.getOwnPropertyDescriptor(proto, '__sosNativeRemoveChild');
-    if (desc?.writable) proto.__sosNativeRemoveChild = swallowingRemoveChild;
-  } catch { /* ignore */ }
 }
 
 // ── Stale HMR snapshot reload guard ──────────────────────────────────────────
@@ -94,7 +76,8 @@ const STALE_TS_SHIM = [
   '1784516840163',
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout
-  '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
+  '1784519099416', // sos-shim.ts stale — re-throwing patchedRemoveChild
+  '1784522000000', // placeholder for next stale version
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
