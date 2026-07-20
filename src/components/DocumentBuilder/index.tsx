@@ -1,8 +1,8 @@
 /**
- * Smart Document Builder — Main Orchestrator (Page-First Edition)
+ * Smart Document Builder — Main Orchestrator (Structure-First Edition)
  * ─────────────────────────────────────────────────────────────────────────────
- * Default experience: page-first editor (click to type, rich paste, A4 canvas)
- * Advanced mode: structure view (block canvas + inspector, drag/drop, logic)
+ * Default experience: structure view (block canvas + inspector, drag/drop)
+ * Preview mode: rendered A4 document preview
  *
  * Underlying block engine is unchanged — PDF export, logic, fields all work.
  */
@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
-  AlertCircle, FileText, FileOutput, Library, LayoutTemplate, Layers,
+  AlertCircle, FileText, FileOutput, Library, Layers,
   ChevronDown, FileType2,
 } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
@@ -58,7 +58,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const [showBlocksImporter, setShowBlocksImporter] = useState(false);
   const [saveStatus, setSaveStatus]                 = useState<'idle' | 'saved' | 'error'>('idle');
   const [activeTab, setActiveTab]                   = useState<BuilderTab>('content');
-  const [editorMode, setEditorMode]                 = useState<EditorMode>('page');
+  const [editorMode, setEditorMode]                 = useState<EditorMode>('structure');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
   );
@@ -277,21 +277,14 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
               <Redo2 size={13} />
             </button>
 
-            {/* Editor mode switcher */}
+            {/* Editor mode switcher — Structure + Preview only */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
-              <ModeBtn
-                active={editorMode === 'page'}
-                onClick={() => setEditorMode('page')}
-                icon={<LayoutTemplate size={11} />}
-                label="Page"
-                title="Page editor — click to type"
-              />
               <ModeBtn
                 active={editorMode === 'structure'}
                 onClick={() => setEditorMode('structure')}
                 icon={<Layers size={11} />}
                 label="Structure"
-                title="Structure mode — advanced block editing"
+                title="Structure mode — block editing"
               />
               <ModeBtn
                 active={false}

@@ -21,6 +21,9 @@
 //   2. Install a swallowing wrapper that calls the true native directly.
 //      If the slot is already locked (stale shim ran first), the defineProperty
 //      fails silently — fall through to error-interception reload below.
+//   3. Intercept document.createElement('iframe') so any iframe the stale shim
+//      creates to capture its _native already has our swallowing wrapper on its
+//      Node.prototype — making the stale shim's captured _native itself safe.
 {
   // Get the real browser native removeChild from a clean iframe prototype.
   // The iframe's Node.prototype is a separate object; no stale shim can have
@@ -47,14 +50,50 @@
 
     // swallowingRemoveChild — calls the TRUE iframe native directly.
     // NEVER throws under any circumstance.
-    function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
-      try {
-        if (child && child.parentNode === this) {
-          _native.call(this, child);
-        }
-      } catch { /* swallow unconditionally */ }
+    // Defined early so the createElement intercept below can use it.
+    function swallowingRemoveChildEarly<T extends Node>(this: Node, child: T): T {
+      try { if (child && child.parentNode === this) _native.call(this, child); } catch { /* swallow */ }
       return child;
     }
+
+    // ── Intercept document.createElement('iframe') ───────────────────────────
+    // The stale shim creates a fresh iframe to capture its _native reference.
+    // By pre-patching every new iframe's Node.prototype with our safe wrapper,
+    // the stale shim's captured _native BECOMES our swallowing wrapper — so its
+    // patchedRemoveChild can never throw NotFoundError.
+    try {
+      const _origCreateElement = document.createElement.bind(document);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (document as any).createElement = function createElement(tag: string, ...args: any[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const el = _origCreateElement(tag, ...args) as any;
+        if (typeof tag === 'string' && tag.toLowerCase() === 'iframe') {
+          // Pre-patch the iframe's Node.prototype before anyone can capture it.
+          // We use a load listener because contentWindow is null until appended.
+          const patchIframeNow = () => {
+            try {
+              const iWin = el.contentWindow as any;
+              if (!iWin?.Node?.prototype) return;
+              const iProto = iWin.Node.prototype;
+              const d = Object.getOwnPropertyDescriptor(iProto, 'removeChild');
+              if (!d || d.configurable) {
+                Object.defineProperty(iProto, 'removeChild', {
+                  value: swallowingRemoveChildEarly,
+                  writable: false, configurable: false, enumerable: false,
+                });
+              }
+            } catch { /* ignore */ }
+          };
+          el.addEventListener('load', patchIframeNow, { once: true });
+          // Also try immediately in case it's already loaded (srcdoc iframes)
+          setTimeout(patchIframeNow, 0);
+        }
+        return el;
+      };
+    } catch { /* ignore — createElement intercept is best-effort */ }
+
+    // swallowingRemoveChild — alias of swallowingRemoveChildEarly, used below.
+    const swallowingRemoveChild = swallowingRemoveChildEarly;
 
     // ── Patch main window prototype chain ────────────────────────────────────
     // The stale shim locked Node.prototype.removeChild with configurable:false.
@@ -115,14 +154,31 @@
       try {
         const n = node as any; // eslint-disable-line @typescript-eslint/no-explicit-any
         const d = Object.getOwnPropertyDescriptor(n, 'removeChild');
-        if (!d || d.value === swallowingRemoveChild) return;
+        if (!d) return; // no own property — prototype chain handles it
+        if (d.get && d.get.toString().includes('swallowing')) return; // already ours
+        if (d.value === swallowingRemoveChild) return; // already ours (value form)
+        // Try to overwrite with an accessor getter — works even when value descriptor
+        // was non-configurable on some engines (Chrome allows accessor→value upgrade).
+        const tryDefine = (cfg: boolean) => {
+          try {
+            Object.defineProperty(n, 'removeChild', {
+              get() { return swallowingRemoveChild; },
+              set(_v) { /* ignore */ },
+              configurable: cfg,
+              enumerable: false,
+            });
+            return true;
+          } catch { return false; }
+        };
+        if (tryDefine(true)) return;
+        if (tryDefine(false)) return;
+        // Last resort: delete then redefine
+        try { delete n.removeChild; } catch { /* ignore */ }
         try {
-          if (d.configurable) {
-            Object.defineProperty(n, 'removeChild', { value: swallowingRemoveChild, writable: true, configurable: true, enumerable: false });
-          } else {
-            delete n.removeChild;
-            Object.defineProperty(n, 'removeChild', { value: swallowingRemoveChild, writable: true, configurable: true, enumerable: false });
-          }
+          Object.defineProperty(n, 'removeChild', {
+            value: swallowingRemoveChild,
+            writable: false, configurable: false, enumerable: false,
+          });
         } catch { /* truly locked */ }
       } catch { /* ignore */ }
     }
@@ -142,6 +198,13 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', patchAppRoot, { once: true });
     }
+    // Poll for the first 5 seconds to continuously overwrite any stale-shim
+    // own-property that gets installed on #app after our initial patch.
+    const patchPoll = setInterval(() => {
+      patchAppRoot();
+      document.querySelectorAll('*').forEach(patchInstance);
+    }, 50);
+    setTimeout(() => clearInterval(patchPoll), 5000);
 
     // ── Proxy the #app element to intercept own-property installs ────────────
     // The stale shim (t=1784519099416) calls Object.defineProperty on the #app
@@ -218,7 +281,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784545000000';
+const SOS_SHIM_VERSION = '1784547000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
