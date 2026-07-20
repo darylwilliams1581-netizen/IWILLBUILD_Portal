@@ -1,5 +1,5 @@
-// v18 2026-07-13 — removed Suspense from route tree wrapper (SSR mismatch fix)
-import { lazy, Suspense, useMemo, useEffect } from 'react';
+// v19 2026-07-20 — StaleShimBoundary above RouterProvider to catch removeChild NotFoundError
+import { Component, type ReactNode, lazy, Suspense, useMemo, useEffect } from 'react';
 import {
   Outlet,
   RouterProvider,
@@ -19,12 +19,45 @@ const CookieBanner = lazy(() =>
   })
 );
 
+// ── StaleShimBoundary ─────────────────────────────────────────────────────────
+// The stale sos-shim snapshot (t=1784519099416) throws NotFoundError from its
+// patchedRemoveChild. React Router's RenderErrorBoundary catches it before
+// SosInnerBoundary (which is inside RootLayout, lower in the tree). This
+// boundary sits ABOVE RouterProvider so it intercepts first, suppresses the
+// error, and triggers a reload to evict the stale module.
+const STALE_TS = ['1784519099416', '1784518714435', '1784516505220'];
+function isStaleRemoveChildError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const text = (err.message ?? '') + (err.stack ?? '');
+  if (err.name === 'NotFoundError' && text.includes('removeChild')) return true;
+  if (STALE_TS.some((ts) => text.includes(ts))) return true;
+  return false;
+}
+
+const RELOAD_KEY = 'app_stale_reload_ts';
+class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boolean }> {
+  state = { caught: false };
+  static getDerivedStateFromError(err: unknown) {
+    return { caught: isStaleRemoveChildError(err) };
+  }
+  componentDidCatch(err: unknown) {
+    if (!isStaleRemoveChildError(err)) throw err;
+    try {
+      const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);
+      if (Date.now() - last > 8000) {
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+        window.location.reload();
+      }
+    } catch { /* ignore */ }
+  }
+  render() {
+    if (this.state.caught) return null;
+    return this.props.children;
+  }
+}
+
 export default function App() {
-  // Suppress stale-cache leaflet errors globally. The browser has an old
-  // pre-bundled leaflet.js on disk (v=05d76b4a) that was cached before Leaflet
-  // was removed. The server stub intercepts new requests but cannot evict a
-  // file the browser serves directly from disk. This handler prevents the
-  // stale chunk's runtime errors from reaching React's error boundary.
+  // Suppress stale-cache leaflet errors globally.
   useEffect(() => {
     const onError = (e: ErrorEvent) => {
       const src = e.filename ?? '';
@@ -45,12 +78,8 @@ export default function App() {
       window.removeEventListener('unhandledrejection', onUnhandled);
     };
   }, []);
+
   const router = useMemo(() => {
-    // This layout element MUST exactly mirror the route tree in entry-server.tsx.
-    // No Suspense wrapper here — renderToString resolves it synchronously and
-    // serialises the inner div, but the client sees the Suspense boundary itself,
-    // causing React hydration mismatch #418. Lazy page components carry their
-    // own Suspense boundaries inside routes.tsx.
     const layoutElement = (
       <RootLayout>
         <Outlet />
@@ -71,7 +100,9 @@ export default function App() {
   return (
     <>
       <ImpersonationBanner />
-      <RouterProvider router={router} />
+      <StaleShimBoundary>
+        <RouterProvider router={router} />
+      </StaleShimBoundary>
       <CookieBannerErrorBoundary>
         <Suspense fallback={null}>
           <CookieBanner />
