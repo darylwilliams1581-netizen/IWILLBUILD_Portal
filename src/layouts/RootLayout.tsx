@@ -7,8 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useEffect, useRef } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { Component, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -181,9 +180,8 @@ function ActivePing() {
   return null;
 }
 
-function PortalBanners() {
-  const location = useLocation();
-  if (isPublicRoute(location.pathname)) return null;
+function PortalBanners({ pathname }: { pathname: string }) {
+  if (isPublicRoute(pathname)) return null;
   return (
     <>
       <SupportModeBanner />
@@ -193,51 +191,20 @@ function PortalBanners() {
 }
 
 // ── ClientOnly ────────────────────────────────────────────────────────────────
-// Root cause: React 19 hydrateRoot commits the fiber tree and then runs a
-// cleanup pass that calls removeChild on any DOM nodes it thinks it owns but
-// that are no longer in the vdom. If anything causes child nodes to appear
-// inside a div that React committed as empty — even via portal or state update
-// in useEffect — React's cleanup pass tries to remove them and throws
-// "removeChild: node is not a child".
-//
-// The ONLY safe pattern: give React a div with dangerouslySetInnerHTML so the
-// reconciler permanently opts out of managing that div's children. Then use a
-// separate createRoot to render children into it — createRoot is completely
-// independent of the hydrateRoot tree and has no cleanup interaction with it.
-// The separate root is created in useEffect (post-paint, post-hydration-commit)
-// so it never races with hydrateRoot's cleanup pass.
+// Renders nothing on the server and during the initial hydration pass, then
+// mounts children after the first browser paint via useEffect.
+// dangerouslySetInnerHTML on the wrapper tells React's reconciler to never
+// touch this node's children — so the SSR empty div and the client empty div
+// match exactly at hydration time, preventing the removeChild mismatch.
+// Children are injected by swapping to a plain wrapper div after useEffect fires.
 function ClientOnly({ children }: { children: ReactNode }) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const rootRef = useRef<Root | null>(null);
-
-  useEffect(() => {
-    if (!hostRef.current) return;
-    // Create an independent React root inside the host div.
-    // This root is entirely separate from the hydrateRoot tree — React's
-    // hydration cleanup pass never touches nodes owned by a different root.
-    if (!rootRef.current) {
-      rootRef.current = createRoot(hostRef.current);
-    }
-    rootRef.current.render(children as ReactElement);
-  });
-
-  useEffect(() => {
-    return () => {
-      // Unmount on component removal — use setTimeout to avoid "unmount during
-      // render" warnings if the parent tree is also being torn down.
-      const root = rootRef.current;
-      if (root) {
-        setTimeout(() => root.unmount(), 0);
-        rootRef.current = null;
-      }
-    };
-  }, []);
-
-  // dangerouslySetInnerHTML tells React's reconciler: "do not touch children
-  // of this node". The host div is always empty in SSR HTML, and React sees
-  // the same empty vdom on hydration — perfect match, no mismatch warning.
-  // eslint-disable-next-line react/no-danger
-  return <div data-client-only ref={hostRef} dangerouslySetInnerHTML={{ __html: '' }} />;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) {
+    // eslint-disable-next-line react/no-danger
+    return <div data-client-only dangerouslySetInnerHTML={{ __html: '' }} />;
+  }
+  return <div data-client-only>{children}</div>;
 }
 
 // DeferredMount is an alias kept for backwards compat with existing usages.
@@ -293,6 +260,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
+  const location = useLocation();
   return (
     <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
@@ -302,15 +270,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
           content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
         />
       </Helmet>
-      {/* All client-only side-effect components in ONE DeferredMount wrapper.
-          rAF defers past the hydration commit entirely — useEffect alone fires
-          in the same commit as hydration in React 19, which still triggers
-          removeChild mismatches when multiple null-rendering nodes are present. */}
+      {/* Router-dependent components stay in the main tree so useLocation/
+          useNavigate hooks work. Only truly router-independent, client-only
+          components go inside DeferredMount. */}
+      <ScrollRestoration />
+      <ActivePing />
+      <PortalBanners pathname={location.pathname} />
+      {/* OfflineBanner and PwaInstallPrompt have no router deps and caused
+          the original removeChild mismatch — defer them past hydration. */}
       <DeferredMount>
         <OfflineBanner />
-        <PortalBanners />
-        <ScrollRestoration />
-        <ActivePing />
         <PwaInstallPrompt />
       </DeferredMount>
       <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
