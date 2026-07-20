@@ -23,6 +23,7 @@ import {
   CreditCard, Settings, Bot,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, ScrollText, Wallet,
+  Library,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -61,8 +62,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
 // ── SAFETY ────────────────────────────────────────────────────────────────────
 export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'safety',        label: 'Safety',         icon: ShieldCheck,      href: '/safety',                 bg: 'bg-red-600',     fg: 'text-white', group: 'safety' },
-  // Coming soon — need standalone pages first
-  { key: 'poster',        label: 'Poster',         icon: Image,            href: '/safety?tab=posters',     bg: 'bg-pink-500',    fg: 'text-white', group: 'safety',     comingSoon: true },
+  { key: 'poster',        label: 'Safety Posters', icon: Image,            href: '/safety/posters',         bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
   { key: 'policies',      label: 'Policies',       icon: BookOpen,         href: '/safety?tab=policies',    bg: 'bg-violet-500',  fg: 'text-white', group: 'safety',     comingSoon: true },
   { key: 'safety_plan',   label: 'Safety Plan',    icon: FileCheck,        href: '/safety?tab=swms',        bg: 'bg-orange-600',  fg: 'text-white', group: 'safety',     comingSoon: true },
 ];
@@ -87,6 +87,9 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'studio',        label: 'Studio',         icon: Layers,           href: '/studio',                 bg: 'bg-fuchsia-500', fg: 'text-white', group: 'management' },
+  { key: 'studio_docs',   label: 'Documents',      icon: FileText,         href: '/studio/documents',       bg: 'bg-orange-500',  fg: 'text-white', group: 'management' },
+  { key: 'studio_forms',  label: 'Forms',          icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
+  { key: 'studio_library',label: 'Library',        icon: Library,          href: '/studio/library',         bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',      label: 'Dazza AI',       icon: Bot,              href: '/dazza-ai',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },
 ];

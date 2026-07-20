@@ -224,11 +224,15 @@
     // the chain and the stale shim never touched it — install our wrapper there
     // so ANY removeChild lookup that walks past Node.prototype finds ours first.
     // Also try Node.prototype in case this run happens before the stale shim.
+    // Use the ORIGINAL Object.defineProperty (captured in index.html) to bypass
+    // our own intercept which only allows safeRemoveChild.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _origDP = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
     for (const proto of [EventTarget.prototype, Node.prototype, Element.prototype, HTMLElement.prototype, HTMLDivElement.prototype] as object[]) {
       try {
         const d = Object.getOwnPropertyDescriptor(proto, 'removeChild');
         if (!d || d.configurable) {
-          Object.defineProperty(proto, 'removeChild', {
+          _origDP(proto, 'removeChild', {
             value: swallowingRemoveChild,
             writable: false,
             configurable: false,
@@ -411,7 +415,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784800000001';
+const SOS_SHIM_VERSION = '1784800000003';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 3;

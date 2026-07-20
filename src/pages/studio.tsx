@@ -9,8 +9,8 @@ import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle,
-  ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
-  ShieldCheck, ClipboardList, BookOpen, ArrowLeft, FileUp, Library,
+  ChevronDown, Loader2, AlertTriangle, Search, Trash2, X,
+  ShieldCheck, ArrowLeft, FileUp, Library,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
@@ -22,8 +22,6 @@ import { usePermissions } from '@/lib/usePermissions';
 
 // Tab content — lazy-imported to keep bundle lean
 import SafetyContent from '@/components/safety/SafetyContent';
-import { FormsPage as FormsContent } from '@/pages/forms';
-import { LibraryPage as LibraryContent } from '@/pages/library';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,11 +64,8 @@ const TYPE_COLORS: Record<string, string> = {
 // ── Top-level studio tabs ─────────────────────────────────────────────────────
 
 const STUDIO_TABS = [
-  { id: 'documents', label: 'Documents', icon: Layers },
-  { id: 'forms',     label: 'Forms',     icon: ClipboardList },
-  { id: 'library',   label: 'Library',   icon: BookOpen },
-  { id: 'share',     label: 'Share',     icon: Library },
   { id: 'safety',    label: 'Safety',    icon: ShieldCheck },
+  { id: 'share',     label: 'Share',     icon: Library },
 ] as const;
 
 type StudioTabId = typeof STUDIO_TABS[number]['id'];
@@ -474,22 +469,22 @@ export default function StudioPage() {
   const tabParam = searchParams.get('tab');
   // Share tab only visible to platform owners (developers)
   const validTabs: StudioTabId[] = isPlatformOwner
-    ? ['documents', 'forms', 'library', 'share', 'safety']
-    : ['documents', 'forms', 'library', 'safety'];
+    ? ['safety', 'share']
+    : ['safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(
-    validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'documents'
+    validTabs.includes(tabParam as StudioTabId) ? (tabParam as StudioTabId) : 'safety'
   );
 
   function switchTab(id: StudioTabId) {
     setActiveTab(id);
-    setSearchParams(id === 'documents' ? {} : { tab: id }, { replace: true });
+    setSearchParams(id === 'safety' ? {} : { tab: id }, { replace: true });
   }
 
   // Sync if URL param changes externally (e.g. sidebar link)
   useEffect(() => {
     const p = searchParams.get('tab') as StudioTabId | null;
     if (p && validTabs.includes(p) && p !== activeTab) setActiveTab(p);
-    if (!p && activeTab !== 'documents') setActiveTab('documents');
+    if (!p && activeTab !== 'safety') setActiveTab('safety');
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Import DOCX/PDF from Studio page ─────────────────────────────────────
@@ -567,8 +562,8 @@ export default function StudioPage() {
         <Layers size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Studio</h1>
 
-        {/* Action buttons — only on documents tab */}
-        {activeTab === 'documents' && (
+        {/* Action buttons — only on documents tab (now a separate page, but keep import for direct /studio access) */}
+        {activeTab === 'safety' && (
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => void handleOpenImporter()}
@@ -613,12 +608,9 @@ export default function StudioPage() {
       </div>
 
       {/* ── Tab content ── */}
-      <div className={`flex-1 min-h-0 ${activeTab === 'forms' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-        {activeTab === 'documents' && <DocumentsTab />}
-        {activeTab === 'forms'     && <FormsContent />}
-        {activeTab === 'library'   && <LibraryContent />}
-        {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
+      <div className={`flex-1 min-h-0 overflow-hidden`}>
         {activeTab === 'safety'    && <SafetyContent />}
+        {activeTab === 'share'     && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
       </div>
 
       {/* ── Import DOCX/PDF modal ── */}

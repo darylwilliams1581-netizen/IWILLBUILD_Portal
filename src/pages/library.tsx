@@ -117,7 +117,7 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function LibraryPage() {
+export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string } = {}) {
   const { isPlatformOwner } = usePermissions();
 
   // ── Browse state ─────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ export function LibraryPage() {
 
   // ── Filters ───────────────────────────────────────────────────────────────
   const [search, setSearch]         = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState(initialTypeFilter ?? '');
   const [catFilter, setCatFilter]   = useState('');
   const [page, setPage]             = useState(1);
 

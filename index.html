@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v62 -->
+  <!-- cache-bust: v64 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -13,22 +13,31 @@
       // capture picks up our safe wrapper, so its patchedRemoveChild never throws.
       (function () {
         try {
-          // Capture the TRUE browser native BEFORE any patching, store on window
-          // so sos-shim.ts can use it directly without going through any wrapper.
+          // ── Step 1: Capture the true browser native via an iframe ──────────────
+          // We do this BEFORE patching Node.prototype so we get the real function.
+          var _trueNativeRC = Node.prototype.removeChild;
           try {
             var _capIframe = document.createElement('iframe');
             _capIframe.style.display = 'none';
             document.head.appendChild(_capIframe);
-            window.__sosTrueNativeRC = _capIframe.contentWindow && _capIframe.contentWindow.Node && _capIframe.contentWindow.Node.prototype.removeChild;
-            document.head.removeChild(_capIframe);
+            var _iNative = _capIframe.contentWindow && _capIframe.contentWindow.Node && _capIframe.contentWindow.Node.prototype.removeChild;
+            if (_iNative) _trueNativeRC = _iNative;
+            try { _trueNativeRC.call(document.head, _capIframe); } catch(e) {}
           } catch(e) {}
 
-          var _realRC = Node.prototype.removeChild;
-          function safeRemoveChild(child) {
-            try { return _realRC.call(this, child); } catch (e) { /* swallow NotFoundError */ }
-            return child;
+          // ── Step 2: Build a swallowing wrapper around the true native ──────────
+          var _capturedNative = _trueNativeRC;
+          function _swallowingNative(child) {
+            try { return _capturedNative.call(this, child); } catch(e) { return child; }
           }
-          // Install as a getter on Node.prototype — configurable:false so nothing can replace it.
+          // Expose the WRAPPER — not the raw native — so the stale shim's _native is safe.
+          window.__sosTrueNativeRC = _swallowingNative;
+
+          var safeRemoveChild = _swallowingNative;
+
+          // ── Step 3: Install safeRemoveChild on Node.prototype ─────────────────
+          // Use a getter so the stale shim's own defineProperty call on Node.prototype
+          // cannot overwrite it (setter silently ignores writes).
           try {
             Object.defineProperty(Node.prototype, 'removeChild', {
               get: function() { return safeRemoveChild; },
@@ -43,8 +52,10 @@
           // Intercept Object.defineProperty so the stale shim can't install
           // its throwing patchedRemoveChild on any Node (e.g. the #app div).
           var _origDefProp = Object.defineProperty;
+          // Expose the original so sos-shim.ts can use it to bypass our intercept.
+          window.__origDefProp = _origDefProp;
           Object.defineProperty = function(obj, prop, descriptor) {
-            if (prop === 'removeChild' && obj != null && typeof obj === 'object' && obj instanceof Node) {
+            if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
               // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
               // Use configurable:false so a second defineProperty call from the stale shim throws TypeError
               // (which the stale shim catches and ignores), leaving our safe wrapper permanently in place.
@@ -64,24 +75,28 @@
           // Intercept appendChild so when the stale shim appends its capture
           // iframe, we immediately patch the iframe's Node.prototype.removeChild
           // before the stale shim reads contentWindow.Node.prototype.removeChild.
+          // IMPORTANT: patchIframeProto uses safeRemoveChild (our wrapper) — NOT
+          // the iframe's native — so the stale shim's captured _native IS our wrapper.
           function patchIframeProto(el) {
             try {
               var iWin = el.contentWindow;
               var iProto = iWin && iWin.Node && iWin.Node.prototype;
               if (iProto) {
-                var iNative = iProto.removeChild;
-                function iSafe(child) {
-                  try { return iNative.call(this, child); } catch(e) { return child; }
-                }
+                // Install safeRemoveChild (our swallowing wrapper) directly —
+                // NOT a new closure around the iframe's native.
+                // This means the stale shim's _native = iProto.removeChild = safeRemoveChild.
                 try {
-                  Object.defineProperty(iProto, 'removeChild', {
-                    get: function() { return iSafe; },
+                  _origDefProp(iProto, 'removeChild', {
+                    get: function() { return safeRemoveChild; },
                     set: function(_v) {},
-                    configurable: true, enumerable: false,
+                    configurable: false, enumerable: false,
                   });
-                } catch(e) { iProto.removeChild = iSafe; }
-                // Also patch the window-level Node so __sosTrueNativeRC capture gets iSafe
-                try { iWin.__sosTrueNativeRC = iSafe; } catch(e) {}
+                } catch(e) {
+                  try { iProto.removeChild = safeRemoveChild; } catch(e2) {}
+                }
+                // Also set __sosTrueNativeRC on the iframe window so the stale shim
+                // reads our safe wrapper when it does window.__sosTrueNativeRC.
+                try { iWin.__sosTrueNativeRC = safeRemoveChild; } catch(e) {}
               }
             } catch(e) {}
           }
@@ -103,6 +118,31 @@
             }
             return el;
           };
+
+          // ── Continuously seal #app div's own removeChild property ─────────────
+          // The stale shim re-installs its patchedRemoveChild on #app after each
+          // React navigation. Poll every 20ms for the first 10s to overwrite it.
+          function sealAppDiv() {
+            try {
+              var appEl = document.getElementById('app');
+              if (!appEl) return;
+              var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
+              if (d && d.get && d.get() === safeRemoveChild) return; // already sealed
+              try {
+                _origDefProp(appEl, 'removeChild', {
+                  get: function() { return safeRemoveChild; },
+                  set: function(_v) {},
+                  configurable: false, enumerable: false,
+                });
+              } catch(e) {
+                try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+              }
+            } catch(e) {}
+          }
+          var _sealInterval = setInterval(sealAppDiv, 20);
+          setTimeout(function() { clearInterval(_sealInterval); }, 10000);
+          // Also seal on DOMContentLoaded
+          document.addEventListener('DOMContentLoaded', sealAppDiv, { once: true });
         } catch (e) {}
       })();
     </script>

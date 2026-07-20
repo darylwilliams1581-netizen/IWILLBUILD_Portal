@@ -35,6 +35,10 @@ const FleetDetailPage    = lazy(() => import('./pages/fleet-detail'));
 const DazzaAIPage        = lazy(() => import('./pages/dazza-ai'));
 const StudioPage         = lazy(() => import('./pages/studio'));
 const StudioBuilderPage  = lazy(() => import('./pages/studio-builder'));
+const StudioDocumentsPage = lazy(() => import('./pages/studio-documents'));
+const StudioFormsPage    = lazy(() => import('./pages/studio-forms'));
+const StudioLibraryPage  = lazy(() => import('./pages/studio-library'));
+const SafetyPostersPage  = lazy(() => import('./pages/safety-posters'));
 
 const TeamPage           = lazy(() => import('./pages/team'));
 
@@ -208,8 +212,12 @@ export const routes: RouteObject[] = [
   { path: '/customers/:id', element: protect(<CustomerDetailPage />),  errorElement: routeError },
   { path: '/invoices',      element: protect(<InvoicesPage />),        errorElement: routeError },
   { path: '/invoices/:id',  element: protect(<InvoiceBuilderPage />),  errorElement: routeError },
-  { path: '/studio',            element: protect(<StudioPage />),        errorElement: routeError },
-  { path: '/studio/builder/:id', element: protect(<StudioBuilderPage />), errorElement: routeError },
+  { path: '/studio',               element: protect(<StudioPage />),          errorElement: routeError },
+  { path: '/studio/builder/:id',   element: protect(<StudioBuilderPage />),   errorElement: routeError },
+  { path: '/studio/documents',     element: protect(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>), errorElement: routeError },
+  { path: '/studio/forms',         element: protect(<Suspense fallback={<PageLoader />}><StudioFormsPage /></Suspense>),     errorElement: routeError },
+  { path: '/studio/library',       element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),   errorElement: routeError },
+  { path: '/safety/posters',       element: protect(<Suspense fallback={<PageLoader />}><SafetyPostersPage /></Suspense>),   errorElement: routeError },
   // Plan Manager — full module at /plan-manager, public share at /plan-manager/share/:token
   { path: '/plan-manager',                element: protect(<PlanManagerPage />),        errorElement: routeError },
   { path: '/plan-manager/share/:token',   element: <Suspense fallback={<PageLoader />}><PlanManagerSharePage /></Suspense>, errorElement: routeError },
