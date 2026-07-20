@@ -4,7 +4,6 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Settings,
   Building2,
-  Users,
   Bell,
   Database,
   ChevronRight,
@@ -21,7 +20,6 @@ import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
-import TeamPermissionsTab from '@/components/settings/TeamPermissionsTab';
 import PdfStyleTab from '@/components/settings/PdfStyleTab';
 import DataBackupTab from '@/components/settings/DataBackupTab';
 import IntegrationsTab from '@/components/settings/IntegrationsTab';
@@ -34,7 +32,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
   { id: 'company',      label: 'Company Profile',    icon: Building2 },
-  { id: 'team',         label: 'Team & Permissions', icon: Users },
   { id: 'structure',    label: 'Company Structure',  icon: Layers },
   { id: 'pdf',          label: 'PDF / Print Style',  icon: FileText },
   { id: 'accounting',   label: 'Accounting',         icon: Receipt },
@@ -180,7 +177,6 @@ export default function SettingsPage() {
               <Suspense fallback={<TabSkeleton />}>
                 {activeTab === 'account'    && <MyAccountTab />}
                 {activeTab === 'company'    && <CompanyTab />}
-                {activeTab === 'team'       && <TeamPermissionsTab isAdmin={isAdmin} />}
                 {activeTab === 'structure'  && <CompanyStructureTab isAdmin={isAdmin} />}
                 {activeTab === 'pdf'        && <PdfStyleTab isAdmin={isAdmin} />}
                 {activeTab === 'accounting' && <AccountingTab isAdmin={isAdmin} isOwner={isOwner} />}

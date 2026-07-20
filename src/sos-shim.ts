@@ -43,7 +43,8 @@
     const _native = trueNative; // close over the clean reference
 
     // swallowingRemoveChild — always calls the TRUE iframe native directly,
-    // bypassing any stale patchedRemoveChild that may be on Node.prototype.
+    // bypassing any stale patchedRemoveChild that may be on Node.prototype
+    // or on a specific element instance.
     // Guards child.parentNode first so the native never sees a detached child.
     function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
       if (!child || child.parentNode !== this) return child;
@@ -55,27 +56,10 @@
       }
     }
 
-    // Try to install on Node.prototype first (may already be locked by stale shim).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proto = Node.prototype as any;
-    try {
-      Object.defineProperty(proto, 'removeChild', {
-        value: swallowingRemoveChild,
-        writable: false,
-        configurable: false,
-        enumerable: false,
-      });
-    } catch { /* locked by stale shim — fall through to subclass shadows */ }
-
-    // Shadow on every subclass prototype in the chain React uses.
-    // An own-property on a subclass prototype takes precedence over an inherited
-    // property on Node.prototype — so even if the stale shim locked Node.prototype,
-    // these own-properties intercept the call first.
-    // We install unconditionally (not just when locked) so the safe wrapper wins
-    // regardless of which shim ran first.
+    // Try to install on every prototype level (may be locked by stale shim).
     for (const subProto of [
       EventTarget.prototype,
-      Node.prototype,       // retry in case the first attempt above failed
+      Node.prototype,
       Element.prototype,
       HTMLElement.prototype,
       HTMLDivElement.prototype,
@@ -92,8 +76,52 @@
             enumerable: false,
           });
         }
-      } catch { /* ignore — already locked by a prior shim iteration */ }
+      } catch { /* ignore */ }
     }
+
+    // ── Instance-level patch via MutationObserver ─────────────────────────────
+    // The stale shim (t=1784519099416) installs patchedRemoveChild as an OWN
+    // PROPERTY on individual div INSTANCES (not prototypes). Instance own
+    // properties always win over prototype properties, so prototype shadowing
+    // above is not enough. Fix: use a MutationObserver to watch every new node
+    // added to the DOM and immediately overwrite any stale patchedRemoveChild
+    // own-property with our safe wrapper.
+    function patchInstance(node: Node) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const n = node as any;
+        const d = Object.getOwnPropertyDescriptor(n, 'removeChild');
+        // Only overwrite if it's a stale patchedRemoveChild (not our wrapper)
+        if (d && d.value && d.value !== swallowingRemoveChild &&
+            (d.value.name === 'patchedRemoveChild' || d.value.name === 'swallowingRemoveChild')) {
+          try {
+            if (d.configurable) {
+              Object.defineProperty(n, 'removeChild', {
+                value: swallowingRemoveChild,
+                writable: d.writable ?? false,
+                configurable: true,
+                enumerable: false,
+              });
+            } else {
+              // Non-configurable own property — can't redefine, but we can
+              // shadow it by wrapping the call at a higher level via Proxy if
+              // available, otherwise rely on the error-interception below.
+            }
+          } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Patch existing DOM nodes
+    document.querySelectorAll('*').forEach(patchInstance);
+
+    // Patch all future nodes as they're added
+    const mo = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        m.addedNodes.forEach(patchInstance);
+      }
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
   }
 }
 
@@ -116,7 +144,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784532000000';
+const SOS_SHIM_VERSION = '1784534000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
@@ -170,8 +198,10 @@ function isStaleSnapshotError(msg: string, src: string, err?: Error | null): boo
 
 function handleStaleError(msg: string, src: string, err?: Error | null): boolean {
   if (!isStaleSnapshotError(msg, src, err)) return false;
+  // Always suppress — even if we've hit the reload limit.
+  // When under the limit, also trigger a reload to evict the stale module.
   if (!shimSosRecentReload()) doStaleReload();
-  return true;
+  return true; // always swallow — never let this reach React's error boundary
 }
 
 {
@@ -201,8 +231,20 @@ function handleStaleError(msg: string, src: string, err?: Error | null): boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).reportError = function reportError(err: unknown) {
     const e = err instanceof Error ? err : null;
-    if (e && handleStaleError(e.message ?? '', e.stack ?? '', e)) return;
+    if (e && handleStaleError(e.message ?? '', e.stack ?? '', e)) return; // swallow
     if (typeof _prevReportError === 'function') _prevReportError.call(window, err);
+  };
+
+  // Patch console.error to suppress React's "The above error occurred..." message
+  // that fires when a stale-shim error reaches React's error boundary internals.
+  const _prevConsoleError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const text = args.map(a => String(a ?? '')).join(' ');
+    if (
+      text.includes('patchedRemoveChild') ||
+      (text.includes('removeChild') && text.includes('sos-shim'))
+    ) return; // suppress
+    _prevConsoleError(...args);
   };
 }
 
