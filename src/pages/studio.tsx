@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Layers, Plus, Lock, Copy, Share2, Printer, FileDown, FileOutput, Pencil,
+  Layers, Plus, Lock, Copy, Share2, Pencil,
   ChevronDown, ChevronRight, Loader2, AlertTriangle, Search, Trash2, X,
   ShieldCheck, ClipboardList, BookOpen, ArrowLeft, FileUp, Library,
 } from 'lucide-react';
@@ -131,16 +131,6 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
     }
   }
 
-  function handleExportPdf(e: React.MouseEvent) {
-    e.stopPropagation();
-    window.open(`/api/document-templates/${doc.id}/export/pdf`, '_blank');
-  }
-
-  function handleExportDocx(e: React.MouseEvent) {
-    e.stopPropagation();
-    window.open(`/api/document-templates/${doc.id}/export/docx`, '_blank');
-  }
-
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
     try {
@@ -192,9 +182,6 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           {showShareBtn && (
             <ToolBtn icon={Library}  label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
           )}
-          <ToolBtn icon={Printer}    label="Print"             onClick={handleExportPdf} />
-          <ToolBtn icon={FileDown}   label="Export PDF"        onClick={handleExportPdf} />
-          <ToolBtn icon={FileOutput} label="Export DOCX"       onClick={handleExportDocx} />
           <ToolBtn icon={Pencil}     label="Edit"              onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
           <ToolBtn icon={Trash2}     label="Delete"            onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button
@@ -220,12 +207,6 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           <div className="flex items-center gap-2 mt-1">
             <button onClick={openBuilder} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
               <Pencil size={11} />Open in builder
-            </button>
-            <button onClick={handleExportPdf} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
-              <FileDown size={11} />Export PDF
-            </button>
-            <button onClick={handleExportDocx} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
-              <FileOutput size={11} />Export DOCX
             </button>
           </div>
         </div>

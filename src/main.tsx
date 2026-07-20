@@ -110,6 +110,7 @@ interface BoundaryState { caught: boolean; }
 class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundaryState> {
   state: BoundaryState = { caught: false };
   private _other: Error | null = null;
+  private _recoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError(_error: Error): BoundaryState {
     return { caught: true };
@@ -122,12 +123,21 @@ class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundarySt
       } else if (!sosRecentReload()) {
         try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
+        return;
       }
-      // If reload limit reached, stay caught (render null) — don't re-throw.
-      // This prevents the stale-shim error from propagating to AiroErrorBoundary.
+      // Reload limit reached — recover by resetting caught state after a tick
+      // so React can re-render the tree. The stale shim error is swallowed.
+      if (this._recoverTimer) clearTimeout(this._recoverTimer);
+      this._recoverTimer = setTimeout(() => {
+        this.setState({ caught: false });
+      }, 50);
     } else {
       this._other = error;
     }
+  }
+
+  componentWillUnmount() {
+    if (this._recoverTimer) clearTimeout(this._recoverTimer);
   }
 
   render() {
