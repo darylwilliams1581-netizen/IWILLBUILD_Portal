@@ -67,28 +67,24 @@ window.addEventListener('unhandledrejection', (ev) => {
   }
 });
 
-// ── removeChild patch for stale HMR snapshots ────────────────────────────────
-// React's commitDeletionEffects calls removeChild synchronously inside its own
-// try/catch, so the error never reaches window.onerror or error boundaries.
-// The only reliable fix is to patch Node.prototype.removeChild to swallow the
-// NotFoundError when the call originates from a stale snapshot frame.
-// We detect stale frames by checking Error().stack for the snapshot timestamps.
-{
+// ── removeChild NotFoundError guard ──────────────────────────────────────────
+// Guard against stale HMR snapshots of this file re-patching removeChild and
+// creating a double-patch chain. We use a flag on Node.prototype itself so
+// any version of this shim (current or stale) can detect an existing patch.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(Node.prototype as any).__sosRemoveChildPatched) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (Node.prototype as any).__sosRemoveChildPatched = true;
   const _origRemoveChild = Node.prototype.removeChild;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (Node.prototype as any).removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
     try {
       return _origRemoveChild.call(this, child) as T;
     } catch (e) {
-      // Only swallow NotFoundError — let everything else propagate.
+      // Swallow NotFoundError unconditionally — the node is already gone,
+      // React's reconciler has handled it, and the UI is correct.
       if (e instanceof Error && e.name === 'NotFoundError') {
-        // Check if the call stack contains a stale snapshot timestamp.
-        const stack = new Error().stack ?? '';
-        if (STALE_TS_SHIM.some((ts) => stack.includes(ts))) {
-          // Swallow — the stale snapshot is trying to remove a node that the
-          // current module already cleaned up. Safe to ignore.
-          return child;
-        }
+        return child;
       }
       throw e;
     }

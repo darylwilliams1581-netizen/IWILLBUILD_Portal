@@ -278,16 +278,19 @@
   },
   "reference/screenshot-8": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:01.246Z",
-    "lastUpdated": "2026-07-18T04:43:01.246Z",
+    "lastUpdated": "2026-07-20T03:45:17.176Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg"
+      "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg",
+      "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg": "f38wenbvln_1784518145049_file_6NcchjcUGF.jpg"
     },
-    "uploadContentHash": "6053f9dff57f9ef898f4f3ddb48788f6e16e93b3c52b03e473f49757f7b49f3a"
+    "uploadContentHash": "192f1868b19498e33cfedfe17822a2dd52cd6dc6045b5b5488d0220bc72007db"
   },
   "uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv": {
     "mediaType": "image",
