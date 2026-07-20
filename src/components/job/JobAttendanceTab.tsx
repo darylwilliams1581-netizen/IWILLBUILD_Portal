@@ -159,7 +159,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
         <button
           onClick={fetchStatus}
           disabled={loading}
-          className="text-slate-400 hover:text-slate-600 transition-colors"
+          className="text-slate-600 hover:text-slate-800 transition-colors"
           title="Refresh"
         >
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />

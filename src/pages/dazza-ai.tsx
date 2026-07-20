@@ -385,7 +385,7 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
         <div className="bg-white border border-primary/20 rounded-lg p-2.5">
           <div className="text-base font-black text-primary">{result.value} <span className="text-sm font-bold">{result.unit}</span></div>
           <div className="text-[10px] text-slate-500 mt-0.5">{result.label}</div>
-          {result.detail && <div className="text-[10px] text-slate-400 mt-1 leading-relaxed">{result.detail}</div>}
+          {result.detail && <div className="text-[10px] text-slate-500 mt-1 leading-relaxed">{result.detail}</div>}
           <button
             onClick={sendToChat}
             className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-700 transition-colors"
@@ -785,7 +785,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             </div>
             <div>
               <h1 className="font-heading font-bold text-sm leading-none">Dazza AI</h1>
-              <p className="text-[10px] text-slate-400 leading-none mt-0.5">
+              <p className="text-[10px] text-slate-500 leading-none mt-0.5">
                 {ctxLoading ? 'Loading context…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
               </p>
             </div>
@@ -821,7 +821,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             )}
             <button
               onClick={exportChat}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
               title="Export chat"
             >
               <Download size={13} />
@@ -829,7 +829,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             </button>
             <button
               onClick={clearChat}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
             >
               <RefreshCw size={13} />
               <span className="hidden sm:inline">New chat</span>
@@ -1109,7 +1109,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   {isTyping ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+              <p className="text-[10px] text-slate-500 mt-1.5 text-center">
                 Dazza uses your live portal data only. AI calls are server-side — keys are never exposed to the browser.
               </p>
             </div>
@@ -1250,7 +1250,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   <Bot size={13} className="text-white/60" />
                   <span className="text-xs font-bold">About Dazza</span>
                 </div>
-                <p className="text-[10px] text-slate-400 leading-relaxed">
+                <p className="text-[10px] text-slate-500 leading-relaxed">
                   Dazza reads your live portal data. AI calls are server-side — your API keys are never exposed to the browser.
                 </p>
                 <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">

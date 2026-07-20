@@ -1099,7 +1099,7 @@ export default function FleetDetailPage() {
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     onClick={() => { setEditingLog(log); setShowServiceModal(true); }}
-                                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                    className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                                     title="Edit"
                                   >
                                     <Edit2 size={13} />

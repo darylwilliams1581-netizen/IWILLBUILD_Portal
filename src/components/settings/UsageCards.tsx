@@ -147,7 +147,7 @@ export default function UsageCards({ compact = false }: { compact?: boolean }) {
         </div>
         <button
           onClick={load}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors"
           title="Refresh usage"
         >
           <RefreshCw size={13} />

@@ -267,7 +267,7 @@ export default function AMInspectionsTab() {
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => setExpandId(expandId === insp.id ? null : insp.id)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Expand">
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors" title="Expand">
                     <ChevronDown size={13} className={`transition-transform ${expandId === insp.id ? 'rotate-180' : ''}`} />
                   </button>
                   <button onClick={() => void handleShare(insp.id)}
@@ -277,7 +277,7 @@ export default function AMInspectionsTab() {
                   {!insp.archived_at ? (
                     <>
                       <button onClick={() => setEditId(insp.id)}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Edit">
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors" title="Edit">
                         <Edit2 size={13} />
                       </button>
                       <button onClick={() => fetch(`/api/asset-manager/inspections/${insp.id}/archive`, { method: 'POST', credentials: 'include' }).then(() => load())}

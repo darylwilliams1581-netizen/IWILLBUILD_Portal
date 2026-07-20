@@ -186,7 +186,7 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
                       <button
                         type="button"
                         onClick={() => setShowInput((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
                       >
                         {showInput ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>

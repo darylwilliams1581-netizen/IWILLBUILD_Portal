@@ -398,7 +398,7 @@ export default function ActivityLogTab() {
                             {e.email ?? '—'}
                           </p>
                           {e.user_id && (
-                            <p className="text-[10px] text-slate-400 truncate max-w-[200px]">
+                            <p className="text-[10px] text-slate-500 truncate max-w-[200px]">
                               {e.user_id.slice(0, 12)}…
                             </p>
                           )}

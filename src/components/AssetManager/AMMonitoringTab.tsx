@@ -119,7 +119,7 @@ export default function AMMonitoringTab() {
                     {PIPELINE_STAGES[stageIndex(item.overall_status)]?.label ?? item.overall_status}
                   </span>
                   {item.inspection_date && (
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-500">
                       {new Date(item.inspection_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
                   )}

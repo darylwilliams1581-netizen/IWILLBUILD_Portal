@@ -145,7 +145,7 @@ function BulkAssignModal({ selectedIds, assets, onClose, onSaved }: {
               {selectedNames.slice(0, 3).join(', ')}{selectedNames.length > 3 ? ` +${selectedNames.length - 3} more` : ''}
             </p>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+          <button onClick={onClose} className="p-1 text-slate-600 hover:text-slate-800"><X size={16} /></button>
         </div>
 
         {/* Type selector */}
@@ -334,15 +334,15 @@ function ChildRow({ asset, isLast, onSelect }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-slate-700">{asset.name}</span>
-          {asset.asset_number && <span className="text-[10px] text-slate-400 font-mono">{asset.asset_number}</span>}
+          {asset.asset_number && <span className="text-[10px] text-slate-500 font-mono">{asset.asset_number}</span>}
           <TypeBadge type={asset.asset_type} />
           <StatusBadge status={asset.status} />
         </div>
         {(asset.current_location || asset.make || asset.model) && (
           <div className="flex items-center gap-2 mt-0.5">
-            {asset.current_location && <span className="text-[10px] text-slate-400">{asset.current_location}</span>}
+            {asset.current_location && <span className="text-[10px] text-slate-500">{asset.current_location}</span>}
             {(asset.make || asset.model) && (
-              <span className="text-[10px] text-slate-400">{[asset.make, asset.model].filter(Boolean).join(' ')}</span>
+              <span className="text-[10px] text-slate-500">{[asset.make, asset.model].filter(Boolean).join(' ')}</span>
             )}
           </div>
         )}
@@ -396,7 +396,7 @@ function GroupHeader({
         </button>
 
         {/* Expand toggle */}
-        <button onClick={onToggleExpand} className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={onToggleExpand} className="shrink-0 text-slate-600 hover:text-slate-800 transition-colors">
           <ChevronRight size={16} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
         </button>
 
@@ -412,7 +412,7 @@ function GroupHeader({
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-slate-800">{label}</span>
-            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full font-semibold">
+            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full font-semibold">
               {count} item{count !== 1 ? 's' : ''}
             </span>
             {meta}
@@ -430,7 +430,7 @@ function GroupHeader({
               </button>
             ) : (
               <button onClick={onArchive}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
+                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Archive">
                 <Archive size={14} />
               </button>
             )}
@@ -495,7 +495,7 @@ function AssetRow({ asset, selected, onToggleSelect, onSelect, onArchive, onDele
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(asset.id)}>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-slate-800 truncate">{asset.name}</span>
-          {asset.asset_number && <span className="text-[10px] text-slate-400 font-mono">{asset.asset_number}</span>}
+          {asset.asset_number && <span className="text-[10px] text-slate-500 font-mono">{asset.asset_number}</span>}
           <TypeBadge type={asset.asset_type} />
           <StatusBadge status={asset.status} />
           {asset.purchase_or_hire === 'hire' && (
@@ -532,7 +532,7 @@ function AssetRow({ asset, selected, onToggleSelect, onSelect, onArchive, onDele
           </button>
         ) : (
           <button onClick={() => onArchive(asset.id, true)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Archive">
+            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Archive">
             <Archive size={14} />
           </button>
         )}
@@ -718,7 +718,7 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
       {/* Bulk action bar */}
       {assets.length > 0 && (
         <div className="flex items-center gap-3 px-1">
-          <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors">
+          <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors">
             {selectedIds.length === assets.length && assets.length > 0
               ? <CheckSquare size={15} className="text-orange-500" />
               : selectedIds.length > 0
@@ -734,7 +734,7 @@ export default function AMAssetsTab({ onSelectAsset }: { onSelectAsset: (id: num
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
                 <Briefcase size={12} /> Assign {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}
               </button>
-              <button onClick={() => setSelectedIds([])} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Clear</button>
+              <button onClick={() => setSelectedIds([])} className="text-xs text-slate-600 hover:text-slate-800 transition-colors">Clear</button>
             </>
           )}
         </div>

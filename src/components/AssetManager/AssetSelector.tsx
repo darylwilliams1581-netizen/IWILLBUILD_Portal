@@ -139,7 +139,7 @@ export default function AssetSelector({ value, onChange }: Props) {
                   <div className="flex-1 min-w-0">
                     <span className="text-slate-800 truncate block">{asset.name}</span>
                     {asset.acronym && (
-                      <span className="text-[10px] text-slate-400 font-mono">{asset.acronym} · {asset.asset_type}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{asset.acronym} · {asset.asset_type}</span>
                     )}
                   </div>
                   {asset.id === value && (

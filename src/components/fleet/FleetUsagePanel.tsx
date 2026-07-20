@@ -316,7 +316,7 @@ export default function FleetUsagePanel({ fleetId, assetName }: Props) {
             )}
             <button
               onClick={() => void loadStatus()}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
               title="Refresh"
             >
               <RefreshCw size={14} />

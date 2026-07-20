@@ -959,7 +959,7 @@ function FieldPreview({ field, pageBreakNumber }: { field: FormField; pageBreakN
         <div className="h-14 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center gap-2">
           <PenLine size={16} className="text-slate-300" />
           {Boolean(parseSettings(field.settingsJson).multiple) && (
-            <span className="text-[10px] text-slate-400 font-semibold">Multiple signers</span>
+            <span className="text-[10px] text-slate-500 font-semibold">Multiple signers</span>
           )}
         </div>
       )}
@@ -1069,7 +1069,7 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
         {/* Orange accent line */}
         <div className="h-0.5 w-full bg-primary" />
         <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+          <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors">
             <ChevronLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
@@ -1079,13 +1079,13 @@ export default function FormFieldBuilder({ templateId, onBack }: FormFieldBuilde
           <div className="flex items-center gap-1 rounded-xl p-1 border border-slate-200 bg-slate-50">
             <button onClick={() => setView('build')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                view === 'build' ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                view === 'build' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'
               }`}>
               <Zap size={11} /> Build
             </button>
             <button onClick={() => setView('preview')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                view === 'preview' ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:text-slate-600'
+                view === 'preview' ? 'bg-slate-200 text-slate-700' : 'text-slate-600 hover:text-slate-800'
               }`}>
               <Eye size={11} /> Preview
             </button>

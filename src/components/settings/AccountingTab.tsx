@@ -112,7 +112,7 @@ function SetupModal({ isOwner, onClose, onSaved }: SetupModalProps) {
             <p className="font-bold text-slate-900">Setup Xero</p>
             <p className="text-xs text-slate-500">Enter your Xero Developer App credentials</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors">
             <XCircle size={18} />
           </button>
         </div>

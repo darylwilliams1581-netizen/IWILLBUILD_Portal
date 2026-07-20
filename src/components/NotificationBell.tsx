@@ -191,7 +191,7 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
                     Mark all read
                   </button>
                 )}
-                <button onClick={() => setOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors rounded">
+                <button onClick={() => setOpen(false)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors rounded">
                   <X size={13} />
                 </button>
               </div>
@@ -226,7 +226,7 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
                           <span className={`text-xs font-bold truncate ${alert.read ? 'text-slate-600' : 'text-slate-900'}`}>
                             {alert.title}
                           </span>
-                          <span className="text-[10px] text-slate-400 shrink-0">{formatRelative(alert.createdAt)}</span>
+                          <span className="text-[10px] text-slate-500 shrink-0">{formatRelative(alert.createdAt)}</span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">{alert.message}</p>
                       </div>

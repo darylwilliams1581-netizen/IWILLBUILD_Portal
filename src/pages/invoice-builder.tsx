@@ -171,7 +171,7 @@ function RecordPaymentModal({
             <div className="p-1.5 bg-emerald-50 rounded-md"><CreditCard size={15} className="text-emerald-600" /></div>
             <h2 className="font-heading font-bold text-sm">Record Payment</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <form onSubmit={submit} className="p-5 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">

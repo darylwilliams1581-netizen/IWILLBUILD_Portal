@@ -394,7 +394,7 @@ export default function ProfilePage() {
                       <p className="text-sm font-medium text-slate-800 truncate">{att.filename}</p>
                       <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </div>
-                    <a href={att.url} download={att.filename} className="text-slate-400 hover:text-slate-700 transition-colors p-1.5 rounded-lg hover:bg-slate-200">
+                    <a href={att.url} download={att.filename} className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200">
                       <Download size={14} />
                     </a>
                     <button
@@ -426,14 +426,14 @@ export default function ProfilePage() {
                 <label className={labelClass}>Current Password</label>
                 <div className="relative">
                   <input type={showCurrent ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} autoComplete="current-password" placeholder="Enter your current password" className={`${inputClass} pr-10`} />
-                  <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}</button>
                 </div>
               </div>
               <div>
                 <label className={labelClass}>New Password</label>
                 <div className="relative">
                   <input type={showNew ? 'text' : 'password'} value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" placeholder="Min 8 chars, 1 number, 1 symbol" className={`${inputClass} pr-10 ${newPwError ? 'border-red-300' : ''}`} />
-                  <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showNew ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showNew ? <EyeOff size={15} /> : <Eye size={15} />}</button>
                 </div>
                 {newPwError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{newPwError}</p>}
               </div>
@@ -441,7 +441,7 @@ export default function ProfilePage() {
                 <label className={labelClass}>Confirm New Password</label>
                 <div className="relative">
                   <input type={showConfirm ? 'text' : 'password'} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" placeholder="Re-enter new password" className={`${inputClass} pr-10 ${confirmPwError ? 'border-red-300' : confirmPw && !confirmPwError ? 'border-emerald-300' : ''}`} />
-                  <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                  <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
                 </div>
                 {confirmPwError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{confirmPwError}</p>}
                 {confirmPw && !confirmPwError && <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1"><CheckCircle2 size={11} />Passwords match</p>}
@@ -485,7 +485,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => setInstallOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 aria-label="Close"
               >
                 <X size={16} />

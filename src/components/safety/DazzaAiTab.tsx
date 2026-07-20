@@ -178,7 +178,7 @@ export default function DazzaAiTab() {
           );
         })}
         {messages.length > 0 && (
-          <button onClick={clearChat} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors ml-auto">
+          <button onClick={clearChat} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 hover:bg-slate-50 transition-colors ml-auto">
             <RefreshCw size={12} />Clear
           </button>
         )}

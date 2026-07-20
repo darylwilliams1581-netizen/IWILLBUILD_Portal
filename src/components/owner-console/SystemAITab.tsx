@@ -551,7 +551,7 @@ function ModuleInventory() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-700 truncate">{label}</p>
-              <p className="text-[10px] text-slate-400 font-mono">{route}</p>
+              <p className="text-[10px] text-slate-500 font-mono">{route}</p>
             </div>
             <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
           </div>

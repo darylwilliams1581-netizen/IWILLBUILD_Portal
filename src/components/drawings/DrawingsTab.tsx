@@ -402,7 +402,7 @@ export default function DrawingsTab({ jobId }: { jobId: number }) {
                                   </button>
                                 )}
                                 {dwg && !pdf && (
-                                  <span className="text-[10px] text-slate-400 px-1.5 py-0.5 bg-slate-100 rounded-lg">DWG</span>
+                                  <span className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-100 rounded-lg">DWG</span>
                                 )}
                                 <a href={fileServePath(drawing.original_file_id)} download title="Download original"
                                   className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">

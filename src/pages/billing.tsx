@@ -749,7 +749,7 @@ export default function BillingPage() {
               <button
                 onClick={fetchStatus}
                 disabled={loading}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
                 title="Refresh status"
               >
                 <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />

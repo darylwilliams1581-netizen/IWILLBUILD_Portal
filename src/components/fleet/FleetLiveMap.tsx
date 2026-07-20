@@ -446,7 +446,7 @@ export default function FleetLiveMap() {
           </div>
 
           <div className="px-3 py-2 border-t border-slate-200 bg-white">
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-slate-500">
               Last updated: {lastRefresh.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
           </div>

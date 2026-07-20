@@ -217,7 +217,7 @@ export default function AssetTodos({ assetId }: { assetId: number }) {
       {/* Done tasks */}
       {done.length > 0 && (
         <details className="group">
-          <summary className="cursor-pointer text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors list-none flex items-center gap-1.5 py-1">
+          <summary className="cursor-pointer text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors list-none flex items-center gap-1.5 py-1">
             <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
             {done.length} completed task{done.length !== 1 ? 's' : ''}
           </summary>

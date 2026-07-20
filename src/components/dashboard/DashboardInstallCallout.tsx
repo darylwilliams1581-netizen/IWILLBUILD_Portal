@@ -144,7 +144,7 @@ export default function DashboardInstallCallout() {
         <button
           onClick={handleSnooze}
           title="Remind me later"
-          className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+          className="text-slate-600 hover:text-slate-800 transition-colors p-1"
         >
           <X size={15} />
         </button>
@@ -153,7 +153,7 @@ export default function DashboardInstallCallout() {
       {/* Permanent dismiss — small link */}
       <button
         onClick={handleDismiss}
-        className="hidden sm:block text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 shrink-0 whitespace-nowrap"
+        className="hidden sm:block text-xs text-slate-600 hover:text-slate-800 underline underline-offset-2 shrink-0 whitespace-nowrap"
       >
         Don't show again
       </button>

@@ -111,7 +111,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
             <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${meta.bg} ${meta.border} ${meta.color}`}>
               {meta.label}
             </span>
-            <span className="text-[10px] text-slate-400 ml-auto">
+            <span className="text-[10px] text-slate-500 ml-auto">
               {new Date(note.createdAt).toLocaleString('en-AU', {
                 day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
               })}
@@ -152,7 +152,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
         <button
           type="button"
           onClick={() => setCommentsOpen((v) => !v)}
-          className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-400 hover:text-slate-600 hover:bg-slate-50/60 transition-colors"
+          className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-slate-600 hover:text-slate-800 hover:bg-slate-50/60 transition-colors"
         >
           <MessageSquare size={11} />
           {localComments.length > 0

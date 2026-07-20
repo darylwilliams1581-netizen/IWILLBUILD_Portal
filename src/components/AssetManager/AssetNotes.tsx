@@ -94,7 +94,7 @@ export default function AssetNotes({ assetId }: { assetId: number }) {
           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
         />
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-slate-400">Cmd+Enter to save</span>
+          <span className="text-[10px] text-slate-500">Cmd+Enter to save</span>
           <button
             onClick={() => void handleAdd()}
             disabled={saving || !body.trim()}
@@ -131,7 +131,7 @@ export default function AssetNotes({ assetId }: { assetId: number }) {
                 {note.created_by_name && (
                   <span className="text-[10px] font-semibold text-slate-400">{note.created_by_name}</span>
                 )}
-                <span className="text-[10px] text-slate-400">{fmt(note.created_at)}</span>
+                <span className="text-[10px] text-slate-500">{fmt(note.created_at)}</span>
               </div>
             </div>
           ))}

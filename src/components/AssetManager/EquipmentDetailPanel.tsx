@@ -130,7 +130,7 @@ function AssignModal({ assetId, onClose, onSaved }: {
       <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Assign to</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+          <button onClick={onClose} className="p-1 text-slate-600 hover:text-slate-800"><X size={16} /></button>
         </div>
         <div className="grid grid-cols-5 gap-2">
           {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
@@ -235,7 +235,7 @@ function EditModal({ eq, onClose, onSaved }: {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <h2 className="text-sm font-bold text-slate-900">Edit Equipment</h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={16} /></button>
+          <button onClick={onClose} className="p-1 text-slate-600 hover:text-slate-800"><X size={16} /></button>
         </div>
 
         {/* Scrollable body */}
@@ -449,7 +449,7 @@ export default function EquipmentDetailPanel({
       {/* ── Back bar ── */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-200 bg-white shrink-0">
         <button onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors">
+          className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors">
           <ChevronLeft size={14} /> Equipment
         </button>
       </div>
@@ -504,19 +504,19 @@ export default function EquipmentDetailPanel({
             <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
               {eq.make && (
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Make</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Make</p>
                   <p className="text-xs font-semibold text-slate-700">{eq.make}</p>
                 </div>
               )}
               {eq.model && (
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Model</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Model</p>
                   <p className="text-xs font-semibold text-slate-700">{eq.model}</p>
                 </div>
               )}
               {eq.serial_number && (
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Serial</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Serial</p>
                   <p className="text-xs font-mono text-slate-700">{eq.serial_number}</p>
                 </div>
               )}

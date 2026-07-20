@@ -272,7 +272,7 @@ export default function AMDefectsTab() {
                   </button>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditId(defect.id); setEditForm({}); }}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors">
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => fetch(`/api/asset-manager/defects/${defect.id}/archive`, { method: 'POST', credentials: 'include' }).then(() => load())}

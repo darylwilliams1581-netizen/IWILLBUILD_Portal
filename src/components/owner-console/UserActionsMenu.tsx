@@ -74,7 +74,7 @@ export default function UserActionsMenu({ user, onAction }: Props) {
       <button
         ref={btnRef}
         onClick={openMenu}
-        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
         title="User actions"
       >
         <MoreHorizontal size={16} />

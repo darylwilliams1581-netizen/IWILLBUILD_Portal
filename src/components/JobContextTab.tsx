@@ -104,7 +104,7 @@ export default function JobContextTab() {
                   </div>
                   <button
                     onClick={() => setOpen(false)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-colors"
                   >
                     <X size={14} />
                   </button>

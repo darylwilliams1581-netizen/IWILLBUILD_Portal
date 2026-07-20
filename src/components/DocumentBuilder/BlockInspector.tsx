@@ -119,7 +119,7 @@ function SelectedBlockPanel({ block, inspectorTab, setInspectorTab, deselect, ge
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold transition-colors border-b-2 ${
             inspectorTab === 'settings'
               ? 'border-primary text-primary'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
           }`}
         >
           <Settings size={11} /> Settings
@@ -129,7 +129,7 @@ function SelectedBlockPanel({ block, inspectorTab, setInspectorTab, deselect, ge
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold transition-colors border-b-2 ${
             inspectorTab === 'logic'
               ? 'border-primary text-primary'
-              : 'border-transparent text-slate-400 hover:text-slate-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
           }`}
         >
           <Zap size={11} /> Logic
@@ -169,7 +169,7 @@ function DocumentInspectorPanel() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${tab === t ? 'text-primary border-b-2 border-primary' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${tab === t ? 'text-primary border-b-2 border-primary' : 'text-slate-600 hover:text-slate-800'}`}
           >
             {t}
           </button>
@@ -416,7 +416,7 @@ function CommonBlockSettings({ block }: { block: DocumentBlock }) {
         />
         <button
           onClick={() => upd({ backgroundColor: undefined })}
-          className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+          className="text-[10px] text-slate-600 hover:text-slate-800 transition-colors"
         >
           Clear
         </button>
@@ -431,7 +431,7 @@ function CommonBlockSettings({ block }: { block: DocumentBlock }) {
         />
         <button
           onClick={() => upd({ borderColor: undefined })}
-          className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+          className="text-[10px] text-slate-600 hover:text-slate-800 transition-colors"
         >
           Clear
         </button>
@@ -648,7 +648,7 @@ function RiskMatrixInspector({ block, upd }: { block: RiskMatrixBlock; upd: (p: 
           <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${block.showOnExport ? 'translate-x-4' : 'translate-x-1'}`} />
         </button>
       </div>
-      <p className="text-[10px] text-slate-400 leading-relaxed">
+      <p className="text-[10px] text-slate-500 leading-relaxed">
         Standard AS/NZS 5×5 risk matrix — Likelihood (A–E) × Consequence (1–5). Cells are colour-coded: green (Low), yellow (Medium), orange (High), red (Extreme).
       </p>
     </div>

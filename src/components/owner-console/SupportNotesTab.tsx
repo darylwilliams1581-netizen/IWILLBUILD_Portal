@@ -254,7 +254,7 @@ export default function SupportNotesTab() {
             <button
               onClick={loadNotes}
               disabled={loading}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-xs text-slate-600 hover:text-slate-800 transition-colors"
             >
               <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
             </button>

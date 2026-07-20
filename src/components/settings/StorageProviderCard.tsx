@@ -82,7 +82,7 @@ export default function StorageProviderCard() {
         </div>
         <button
           onClick={loadStatus}
-          className="text-slate-400 hover:text-slate-600 transition-colors"
+          className="text-slate-600 hover:text-slate-800 transition-colors"
           title="Refresh"
         >
           <RefreshCw size={14} />
@@ -166,7 +166,7 @@ export default function StorageProviderCard() {
         {/* How to switch to R2 */}
         {isLocal && (
           <details className="group">
-            <summary className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer select-none flex items-center gap-1 transition-colors">
+            <summary className="text-xs text-slate-600 hover:text-slate-800 cursor-pointer select-none flex items-center gap-1 transition-colors">
               <ExternalLink size={11} />
               How to switch to Cloudflare R2
             </summary>

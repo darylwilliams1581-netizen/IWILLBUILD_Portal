@@ -113,7 +113,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                   <button
                     type="button"
                     onClick={() => setShowCurrent(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
                   >
                     {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -134,7 +134,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                   <button
                     type="button"
                     onClick={() => setShowNew(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
                   >
                     {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
@@ -179,7 +179,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
                   >
                     {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>

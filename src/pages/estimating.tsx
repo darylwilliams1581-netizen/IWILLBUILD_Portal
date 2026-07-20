@@ -154,7 +154,7 @@ function CostGuidePickerModal({
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">Click an item to add it as a recipe line (qty defaults to 1).</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors shrink-0">
             <X size={16} />
           </button>
         </div>
@@ -370,9 +370,9 @@ function RecipeModal({
                         </td>
                         <td className="px-2 py-1.5">
                           <div className="flex items-center gap-0.5 justify-end">
-                            <button type="button" onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowUp size={11} /></button>
-                            <button type="button" onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowDown size={11} /></button>
-                            <button type="button" onClick={() => copyLine(line._key)} className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"><Copy size={11} /></button>
+                            <button type="button" onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowUp size={11} /></button>
+                            <button type="button" onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowDown size={11} /></button>
+                            <button type="button" onClick={() => copyLine(line._key)} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Copy size={11} /></button>
                             <button type="button" onClick={() => deleteLine(line._key)} className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={11} /></button>
                           </div>
                         </td>
@@ -735,7 +735,7 @@ export function RecipesTab() {
                   <div className="text-sm font-mono font-semibold text-slate-700 shrink-0 ml-2">${total.toFixed(2)}</div>
                   <div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => { setEditing(recipe); setShowModal(true); }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"><Pencil size={13} /></button>
-                    <button onClick={() => handleDuplicate(recipe)} className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"><Copy size={13} /></button>
+                    <button onClick={() => handleDuplicate(recipe)} className="p-1.5 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Copy size={13} /></button>
                     <button onClick={() => handleDelete(recipe.id)} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
                   </div>
                 </div>
@@ -829,7 +829,7 @@ export default function EstimatingPage() {
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-          <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+          <button onClick={openMobileMenu} className="md:hidden p-2 -ml-1 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
             <Calculator size={20} />
           </button>
           <Calculator size={18} className="text-primary shrink-0" />

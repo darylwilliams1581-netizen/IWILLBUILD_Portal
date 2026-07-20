@@ -314,7 +314,7 @@ export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, 
                               </div>
                               <div className="min-w-0">
                                 <p className="text-xs font-medium text-slate-700 group-hover:text-primary truncate">{blockDef.label}</p>
-                                <p className="text-[10px] text-slate-400 truncate">{blockDef.description}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{blockDef.description}</p>
                               </div>
                             </button>
                           );

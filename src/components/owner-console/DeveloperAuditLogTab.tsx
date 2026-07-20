@@ -215,7 +215,7 @@ export default function DeveloperAuditLogTab() {
                           {e.target_email ?? '—'}
                         </p>
                         {e.target_user_id && (
-                          <p className="text-[10px] text-slate-400 font-mono truncate max-w-[180px]">
+                          <p className="text-[10px] text-slate-500 font-mono truncate max-w-[180px]">
                             {e.target_user_id.slice(0, 12)}…
                           </p>
                         )}
@@ -238,7 +238,7 @@ export default function DeveloperAuditLogTab() {
                         <p className="text-xs text-slate-600 font-semibold truncate max-w-[160px]">
                           {e.performed_by_email ?? '—'}
                         </p>
-                        <p className="text-[10px] text-slate-400 font-mono truncate max-w-[160px]">
+                        <p className="text-[10px] text-slate-500 font-mono truncate max-w-[160px]">
                           {e.performed_by_user_id.slice(0, 12)}…
                         </p>
                       </td>

@@ -148,7 +148,7 @@ export default function JobEmergencyTab({ jobId, userRole }: Props) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => void load()}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             title="Refresh"
           >
             <RefreshCw size={14} />

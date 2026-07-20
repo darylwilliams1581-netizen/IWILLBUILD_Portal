@@ -107,7 +107,7 @@ export default function RouteErrorFallback() {
       {!isAuthError && (
         <button
           onClick={clearAllCachesAndGoToLogin}
-          className="mt-5 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+          className="mt-5 text-xs text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors"
         >
           Clear session &amp; go to login
         </button>

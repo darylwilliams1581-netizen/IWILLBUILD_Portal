@@ -138,7 +138,7 @@ function TemplateModal({ mode, initial, onClose, onSave, saving }: TemplateModal
               {mode === 'create' ? 'New Form Template' : 'Edit Template'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -353,7 +353,7 @@ function TemplateCard({ t, onBuild, onEdit, onDelete, onShare, onShareToLibrary,
         )}
         <button
           onClick={onEdit}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+          className="p-2 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-colors"
           title="Edit template"
         >
           <Pencil size={14} />
@@ -450,7 +450,7 @@ function ShareLinkModal({ templateId, templateName, onClose }: {
           </div>
         )}
 
-        <p className="text-[10px] text-slate-400 mt-3">
+        <p className="text-[10px] text-slate-500 mt-3">
           This link is permanent. To revoke access, contact your administrator.
         </p>
       </motion.div>

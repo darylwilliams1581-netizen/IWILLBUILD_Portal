@@ -273,7 +273,7 @@ export default function DashboardBannerTab({ isAdmin }: DashboardBannerTabProps)
               <button
                 type="button"
                 onClick={() => setPreviewVisible((v) => !v)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-600 hover:text-slate-800 transition-colors"
               >
                 {previewVisible ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>

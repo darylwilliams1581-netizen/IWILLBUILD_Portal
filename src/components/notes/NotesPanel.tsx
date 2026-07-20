@@ -205,7 +205,7 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
             >
               <X size={11} />
             </button>

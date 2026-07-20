@@ -219,7 +219,7 @@ export default function DocSidebar({ onImportDocx, collapsed, onToggleCollapse }
       <div className="flex flex-col items-center py-3 gap-2 border-r border-slate-200 bg-white w-10 flex-shrink-0">
         <button
           onClick={onToggleCollapse}
-          className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
           title="Expand sidebar"
         >
           <PanelLeftOpen size={14} />

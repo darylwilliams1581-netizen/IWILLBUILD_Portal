@@ -159,7 +159,7 @@ export default function OrphanActionModal({ action, user, onClose, onSuccess }: 
             <h2 className="font-black text-slate-900 text-lg leading-tight">{cfg.title}</h2>
             <p className="text-sm text-slate-500 mt-1">{cfg.description}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors mt-0.5">
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors mt-0.5">
             <X size={18} />
           </button>
         </div>

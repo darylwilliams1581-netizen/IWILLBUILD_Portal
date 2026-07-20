@@ -187,7 +187,7 @@ function InviteModal({
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-heading font-bold text-lg text-slate-900">Invite Team Member</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
 
         {success ? (
@@ -364,7 +364,7 @@ function EditMemberModal({
               <p className="text-xs text-slate-400">{member.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
 
         {/* Owner locked notice */}

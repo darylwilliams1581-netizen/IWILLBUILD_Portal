@@ -518,7 +518,7 @@ export default function SwmsPrintModal({ swms, onClose }: Props) {
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             >
               <X size={16} />
             </button>

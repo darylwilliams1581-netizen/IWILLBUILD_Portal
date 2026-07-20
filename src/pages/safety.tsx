@@ -222,7 +222,7 @@ export function SwmsLibraryTab() {
               <Plus size={15} />Create SWMS
             </button>
           </div>
-          <button onClick={handleSeed} disabled={seeding} className="mt-3 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors disabled:opacity-50">
+          <button onClick={handleSeed} disabled={seeding} className="mt-3 text-xs text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors disabled:opacity-50">
             {seeding ? 'Loading…' : 'Or load a starter template'}
           </button>
         </div>
@@ -244,7 +244,7 @@ export function SwmsLibraryTab() {
                 {s.work_activity && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{s.work_activity}</p>}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title="Duplicate">
+                <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Duplicate">
                   {duplicating === s.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                 </button>
                 <button onClick={() => setShareTarget({ id: s.id, title: s.title })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Share link">
@@ -259,7 +259,7 @@ export function SwmsLibraryTab() {
                     <Library size={14} />
                   </button>
                 )}
-                <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF">
+                <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF">
                   <Printer size={14} />
                 </button>
                 <a href={`/api/safety/swms/${s.id}/export?format=pdf`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
@@ -271,7 +271,7 @@ export function SwmsLibraryTab() {
                 <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
                   <Wand2 size={14} />
                 </button>
-                <button onClick={() => handleArchive(s.id, s.status)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" title={s.status === 'archived' ? 'Unarchive' : 'Archive'}>
+                <button onClick={() => handleArchive(s.id, s.status)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title={s.status === 'archived' ? 'Unarchive' : 'Archive'}>
                   <ChevronDown size={14} />
                 </button>
               </div>

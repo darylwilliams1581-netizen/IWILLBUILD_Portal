@@ -172,7 +172,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
               <Lock size={9} />Inactive
             </span>
           )}
-          <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{revLabel(doc.updated_at)}</span>
+          <span className="text-[10px] text-slate-500 font-medium whitespace-nowrap">{revLabel(doc.updated_at)}</span>
         </div>
 
         {/* Title + type */}
@@ -201,7 +201,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           <button
             title={expanded ? 'Collapse' : 'Expand'}
             onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0"
+            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0"
           >
             <ChevronDown size={14} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           </button>
@@ -238,7 +238,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
           <p className="text-xs text-red-700 flex-1">Delete <strong>{doc.name}</strong>? This cannot be undone.</p>
           <button onClick={() => { setConfirmDel(false); onDelete(doc.id); }} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors">Delete</button>
-          <button onClick={() => setConfirmDel(false)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors"><X size={13} /></button>
+          <button onClick={() => setConfirmDel(false)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors"><X size={13} /></button>
         </div>
       )}
     </motion.div>

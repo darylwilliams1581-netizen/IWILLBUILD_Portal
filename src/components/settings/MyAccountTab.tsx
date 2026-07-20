@@ -155,7 +155,7 @@ function PhoneVerificationSection() {
             {phoneVerified && verifyStep !== 'sent' ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold"><BadgeCheck size={16} className="text-emerald-500" /><span>{savedPhone} — Verified</span></div>
-                <button onClick={() => { setVerifyStep('idle'); setPhoneVerified(false); }} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"><RefreshCw size={11} />Re-verify</button>
+                <button onClick={() => { setVerifyStep('idle'); setPhoneVerified(false); }} className="text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1 transition-colors"><RefreshCw size={11} />Re-verify</button>
               </div>
             ) : verifyStep === 'done' ? (
               <div className="flex items-center gap-2 text-emerald-700 text-sm font-semibold"><BadgeCheck size={16} className="text-emerald-500" />Phone verified! You can now use SMS for account recovery.</div>
@@ -167,7 +167,7 @@ function PhoneVerificationSection() {
                   <button type="submit" disabled={verifying || code.length !== 6} className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     {verifying ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}Verify
                   </button>
-                  <button type="button" onClick={() => setVerifyStep('idle')} className="text-sm text-slate-400 hover:text-slate-600 px-3 transition-colors">Cancel</button>
+                  <button type="button" onClick={() => setVerifyStep('idle')} className="text-sm text-slate-600 hover:text-slate-800 px-3 transition-colors">Cancel</button>
                 </div>
                 {verifyError && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{verifyError}</p>}
                 <button type="button" onClick={handleSendCode} disabled={sendingCode} className="text-xs text-primary hover:text-orange-600 transition-colors self-start">Resend code</button>
@@ -299,14 +299,14 @@ export default function MyAccountTab() {
               <label className={labelClass}>Current Password</label>
               <div className="relative">
                 <input type={showCurrent ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} autoComplete="current-password" placeholder="Enter your current password" className={`${inputClass} pr-10`} />
-                <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}</button>
               </div>
             </div>
             <div>
               <label className={labelClass}>New Password</label>
               <div className="relative">
                 <input type={showNew ? 'text' : 'password'} value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" placeholder="Min 8 chars, 1 number, 1 symbol" className={`${inputClass} pr-10 ${newPwError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : ''}`} />
-                <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showNew ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showNew ? <EyeOff size={15} /> : <Eye size={15} />}</button>
               </div>
               {newPwError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{newPwError}</p>}
               <StrengthBar password={newPw} />
@@ -315,7 +315,7 @@ export default function MyAccountTab() {
               <label className={labelClass}>Confirm New Password</label>
               <div className="relative">
                 <input type={showConfirm ? 'text' : 'password'} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" placeholder="Re-enter new password" className={`${inputClass} pr-10 ${confirmPwError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : confirmPw && !confirmPwError ? 'border-emerald-300 focus:ring-emerald-200 focus:border-emerald-400' : ''}`} />
-                <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" tabIndex={-1}>{showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors" tabIndex={-1}>{showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}</button>
               </div>
               {confirmPwError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{confirmPwError}</p>}
               {confirmPw && !confirmPwError && <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1"><CheckCircle2 size={11} />Passwords match</p>}

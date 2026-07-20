@@ -577,7 +577,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             {!isUploading && (
               <button
                 onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
-                className="text-[11px] text-slate-400 hover:text-slate-600 font-semibold transition-colors"
+                className="text-[11px] text-slate-600 hover:text-slate-800 font-semibold transition-colors"
               >
                 Clear done
               </button>
@@ -663,7 +663,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                         /* HEIC placeholder for non-iOS browsers that can't display HEIC */
                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 gap-1">
                           <ImageOff size={20} className="text-slate-400" />
-                          <span className="text-[10px] text-slate-400 font-semibold">HEIC</span>
+                          <span className="text-[10px] text-slate-500 font-semibold">HEIC</span>
                         </div>
                       ) : (
                         <img
@@ -693,26 +693,26 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
                     {/* Metadata strip — hidden in small view */}
                     {viewSize !== 'small' && (
-                      <div className="px-2.5 py-2 bg-white border-t border-slate-100 flex flex-col gap-0.5">
+                      <div className="px-2.5 py-2 bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5">
                         <div className="flex items-start justify-between gap-1">
                           <div className="min-w-0 flex-1">
                             {photo.label
                               ? <p className="text-xs font-semibold text-slate-800 truncate">{photo.label}</p>
-                              : <p className="text-xs text-slate-400 italic truncate">{photo.originalName ?? photo.filename}</p>
+                              : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
                             }
                           </div>
                           {!selectMode && (
                             <div className="flex items-center gap-0.5 shrink-0">
-                              <button onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Edit"><Pencil size={13} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors" title="Download"><Download size={13} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }} className="p-1 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors" title="Delete"><Trash2 size={13} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
                             </div>
                           )}
                         </div>
                         {photo.uploadedByName && (
-                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
+                          <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
                         )}
-                        <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
+                        <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
                       </div>
                     )}
                   </motion.div>

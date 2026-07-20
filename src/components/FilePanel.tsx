@@ -223,7 +223,7 @@ function Lightbox({ file, canDelete, onClose, onDelete }: LightboxProps) {
             <p className="text-sm font-semibold text-slate-800 truncate">{file.label || file.originalName}</p>
             <p className="text-xs text-slate-400 truncate">{file.originalName} · {mimeLabel(file.mimeType)} · {formatBytes(file.sizeBytes)}</p>
           </div>
-          <button onClick={onClose} className="ml-3 shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <button onClick={onClose} className="ml-3 shrink-0 p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -389,7 +389,7 @@ function UploadModal({ jobId: initialJobId, fleetAssetId, onClose, onUploaded }:
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
           <h2 className="font-heading font-bold text-base">Upload File</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
           <div
@@ -559,7 +559,7 @@ function GalleryView({
             {/* Info */}
             <div className="px-2.5 py-2">
               <p className="text-xs font-semibold text-slate-800 truncate">{f.label || f.originalName}</p>
-              <p className="text-[10px] text-slate-400 truncate">{f.fileCategory} · {formatBytes(f.sizeBytes)}</p>
+              <p className="text-[10px] text-slate-500 truncate">{f.fileCategory} · {formatBytes(f.sizeBytes)}</p>
             </div>
             {/* Hover overlay */}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -713,7 +713,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
             type="button"
             onClick={() => setViewMode('list')}
             className={`w-8 h-9 flex items-center justify-center transition-colors ${
-              viewMode === 'list' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'
+              viewMode === 'list' ? 'bg-slate-100 text-slate-800' : 'text-slate-600 hover:text-slate-800'
             }`}
             title="List view"
           >
@@ -723,7 +723,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
             type="button"
             onClick={() => setViewMode('gallery')}
             className={`w-8 h-9 flex items-center justify-center transition-colors ${
-              viewMode === 'gallery' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'
+              viewMode === 'gallery' ? 'bg-slate-100 text-slate-800' : 'text-slate-600 hover:text-slate-800'
             }`}
             title="Gallery view"
           >
@@ -758,7 +758,7 @@ export default function FilePanel({ jobId, fleetAssetId, compact, showCategoryFi
           ))}
           <button
             onClick={() => setSelectedCats(new Set(['All']))}
-            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            className="text-xs text-slate-600 hover:text-slate-800 transition-colors"
           >
             Clear all
           </button>

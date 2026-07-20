@@ -178,7 +178,7 @@ export default function InvoicePrintModal({ invoice, onClose }: Props) {
             <div className="p-1.5 bg-orange-50 rounded-md"><Printer size={15} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-sm">Print / Save PDF</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <div className="p-5">
           {loading ? (

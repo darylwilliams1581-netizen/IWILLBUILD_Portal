@@ -195,7 +195,7 @@ export default function SignInHistoryPage() {
             <button
               onClick={() => void load()}
               disabled={loading}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
               title="Refresh"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -208,7 +208,7 @@ export default function SignInHistoryPage() {
           <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-slate-700">Filter records</p>
-              <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowFilters(false)} className="text-slate-600 hover:text-slate-800">
                 <X size={15} />
               </button>
             </div>

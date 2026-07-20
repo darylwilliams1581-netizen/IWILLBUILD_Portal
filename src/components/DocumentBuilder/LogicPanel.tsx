@@ -97,7 +97,7 @@ export default function LogicPanel({ blockId }: Props) {
             <Zap size={16} className="text-primary" />
           </div>
           <p className="text-xs font-semibold text-slate-600">No logic rules yet</p>
-          <p className="text-[10px] text-slate-400 max-w-[160px] leading-relaxed">
+          <p className="text-[10px] text-slate-500 max-w-[160px] leading-relaxed">
             Add a rule to show, hide, or require things based on field values.
           </p>
           <button
@@ -140,7 +140,7 @@ export default function LogicPanel({ blockId }: Props) {
       {/* Help tip */}
       <div className="flex items-start gap-2 px-2.5 py-2 bg-slate-50 border border-slate-100 rounded-lg">
         <Info size={11} className="text-slate-400 flex-shrink-0 mt-0.5" />
-        <p className="text-[10px] text-slate-400 leading-relaxed">
+        <p className="text-[10px] text-slate-500 leading-relaxed">
           Rules on this block run when the document is filled out. Actions can target any block in the document.
         </p>
       </div>

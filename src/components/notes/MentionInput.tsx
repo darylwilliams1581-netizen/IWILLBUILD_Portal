@@ -158,7 +158,7 @@ export default function MentionInput({ value, onChange, members, placeholder, mi
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-semibold truncate">{m.name}</p>
-                {m.role && <p className="text-[10px] text-slate-400 capitalize">{m.role}</p>}
+                {m.role && <p className="text-[10px] text-slate-500 capitalize">{m.role}</p>}
               </div>
             </button>
           ))}

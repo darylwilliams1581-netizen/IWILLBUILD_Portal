@@ -183,7 +183,7 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
                   <p className="text-xs text-slate-400 truncate max-w-[220px]">{resolvedTitle}</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors">
                 <X size={16} />
               </button>
             </div>

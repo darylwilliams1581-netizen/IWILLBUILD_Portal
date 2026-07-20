@@ -420,7 +420,7 @@ function AttachmentMiniList({ tenderId }: { tenderId: number }) {
         <div key={att.id} className="flex items-center gap-2">
           <Paperclip size={11} className="text-slate-400 shrink-0" />
           <span className="text-xs text-slate-600 truncate flex-1">{att.original_name}</span>
-          <span className="text-[10px] text-slate-400">{att.sizeLabel}</span>
+          <span className="text-[10px] text-slate-500">{att.sizeLabel}</span>
           <a
             href={att.url}
             download={att.original_name}
@@ -645,7 +645,7 @@ export default function AssetDetailPanel({ assetId, onBack, onAssetUpdated }: Pr
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors"
           >
             <ChevronLeft size={14} />
             Assets

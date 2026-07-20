@@ -67,7 +67,7 @@ export default function AssetManagerPage() {
                 </button>
                 <button
                   onClick={() => navigate('/studio')}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors mr-1"
+                  className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors mr-1"
                 >
                   <ChevronLeft size={14} />
                   <span className="hidden sm:inline">Studio</span>

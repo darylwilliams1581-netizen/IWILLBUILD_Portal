@@ -248,7 +248,7 @@ export default function FormTemplatesTab({ companies }: Props) {
                             {t.category}
                           </span>
                           {t.formType && t.formType !== t.category && (
-                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                               {t.formType}
                             </span>
                           )}

@@ -55,7 +55,7 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
               <p className="text-xs text-slate-400">{name} · {to}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <form onSubmit={handleSend} className="p-5 flex flex-col gap-4">
           {sent ? (
@@ -184,7 +184,7 @@ function CustomerFormModal({
             <div className="p-1.5 bg-orange-50 rounded-md"><Users size={16} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-base">{initial ? 'Edit Stakeholder' : 'New Stakeholder'}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">

@@ -150,7 +150,7 @@ export function FormSharePanel({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-slate-400 hover:text-slate-600 text-xs"
+              className="text-slate-600 hover:text-slate-800 text-xs"
             >
               ✕
             </button>

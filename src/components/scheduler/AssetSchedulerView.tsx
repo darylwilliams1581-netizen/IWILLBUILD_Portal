@@ -237,7 +237,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
             </div>
             <h2 className="font-bold text-sm text-slate-800">{isEdit ? 'Edit Booking' : 'New Asset Booking'}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-800 transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -428,7 +428,7 @@ function BookingPopover({ booking, onEdit, onClose, anchorRef }: BookingPopoverP
           <span className={`w-2 h-2 rounded-full ${statusColor} shrink-0`} />
           <span className="font-bold text-slate-800 leading-tight">{booking.title}</span>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0"><X size={12} /></button>
+        <button onClick={onClose} className="text-slate-600 hover:text-slate-800 shrink-0"><X size={12} /></button>
       </div>
 
       <div className="flex flex-col gap-1 text-slate-600 mb-3">
@@ -662,7 +662,7 @@ export default function AssetSchedulerView({
                   <Link to={`/fleet/${a.id}`} className="text-xs font-bold text-slate-800 hover:text-orange-600 transition-colors truncate leading-tight">
                     {a.name}
                   </Link>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
                     {[a.type, a.rego].filter(Boolean).join(' · ') || a.make_model || '—'}
                   </p>
                 </div>

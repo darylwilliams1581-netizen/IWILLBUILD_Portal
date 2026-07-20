@@ -202,6 +202,22 @@ function ClientOnly({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// ── DeferredMount ─────────────────────────────────────────────────────────────
+// Like ClientOnly but defers past the hydration commit entirely using
+// requestAnimationFrame. useEffect fires in the same commit as hydration in
+// React 19, which can still trigger removeChild mismatches when multiple
+// null-rendering nodes are consolidated. rAF fires after the browser has
+// painted the first frame, guaranteeing hydration is fully committed.
+function DeferredMount({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  if (!ready) return null;
+  return <>{children}</>;
+}
+
 // Sits inside AiroErrorBoundary so it intercepts the SOSAlertPopup
 // ReferenceError from the frozen RootLayout snapshot before AiroErrorBoundary
 // swallows it. Triggers a hard reload via __sosBoundaryTrigger.
@@ -261,11 +277,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
           content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
         />
       </Helmet>
-      <OfflineBanner />
-      <ClientOnly><PortalBanners /></ClientOnly>
-      <ClientOnly><ScrollRestoration /></ClientOnly>
-      <ActivePing />
-      <ClientOnly><PwaInstallPrompt /></ClientOnly>
+      {/* All client-only side-effect components in ONE DeferredMount wrapper.
+          rAF defers past the hydration commit entirely — useEffect alone fires
+          in the same commit as hydration in React 19, which still triggers
+          removeChild mismatches when multiple null-rendering nodes are present. */}
+      <DeferredMount>
+        <OfflineBanner />
+        <PortalBanners />
+        <ScrollRestoration />
+        <ActivePing />
+        <PwaInstallPrompt />
+      </DeferredMount>
       <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>
           {children}

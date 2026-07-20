@@ -81,7 +81,7 @@ export default function JobFormRunnerPage() {
         <p className="text-sm font-semibold text-slate-700">{error || 'Form not found'}</p>
         <button
           onClick={() => window.close()}
-          className="text-xs text-slate-400 hover:text-slate-600 underline"
+          className="text-xs text-slate-600 hover:text-slate-800 underline"
         >
           Close this tab
         </button>

@@ -167,7 +167,7 @@ export default function NotificationList() {
                     <span className={`text-xs font-bold truncate ${alert.read ? 'text-slate-600' : 'text-slate-900'}`}>
                       {alert.title}
                     </span>
-                    <span className="text-[10px] text-slate-400 shrink-0">{formatRelative(alert.createdAt)}</span>
+                    <span className="text-[10px] text-slate-500 shrink-0">{formatRelative(alert.createdAt)}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">{alert.message}</p>
                 </div>

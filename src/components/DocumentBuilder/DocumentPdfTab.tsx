@@ -89,7 +89,7 @@ function OverrideToggleRow({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-[10px] text-slate-400 hover:text-primary transition-colors flex items-center gap-0.5"
+            className="text-[10px] text-slate-500 hover:text-primary transition-colors flex items-center gap-0.5"
             title="Reset to company default"
           >
             <RotateCcw size={10} /> Reset
@@ -138,7 +138,7 @@ function OverrideTextarea({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-[10px] text-slate-400 hover:text-primary transition-colors flex items-center gap-0.5"
+            className="text-[10px] text-slate-500 hover:text-primary transition-colors flex items-center gap-0.5"
           >
             <RotateCcw size={10} /> Reset to default
           </button>
@@ -412,7 +412,7 @@ export default function DocumentPdfTab({ settings, onChange, templateName }: Pro
         <button
           type="button"
           onClick={() => onChange({ ...DEFAULT_TEMPLATE_PDF_SETTINGS })}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 transition-colors"
         >
           <RotateCcw size={11} /> Reset all to defaults
         </button>

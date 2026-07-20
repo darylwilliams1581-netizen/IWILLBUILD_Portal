@@ -359,7 +359,7 @@ function GravelCalc() {
         <div>
           <label className={lbl}>Density (t/m³)</label>
           <input type="number" value={density} onChange={(e) => setDensity(e.target.value)} placeholder="1.5" className={inp} />
-          <p className="text-[10px] text-slate-400 mt-1">Typical: gravel 1.4–1.7, crushed rock 1.6–1.8, sand 1.5–1.7</p>
+          <p className="text-[10px] text-slate-500 mt-1">Typical: gravel 1.4–1.7, crushed rock 1.6–1.8, sand 1.5–1.7</p>
         </div>
         {m3 > 0 && (
           <div className="flex flex-col gap-1.5">
@@ -397,7 +397,7 @@ function SoilCalc() {
         <div>
           <label className={lbl}>Density (t/m³) — optional</label>
           <input type="number" value={density} onChange={(e) => setDensity(e.target.value)} placeholder="1.3" className={inp} />
-          <p className="text-[10px] text-slate-400 mt-1">Typical: topsoil 0.9–1.3, fill 1.2–1.6</p>
+          <p className="text-[10px] text-slate-500 mt-1">Typical: topsoil 0.9–1.3, fill 1.2–1.6</p>
         </div>
         {m3 > 0 && (
           <div className="flex flex-col gap-1.5">

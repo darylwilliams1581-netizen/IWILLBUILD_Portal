@@ -867,7 +867,7 @@ export default function FormRunner({ jobId, job, submission, templateName, readO
           </button>
           <div className="text-right">
             <p className="text-xs font-bold text-slate-700">{answeredCount}/{visibleInputFields.length}</p>
-            <p className="text-[10px] text-slate-400">answered</p>
+            <p className="text-[10px] text-slate-500">answered</p>
           </div>
         </div>
       </div>

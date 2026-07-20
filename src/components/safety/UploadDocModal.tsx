@@ -116,7 +116,7 @@ export default function UploadDocModal({
                   <>
                     <FileText size={20} className="text-primary" />
                     <p className="text-xs font-semibold text-slate-700 text-center px-4 truncate max-w-full">{file.name}</p>
-                    <p className="text-[10px] text-slate-400">{(file.size / 1024).toFixed(0)} KB</p>
+                    <p className="text-[10px] text-slate-500">{(file.size / 1024).toFixed(0)} KB</p>
                   </>
                 ) : (
                   <>

@@ -22,7 +22,7 @@ export default function FieldBlockView({ block, requiredOverride, value, onChang
   );
 
   const helpEl = block.helpText ? (
-    <p className="text-[10px] text-slate-400 mt-0.5">{block.helpText}</p>
+    <p className="text-[10px] text-slate-500 mt-0.5">{block.helpText}</p>
   ) : null;
 
   const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60';

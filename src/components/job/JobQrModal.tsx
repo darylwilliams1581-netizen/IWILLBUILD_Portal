@@ -148,7 +148,7 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
+            className="text-slate-600 hover:text-slate-800 transition-colors"
           >
             <X size={18} />
           </button>

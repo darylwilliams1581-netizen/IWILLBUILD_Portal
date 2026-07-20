@@ -632,7 +632,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
                 )}
                 <button type="button" onClick={() => duplicateStep(step.id)} className="p-1 text-slate-400 hover:text-primary transition-colors" title="Duplicate"><Copy size={13} /></button>
                 <button type="button" onClick={() => removeStep(step.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors" title="Delete"><Trash2 size={13} /></button>
-                <button type="button" onClick={() => toggleExpand(step.id)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                <button type="button" onClick={() => toggleExpand(step.id)} className="p-1 text-slate-600 hover:text-slate-800 transition-colors">
                   {step.expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
               </div>
@@ -1144,7 +1144,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
                 {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warnCount} warning${warnCount > 1 ? 's' : ''}`}
               </div>
             )}
-            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
           </div>
         </div>
 

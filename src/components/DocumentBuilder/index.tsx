@@ -186,7 +186,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         {/* Close */}
         <button
           onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
           title="Close"
         >
           <X size={15} />
@@ -263,7 +263,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             <button
               onClick={undo}
               disabled={!canUndo()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Undo (⌘Z)"
             >
               <Undo2 size={13} />
@@ -271,7 +271,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             <button
               onClick={redo}
               disabled={!canRedo()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               title="Redo (⌘Y)"
             >
               <Redo2 size={13} />

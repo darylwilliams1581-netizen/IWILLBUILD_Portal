@@ -149,7 +149,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
           <h3 className="text-base font-bold text-slate-900">
             {isNew ? 'New Master Template' : 'Edit Master Template'}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 text-xl leading-none">&times;</button>
         </div>
 
         {/* Body */}
@@ -678,7 +678,7 @@ export default function SwmsMasterLibraryTab() {
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button
                       onClick={() => { setEditTarget(m); setShowEdit(true); }}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                      className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
                       title="Edit metadata (title, category, status…)"
                     >
                       <Pencil size={13} />

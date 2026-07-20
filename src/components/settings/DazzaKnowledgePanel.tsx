@@ -283,7 +283,7 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
             <p className="font-bold text-sm text-slate-800">
               {editingId ? 'Edit knowledge entry' : 'Add knowledge entry'}
             </p>
-            <button onClick={cancelForm} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <button onClick={cancelForm} className="text-slate-600 hover:text-slate-800 transition-colors">
               <X size={16} />
             </button>
           </div>
@@ -427,10 +427,10 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
                                   {entry.source_name}
                                 </span>
                               )}
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-slate-500">
                                 by {entry.created_by}
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-slate-500">
                                 {new Date(entry.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </span>
                             </div>
@@ -447,7 +447,7 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => toggleExpand(entry.id)}
-                              className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
+                              className="p-1.5 text-slate-600 hover:text-slate-800 transition-colors rounded-lg hover:bg-slate-100"
                               title={isExp ? 'Collapse' : 'Expand'}
                             >
                               {isExp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

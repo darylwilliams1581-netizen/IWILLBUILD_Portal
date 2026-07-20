@@ -83,7 +83,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
               <p className="text-xs text-slate-400 mt-0.5">{initial.job_name ?? `Job #${initial.job_id}`}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
@@ -258,7 +258,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
               <p className="text-xs text-slate-400">Select a job and one or more templates</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
@@ -415,7 +415,7 @@ function SignoffPanel({ swmsId, onClose }: { swmsId: number; onClose: () => void
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
               Sign-offs ({signoffs.length})
             </p>
-            <button onClick={onClose} className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1">
+            <button onClick={onClose} className="text-xs text-slate-600 hover:text-slate-800 transition-colors flex items-center gap-1">
               <ChevronUp size={12} /> Hide
             </button>
           </div>
@@ -430,7 +430,7 @@ function SignoffPanel({ swmsId, onClose }: { swmsId: number; onClose: () => void
                   <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-800">{s.worker_name}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-slate-500">
                       {[s.role, s.company_name, s.white_card_number ? `WC: ${s.white_card_number}` : null].filter(Boolean).join(' · ')}
                     </p>
                   </div>
@@ -593,7 +593,7 @@ export default function JobSwmsTab() {
                       <Users size={12} />
                       {signoffsOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                     </button>
-                    <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
+                    <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
                     <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
                     <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                       {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

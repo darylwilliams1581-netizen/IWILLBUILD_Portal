@@ -240,7 +240,7 @@ export default function SecurityTab() {
             <div className="border-t border-slate-100 pt-3">
               <button
                 onClick={() => { setPhase('disabled'); setError(''); setToken(''); }}
-                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-xs text-slate-600 hover:text-slate-800 transition-colors"
               >
                 Cancel setup
               </button>
@@ -284,7 +284,7 @@ export default function SecurityTab() {
                     <button
                       type="button"
                       onClick={() => setShowPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800"
                       tabIndex={-1}
                     >
                       {showPw ? <EyeOff size={15} /> : <Eye size={15} />}

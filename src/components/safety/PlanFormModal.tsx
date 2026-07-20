@@ -75,7 +75,7 @@ export default function PlanFormModal({ initial, jobs, onClose, onSaved }: Props
             <div className="p-1.5 bg-orange-50 rounded-md"><ShieldCheck size={16} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-base">{isEdit ? 'Edit Safety Plan' : 'New Site Safety Plan'}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">

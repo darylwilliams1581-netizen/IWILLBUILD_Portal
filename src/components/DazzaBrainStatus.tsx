@@ -287,7 +287,7 @@ export default function DazzaBrainStatus({ supportCompanyId }: { supportCompanyI
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-700 truncate">{entry.suggested_title}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 truncate">Q: {entry.question}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 truncate">Q: {entry.question}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{entry.suggested_category}</span>
                         <SourceBadge source={entry.source_type} />
@@ -396,11 +396,11 @@ export default function DazzaBrainStatus({ supportCompanyId }: { supportCompanyI
               <div key={entry.id} className="flex items-center gap-3 px-4 py-2.5">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-700 truncate">{entry.title}</p>
-                  <p className="text-[10px] text-slate-400">{entry.category}</p>
+                  <p className="text-[10px] text-slate-500">{entry.category}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {entry.confidence && <ConfidenceBadge level={entry.confidence} />}
-                  <span className="text-[10px] text-slate-400">{entry.usage_count} uses</span>
+                  <span className="text-[10px] text-slate-500">{entry.usage_count} uses</span>
                 </div>
               </div>
             ))}

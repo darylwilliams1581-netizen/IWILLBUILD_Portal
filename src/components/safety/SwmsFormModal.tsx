@@ -80,7 +80,7 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
               <p className="text-xs text-slate-400 mt-0.5">Safe Work Method Statement</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">

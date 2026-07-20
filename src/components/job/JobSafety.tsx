@@ -232,7 +232,7 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
                     <button
                       onClick={() => openPrint(j)}
                       disabled={loadingSignoffs === j.id}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                       title="Print / PDF"
                     >
                       {loadingSignoffs === j.id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}

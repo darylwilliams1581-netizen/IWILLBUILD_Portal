@@ -495,7 +495,7 @@ function CalendarView({ jobs, anchorDate, onNavigate, onReschedule }: CalendarVi
                   );
                 })}
                 {cellJobs.length > 3 && (
-                  <div className="text-[10px] text-slate-400 font-medium pl-1">+{cellJobs.length - 3} more</div>
+                  <div className="text-[10px] text-slate-500 font-medium pl-1">+{cellJobs.length - 3} more</div>
                 )}
               </div>
             </div>
@@ -822,7 +822,7 @@ function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: Ti
               <div className="w-48 shrink-0 px-3 flex items-center border-r border-slate-200 overflow-hidden">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-slate-800 truncate">{job.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate">
+                  <p className="text-[10px] text-slate-500 truncate">
                     {job.supervisorName ?? job.teamLabel ?? (job.jobNumber ? `#${job.jobNumber}` : '')}
                   </p>
                 </div>
@@ -1002,7 +1002,7 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
             <div key={row.id} className="flex border-b border-slate-100" style={{ height: rowH }}>
               <div className={`w-48 shrink-0 px-3 flex flex-col justify-center border-r border-slate-200 ${isUnassigned ? 'bg-amber-50' : ''}`}>
                 <p className="text-xs font-semibold text-slate-800 truncate">{row.label}</p>
-                <p className="text-[10px] text-slate-400 truncate capitalize">{row.sublabel}</p>
+                <p className="text-[10px] text-slate-500 truncate capitalize">{row.sublabel}</p>
               </div>
               <div className="relative flex-1" style={{ width: totalDays * DW }}>
                 {headerDays.map((d, i) => {
@@ -1044,7 +1044,7 @@ function CrewView({ members, unassignedJobs, window: timeWindow, anchorDate, loa
               <div key={m.id} className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${activeJobs.length === 0 ? 'bg-green-400' : activeJobs.length === 1 ? 'bg-orange-400' : 'bg-red-400'}`} />
                 <span className="text-[10px] text-slate-600 font-medium">{m.name}</span>
-                <span className="text-[10px] text-slate-400">{activeJobs.length === 0 ? 'Available' : `${activeJobs.length} job${activeJobs.length > 1 ? 's' : ''}`}</span>
+                <span className="text-[10px] text-slate-500">{activeJobs.length === 0 ? 'Available' : `${activeJobs.length} job${activeJobs.length > 1 ? 's' : ''}`}</span>
               </div>
             );
           })}
@@ -1087,7 +1087,7 @@ function UnscheduledSection({ jobs, onSchedule }: { jobs: SchedulerJob[]; onSche
               >
                 Schedule
               </button>
-              <Link to={`/jobs/${job.id}`} className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+              <Link to={`/jobs/${job.id}`} className="shrink-0 text-slate-600 hover:text-slate-800 transition-colors">
                 <ExternalLink size={13} />
               </Link>
             </div>

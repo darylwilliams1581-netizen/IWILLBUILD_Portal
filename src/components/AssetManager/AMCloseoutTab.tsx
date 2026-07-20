@@ -159,7 +159,7 @@ export default function AMCloseoutTab() {
                 </div>
                 {c.source_file_path && (
                   <a href={c.source_file_path} target="_blank" rel="noopener noreferrer"
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors">
                     <ExternalLink size={13} />
                   </a>
                 )}

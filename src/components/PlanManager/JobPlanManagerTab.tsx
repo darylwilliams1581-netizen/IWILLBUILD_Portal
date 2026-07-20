@@ -262,7 +262,7 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                         <button
                           onClick={() => void handleReorder(drawing.id, 'up')}
                           disabled={idx === 0 || reordering === drawing.id}
-                          className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 disabled:opacity-30 transition-colors"
+                          className="p-1 rounded hover:bg-slate-100 text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors"
                           title="Move up"
                         >
                           {reordering === drawing.id ? <Loader2 size={11} className="animate-spin" /> : <ChevronUp size={11} />}
@@ -270,7 +270,7 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                         <button
                           onClick={() => void handleReorder(drawing.id, 'down')}
                           disabled={idx === drawings.length - 1 || reordering === drawing.id}
-                          className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 disabled:opacity-30 transition-colors"
+                          className="p-1 rounded hover:bg-slate-100 text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors"
                           title="Move down"
                         >
                           <ChevronDown size={11} />
@@ -291,10 +291,10 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                               </span>
                             )}
                             {(drawing.annotation_count ?? 0) > 0 && (
-                              <span className="text-[10px] text-slate-400">{drawing.annotation_count} annotation{Number(drawing.annotation_count) !== 1 ? 's' : ''}</span>
+                              <span className="text-[10px] text-slate-500">{drawing.annotation_count} annotation{Number(drawing.annotation_count) !== 1 ? 's' : ''}</span>
                             )}
                             {!drawing.source_file_path && (
-                              <span className="text-[10px] text-slate-400 italic">No PDF</span>
+                              <span className="text-[10px] text-slate-500 italic">No PDF</span>
                             )}
                           </div>
                         </div>

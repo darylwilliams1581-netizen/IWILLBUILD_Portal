@@ -131,7 +131,7 @@ export default function SkipLogicEditor({ field, allFields, onChange }: SkipLogi
             </span>
           )}
           {enabledCount > 0 && rules[0] && (
-            <span className="text-[10px] text-slate-400 truncate max-w-[140px]">
+            <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
               {autoSkipDescription(rules[0])}
             </span>
           )}
@@ -157,7 +157,7 @@ export default function SkipLogicEditor({ field, allFields, onChange }: SkipLogi
                 <div className="flex flex-col items-center gap-2 py-5 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                   <SkipForward size={18} className="text-slate-300" />
                   <p className="text-xs font-semibold text-slate-500">No skip rules yet</p>
-                  <p className="text-[10px] text-slate-400 max-w-[180px] leading-relaxed">
+                  <p className="text-[10px] text-slate-500 max-w-[180px] leading-relaxed">
                     Route users to a different question, section, or the end of the form based on their answer.
                   </p>
                 </div>
@@ -189,7 +189,7 @@ export default function SkipLogicEditor({ field, allFields, onChange }: SkipLogi
               {/* Help tip */}
               <div className="flex items-start gap-2 px-2.5 py-2 bg-slate-50 border border-slate-100 rounded-lg">
                 <Info size={11} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                <p className="text-[10px] text-slate-400 leading-relaxed">
+                <p className="text-[10px] text-slate-500 leading-relaxed">
                   Rules are evaluated in order. The first matching rule wins. Skipped required fields are automatically made optional.
                 </p>
               </div>

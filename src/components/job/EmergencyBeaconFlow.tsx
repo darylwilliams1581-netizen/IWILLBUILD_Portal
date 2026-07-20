@@ -311,7 +311,7 @@ export default function EmergencyBeaconFlow({ jobId, onClose, onSent, onQueued }
               </div>
               <button
                 onClick={() => setStep('confirm1')}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               >
                 <X size={15} />
               </button>

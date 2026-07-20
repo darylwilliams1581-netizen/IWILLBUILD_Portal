@@ -165,7 +165,7 @@ function ShiftModal({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h3 className="text-sm font-bold text-slate-800">{initial?.id ? 'Edit Shift' : 'New Shift'}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-5 flex flex-col gap-3">
           <div>
@@ -273,7 +273,7 @@ function TimeEntryModal({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h3 className="text-sm font-bold text-slate-800">{initial?.id ? 'Edit Time Entry' : 'Add Time Entry'}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
         <div className="p-5 flex flex-col gap-3">
           <div>
@@ -615,14 +615,14 @@ export default function TeamSchedulePage() {
               {/* Week nav + controls */}
               <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-100 flex-shrink-0">
                 <button onClick={() => { const d = new Date(weekAnchor); d.setDate(d.getDate() - 7); setWeekAnchor(d); }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
                   <ChevronLeft size={16} />
                 </button>
                 <span className="text-sm font-semibold text-slate-700 min-w-[200px] text-center">
                   {weekDates[0].toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} — {weekDates[6].toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
                 <button onClick={() => { const d = new Date(weekAnchor); d.setDate(d.getDate() + 7); setWeekAnchor(d); }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
                   <ChevronRight size={16} />
                 </button>
                 <button onClick={() => setWeekAnchor(new Date())}
@@ -695,7 +695,7 @@ export default function TeamSchedulePage() {
                                 <div className="text-[10px] text-slate-500">
                                   {fmtTime(shift.start_time)} – {fmtTime(shift.end_time)}
                                 </div>
-                                <div className="text-[10px] text-slate-400">{shiftDuration(shift)}</div>
+                                <div className="text-[10px] text-slate-500">{shiftDuration(shift)}</div>
 
                                 {/* Delete button */}
                                 <button

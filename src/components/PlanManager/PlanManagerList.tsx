@@ -96,13 +96,13 @@ function DrawingRow({
             </span>
           )}
           {!hasPdf && (
-            <span className="text-[10px] text-slate-400 italic">no PDF</span>
+            <span className="text-[10px] text-slate-500 italic">no PDF</span>
           )}
           {drawing.updated_at && (
-            <span className="text-[10px] text-slate-400 hidden sm:inline">{formatDate(drawing.updated_at)}</span>
+            <span className="text-[10px] text-slate-500 hidden sm:inline">{formatDate(drawing.updated_at)}</span>
           )}
           {(drawing.annotation_count ?? 0) > 0 && (
-            <span className="text-[10px] text-slate-400 hidden md:inline">{drawing.annotation_count}✎</span>
+            <span className="text-[10px] text-slate-500 hidden md:inline">{drawing.annotation_count}✎</span>
           )}
         </div>
       </div>
@@ -202,7 +202,7 @@ function JobGroupSection({
           <span className="text-xs font-bold text-slate-800 truncate">
             {group.jobNumber ? `${group.jobNumber} — ` : ''}{group.jobName}
           </span>
-          <span className="text-[10px] text-slate-400 shrink-0">
+          <span className="text-[10px] text-slate-500 shrink-0">
             {group.drawings.length} drawing{group.drawings.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -341,7 +341,7 @@ export default function PlanManagerList({
                     <FolderOpen size={10} className="text-slate-500" />
                   </div>
                   <span className="text-xs font-bold text-slate-700">Unassigned</span>
-                  <span className="text-[10px] text-slate-400">{filteredUnassigned.length} drawing{filteredUnassigned.length !== 1 ? 's' : ''}</span>
+                  <span className="text-[10px] text-slate-500">{filteredUnassigned.length} drawing{filteredUnassigned.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {filteredUnassigned.map(d => (

@@ -209,7 +209,7 @@ export function SignonModal({ jobSwmsId, swmsTitle, onClose, onSigned }: {
               <p className="text-xs text-slate-400 truncate max-w-xs">{swmsTitle}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-5 flex flex-col gap-4">
@@ -302,7 +302,7 @@ export function AddSwmsModal({ jobId, onClose, onAdded }: {
             <div className="p-1.5 bg-orange-50 rounded-md"><ShieldAlert size={15} className="text-primary" /></div>
             <div><h2 className="font-heading font-bold text-sm">Add SWMS from Library</h2><p className="text-xs text-slate-400">Select one or more templates to copy into this job</p></div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
           <div className="relative">
@@ -395,7 +395,7 @@ export function SwmsEditModal({ initial, onClose, onSaved }: {
             <div className="p-1.5 bg-orange-50 rounded-md"><Wand2 size={15} className="text-primary" /></div>
             <div><h2 className="font-heading font-bold text-base">Edit Job SWMS</h2><p className="text-xs text-slate-400">Changes apply to this job copy only — master template is unchanged</p></div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6 flex flex-col gap-5">
@@ -514,7 +514,7 @@ export function SwmsPrintModal({ swms, signoffs, job, onClose }: {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handlePrint} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"><Printer size={14} />Print / Save PDF</button>
-            <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
@@ -660,7 +660,7 @@ export function AddSafetyPlanModal({ jobId, onClose, onAdded }: {
             <div className="p-1.5 bg-blue-50 rounded-md"><ClipboardList size={15} className="text-blue-600" /></div>
             <div><h2 className="font-heading font-bold text-sm">Add Safety Plan</h2><p className="text-xs text-slate-400">Copy from library or start blank</p></div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={15} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
           {loading && <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-primary" /></div>}

@@ -152,7 +152,7 @@ function AttachmentPanel({ tenderId }: { tenderId: number }) {
               <FileIcon mime={att.mime_type} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-700 truncate">{att.original_name}</p>
-                <p className="text-[10px] text-slate-400">{att.sizeLabel} · {new Date(att.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p className="text-[10px] text-slate-500">{att.sizeLabel} · {new Date(att.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <a
@@ -160,7 +160,7 @@ function AttachmentPanel({ tenderId }: { tenderId: number }) {
                   download={att.original_name}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
                   title="Download"
                 >
                   <Download size={12} />
@@ -427,13 +427,13 @@ export default function AMTendersTab() {
                       {/* Attachments shortcut */}
                       <button
                         onClick={() => toggleExpand(tender.id)}
-                        className="flex items-center gap-1 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                        className="flex items-center gap-1 p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
                         title="Attachments"
                       >
                         <Paperclip size={13} />
                       </button>
                       <button onClick={() => { setEditId(tender.id); setEditForm({}); }}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors">
                         <Edit2 size={13} />
                       </button>
                     </div>

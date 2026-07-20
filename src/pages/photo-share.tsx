@@ -262,7 +262,7 @@ export default function PhotoSharePage() {
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Building2 size={11} className="text-slate-300" />
-              <span className="text-[10px] text-slate-400 font-semibold">IWILLBUILD</span>
+              <span className="text-[10px] text-slate-500 font-semibold">IWILLBUILD</span>
             </div>
           </div>
         </div>
