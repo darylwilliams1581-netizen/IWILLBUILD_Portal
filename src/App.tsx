@@ -41,17 +41,17 @@ class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boo
     return { caught: isStaleRemoveChildError(err) };
   }
   componentDidCatch(err: unknown) {
-    if (!isStaleRemoveChildError(err)) throw err;
+    if (!isStaleRemoveChildError(err)) { throw err; }
     try {
       const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);
-      if (Date.now() - last > 8000) {
+      if (Date.now() - last > 4000) {
         sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
         window.location.reload();
       }
     } catch { /* ignore */ }
   }
   render() {
-    if (this.state.caught) return null;
+    if (this.state.caught) return <div style={{ display: 'none' }} />;
     return this.props.children;
   }
 }

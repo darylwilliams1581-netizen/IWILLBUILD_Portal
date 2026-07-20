@@ -157,19 +157,31 @@
       const appEl = document.getElementById('app');
       if (!appEl) return;
       try {
-        // Install a non-writable, non-configurable accessor so no subsequent
-        // defineProperty or assignment can change what removeChild resolves to.
         const existing = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-        // If already sealed with our wrapper, skip.
-        if (existing?.get) return;
-        // Delete any existing own property first (stale shim may have put one there).
+        // Already sealed with our getter — nothing to do.
+        if (existing?.get && existing.set) return;
+        // Delete any existing own property (stale shim may have put a non-configurable value there).
+        // `delete` on a non-configurable own property is a no-op in strict mode but won't throw.
         try { delete (appEl as any).removeChild; } catch { /* ignore */ }
-        Object.defineProperty(appEl, 'removeChild', {
-          get() { return swallowingRemoveChild; },
-          set(_v) { /* ignore all writes — our wrapper always wins */ },
-          configurable: false,
-          enumerable: false,
-        });
+        // Try accessor first (getter always returns our safe wrapper, setter ignores writes).
+        try {
+          Object.defineProperty(appEl, 'removeChild', {
+            get() { return swallowingRemoveChild; },
+            set(_v) { /* swallow — our wrapper always wins */ },
+            configurable: false,
+            enumerable: false,
+          });
+          return;
+        } catch { /* accessor failed — fall through to value descriptor */ }
+        // Fallback: plain value descriptor.
+        try {
+          Object.defineProperty(appEl, 'removeChild', {
+            value: swallowingRemoveChild,
+            writable: false,
+            configurable: false,
+            enumerable: false,
+          });
+        } catch { /* truly locked — nothing more we can do */ }
       } catch { /* ignore */ }
     }
     sealAppRoot();
@@ -206,7 +218,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784544000000';
+const SOS_SHIM_VERSION = '1784545000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict

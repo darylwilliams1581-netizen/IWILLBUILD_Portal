@@ -261,14 +261,16 @@ function EditMemberModal({
 }) {
   const targetIsOwner = member.role === 'owner';
   const targetIsAdmin = member.role === 'admin';
+  const targetIsDeveloper = member.role === 'developer' || member.role === 'platform_owner';
 
-  // Permissions are editable by owners (even on owner profiles) and admins on non-owner profiles.
-  // Only lock when a non-owner is trying to edit an owner's permissions.
-  const permsLocked = targetIsOwner && !callerIsOwner;
-  // Role is locked if: target is owner and caller is not owner
-  const roleLocked = targetIsOwner && !callerIsOwner;
-  // Status is locked for owners (only owners can change owner status)
-  const statusLocked = targetIsOwner && !callerIsOwner;
+  // Profile is protected — admin cannot modify owner or developer profiles
+  const targetIsProtected = targetIsOwner || targetIsDeveloper;
+  const viewerIsRestricted = !callerIsOwner && targetIsProtected;
+
+  // Permissions/role/status are locked whenever the viewer is restricted (non-owner viewing owner/developer)
+  const permsLocked = viewerIsRestricted;
+  const roleLocked = viewerIsRestricted;
+  const statusLocked = viewerIsRestricted;
 
   const [role, setRole] = useState<Role>(member.role as Role);
   const [status, setStatus] = useState<Status>(member.status as Status);
@@ -328,7 +330,11 @@ function EditMemberModal({
   }
 
   // Can the caller remove this member?
-  const canRemove = callerIsOwner || (!targetIsOwner && !targetIsAdmin && callerIsAdmin);
+  // Owners and developers/platform_owners are protected — only the platform owner can remove them,
+  // and even then only via account deletion tools (not the team modal).
+  // Admins can remove regular members but NOT owners or developers.
+  const canRemove = callerIsOwner && !targetIsOwner && !targetIsDeveloper
+    || (!targetIsOwner && !targetIsAdmin && !targetIsDeveloper && callerIsAdmin);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -351,15 +357,17 @@ function EditMemberModal({
           <button onClick={onClose} className="text-slate-600 hover:text-slate-800 transition-colors"><X size={18} /></button>
         </div>
 
-        {/* Owner locked notice */}
-        {targetIsOwner && !callerIsOwner && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-700 font-semibold">
-            <Lock size={13} />
-            Owner accounts can only be modified by another Owner.
+        {/* Protected profile notice */}
+        {viewerIsRestricted && (
+          <div className="flex items-center gap-2 bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 mb-4 text-xs text-slate-600 font-semibold">
+            <Lock size={13} className="shrink-0 text-slate-500" />
+            {targetIsOwner
+              ? 'Owner accounts can only be modified by another Owner.'
+              : 'Developer accounts are protected and cannot be modified by Admins.'}
           </div>
         )}
 
-        <div className="flex flex-col gap-5">
+        <div className={['flex flex-col gap-5 transition-opacity', viewerIsRestricted ? 'opacity-40 pointer-events-none select-none' : ''].join(' ')}>
           {/* Role + Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -421,7 +429,7 @@ function EditMemberModal({
             {canRemove && (
               <button type="button" onClick={handleRemove} disabled={loading}
                 className="flex items-center gap-1.5 border border-red-200 text-red-500 text-sm font-semibold px-3 py-2.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50">
-                <Trash2 size={13} />Remove
+                <Trash2 size={13} />Remove User
               </button>
             )}
             <div className="flex-1" />
