@@ -7,7 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Component, type ReactElement, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -192,17 +192,34 @@ function PortalBanners() {
 }
 
 // ── ClientOnly ────────────────────────────────────────────────────────────────
-// Renders a stable <div> on both server and client so the DOM node count never
-// changes during hydration. The wrapper is always present in the SSR HTML and
-// in the initial client render (mounted=false → empty div), so React hydrates
-// a stable single DOM node and never calls removeChild on the parent container.
-// display:contents is intentionally avoided — it makes the div transparent to
-// React's host-fiber reconciler in React 19 and can still trigger removeChild.
+// Strategy: render a stable <div data-client-only> on both server and client.
+// The div is ALWAYS present so React hydrates a matching DOM node and never
+// calls removeChild on the parent.
+//
+// Timing: useEffect fires in the same React 19 commit as hydrateRoot, which
+// means setMounted(true) can trigger a re-render before the hydration tree is
+// fully committed — causing removeChild. We use useLayoutEffect + rAF to push
+// the state update past the paint frame, well after hydration settles.
+// useLayoutEffect is a no-op on the server (SSR), so it's safe here.
 function ClientOnly({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const rafRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    // Double-rAF: first frame = layout/paint, second frame = after paint.
+    // This guarantees we're past the hydration commit before mutating state.
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = requestAnimationFrame(() => {
+        setMounted(true);
+      });
+    });
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   return (
-    <div suppressHydrationWarning style={{ display: mounted ? 'contents' : undefined }}>
+    <div data-client-only suppressHydrationWarning>
       {mounted ? children : null}
     </div>
   );

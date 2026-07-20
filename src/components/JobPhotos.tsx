@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload,
@@ -16,8 +16,6 @@ import {
   Check,
   User,
   Clock,
-  LayoutGrid,
-  List,
   CheckSquare,
   Square,
 } from 'lucide-react';
@@ -52,17 +50,12 @@ export interface JobPhoto {
 
 interface JobPhotosProps {
   jobId: number;
-  /** Called when a share link is generated so the parent can show it */
   onShareLink?: (url: string) => void;
-  /** Called whenever photo count changes so the parent can update its UI */
   onPhotoCount?: (count: number) => void;
-  /** Called when uploading state changes */
   onUploading?: (uploading: boolean) => void;
-  /** Called when selection changes (count of selected items) */
   onSelectionChange?: (count: number) => void;
 }
 
-/** Imperative handle exposed to the parent via ref */
 export interface JobPhotosHandle {
   openFilePicker: () => void;
   openCamera: () => void;
@@ -80,38 +73,61 @@ export interface JobPhotosHandle {
 
 type ViewSize = 'small' | 'medium' | 'large';
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const MAX_PHOTOS = 200;
+const PAGE_SIZE = 30;
+
+// auto-fill columns — tiles snap to minmax width, no fixed column count
+const VIEW_COLS: Record<ViewSize, string> = {
+  small:  '[grid-template-columns:repeat(auto-fill,minmax(88px,1fr))]',
+  medium: '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]',
+  large:  '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]',
+};
+const VIEW_GAP: Record<ViewSize, string> = {
+  small:  'gap-[4px]',
+  medium: 'gap-[8px]',
+  large:  'gap-[12px]',
+};
+const VIEW_RADIUS: Record<ViewSize, string> = {
+  small:  'rounded-md',
+  medium: 'rounded-xl',
+  large:  'rounded-xl',
+};
+
+// ── Client-side photo cache (stale-while-revalidate) ──────────────────────────
+// Keyed by jobId. Survives tab switches within the same session.
+
+interface CacheEntry {
+  photos: JobPhoto[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  totalCount: number;
+  fetchedAt: number;
+}
+const photoCache = new Map<number, CacheEntry>();
+const CACHE_TTL_MS = 30_000; // 30 s stale window
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Full-resolution URL for download/lightbox */
 function photoUrl(photo: JobPhoto) {
-  if (photo.url) return photo.url;
-  return `/airo-assets/uploads/job-photos/${photo.filename}`;
+  return photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
 }
 
-function photoUrlBusted(photo: JobPhoto, bust?: number) {
-  const base = photoUrl(photo);
-  return bust ? `${base}?v=${bust}` : base;
-}
-
-/** Thumbnail URL for grid display — falls back to original if no thumbnail yet */
 function thumbnailSrc(photo: JobPhoto, bust?: number): string {
   const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
-  // HEIC: no thumbnail possible server-side — use original (iOS can display it)
   const base = photo.thumbnailUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
-  if (isHeic && !photo.thumbnailUrl) return base; // will show HEIC natively on iOS
+  if (isHeic && !photo.thumbnailUrl) return base;
   return bust ? `${base}?v=${bust}` : base;
 }
 
-/** Preview URL for lightbox — medium quality, faster than original */
 function previewSrc(photo: JobPhoto, bust?: number): string {
   const base = photo.previewUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
   return bust ? `${base}?v=${bust}` : base;
 }
 
-/** Whether this photo is HEIC with no thumbnail (show placeholder on non-iOS) */
 function isHeicNoThumb(photo: JobPhoto): boolean {
-  const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
-  return isHeic && !photo.thumbnailUrl;
+  return (photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif') && !photo.thumbnailUrl;
 }
 
 function formatBytes(bytes: number | null) {
@@ -128,28 +144,15 @@ function formatDateTime(iso: string) {
   });
 }
 
-// auto-fill columns — tiles snap to minmax width, no fixed column count
-const VIEW_COLS: Record<ViewSize, string> = {
-  small:  '[grid-template-columns:repeat(auto-fill,minmax(88px,1fr))]',
-  medium: '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]',
-  large:  '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]',
-};
+// Dev-only timing helper — no-ops in production
+const DEV = import.meta.env.DEV;
+function devLog(msg: string, data?: Record<string, unknown>) {
+  if (!DEV) return;
+  if (data) console.log(`[JobPhotos] ${msg}`, data);
+  else console.log(`[JobPhotos] ${msg}`);
+}
 
-// gap between cards per zoom level
-const VIEW_GAP: Record<ViewSize, string> = {
-  small:  'gap-[4px]',
-  medium: 'gap-[8px]',
-  large:  'gap-[12px]',
-};
-
-// card border-radius per zoom level
-const VIEW_RADIUS: Record<ViewSize, string> = {
-  small:  'rounded-md',
-  medium: 'rounded-xl',
-  large:  'rounded-xl',
-};
-
-// ── Edit Modal ────────────────────────────────────────────────────────────────
+// ── Edit Modal (lazy-mounted) ─────────────────────────────────────────────────
 
 interface EditModalProps {
   photo: JobPhoto;
@@ -288,7 +291,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
   );
 }
 
-// ── Lightbox ──────────────────────────────────────────────────────────────────
+// ── Lightbox (lazy-mounted) ───────────────────────────────────────────────────
 
 interface LightboxProps {
   photos: JobPhoto[];
@@ -335,7 +338,14 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
         </button>
       )}
       <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
-        <img key={bust ?? photo.filename} src={previewSrc(photo, bust)} alt={photo.label ?? photo.originalName ?? 'Job photo'} className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl" />
+        <img
+          key={bust ?? photo.filename}
+          src={previewSrc(photo, bust)}
+          alt={photo.label ?? photo.originalName ?? 'Job photo'}
+          className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl"
+          loading="eager"
+          decoding="async"
+        />
         <div className="text-center">
           {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
           <p className="text-white/50 text-xs">{photo.originalName ?? photo.filename}{photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}</p>
@@ -352,9 +362,106 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Photo card (memoised to avoid re-renders on unrelated state changes) ──────
 
-const MAX_PHOTOS = 200;
+interface PhotoCardProps {
+  photo: JobPhoto;
+  index: number;
+  viewSize: ViewSize;
+  isSelected: boolean;
+  selectMode: boolean;
+  bust: number | undefined;
+  onTap: (i: number) => void;
+  onToggleSelect: (id: number) => void;
+  onEdit: (p: JobPhoto) => void;
+  onDelete: (p: JobPhoto) => void;
+}
+
+const PhotoCard = memo(function PhotoCard({
+  photo, index, viewSize, isSelected, selectMode, bust,
+  onTap, onToggleSelect, onEdit, onDelete,
+}: PhotoCardProps) {
+  return (
+    <div
+      className={`group relative flex flex-col ${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border transition-all ${
+        isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200'
+      }`}
+    >
+      {/* Thumbnail */}
+      <div
+        className="relative aspect-square cursor-pointer"
+        onClick={() => selectMode ? onToggleSelect(photo.id) : onTap(index)}
+      >
+        {isHeicNoThumb(photo) ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 gap-1">
+            <ImageOff size={20} className="text-slate-400" />
+            <span className="text-[10px] text-slate-500 font-semibold">HEIC</span>
+          </div>
+        ) : (
+          <img
+            key={bust ?? photo.filename}
+            src={thumbnailSrc(photo, bust)}
+            alt={photo.label ?? photo.originalName ?? 'Job photo'}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            width={300}
+            height={300}
+            decoding="async"
+          />
+        )}
+
+        {/* Select overlay */}
+        {selectMode && (
+          <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>
+            <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+              isSelected ? 'bg-primary border-primary' : 'bg-white/80 border-white'
+            }`}>
+              {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
+            </div>
+          </div>
+        )}
+
+        {/* Hover overlay */}
+        {!selectMode && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />}
+
+        {/* Small-view: action buttons on hover */}
+        {!selectMode && viewSize === 'small' && (
+          <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
+          </div>
+        )}
+      </div>
+
+      {/* Metadata strip — medium and large only */}
+      {viewSize !== 'small' && (
+        <div className={`bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
+          <div className="flex items-start justify-between gap-1">
+            <div className="min-w-0 flex-1">
+              {photo.label
+                ? <p className="text-xs font-semibold text-slate-800 truncate">{photo.label}</p>
+                : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
+              }
+            </div>
+            {!selectMode && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button onClick={(e) => { e.stopPropagation(); onEdit(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
+                <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDelete(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
+              </div>
+            )}
+          </div>
+          {viewSize === 'large' && photo.uploadedByName && (
+            <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
+          )}
+          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos(
   { jobId, onShareLink, onPhotoCount, onUploading, onSelectionChange },
@@ -362,8 +469,14 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 ) {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Lightbox + EditModal are null until opened — zero DOM cost when closed
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
@@ -383,11 +496,14 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     setViewSizeState(s);
     try { localStorage.setItem('jobPhotosZoom', s); } catch (_) {}
   };
+
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  // Guard against concurrent fetches
+  const fetchingRef = useRef(false);
 
   // ── Upload queue ───────────────────────────────────────────────────────────
 
@@ -397,7 +513,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     uploadedCount,
     failedCount,
     pendingCount,
-    totalCount,
+    totalCount: queueTotal,
     enqueueFiles,
     retryItem,
     removeItem,
@@ -405,31 +521,127 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   } = usePhotoUploadQueue({
     jobId,
     onBatchComplete: (uploaded, _failed) => {
-      // Reconcile server records after the batch finishes
-      if (uploaded > 0) void fetchPhotos();
+      if (uploaded > 0) {
+        // Invalidate cache and reload first page
+        photoCache.delete(jobId);
+        void fetchPhotos(true);
+      }
       setSummaryDismissed(false);
     },
   });
 
-  // Mirror uploading state to parent
   useEffect(() => { onUploading?.(isUploading); }, [isUploading, onUploading]);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch (first page or refresh) ─────────────────────────────────────────
 
-  const fetchPhotos = useCallback(async () => {
+  const fetchPhotos = useCallback(async (forceRefresh = false) => {
     if (!jobId || isNaN(jobId)) { setError('Invalid job ID'); setLoading(false); return; }
+    if (fetchingRef.current) return;
+
+    // Stale-while-revalidate: serve cache immediately, then refresh in background
+    const cached = photoCache.get(jobId);
+    const isStale = !cached || (Date.now() - cached.fetchedAt > CACHE_TTL_MS);
+
+    if (cached && !forceRefresh) {
+      devLog('Serving from cache', { jobId, count: cached.photos.length, stale: isStale });
+      setPhotos(cached.photos);
+      setHasMore(cached.hasMore);
+      setNextCursor(cached.nextCursor);
+      setTotalCount(cached.totalCount);
+      onPhotoCount?.(cached.totalCount);
+      setLoading(false);
+      if (!isStale) return; // fresh — no background refetch needed
+    }
+
+    fetchingRef.current = true;
+    const t0 = performance.now();
+
     try {
-      const res = await fetch(`/api/jobs/${jobId}/photos`, { credentials: 'include' });
+      const res = await fetch(`/api/jobs/${jobId}/photos?limit=${PAGE_SIZE}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json() as { photos: JobPhoto[] };
+      const data = await res.json() as {
+        photos: JobPhoto[];
+        hasMore: boolean;
+        nextCursor: string | null;
+        totalCount: number;
+      };
       const list = data.photos ?? [];
+      const entry: CacheEntry = {
+        photos: list,
+        hasMore: data.hasMore ?? false,
+        nextCursor: data.nextCursor ?? null,
+        totalCount: data.totalCount ?? list.length,
+        fetchedAt: Date.now(),
+      };
+      photoCache.set(jobId, entry);
+
+      devLog('Fetched photos', {
+        count: list.length,
+        hasMore: entry.hasMore,
+        totalCount: entry.totalCount,
+        ms: Math.round(performance.now() - t0),
+      });
+
       setPhotos(list);
-      onPhotoCount?.(list.length);
-    } catch { setError('Failed to load photos'); }
-    finally { setLoading(false); }
+      setHasMore(entry.hasMore);
+      setNextCursor(entry.nextCursor);
+      setTotalCount(entry.totalCount);
+      onPhotoCount?.(entry.totalCount);
+    } catch {
+      setError('Failed to load photos');
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
   }, [jobId, onPhotoCount]);
 
   useEffect(() => { void fetchPhotos(); }, [fetchPhotos]);
+
+  // ── Load more (next page) ──────────────────────────────────────────────────
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || !nextCursor || loadingMore || fetchingRef.current) return;
+    fetchingRef.current = true;
+    setLoadingMore(true);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(
+        `/api/jobs/${jobId}/photos?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(nextCursor)}`,
+        { credentials: 'include' }
+      );
+      if (!res.ok) throw new Error('Failed to load more');
+      const data = await res.json() as {
+        photos: JobPhoto[];
+        hasMore: boolean;
+        nextCursor: string | null;
+        totalCount: number;
+      };
+      const newPhotos = data.photos ?? [];
+      devLog('Loaded more', { count: newPhotos.length, ms: Math.round(performance.now() - t0) });
+
+      setPhotos((prev) => {
+        const merged = [...prev, ...newPhotos];
+        // Update cache with full merged list
+        const existing = photoCache.get(jobId);
+        if (existing) {
+          photoCache.set(jobId, {
+            ...existing,
+            photos: merged,
+            hasMore: data.hasMore ?? false,
+            nextCursor: data.nextCursor ?? null,
+          });
+        }
+        return merged;
+      });
+      setHasMore(data.hasMore ?? false);
+      setNextCursor(data.nextCursor ?? null);
+    } catch {
+      // Non-fatal — user can tap again
+    } finally {
+      setLoadingMore(false);
+      fetchingRef.current = false;
+    }
+  }, [jobId, hasMore, nextCursor, loadingMore]);
 
   // ── Enqueue selected files ─────────────────────────────────────────────────
 
@@ -438,10 +650,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     const arr = Array.from(files);
     if (arr.length === 0) return;
 
-    const atLimit = photos.length >= MAX_PHOTOS;
+    const atLimit = totalCount >= MAX_PHOTOS;
     if (atLimit) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); return; }
 
-    const remaining = MAX_PHOTOS - photos.length;
+    const remaining = MAX_PHOTOS - totalCount;
     const toAdd = arr.slice(0, remaining);
     if (toAdd.length < arr.length) {
       setUploadError(`Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added. Uploading first ${remaining}.`);
@@ -449,7 +661,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
     setSummaryDismissed(false);
     enqueueFiles(toAdd);
-  }, [jobId, photos.length, enqueueFiles]);
+  }, [jobId, totalCount, enqueueFiles]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
@@ -462,7 +674,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       if (lightboxIndex !== null && photos[lightboxIndex]?.id === deleteConfirm.id) setLightboxIndex(null);
       setDeleteConfirm(null);
       setSelected((prev) => { const n = new Set(prev); n.delete(deleteConfirm.id); return n; });
-      await fetchPhotos();
+      // Remove from local state immediately; invalidate cache
+      setPhotos((prev) => prev.filter((p) => p.id !== deleteConfirm.id));
+      setTotalCount((c) => Math.max(0, c - 1));
+      photoCache.delete(jobId);
     } catch { setError('Failed to delete photo'); }
     finally { setDeleting(null); }
   };
@@ -473,26 +688,26 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     setPhotos((prev) => prev.map((p) => p.id === updated.id ? updated : p));
     setCacheBust((prev) => ({ ...prev, [updated.id]: Date.now() }));
     if (editPhoto?.id === updated.id) setEditPhoto(updated);
+    // Invalidate cache so next visit gets fresh data
+    photoCache.delete(jobId);
   };
 
   // ── Select helpers ─────────────────────────────────────────────────────────
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = useCallback((id: number) => {
     setSelected((prev) => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id); else n.add(id);
       onSelectionChange?.(n.size);
       return n;
     });
-  };
+  }, [onSelectionChange]);
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false);
     setSelected(new Set());
     onSelectionChange?.(0);
   }, [onSelectionChange]);
-
-  // ── Download selected ──────────────────────────────────────────────────────
 
   const downloadSelected = useCallback(() => {
     const targets = photos.filter((p) => selected.has(p.id));
@@ -540,16 +755,16 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     get selectMode() { return selectMode; },
     setSelectMode,
     get selectedCount() { return selected.size; },
-    get photoCount() { return photos.length; },
+    get photoCount() { return totalCount; },
     get uploading() { return isUploading; },
     downloadSelected,
     exitSelectMode,
-  }), [viewSize, selectMode, selected.size, photos.length, isUploading, generateShareLink, downloadSelected, exitSelectMode]);
+  }), [viewSize, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const atLimit = photos.length >= MAX_PHOTOS;
-  const remaining = MAX_PHOTOS - photos.length;
+  const atLimit = totalCount >= MAX_PHOTOS;
+  const remaining = MAX_PHOTOS - totalCount;
   const hasPendingCards = queue.length > 0;
 
   return (
@@ -559,8 +774,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       onDrop={handleDrop}
     >
       {/* Photo count hint when near limit */}
-      {!atLimit && remaining <= 20 && photos.length > 0 && (
-        <p className="text-xs text-amber-600 font-semibold">{photos.length} / {MAX_PHOTOS} photos · {remaining} remaining</p>
+      {!atLimit && remaining <= 20 && totalCount > 0 && (
+        <p className="text-xs text-amber-600 font-semibold">{totalCount} / {MAX_PHOTOS} photos · {remaining} remaining</p>
       )}
       {atLimit && (
         <p className="text-xs text-red-500 font-semibold">{MAX_PHOTOS} / {MAX_PHOTOS} photos — limit reached. Delete photos to upload more.</p>
@@ -581,10 +796,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         </div>
       )}
 
-      {/* ── Batch upload summary banner ── */}
+      {/* Batch upload summary */}
       {!summaryDismissed && (
         <BatchUploadSummary
-          totalCount={totalCount}
+          totalCount={queueTotal}
           pendingCount={pendingCount}
           uploadedCount={uploadedCount}
           failedCount={failedCount}
@@ -593,7 +808,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         />
       )}
 
-      {/* ── Pending upload tray ── */}
+      {/* Pending upload tray */}
       {hasPendingCards && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -610,21 +825,19 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             )}
           </div>
           <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
-            <AnimatePresence>
-              {queue.map((item) => (
-                <PendingPhotoCard
-                  key={item.clientId}
-                  item={item}
-                  onRetry={retryItem}
-                  onRemove={removeItem}
-                />
-              ))}
-            </AnimatePresence>
+            {queue.map((item) => (
+              <PendingPhotoCard
+                key={item.clientId}
+                item={item}
+                onRetry={retryItem}
+                onRemove={removeItem}
+              />
+            ))}
           </div>
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {loading && (
         <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -640,7 +853,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         </div>
       )}
 
-      {/* Empty */}
+      {/* Empty state */}
       {!loading && photos.length === 0 && !hasPendingCards && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ImageOff size={32} className="text-slate-300 mb-3" />
@@ -649,7 +862,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         </div>
       )}
 
-      {/* ── Photo grid ── */}
+      {/* Photo grid — plain div grid, no AnimatePresence (perf on mobile) */}
       {!loading && photos.length > 0 && (
         <>
           {selectMode && (
@@ -666,111 +879,64 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
               </p>
             </div>
           )}
-          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
-            <AnimatePresence>
-              {photos.map((photo, i) => {
-                const bust = cacheBust[photo.id];
-                const isSelected = selected.has(photo.id);
-                return (
-                  <motion.div
-                    key={photo.id} layout
-                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}
-                    className={`group relative flex flex-col ${VIEW_RADIUS[viewSize]} overflow-hidden bg-slate-100 border transition-all ${
-                      isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-slate-200'
-                    }`}
-                  >
-                    {/* Thumbnail */}
-                    <div
-                      className="relative aspect-square cursor-pointer"
-                      onClick={() => selectMode ? toggleSelect(photo.id) : setLightboxIndex(i)}
-                    >
-                      {isHeicNoThumb(photo) ? (
-                        /* HEIC placeholder for non-iOS browsers that can't display HEIC */
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 gap-1">
-                          <ImageOff size={20} className="text-slate-400" />
-                          <span className="text-[10px] text-slate-500 font-semibold">HEIC</span>
-                        </div>
-                      ) : (
-                        <img
-                          key={bust ?? photo.filename}
-                          src={thumbnailSrc(photo, bust)}
-                          alt={photo.label ?? photo.originalName ?? 'Job photo'}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          width={300}
-                          height={300}
-                          decoding="async"
-                        />
-                      )}
-                      {/* Select overlay */}
-                      {selectMode && (
-                        <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>
-                          <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                            isSelected ? 'bg-primary border-primary' : 'bg-white/80 border-white'
-                          }`}>
-                            {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
-                          </div>
-                        </div>
-                      )}
-                      {/* Hover overlay (non-select mode) */}
-                      {!selectMode && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />}
-                      {/* Small-view: action buttons overlaid on hover */}
-                      {!selectMode && viewSize === 'small' && (
-                        <div className="absolute top-1 right-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-                          <button onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-black/80 text-white flex items-center justify-center" title="Edit"><Pencil size={9} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }} className="w-5 h-5 rounded bg-black/60 hover:bg-red-600 text-white flex items-center justify-center" title="Delete"><Trash2 size={9} /></button>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Metadata strip — medium and large only */}
-                    {viewSize !== 'small' && (
-                      <div className={`bg-slate-50 border-t border-slate-200 flex flex-col gap-0.5 ${viewSize === 'large' ? 'px-3 py-2.5' : 'px-2 py-1.5'}`}>
-                        <div className="flex items-start justify-between gap-1">
-                          <div className="min-w-0 flex-1">
-                            {photo.label
-                              ? <p className="text-xs font-semibold text-slate-800 truncate">{photo.label}</p>
-                              : <p className="text-xs text-slate-500 italic truncate">{photo.originalName ?? photo.filename}</p>
-                            }
-                          </div>
-                          {!selectMode && (
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button onClick={(e) => { e.stopPropagation(); setEditPhoto(photo); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Edit"><Pencil size={13} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`; a.download = photo.originalName ?? photo.filename; a.click(); }} className="p-1 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors" title="Download"><Download size={13} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(photo); }} className="p-1 rounded-md hover:bg-red-100 text-slate-600 hover:text-red-700 transition-colors" title="Delete"><Trash2 size={13} /></button>
-                            </div>
-                          )}
-                        </div>
-                        {viewSize === 'large' && photo.uploadedByName && (
-                          <p className="text-[10px] text-slate-600 flex items-center gap-1 truncate"><User size={9} className="shrink-0" />{photo.uploadedByName}</p>
-                        )}
-                        <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate"><Clock size={9} className="shrink-0" />{formatDateTime(photo.createdAt)}</p>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
+            {photos.map((photo, i) => (
+              <PhotoCard
+                key={photo.id}
+                photo={photo}
+                index={i}
+                viewSize={viewSize}
+                isSelected={selected.has(photo.id)}
+                selectMode={selectMode}
+                bust={cacheBust[photo.id]}
+                onTap={setLightboxIndex}
+                onToggleSelect={toggleSelect}
+                onEdit={setEditPhoto}
+                onDelete={setDeleteConfirm}
+              />
+            ))}
           </div>
+
+          {/* Load more */}
+          {hasMore && (
+            <div className="flex flex-col items-center gap-1 pt-2">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-sm font-semibold text-slate-700 rounded-xl transition-colors"
+              >
+                {loadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
+                {loadingMore ? 'Loading…' : `Load more (${totalCount - photos.length} remaining)`}
+              </button>
+            </div>
+          )}
         </>
       )}
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {lightboxIndex !== null && !selectMode && (
-          <Lightbox photos={photos} index={lightboxIndex} cacheBust={cacheBust}
-            onClose={() => setLightboxIndex(null)} onNavigate={setLightboxIndex}
-            onDelete={(p) => setDeleteConfirm(p)} onEdit={(p) => setEditPhoto(p)} deleting={deleting} />
-        )}
-      </AnimatePresence>
+      {/* Lightbox — only mounted when open */}
+      {lightboxIndex !== null && !selectMode && (
+        <Lightbox
+          photos={photos}
+          index={lightboxIndex}
+          cacheBust={cacheBust}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+          onDelete={(p) => setDeleteConfirm(p)}
+          onEdit={(p) => setEditPhoto(p)}
+          deleting={deleting}
+        />
+      )}
 
-      {/* Edit modal */}
-      <AnimatePresence>
-        {editPhoto && (
-          <EditModal photo={editPhoto} cacheBust={cacheBust} onClose={() => setEditPhoto(null)} onSaved={handleEditSaved} />
-        )}
-      </AnimatePresence>
+      {/* Edit modal — only mounted when open */}
+      {editPhoto && (
+        <EditModal
+          photo={editPhoto}
+          cacheBust={cacheBust}
+          onClose={() => setEditPhoto(null)}
+          onSaved={handleEditSaved}
+        />
+      )}
 
       {/* File inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
