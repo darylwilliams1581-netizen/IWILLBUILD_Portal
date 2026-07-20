@@ -118,7 +118,7 @@ export const ALL_HOME_ICONS: HomeIconDef[] = [
 
 /** Minimal set given to new invited employees */
 export const DEFAULT_FIELD_KEYS: string[] = [
-  'camera', 'sign_in', 'drive', 'prestart', 'forms', 'notes',
+  'camera', 'sign_in', 'drive', 'safety', 'prestart',
 ];
 
 /** Full set given to solo users (only person in company) */

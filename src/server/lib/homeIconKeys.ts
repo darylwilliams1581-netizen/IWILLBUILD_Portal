@@ -21,5 +21,5 @@ export const ALL_HOME_ICON_KEYS: string[] = [
 
 /** Minimal default set for new invited employees */
 export const DEFAULT_FIELD_KEYS: string[] = [
-  'camera', 'sign_in', 'drive', 'prestart', 'forms', 'notes',
+  'camera', 'sign_in', 'drive', 'safety', 'prestart',
 ];
