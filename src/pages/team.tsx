@@ -23,8 +23,6 @@ import {
   AlertCircle,
   Trash2,
   Edit2,
-  ToggleLeft,
-  ToggleRight,
   Lock,
   ShieldCheck,
   RefreshCw,
@@ -80,6 +78,7 @@ const PERMISSIONS: PermDef[] = [
   { key: 'deleteRecords', label: 'Delete Records', description: 'Permanently delete records' },
   { key: 'admin',         label: 'Admin Access',   description: 'Full admin privileges' },
 ];
+// NOTE: PERMISSIONS array kept for API save body compatibility — UI toggles removed in favour of HomeIconPermissions
 
 interface TeamMember {
   id: number;
@@ -273,18 +272,8 @@ function EditMemberModal({
 
   const [role, setRole] = useState<Role>(member.role as Role);
   const [status, setStatus] = useState<Status>(member.status as Status);
-  // Owners always have all permissions — seed all-true so toggles show correctly
-  const defaultPerms = targetIsOwner
-    ? Object.fromEntries(PERMISSIONS.map(p => [p.key, true]))
-    : { ...member.permissions };
-  const [perms, setPerms] = useState<Record<string, boolean>>(defaultPerms);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  function togglePerm(key: string) {
-    if (permsLocked) return;
-    setPerms((p) => ({ ...p, [key]: !p[key] }));
-  }
 
   // Available roles based on caller privilege
   const availableRoles: Array<{ value: Role; label: string }> = [
@@ -303,17 +292,6 @@ function EditMemberModal({
       const body = {
         role,
         status,
-        permJobs: perms.jobs,
-        permFleet: perms.fleet,
-        permForms: perms.forms,
-        permFiles: perms.files,
-        permEstimating: perms.estimating,
-        permInvoices: perms.invoices,
-        permDazzaAi: perms.dazzaAi,
-        permAdmin: perms.admin,
-        permSeeDollars: perms.seeDollars,
-        permInviteUsers: perms.inviteUsers,
-        permDeleteRecords: perms.deleteRecords,
       };
       const res = await fetch(`/api/team/${member.id}`, {
         method: 'PUT',
@@ -421,49 +399,6 @@ function EditMemberModal({
                   <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Permissions */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Permissions</h3>
-              {permsLocked && (
-                <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold">
-                  <Lock size={10} /> Locked — requires Owner access to edit
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {PERMISSIONS.map((p) => {
-                const on = perms[p.key] ?? false;
-                return (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => togglePerm(p.key)}
-                    disabled={permsLocked}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
-                      permsLocked
-                        ? 'bg-amber-50/50 border-amber-100 cursor-not-allowed'
-                        : on
-                          ? 'bg-primary/5 border-primary/20 hover:border-primary/40'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <div className={`text-sm font-semibold ${on ? 'text-slate-900' : 'text-slate-500'}`}>{p.label}</div>
-                      <div className="text-xs text-slate-400">{p.description}</div>
-                    </div>
-                    {permsLocked
-                      ? <Lock size={14} className="text-amber-400 shrink-0" />
-                      : on
-                        ? <ToggleRight size={22} className="text-primary shrink-0" />
-                        : <ToggleLeft size={22} className="text-slate-300 shrink-0" />
-                    }
-                  </button>
-                );
-              })}
             </div>
           </div>
 
