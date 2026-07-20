@@ -19,13 +19,24 @@ interface SharePhoto {
   label: string | null;
   createdAt: string | null;
   url: string | null;
+  thumbnailUrl: string | null;
+  previewUrl: string | null;
 }
 
 /** Resolve the best available URL for a photo — signed URL if present, proxy fallback otherwise */
 function photoUrl(token: string, photo: SharePhoto): string | null {
   if (photo.url) return photo.url;
-  // Fall back to the public proxy route (no auth required, token-gated)
   return `/api/public/job-photos/${token}/photo/${photo.id}`;
+}
+
+/** Thumbnail URL for grid — falls back to full URL */
+function thumbUrl(token: string, photo: SharePhoto): string | null {
+  return photo.thumbnailUrl ?? photoUrl(token, photo);
+}
+
+/** Preview URL for lightbox — falls back to full URL */
+function prevUrl(token: string, photo: SharePhoto): string | null {
+  return photo.previewUrl ?? photoUrl(token, photo);
 }
 
 interface ShareData {
@@ -194,10 +205,13 @@ export default function PhotoSharePage() {
                 >
                   {photoUrl(tok, photo) ? (
                     <img
-                      src={photoUrl(tok, photo)!}
+                      src={thumbUrl(tok, photo)!}
                       alt={photo.label ?? photo.originalName ?? `Photo ${idx + 1}`}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading={idx < 9 ? 'eager' : 'lazy'}
+                      width={300}
+                      height={300}
+                      decoding="async"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -299,7 +313,7 @@ export default function PhotoSharePage() {
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.15 }}
-                src={photoUrl(tok, photos[lightbox]) ?? ''}
+                src={prevUrl(tok, photos[lightbox]) ?? ''}
                 alt={photos[lightbox].label ?? photos[lightbox].originalName ?? `Photo ${lightbox + 1}`}
                 className="max-w-full max-h-full object-contain rounded-lg select-none"
                 draggable={false}

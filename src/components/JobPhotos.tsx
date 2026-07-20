@@ -39,8 +39,15 @@ export interface JobPhoto {
   uploadedByUserId: string | null;
   uploadedByName: string | null;
   createdAt: string;
-  /** Signed URL from the server — use this for <img src> */
+  /** Signed URL for the original full-resolution file */
   url: string | null;
+  /** Signed URL for the ~300px thumbnail (fast grid display) */
+  thumbnailUrl: string | null;
+  /** Signed URL for the ~1000px preview (lightbox) */
+  previewUrl: string | null;
+  /** Original image dimensions if known */
+  imageWidth: number | null;
+  imageHeight: number | null;
 }
 
 interface JobPhotosProps {
@@ -75,6 +82,7 @@ type ViewSize = 'small' | 'medium' | 'large';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Full-resolution URL for download/lightbox */
 function photoUrl(photo: JobPhoto) {
   if (photo.url) return photo.url;
   return `/airo-assets/uploads/job-photos/${photo.filename}`;
@@ -83,6 +91,27 @@ function photoUrl(photo: JobPhoto) {
 function photoUrlBusted(photo: JobPhoto, bust?: number) {
   const base = photoUrl(photo);
   return bust ? `${base}?v=${bust}` : base;
+}
+
+/** Thumbnail URL for grid display — falls back to original if no thumbnail yet */
+function thumbnailSrc(photo: JobPhoto, bust?: number): string {
+  const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
+  // HEIC: no thumbnail possible server-side — use original (iOS can display it)
+  const base = photo.thumbnailUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
+  if (isHeic && !photo.thumbnailUrl) return base; // will show HEIC natively on iOS
+  return bust ? `${base}?v=${bust}` : base;
+}
+
+/** Preview URL for lightbox — medium quality, faster than original */
+function previewSrc(photo: JobPhoto, bust?: number): string {
+  const base = photo.previewUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
+  return bust ? `${base}?v=${bust}` : base;
+}
+
+/** Whether this photo is HEIC with no thumbnail (show placeholder on non-iOS) */
+function isHeicNoThumb(photo: JobPhoto): boolean {
+  const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
+  return isHeic && !photo.thumbnailUrl;
 }
 
 function formatBytes(bytes: number | null) {
@@ -189,7 +218,7 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={16} /></button>
         </div>
         <div className="bg-slate-100 flex items-center justify-center" style={{ height: 220 }}>
-          <img key={localBust} src={photoUrlBusted(photo, localBust)} alt={photo.label ?? photo.originalName ?? 'Photo'} className="max-w-full max-h-full object-contain" />
+          <img key={localBust} src={previewSrc(photo, localBust)} alt={photo.label ?? photo.originalName ?? 'Photo'} className="max-w-full max-h-full object-contain" />
         </div>
         <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
           <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
@@ -291,7 +320,7 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
         </button>
       )}
       <div className="relative z-10 max-w-[90vw] max-h-[85vh] flex flex-col items-center gap-3">
-        <img key={bust ?? photo.filename} src={photoUrlBusted(photo, bust)} alt={photo.label ?? photo.originalName ?? 'Job photo'} className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl" />
+        <img key={bust ?? photo.filename} src={previewSrc(photo, bust)} alt={photo.label ?? photo.originalName ?? 'Job photo'} className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-2xl" />
         <div className="text-center">
           {photo.label && <p className="text-white font-semibold text-sm mb-0.5">{photo.label}</p>}
           <p className="text-white/50 text-xs">{photo.originalName ?? photo.filename}{photo.sizeBytes ? ` · ${formatBytes(photo.sizeBytes)}` : ''}</p>
@@ -570,7 +599,20 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
       )}
 
       {/* Loading */}
-      {loading && <div className="flex items-center justify-center py-10"><Loader2 size={22} className="animate-spin text-primary" /></div>}
+      {loading && (
+        <div className={`grid gap-3 ${VIEW_COLS[viewSize]}`}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 animate-pulse">
+              <div className="aspect-square bg-slate-200" />
+              {viewSize !== 'small' && (
+                <div className="px-2.5 py-2 bg-white border-t border-slate-100">
+                  <div className="h-3 bg-slate-200 rounded w-3/4" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Empty */}
       {!loading && photos.length === 0 && !hasPendingCards && (
@@ -617,13 +659,24 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
                       className="relative aspect-square cursor-pointer"
                       onClick={() => selectMode ? toggleSelect(photo.id) : setLightboxIndex(i)}
                     >
-                      <img
-                        key={bust ?? photo.filename}
-                        src={photoUrlBusted(photo, bust)}
-                        alt={photo.label ?? photo.originalName ?? 'Job photo'}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      {isHeicNoThumb(photo) ? (
+                        /* HEIC placeholder for non-iOS browsers that can't display HEIC */
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 gap-1">
+                          <ImageOff size={20} className="text-slate-400" />
+                          <span className="text-[10px] text-slate-400 font-semibold">HEIC</span>
+                        </div>
+                      ) : (
+                        <img
+                          key={bust ?? photo.filename}
+                          src={thumbnailSrc(photo, bust)}
+                          alt={photo.label ?? photo.originalName ?? 'Job photo'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          width={300}
+                          height={300}
+                          decoding="async"
+                        />
+                      )}
                       {/* Select overlay */}
                       {selectMode && (
                         <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-primary/20' : 'bg-black/0 hover:bg-black/10'}`}>

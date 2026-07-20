@@ -266,6 +266,87 @@ export async function compressImageIfNeeded(
   }
 }
 
+// ── Thumbnail generation ──────────────────────────────────────────────────────
+
+const THUMBNAIL_WIDTH  = 300;
+const THUMBNAIL_QUALITY = 75;
+const PREVIEW_WIDTH    = 1000;
+const PREVIEW_QUALITY  = 80;
+
+export interface ThumbnailResult {
+  buffer: Buffer;
+  mimeType: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * Generate a thumbnail from an image buffer.
+ * Returns null if Jimp cannot decode the image (e.g. raw HEIC on server).
+ * Never throws — failures are logged and null is returned.
+ */
+export async function generateThumbnail(
+  buffer: Buffer,
+  mimeType: string,
+  targetWidth = THUMBNAIL_WIDTH,
+  quality = THUMBNAIL_QUALITY,
+): Promise<ThumbnailResult | null> {
+  // HEIC/HEIF: Jimp may not be able to decode on server — return null gracefully
+  if (HEIC_MIMES.has(mimeType)) {
+    console.log(`[storage] generateThumbnail: skipping HEIC (server can't decode) mime=${mimeType}`);
+    return null;
+  }
+  try {
+    const { CustomJimp, JimpMime } = await getJimp();
+    const img = await CustomJimp.read(buffer);
+    const origW: number = img.width;
+    const origH: number = img.height;
+
+    // Only resize if wider than target
+    if (origW > targetWidth) {
+      img.resize({ w: targetWidth });
+    }
+
+    const thumbW: number = img.width;
+    const thumbH: number = img.height;
+
+    const outBuffer: Buffer = await img.getBuffer(JimpMime.jpeg, { quality });
+    return { buffer: outBuffer, mimeType: 'image/jpeg', width: thumbW, height: thumbH };
+  } catch (err) {
+    console.warn(`[storage] generateThumbnail failed mime=${mimeType}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Generate a preview (medium-size) image from an image buffer.
+ * Returns null if Jimp cannot decode.
+ */
+export async function generatePreview(
+  buffer: Buffer,
+  mimeType: string,
+): Promise<ThumbnailResult | null> {
+  return generateThumbnail(buffer, mimeType, PREVIEW_WIDTH, PREVIEW_QUALITY);
+}
+
+/**
+ * Get the pixel dimensions of an image buffer.
+ * Returns null if Jimp cannot decode.
+ */
+export async function getImageDimensions(
+  buffer: Buffer,
+  mimeType: string,
+): Promise<{ width: number; height: number } | null> {
+  if (HEIC_MIMES.has(mimeType)) return null;
+  try {
+    const { CustomJimp } = await getJimp();
+    const img = await CustomJimp.read(buffer);
+    return { width: img.width as number, height: img.height as number };
+  } catch {
+    return null;
+  }
+}
+
 // ── Core service functions ────────────────────────────────────────────────────
 
 /**

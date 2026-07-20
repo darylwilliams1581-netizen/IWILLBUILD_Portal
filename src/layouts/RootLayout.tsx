@@ -7,7 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useEffect, useRef } from 'react';
+import { Component, type ReactElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -192,7 +192,18 @@ function PortalBanners() {
   );
 }
 
-// ── SosInnerBoundary ──────────────────────────────────────────────────────────
+// ── ClientOnly ────────────────────────────────────────────────────────────────
+// Renders nothing on the server; renders children only after hydration.
+// Prevents SSR/client node-count mismatches for components that use
+// browser-only APIs (navigator, localStorage, portals, etc.).
+function ClientOnly({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  return <>{children}</>;
+}
+
+
 // Sits inside AiroErrorBoundary so it intercepts the SOSAlertPopup
 // ReferenceError from the frozen RootLayout snapshot before AiroErrorBoundary
 // swallows it. Triggers a hard reload via __sosBoundaryTrigger.
@@ -244,7 +255,7 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta
@@ -254,10 +265,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
       </Helmet>
       <OfflineBanner />
       <PortalBanners />
-      <ScrollRestoration />
+      <ClientOnly><ScrollRestoration /></ClientOnly>
       <ActivePing />
-      <Toaster position="top-right" richColors />
-      <PwaInstallPrompt />
+      <ClientOnly><Toaster position="top-right" richColors /></ClientOnly>
+      <ClientOnly><PwaInstallPrompt /></ClientOnly>
       <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>
           {children}

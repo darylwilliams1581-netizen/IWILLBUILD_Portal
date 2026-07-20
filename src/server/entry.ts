@@ -1221,6 +1221,15 @@ async function runStartupMigrations() {
     { table: 'profiles', column: 'emergency_contact_name', definition: 'VARCHAR(255) NULL' },
     { table: 'profiles', column: 'emergency_contact_phone',definition: 'VARCHAR(50) NULL' },
     { table: 'profiles', column: 'profile_attachments',    definition: 'TEXT NULL' },
+    // ── job_photos: thumbnail + preview + dimensions (v2) ────────────────────
+    { table: 'job_photos', column: 'thumbnail_key',         definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'thumbnail_mime_type',   definition: 'VARCHAR(100) NULL' },
+    { table: 'job_photos', column: 'thumbnail_size_bytes',  definition: 'INT NULL' },
+    { table: 'job_photos', column: 'preview_key',           definition: 'VARCHAR(255) NULL' },
+    { table: 'job_photos', column: 'preview_mime_type',     definition: 'VARCHAR(100) NULL' },
+    { table: 'job_photos', column: 'preview_size_bytes',    definition: 'INT NULL' },
+    { table: 'job_photos', column: 'image_width',           definition: 'INT NULL' },
+    { table: 'job_photos', column: 'image_height',          definition: 'INT NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {

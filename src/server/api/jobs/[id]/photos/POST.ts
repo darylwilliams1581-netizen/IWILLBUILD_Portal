@@ -9,6 +9,9 @@ import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import {
   validateBatch,
   compressImageIfNeeded,
+  generateThumbnail,
+  generatePreview,
+  getImageDimensions,
   saveFile,
   ALLOWED_IMAGE_MIMES,
 } from '../../../../storage/storage-service.js';
@@ -148,6 +151,7 @@ export default async function handler(req: Request, res: Response) {
     const saved: Array<{ id: number; filename: string; url: string }> = [];
 
     for (const file of files) {
+      // ── Compress original ──────────────────────────────────────────────────
       let compressed: Buffer = file.buffer;
       let outMime: string = file.mimetype;
       try {
@@ -166,7 +170,7 @@ export default async function handler(req: Request, res: Response) {
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
       const storageKey = `${randomUUID()}.${ext}`;
 
-      console.log(`[photos POST] saving: key=${storageKey} bucket=${PHOTO_BUCKET} mime=${outMime}`);
+      console.log(`[photos POST] saving original: key=${storageKey} bucket=${PHOTO_BUCKET} mime=${outMime}`);
       const result = await saveFile({
         buffer: compressed,
         originalName: file.originalname,
@@ -174,8 +178,17 @@ export default async function handler(req: Request, res: Response) {
         bucket: PHOTO_BUCKET,
         storageKey,
       });
-      console.log(`[photos POST] saved: key=${result.storageKey} url=${result.publicUrl}`);
+      console.log(`[photos POST] saved original: key=${result.storageKey} url=${result.publicUrl}`);
 
+      // ── Get dimensions from compressed buffer (non-blocking) ──────────────
+      let imgWidth: number | null = null;
+      let imgHeight: number | null = null;
+      try {
+        const dims = await getImageDimensions(compressed, outMime);
+        if (dims) { imgWidth = dims.width; imgHeight = dims.height; }
+      } catch { /* non-fatal */ }
+
+      // ── Insert DB record first so client gets a response quickly ──────────
       const [inserted] = await db.insert(jobPhotos).values({
         jobId,
         companyId: profile.companyId,
@@ -184,6 +197,8 @@ export default async function handler(req: Request, res: Response) {
         label: label || null,
         mimeType: outMime,
         sizeBytes: result.sizeBytes,
+        imageWidth: imgWidth,
+        imageHeight: imgHeight,
         uploadedByUserId: uploaderUserId,
         uploadedByName: uploaderName,
       }).$returningId();
@@ -193,6 +208,62 @@ export default async function handler(req: Request, res: Response) {
         id: inserted.id,
         filename: result.storageKey,
         url: result.publicUrl,
+      });
+
+      // ── Generate thumbnail + preview asynchronously (non-blocking) ────────
+      // Fire-and-forget: upload response is already sent; thumbnails are
+      // generated in the background and the DB record is updated when done.
+      const photoId = inserted.id;
+      const srcBuffer = compressed;
+      const srcMime = outMime;
+      setImmediate(async () => {
+        try {
+          const [thumb, preview] = await Promise.all([
+            generateThumbnail(srcBuffer, srcMime),
+            generatePreview(srcBuffer, srcMime),
+          ]);
+
+          const thumbKey = thumb ? `${randomUUID()}_thumb.jpg` : null;
+          const previewKey = preview ? `${randomUUID()}_preview.jpg` : null;
+
+          if (thumb && thumbKey) {
+            await saveFile({
+              buffer: thumb.buffer,
+              originalName: `thumb_${file.originalname}`,
+              mimeType: thumb.mimeType,
+              bucket: PHOTO_BUCKET,
+              storageKey: thumbKey,
+            });
+            console.log(`[photos POST] thumbnail saved: key=${thumbKey} size=${thumb.buffer.length}`);
+          }
+
+          if (preview && previewKey) {
+            await saveFile({
+              buffer: preview.buffer,
+              originalName: `preview_${file.originalname}`,
+              mimeType: preview.mimeType,
+              bucket: PHOTO_BUCKET,
+              storageKey: previewKey,
+            });
+            console.log(`[photos POST] preview saved: key=${previewKey} size=${preview.buffer.length}`);
+          }
+
+          // Update DB with thumbnail/preview keys
+          await db.execute(sql`
+            UPDATE job_photos SET
+              thumbnail_key        = ${thumbKey},
+              thumbnail_mime_type  = ${thumb ? thumb.mimeType : null},
+              thumbnail_size_bytes = ${thumb ? thumb.buffer.length : null},
+              preview_key          = ${previewKey},
+              preview_mime_type    = ${preview ? preview.mimeType : null},
+              preview_size_bytes   = ${preview ? preview.buffer.length : null}
+            WHERE id = ${photoId}
+          `);
+          console.log(`[photos POST] thumbnail/preview DB updated: photoId=${photoId} thumb=${!!thumbKey} preview=${!!previewKey}`);
+        } catch (thumbErr) {
+          console.error(`[photos POST] thumbnail generation failed for photoId=${photoId}:`, thumbErr instanceof Error ? thumbErr.message : thumbErr);
+          // Non-fatal — original is already saved and accessible
+        }
       });
     }
 

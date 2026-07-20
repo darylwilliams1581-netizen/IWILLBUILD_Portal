@@ -13,10 +13,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, RefreshCw } from 'lucide-react';
 
 export default function OfflineBanner() {
-  const [isOnline, setIsOnline]   = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [mounted, setMounted] = useState(false);
+  const [isOnline, setIsOnline]   = useState(true);
   const [syncing,  setSyncing]    = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setIsOnline(navigator.onLine);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     function handleOnline() {
       setSyncing(true);
       setIsOnline(true);
@@ -34,7 +41,9 @@ export default function OfflineBanner() {
       window.removeEventListener('online',  handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [mounted]);
+
+  if (!mounted) return null;
 
   const visible = !isOnline || syncing;
 

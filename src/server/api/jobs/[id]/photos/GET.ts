@@ -37,19 +37,39 @@ export default async function handler(req: Request, res: Response) {
       .where(and(eq(jobPhotos.jobId, jobId), eq(jobPhotos.companyId, profile.companyId)))
       .orderBy(desc(jobPhotos.createdAt));
 
-    // Attach a signed URL to each photo so the client can display it
-    // regardless of storage provider (R2 signed URLs, local proxy, etc.)
+    // Attach signed URLs for original + thumbnail + preview
     const photos = await Promise.all(
       rows.map(async (p) => {
+        // Original URL
         let url: string | null = null;
         try {
           url = await getSignedUrl(p.filename, PHOTO_BUCKET, 3600);
         } catch (urlErr) {
           console.error(`[photos GET] getSignedUrl failed for ${p.filename}:`, urlErr);
-          // Fall back to the proxy route so the client can still display the photo
           url = `/api/jobs/${jobId}/photos/${p.id}/download`;
         }
-        return { ...p, url };
+
+        // Thumbnail URL (if thumbnail was generated)
+        let thumbnailUrl: string | null = null;
+        if (p.thumbnailKey) {
+          try {
+            thumbnailUrl = await getSignedUrl(p.thumbnailKey, PHOTO_BUCKET, 3600);
+          } catch {
+            thumbnailUrl = null;
+          }
+        }
+
+        // Preview URL (if preview was generated)
+        let previewUrl: string | null = null;
+        if (p.previewKey) {
+          try {
+            previewUrl = await getSignedUrl(p.previewKey, PHOTO_BUCKET, 3600);
+          } catch {
+            previewUrl = null;
+          }
+        }
+
+        return { ...p, url, thumbnailUrl, previewUrl };
       })
     );
 

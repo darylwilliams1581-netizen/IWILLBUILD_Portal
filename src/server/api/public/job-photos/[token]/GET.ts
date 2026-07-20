@@ -49,10 +49,20 @@ export default async function handler(req: Request, res: Response) {
           url = await getSignedUrl(p.filename, BUCKET_JOB_PHOTOS, 86400); // 24h for public share links
         } catch (urlErr) {
           console.error(`[public job-photos] getSignedUrl failed for ${p.filename}:`, urlErr);
-          // Fall back to public proxy route (no auth required, token-gated)
           url = `/api/public/job-photos/${req.params.token}/photo/${p.id}`;
         }
-        return { ...p, url };
+
+        let thumbnailUrl: string | null = null;
+        if (p.thumbnailKey) {
+          try { thumbnailUrl = await getSignedUrl(p.thumbnailKey, BUCKET_JOB_PHOTOS, 86400); } catch { /* ignore */ }
+        }
+
+        let previewUrl: string | null = null;
+        if (p.previewKey) {
+          try { previewUrl = await getSignedUrl(p.previewKey, BUCKET_JOB_PHOTOS, 86400); } catch { /* ignore */ }
+        }
+
+        return { ...p, url, thumbnailUrl, previewUrl };
       })
     );
 

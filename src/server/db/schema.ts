@@ -247,11 +247,23 @@ export const jobPhotos = mysqlTable('job_photos', {
   companyId: int('company_id')
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
+  // Original file — always kept for download/evidence
   filename: varchar('filename', { length: 255 }).notNull(),
   originalName: varchar('original_name', { length: 255 }),
   label: varchar('label', { length: 255 }),
   mimeType: varchar('mime_type', { length: 100 }),
   sizeBytes: int('size_bytes'),
+  // Thumbnail — ~300px wide JPEG, generated server-side after upload
+  thumbnailKey: varchar('thumbnail_key', { length: 255 }),
+  thumbnailMimeType: varchar('thumbnail_mime_type', { length: 100 }),
+  thumbnailSizeBytes: int('thumbnail_size_bytes'),
+  // Preview — ~1000px wide JPEG (optional, for lightbox)
+  previewKey: varchar('preview_key', { length: 255 }),
+  previewMimeType: varchar('preview_mime_type', { length: 100 }),
+  previewSizeBytes: int('preview_size_bytes'),
+  // Dimensions of the original (populated when Jimp can decode)
+  imageWidth: int('image_width'),
+  imageHeight: int('image_height'),
   uploadedByUserId: varchar('uploaded_by_user_id', { length: 36 }),
   uploadedByName: varchar('uploaded_by_name', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
