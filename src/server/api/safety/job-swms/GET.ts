@@ -42,10 +42,24 @@ export default async function handler(req: Request, res: Response) {
       query = sql`${query} AND js.status = ${statusFilter}`;
     }
 
-    query = sql`${query} ORDER BY js.created_at DESC`; // fixed: updated_at does not exist
-
-    const [rows] = await db.execute(query) as unknown as [Array<Record<string, unknown>>, unknown];
-    res.json({ jobSwms: rows ?? [] });
+    // Try created_at first (correct column); fall back to id if column missing on old deploys
+    let rows: Array<Record<string, unknown>> = [];
+    try {
+      const orderedQuery = sql`${query} ORDER BY js.created_at DESC`;
+      const [r] = await db.execute(orderedQuery) as unknown as [Array<Record<string, unknown>>, unknown];
+      rows = r ?? [];
+    } catch (orderErr: unknown) {
+      const msg = orderErr instanceof Error ? orderErr.message : String(orderErr);
+      if (msg.includes('updated_at') || msg.includes('created_at') || msg.includes('Unknown column')) {
+        // Column mismatch on stale deploy — fall back to ordering by id
+        const fallbackQuery = sql`${query} ORDER BY js.id DESC`;
+        const [r2] = await db.execute(fallbackQuery) as unknown as [Array<Record<string, unknown>>, unknown];
+        rows = r2 ?? [];
+      } else {
+        throw orderErr;
+      }
+    }
+    res.json({ jobSwms: rows });
   } catch (err) {
     console.error('GET /api/safety/job-swms error:', err);
     res.status(500).json({ error: 'Failed to fetch job SWMS' });

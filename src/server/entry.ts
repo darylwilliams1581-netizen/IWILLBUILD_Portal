@@ -1085,6 +1085,9 @@ async function runStartupMigrations() {
     { table: 'job_swms', column: 'reviewed_at',            definition: 'DATETIME NULL' },
     { table: 'job_swms', column: 'approved_by_user_id',    definition: 'VARCHAR(36) NULL' },
     { table: 'job_swms', column: 'approved_at',            definition: 'DATETIME NULL' },
+    // ── job_swms: timestamp columns (created_at was missing on some deploys) ────
+    { table: 'job_swms', column: 'created_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP' },
+    { table: 'job_swms', column: 'updated_at',             definition: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP' },
     // ── jobs: customer link (v2) ──────────────────────────────────────────────
     { table: 'jobs', column: 'customer_id', definition: 'INT NULL' },
     // ── profiles: invoices permission ────────────────────────────────────────
