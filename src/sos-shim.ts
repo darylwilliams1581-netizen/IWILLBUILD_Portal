@@ -373,12 +373,14 @@ const STALE_TS_SHIM = [
   '1784518714435',
   '1784519099416', // sos-shim.ts stale — re-throwing patchedRemoveChild
   '1784522000000',
+  '1784549200000',
+  '1784600000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784549200000';
+const SOS_SHIM_VERSION = '1784620000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
