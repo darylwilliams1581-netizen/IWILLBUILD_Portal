@@ -353,16 +353,24 @@ export default function JobPhotosPage() {
           className="fixed z-30 left-1/2 -translate-x-1/2 md:hidden"
           style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 56px + 16px)' }}
         >
-          <button
+          <motion.button
             onClick={() => photosRef.current?.openCamera()}
             disabled={uploading || atLimit}
             aria-label="Take a photo"
             title="Take a photo"
-            className="w-14 h-14 rounded-full bg-slate-900 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-50 text-white flex items-center justify-center shadow-xl transition-colors touch-manipulation"
-            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.35)' }}
+            animate={{ rotate: [0, -6, 6, -4, 4, -2, 2, 0] }}
+            transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
+            whileTap={{ scale: 0.92 }}
+            className="w-16 h-16 rounded-full disabled:opacity-50 touch-manipulation overflow-hidden p-0 border-0 bg-transparent"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.45)' }}
           >
-            <Camera size={24} />
-          </button>
+            <img
+              src="/airo-assets/images/ui/camera-fab-icon"
+              alt="Camera"
+              className="w-full h-full object-cover rounded-full"
+              draggable={false}
+            />
+          </motion.button>
         </div>
       )}
 

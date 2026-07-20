@@ -22,6 +22,7 @@ const STALE_TS_SHIM = [
   '1784516840163',
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout
+  '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_WINDOW_MS = 20_000;
@@ -68,23 +69,37 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// Guard against stale HMR snapshots of this file re-patching removeChild and
-// creating a double-patch chain. We use a flag on Node.prototype itself so
-// any version of this shim (current or stale) can detect an existing patch.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(Node.prototype as any).__sosRemoveChildPatched) {
+// Stale HMR snapshots of this file may have already patched Node.prototype.removeChild.
+// We must find the true native original by unwinding any patchedRemoveChild wrappers,
+// then install a single fresh patch that swallows NotFoundError.
+{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Node.prototype as any).__sosRemoveChildPatched = true;
-  const _origRemoveChild = Node.prototype.removeChild;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Node.prototype as any).removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
+  const proto = Node.prototype as any;
+
+  // Walk back to the true native removeChild — skip any function named patchedRemoveChild.
+  let candidate = proto.__sosOrigRemoveChild ?? proto.removeChild;
+  while (typeof candidate === 'function' && candidate.name === 'patchedRemoveChild') {
+    // Each stale wrapper stored its own _orig on the prototype under a versioned key —
+    // but we can't access those closures. Instead, create a temporary iframe whose
+    // Node.prototype.removeChild is guaranteed native.
     try {
-      return _origRemoveChild.call(this, child) as T;
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      candidate = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? candidate;
+      document.body.removeChild(iframe);
+    } catch { /* ignore */ }
+    break; // one attempt is enough
+  }
+  proto.__sosOrigRemoveChild = candidate;
+
+  proto.removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
+    try {
+      return candidate.call(this, child) as T;
     } catch (e) {
-      // Swallow NotFoundError unconditionally — the node is already gone,
-      // React's reconciler has handled it, and the UI is correct.
       if (e instanceof Error && e.name === 'NotFoundError') {
-        return child;
+        return child; // node already gone — safe to swallow
       }
       throw e;
     }
