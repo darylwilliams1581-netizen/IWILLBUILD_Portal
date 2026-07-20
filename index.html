@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v61 -->
+  <!-- cache-bust: v62 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -28,12 +28,12 @@
             try { return _realRC.call(this, child); } catch (e) { /* swallow NotFoundError */ }
             return child;
           }
-          // Install as a getter on Node.prototype so value-descriptor overwrites can't replace it.
+          // Install as a getter on Node.prototype — configurable:false so nothing can replace it.
           try {
             Object.defineProperty(Node.prototype, 'removeChild', {
               get: function() { return safeRemoveChild; },
               set: function(_v) { /* ignore — our wrapper always wins */ },
-              configurable: true,
+              configurable: false,
               enumerable: false,
             });
           } catch(e) {

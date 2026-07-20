@@ -58,14 +58,11 @@ function isSosError(error: unknown): boolean {
   return (
     msg.includes('SOSAlertPopup') ||
     stack.includes('SOSAlertPopup') ||
-    stack.includes('1783772358219') ||
-    // stale sos-shim patchedRemoveChild throwing NotFoundError
-    stack.includes('patchedRemoveChild') ||
-    (msg.includes('removeChild') && msg.includes('not a child'))
+    stack.includes('1783772358219')
   );
 }
 
-/** True for the patchedRemoveChild NotFoundError — swallow silently, no reload needed */
+/** True for the patchedRemoveChild NotFoundError from the stale shim — swallow silently */
 function isRemoveChildError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   const stack = (error as Error).stack ?? '';
@@ -89,21 +86,19 @@ function isRemoveChildError(error: unknown): boolean {
 export default class StaleModuleReloadBoundary extends Component<Props, State> {
   state: State = { sosError: false };
   private _otherError: Error | null = null;
-  private _isRemoveChildError = false;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
+    // removeChild errors are swallowed in componentDidCatch — don't set sosError.
+    if (isRemoveChildError(error)) return { sosError: false };
     return { sosError: isSosError(error) };
   }
 
   componentDidCatch(error: Error) {
     if (isRemoveChildError(error)) {
-      // patchedRemoveChild NotFoundError from stale shim — swallow silently.
-      this._isRemoveChildError = true;
+      // Stale shim patchedRemoveChild NotFoundError — swallow silently, no reload.
       return;
     }
     if (isSosError(error)) {
-      // Fire immediately in componentDidCatch (synchronous, before any render).
-      // __sosBoundaryTrigger is set by index.html and also does location.href nav.
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
       } else {
@@ -115,7 +110,6 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
   }
 
   render() {
-    // Re-throw non-SOS errors from render so AiroErrorBoundary catches them.
     if (this._otherError) {
       const err = this._otherError;
       this._otherError = null;
@@ -123,18 +117,6 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
     }
 
     if (this.state.sosError) {
-      // If it was a removeChild error, recover silently — reset state and render children.
-      // The boundary caught it; React will re-render from here cleanly.
-      // We detect this by checking if the error was a removeChild type via the flag set in componentDidCatch.
-      if (this._isRemoveChildError) {
-        this._isRemoveChildError = false;
-        // Reset error state so children render normally on next tick.
-        // Use setState to trigger re-render without the error state.
-        setTimeout(() => this.setState({ sosError: false }), 0);
-        return null;
-      }
-
-      // Shown only if nav guard is exhausted (reloaded MAX_NAV times already).
       return (
         <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
           <h2>Something went wrong loading the portal.</h2>

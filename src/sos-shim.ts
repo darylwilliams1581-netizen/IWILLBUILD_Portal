@@ -17,15 +17,22 @@
 // safe version — so its patchedRemoveChild can never throw NotFoundError.
 {
   const _hostRemoveChild = Node.prototype.removeChild;
+  function _safeRC<T extends Node>(this: Node, child: T): T {
+    try { _hostRemoveChild.call(this, child); } catch { /* swallow NotFoundError */ }
+    return child;
+  }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (Node.prototype as any).removeChild = function safeRemoveChildProto<T extends Node>(this: Node, child: T): T {
-      // Always attempt — never skip — so React's DOM reconciler stays consistent.
-      // Swallow NotFoundError if child is no longer present.
-      try { _hostRemoveChild.call(this, child); } catch { /* swallow NotFoundError */ }
-      return child;
-    };
-  } catch { /* ignore */ }
+    // Use a getter so the stale shim's Object.defineProperty call cannot
+    // overwrite this with a throwing version — the setter silently ignores writes.
+    Object.defineProperty(Node.prototype, 'removeChild', {
+      get() { return _safeRC; },
+      set(_v) { /* ignore — our wrapper always wins */ },
+      configurable: true,
+      enumerable: false,
+    });
+  } catch {
+    try { (Node.prototype as any).removeChild = _safeRC; } catch { /* ignore */ }
+  }
 }
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────

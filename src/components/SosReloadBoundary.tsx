@@ -21,15 +21,20 @@ function recentReload(): boolean {
   }
 }
 
-function isSosError(error: unknown): boolean {
+function isRemoveChildError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  const msg   = (error as Error).message ?? '';
   const stack = (error as Error).stack ?? '';
+  const msg   = (error as Error).message ?? '';
   return (
-    (error instanceof ReferenceError && msg.includes('SOSAlertPopup')) ||
     stack.includes('patchedRemoveChild') ||
     (msg.includes('removeChild') && msg.includes('not a child'))
   );
+}
+
+function isSosError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = (error as Error).message ?? '';
+  return error instanceof ReferenceError && msg.includes('SOSAlertPopup');
 }
 
 interface Props { children: ReactNode; }
@@ -40,10 +45,12 @@ export default class SosReloadBoundary extends Component<Props, State> {
   private _otherError: Error | null = null;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
+    if (isRemoveChildError(error)) return { sosError: false };
     return { sosError: isSosError(error) };
   }
 
   componentDidCatch(error: Error) {
+    if (isRemoveChildError(error)) return; // swallow silently
     if (!isSosError(error)) {
       this._otherError = error;
     }
