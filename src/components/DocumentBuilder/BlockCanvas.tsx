@@ -114,7 +114,7 @@ export default function BlockCanvas() {
 
   if (blocks.length === 0 && mode === 'edit') {
     return (
-      <div className="flex-1 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4">
+      <div className="flex-1 min-h-0 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4">
         <div
           className="shadow-xl rounded-sm relative"
           style={canvasStyle}
@@ -138,7 +138,7 @@ export default function BlockCanvas() {
 
   return (
     <div
-      className="flex-1 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4"
+      className="flex-1 min-h-0 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) deselect();
       }}

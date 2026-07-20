@@ -8,8 +8,8 @@ import BlockCanvas from './BlockCanvas';
 
 export default function StructurePanel() {
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <div className="flex-1 overflow-hidden">
+    <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <BlockCanvas />
       </div>
     </div>

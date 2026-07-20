@@ -286,7 +286,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
       </div>
 
       {/* ── Main body ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LAYOUT tab — document + page settings */}
         {activeTab === 'layout' && (
@@ -474,7 +474,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             )}
 
             {/* Canvas — always visible for insert tabs */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex min-h-0 overflow-hidden">
               <StructurePanel />
               {activeTab === 'structure' && (
                 <BlockInspectorWrapper />

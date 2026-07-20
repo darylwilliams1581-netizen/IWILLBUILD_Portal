@@ -25,7 +25,7 @@
 
           var _realRC = Node.prototype.removeChild;
           function safeRemoveChild(child) {
-            try { return _realRC.call(this, child); } catch (e) { /* swallow */ }
+            try { if (child && child.parentNode) child.remove(); } catch (e) { /* swallow */ }
             return child;
           }
           // Patch main window Node.prototype

@@ -5,20 +5,15 @@ import './sos-shim';
 
 // ── Overwrite stale patchedRemoveChild on #app BEFORE React hydrates ─────────
 // The stale shim (t=1784519099416) installed patchedRemoveChild as an own
-// property on the #app div during a previous page load. That property survives
-// HMR because the #app div is never recreated. We must overwrite it NOW —
-// synchronously, before hydrateRoot — with a safe no-throw wrapper.
+// property on the #app div. Overwrite it with a safe wrapper that calls the
+// true browser native captured in index.html before any patching ran.
 {
   const appEl = document.getElementById('app');
   if (appEl) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
     const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-      try {
-        // Walk up the prototype chain to find the true host native, skipping
-        // any patched versions on Node.prototype.
-        const proto = Object.getPrototypeOf(Object.getPrototypeOf(appEl));
-        const native = proto && Object.getOwnPropertyDescriptor(proto, 'removeChild')?.value;
-        if (native) { native.call(this, child); }
-      } catch { /* swallow NotFoundError */ }
+      try { if (child && child.parentNode) (child as unknown as ChildNode).remove(); } catch { /* swallow */ }
       return child;
     };
     try {
