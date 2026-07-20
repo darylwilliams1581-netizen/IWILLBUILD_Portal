@@ -49,14 +49,18 @@ const STUB_JS = [
 
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
-  if (url.includes('leaflet.js') || url.includes('leaflet.css')) {
+  // Match any leaflet JS/CSS regardless of query string or path prefix.
+  // Covers: /node_modules/.vite/deps/leaflet.js?v=05d76b4a and similar.
+  const isLeafletJs = url.includes('leaflet.js') || url.includes('/leaflet/dist/') || url.includes('.vite/deps/leaflet');
+  const isLeafletCss = url.includes('leaflet.css');
+  if (isLeafletJs || isLeafletCss) {
     event.respondWith(
       new Response(
-        url.includes('.css') ? '/* leaflet evicted */' : STUB_JS,
+        isLeafletCss ? '/* leaflet evicted */' : STUB_JS,
         {
           status: 200,
           headers: {
-            'Content-Type': url.includes('.css')
+            'Content-Type': isLeafletCss
               ? 'text/css; charset=utf-8'
               : 'application/javascript; charset=utf-8',
             'Cache-Control': 'no-store, no-cache, must-revalidate',

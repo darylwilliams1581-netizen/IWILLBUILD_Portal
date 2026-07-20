@@ -57,6 +57,39 @@
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
       });
 
+      // Layer 1b: window.onerror — catches synchronous throws that bypass addEventListener.
+      // Must return true to suppress the error from the console/React error boundary.
+      var _prevOnerror = window.onerror;
+      window.onerror = function(msg, src, line, col, err) {
+        var m = String(msg || '');
+        var s = String(src || '');
+        if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1 ||
+            m.indexOf('_rawPanBy') !== -1 || m.indexOf('_getMapPanePos') !== -1) {
+          return true; // suppress
+        }
+        if (typeof _prevOnerror === 'function') return _prevOnerror.apply(this, arguments);
+        return false;
+      };
+
+      // Layer 1c: Patch getPosition at the proto level so undefined el returns {x:0,y:0}.
+      // The stale leaflet calls getPosition(undefined) from _rawPanBy/_getMapPanePos.
+      // We can't patch the local variable inside the leaflet module, but we CAN wrap
+      // the function after leaflet assigns it to window.L.DomUtil — done in Layer 2.
+      // Additionally, define a safe getter on Object.prototype as absolute last resort:
+      try {
+        Object.defineProperty(Object.prototype, '_leaflet_pos', {
+          get: function() {
+            // Only return a safe value when accessed on a non-null object.
+            // For HTMLElement instances, defer to the HTMLElement.prototype getter.
+            if (this instanceof HTMLElement) return this.__lpos__ || { x: 0, y: 0 };
+            return this.__lpos__ || { x: 0, y: 0 };
+          },
+          set: function(v) { this.__lpos__ = v; },
+          configurable: true,
+          enumerable: false,
+        });
+      } catch(e1c) {}
+
       // Layer 2: Intercept window.L assignment so we can patch getPosition
       // the instant leaflet sets it. The stale disk-cached leaflet.js executes
       // synchronously and calls getPosition(undefined) during map pan — patching

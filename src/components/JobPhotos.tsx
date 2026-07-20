@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Camera,
   Upload,
   X,
   Download,
@@ -21,9 +20,10 @@ import {
   List,
   CheckSquare,
   Square,
-  Share2,
-  Send,
 } from 'lucide-react';
+import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
+import PendingPhotoCard from '@/components/PendingPhotoCard';
+import BatchUploadSummary from '@/components/BatchUploadSummary';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,113 +97,6 @@ function formatDateTime(iso: string) {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
-}
-
-const HEIC_EXTS = ['heic', 'heif'];
-const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
-// image/jpg is a non-standard alias iOS Safari sends for JPEG files.
-// image/heic / image/heif are sent by iPhone camera.
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
-
-/**
- * Returns true when running on iOS/iPadOS Safari.
- * On iOS, ALL browsers use WebKit — so this covers Chrome/Firefox on iPhone too.
- * We skip client-side canvas processing on iOS to avoid minification constructor
- * errors (o is not a constructor) and let the server handle HEIC conversion.
- */
-function isIosSafari(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  return /iP(hone|od|ad)/.test(ua);
-}
-
-/**
- * Convert any image File to a JPEG via an off-screen canvas.
- * NOT called on iOS — raw file is uploaded directly instead.
- * Returns null if the browser cannot decode the file.
- */
-async function normaliseToJpeg(file: File): Promise<File | null> {
-  const MAX_PX = 1920;
-  const QUALITY = 0.88;
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    return null;
-  }
-  let { width, height } = bitmap;
-  if (width > MAX_PX || height > MAX_PX) {
-    if (width >= height) { height = Math.round((height / width) * MAX_PX); width = MAX_PX; }
-    else                 { width  = Math.round((width  / height) * MAX_PX); height = MAX_PX; }
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  // Use a plain callback-to-promise to avoid any minifier issues with Promise constructor
-  return await new Promise<File>((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) { resolve(file); return; }
-      const stem = file.name.replace(/\.[^.]+$/, '');
-      resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
-    }, 'image/jpeg', QUALITY);
-  });
-}
-
-/**
- * Async pre-process: convert HEIC→JPEG, resize oversized images.
- * On iOS: skips ALL canvas processing — uploads raw files directly.
- * Server accepts HEIC/HEIF and all iOS MIME aliases.
- */
-async function prepareFiles(files: File[]): Promise<{ valid: File[]; error: string | null }> {
-  if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
-
-  // iOS Safari: skip all client-side processing to avoid constructor errors.
-  // The server handles HEIC conversion and accepts image/jpg alias.
-  if (isIosSafari()) {
-    const valid = files.filter((f) => {
-      if (f.type === '' ) return true; // unknown type — let server decide
-      return ALLOWED_TYPES.includes(f.type);
-    });
-    if (valid.length === 0 && files.length > 0) {
-      return { valid: [], error: `"${files[0].name}" is not a supported image type (got: ${files[0].type || 'unknown'}).` };
-    }
-    return { valid, error: null };
-  }
-
-  const prepared: File[] = [];
-  for (const f of files) {
-    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-    const isHeic = HEIC_EXTS.includes(ext) || HEIC_MIMES.includes(f.type);
-    if (isHeic) {
-      const converted = await normaliseToJpeg(f);
-      prepared.push(converted ?? f);
-      continue;
-    }
-    if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
-      return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
-    }
-    try {
-      const normalised = await normaliseToJpeg(f);
-      prepared.push(normalised ?? f);
-    } catch {
-      prepared.push(f);
-    }
-  }
-  return { valid: prepared, error: null };
-}
-
-// Sync validate for single-file replace flow
-function validateFiles(files: File[]): { valid: File[]; error: string | null } {
-  for (const f of files) {
-    if (!ALLOWED_TYPES.includes(f.type) && f.type !== '') {
-      return { valid: [], error: `"${f.name}" is not a supported image type (got: ${f.type || 'unknown'}). Use JPEG, PNG, or WebP.` };
-    }
-  }
-  if (files.length > 10) return { valid: [], error: 'Maximum 10 photos per upload.' };
-  return { valid: files, error: null };
 }
 
 const VIEW_COLS: Record<ViewSize, string> = {
@@ -426,20 +319,45 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<JobPhoto | null>(null);
   const [editPhoto, setEditPhoto] = useState<JobPhoto | null>(null);
   const [cacheBust, setCacheBust] = useState<Record<number, number>>({});
+  const [summaryDismissed, setSummaryDismissed] = useState(false);
 
   const [viewSize, setViewSize] = useState<ViewSize>('medium');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Upload queue ───────────────────────────────────────────────────────────
+
+  const {
+    queue,
+    isUploading,
+    uploadedCount,
+    failedCount,
+    pendingCount,
+    totalCount,
+    enqueueFiles,
+    retryItem,
+    removeItem,
+    clearUploaded,
+  } = usePhotoUploadQueue({
+    jobId,
+    onBatchComplete: (uploaded, _failed) => {
+      // Reconcile server records after the batch finishes
+      if (uploaded > 0) void fetchPhotos();
+      setSummaryDismissed(false);
+    },
+  });
+
+  // Mirror uploading state to parent
+  useEffect(() => { onUploading?.(isUploading); }, [isUploading, onUploading]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -458,71 +376,25 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   useEffect(() => { void fetchPhotos(); }, [fetchPhotos]);
 
-  // ── Upload ─────────────────────────────────────────────────────────────────
+  // ── Enqueue selected files ─────────────────────────────────────────────────
 
-  const doUpload = async (files: FileList | File[]) => {
+  const doUpload = useCallback((files: FileList | File[]) => {
     if (!jobId || isNaN(jobId)) { setUploadError('Invalid job ID — cannot upload.'); return; }
     const arr = Array.from(files);
     if (arr.length === 0) return;
 
-    // ── Full mapping diagnostic logging (all devices) ───────────────────────
-    const ios = isIosSafari();
-    console.log(`[upload] jobId=${jobId} files=${arr.length} ios=${ios}`);
-    arr.forEach((f, i) => {
-      console.log(`[upload] file[${i}]: name="${f.name}" type="${f.type || '(empty)'}" size=${f.size}`);
-    });
-    console.log(`[upload] endpoint: POST /api/jobs/${jobId}/photos`);
-    console.log(`[upload] FormData field: "photos"`);
-    // ───────────────────────────────────────────────────────────────────────
+    const atLimit = photos.length >= MAX_PHOTOS;
+    if (atLimit) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); return; }
 
-    setUploading(true); onUploading?.(true); setUploadError(null);
-    let valid: File[];
-    try {
-      const result = await prepareFiles(arr);
-      if (result.error) { setUploadError(result.error); setUploading(false); onUploading?.(false); return; }
-      valid = result.valid;
-      console.log(`[upload] prepareFiles ok: ${valid.length} file(s) ready`);
-    } catch (e) {
-      console.error('[upload] prepareFiles threw:', e);
-      setUploadError('Failed to process images. Please try again.');
-      setUploading(false); onUploading?.(false); return;
+    const remaining = MAX_PHOTOS - photos.length;
+    const toAdd = arr.slice(0, remaining);
+    if (toAdd.length < arr.length) {
+      setUploadError(`Only ${remaining} photo${remaining === 1 ? '' : 's'} can be added. Uploading first ${remaining}.`);
     }
-    if (photos.length >= MAX_PHOTOS) { setUploadError(`Photo limit reached (${MAX_PHOTOS}). Delete some first.`); setUploading(false); onUploading?.(false); return; }
-    if (photos.length + valid.length > MAX_PHOTOS) {
-      const rem = MAX_PHOTOS - photos.length;
-      setUploadError(`Only ${rem} photo${rem === 1 ? '' : 's'} can be added. Select fewer files.`);
-      setUploading(false); onUploading?.(false); return;
-    }
-    const fd = new FormData();
-    valid.forEach((f) => fd.append('photos', f));
-    console.log(`[upload] sending ${valid.length} file(s) to /api/jobs/${jobId}/photos`);
-    try {
-      const res = await fetch(`/api/jobs/${jobId}/photos`, { method: 'POST', credentials: 'include', body: fd });
-      console.log(`[upload] server response: ${res.status}`);
-      let data: { error?: string; photos?: unknown[] } = {};
-      const ct = res.headers.get('content-type') ?? '';
-      if (ct.includes('application/json')) {
-        data = await res.json() as { error?: string; photos?: unknown[] };
-        console.log('[upload] response body:', JSON.stringify(data).slice(0, 300));
-      } else {
-        const text = await res.text();
-        console.warn('[upload] non-json response:', text.slice(0, 200));
-        throw new Error(text.includes('<!') ? `Server error (${res.status}) — please try again` : text || `Upload failed (${res.status})`);
-      }
-      if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status})`);
-      console.log(`[upload] success — refreshing photo list for jobId=${jobId}`);
-      await fetchPhotos();
-      console.log('[upload] photo list refreshed');
-    } catch (e) {
-      console.error('[upload] error:', e);
-      setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again');
-    }
-    finally {
-      setUploading(false); onUploading?.(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
-    }
-  };
+
+    setSummaryDismissed(false);
+    enqueueFiles(toAdd);
+  }, [jobId, photos.length, enqueueFiles]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
@@ -599,8 +471,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files.length > 0) void doUpload(e.dataTransfer.files);
-  }, [doUpload]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (e.dataTransfer.files.length > 0) doUpload(e.dataTransfer.files);
+  }, [doUpload]);
 
   // ── Imperative handle ──────────────────────────────────────────────────────
 
@@ -614,15 +486,16 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     setSelectMode,
     get selectedCount() { return selected.size; },
     get photoCount() { return photos.length; },
-    get uploading() { return uploading; },
+    get uploading() { return isUploading; },
     downloadSelected,
     exitSelectMode,
-  }), [viewSize, selectMode, selected.size, photos.length, uploading, generateShareLink, downloadSelected, exitSelectMode]);
+  }), [viewSize, selectMode, selected.size, photos.length, isUploading, generateShareLink, downloadSelected, exitSelectMode]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const atLimit = photos.length >= MAX_PHOTOS;
   const remaining = MAX_PHOTOS - photos.length;
+  const hasPendingCards = queue.length > 0;
 
   return (
     <div
@@ -653,11 +526,54 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         </div>
       )}
 
+      {/* ── Batch upload summary banner ── */}
+      {!summaryDismissed && (
+        <BatchUploadSummary
+          totalCount={totalCount}
+          pendingCount={pendingCount}
+          uploadedCount={uploadedCount}
+          failedCount={failedCount}
+          isUploading={isUploading}
+          onDismiss={() => { setSummaryDismissed(true); clearUploaded(); }}
+        />
+      )}
+
+      {/* ── Pending upload tray ── */}
+      {hasPendingCards && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-600">
+              {isUploading ? 'Uploading…' : 'Upload queue'}
+            </p>
+            {!isUploading && (
+              <button
+                onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
+                className="text-[11px] text-slate-400 hover:text-slate-600 font-semibold transition-colors"
+              >
+                Clear done
+              </button>
+            )}
+          </div>
+          <div className={`grid gap-2 ${VIEW_COLS[viewSize]}`}>
+            <AnimatePresence>
+              {queue.map((item) => (
+                <PendingPhotoCard
+                  key={item.clientId}
+                  item={item}
+                  onRetry={retryItem}
+                  onRemove={removeItem}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
       {/* Loading */}
       {loading && <div className="flex items-center justify-center py-10"><Loader2 size={22} className="animate-spin text-primary" /></div>}
 
       {/* Empty */}
-      {!loading && photos.length === 0 && (
+      {!loading && photos.length === 0 && !hasPendingCards && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ImageOff size={32} className="text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">No photos yet</p>
@@ -772,9 +688,9 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
       {/* File inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }} />
+        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); }} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={(e) => { if (e.target.files && !atLimit) void doUpload(e.target.files); }} />
+        onChange={(e) => { if (e.target.files && !atLimit) doUpload(e.target.files); }} />
 
       {/* Delete confirm */}
       <AnimatePresence>
