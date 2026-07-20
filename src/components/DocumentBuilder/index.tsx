@@ -535,7 +535,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
             )}
 
             {/* Canvas — always visible for insert tabs */}
-            <div className="flex-1 flex min-h-0 overflow-hidden">
+            <div className="flex-1 flex min-h-0">
               <StructurePanel zoom={zoomLevel} />
             </div>
           </>

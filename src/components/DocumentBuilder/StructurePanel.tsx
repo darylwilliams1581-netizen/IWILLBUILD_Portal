@@ -11,7 +11,7 @@ interface Props { zoom?: number; }
 export default function StructurePanel({ zoom = 100 }: Props) {
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         <BlockCanvas zoom={zoom} />
       </div>
     </div>

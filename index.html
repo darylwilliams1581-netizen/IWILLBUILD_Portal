@@ -139,12 +139,29 @@
         if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1 || msg.indexOf('leaflet') !== -1) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
-        // Suppress the stale HMR shim's NotFoundError from removeChild —
-        // it originates from sos-shim.ts?t=1784519099416 and must never reach React.
-        if (msg.indexOf('removeChild') !== -1 && src.indexOf('1784519099416') !== -1) {
+        // Suppress the stale HMR shim's NotFoundError from removeChild.
+        // The stale module (t=1784519099416) calls the true browser native which
+        // throws NotFoundError — we must swallow it before React's error boundary sees it.
+        if (msg.indexOf('removeChild') !== -1 || (src.indexOf('1784519099416') !== -1)) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);
+      // Also patch Node.prototype.removeChild right now as a getter so ANY call
+      // — including via a stale direct function reference — goes through safeRemoveChild.
+      // We re-run this here (outside the IIFE above) so it applies after all scripts load.
+      (function patchNodeProtoNow() {
+        try {
+          var _native = Node.prototype.removeChild;
+          function safeRC(child) {
+            try { return _native.call(this, child); } catch(e) { return child; }
+          }
+          Object.defineProperty(Node.prototype, 'removeChild', {
+            get: function() { return safeRC; },
+            set: function() {},
+            configurable: true, enumerable: false,
+          });
+        } catch(e) {}
+      })();
       window.addEventListener('unhandledrejection', function(e) {
         var msg = String(e.reason || '');
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }

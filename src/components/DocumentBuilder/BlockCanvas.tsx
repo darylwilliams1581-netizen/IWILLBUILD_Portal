@@ -14,7 +14,7 @@ import { BlockRenderer } from './BlockRenderer';
 import { useLogicEngine, DEFAULT_BLOCK_STATE } from './useLogicEngine';
 import type { DocumentBlock } from './types';
 
-// A4 dimensions at 96dpi: 794 × 1123px
+// A4 dimensions at 96dpi: 794 × 1123px — portrait minH = width * 1.414
 const PAGE_WIDTHS: Record<string, number> = {
   A4: 794,
   Letter: 816,
@@ -126,12 +126,12 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   // ── Zoom sizing ────────────────────────────────────────────────────────────
   // transform:scale() doesn't affect layout — the element still occupies its
-  // original unscaled space. We wrap the page in a sizing div whose explicit
-  // width/height equals the scaled dimensions so the scroll container gets
-  // accurate scrollable area. The inner page is absolutely positioned inside.
+  // original unscaled space. We wrap the page in an explicit-sized shell so
+  // the scroll container gets the correct scrollable area at every zoom level.
+  // ResizeObserver tracks actual rendered page height for accurate shell sizing.
   const scale = zoom / 100;
-  const pageMinH = isLandscape ? pageWidth : Math.round(pageWidth * 1.414);
-  const truePageH = actualPageH > 0 ? actualPageH : pageMinH;
+  const pageBaseH = isLandscape ? pageWidth : Math.round(pageWidth * 1.414);
+  const truePageH = actualPageH > 0 ? actualPageH : pageBaseH;
   const scaledW = Math.round(canvasWidth * scale);
   const scaledH = Math.round(truePageH * scale);
 
