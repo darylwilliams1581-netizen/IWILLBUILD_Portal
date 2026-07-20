@@ -7,7 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Component, type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -276,46 +276,59 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
   }
 }
 
+// ── patchRemoveChild ──────────────────────────────────────────────────────────
+// Called synchronously via ref callback on the root div. The stale sos-shim
+// (t=1784519099416) installs a non-configurable own `removeChild` on DOM
+// instances that calls its stale _native and throws NotFoundError. Overwrite it
+// with a safe swallowing wrapper before React's commit phase can invoke it.
+function patchRemoveChild(el: HTMLDivElement) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosRemoveChildNative;
+  function safeRemoveChild<T extends Node>(this: Node, child: T): T {
+    try {
+      if (child && child.parentNode === this) {
+        if (trueNative) trueNative.call(this, child);
+        else Node.prototype.removeChild.call(this, child);
+      }
+    } catch { /* swallow */ }
+    return child;
+  }
+  // Patch every ancestor up to document.body as well — the stale shim may have
+  // installed its handler on any element in the path React walks during unmount.
+  const targets: Node[] = [el];
+  let p: Node | null = el.parentNode;
+  while (p && p !== document.documentElement) { targets.push(p); p = p.parentNode; }
+  for (const node of targets) {
+    const d = Object.getOwnPropertyDescriptor(node, 'removeChild');
+    if (!d) continue; // no own property — prototype chain is fine
+    try {
+      if (d.configurable) {
+        Object.defineProperty(node, 'removeChild', { value: safeRemoveChild, writable: true, configurable: true, enumerable: false });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (node as any).removeChild;
+        Object.defineProperty(node, 'removeChild', { value: safeRemoveChild, writable: true, configurable: true, enumerable: false });
+      }
+    } catch { /* truly locked */ }
+  }
+}
+
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
   const rootDivRef = useRef<HTMLDivElement>(null);
 
-  // The stale sos-shim snapshot (t=1784519099416) installs a non-configurable
-  // own `removeChild` on this div instance that calls its stale _native and
-  // throws NotFoundError. Patch the instance immediately after mount so React's
-  // commit phase never hits the stale handler.
-  useEffect(() => {
-    const el = rootDivRef.current;
+  // Ref callback — fires synchronously when the div is first attached to the DOM,
+  // BEFORE React's commit phase can call removeChild on it. The stale shim
+  // (t=1784519099416) installs a non-configurable own `removeChild` on this exact
+  // element; patching it here ensures React never hits the stale throwing handler.
+  const patchRef = useCallback((el: HTMLDivElement | null) => {
+    (rootDivRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
     if (!el) return;
-    const d = Object.getOwnPropertyDescriptor(el, 'removeChild');
-    if (!d) return; // no own property — prototype chain is fine
-    // Safe swallowing wrapper using the iframe-extracted true native from the shim
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosRemoveChildNative;
-    const safe = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-      try {
-        if (child && child.parentNode === this) {
-          if (trueNative) trueNative.call(this, child);
-          else Node.prototype.removeChild.call(this, child);
-        }
-      } catch { /* swallow */ }
-      return child;
-    };
-    try {
-      // Try configurable redefine first
-      if (d.configurable) {
-        Object.defineProperty(el, 'removeChild', { value: safe, writable: true, configurable: true, enumerable: false });
-        return;
-      }
-      // Non-configurable: delete then redefine (works on V8 for own data properties)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (el as any).removeChild;
-      Object.defineProperty(el, 'removeChild', { value: safe, writable: true, configurable: true, enumerable: false });
-    } catch { /* truly locked — nothing more we can do */ }
+    patchRemoveChild(el);
   }, []);
 
   return (
-    <div ref={rootDivRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+    <div ref={patchRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta
