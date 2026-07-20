@@ -84,12 +84,6 @@ function ResetBtn({ onClick }: { onClick: () => void }) {
 
 // ── 1. 3-4-5 Check Square ─────────────────────────────────────────────────────
 function CheckSquareCalc() {
-  const PRESETS = [
-    { label: '3 / 4 / 5', a: 3, b: 4 },
-    { label: '6 / 8 / 10', a: 6, b: 8 },
-    { label: '9 / 12 / 15', a: 9, b: 12 },
-    { label: '12 / 16 / 20', a: 12, b: 16 },
-  ];
   const [unit, setUnit] = useState<'mm' | 'm'>('m');
   const [sideA, setSideA] = useState('');
   const [sideB, setSideB] = useState('');
@@ -100,27 +94,9 @@ function CheckSquareCalc() {
   const diff = requiredC !== null && c > 0 ? c - requiredC : null;
   const isSquare = diff !== null && Math.abs(diff) < (unit === 'mm' ? 1 : 0.001);
 
-  function applyPreset(a: number, b: number) {
-    setSideA(String(a));
-    setSideB(String(b));
-    setMeasuredC('');
-  }
-
   return (
     <CalcCard title="3-4-5 Check Square" icon={Triangle} accent="#6366f1">
       <div className="flex flex-col gap-3 mt-2">
-        {/* Presets */}
-        <div>
-          <p className={lbl}>Presets</p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {PRESETS.map((p) => (
-              <button key={p.label} onClick={() => applyPreset(p.a, p.b)}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:border-primary hover:text-primary transition-colors bg-white">
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
         {/* Unit */}
         <div>
           <label className={lbl}>Unit</label>
