@@ -1,8 +1,8 @@
 /**
  * Smart Document Builder — Main Orchestrator (Structure-First Edition)
  * ─────────────────────────────────────────────────────────────────────────────
- * Default experience: structure view (block canvas + inspector, drag/drop)
- * Preview mode: rendered A4 document preview
+ * Build Mode: edit structure, preview, publish template, download draft
+ * Use Mode:   fill form fields, submit, download completed PDF, save to job
  *
  * Underlying block engine is unchanged — PDF export, logic, fields all work.
  */
@@ -12,15 +12,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
   AlertCircle, FileText, Library, Layers,
-  ChevronDown, Trash2, Printer, Download, Upload,
+  ChevronDown, Printer, Download, Upload,
   Table2, FormInput, Cpu,
   Hash, Type, List, Minus, AlignLeft,
   LayoutGrid, PenLine, Zap, Camera,
   CheckSquare, Calendar, Briefcase, MapPin, User,
   Building2, ClipboardList,
   Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert,
-  Image, AlignCenter, AlignRight,
+  Image,
   ZoomIn, ZoomOut, Monitor, RotateCcw,
+  Wrench, PlayCircle, Send,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
@@ -38,6 +39,8 @@ interface Props {
   onSaved?: (id: number) => void;
 }
 
+/** Top-level mode: building the template vs using/filling it */
+type AppMode = 'build' | 'use';
 
 // Document type labels for the toolbar badge
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -58,7 +61,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
     undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
-    pageLayout,
+    pageLayout, mode, setMode,
   } = useDocumentStore();
 
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
@@ -71,6 +74,20 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
   const [zoomLevel, setZoomLevel]                   = useState(100); // percent
+
+  /** Top-level app mode: build the template or use/fill it */
+  const [appMode, setAppMode] = useState<AppMode>('build');
+  /** Build sub-mode: 'edit' (canvas) or 'preview' (rendered) */
+  const [buildSubMode, setBuildSubMode] = useState<'edit' | 'preview'>('edit');
+
+  // Sync store mode with UI state
+  useEffect(() => {
+    if (appMode === 'use') {
+      setMode('fill');
+    } else {
+      setMode(buildSubMode);
+    }
+  }, [appMode, buildSubMode, setMode]);
 
   // Auto-adjust zoom when orientation changes so the page fits comfortably
   useEffect(() => {
@@ -241,302 +258,392 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           placeholder="Untitled document"
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
-        <div className="flex-1" />
+
+        {/* ── Mode switcher ── */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center bg-slate-200 rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setAppMode('build')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                appMode === 'build'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Wrench size={11} /> Build Mode
+            </button>
+            <button
+              onClick={() => setAppMode('use')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                appMode === 'use'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <PlayCircle size={11} /> Use Mode
+            </button>
+          </div>
+        </div>
+
+        {/* ── Right actions — context-sensitive ── */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)"><Undo2 size={13} /></button>
-          <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)"><Redo2 size={13} /></button>
-          <div className="w-px h-4 bg-slate-300" />
-          <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
-          <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Download size={12} /> Download</button>
-          <div className="w-px h-4 bg-slate-300" />
-          <button
-            onClick={() => void handleSave()}
-            disabled={isSaving || (!isDirty && !!templateId)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
-          >
-            {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
-            {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
-          </button>
+          {appMode === 'build' ? (
+            <>
+              <button onClick={undo} disabled={!canUndo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Undo (⌘Z)"><Undo2 size={13} /></button>
+              <button onClick={redo} disabled={!canRedo()} className="w-7 h-7 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Redo (⌘Y)"><Redo2 size={13} /></button>
+              <div className="w-px h-4 bg-slate-300" />
+              {/* Preview toggle */}
+              <button
+                onClick={() => setBuildSubMode(buildSubMode === 'preview' ? 'edit' : 'preview')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  buildSubMode === 'preview'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Eye size={12} /> {buildSubMode === 'preview' ? 'Editing' : 'Preview'}
+              </button>
+              <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"><Printer size={12} /> Print</button>
+              {isPlatformOwner && templateId && (
+                <button
+                  onClick={() => setShowPublishModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300"
+                >
+                  <Library size={12} /> Publish Template
+                </button>
+              )}
+              <div className="w-px h-4 bg-slate-300" />
+              <button
+                onClick={() => void handleSave()}
+                disabled={isSaving || (!isDirty && !!templateId)}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+              >
+                {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
+                {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+              </button>
+            </>
+          ) : (
+            /* Use Mode actions */
+            <>
+              <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                <Printer size={12} /> Print
+              </button>
+              <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                <Download size={12} /> Download PDF
+              </button>
+              <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                <Briefcase size={12} /> Save to Job
+              </button>
+              <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-orange-600 transition-colors">
+                <Send size={13} /> Submit
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── Row 2: Ribbon tab strip ───────────────────────────────────────────── */}
-      <div className="flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
-        {/* Doc type pill — sits before the tabs */}
-        <div className="relative flex-shrink-0 self-center mr-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
-          >
-            {docTypeLabel}<ChevronDown size={10} />
-          </button>
-          {showDocTypeMenu && (
-            <div className="absolute top-9 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
-              {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
-                <button key={key} onClick={() => { useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']); setShowDocTypeMenu(false); }}
-                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${templateType === key ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+      {/* ── Row 2: Ribbon tab strip (Build Mode only) ────────────────────────── */}
+      {appMode === 'build' && buildSubMode === 'edit' && (
+        <div className="flex items-end px-3 bg-white border-b border-slate-200 flex-shrink-0">
+          {/* Doc type pill — sits before the tabs */}
+          <div className="relative flex-shrink-0 self-center mr-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDocTypeMenu((v) => !v); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold hover:bg-primary/20 transition-colors"
+            >
+              {docTypeLabel}<ChevronDown size={10} />
+            </button>
+            {showDocTypeMenu && (
+              <div className="absolute top-9 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 min-w-[150px]" onClick={(e) => e.stopPropagation()}>
+                {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => (
+                  <button key={key} onClick={() => { useDocumentStore.getState().setTemplateType(key as DocumentTemplate['templateType']); setShowDocTypeMenu(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${templateType === key ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="w-px h-5 bg-slate-200 self-center mr-2 flex-shrink-0" />
+          {RIBBON_TABS.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+              {tab.icon}{tab.label}
+            </button>
+          ))}
         </div>
-        <div className="w-px h-5 bg-slate-200 self-center mr-2 flex-shrink-0" />
-        {RIBBON_TABS.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
-            {tab.icon}{tab.label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <button onClick={() => useDocumentStore.getState().setMode('preview')}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent transition-colors">
-          <Eye size={13} /> Preview
-        </button>
-      </div>
+      )}
+
+      {/* Use Mode sub-header */}
+      {appMode === 'use' && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b border-primary/20 flex-shrink-0">
+          <PlayCircle size={14} className="text-primary flex-shrink-0" />
+          <span className="text-xs font-semibold text-primary">Use Mode</span>
+          <span className="text-xs text-slate-500">Fill in the form fields below, then submit or download the completed document.</span>
+        </div>
+      )}
 
       {/* ── Main body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* LAYOUT tab — document + page settings */}
-        {activeTab === 'layout' && (
-          <div className="flex-1 overflow-y-auto bg-slate-50">
-            <div className="max-w-lg mx-auto py-6 px-6 flex flex-col gap-6">
-              <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Document</h3>
-                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={templateName}
-                      onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                      placeholder="Untitled document"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Type</label>
-                    <select
-                      value={templateType ?? ''}
-                      onChange={(e) => useDocumentStore.getState().setTemplateType(e.target.value as DocumentTemplate['templateType'])}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
-                    >
-                      <option value="">document</option>
-                      {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Page</h3>
-                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Paper Size</label>
-                    <select
-                      value={pdfSettings.paperSize ?? 'A4'}
-                      onChange={(e) => setPdfSettings({ ...pdfSettings, paperSize: e.target.value as PaperSize })}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
-                    >
-                      {(['A4', 'Letter', 'Legal'] as const).map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Orientation</label>
-                    <select
-                      value={pdfSettings.orientation ?? 'portrait'}
-                      onChange={(e) => setPdfSettings({ ...pdfSettings, orientation: e.target.value as Orientation })}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
-                    >
-                      <option value="portrait">Portrait</option>
-                      <option value="landscape">Landscape</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Margins</label>
-                    <select
-                      value={pdfSettings.margins ?? 'standard'}
-                      onChange={(e) => setPdfSettings({ ...pdfSettings, margins: e.target.value as MarginPreset })}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
-                    >
-                      <option value="none">None</option>
-                      <option value="narrow">Narrow</option>
-                      <option value="standard">Standard</option>
-                      <option value="wide">Wide</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* USE MODE — full-width fill canvas */}
+        {appMode === 'use' && (
+          <div className="flex-1 flex min-h-0">
+            <StructurePanel zoom={zoomLevel} />
           </div>
         )}
 
-        {/* THEME tab — fonts, colours, branding */}
-        {activeTab === 'theme' && (
-          <div className="flex-1 overflow-y-auto bg-slate-50">
-            <div className="max-w-lg mx-auto py-6 px-6">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Theme &amp; Branding</h3>
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <DocumentPdfTab settings={pdfSettings} onChange={setPdfSettings} templateName={templateName} />
-              </div>
-            </div>
+        {/* BUILD MODE — preview sub-mode: full-width canvas, no ribbon panel */}
+        {appMode === 'build' && buildSubMode === 'preview' && (
+          <div className="flex-1 flex min-h-0">
+            <StructurePanel zoom={zoomLevel} />
           </div>
         )}
 
-        {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED — insert strip + canvas */}
-        {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
+        {/* BUILD MODE — edit sub-mode: ribbon panel + canvas */}
+        {appMode === 'build' && buildSubMode === 'edit' && (
           <>
-            {/* STRUCTURE insert strip */}
-            {activeTab === 'structure' && (
-              <RibbonPanel title="Structure">
-                <RibbonGroup label="Import">
-                  <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
-                </RibbonGroup>
-                <RibbonGroup label="Blocks">
-                  <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
-                  <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
-                  <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
-                  <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
-                  <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
-                  <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
-                  <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
-                </RibbonGroup>
-              </RibbonPanel>
-            )}
-
-            {/* TABLES insert strip */}
-            {activeTab === 'tables' && (
-              <RibbonPanel title="Tables">
-                <RibbonGroup label="Insert Table">
-                  <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
-                  <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
-                  <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
-                  <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
-                </RibbonGroup>
-              </RibbonPanel>
-            )}
-
-            {/* FORM FIELDS insert strip */}
-            {activeTab === 'form_fields' && (
-              <RibbonPanel title="Form Fields">
-                <RibbonGroup label="Insert Field">
-                  <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
-                  <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
-                  <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
-                  <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
-                  <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
-                  <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
-                  <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
-                  <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
-                </RibbonGroup>
-              </RibbonPanel>
-            )}
-
-            {/* SYSTEM FIELDS insert strip */}
-            {activeTab === 'system_fields' && (
-              <RibbonPanel title="System Fields">
-                <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
-                <RibbonGroup label="Job">
-                  <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
-                  <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
-                  <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
-                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
-                  <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
-                  <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
-                </RibbonGroup>
-                <RibbonGroup label="Company">
-                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
-                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
-                </RibbonGroup>
-                <RibbonGroup label="Document">
-                  <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
-                  <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
-                  <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
-                  <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
-                </RibbonGroup>
-              </RibbonPanel>
-            )}
-
-            {/* ADVANCED insert strip */}
-            {activeTab === 'advanced' && (
-              <RibbonPanel title="Advanced">
-                <RibbonGroup label="Banners">
-                  <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
-                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
-                </RibbonGroup>
-                <RibbonGroup label="Image">
-                  <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
-                </RibbonGroup>
-                <RibbonGroup label="Layout">
-                  <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
-                  <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
-                </RibbonGroup>
-              </RibbonPanel>
-            )}
-
-            {/* VIEW panel */}
-            {activeTab === 'view' && (
-              <RibbonPanel title="View">
-                {/* Zoom controls */}
-                <RibbonGroup label="Zoom">
-                  <div className="flex items-center gap-1 px-1 pb-1">
-                    <button
-                      onClick={() => setZoomLevel((z) => Math.max(25, z - 10))}
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                      title="Zoom out"
-                    ><ZoomOut size={13} /></button>
-                    <span className="flex-1 text-center text-xs font-semibold text-slate-700 tabular-nums">{zoomLevel}%</span>
-                    <button
-                      onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
-                      title="Zoom in"
-                    ><ZoomIn size={13} /></button>
+            {/* LAYOUT tab — document + page settings */}
+            {activeTab === 'layout' && (
+              <div className="flex-1 overflow-y-auto bg-slate-50">
+                <div className="max-w-lg mx-auto py-6 px-6 flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Document</h3>
+                    <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={templateName}
+                          onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                          placeholder="Untitled document"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Type</label>
+                        <select
+                          value={templateType ?? ''}
+                          onChange={(e) => useDocumentStore.getState().setTemplateType(e.target.value as DocumentTemplate['templateType'])}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                        >
+                          <option value="">document</option>
+                          {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  {/* Preset zoom buttons */}
-                  {[50, 75, 100, 125, 150].map((pct) => (
-                    <button
-                      key={pct}
-                      onClick={() => setZoomLevel(pct)}
-                      className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-colors ${zoomLevel === pct ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                    >{pct}%</button>
-                  ))}
-                  <button
-                    onClick={() => setZoomLevel(100)}
-                    className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-md transition-colors mt-0.5"
-                    title="Reset zoom"
-                  ><RotateCcw size={11} />Reset</button>
-                </RibbonGroup>
-
-                {/* Orientation toggle */}
-                <RibbonGroup label="Orientation">
-                  <button
-                    onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })}
-                    className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                  >
-                    <span className="inline-block w-3 h-4 border-2 border-current rounded-sm flex-shrink-0" />
-                    Portrait
-                  </button>
-                  <button
-                    onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })}
-                    className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
-                  >
-                    <span className="inline-block w-4 h-3 border-2 border-current rounded-sm flex-shrink-0" />
-                    Landscape
-                  </button>
-                </RibbonGroup>
-              </RibbonPanel>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Page</h3>
+                    <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Paper Size</label>
+                        <select
+                          value={pdfSettings.paperSize ?? 'A4'}
+                          onChange={(e) => setPdfSettings({ ...pdfSettings, paperSize: e.target.value as PaperSize })}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                        >
+                          {(['A4', 'Letter', 'Legal'] as const).map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Orientation</label>
+                        <select
+                          value={pdfSettings.orientation ?? 'portrait'}
+                          onChange={(e) => setPdfSettings({ ...pdfSettings, orientation: e.target.value as Orientation })}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                        >
+                          <option value="portrait">Portrait</option>
+                          <option value="landscape">Landscape</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Margins</label>
+                        <select
+                          value={pdfSettings.margins ?? 'standard'}
+                          onChange={(e) => setPdfSettings({ ...pdfSettings, margins: e.target.value as MarginPreset })}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                        >
+                          <option value="none">None</option>
+                          <option value="narrow">Narrow</option>
+                          <option value="standard">Standard</option>
+                          <option value="wide">Wide</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
-            {/* Canvas — always visible for insert tabs */}
-            <div className="flex-1 flex min-h-0">
-              <StructurePanel zoom={zoomLevel} />
-            </div>
+            {/* THEME tab — fonts, colours, branding */}
+            {activeTab === 'theme' && (
+              <div className="flex-1 overflow-y-auto bg-slate-50">
+                <div className="max-w-lg mx-auto py-6 px-6">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Theme &amp; Branding</h3>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4">
+                    <DocumentPdfTab settings={pdfSettings} onChange={setPdfSettings} templateName={templateName} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED / VIEW — ribbon panel + canvas */}
+            {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
+              <>
+                {/* STRUCTURE insert strip */}
+                {activeTab === 'structure' && (
+                  <RibbonPanel title="Structure">
+                    <RibbonGroup label="Import">
+                      <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
+                    </RibbonGroup>
+                    <RibbonGroup label="Blocks">
+                      <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
+                      <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
+                      <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
+                      <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
+                      <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
+                      <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
+                      <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* TABLES insert strip */}
+                {activeTab === 'tables' && (
+                  <RibbonPanel title="Tables">
+                    <RibbonGroup label="Insert Table">
+                      <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
+                      <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
+                      <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
+                      <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* FORM FIELDS insert strip */}
+                {activeTab === 'form_fields' && (
+                  <RibbonPanel title="Form Fields">
+                    <RibbonGroup label="Insert Field">
+                      <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
+                      <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
+                      <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
+                      <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
+                      <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
+                      <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
+                      <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
+                      <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* SYSTEM FIELDS insert strip */}
+                {activeTab === 'system_fields' && (
+                  <RibbonPanel title="System Fields">
+                    <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
+                    <RibbonGroup label="Job">
+                      <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
+                      <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
+                      <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
+                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
+                      <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
+                      <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
+                    </RibbonGroup>
+                    <RibbonGroup label="Company">
+                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
+                      <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
+                    </RibbonGroup>
+                    <RibbonGroup label="Document">
+                      <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
+                      <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
+                      <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
+                      <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* ADVANCED insert strip */}
+                {activeTab === 'advanced' && (
+                  <RibbonPanel title="Advanced">
+                    <RibbonGroup label="Banners">
+                      <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
+                      <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
+                    </RibbonGroup>
+                    <RibbonGroup label="Image">
+                      <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
+                    </RibbonGroup>
+                    <RibbonGroup label="Layout">
+                      <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
+                      <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* VIEW panel */}
+                {activeTab === 'view' && (
+                  <RibbonPanel title="View">
+                    {/* Zoom controls */}
+                    <RibbonGroup label="Zoom">
+                      <div className="flex items-center gap-1 px-1 pb-1">
+                        <button
+                          onClick={() => setZoomLevel((z) => Math.max(25, z - 10))}
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                          title="Zoom out"
+                        ><ZoomOut size={13} /></button>
+                        <span className="flex-1 text-center text-xs font-semibold text-slate-700 tabular-nums">{zoomLevel}%</span>
+                        <button
+                          onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                          title="Zoom in"
+                        ><ZoomIn size={13} /></button>
+                      </div>
+                      {/* Preset zoom buttons */}
+                      {[50, 75, 100, 125, 150].map((pct) => (
+                        <button
+                          key={pct}
+                          onClick={() => setZoomLevel(pct)}
+                          className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-colors ${zoomLevel === pct ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                        >{pct}%</button>
+                      ))}
+                      <button
+                        onClick={() => setZoomLevel(100)}
+                        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-md transition-colors mt-0.5"
+                        title="Reset zoom"
+                      ><RotateCcw size={11} />Reset</button>
+                    </RibbonGroup>
+
+                    {/* Orientation toggle */}
+                    <RibbonGroup label="Orientation">
+                      <button
+                        onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })}
+                        className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                      >
+                        <span className="inline-block w-3 h-4 border-2 border-current rounded-sm flex-shrink-0" />
+                        Portrait
+                      </button>
+                      <button
+                        onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })}
+                        className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                      >
+                        <span className="inline-block w-4 h-3 border-2 border-current rounded-sm flex-shrink-0" />
+                        Landscape
+                      </button>
+                    </RibbonGroup>
+                  </RibbonPanel>
+                )}
+
+                {/* Canvas */}
+                <div className="flex-1 flex min-h-0">
+                  <StructurePanel zoom={zoomLevel} />
+                </div>
+              </>
+            )}
           </>
         )}
 
