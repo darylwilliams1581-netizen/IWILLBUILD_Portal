@@ -12,51 +12,43 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
-import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DOC_KIND_FORM_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
+import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
 
-// Map URL ?type= param → StudioDocumentType + default name
+// ── TYPE_MAP — Doc Studio only (no form types — those belong in /studio/forms) ─
 const TYPE_MAP: Record<string, { type: StudioDocumentType; name: string }> = {
-  'quote-builder':       { type: 'quote_scope',       name: 'New Quote'              },
-  'contract-builder':    { type: 'custom',             name: 'New Contract'           },
-  'variation-order':     { type: 'custom',             name: 'New Variation Order'    },
-  'progress-claim':      { type: 'custom',             name: 'New Progress Claim'     },
-  'swms-builder':        { type: 'swms',               name: 'New SWMS'               },
-  'site-safety-plan':    { type: 'safety_plan',        name: 'New Site Safety Plan'   },
-  'incident-report':     { type: 'custom',             name: 'New Incident Report'    },
-  'toolbox-talk':        { type: 'toolbox_talk',       name: 'New Toolbox Talk'       },
-  'site-plan':           { type: 'custom',             name: 'New Site Plan'          },
-  'project-schedule':    { type: 'custom',             name: 'New Project Schedule'   },
-  'material-schedule':   { type: 'custom',             name: 'New Material Schedule'  },
-  'subcontractor-pack':  { type: 'custom',             name: 'New Subcontractor Pack' },
-  'plant-register':      { type: 'register',           name: 'New Plant Register'     },
-  'pre-start-check':     { type: 'pre_start',          name: 'New Pre-Start Check'    },
-  'induction-pack':      { type: 'custom',             name: 'New Induction Pack'     },
-  'procedure-library':   { type: 'procedure',          name: 'New Procedure'          },
-  'custom-document':     { type: 'custom',             name: 'New Document'           },
-  'custom-form':         { type: 'user_form',          name: 'New Form'               },
-  'tender-pack':         { type: 'custom',             name: 'New Tender Pack'        },
-  'handover-pack':       { type: 'handover',           name: 'New Handover Pack'      },
+  'quote-builder':       { type: 'quote_scope',  name: 'New Quote'              },
+  'contract-builder':    { type: 'custom',        name: 'New Contract'           },
+  'variation-order':     { type: 'custom',        name: 'New Variation Order'    },
+  'progress-claim':      { type: 'custom',        name: 'New Progress Claim'     },
+  'swms-builder':        { type: 'swms',          name: 'New SWMS'               },
+  'site-safety-plan':    { type: 'safety_plan',   name: 'New Site Safety Plan'   },
+  'incident-report':     { type: 'custom',        name: 'New Incident Report'    },
+  'toolbox-talk':        { type: 'toolbox_talk',  name: 'New Toolbox Talk'       },
+  'site-plan':           { type: 'custom',        name: 'New Site Plan'          },
+  'project-schedule':    { type: 'custom',        name: 'New Project Schedule'   },
+  'material-schedule':   { type: 'custom',        name: 'New Material Schedule'  },
+  'subcontractor-pack':  { type: 'custom',        name: 'New Subcontractor Pack' },
+  'induction-pack':      { type: 'custom',        name: 'New Induction Pack'     },
+  'procedure-library':   { type: 'procedure',     name: 'New Procedure'          },
+  'custom-document':     { type: 'custom',        name: 'New Document'           },
+  'tender-pack':         { type: 'custom',        name: 'New Tender Pack'        },
+  'handover-pack':       { type: 'handover',      name: 'New Handover Pack'      },
+  // Note: pre-start-check, plant-register, custom-form → /studio/forms
 };
 
-/** Derive default kind settings from the template type */
+/**
+ * Doc Studio always creates kind=doc.
+ * SWMS/Safety Plan/Policy/Procedure/Toolbox Talk default to requiresAcknowledgement=true.
+ * All other doc types default to requiresAcknowledgement=false.
+ */
 function defaultKindForType(type: StudioDocumentType): Partial<DocumentTemplate> {
-  if (DOC_KIND_FORM_TYPES.includes(type)) {
-    return {
-      docKind: 'form',
-      requiresAcknowledgement: false,
-      submitLabel: DEFAULT_DOC_KIND_SETTINGS.submitLabel,
-      requiresSignature: false,
-    };
-  }
-  if (DOC_KIND_ACKNOWLEDGEMENT_TYPES.includes(type)) {
-    return {
-      docKind: 'doc',
-      requiresAcknowledgement: true,
-      acknowledgementLabel: DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel,
-      acknowledgementText: DEFAULT_DOC_KIND_SETTINGS.acknowledgementText,
-    };
-  }
-  return { docKind: 'doc', requiresAcknowledgement: false };
+  const needsSignOn = DOC_KIND_ACKNOWLEDGEMENT_TYPES.includes(type);
+  return {
+    docKind: 'doc',
+    requiresAcknowledgement: needsSignOn,
+    acknowledgementLabel: needsSignOn ? DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel : '',
+    acknowledgementText: needsSignOn ? DEFAULT_DOC_KIND_SETTINGS.acknowledgementText : '',
+  };
 }
 
 interface TemplateResponse {

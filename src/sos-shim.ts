@@ -115,17 +115,15 @@
     } catch { /* ignore */ }
 
     // ── Intercept Object.defineProperty ─────────────────────────────────────
-    // The stale shim calls Object.defineProperty(appEl, 'removeChild', { value: patchedRemoveChild })
-    // We intercept every defineProperty call on a Node instance and substitute
-    // our safe swallowing wrapper. Use configurable:true so we can always
-    // overwrite — using configurable:false would lock the stale shim's throwing
-    // version in place if it runs before us.
+    // Belt-and-suspenders: our Object.defineProperty intercept in index.html
+    // already routes all removeChild installs to swallowingRemoveChildEarly.
+    // This shim-level intercept is a secondary guard for any code path that
+    // bypasses the index.html intercept (e.g. via a captured reference).
     try {
       const _origDefProp = Object.defineProperty.bind(Object);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (Object as any).defineProperty = function defineProperty(obj: any, prop: PropertyKey, descriptor: PropertyDescriptor) {
         if (prop === 'removeChild' && obj instanceof Node) {
-          // Substitute our safe wrapper — always configurable so we can overwrite later.
           try {
             return _origDefProp(obj, prop, {
               get() { return swallowingRemoveChildEarly; },
@@ -133,23 +131,7 @@
               configurable: true,
               enumerable: false,
             });
-          } catch {
-            // Already non-configurable from a prior stale shim install.
-            // Force-overwrite via the captured __origDefProp from index.html
-            // which bypasses the non-configurable guard.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const indexOrigDP: typeof Object.defineProperty | undefined = (window as any).__origDefProp;
-            if (indexOrigDP) {
-              try {
-                indexOrigDP(obj, prop, {
-                  get() { return swallowingRemoveChildEarly; },
-                  set(_v) { /* ignore */ },
-                  configurable: true,
-                  enumerable: false,
-                });
-              } catch { /* truly locked — nothing more we can do */ }
-            }
-          }
+          } catch { /* already locked */ }
           return obj;
         }
         return _origDefProp(obj, prop, descriptor);
@@ -328,6 +310,8 @@
     mo.observe(document.documentElement, { childList: true, subtree: true });
 
     // ── Patch the React root container directly ──────────────────────────────
+    // Use Object.defineProperty (our intercepted version) — it routes removeChild
+    // installs to swallowingRemoveChild automatically.
     function patchAppRoot() {
       const appEl = document.getElementById('app');
       if (appEl) patchInstance(appEl);
@@ -440,15 +424,19 @@ const STALE_TS_SHIM = [
   '1784860000000', // cover July 21 2026 late edits
   '1784870000000',
   '1784880000000',
+  '1784890000000', // cover July 22 2026 edits
+  '1784900000000',
+  '1784910000000',
+  '1784920000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784860000001';
+const SOS_SHIM_VERSION = '1784900000001';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
-const SOS_SHIM_WINDOW_MS = 8_000;
-const SOS_SHIM_MAX_RELOADS = 6;
+const SOS_SHIM_WINDOW_MS = 30_000;  // 30s window — stale shim persists across fast reloads
+const SOS_SHIM_MAX_RELOADS = 12;    // allow more reloads to fully evict the stale module
 
 // Reset counter when shim version changes (new deploy evicts old stale module)
 try {

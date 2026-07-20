@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v68 -->
+  <!-- cache-bust: v70 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -52,12 +52,13 @@
           // Intercept Object.defineProperty so the stale shim can't install
           // its throwing patchedRemoveChild on any Node (e.g. the #app div).
           var _origDefProp = Object.defineProperty;
-          // Expose the original so sos-shim.ts can use it to bypass our intercept.
-          window.__origDefProp = _origDefProp;
-          Object.defineProperty = function(obj, prop, descriptor) {
+
+          // safeDefProp — intercepts removeChild installs on any Node/object.
+          // Used for BOTH Object.defineProperty AND window.__origDefProp so the
+          // stale shim can't bypass us even when it calls __origDefProp directly.
+          function safeDefProp(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
               // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
-              // Use configurable:true so sealAppRoot/sealAppDiv can always re-apply the seal.
               try {
                 return _origDefProp(obj, prop, {
                   get: function() { return safeRemoveChild; },
@@ -69,7 +70,14 @@
               return obj;
             }
             return _origDefProp(obj, prop, descriptor);
-          };
+          }
+
+          // Expose the INTERCEPTING version as __origDefProp so the stale shim's
+          // _shimOrigDP = window.__origDefProp also routes through our guard.
+          // sos-shim.ts uses __origDefProp to bypass our intercept for non-removeChild
+          // properties — that still works because safeDefProp only intercepts removeChild.
+          window.__origDefProp = safeDefProp;
+          Object.defineProperty = safeDefProp;
 
           // Intercept appendChild so when the stale shim appends its capture
           // iframe, we immediately patch the iframe's Node.prototype.removeChild
@@ -121,21 +129,26 @@
           // ── Continuously seal #app div's own removeChild property ─────────────
           // The stale shim re-installs its patchedRemoveChild on #app after each
           // React navigation. Poll every 5ms for the first 10s to overwrite it.
-          // We use configurable:false so the stale shim's defineProperty call
-          // fails silently and our safe wrapper stays locked in.
+          // IMPORTANT: use safeDefProp (not _origDefProp) so we win even when the
+          // stale shim uses its captured _shimOrigDP = raw Object.defineProperty.
+          // We use configurable:true here so we can always overwrite — then the
+          // stale shim's configurable:false install is blocked by safeDefProp.
           function sealAppDiv() {
             try {
               var appEl = document.getElementById('app');
               if (!appEl) return;
               var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              // Already sealed with our safe wrapper and non-configurable — done.
-              if (d && !d.configurable && d.get && d.get.call(appEl) === safeRemoveChild) return;
-              // Install with configurable:false so the stale shim cannot overwrite it.
+              // Already sealed with our safe wrapper — check if it returns safeRemoveChild.
+              if (d && d.get) {
+                try { if (d.get.call(appEl) === safeRemoveChild) return; } catch(e) {}
+              }
+              // Use safeDefProp so the install goes through our intercept layer.
+              // configurable:true so we can always overwrite on next poll.
               try {
-                _origDefProp(appEl, 'removeChild', {
+                safeDefProp(appEl, 'removeChild', {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) {},
-                  configurable: false, enumerable: false,
+                  configurable: true, enumerable: false,
                 });
               } catch(e) {
                 try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
