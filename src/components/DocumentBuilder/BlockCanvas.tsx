@@ -6,7 +6,7 @@
  * In fill/preview mode, applies the logic engine to show/hide blocks.
  */
 
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Zap } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
@@ -35,6 +35,18 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragRef = useRef<string | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [actualPageH, setActualPageH] = useState(0);
+
+  // Track actual rendered page height so the sizing shell stays accurate
+  useEffect(() => {
+    const el = pageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setActualPageH(el.offsetHeight));
+    ro.observe(el);
+    setActualPageH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
 
   // Fill-mode field values — maintained locally in the canvas
   // (In a real submission flow these would come from a form state manager)
@@ -112,48 +124,63 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   // ── Empty state ────────────────────────────────────────────────────────────
 
+  // ── Zoom sizing ────────────────────────────────────────────────────────────
+  // transform:scale() doesn't affect layout — the element still occupies its
+  // original unscaled space. We wrap the page in a sizing div whose explicit
+  // width/height equals the scaled dimensions so the scroll container gets
+  // accurate scrollable area. The inner page is absolutely positioned inside.
+  const scale = zoom / 100;
+  const pageMinH = isLandscape ? pageWidth : Math.round(pageWidth * 1.414);
+  const truePageH = actualPageH > 0 ? actualPageH : pageMinH;
+  const scaledW = Math.round(canvasWidth * scale);
+  const scaledH = Math.round(truePageH * scale);
+
   if (blocks.length === 0 && mode === 'edit') {
     return (
-      <div className="flex-1 min-h-0 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4">
-        <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
-        <div
-          className="shadow-xl rounded-sm relative"
-          style={canvasStyle}
-          onClick={deselect}
-        >
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-orange-50 border-2 border-dashed border-orange-200 flex items-center justify-center">
-              <Plus size={28} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-slate-700 font-semibold text-base">Start building your document</p>
-              <p className="text-slate-400 text-sm mt-1">
-                Click a block in the left panel to add it here,<br />or import a DOCX to get started.
-              </p>
+      <div className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
+        <div className="flex justify-center py-10 px-4">
+          {/* Sizing shell — gives scroll container the correct scaled dimensions */}
+          <div style={{ width: scaledW, minHeight: scaledMinH, position: 'relative', flexShrink: 0 }}>
+            <div
+              className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+              style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
+              onClick={deselect}
+            >
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-orange-50 border-2 border-dashed border-orange-200 flex items-center justify-center">
+                  <Plus size={28} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-slate-700 font-semibold text-base">Start building your document</p>
+                  <p className="text-slate-400 text-sm mt-1">
+                    Click a block in the left panel to add it here,<br />or import a DOCX to get started.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        </div>{/* end zoom wrapper */}
       </div>
     );
   }
 
   return (
     <div
-      className="flex-1 min-h-0 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4"
+      className="flex-1 min-h-0 overflow-auto bg-slate-100"
       onClick={(e) => {
         if (e.target === e.currentTarget) deselect();
       }}
     >
-      {/* Zoom wrapper — scales the page without affecting scroll container */}
-      <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
-      <div
-        className="shadow-xl rounded-sm relative"
-        style={canvasStyle}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) deselect();
-        }}
-      >
+      <div className="flex justify-center py-10 px-4">
+        {/* Sizing shell — gives scroll container the correct scaled dimensions */}
+        <div style={{ width: scaledW, minHeight: scaledMinH, position: 'relative', flexShrink: 0 }}>
+        <div
+          className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+          style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) deselect();
+          }}
+        >
         <AnimatePresence>
           {blocks.map((block) => {
             // Logic engine: hide block in fill/preview if engine says so
@@ -285,7 +312,8 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
           </div>
         )}
       </div>
-      </div>{/* end zoom wrapper */}
+        </div>{/* end sizing shell */}
+      </div>{/* end centering wrapper */}
     </div>
   );
 }
