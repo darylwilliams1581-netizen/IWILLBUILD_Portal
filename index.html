@@ -56,23 +56,35 @@
             return _origDefProp(obj, prop, descriptor);
           };
 
-          // Intercept createElement('iframe') so any iframe the stale shim
-          // creates to capture its _native already has our safe wrapper.
+          // Intercept appendChild so when the stale shim appends its capture
+          // iframe, we immediately patch the iframe's Node.prototype.removeChild
+          // before the stale shim reads contentWindow.Node.prototype.removeChild.
+          function patchIframeProto(el) {
+            try {
+              var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
+              if (iProto) {
+                try {
+                  Object.defineProperty(iProto, 'removeChild', {
+                    get: function() { return safeRemoveChild; },
+                    set: function(_v) {},
+                    configurable: true, enumerable: false,
+                  });
+                } catch(e) { iProto.removeChild = safeRemoveChild; }
+              }
+            } catch(e) {}
+          }
+          var _origAC = Node.prototype.appendChild;
+          Node.prototype.appendChild = function(child) {
+            var result = _origAC.call(this, child);
+            if (child && child.tagName === 'IFRAME') { patchIframeProto(child); }
+            return result;
+          };
+          // Also intercept createElement so the iframe proto is patched as early as possible.
           var _origCE = document.createElement.bind(document);
           document.createElement = function(tag) {
             var el = _origCE.apply(document, arguments);
             if (typeof tag === 'string' && tag.toLowerCase() === 'iframe') {
-              el.addEventListener('load', function() {
-                try {
-                  var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
-                  if (iProto) iProto.removeChild = safeRemoveChild;
-                } catch(e) {}
-              });
-              // Also try immediately (in case already loaded)
-              try {
-                var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
-                if (iProto) iProto.removeChild = safeRemoveChild;
-              } catch(e) {}
+              el.addEventListener('load', function() { patchIframeProto(el); });
             }
             return el;
           };
@@ -125,6 +137,11 @@
         var src = e.filename || '';
         var msg = e.message || '';
         if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1 || msg.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation(); return false;
+        }
+        // Suppress the stale HMR shim's NotFoundError from removeChild —
+        // it originates from sos-shim.ts?t=1784519099416 and must never reach React.
+        if (msg.indexOf('removeChild') !== -1 && src.indexOf('1784519099416') !== -1) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);

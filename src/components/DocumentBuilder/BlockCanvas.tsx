@@ -140,8 +140,9 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
       <div className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
         <div className="flex justify-center py-10 px-4">
           {/* Sizing shell — gives scroll container the correct scaled dimensions */}
-          <div style={{ width: scaledW, minHeight: scaledMinH, position: 'relative', flexShrink: 0 }}>
+          <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
             <div
+              ref={pageRef}
               className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
               style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
               onClick={deselect}
@@ -157,9 +158,9 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </div>{/* end page div */}
+          </div>{/* end sizing shell */}
+        </div>{/* end centering wrapper */}
       </div>
     );
   }
@@ -173,8 +174,9 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
     >
       <div className="flex justify-center py-10 px-4">
         {/* Sizing shell — gives scroll container the correct scaled dimensions */}
-        <div style={{ width: scaledW, minHeight: scaledMinH, position: 'relative', flexShrink: 0 }}>
+        <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
         <div
+          ref={pageRef}
           className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
           style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
           onClick={(e) => {
@@ -311,7 +313,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
             ✅ This document requires supervisor approval before submission.
           </div>
         )}
-      </div>
+      </div>{/* end page div */}
         </div>{/* end sizing shell */}
       </div>{/* end centering wrapper */}
     </div>
