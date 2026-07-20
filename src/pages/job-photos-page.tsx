@@ -121,7 +121,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-orange-500 flex flex-col">
       <Helmet>
         <title>{title} — IWILLBUILD</title>
         <meta name="description" content="View and manage photos for this job." />
@@ -131,9 +131,9 @@ export default function JobPhotosPage() {
 
       {/* ── Safe-area top bar ── */}
       <div
-        className="bg-white border-b border-gray-100 shrink-0 sticky top-0 z-10"
+        className="bg-black border-b border-white/10 shrink-0 sticky top-0 z-10"
         style={{
-          boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
+          boxShadow: '0 1px 0 rgba(0,0,0,0.3)',
           paddingTop: 'max(env(safe-area-inset-top), 12px)',
         }}
       >
@@ -141,7 +141,7 @@ export default function JobPhotosPage() {
           {/* Back — desktop only */}
           <button
             onClick={() => navigate(`/jobs/${id}`)}
-            className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0 touch-manipulation"
+            className="hidden md:flex w-9 h-9 rounded-xl bg-white/10 items-center justify-center text-white hover:bg-white/20 active:bg-white/30 transition-colors shrink-0 touch-manipulation"
             aria-label="Back"
           >
             <ArrowLeft size={18} />
@@ -150,7 +150,7 @@ export default function JobPhotosPage() {
           {/* Home — desktop only */}
           <button
             onClick={() => navigate('/home')}
-            className="hidden md:flex w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 items-center justify-center text-orange-500 hover:bg-orange-100 active:bg-orange-200 transition-colors shrink-0 touch-manipulation"
+            className="hidden md:flex w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-400/40 items-center justify-center text-orange-400 hover:bg-orange-500/30 active:bg-orange-500/40 transition-colors shrink-0 touch-manipulation"
             aria-label="Dashboard"
           >
             <Home size={16} />
@@ -159,13 +159,13 @@ export default function JobPhotosPage() {
           {/* Title — centered on mobile, left-aligned on desktop */}
           <div className="flex-1 min-w-0 flex flex-col items-center md:items-start px-1">
             {loading ? (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-white/20 rounded animate-pulse" />
             ) : (
               <>
-                <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center md:text-left w-full">
+                <h1 className="text-white font-bold text-sm leading-tight truncate text-center md:text-left w-full">
                   {job?.name ?? 'Job Photos'}
                 </h1>
-                <p className="text-xs text-gray-400 leading-tight">
+                <p className="text-xs text-white/50 leading-tight">
                   {job?.jobNumber ? `${job.jobNumber} · ` : ''}{photoCount} photo{photoCount !== 1 ? 's' : ''}
                 </p>
               </>
@@ -179,7 +179,7 @@ export default function JobPhotosPage() {
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload up to 10 photos at a time"
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               Photos
@@ -189,17 +189,17 @@ export default function JobPhotosPage() {
               onClick={() => photosRef.current?.openCamera()}
               disabled={uploading || atLimit}
               title="Take a photo"
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               <Camera size={14} /> Camera
             </button>
             {/* View size */}
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+            <div className="flex items-center border border-white/20 rounded-lg overflow-hidden bg-white/5">
               {(['small', 'medium', 'large'] as const).map((size) => (
                 <button
                   key={size}
                   onClick={() => handleSetViewSize(size)}
-                  className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewSize === size ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}
                   title={`${size.charAt(0).toUpperCase() + size.slice(1)} thumbnails`}
                 >
                   {size === 'small' ? <Grid3x3 size={13} /> : size === 'medium' ? <Grid2x2 size={13} /> : <LayoutGrid size={13} />}
@@ -232,9 +232,9 @@ export default function JobPhotosPage() {
 
       {/* ── Mobile bottom action bar ── */}
       <div
-        className="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-100"
+        className="fixed bottom-0 inset-x-0 z-20 bg-black border-t border-white/10"
         style={{
-          boxShadow: '0 -2px 12px rgba(0,0,0,0.08)',
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.4)',
           paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
         }}
       >
@@ -246,7 +246,7 @@ export default function JobPhotosPage() {
             <button
               onClick={() => navigate(`/jobs/${id}`)}
               aria-label="Back"
-              className="md:hidden w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0"
+              className="md:hidden w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors touch-manipulation shrink-0"
             >
               <ArrowLeft size={16} />
             </button>
@@ -255,7 +255,7 @@ export default function JobPhotosPage() {
             <button
               onClick={() => navigate('/home')}
               aria-label="Dashboard"
-              className="md:hidden w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0"
+              className="md:hidden w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center text-orange-400 active:bg-orange-500/30 transition-colors touch-manipulation shrink-0"
             >
               <Home size={16} />
             </button>
@@ -265,7 +265,7 @@ export default function JobPhotosPage() {
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload up to 10 photos at a time"
-              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
+              className="flex-1 h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
               aria-label="Upload photos from library"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
@@ -274,7 +274,7 @@ export default function JobPhotosPage() {
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
             >
               <CheckSquare size={15} />
               <span className="text-[9px] font-semibold leading-none">Select</span>
@@ -284,7 +284,7 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
               title="Share view-only link"
             >
               <Share2 size={15} />
@@ -292,12 +292,12 @@ export default function JobPhotosPage() {
             </button>
 
             {/* View size (mobile) */}
-            <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shrink-0 h-10">
+            <div className="flex items-center border border-white/20 rounded-xl overflow-hidden bg-white/5 shrink-0 h-10">
               {(['small', 'medium', 'large'] as const).map((size) => (
                 <button
                   key={size}
                   onClick={() => handleSetViewSize(size)}
-                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}
                 >
                   {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
                 </button>
@@ -312,7 +312,7 @@ export default function JobPhotosPage() {
             {/* Done */}
             <button
               onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
             >
               <X size={16} />
               <span className="text-[10px] font-semibold leading-none">Done</span>
@@ -320,7 +320,7 @@ export default function JobPhotosPage() {
 
             {/* Count label */}
             <div className="flex-1 text-center">
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-white">
                 {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
               </p>
             </div>
@@ -329,7 +329,7 @@ export default function JobPhotosPage() {
             <button
               onClick={() => photosRef.current?.downloadSelected()}
               disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
             >
               <Download size={16} />
               <span className="text-[10px] font-semibold leading-none">Download</span>
@@ -338,7 +338,7 @@ export default function JobPhotosPage() {
             {/* Send selected */}
             <button
               disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
             >
               <Send size={16} />
               <span className="text-[10px] font-semibold leading-none">Send</span>
