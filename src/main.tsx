@@ -163,6 +163,21 @@ if (rootElement.firstElementChild) {
   createRoot(rootElement).render(tree);
 }
 
+// ── Toaster (Sonner) — mounted outside the SSR tree ──────────────────────────
+// Sonner's <Toaster> appends a portal container to document.body via useEffect.
+// When rendered inside the hydrateRoot tree, React's commitDeletionEffects can
+// call removeChildFromContainer on that portal node before it is fully attached,
+// throwing a non-recoverable NotFoundError (React 19 does not route this through
+// onRecoverableError). Fix: mount Toaster in a completely separate createRoot
+// that is never part of the SSR tree, so React's reconciler never tries to
+// delete its portal container during hydration.
+import('@/components/ui/sonner').then(({ Toaster }) => {
+  const toastHost = document.createElement('div');
+  toastHost.id = 'toast-root';
+  document.body.appendChild(toastHost);
+  createRoot(toastHost).render(<Toaster position="top-right" richColors />);
+});
+
 // ── Service Worker registration ───────────────────────────────────────────────
 // Only register in production (not dev) to avoid stale-cache confusion during
 // development. The SW caches only static shell assets — never API or user data.

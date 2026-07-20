@@ -13,7 +13,6 @@ import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
 import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 import OfflineBanner from '@/components/OfflineBanner';
-import { Toaster } from '@/components/ui/sonner';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 //
 //
@@ -203,7 +202,6 @@ function ClientOnly({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-
 // Sits inside AiroErrorBoundary so it intercepts the SOSAlertPopup
 // ReferenceError from the frozen RootLayout snapshot before AiroErrorBoundary
 // swallows it. Triggers a hard reload via __sosBoundaryTrigger.
@@ -254,12 +252,6 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const toasterRef = useRef<HTMLDivElement>(null);
-  const [toasterContainer, setToasterContainer] = useState<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (toasterRef.current) setToasterContainer(toasterRef.current);
-  }, []);
-
   return (
     <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
@@ -273,10 +265,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <ClientOnly><PortalBanners /></ClientOnly>
       <ClientOnly><ScrollRestoration /></ClientOnly>
       <ActivePing />
-      {/* Stable portal container for Sonner — avoids removeChildFromContainer
-          errors caused by Sonner injecting into document.body during hydration */}
-      <div ref={toasterRef} />
-      {toasterContainer && <Toaster position="top-right" richColors container={toasterContainer} />}
       <ClientOnly><PwaInstallPrompt /></ClientOnly>
       <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
         <SosInnerBoundary>
