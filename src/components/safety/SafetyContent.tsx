@@ -15,25 +15,18 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
-  ShieldAlert, ShieldCheck, ClipboardList, BookOpen, Image,
+  ShieldCheck, Image,
 } from 'lucide-react';
 
 // Re-use the tab components directly from the safety page module.
-// We import them as named exports — safety.tsx must export them.
 import {
   SafetyDashboardTab,
-  SwmsLibraryTab,
-  SafetyPlansTab,
-  PoliciesTab,
   PostersTab,
 } from '@/pages/safety';
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard',    icon: ShieldCheck },
-  { id: 'swms',      label: 'SWMS Library', icon: ShieldAlert },
-  { id: 'plans',     label: 'Safety Plans', icon: ClipboardList },
-  { id: 'policies',  label: 'Policies',     icon: BookOpen },
-  { id: 'posters',   label: 'Posters',      icon: Image },
+  { id: 'dashboard', label: 'Dashboard', icon: ShieldCheck },
+  { id: 'posters',   label: 'Posters',   icon: Image },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -78,9 +71,6 @@ export default function SafetyContent() {
           transition={{ duration: 0.2 }}
         >
           {activeTab === 'dashboard' && <SafetyDashboardTab />}
-          {activeTab === 'swms'      && <SwmsLibraryTab />}
-          {activeTab === 'plans'     && <SafetyPlansTab />}
-          {activeTab === 'policies'  && <PoliciesTab />}
           {activeTab === 'posters'   && <PostersTab />}
         </motion.div>
       </div>
