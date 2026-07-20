@@ -48,8 +48,19 @@ function sosRecentReload(): boolean {
   } catch { return false; }
 }
 
+// Stale HMR snapshot timestamps that must trigger a reload.
+const STALE_TS = [
+  '1783772358219', // original SOSAlertPopup snapshot
+  '1784516505220', // PortalBanners useLocation snapshot
+  '1784516836299',
+  '1784516840163',
+  '1784516846345',
+];
+
 function isSosError(e: unknown): boolean {
-  return e instanceof Error && e.message.includes('SOSAlertPopup');
+  if (!(e instanceof Error)) return false;
+  const text = (e.message ?? '') + (e.stack ?? '');
+  return text.includes('SOSAlertPopup') || STALE_TS.some((ts) => text.includes(ts));
 }
 
 interface BoundaryState { caught: boolean; }

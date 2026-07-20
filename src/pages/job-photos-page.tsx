@@ -260,63 +260,49 @@ export default function JobPhotosPage() {
               <Home size={16} />
             </button>
 
-            {/* Upload from library */}
+            {/* Upload from library — flex-1 so it fills remaining space */}
             <button
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload up to 10 photos at a time"
-              className="flex-1 h-12 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
+              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation font-semibold text-sm"
               aria-label="Upload photos from library"
             >
-              {uploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
-              <span className="hidden sm:inline">Photos</span>
-            </button>
-
-            {/* Camera */}
-            <button
-              onClick={() => photosRef.current?.openCamera()}
-              disabled={uploading || atLimit}
-              title="Take a photo"
-              className="w-12 h-12 flex items-center justify-center bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl transition-colors touch-manipulation shrink-0"
-              aria-label="Take a photo"
-            >
-              <Camera size={18} />
+              {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              <span>Upload</span>
             </button>
 
             {/* Select */}
             <button
               onClick={() => handleSetSelectMode(true)}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors touch-manipulation shrink-0"
             >
-              <CheckSquare size={16} />
-              <span className="text-[10px] font-semibold leading-none">Select</span>
+              <CheckSquare size={15} />
+              <span className="text-[9px] font-semibold leading-none">Select</span>
             </button>
 
             {/* Share */}
             <button
               onClick={() => photosRef.current?.generateShareLink()}
               disabled={photoCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 transition-colors touch-manipulation shrink-0"
+              className="flex flex-col items-center justify-center gap-0.5 px-3 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-600 transition-colors touch-manipulation shrink-0"
               title="Share view-only link"
             >
-              <Share2 size={16} />
-              <span className="text-[10px] font-semibold leading-none">Share</span>
+              <Share2 size={15} />
+              <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
 
             {/* View size (mobile) */}
-            <div className="flex flex-col items-center gap-0.5 shrink-0">
-              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-                {(['small', 'medium', 'large'] as const).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => handleSetViewSize(size)}
-                    className={`px-2 py-1.5 text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                  >
-                    {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[9px] text-slate-400 font-semibold leading-none">View</span>
+            <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shrink-0 h-10">
+              {(['small', 'medium', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleSetViewSize(size)}
+                  className={`px-2.5 h-full text-xs font-semibold transition-colors touch-manipulation ${viewSize === size ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                >
+                  {size === 'small' ? <Grid3x3 size={12} /> : size === 'medium' ? <Grid2x2 size={12} /> : <LayoutGrid size={12} />}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -361,6 +347,25 @@ export default function JobPhotosPage() {
           </div>
         )}
       </div>
+
+      {/* ── Floating camera widget — centered above bottom bar ── */}
+      {!selectMode && (
+        <div
+          className="fixed z-30 left-1/2 -translate-x-1/2 md:hidden"
+          style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 56px + 16px)' }}
+        >
+          <button
+            onClick={() => photosRef.current?.openCamera()}
+            disabled={uploading || atLimit}
+            aria-label="Take a photo"
+            title="Take a photo"
+            className="w-14 h-14 rounded-full bg-slate-900 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-50 text-white flex items-center justify-center shadow-xl transition-colors touch-manipulation"
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.35)' }}
+          >
+            <Camera size={24} />
+          </button>
+        </div>
+      )}
 
       {/* ── Share link sheet ── */}
       <AnimatePresence>

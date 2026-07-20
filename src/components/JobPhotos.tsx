@@ -822,32 +822,30 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         />
       )}
 
-      {/* Pending upload tray */}
+      {/* Pending upload tray — compact banner list instead of card grid */}
       {hasPendingCards && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-600">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between mb-0.5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
               {isUploading ? 'Uploading…' : 'Upload queue'}
             </p>
             {!isUploading && (
               <button
                 onClick={() => { clearUploaded(); setSummaryDismissed(true); }}
-                className="text-[11px] text-slate-600 hover:text-slate-800 font-semibold transition-colors"
+                className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold transition-colors"
               >
                 Clear done
               </button>
             )}
           </div>
-          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
-            {queue.map((item) => (
-              <PendingPhotoCard
-                key={item.clientId}
-                item={item}
-                onRetry={retryItem}
-                onRemove={removeItem}
-              />
-            ))}
-          </div>
+          {queue.map((item) => (
+            <PendingPhotoCard
+              key={item.clientId}
+              item={item}
+              onRetry={retryItem}
+              onRemove={removeItem}
+            />
+          ))}
         </div>
       )}
 
