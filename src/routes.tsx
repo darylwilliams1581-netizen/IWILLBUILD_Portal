@@ -113,30 +113,12 @@ function protect(element: React.ReactElement) {
   return <ProtectedRoute><Suspense fallback={<PageLoader />}>{element}</Suspense></ProtectedRoute>;
 }
 
-/** Owner-only route — redirects non-owners to /dashboard */
-function OwnerOnlyRoute({ children }: { children: React.ReactElement }) {
-  const { isOwner, loading } = usePermissions();
-  if (loading) return <PageLoader />;
-  if (!isOwner) return <Navigate to="/home" replace />;
-  return children;
-}
-
 /** Platform developer route — redirects non-developers to /home */
 function PlatformDevRoute({ children }: { children: React.ReactElement }) {
   const { isPlatformOwner, loading } = usePermissions();
   if (loading) return <PageLoader />;
   if (!isPlatformOwner) return <Navigate to="/home" replace />;
   return children;
-}
-
-function protectOwner(element: React.ReactElement) {
-  return (
-    <ProtectedRoute>
-      <Suspense fallback={<PageLoader />}>
-        <OwnerOnlyRoute>{element}</OwnerOnlyRoute>
-      </Suspense>
-    </ProtectedRoute>
-  );
 }
 
 function protectDev(element: React.ReactElement) {

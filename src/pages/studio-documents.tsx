@@ -11,7 +11,7 @@ import {
   Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle,
   ChevronDown, Loader2, AlertTriangle, Search, Trash2, X,
   FileUp, Library, Inbox, ArrowLeft, User, Calendar,
-  ChevronUp, BookOpen,
+  ChevronUp,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
