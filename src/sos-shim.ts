@@ -41,6 +41,9 @@
 
   if (trueNative) {
     const _native = trueNative; // close over the clean reference
+    // Expose on window so RootLayout's useEffect can use it for instance patching
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__sosRemoveChildNative = _native;
 
     // swallowingRemoveChild — calls the TRUE iframe native directly.
     // NEVER throws under any circumstance.
@@ -151,7 +154,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784538000000';
+const SOS_SHIM_VERSION = '1784540000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict

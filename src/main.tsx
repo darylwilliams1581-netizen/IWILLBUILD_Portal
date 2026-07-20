@@ -127,9 +127,7 @@ function DevBoundaryShell({ children }: { children: ReactNode }) {
   // After hydration: wrap with dev error boundaries.
   return (
     <AiroErrorBoundary>
-      <SosInterceptBoundary>
-        {children}
-      </SosInterceptBoundary>
+      {children}
     </AiroErrorBoundary>
   );
 }
@@ -150,10 +148,12 @@ const providers = (
 
 const tree = (
   <StrictMode>
-    {import.meta.env.MODE === 'development'
-      ? <DevBoundaryShell>{providers}</DevBoundaryShell>
-      : providers
-    }
+    <SosInterceptBoundary>
+      {import.meta.env.MODE === 'development'
+        ? <DevBoundaryShell>{providers}</DevBoundaryShell>
+        : providers
+      }
+    </SosInterceptBoundary>
   </StrictMode>
 );
 

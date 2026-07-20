@@ -278,8 +278,44 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
+  const rootDivRef = useRef<HTMLDivElement>(null);
+
+  // The stale sos-shim snapshot (t=1784519099416) installs a non-configurable
+  // own `removeChild` on this div instance that calls its stale _native and
+  // throws NotFoundError. Patch the instance immediately after mount so React's
+  // commit phase never hits the stale handler.
+  useEffect(() => {
+    const el = rootDivRef.current;
+    if (!el) return;
+    const d = Object.getOwnPropertyDescriptor(el, 'removeChild');
+    if (!d) return; // no own property — prototype chain is fine
+    // Safe swallowing wrapper using the iframe-extracted true native from the shim
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosRemoveChildNative;
+    const safe = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
+      try {
+        if (child && child.parentNode === this) {
+          if (trueNative) trueNative.call(this, child);
+          else Node.prototype.removeChild.call(this, child);
+        }
+      } catch { /* swallow */ }
+      return child;
+    };
+    try {
+      // Try configurable redefine first
+      if (d.configurable) {
+        Object.defineProperty(el, 'removeChild', { value: safe, writable: true, configurable: true, enumerable: false });
+        return;
+      }
+      // Non-configurable: delete then redefine (works on V8 for own data properties)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (el as any).removeChild;
+      Object.defineProperty(el, 'removeChild', { value: safe, writable: true, configurable: true, enumerable: false });
+    } catch { /* truly locked — nothing more we can do */ }
+  }, []);
+
   return (
-    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+    <div ref={rootDivRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWILLBUILD Portal</title>
         <meta
