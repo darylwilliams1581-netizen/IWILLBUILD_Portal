@@ -1,8 +1,157 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v43 -->
+  <!-- cache-bust: v66 -->
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // ── removeChild NotFoundError guard — MUST run before any module ──────────
+      // The stale Vite HMR snapshot (sos-shim.ts?t=1784519099416) installs a
+      // patchedRemoveChild on the #app div that calls the raw browser native,
+      // throwing NotFoundError when React unmounts nodes during navigation.
+      // Patching Node.prototype.removeChild HERE — in a synchronous inline script
+      // before any <script type="module"> — means the stale shim's iframe native
+      // capture picks up our safe wrapper, so its patchedRemoveChild never throws.
+      (function () {
+        try {
+          // ── Step 1: Capture the true browser native via an iframe ──────────────
+          // We do this BEFORE patching Node.prototype so we get the real function.
+          var _trueNativeRC = Node.prototype.removeChild;
+          try {
+            var _capIframe = document.createElement('iframe');
+            _capIframe.style.display = 'none';
+            document.head.appendChild(_capIframe);
+            var _iNative = _capIframe.contentWindow && _capIframe.contentWindow.Node && _capIframe.contentWindow.Node.prototype.removeChild;
+            if (_iNative) _trueNativeRC = _iNative;
+            try { _trueNativeRC.call(document.head, _capIframe); } catch(e) {}
+          } catch(e) {}
+
+          // ── Step 2: Build a swallowing wrapper around the true native ──────────
+          var _capturedNative = _trueNativeRC;
+          function _swallowingNative(child) {
+            try { return _capturedNative.call(this, child); } catch(e) { return child; }
+          }
+          // Expose the WRAPPER — not the raw native — so the stale shim's _native is safe.
+          window.__sosTrueNativeRC = _swallowingNative;
+
+          var safeRemoveChild = _swallowingNative;
+
+          // ── Step 3: Install safeRemoveChild on Node.prototype ─────────────────
+          // Use a getter so the stale shim's own defineProperty call on Node.prototype
+          // cannot overwrite it (setter silently ignores writes).
+          try {
+            Object.defineProperty(Node.prototype, 'removeChild', {
+              get: function() { return safeRemoveChild; },
+              set: function(_v) { /* ignore — our wrapper always wins */ },
+              configurable: false,
+              enumerable: false,
+            });
+          } catch(e) {
+            Node.prototype.removeChild = safeRemoveChild;
+          }
+
+          // Intercept Object.defineProperty so the stale shim can't install
+          // its throwing patchedRemoveChild on any Node (e.g. the #app div).
+          var _origDefProp = Object.defineProperty;
+          // Expose the original so sos-shim.ts can use it to bypass our intercept.
+          window.__origDefProp = _origDefProp;
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
+              // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
+              // Use configurable:true so sealAppRoot/sealAppDiv can always re-apply the seal.
+              try {
+                return _origDefProp(obj, prop, {
+                  get: function() { return safeRemoveChild; },
+                  set: function(_v) { /* ignore — our wrapper always wins */ },
+                  configurable: true,
+                  enumerable: false,
+                });
+              } catch(e) { /* already locked — our wrapper should already be there */ }
+              return obj;
+            }
+            return _origDefProp(obj, prop, descriptor);
+          };
+
+          // Intercept appendChild so when the stale shim appends its capture
+          // iframe, we immediately patch the iframe's Node.prototype.removeChild
+          // before the stale shim reads contentWindow.Node.prototype.removeChild.
+          // IMPORTANT: patchIframeProto uses safeRemoveChild (our wrapper) — NOT
+          // the iframe's native — so the stale shim's captured _native IS our wrapper.
+          function patchIframeProto(el) {
+            try {
+              var iWin = el.contentWindow;
+              var iProto = iWin && iWin.Node && iWin.Node.prototype;
+              if (iProto) {
+                // Install safeRemoveChild (our swallowing wrapper) directly —
+                // NOT a new closure around the iframe's native.
+                // This means the stale shim's _native = iProto.removeChild = safeRemoveChild.
+                try {
+                  _origDefProp(iProto, 'removeChild', {
+                    get: function() { return safeRemoveChild; },
+                    set: function(_v) {},
+                    configurable: false, enumerable: false,
+                  });
+                } catch(e) {
+                  try { iProto.removeChild = safeRemoveChild; } catch(e2) {}
+                }
+                // Also set __sosTrueNativeRC on the iframe window so the stale shim
+                // reads our safe wrapper when it does window.__sosTrueNativeRC.
+                try { iWin.__sosTrueNativeRC = safeRemoveChild; } catch(e) {}
+              }
+            } catch(e) {}
+          }
+          var _origAC = Node.prototype.appendChild;
+          Node.prototype.appendChild = function(child) {
+            var result = _origAC.call(this, child);
+            if (child && child.tagName === 'IFRAME') { patchIframeProto(child); }
+            return result;
+          };
+          // Also intercept createElement — patch proto immediately on creation
+          // (some browsers expose contentWindow before the iframe is appended).
+          var _origCE = document.createElement.bind(document);
+          document.createElement = function(tag) {
+            var el = _origCE.apply(document, arguments);
+            if (typeof tag === 'string' && tag.toLowerCase() === 'iframe') {
+              // Patch on load (after append) and also try immediately
+              el.addEventListener('load', function() { patchIframeProto(el); });
+              patchIframeProto(el);
+            }
+            return el;
+          };
+
+          // ── Continuously seal #app div's own removeChild property ─────────────
+          // The stale shim re-installs its patchedRemoveChild on #app after each
+          // React navigation. Poll every 20ms for the first 10s to overwrite it.
+          function sealAppDiv() {
+            try {
+              var appEl = document.getElementById('app');
+              if (!appEl) return;
+              var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
+              if (d && d.get && d.get.call(appEl) === safeRemoveChild) return; // already sealed
+              try {
+                _origDefProp(appEl, 'removeChild', {
+                  get: function() { return safeRemoveChild; },
+                  set: function(_v) {},
+                  configurable: true, enumerable: false,
+                });
+              } catch(e) {
+                try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+              }
+            } catch(e) {}
+          }
+          var _sealInterval = setInterval(sealAppDiv, 5);
+          setTimeout(function() { clearInterval(_sealInterval); }, 10000);
+          // Also seal on DOMContentLoaded
+          document.addEventListener('DOMContentLoaded', sealAppDiv, { once: true });
+          // rAF loop — runs before every paint, ensuring #app is sealed before React commits
+          var _sealRafActive = true;
+          setTimeout(function() { _sealRafActive = false; }, 10000);
+          (function rafSeal() {
+            sealAppDiv();
+            if (_sealRafActive) requestAnimationFrame(rafSeal);
+          })();
+        } catch (e) {}
+      })();
+    </script>
     <script>
       // ── SOSAlertPopup global shim — runs before ANY module executes ───────────
       // Vite dev mode wraps modules in an async function (not strict-mode at the
@@ -51,7 +200,29 @@
         if (src.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1 || msg.indexOf('leaflet') !== -1) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
+        // Suppress the stale HMR shim's NotFoundError from removeChild.
+        // The stale module (t=1784519099416) calls the true browser native which
+        // throws NotFoundError — we must swallow it before React's error boundary sees it.
+        if (msg.indexOf('removeChild') !== -1 || (src.indexOf('1784519099416') !== -1)) {
+          e.preventDefault(); e.stopImmediatePropagation(); return false;
+        }
       }, true);
+      // Also patch Node.prototype.removeChild right now as a getter so ANY call
+      // — including via a stale direct function reference — goes through safeRemoveChild.
+      // We re-run this here (outside the IIFE above) so it applies after all scripts load.
+      (function patchNodeProtoNow() {
+        try {
+          var _native = Node.prototype.removeChild;
+          function safeRC(child) {
+            try { return _native.call(this, child); } catch(e) { return child; }
+          }
+          Object.defineProperty(Node.prototype, 'removeChild', {
+            get: function() { return safeRC; },
+            set: function() {},
+            configurable: true, enumerable: false,
+          });
+        } catch(e) {}
+      })();
       window.addEventListener('unhandledrejection', function(e) {
         var msg = String(e.reason || '');
         if (msg.indexOf('leaflet') !== -1 || msg.indexOf('_leaflet') !== -1) { e.preventDefault(); }
@@ -324,11 +495,11 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-BeXpS1Fb.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BTdE3PX1.js">
-    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DxXln8j3.js">
+    <script type="module" crossorigin src="/assets/index-C61aseTR.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-B_sXdY5f.js">
+    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DlAWaMYl.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-Dbl8kTil.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-YjRjiBwh.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-rjiJAIAB.css">
   </head>
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>

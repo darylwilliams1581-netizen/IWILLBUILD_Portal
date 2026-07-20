@@ -347,7 +347,7 @@
     // before any shim ran — it can overwrite even non-configurable own properties
     // that were installed via the same original function.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const _origDP: typeof Object.defineProperty = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
+    const _shimOrigDP: typeof Object.defineProperty = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
     function sealAppRoot() {
       const appEl = document.getElementById('app');
       if (!appEl) return;
@@ -359,17 +359,17 @@
         // shim installed (even configurable:false value descriptors).
         // Try accessor (getter always returns safe wrapper, setter is a no-op).
         try {
-          _origDP(appEl, 'removeChild', {
+          _shimOrigDP(appEl, 'removeChild', {
             get() { return swallowingRemoveChild; },
             set(_v: unknown) { /* ignore — our wrapper always wins */ },
-            configurable: true,  // keep configurable so we can re-seal after route changes
+            configurable: true,
             enumerable: false,
           });
           return;
         } catch { /* fall through */ }
         // Fallback: plain value descriptor.
         try {
-          _origDP(appEl, 'removeChild', {
+          _shimOrigDP(appEl, 'removeChild', {
             value: swallowingRemoveChild,
             writable: true,
             configurable: true,
