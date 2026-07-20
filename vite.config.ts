@@ -465,12 +465,9 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
           replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
           customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
         },
-        // @aws-sdk — 10.9 MB, only referenced in commented-out code in s3Provider.ts.
-        {
-          find: /^@aws-sdk(\/.*)?$/,
-          replacement: path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'),
-          customResolver() { return path.resolve(__dirname, 'src/fallbacks/browser-only-stub.ts'); },
-        },
+        // @aws-sdk — actively used by r2Provider.ts (S3Client, PutObjectCommand, etc.)
+        // for Cloudflare R2 storage. Must NOT be stubbed — the real SDK must be
+        // bundled into server.bundle.mjs so photo upload/download works at runtime.
       ] : []),
       { find: 'nothing', replacement: '/src/fallbacks/missingModule.ts' },
       // ── dev-tools alias ────────────────────────────────────────────────────
@@ -626,7 +623,13 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     copyPublicDir: false,
     sourcemap: false,
     reportCompressedSize: false,
+    // minifyIdentifiers MUST be false for the server bundle — esbuild mangles
+    // constructor names (S3Client → o, PutObjectCommand → n, etc.) which
+    // breaks `new X()` calls at runtime with "o is not a constructor".
+    // keepNames: true preserves all function/class names during minification
+    // without disabling identifier mangling for local variables (safe).
     minify: 'esbuild',
+    esbuildOptions: { keepNames: true },
     // ssr: true enables SSR mode (noExternal, CJS interop) without overriding
     // rollupOptions.input. When ssr is a string, Vite replaces input with that
     // string — using `true` lets us declare multiple entry points below so

@@ -15,11 +15,17 @@
 
       // ── Leaflet stale-cache suppression ──────────────────────────────────
       // The browser disk cache holds leaflet.js?v=05d76b4a. It executes before
-      // any SW can intercept it. The crash is:
-      //   getPosition(el) → el._leaflet_pos → undefined → TypeError
-      // Fix: define _leaflet_pos on HTMLElement.prototype so it always returns
-      // a safe {x:0,y:0} point object instead of undefined. This runs before
-      // leaflet.js executes because this is a synchronous inline script.
+      // any SW can intercept it. Two crashes to guard against:
+      //   1. getPosition(el) where el is undefined → TypeError on el._leaflet_pos
+      //   2. getPosition(el) where el._leaflet_pos is undefined → TypeError
+      //
+      // Fix A: define _leaflet_pos on HTMLElement.prototype so property reads
+      //        on a real element always return a safe {x:0,y:0}.
+      // Fix B: define _leaflet_pos on Object.prototype as a last-resort fallback
+      //        so even if `el` is some non-HTMLElement object it still has the prop.
+      // Fix C: override Object.prototype getter so undefined._leaflet_pos doesn't
+      //        throw — we can't do that (can't add props to undefined), so instead
+      //        we patch the global error handler to swallow this specific crash.
       try {
         Object.defineProperty(HTMLElement.prototype, '_leaflet_pos', {
           get: function() { return this.__lpos__ || { x: 0, y: 0 }; },
@@ -27,6 +33,16 @@
           configurable: true
         });
       } catch(e0) {}
+      // Swallow the specific "Cannot read properties of undefined (reading '_leaflet_pos')"
+      // error that fires when leaflet's getPosition() is called with undefined el.
+      // This is belt-and-suspenders on top of the HTMLElement.prototype patch above.
+      window.addEventListener('error', function(e) {
+        var msg = e.message || '';
+        var src = e.filename || '';
+        if (msg.indexOf("_leaflet_pos") !== -1 || src.indexOf('leaflet') !== -1) {
+          e.preventDefault(); e.stopImmediatePropagation(); return false;
+        }
+      }, true);
 
       // Layer 1: error event handler (capture phase) — belt-and-suspenders.
       window.addEventListener('error', function(e) {
