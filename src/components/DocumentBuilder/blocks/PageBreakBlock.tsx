@@ -3,7 +3,7 @@ import { useDocumentStore } from '../useDocumentStore';
 export default function PageBreakBlockView() {
   const { mode } = useDocumentStore();
   if (mode !== 'edit') {
-    return <div style={{ pageBreakAfter: 'always', breakAfter: 'page' }} />;
+    return <div className="studio-page-break" style={{ pageBreakAfter: 'always', breakAfter: 'page' }} />;
   }
   return (
     <div className="py-2 flex items-center gap-2">

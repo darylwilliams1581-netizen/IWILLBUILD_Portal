@@ -234,3 +234,74 @@ body {
   }
 }
 
+/* ── Studio Document Builder — Print styles ──────────────────────────────────
+   When the user clicks Print inside the Document Builder, only the document
+   canvas (.studio-doc-page) should appear. Everything else is hidden.
+   The .studio-no-print class hides any element that is editor-only chrome.
+*/
+@media print {
+  /* 1. Hide everything on the page by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 2. Show only the document page and all its descendants */
+  .studio-doc-page,
+  .studio-doc-page * {
+    visibility: visible !important;
+  }
+
+  /* 3. Position the page at the top-left of the print area */
+  .studio-doc-page {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    /* Remove canvas zoom transform — print at 100% */
+    transform: none !important;
+    transform-origin: top left !important;
+    /* Remove builder shadow/border */
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 12mm !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    /* Ensure background colours (banners, tables) print */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 4. Hide all editor-only controls — drag handles, block controls, badges */
+  .studio-no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 5. Page breaks */
+  .studio-page-break {
+    break-after: page !important;
+    page-break-after: always !important;
+    display: block !important;
+    height: 0 !important;
+    visibility: visible !important;
+  }
+
+  /* 6. Avoid awkward splits inside tables and banners */
+  table,
+  .studio-doc-page table {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 7. Page size and margins — A4 portrait default */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+

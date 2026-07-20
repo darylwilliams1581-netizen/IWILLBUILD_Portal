@@ -90,13 +90,20 @@ const STALE_TS = [
   '1784516846345',
   '1784518714435', // SosInnerBoundary wrapping full layout (removeChild mismatch)
   '1784519099416', // sos-shim.ts stale snapshot with re-throwing removeChild patch
+  '1784545944754',
+  '1784546299827',
+  '1784546491474',
 ];
 
 function isSosError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
   const text = (e.message ?? '') + (e.stack ?? '');
-  return text.includes('SOSAlertPopup') || STALE_TS.some((ts) => text.includes(ts))
-    || (e.name === 'NotFoundError' && text.includes('removeChild'));
+  return (
+    text.includes('SOSAlertPopup') ||
+    STALE_TS.some((ts) => text.includes(ts)) ||
+    (e.name === 'NotFoundError' && text.includes('removeChild')) ||
+    text.includes('patchedRemoveChild')
+  );
 }
 
 interface BoundaryState { caught: boolean; }
@@ -116,6 +123,8 @@ class SosInterceptBoundary extends Component<{ children: ReactNode }, BoundarySt
         try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
+      // If reload limit reached, stay caught (render null) — don't re-throw.
+      // This prevents the stale-shim error from propagating to AiroErrorBoundary.
     } else {
       this._other = error;
     }
@@ -202,17 +211,17 @@ const tree = (
 function isStaleShimRemoveChildError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
   const text = (e.stack ?? '') + (e.message ?? '');
-  // Match by specific timestamp OR by the generic patchedRemoveChild pattern
-  // (covers any future stale shim version without needing a timestamp update)
+  if (e.name !== 'NotFoundError' && !e.message.includes('removeChild')) return false;
+  // Match any patchedRemoveChild from any version of sos-shim
+  if (text.includes('patchedRemoveChild')) return true;
+  // Match by specific known timestamps
   return (
-    e.name === 'NotFoundError' &&
-    e.message.includes('removeChild') &&
-    (
-      text.includes('1784519099416') ||
-      text.includes('1784522000000') ||
-      text.includes('1784549200000') ||
-      (text.includes('patchedRemoveChild') && text.includes('sos-shim.ts'))
-    )
+    text.includes('1784519099416') ||
+    text.includes('1784522000000') ||
+    text.includes('1784545944754') ||
+    text.includes('1784546299827') ||
+    text.includes('1784546491474') ||
+    text.includes('1784549200000')
   );
 }
 

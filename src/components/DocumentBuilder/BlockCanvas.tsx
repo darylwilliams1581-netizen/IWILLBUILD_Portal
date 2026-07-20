@@ -144,7 +144,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
             <div
               ref={pageRef}
               data-doc-page
-              className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+              className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
               style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
               onClick={deselect}
             >
@@ -179,7 +179,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
         <div
           ref={pageRef}
           data-doc-page
-          className="shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+          className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
           style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) deselect();
@@ -218,13 +218,13 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
               >
                 {/* Selection ring */}
                 {mode === 'edit' && selection.blockId === block.id && (
-                  <div className="absolute inset-0 ring-2 ring-primary ring-offset-1 rounded-sm pointer-events-none z-10" />
+                  <div className="studio-no-print absolute inset-0 ring-2 ring-primary ring-offset-1 rounded-sm pointer-events-none z-10" />
                 )}
 
                 {/* Logic rule badge (edit mode) */}
                 {mode === 'edit' && ruleCount > 0 && (
                   <div
-                    className="absolute top-1 right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary text-white text-[9px] font-bold shadow-sm pointer-events-none"
+                    className="studio-no-print absolute top-1 right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary text-white text-[9px] font-bold shadow-sm pointer-events-none"
                     title={`${ruleCount} logic ${ruleCount === 1 ? 'rule' : 'rules'}`}
                   >
                     <Zap size={8} />
@@ -236,7 +236,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                 {mode === 'edit' && logicRules.some(
                   (r) => r.enabled && r.actions.some((a) => a.action === 'hide' && a.targetBlockId === block.id)
                 ) && (
-                  <div className="absolute inset-0 bg-slate-900/5 border-2 border-dashed border-slate-300 rounded-sm pointer-events-none z-10 flex items-center justify-center">
+                  <div className="studio-no-print absolute inset-0 bg-slate-900/5 border-2 border-dashed border-slate-300 rounded-sm pointer-events-none z-10 flex items-center justify-center">
                     <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full shadow-sm">
                       Hidden by logic
                     </span>
@@ -245,7 +245,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
                 {/* Block controls (edit mode only — always visible) */}
                 {mode === 'edit' && (
-                  <div className="absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-20">
+                  <div className="studio-no-print absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-20">
                     <button
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
@@ -266,7 +266,7 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
                 {/* Drag handle — always visible in edit mode */}
                 {mode === 'edit' && (
-                  <div className="absolute -right-7 top-1/2 -translate-y-1/2 flex z-20 cursor-grab active:cursor-grabbing">
+                  <div className="studio-no-print absolute -right-7 top-1/2 -translate-y-1/2 flex z-20 cursor-grab active:cursor-grabbing">
                     <div className="w-5 h-8 flex flex-col items-center justify-center gap-0.5">
                       {[0,1,2].map((i) => (
                         <div key={i} className="w-3 h-0.5 bg-slate-300 rounded-full" />

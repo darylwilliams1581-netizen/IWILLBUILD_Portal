@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v59 -->
+  <!-- cache-bust: v60 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -46,12 +46,17 @@
           Object.defineProperty = function(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object' && obj instanceof Node) {
               // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
-              return _origDefProp(obj, prop, {
-                get: function() { return safeRemoveChild; },
-                set: function(_v) { /* ignore — our wrapper always wins */ },
-                configurable: true,
-                enumerable: false,
-              });
+              // Use configurable:false so a second defineProperty call from the stale shim throws TypeError
+              // (which the stale shim catches and ignores), leaving our safe wrapper permanently in place.
+              try {
+                return _origDefProp(obj, prop, {
+                  get: function() { return safeRemoveChild; },
+                  set: function(_v) { /* ignore — our wrapper always wins */ },
+                  configurable: false,
+                  enumerable: false,
+                });
+              } catch(e) { /* already non-configurable — our wrapper is already there */ }
+              return obj;
             }
             return _origDefProp(obj, prop, descriptor);
           };
