@@ -193,8 +193,10 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
 
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
-  // Ribbon tab definitions — File and View removed (now in left sidebar)
+  // Ribbon tab definitions — Layout + Theme first, then insert tabs
   const RIBBON_TABS: { id: BuilderTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'layout',        label: 'Layout',        icon: <LayoutGrid size={13} /> },
+    { id: 'theme',         label: 'Theme',         icon: <Image size={13} /> },
     { id: 'structure',     label: 'Structure',     icon: <Layers size={13} /> },
     { id: 'tables',        label: 'Tables',        icon: <Table2 size={13} /> },
     { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
@@ -282,123 +284,201 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         </button>
       </div>
 
-      {/* ── Main body: persistent left sidebar + canvas ───────────────────────── */}
+      {/* ── Main body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Persistent Layout / Theme sidebar ────────────────────────────────── */}
-        <LayoutThemeSidebar
-          settings={pdfSettings}
-          onChange={setPdfSettings}
-          templateName={templateName}
-          templateType={templateType}
-        />
-
-        {/* ── Insert panel (tab-specific) + canvas ─────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* STRUCTURE insert strip */}
-          {activeTab === 'structure' && (
-            <div className="w-40 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
-              <div className="px-2 pt-2.5 pb-1">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Import</p>
-                <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
+        {/* LAYOUT tab — document + page settings */}
+        {activeTab === 'layout' && (
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+            <div className="max-w-lg mx-auto py-6 px-6 flex flex-col gap-6">
+              <div>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Document</h3>
+                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => useDocumentStore.getState().setTemplateName(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                      placeholder="Untitled document"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Type</label>
+                    <select
+                      value={templateType ?? ''}
+                      onChange={(e) => useDocumentStore.getState().setTemplateType(e.target.value as DocumentTemplate['templateType'])}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                    >
+                      <option value="">document</option>
+                      {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="px-2 pt-2 pb-1">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Structure</p>
-                <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
-                <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
-                <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
-                <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
-                <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
-                <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
-                <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
+              <div>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Page</h3>
+                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Paper Size</label>
+                    <select
+                      value={pdfSettings.paperSize ?? 'A4'}
+                      onChange={(e) => setPdfSettings({ ...pdfSettings, paperSize: e.target.value as PaperSize })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                    >
+                      {(['A4', 'Letter', 'Legal'] as const).map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Orientation</label>
+                    <select
+                      value={pdfSettings.orientation ?? 'portrait'}
+                      onChange={(e) => setPdfSettings({ ...pdfSettings, orientation: e.target.value as Orientation })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                    >
+                      <option value="portrait">Portrait</option>
+                      <option value="landscape">Landscape</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Margins</label>
+                    <select
+                      value={pdfSettings.margins ?? 'standard'}
+                      onChange={(e) => setPdfSettings({ ...pdfSettings, margins: e.target.value as MarginPreset })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                    >
+                      <option value="none">None</option>
+                      <option value="narrow">Narrow</option>
+                      <option value="standard">Standard</option>
+                      <option value="wide">Wide</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="h-4" />
             </div>
-          )}
-
-          {/* TABLES insert strip */}
-          {activeTab === 'tables' && (
-            <RibbonPanel title="Tables">
-              <RibbonGroup label="Insert Table">
-                <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
-                <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
-                <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
-                <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
-              </RibbonGroup>
-            </RibbonPanel>
-          )}
-
-          {/* FORM FIELDS insert strip */}
-          {activeTab === 'form_fields' && (
-            <RibbonPanel title="Form Fields">
-              <RibbonGroup label="Insert Field">
-                <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
-                <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
-                <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
-                <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
-                <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
-                <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
-                <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
-                <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
-              </RibbonGroup>
-            </RibbonPanel>
-          )}
-
-          {/* SYSTEM FIELDS insert strip */}
-          {activeTab === 'system_fields' && (
-            <RibbonPanel title="System Fields">
-              <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
-              <RibbonGroup label="Job">
-                <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
-                <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
-                <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
-                <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
-                <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
-                <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
-              </RibbonGroup>
-              <RibbonGroup label="Company">
-                <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
-                <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
-              </RibbonGroup>
-              <RibbonGroup label="Document">
-                <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
-                <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
-                <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
-                <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
-              </RibbonGroup>
-            </RibbonPanel>
-          )}
-
-          {/* ADVANCED insert strip */}
-          {activeTab === 'advanced' && (
-            <RibbonPanel title="Advanced">
-              <RibbonGroup label="Banners">
-                <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
-                <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
-              </RibbonGroup>
-              <RibbonGroup label="Image">
-                <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
-              </RibbonGroup>
-              <RibbonGroup label="Layout">
-                <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
-                <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
-              </RibbonGroup>
-            </RibbonPanel>
-          )}
-
-          {/* Canvas — always visible */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <StructurePanel />
           </div>
+        )}
 
-        </div>
+        {/* THEME tab — fonts, colours, branding */}
+        {activeTab === 'theme' && (
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+            <div className="max-w-lg mx-auto py-6 px-6">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Theme &amp; Branding</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <DocumentPdfTab settings={pdfSettings} onChange={setPdfSettings} templateName={templateName} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED — insert strip + canvas */}
+        {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced') && (
+          <>
+            {/* STRUCTURE insert strip */}
+            {activeTab === 'structure' && (
+              <div className="w-44 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+                <div className="px-2 pt-2.5 pb-1">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Import</p>
+                  <RibbonInsertBtn icon={<Upload size={12} />} label="Import DOCX / PDF" onClick={() => setShowDocxImporter(true)} primary />
+                </div>
+                <div className="px-2 pt-2 pb-1">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-1">Structure</p>
+                  <RibbonInsertBtn icon={<Hash size={12} />} label="Title (H1)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Document Title', level: 1, align: 'left' })} />
+                  <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
+                  <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
+                  <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
+                  <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
+                  <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
+                  <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
+                </div>
+                <div className="h-4" />
+              </div>
+            )}
+
+            {/* TABLES insert strip */}
+            {activeTab === 'tables' && (
+              <RibbonPanel title="Tables">
+                <RibbonGroup label="Insert Table">
+                  <RibbonInsertBtn icon={<Table2 size={12} />} label="Blank Table" onClick={() => { const c1=nanoid(8),c2=nanoid(8),c3=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Column 1',cellType:'text',width:1},{id:c2,header:'Column 2',cellType:'text',width:1},{id:c3,header:'Column 3',cellType:'text',width:1}], rows:Array.from({length:3},()=>({id:nanoid(8),cells:{[c1]:'', [c2]:'', [c3]:''}})), stripedRows:true }); }} />
+                  <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Detail Grid" onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:[{id:c1,header:'Field',cellType:'text',width:1},{id:c2,header:'Value',cellType:'text',width:2}], rows:[{id:nanoid(8),cells:{[c1]:'Job Number',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Client',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Site Address',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Date',[c2]:''}},{id:nanoid(8),cells:{[c1]:'Supervisor',[c2]:''}}], stripedRows:false }); }} />
+                  <RibbonInsertBtn icon={<Zap size={12} />} label="SWMS Risk Table" onClick={() => { const cols=[{id:nanoid(8),header:'Hazard / Risk',cellType:'text' as const,width:2},{id:nanoid(8),header:'Who is at Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Initial Risk Rating',cellType:'text' as const,width:1},{id:nanoid(8),header:'Control Measures',cellType:'text' as const,width:2},{id:nanoid(8),header:'Residual Risk',cellType:'text' as const,width:1},{id:nanoid(8),header:'Responsible',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:3},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:true }); }} />
+                  <RibbonInsertBtn icon={<PenLine size={12} />} label="Sign-Off Table" onClick={() => { const cols=[{id:nanoid(8),header:'Name',cellType:'text' as const,width:2},{id:nanoid(8),header:'Role',cellType:'text' as const,width:1},{id:nanoid(8),header:'Signature',cellType:'text' as const,width:2},{id:nanoid(8),header:'Date',cellType:'text' as const,width:1}]; appendBlock({ id:nanoid(10), type:'table', mode:'static', columns:cols, rows:Array.from({length:4},()=>({id:nanoid(8),cells:Object.fromEntries(cols.map(c=>[c.id,'']))})), stripedRows:false }); }} />
+                </RibbonGroup>
+              </RibbonPanel>
+            )}
+
+            {/* FORM FIELDS insert strip */}
+            {activeTab === 'form_fields' && (
+              <RibbonPanel title="Form Fields">
+                <RibbonGroup label="Insert Field">
+                  <RibbonInsertBtn icon={<FileText size={12} />} label="Short Text"       onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'short_text',    label:'Text Field',       required:false })} />
+                  <RibbonInsertBtn icon={<FileText size={12} />} label="Long Text"        onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'long_text',     label:'Long Text',        required:false })} />
+                  <RibbonInsertBtn icon={<CheckSquare size={12} />} label="Yes / No"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'yes_no',        label:'Yes / No',         required:false })} />
+                  <RibbonInsertBtn icon={<Calendar size={12} />} label="Date"             onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'date',          label:'Date',             required:false })} />
+                  <RibbonInsertBtn icon={<List size={12} />} label="Choice / Dropdown"    onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'single_choice', label:'Choice',           required:false, options:['Option A','Option B','Option C'] })} />
+                  <RibbonInsertBtn icon={<PenLine size={12} />} label="Signature"         onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'signature',     label:'Signature',        required:false })} />
+                  <RibbonInsertBtn icon={<Camera size={12} />} label="Photo / Evidence"   onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'photo',         label:'Photo / Evidence', required:false })} />
+                  <RibbonInsertBtn icon={<FileText size={12} />} label="File Upload"      onClick={() => appendBlock({ id:nanoid(10), type:'field', fieldType:'file_upload',   label:'File Upload',      required:false })} />
+                </RibbonGroup>
+              </RibbonPanel>
+            )}
+
+            {/* SYSTEM FIELDS insert strip */}
+            {activeTab === 'system_fields' && (
+              <RibbonPanel title="System Fields">
+                <p className="px-3 pb-1 text-[10px] text-slate-400 leading-tight">Live tokens — resolve on export.</p>
+                <RibbonGroup label="Job">
+                  <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Number"    onClick={() => appendSysToken('job.number',       'Job Number')} />
+                  <RibbonInsertBtn icon={<Briefcase size={12} />} label="Job Name"      onClick={() => appendSysToken('job.name',         'Job Name')} />
+                  <RibbonInsertBtn icon={<MapPin size={12} />}    label="Site Address"  onClick={() => appendSysToken('job.site_address', 'Site Address')} />
+                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Client"        onClick={() => appendSysToken('job.client',       'Client')} />
+                  <RibbonInsertBtn icon={<User size={12} />}      label="Supervisor"    onClick={() => appendSysToken('job.supervisor',   'Supervisor')} />
+                  <RibbonInsertBtn icon={<Calendar size={12} />}  label="Start Date"    onClick={() => appendSysToken('job.start_date',   'Start Date')} />
+                </RibbonGroup>
+                <RibbonGroup label="Company">
+                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Company Name"  onClick={() => appendSysToken('company.name', 'Company Name')} />
+                  <RibbonInsertBtn icon={<Building2 size={12} />} label="Company ABN"   onClick={() => appendSysToken('company.abn',  'Company ABN')} />
+                </RibbonGroup>
+                <RibbonGroup label="Document">
+                  <RibbonInsertBtn icon={<User size={12} />}           label="Current User"    onClick={() => appendSysToken('user.name',     'Current User')} />
+                  <RibbonInsertBtn icon={<Calendar size={12} />}       label="Today's Date"    onClick={() => appendSysToken('date.today',    "Today's Date")} />
+                  <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Doc Number"      onClick={() => appendSysToken('doc.number',    'Document Number')} />
+                  <RibbonInsertBtn icon={<ClipboardList size={12} />}  label="Revision"        onClick={() => appendSysToken('doc.revision',  'Revision')} />
+                </RibbonGroup>
+              </RibbonPanel>
+            )}
+
+            {/* ADVANCED insert strip */}
+            {activeTab === 'advanced' && (
+              <RibbonPanel title="Advanced">
+                <RibbonGroup label="Banners">
+                  <RibbonInsertBtn icon={<Info size={12} />}          label="Info"          accent="blue"   onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'info'         as BannerVariant, title:'Note',          body:'Enter information here.',   size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<AlertTriangle size={12} />}  label="Warning"       accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'warning'      as BannerVariant, title:'Warning',        body:'Enter warning here.',       size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<AlertOctagon size={12} />}   label="Danger"        accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'danger'       as BannerVariant, title:'Danger',         body:'Enter danger notice here.', size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<CheckCircle size={12} />}    label="Success"       accent="green"  onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'success'      as BannerVariant, title:'Complete',       body:'Enter success note here.',  size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<Shield size={12} />}         label="Safety"        accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety'       as BannerVariant, title:'Safety Notice',  body:'Enter safety info here.',   size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
+                  <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
+                </RibbonGroup>
+                <RibbonGroup label="Image">
+                  <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
+                </RibbonGroup>
+                <RibbonGroup label="Layout">
+                  <RibbonInsertBtn icon={<FileText size={12} />}   label="Rich Text Block"  onClick={() => appendBlock({ id:nanoid(10), type:'rich_text', html:'<p>Enter rich text…</p>' })} />
+                  <RibbonInsertBtn icon={<LayoutGrid size={12} />} label="Two-Column Grid"  onClick={() => { const c1=nanoid(8),c2=nanoid(8); appendBlock({ id:nanoid(10), type:'columns', columns:[{id:c1,width:1,blocks:[{id:nanoid(10),type:'text',content:'Left column',align:'left'}]},{id:c2,width:1,blocks:[{id:nanoid(10),type:'text',content:'Right column',align:'left'}]}], gap:'md' }); }} />
+                </RibbonGroup>
+              </RibbonPanel>
+            )}
+
+            {/* Canvas — always visible for insert tabs */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <StructurePanel />
+            </div>
+          </>
+        )}
+
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
@@ -502,139 +582,6 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
         className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5">
         <Image size={11} /> Insert image
       </button>
-    </div>
-  );
-}
-
-// ── Layout / Theme persistent sidebar ────────────────────────────────────────
-
-const PAPER_SIZES  = ['A4', 'Letter', 'Legal'] as const;
-const ORIENTATIONS = ['portrait', 'landscape'] as const;
-const ORIENTATION_LABELS: Record<string, string> = { portrait: 'Portrait', landscape: 'Landscape' };
-const MARGINS      = ['narrow', 'standard', 'wide'] as const;
-const MARGIN_LABELS: Record<string, string> = { narrow: 'Narrow', standard: 'Standard', wide: 'Wide' };
-
-function LayoutThemeSidebar({
-  settings,
-  onChange,
-  templateName,
-  templateType,
-}: {
-  settings: TemplatePdfSettings;
-  onChange: (s: TemplatePdfSettings) => void;
-  templateName: string;
-  templateType?: string | null;
-}) {
-  const [activeTab, setActiveTab] = useState<'layout' | 'theme'>('layout');
-  const { setTemplateName, setTemplateType } = useDocumentStore();
-
-  const inp = 'w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/60 bg-white transition-colors appearance-none';
-  const lbl = 'block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1';
-
-  return (
-    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
-      {/* Tab strip */}
-      <div className="flex border-b border-slate-200 flex-shrink-0">
-        {(['layout', 'theme'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2 ${
-              activeTab === t
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            {t === 'layout' ? 'Layout' : 'Theme'}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
-        {activeTab === 'layout' && (
-          <>
-            {/* Document section */}
-            <div>
-              <p className={`${lbl} mb-2`}>Document</p>
-              <div className="flex flex-col gap-2">
-                <div>
-                  <label className={lbl}>Name</label>
-                  <input
-                    type="text"
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    className={inp}
-                    placeholder="New Document"
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>Type</label>
-                  <select
-                    value={templateType ?? ''}
-                    onChange={(e) => setTemplateType(e.target.value as DocumentTemplate['templateType'])}
-                    className={inp}
-                  >
-                    <option value="">document</option>
-                    {Object.entries({
-                      swms: 'SWMS', procedure: 'Procedure', policy: 'Policy',
-                      form: 'Form', inspection: 'Inspection', checklist: 'Checklist',
-                      report: 'Report', toolbox: 'Toolbox Talk', prestart: 'Pre-Start', handover: 'Handover',
-                    }).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-px bg-slate-100" />
-
-            {/* Page section */}
-            <div>
-              <p className={`${lbl} mb-2`}>Page</p>
-              <div className="flex flex-col gap-2">
-                <div>
-                  <label className={lbl}>Paper Size</label>
-                  <select
-                    value={settings.paperSize ?? 'A4'}
-                    onChange={(e) => onChange({ ...settings, paperSize: e.target.value as PaperSize })}
-                    className={inp}
-                  >
-                    {PAPER_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={lbl}>Orientation</label>
-                  <select
-                    value={settings.orientation ?? 'portrait'}
-                    onChange={(e) => onChange({ ...settings, orientation: e.target.value as Orientation })}
-                    className={inp}
-                  >
-                    {ORIENTATIONS.map((o) => <option key={o} value={o}>{ORIENTATION_LABELS[o]}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={lbl}>Margins</label>
-                  <select
-                    value={settings.margins ?? 'standard'}
-                    onChange={(e) => onChange({ ...settings, margins: e.target.value as MarginPreset })}
-                    className={inp}
-                  >
-                    {MARGINS.map((m) => <option key={m} value={m}>{MARGIN_LABELS[m]}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {activeTab === 'theme' && (
-          <div className="flex flex-col gap-3">
-            <p className="text-[10px] text-slate-400 leading-tight">
-              Font, colour and branding settings for this document.
-            </p>
-            <DocumentPdfTab settings={settings} onChange={onChange} templateName={templateName} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

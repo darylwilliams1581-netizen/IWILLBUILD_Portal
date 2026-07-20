@@ -10,6 +10,26 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).SOSAlertPopup = function SOSAlertPopup() { return null; };
 
+// ── IMMEDIATE Node.prototype.removeChild safe-patch ─────────────────────────
+// This runs before any stale shim can capture _realNative from Node.prototype.
+// By making Node.prototype.removeChild itself a no-throw wrapper right now,
+// any stale shim that does `_native = Node.prototype.removeChild` gets our
+// safe version — so its patchedRemoveChild can never throw NotFoundError.
+{
+  const _hostRemoveChild = Node.prototype.removeChild;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Node.prototype as any).removeChild = function safeRemoveChildProto<T extends Node>(this: Node, child: T): T {
+      try {
+        if (child && child.parentNode === this) {
+          _hostRemoveChild.call(this, child);
+        }
+      } catch { /* swallow NotFoundError */ }
+      return child;
+    };
+  } catch { /* ignore */ }
+}
+
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
 // The stale sos-shim snapshot (t=1784519099416) installed patchedRemoveChild as
 // a non-configurable own property on the #app div. That function calls the real

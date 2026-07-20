@@ -14,13 +14,51 @@
       (function () {
         try {
           var _realRC = Node.prototype.removeChild;
-          Node.prototype.removeChild = function safeRemoveChild(child) {
+          function safeRemoveChild(child) {
             try {
               if (child && child.parentNode === this) {
                 return _realRC.call(this, child);
               }
             } catch (e) { /* swallow NotFoundError */ }
             return child;
+          }
+          // Patch main window Node.prototype
+          Node.prototype.removeChild = safeRemoveChild;
+
+          // Intercept Object.defineProperty so the stale shim can't install
+          // its throwing patchedRemoveChild on any Node (e.g. the #app div).
+          var _origDefProp = Object.defineProperty;
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if (prop === 'removeChild' && obj != null && obj instanceof Node) {
+              return _origDefProp(obj, prop, {
+                value: safeRemoveChild,
+                writable: true,
+                configurable: true,
+                enumerable: false,
+              });
+            }
+            return _origDefProp(obj, prop, descriptor);
+          };
+
+          // Intercept createElement('iframe') so any iframe the stale shim
+          // creates to capture its _native already has our safe wrapper.
+          var _origCE = document.createElement.bind(document);
+          document.createElement = function(tag) {
+            var el = _origCE.apply(document, arguments);
+            if (typeof tag === 'string' && tag.toLowerCase() === 'iframe') {
+              el.addEventListener('load', function() {
+                try {
+                  var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
+                  if (iProto) iProto.removeChild = safeRemoveChild;
+                } catch(e) {}
+              });
+              // Also try immediately (in case already loaded)
+              try {
+                var iProto = el.contentWindow && el.contentWindow.Node && el.contentWindow.Node.prototype;
+                if (iProto) iProto.removeChild = safeRemoveChild;
+              } catch(e) {}
+            }
+            return el;
           };
         } catch (e) {}
       })();

@@ -183,24 +183,7 @@ function isStaleShimRemoveChildError(e: unknown): boolean {
   );
 }
 
-// ── Final-resort Node.prototype.removeChild patch ────────────────────────────
-// The stale shim may have overwritten Node.prototype.removeChild with a version
-// that throws NotFoundError. Re-patch it here (after all shims have run) with a
-// version that never throws, so React's commit phase can never surface this error.
-try {
-  const _nativeRemoveChild = Node.prototype.removeChild;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Node.prototype as any).removeChild = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-    try {
-      if (child && child.parentNode === this) {
-        _nativeRemoveChild.call(this, child);
-      }
-    } catch { /* swallow NotFoundError from stale shims */ }
-    return child;
-  };
-} catch { /* ignore — best effort */ }
-
-
+window.addEventListener('error', (ev) => {
   if (isStaleShimRemoveChildError(ev.error)) {
     ev.preventDefault();
     ev.stopImmediatePropagation();
