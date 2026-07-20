@@ -22,7 +22,8 @@ export default async function handler(req: Request, res: Response) {
     const [profile] = await db.select().from(profiles).where(eq(profiles.userId, session.user.id)).limit(1);
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
-    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings } = req.body as {
+    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
+            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -31,6 +32,12 @@ export default async function handler(req: Request, res: Response) {
       systemFields?: unknown;
       sourceAttachments?: unknown;
       pdfSettings?: unknown;
+      docKind?: string;
+      requiresAcknowledgement?: boolean;
+      acknowledgementLabel?: string;
+      acknowledgementText?: string;
+      submitLabel?: string;
+      requiresSignature?: boolean;
     };
 
     if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
@@ -40,10 +47,21 @@ export default async function handler(req: Request, res: Response) {
     const themeJson = JSON.stringify(theme ?? {});
     const pdfSettingsJson = pdfSettings ? JSON.stringify(pdfSettings) : null;
     const tType = templateType ?? 'document';
+    const kind = docKind ?? 'doc';
+    const reqAck = requiresAcknowledgement ? 1 : 0;
+    const ackLabel = acknowledgementLabel ?? 'Sign Onto / Acknowledge';
+    const ackText = acknowledgementText ?? 'By signing, I confirm I have read, understood, and agree to comply with this document.';
+    const subLabel = submitLabel ?? 'Submit Form';
+    const reqSig = requiresSignature ? 1 : 0;
 
     const [result] = await db.execute(sql.raw(
-      `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json, is_active, created_by_user_id)
-       VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)}, ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'}, 1, ${JSON.stringify(session.user.id)})`
+      `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json,
+        doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text, submit_label, requires_signature,
+        is_active, created_by_user_id)
+       VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)},
+        ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'},
+        ${JSON.stringify(kind)}, ${reqAck}, ${JSON.stringify(ackLabel)}, ${JSON.stringify(ackText)}, ${JSON.stringify(subLabel)}, ${reqSig},
+        1, ${JSON.stringify(session.user.id)})`
     )) as unknown as [{ insertId: number }, unknown];
 
     return res.status(201).json({ id: result.insertId, ok: true });

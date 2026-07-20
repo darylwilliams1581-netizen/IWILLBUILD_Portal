@@ -18,8 +18,9 @@ import type {
   ColumnDef,
   LogicRule,
   LogicRuleValidation,
+  DocumentKind,
 } from './types';
-import { DEFAULT_PAGE_LAYOUT, DEFAULT_THEME } from './types';
+import { DEFAULT_PAGE_LAYOUT, DEFAULT_THEME, DEFAULT_DOC_KIND_SETTINGS } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,14 @@ interface DocumentStore {
   pageLayout: PageLayout;
   theme: DocumentTheme;
 
+  // ── Doc/Form kind settings ─────────────────────────────────────────────────
+  docKind: DocumentKind;
+  requiresAcknowledgement: boolean;
+  acknowledgementLabel: string;
+  acknowledgementText: string;
+  submitLabel: string;
+  requiresSignature: boolean;
+
   // ── Canvas ─────────────────────────────────────────────────────────────────
   blocks: DocumentBlock[];
   selection: BuilderSelection;
@@ -69,6 +78,8 @@ interface DocumentStore {
   setTemplateType: (type: DocumentTemplate['templateType']) => void;
   setPageLayout: (layout: Partial<PageLayout>) => void;
   setTheme: (theme: Partial<DocumentTheme>) => void;
+  setDocKind: (kind: DocumentKind) => void;
+  setKindSettings: (patch: Partial<Pick<DocumentStore, 'requiresAcknowledgement' | 'acknowledgementLabel' | 'acknowledgementText' | 'submitLabel' | 'requiresSignature'>>) => void;
 
   // ── Actions: mode ─────────────────────────────────────────────────────────
   setMode: (mode: BuilderMode) => void;
@@ -120,6 +131,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   templateType: 'document',
   pageLayout: DEFAULT_PAGE_LAYOUT,
   theme: DEFAULT_THEME,
+  // Doc/Form kind defaults
+  docKind: DEFAULT_DOC_KIND_SETTINGS.docKind,
+  requiresAcknowledgement: DEFAULT_DOC_KIND_SETTINGS.requiresAcknowledgement,
+  acknowledgementLabel: DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel,
+  acknowledgementText: DEFAULT_DOC_KIND_SETTINGS.acknowledgementText,
+  submitLabel: DEFAULT_DOC_KIND_SETTINGS.submitLabel,
+  requiresSignature: DEFAULT_DOC_KIND_SETTINGS.requiresSignature,
   blocks: [],
   logicRules: [],
   selection: { blockId: null },
@@ -137,6 +155,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     set((s) => ({ pageLayout: { ...s.pageLayout, ...layout }, isDirty: true })),
   setTheme: (theme) =>
     set((s) => ({ theme: { ...s.theme, ...theme }, isDirty: true })),
+  setDocKind: (kind) => set({ docKind: kind, isDirty: true }),
+  setKindSettings: (patch) => set({ ...patch, isDirty: true }),
 
   // ── Mode ──────────────────────────────────────────────────────────────────
 
@@ -381,6 +401,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       theme: template.theme ?? DEFAULT_THEME,
       blocks: template.blocks ?? [],
       logicRules: template.logicRules ?? [],
+      // Kind settings — fall back to defaults if not stored yet
+      docKind: template.docKind ?? DEFAULT_DOC_KIND_SETTINGS.docKind,
+      requiresAcknowledgement: template.requiresAcknowledgement ?? DEFAULT_DOC_KIND_SETTINGS.requiresAcknowledgement,
+      acknowledgementLabel: template.acknowledgementLabel ?? DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel,
+      acknowledgementText: template.acknowledgementText ?? DEFAULT_DOC_KIND_SETTINGS.acknowledgementText,
+      submitLabel: template.submitLabel ?? DEFAULT_DOC_KIND_SETTINGS.submitLabel,
+      requiresSignature: template.requiresSignature ?? DEFAULT_DOC_KIND_SETTINGS.requiresSignature,
       selection: { blockId: null },
       mode: 'edit',
       isDirty: false,
@@ -398,6 +425,12 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       theme: DEFAULT_THEME,
       blocks: [],
       logicRules: [],
+      docKind: DEFAULT_DOC_KIND_SETTINGS.docKind,
+      requiresAcknowledgement: DEFAULT_DOC_KIND_SETTINGS.requiresAcknowledgement,
+      acknowledgementLabel: DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel,
+      acknowledgementText: DEFAULT_DOC_KIND_SETTINGS.acknowledgementText,
+      submitLabel: DEFAULT_DOC_KIND_SETTINGS.submitLabel,
+      requiresSignature: DEFAULT_DOC_KIND_SETTINGS.requiresSignature,
       selection: { blockId: null },
       mode: 'edit',
       isDirty: false,
@@ -421,6 +454,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       systemFields: extractSystemFieldKeys(s.blocks),
       sourceAttachments: [],
       isActive: true,
+      // Kind settings
+      docKind: s.docKind,
+      requiresAcknowledgement: s.requiresAcknowledgement,
+      acknowledgementLabel: s.acknowledgementLabel,
+      acknowledgementText: s.acknowledgementText,
+      submitLabel: s.submitLabel,
+      requiresSignature: s.requiresSignature,
     };
   },
 }));

@@ -24,7 +24,9 @@ export default async function handler(req: Request, res: Response) {
 
     const [rows] = await db.execute(sql.raw(
       `SELECT id, company_id, name, template_type, page_layout_json, theme_json,
-              source_docx_name, is_active, created_by_user_id, created_at, updated_at
+              source_docx_name, is_active, created_by_user_id, created_at, updated_at,
+              doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
+              submit_label, requires_signature
        FROM document_templates
        WHERE company_id = ${profile.companyId}
        ORDER BY updated_at DESC`

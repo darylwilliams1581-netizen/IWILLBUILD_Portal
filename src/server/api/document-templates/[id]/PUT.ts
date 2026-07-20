@@ -31,7 +31,8 @@ export default async function handler(req: Request, res: Response) {
     )) as unknown as [Array<{ id: number }>, unknown];
     if (!rows?.[0]) return res.status(404).json({ error: 'Template not found' });
 
-    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings } = req.body as {
+    const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
+            docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
       name?: string;
       templateType?: string;
       pageLayout?: unknown;
@@ -40,6 +41,12 @@ export default async function handler(req: Request, res: Response) {
       systemFields?: unknown;
       sourceAttachments?: unknown;
       pdfSettings?: unknown;
+      docKind?: string;
+      requiresAcknowledgement?: boolean;
+      acknowledgementLabel?: string;
+      acknowledgementText?: string;
+      submitLabel?: string;
+      requiresSignature?: boolean;
     };
 
     const builderJson = JSON.stringify({ blocks: blocks ?? [], systemFields: systemFields ?? [], sourceAttachments: sourceAttachments ?? [] });
@@ -55,6 +62,12 @@ export default async function handler(req: Request, res: Response) {
     if (pdfSettingsJson !== null) setParts.push(`pdf_settings_json = ${JSON.stringify(pdfSettingsJson)}`);
     if (name?.trim()) setParts.push(`name = ${JSON.stringify(name.trim())}`);
     if (templateType) setParts.push(`template_type = ${JSON.stringify(templateType)}`);
+    if (docKind) setParts.push(`doc_kind = ${JSON.stringify(docKind)}`);
+    if (requiresAcknowledgement !== undefined) setParts.push(`requires_acknowledgement = ${requiresAcknowledgement ? 1 : 0}`);
+    if (acknowledgementLabel !== undefined) setParts.push(`acknowledgement_label = ${JSON.stringify(acknowledgementLabel)}`);
+    if (acknowledgementText !== undefined) setParts.push(`acknowledgement_text = ${JSON.stringify(acknowledgementText)}`);
+    if (submitLabel !== undefined) setParts.push(`submit_label = ${JSON.stringify(submitLabel)}`);
+    if (requiresSignature !== undefined) setParts.push(`requires_signature = ${requiresSignature ? 1 : 0}`);
 
     await db.execute(sql.raw(
       `UPDATE document_templates SET ${setParts.join(', ')} WHERE id = ${id} AND company_id = ${profile.companyId}`

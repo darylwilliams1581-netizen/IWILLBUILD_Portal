@@ -64,6 +64,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
     undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
     pageLayout, mode, setMode,
+    docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText,
+    submitLabel, requiresSignature,
+    setDocKind, setKindSettings,
   } = useDocumentStore();
 
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
@@ -85,11 +88,12 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   // Sync store mode with UI state
   useEffect(() => {
     if (appMode === 'use') {
-      setMode('fill');
+      // Docs open in preview (read-only) mode; Forms open in fill mode
+      setMode(docKind === 'form' ? 'fill' : 'preview');
     } else {
       setMode(buildSubMode);
     }
-  }, [appMode, buildSubMode, setMode]);
+  }, [appMode, buildSubMode, setMode, docKind]);
 
   // Auto-adjust zoom when orientation changes so the page fits comfortably
   useEffect(() => {
@@ -310,7 +314,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
               </button>
             </>
           ) : (
-            /* Use Mode actions */
+            /* Use Mode actions — context-sensitive based on docKind */
             <>
               <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
                 <Printer size={12} /> Print
@@ -318,12 +322,20 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
               <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
                 <Download size={12} /> Download PDF
               </button>
-              <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
-                <Briefcase size={12} /> Save to Job
-              </button>
-              <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-orange-600 transition-colors">
-                <Send size={13} /> Submit
-              </button>
+              {docKind === 'form' ? (
+                <>
+                  <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+                    <Briefcase size={12} /> Save to Job
+                  </button>
+                  <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-orange-600 transition-colors">
+                    <Send size={13} /> {submitLabel || 'Submit Form'}
+                  </button>
+                </>
+              ) : requiresAcknowledgement ? (
+                <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                  <CheckSquare size={13} /> {acknowledgementLabel || 'Sign Onto / Acknowledge'}
+                </button>
+              ) : null}
             </>
           )}
         </div>
@@ -363,10 +375,15 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
 
       {/* Use Mode sub-header */}
       {appMode === 'use' && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b border-primary/20 flex-shrink-0">
-          <PlayCircle size={14} className="text-primary flex-shrink-0" />
-          <span className="text-xs font-semibold text-primary">Use Mode</span>
-          <span className="text-xs text-slate-500">Fill in the form fields below, then submit or download the completed document.</span>
+        <div className={`flex items-center gap-3 px-4 py-2 border-b flex-shrink-0 ${
+          docKind === 'form'
+            ? 'bg-primary/5 border-primary/20'
+            : 'bg-slate-50 border-slate-200'
+        }`}>
+          {docKind === 'form'
+            ? <><PlayCircle size={14} className="text-primary flex-shrink-0" /><span className="text-xs font-semibold text-primary">Fill Mode</span><span className="text-xs text-slate-500">Fill in the form fields below, then submit or download the completed document.</span></>
+            : <><Eye size={14} className="text-slate-500 flex-shrink-0" /><span className="text-xs font-semibold text-slate-600">Read Mode</span><span className="text-xs text-slate-400">This is a read-only document. Print or download below{requiresAcknowledgement ? `, or use "${acknowledgementLabel}" to sign on.` : '.'}</span></>
+          }
         </div>
       )}
 
@@ -420,6 +437,102 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Document Kind ─────────────────────────────────────────── */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Document Kind</h3>
+                    <p className="text-[11px] text-slate-400 mb-3">Controls how this document behaves when opened by workers.</p>
+                    <div className="flex gap-2 mb-3">
+                      {([
+                        { kind: 'doc',  label: 'Doc',  desc: 'Read, review, print, download. Optional sign-on.' },
+                        { kind: 'form', label: 'Form', desc: 'Fill fields, submit, download completed PDF.' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.kind}
+                          onClick={() => setDocKind(opt.kind)}
+                          className={`flex-1 flex flex-col items-start gap-1 px-3 py-3 rounded-xl border-2 text-left transition-all ${
+                            docKind === opt.kind
+                              ? 'border-primary bg-primary/5'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <span className={`text-xs font-bold ${docKind === opt.kind ? 'text-primary' : 'text-slate-700'}`}>{opt.label}</span>
+                          <span className="text-[10px] text-slate-500 leading-snug">{opt.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Doc-specific settings */}
+                    {docKind === 'doc' && (
+                      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={requiresAcknowledgement}
+                            onChange={(e) => setKindSettings({ requiresAcknowledgement: e.target.checked })}
+                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/30"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">Requires sign-on / acknowledgement</p>
+                            <p className="text-[11px] text-slate-400">Workers must sign on before they can close this document.</p>
+                          </div>
+                        </label>
+                        {requiresAcknowledgement && (
+                          <>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Button label</label>
+                              <input
+                                type="text"
+                                value={acknowledgementLabel}
+                                onChange={(e) => setKindSettings({ acknowledgementLabel: e.target.value })}
+                                placeholder="Sign Onto / Acknowledge"
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Confirmation statement</label>
+                              <textarea
+                                value={acknowledgementText}
+                                onChange={(e) => setKindSettings({ acknowledgementText: e.target.value })}
+                                rows={3}
+                                placeholder="By signing, I confirm I have read, understood, and agree to comply with this document."
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white resize-none"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Form-specific settings */}
+                    {docKind === 'form' && (
+                      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Submit button label</label>
+                          <input
+                            type="text"
+                            value={submitLabel}
+                            onChange={(e) => setKindSettings({ submitLabel: e.target.value })}
+                            placeholder="Submit Form"
+                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
+                          />
+                        </div>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={requiresSignature}
+                            onChange={(e) => setKindSettings({ requiresSignature: e.target.checked })}
+                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/30"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">Requires signature before submission</p>
+                            <p className="text-[11px] text-slate-400">A signature field must be completed before the form can be submitted.</p>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Page</h3>
                     <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">

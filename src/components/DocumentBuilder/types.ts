@@ -539,7 +539,69 @@ export interface SourceAttachment {
   storagePath: string;
 }
 
-// ── Document Template (the full saved JSON) ───────────────────────────────────
+// ── Document Kind ─────────────────────────────────────────────────────────────
+
+/**
+ * The two top-level kinds of studio documents.
+ *
+ * doc  — read-only reference document (SWMS, policy, procedure, toolbox talk, etc.)
+ *         Can optionally require sign-on / acknowledgement.
+ *         In Use Mode: read-only canvas, Print, Download.
+ *         No fillable form fields are active.
+ *
+ * form — fillable user record (inspection, pre-start, induction, custom form, etc.)
+ *         In Use Mode: fillable canvas, Submit, Download completed PDF.
+ */
+export type DocumentKind = 'doc' | 'form';
+
+/**
+ * Settings that control Use Mode behaviour.
+ * Stored in document_templates alongside the builder JSON.
+ */
+export interface DocKindSettings {
+  /** 'doc' or 'form' — defaults to 'doc' */
+  docKind: DocumentKind;
+
+  // ── Doc-specific ────────────────────────────────────────────────────────────
+  /** If true, Use Mode shows an Acknowledge / Sign Onto button */
+  requiresAcknowledgement: boolean;
+  /** Button label shown in Use Mode, e.g. "Sign Onto SWMS" */
+  acknowledgementLabel: string;
+  /** Confirmation statement shown in the sign-on modal */
+  acknowledgementText: string;
+
+  // ── Form-specific ───────────────────────────────────────────────────────────
+  /** Submit button label, e.g. "Submit Form" */
+  submitLabel: string;
+  /** If true, a signature field is required before submission */
+  requiresSignature: boolean;
+}
+
+export const DEFAULT_DOC_KIND_SETTINGS: DocKindSettings = {
+  docKind: 'doc',
+  requiresAcknowledgement: false,
+  acknowledgementLabel: 'Sign Onto / Acknowledge',
+  acknowledgementText: 'By signing, I confirm I have read, understood, and agree to comply with this document.',
+  submitLabel: 'Submit Form',
+  requiresSignature: false,
+};
+
+/**
+ * Template types that default to kind=doc with requiresAcknowledgement=true.
+ * Used when creating new templates from the TYPE_MAP.
+ */
+export const DOC_KIND_ACKNOWLEDGEMENT_TYPES: StudioDocumentType[] = [
+  'swms', 'safety_plan', 'policy', 'procedure', 'toolbox_talk',
+];
+
+/**
+ * Template types that default to kind=form.
+ */
+export const DOC_KIND_FORM_TYPES: StudioDocumentType[] = [
+  'user_form', 'pre_start', 'prestart', 'inspection', 'checklist', 'register',
+];
+
+
 
 export type StudioDocumentType =
   | 'user_form'
@@ -582,6 +644,13 @@ export interface DocumentTemplate {
   createdAt?: string;
   updatedAt?: string;
   sourceDocxName?: string;
+  // ── Doc/Form kind model ──────────────────────────────────────────────────────
+  docKind?: DocumentKind;
+  requiresAcknowledgement?: boolean;
+  acknowledgementLabel?: string;
+  acknowledgementText?: string;
+  submitLabel?: string;
+  requiresSignature?: boolean;
 }
 
 // ── PDF Output Settings (per-template overlay) ────────────────────────────────

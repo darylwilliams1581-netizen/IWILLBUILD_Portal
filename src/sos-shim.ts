@@ -62,9 +62,10 @@
       document.head.appendChild(iframe);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       trueNative = (iframe.contentWindow as any)?.Node?.prototype?.removeChild ?? null;
-      if (trueNative && iframe.parentNode === document.head) {
-        trueNative.call(document.head, iframe);
-      }
+      // Remove the iframe — guard with parentNode check to avoid NotFoundError
+      try {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      } catch { /* ignore */ }
     } catch { /* ignore */ }
   }
 
@@ -110,35 +111,45 @@
           });
         } catch { /* ignore */ }
       }
-      try { _realNative.call(document.head, iframe); } catch { /* ignore */ }
+      try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch { /* ignore */ }
     } catch { /* ignore */ }
 
     // ── Intercept Object.defineProperty ─────────────────────────────────────
     // The stale shim calls Object.defineProperty(appEl, 'removeChild', { value: patchedRemoveChild })
-    // We intercept every defineProperty call on a Node instance — if the descriptor
-    // value looks like a patchedRemoveChild (function named 'patchedRemoveChild'),
-    // we silently substitute our safe wrapper instead.
-    // Also intercept any attempt to define removeChild with configurable:false so
-    // we can always overwrite it later.
+    // We intercept every defineProperty call on a Node instance and substitute
+    // our safe swallowing wrapper. Use configurable:true so we can always
+    // overwrite — using configurable:false would lock the stale shim's throwing
+    // version in place if it runs before us.
     try {
       const _origDefProp = Object.defineProperty.bind(Object);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (Object as any).defineProperty = function defineProperty(obj: any, prop: PropertyKey, descriptor: PropertyDescriptor) {
-        if (
-          prop === 'removeChild' &&
-          obj instanceof Node
-        ) {
-          // Always substitute our safe wrapper for any removeChild being installed
-          // on a Node instance. Use configurable:false so the stale shim cannot
-          // call defineProperty a second time to overwrite our wrapper.
+        if (prop === 'removeChild' && obj instanceof Node) {
+          // Substitute our safe wrapper — always configurable so we can overwrite later.
           try {
             return _origDefProp(obj, prop, {
               get() { return swallowingRemoveChildEarly; },
               set(_v) { /* ignore */ },
-              configurable: false,
+              configurable: true,
               enumerable: false,
             });
-          } catch { /* already non-configurable — our wrapper is already locked in */ }
+          } catch {
+            // Already non-configurable from a prior stale shim install.
+            // Force-overwrite via the captured __origDefProp from index.html
+            // which bypasses the non-configurable guard.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const indexOrigDP: typeof Object.defineProperty | undefined = (window as any).__origDefProp;
+            if (indexOrigDP) {
+              try {
+                indexOrigDP(obj, prop, {
+                  get() { return swallowingRemoveChildEarly; },
+                  set(_v) { /* ignore */ },
+                  configurable: true,
+                  enumerable: false,
+                });
+              } catch { /* truly locked — nothing more we can do */ }
+            }
+          }
           return obj;
         }
         return _origDefProp(obj, prop, descriptor);
@@ -426,15 +437,18 @@ const STALE_TS_SHIM = [
   '1784748000000', // cover recent edit window
   '1784800000000', // cover July 21 2026 edits
   '1784850000000',
+  '1784860000000', // cover July 21 2026 late edits
+  '1784870000000',
+  '1784880000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784800000004';
+const SOS_SHIM_VERSION = '1784860000001';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
-const SOS_SHIM_MAX_RELOADS = 3;
+const SOS_SHIM_MAX_RELOADS = 6;
 
 // Reset counter when shim version changes (new deploy evicts old stale module)
 try {

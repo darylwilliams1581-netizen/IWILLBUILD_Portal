@@ -11,7 +11,7 @@ import {
   Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle,
   ChevronDown, Loader2, AlertTriangle, Search, Trash2, X,
   FileUp, Library, Inbox, ArrowLeft, User, Calendar,
-  ChevronUp,
+  ChevronUp, Eye,
 } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
@@ -30,6 +30,8 @@ interface DocTemplate {
   source_docx_name: string | null;
   created_at: string;
   updated_at: string;
+  doc_kind: string | null;
+  requires_acknowledgement: number | boolean | null;
 }
 
 interface DocSubmission {
@@ -51,13 +53,16 @@ interface DocSubmission {
 
 const TYPE_LABELS: Record<string, string> = {
   swms: 'SWMS', policy: 'Policy', procedure: 'Procedure', form: 'Form',
-  contract: 'Contract', quote: 'Quote', report: 'Report', induction: 'Induction', custom: 'Custom',
+  contract: 'Contract', quote: 'Quote', report: 'Report', induction: 'Induction',
+  toolbox_talk: 'Toolbox Talk', safety_plan: 'Safety Plan', custom: 'Custom',
 };
 
 const TYPE_COLORS: Record<string, string> = {
   swms: 'bg-red-100 text-red-700 border-red-200',
+  safety_plan: 'bg-red-100 text-red-700 border-red-200',
   policy: 'bg-blue-100 text-blue-700 border-blue-200',
   procedure: 'bg-purple-100 text-purple-700 border-purple-200',
+  toolbox_talk: 'bg-amber-100 text-amber-700 border-amber-200',
   form: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   contract: 'bg-amber-100 text-amber-700 border-amber-200',
   quote: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -69,6 +74,12 @@ const TYPE_COLORS: Record<string, string> = {
 function typeLabel(t: string | null) { return t ? (TYPE_LABELS[t] ?? t) : 'Custom'; }
 function typeColor(t: string | null) { return t ? (TYPE_COLORS[t] ?? TYPE_COLORS.custom) : TYPE_COLORS.custom; }
 function revLabel(updatedAt: string) { const d = new Date(updatedAt); return `Rev ${d.getFullYear() % 100}`; }
+function docKindLabel(kind: string | null) { return kind === 'form' ? 'Form' : 'Doc'; }
+function docKindColor(kind: string | null) {
+  return kind === 'form'
+    ? 'bg-cyan-100 text-cyan-700 border-cyan-200'
+    : 'bg-slate-100 text-slate-600 border-slate-200';
+}
 
 // ── Toolbar button ─────────────────────────────────────────────────────────────
 
@@ -102,6 +113,9 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
   const [jobNumberInput, setJobNumberInput] = useState('');
   const [jobPickerError, setJobPickerError] = useState('');
   const isActive = Boolean(doc.is_active);
+  const kind = doc.doc_kind ?? 'doc';
+  const isForm = kind === 'form';
+  const useLabel = isForm ? 'Fill' : 'Open';
 
   function openBuilder() { navigate(`/studio/builder/${doc.id}`); }
   function openUse() { setJobNumberInput(''); setJobPickerError(''); setShowJobPicker(true); }
@@ -153,11 +167,15 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
         </div>
         <div className="flex-1 min-w-0 flex items-center gap-2.5">
           <p className="text-sm font-bold text-slate-800 truncate leading-tight">{doc.name}</p>
-          <span className={`hidden sm:inline-flex flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${typeColor(doc.template_type)}`}>
+          {/* Kind badge — Doc or Form */}
+          <span className={`hidden sm:inline-flex flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${docKindColor(kind)}`}>
+            {docKindLabel(kind)}
+          </span>
+          <span className={`hidden md:inline-flex flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${typeColor(doc.template_type)}`}>
             {typeLabel(doc.template_type)}
           </span>
           {doc.source_docx_name && (
-            <span className="hidden md:inline text-[10px] text-slate-400 truncate max-w-[160px]">{doc.source_docx_name}</span>
+            <span className="hidden lg:inline text-[10px] text-slate-400 truncate max-w-[160px]">{doc.source_docx_name}</span>
           )}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -165,7 +183,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
           <ToolBtn icon={Share2}     label="Copy link"        onClick={handleShare} />
           {showShareBtn && <ToolBtn icon={Library} label="Share to Library" onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />}
           <ToolBtn icon={Pencil}     label="Edit"             onClick={(e) => { e.stopPropagation(); openBuilder(); }} variant="orange" />
-          <ToolBtn icon={PlayCircle} label="Use"              onClick={(e) => { e.stopPropagation(); openUse(); }} variant="green" />
+          <ToolBtn icon={isForm ? PlayCircle : Eye} label={useLabel} onClick={(e) => { e.stopPropagation(); openUse(); }} variant="green" />
           <ToolBtn icon={Trash2}     label="Delete"           onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button title={expanded ? 'Collapse' : 'Expand'}
             onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
@@ -187,7 +205,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
               <Pencil size={11} /> Edit
             </button>
             <button onClick={openUse} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
-              <PlayCircle size={11} /> Use
+              {isForm ? <PlayCircle size={11} /> : <Eye size={11} />} {useLabel}
             </button>
           </div>
         </div>
@@ -213,13 +231,13 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-heading font-bold text-base text-slate-900 leading-tight">Use Document</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Enter the job number to link this document to a job.</p>
+                  <h2 className="font-heading font-bold text-base text-slate-900 leading-tight">{isForm ? 'Fill Form' : 'Open Document'}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Enter the job number to link this {isForm ? 'form' : 'document'} to a job.</p>
                 </div>
                 <button onClick={() => setShowJobPicker(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"><X size={15} /></button>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
-                <PlayCircle size={14} className="text-primary shrink-0" />
+                {isForm ? <PlayCircle size={14} className="text-primary shrink-0" /> : <Eye size={14} className="text-slate-500 shrink-0" />}
                 <span className="text-sm font-semibold text-slate-700 truncate">{doc.name}</span>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -236,7 +254,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: {
                   className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
                 <button onClick={handleJobPickerSubmit} disabled={!jobNumberInput.trim()}
                   className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                  <PlayCircle size={14} /> Open Document
+                  {isForm ? <PlayCircle size={14} /> : <Eye size={14} />} {isForm ? 'Fill Form' : 'Open Document'}
                 </button>
               </div>
             </motion.div>

@@ -1186,6 +1186,13 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'source_docx_path',    definition: 'VARCHAR(500) NULL' },
     { table: 'document_templates', column: 'source_docx_name',    definition: 'VARCHAR(255) NULL' },
     { table: 'document_templates', column: 'use_type',            definition: "VARCHAR(50) NOT NULL DEFAULT 'reference_document'" },
+    // ── document_templates: Doc/Form kind model ──────────────────────────────
+    { table: 'document_templates', column: 'doc_kind',                    definition: "VARCHAR(10) NOT NULL DEFAULT 'doc'" },
+    { table: 'document_templates', column: 'requires_acknowledgement',    definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'document_templates', column: 'acknowledgement_label',       definition: "VARCHAR(255) NOT NULL DEFAULT 'Sign Onto / Acknowledge'" },
+    { table: 'document_templates', column: 'acknowledgement_text',        definition: "TEXT NOT NULL DEFAULT 'By signing, I confirm I have read, understood, and agree to comply with this document.'" },
+    { table: 'document_templates', column: 'submit_label',                definition: "VARCHAR(255) NOT NULL DEFAULT 'Submit Form'" },
+    { table: 'document_templates', column: 'requires_signature',          definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },

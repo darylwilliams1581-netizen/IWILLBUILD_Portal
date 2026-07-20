@@ -60,6 +60,13 @@ export default async function handler(req: Request, res: Response) {
         isActive: Boolean(row.is_active),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        // Doc/Form kind model
+        docKind: (row.doc_kind as string) ?? 'doc',
+        requiresAcknowledgement: Boolean(row.requires_acknowledgement),
+        acknowledgementLabel: (row.acknowledgement_label as string) ?? 'Sign Onto / Acknowledge',
+        acknowledgementText: (row.acknowledgement_text as string) ?? 'By signing, I confirm I have read, understood, and agree to comply with this document.',
+        submitLabel: (row.submit_label as string) ?? 'Submit Form',
+        requiresSignature: Boolean(row.requires_signature),
       },
     });
   } catch (err) {

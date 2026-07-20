@@ -12,6 +12,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
 import type { DocumentTemplate, StudioDocumentType } from '@/components/DocumentBuilder/types';
+import { DOC_KIND_ACKNOWLEDGEMENT_TYPES, DOC_KIND_FORM_TYPES, DEFAULT_DOC_KIND_SETTINGS } from '@/components/DocumentBuilder/types';
 
 // Map URL ?type= param → StudioDocumentType + default name
 const TYPE_MAP: Record<string, { type: StudioDocumentType; name: string }> = {
@@ -36,6 +37,27 @@ const TYPE_MAP: Record<string, { type: StudioDocumentType; name: string }> = {
   'tender-pack':         { type: 'custom',             name: 'New Tender Pack'        },
   'handover-pack':       { type: 'handover',           name: 'New Handover Pack'      },
 };
+
+/** Derive default kind settings from the template type */
+function defaultKindForType(type: StudioDocumentType): Partial<DocumentTemplate> {
+  if (DOC_KIND_FORM_TYPES.includes(type)) {
+    return {
+      docKind: 'form',
+      requiresAcknowledgement: false,
+      submitLabel: DEFAULT_DOC_KIND_SETTINGS.submitLabel,
+      requiresSignature: false,
+    };
+  }
+  if (DOC_KIND_ACKNOWLEDGEMENT_TYPES.includes(type)) {
+    return {
+      docKind: 'doc',
+      requiresAcknowledgement: true,
+      acknowledgementLabel: DEFAULT_DOC_KIND_SETTINGS.acknowledgementLabel,
+      acknowledgementText: DEFAULT_DOC_KIND_SETTINGS.acknowledgementText,
+    };
+  }
+  return { docKind: 'doc', requiresAcknowledgement: false };
+}
 
 interface TemplateResponse {
   template: DocumentTemplate;
@@ -146,6 +168,8 @@ export default function StudioBuilderPage() {
         blocks: [],
         systemFields: [],
         sourceAttachments: [],
+        // Apply kind defaults based on template type
+        ...defaultKindForType(mapped.type),
       }
     : template;
 
