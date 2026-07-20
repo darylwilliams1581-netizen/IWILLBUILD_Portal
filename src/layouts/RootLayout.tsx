@@ -289,60 +289,50 @@ function patchRemoveChild(el: HTMLDivElement | Element) {
   // Use the true browser native captured in index.html before any shim ran.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const trueNative: ((c: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const origDP: typeof Object.defineProperty | undefined = (window as any).__origDefProp;
   function safeRemoveChild<T extends Node>(this: Node, child: T): T {
     try {
       if (trueNative) trueNative.call(this, child);
-      // If no true native, just swallow — better than throwing
     } catch { /* swallow NotFoundError */ }
     return child;
   }
+  function forceInstall(node: Node) {
+    // 1. Try accessor via __origDefProp with configurable:true — works even over
+    //    non-configurable value descriptors installed by the stale shim.
+    if (origDP) {
+      try {
+        origDP(node, 'removeChild', {
+          get() { return safeRemoveChild; },
+          set(_v: unknown) { /* ignore */ },
+          configurable: true, enumerable: false,
+        });
+        return;
+      } catch { /* fall through */ }
+    }
+    // 2. Plain assignment (works if writable:true).
+    try { (node as any).removeChild = safeRemoveChild; } catch { /* ignore */ }
+    // 3. Shadow on the node's immediate prototype so own-property lookup still
+    //    hits our wrapper before the stale shim's value on the instance.
+    const proto = Object.getPrototypeOf(node) as Node | null;
+    if (proto && proto !== Node.prototype) {
+      try {
+        (origDP ?? Object.defineProperty)(proto, 'removeChild', {
+          value: safeRemoveChild, writable: true, configurable: true, enumerable: false,
+        });
+      } catch { /* ignore */ }
+    }
+  }
   // Walk the element and all its ancestors up to (but not including) documentElement.
-  // For each node that has an own `removeChild` property (installed by the stale shim),
-  // try to replace it. If the property is non-configurable (stale shim locked it),
-  // `delete` won't work — instead wrap the existing value so it swallows errors.
   const targets: Node[] = [el];
   let p: Node | null = el.parentNode;
   while (p && p !== document.documentElement) { targets.push(p); p = p.parentNode; }
   for (const node of targets) {
     const d = Object.getOwnPropertyDescriptor(node, 'removeChild');
-    if (!d) continue; // no own property — prototype chain is fine, skip
-    // Try to replace with our safe wrapper.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (node as any).removeChild = safeRemoveChild;
-    } catch { /* assignment blocked — property is non-writable */ }
-    // If the own property is still not our wrapper, the stale shim locked it with
-    // configurable:false + writable:false. We can't replace it, but we CAN wrap the
-    // stale function's value so that when React calls node.removeChild(child) it
-    // invokes a function that catches the NotFoundError.
-    // Strategy: shadow it on the node's direct [[Prototype]] with a writable copy.
-    const d2 = Object.getOwnPropertyDescriptor(node, 'removeChild');
-    if (d2 && d2.value !== safeRemoveChild) {
-      const staleHandler = d2.value as ((this: Node, c: Node) => Node) | undefined;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const proto = Object.getPrototypeOf(node) as any;
-      if (proto && proto !== Node.prototype) {
-        try {
-          Object.defineProperty(proto, 'removeChild', {
-            value: safeRemoveChild, writable: true, configurable: true, enumerable: false,
-          });
-        } catch { /* proto also locked */ }
-      }
-      // Last resort: wrap the stale handler in-place by redefining via the original
-      // Object.defineProperty captured before any shim ran (exposed as __origDefProp).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const origDP: typeof Object.defineProperty | undefined = (window as any).__origDefProp;
-      if (origDP && staleHandler) {
-        try {
-          origDP(node, 'removeChild', {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            get() { return safeRemoveChild; },
-            set(_v: unknown) { /* ignore */ },
-            configurable: false, enumerable: false,
-          });
-        } catch { /* truly immutable */ }
-      }
-    }
+    // Already our safe wrapper — skip.
+    if (d?.get && d.get.call(node) === safeRemoveChild) continue;
+    if (d?.value === safeRemoveChild) continue;
+    forceInstall(node);
   }
 }
 

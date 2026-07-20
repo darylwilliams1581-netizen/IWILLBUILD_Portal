@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v65 -->
+  <!-- cache-bust: v66 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -57,16 +57,15 @@
           Object.defineProperty = function(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
               // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
-              // Use configurable:false so a second defineProperty call from the stale shim throws TypeError
-              // (which the stale shim catches and ignores), leaving our safe wrapper permanently in place.
+              // Use configurable:true so sealAppRoot/sealAppDiv can always re-apply the seal.
               try {
                 return _origDefProp(obj, prop, {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) { /* ignore — our wrapper always wins */ },
-                  configurable: false,
+                  configurable: true,
                   enumerable: false,
                 });
-              } catch(e) { /* already non-configurable — our wrapper is already there */ }
+              } catch(e) { /* already locked — our wrapper should already be there */ }
               return obj;
             }
             return _origDefProp(obj, prop, descriptor);
@@ -127,12 +126,12 @@
               var appEl = document.getElementById('app');
               if (!appEl) return;
               var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              if (d && d.get && d.get() === safeRemoveChild) return; // already sealed
+              if (d && d.get && d.get.call(appEl) === safeRemoveChild) return; // already sealed
               try {
                 _origDefProp(appEl, 'removeChild', {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) {},
-                  configurable: false, enumerable: false,
+                  configurable: true, enumerable: false,
                 });
               } catch(e) {
                 try { appEl.removeChild = safeRemoveChild; } catch(e2) {}

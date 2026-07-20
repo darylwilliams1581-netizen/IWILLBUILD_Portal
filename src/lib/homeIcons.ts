@@ -88,7 +88,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'studio',        label: 'Studio',         icon: Layers,           href: '/studio',                 bg: 'bg-fuchsia-500', fg: 'text-white', group: 'management' },
   { key: 'studio_docs',   label: 'Documents',      icon: FileText,         href: '/studio/documents',       bg: 'bg-orange-500',  fg: 'text-white', group: 'management' },
-  { key: 'studio_forms',  label: 'Forms',          icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
+  { key: 'studio_forms',  label: 'Form Studio',    icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
   { key: 'studio_library',label: 'Library',        icon: Library,          href: '/studio/library',         bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',      label: 'Dazza AI',       icon: Bot,              href: '/dazza-ai',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },

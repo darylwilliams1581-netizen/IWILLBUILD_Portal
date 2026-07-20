@@ -343,35 +343,39 @@
     // Simpler approach that actually works: use Object.defineProperty with a
     // getter/setter that ignores writes and always returns swallowingRemoveChild.
     // Even if the stale shim calls defineProperty again, the getter wins.
+    // __origDefProp is the TRUE Object.defineProperty captured in index.html
+    // before any shim ran — it can overwrite even non-configurable own properties
+    // that were installed via the same original function.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _origDP: typeof Object.defineProperty = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
     function sealAppRoot() {
       const appEl = document.getElementById('app');
       if (!appEl) return;
       try {
         const existing = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-        // Already sealed with our getter — nothing to do.
-        if (existing?.get && existing.set) return;
-        // Delete any existing own property (stale shim may have put a non-configurable value there).
-        // `delete` on a non-configurable own property is a no-op in strict mode but won't throw.
-        try { delete (appEl as any).removeChild; } catch { /* ignore */ }
-        // Try accessor first (getter always returns our safe wrapper, setter ignores writes).
+        // Already sealed with our safe getter — nothing to do.
+        if (existing?.get && existing.get.call(appEl) === swallowingRemoveChild) return;
+        // Use the pre-intercept defineProperty to overwrite whatever the stale
+        // shim installed (even configurable:false value descriptors).
+        // Try accessor (getter always returns safe wrapper, setter is a no-op).
         try {
-          Object.defineProperty(appEl, 'removeChild', {
+          _origDP(appEl, 'removeChild', {
             get() { return swallowingRemoveChild; },
-            set(_v) { /* swallow — our wrapper always wins */ },
-            configurable: false,
+            set(_v: unknown) { /* ignore — our wrapper always wins */ },
+            configurable: true,  // keep configurable so we can re-seal after route changes
             enumerable: false,
           });
           return;
-        } catch { /* accessor failed — fall through to value descriptor */ }
+        } catch { /* fall through */ }
         // Fallback: plain value descriptor.
         try {
-          Object.defineProperty(appEl, 'removeChild', {
+          _origDP(appEl, 'removeChild', {
             value: swallowingRemoveChild,
-            writable: false,
-            configurable: false,
+            writable: true,
+            configurable: true,
             enumerable: false,
           });
-        } catch { /* truly locked — nothing more we can do */ }
+        } catch { /* truly locked */ }
       } catch { /* ignore */ }
     }
     sealAppRoot();
