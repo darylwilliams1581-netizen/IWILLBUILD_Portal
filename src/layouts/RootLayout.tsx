@@ -264,7 +264,10 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
       try { console.warn('[SosInnerBoundary] stale snapshot error swallowed:', error.message); } catch (_) {}
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
-      } else if (!sosRecentReload()) {
+      } else {
+        // For NotFoundError from the permanently-cached stale shim, always reload
+        // regardless of the recent-reload guard — the guard can prevent recovery
+        // when the stale shim is stuck in the browser cache.
         try { localStorage.setItem(SOS_LS_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
@@ -276,8 +279,9 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
 
   render() {
     if (this._rethrow) { const e = this._rethrow; this._rethrow = null; throw e; }
-    // While caught=true, render null briefly — componentDidCatch will reset it.
-    if (this.state.caught) return null;
+    // Keep rendering children even when caught — rendering null causes React to
+    // unmount children which triggers more removeChild calls and an infinite loop.
+    // componentDidCatch will reload the page; children stay mounted until then.
     return this.props.children;
   }
 }

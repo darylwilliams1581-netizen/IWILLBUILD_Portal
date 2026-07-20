@@ -216,7 +216,7 @@ async function fetchDocumentContent(
       sql`SELECT js.id, js.title, js.status, js.work_activity, js.hazards, js.risks,
                  js.controls, js.ppe, js.plant_equipment, js.training_competency,
                  js.emergency_controls, js.environmental_controls, js.sign_off_requirements,
-                 js.revision_number, js.review_date, js.created_at, js.updated_at,
+                 js.revision_number, js.review_date, js.created_at,
                  j.name as job_name, j.job_number,
                  c.name as company_name
           FROM job_swms js
