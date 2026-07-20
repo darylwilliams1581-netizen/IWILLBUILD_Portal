@@ -15,11 +15,7 @@
         try {
           var _realRC = Node.prototype.removeChild;
           function safeRemoveChild(child) {
-            try {
-              if (child && child.parentNode === this) {
-                return _realRC.call(this, child);
-              }
-            } catch (e) { /* swallow NotFoundError */ }
+            try { return _realRC.call(this, child); } catch (e) { /* swallow */ }
             return child;
           }
           // Patch main window Node.prototype

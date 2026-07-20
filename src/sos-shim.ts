@@ -20,11 +20,7 @@
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Node.prototype as any).removeChild = function safeRemoveChildProto<T extends Node>(this: Node, child: T): T {
-      try {
-        if (child && child.parentNode === this) {
-          _hostRemoveChild.call(this, child);
-        }
-      } catch { /* swallow NotFoundError */ }
+      try { _hostRemoveChild.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     };
   } catch { /* ignore */ }
@@ -76,15 +72,12 @@
     // patchedRemoveChild then falls through to call the REAL native (which throws).
     // Unconditional try/catch is the only safe approach.
     function swallowingRemoveChildEarly<T extends Node>(this: Node, child: T): T {
-      // Guard: only call the real native when child is actually a direct child.
-      // If it isn't, there's nothing to remove — skip the call entirely rather
-      // than letting _realNative throw NotFoundError (or recurse into the stale
-      // shim's patchedRemoveChild if _realNative was captured from a patched proto).
-      try {
-        if (child && child.parentNode === this) {
-          _realNative.call(this, child);
-        }
-      } catch { /* swallow any remaining NotFoundError */ }
+      // Unconditional try/catch — do NOT guard with parentNode === this.
+      // When the stale shim calls this as its captured _native, `this` is the
+      // #app div but `child` may have been moved. A parentNode guard would skip
+      // the call, causing the stale shim to fall through to the real native which
+      // throws NotFoundError. Always attempt the call and swallow any error.
+      try { _realNative.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     }
 
