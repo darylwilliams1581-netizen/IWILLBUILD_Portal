@@ -252,11 +252,15 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
   private _rethrow: Error | null = null;
 
   static getDerivedStateFromError(error: Error): SosState {
+    // Always catch NotFoundError — it is exclusively caused by the stale shim
+    // and is never a legitimate React rendering error.
+    if (error.name === 'NotFoundError') return { caught: true };
     return { caught: isStaleSnapshot(error) };
   }
 
   componentDidCatch(error: Error) {
-    if (isStaleSnapshot(error)) {
+    const stale = isStaleSnapshot(error) || error.name === 'NotFoundError';
+    if (stale) {
       try { console.warn('[SosInnerBoundary] stale snapshot error swallowed:', error.message); } catch (_) {}
       if (typeof (window as any).__sosBoundaryTrigger === 'function') {
         (window as any).__sosBoundaryTrigger();
@@ -264,8 +268,6 @@ class SosInnerBoundary extends Component<{ children: ReactNode }, SosState> {
         try { localStorage.setItem(SOS_LS_KEY, String(Date.now())); } catch (_) {}
         window.location.reload();
       }
-      // Whether we reload or not, reset state so children render on next tick.
-      // This prevents a permanent blank screen when the reload limit is exhausted.
       setTimeout(() => this.setState({ caught: false }), 0);
     } else {
       this._rethrow = error;
