@@ -183,17 +183,17 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     >
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-white shadow-sm flex-shrink-0">
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
-          title="Close"
-        >
-          <X size={15} />
-        </button>
 
-        {/* Document type badge + title */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* ── Left zone: close + doc type + title ── */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
+            title="Close"
+          >
+            <X size={15} />
+          </button>
+
           {/* Doc type pill */}
           <div className="relative flex-shrink-0">
             <button
@@ -231,7 +231,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           </div>
 
           <FileText size={13} className="text-slate-400 flex-shrink-0" />
-          <span className="text-sm font-semibold text-slate-700 truncate max-w-[220px]">
+          <span className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">
             {templateName}
           </span>
           {isDirty && (
@@ -239,8 +239,8 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           )}
         </div>
 
-        {/* Tab switcher: Content / PDF Output */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 ml-2 flex-shrink-0">
+        {/* ── Centre zone: Content / PDF Output tabs ── */}
+        <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5 flex-shrink-0">
           <TabBtn
             active={activeTab === 'content'}
             onClick={() => setActiveTab('content')}
@@ -255,6 +255,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
           />
         </div>
 
+        {/* ── Right zone spacer ── */}
         <div className="flex-1" />
 
         {/* Undo / Redo + mode switcher */}

@@ -11,19 +11,18 @@
 (window as any).SOSAlertPopup = function SOSAlertPopup() { return null; };
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// The stale sos-shim snapshot (t=1784519099416) locked Node.prototype.removeChild
-// with configurable:false. Its patchedRemoveChild calls the real browser native
-// which throws NotFoundError when the child has already been removed.
+// The stale sos-shim snapshot (t=1784519099416) installed patchedRemoveChild as
+// a non-configurable own property on the #app div. That function calls the real
+// browser native which throws NotFoundError when child is not in parent.
 //
 // Strategy:
-//   1. Extract the TRUE browser native via a sandboxed iframe (unaffected by
-//      any Object.defineProperty on the main window's Node.prototype).
-//   2. Install a swallowing wrapper that calls the true native directly.
-//      If the slot is already locked (stale shim ran first), the defineProperty
-//      fails silently — fall through to error-interception reload below.
+//   1. Intercept Object.defineProperty so when the stale shim tries to install
+//      its patchedRemoveChild on any Node, we substitute our safe wrapper.
+//   2. Extract the TRUE browser native via a sandboxed iframe and build a
+//      swallowing wrapper that never throws.
 //   3. Intercept document.createElement('iframe') so any iframe the stale shim
-//      creates to capture its _native already has our swallowing wrapper on its
-//      Node.prototype — making the stale shim's captured _native itself safe.
+//      creates to capture its _native already has our swallowing wrapper — making
+//      the stale shim's captured _native itself safe.
 {
   // Get the real browser native removeChild from a clean iframe prototype.
   // The iframe's Node.prototype is a separate object; no stale shim can have
@@ -55,6 +54,32 @@
       try { if (child && child.parentNode === this) _native.call(this, child); } catch { /* swallow */ }
       return child;
     }
+
+    // ── Intercept Object.defineProperty ─────────────────────────────────────
+    // The stale shim calls Object.defineProperty(appEl, 'removeChild', { value: patchedRemoveChild })
+    // We intercept every defineProperty call on a Node instance — if the descriptor
+    // value looks like a patchedRemoveChild (function named 'patchedRemoveChild'),
+    // we silently substitute our safe wrapper instead.
+    try {
+      const _origDefProp = Object.defineProperty.bind(Object);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (Object as any).defineProperty = function defineProperty(obj: any, prop: PropertyKey, descriptor: PropertyDescriptor) {
+        if (
+          prop === 'removeChild' &&
+          obj instanceof Node &&
+          typeof descriptor.value === 'function' &&
+          (descriptor.value as Function).name === 'patchedRemoveChild'
+        ) {
+          // Substitute the stale shim's patchedRemoveChild with our safe wrapper
+          return _origDefProp(obj, prop, {
+            ...descriptor,
+            value: swallowingRemoveChildEarly,
+            configurable: true, // keep configurable so we can overwrite later
+          });
+        }
+        return _origDefProp(obj, prop, descriptor);
+      };
+    } catch { /* ignore — defineProperty intercept is best-effort */ }
 
     // ── Intercept document.createElement('iframe') ───────────────────────────
     // The stale shim creates a fresh iframe to capture its _native reference.
@@ -281,7 +306,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784547000000';
+const SOS_SHIM_VERSION = '1784548000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict

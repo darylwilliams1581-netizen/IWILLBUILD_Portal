@@ -160,21 +160,39 @@ const tree = (
 // SSR markup is detected via a child element inside the #app root. hydrateRoot
 // reattaches to the server-rendered tree; createRoot mounts fresh for dev/
 // pre-SSR fallback.
+// ── Stale-shim error swallower ────────────────────────────────────────────────
+// The frozen Vite HMR snapshot at t=1784519099416 installed a patchedRemoveChild
+// on the #app div that calls the real browser native — throwing NotFoundError
+// when React unmounts nodes during client-side navigation. This error fires in
+// React's commit phase, which bypasses error boundaries. Intercept it here at
+// the window level so it never reaches React's unhandled-error reporter.
+function isStaleShimRemoveChildError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  const text = (e.stack ?? '') + (e.message ?? '');
+  return (
+    e.name === 'NotFoundError' &&
+    e.message.includes('removeChild') &&
+    text.includes('1784519099416')
+  );
+}
+
+window.addEventListener('error', (ev) => {
+  if (isStaleShimRemoveChildError(ev.error)) {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+  }
+}, true); // capture phase — runs before React's own listener
+
+const recoverableErrorHandler = (_error: unknown) => { /* swallow */ };
+
 if (rootElement.firstElementChild) {
   hydrateRoot(rootElement, tree, {
-    // Browser extensions (Grammarly, LastPass, password managers, etc.) inject
-    // DOM nodes and style attributes before React hydrates, causing hydration
-    // mismatches — including "removeChild" NotFoundErrors on login pages where
-    // password managers inject input decorators. These are recoverable — React
-    // re-renders the affected subtree on the client and the UI is correct.
-    // Suppress them here so they don't surface as errors in the dev error boundary.
-    onRecoverableError(_error: unknown) {
-      // Silently swallow all recoverable hydration errors. React already
-      // re-renders the affected subtree — the UI is correct.
-    },
+    onRecoverableError: recoverableErrorHandler,
   });
 } else {
-  createRoot(rootElement).render(tree);
+  createRoot(rootElement, {
+    onRecoverableError: recoverableErrorHandler,
+  }).render(tree);
 }
 
 // ── Toaster (Sonner) — mounted outside the SSR tree ──────────────────────────
