@@ -20,12 +20,9 @@
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Node.prototype as any).removeChild = function safeRemoveChildProto<T extends Node>(this: Node, child: T): T {
-      // Guard: only call the real native when child is actually present.
-      // This prevents the stale shim's patchedRemoveChild (which calls this as
-      // its _realNative) from triggering a NotFoundError on the true native.
-      if (child && child.parentNode === this) {
-        try { _hostRemoveChild.call(this, child); } catch { /* swallow */ }
-      }
+      // Always attempt — never skip — so React's DOM reconciler stays consistent.
+      // Swallow NotFoundError if child is no longer present.
+      try { _hostRemoveChild.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     };
   } catch { /* ignore */ }

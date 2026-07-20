@@ -13,15 +13,25 @@ import './sos-shim';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
     const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-      // trueNative is from index.html captured before any patching — call it
-      // directly so we never re-enter any shim wrapper.
-      try { if (trueNative) trueNative.call(this, child); } catch { /* swallow */ }
+      // Always attempt — never skip — so React's DOM reconciler stays consistent.
+      // Swallow NotFoundError if child is no longer a child of this node.
+      try { if (trueNative) trueNative.call(this, child); } catch { /* swallow NotFoundError */ }
       return child;
     };
+    // Try defineProperty first (overwrites even non-writable own props if configurable).
+    // Fall back to direct assignment in case defineProperty itself throws.
     try {
       Object.defineProperty(appEl, 'removeChild', {
         value: safeRC, writable: true, configurable: true, enumerable: false,
       });
+    } catch {
+      try { (appEl as unknown as Record<string, unknown>).removeChild = safeRC; } catch { /* ignore */ }
+    }
+    // Belt-and-suspenders: also patch Node.prototype so any call that bypasses
+    // the own property (e.g. via prototype chain after own prop is deleted) is safe.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (Node.prototype as any).removeChild = safeRC;
     } catch { /* ignore */ }
   }
 }

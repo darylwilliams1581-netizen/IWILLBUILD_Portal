@@ -25,6 +25,7 @@
 
           var _realRC = Node.prototype.removeChild;
           function safeRemoveChild(child) {
+            // Always attempt — never skip — so React's DOM reconciler stays consistent.
             try { return _realRC.call(this, child); } catch (e) { /* swallow NotFoundError */ }
             return child;
           }

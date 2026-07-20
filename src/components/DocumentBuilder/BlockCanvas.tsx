@@ -28,7 +28,7 @@ const MARGIN_PX: Record<string, { x: number; y: number }> = {
   wide:     { x: 72, y: 64 },
 };
 
-export default function BlockCanvas() {
+export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const { blocks, selection, mode, pageLayout, theme, select, deselect, moveBlock, removeBlock, logicRules } =
     useDocumentStore();
 
@@ -115,6 +115,7 @@ export default function BlockCanvas() {
   if (blocks.length === 0 && mode === 'edit') {
     return (
       <div className="flex-1 min-h-0 overflow-auto bg-slate-100 flex items-start justify-center py-10 px-4">
+        <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
         <div
           className="shadow-xl rounded-sm relative"
           style={canvasStyle}
@@ -132,6 +133,7 @@ export default function BlockCanvas() {
             </div>
           </div>
         </div>
+        </div>{/* end zoom wrapper */}
       </div>
     );
   }
@@ -143,6 +145,8 @@ export default function BlockCanvas() {
         if (e.target === e.currentTarget) deselect();
       }}
     >
+      {/* Zoom wrapper — scales the page without affecting scroll container */}
+      <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease' }}>
       <div
         className="shadow-xl rounded-sm relative"
         style={canvasStyle}
@@ -281,6 +285,7 @@ export default function BlockCanvas() {
           </div>
         )}
       </div>
+      </div>{/* end zoom wrapper */}
     </div>
   );
 }

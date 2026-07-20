@@ -20,6 +20,7 @@ import {
   Building2, ClipboardList,
   Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert,
   Image, AlignCenter, AlignRight,
+  ZoomIn, ZoomOut, Monitor, RotateCcw,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
@@ -57,6 +58,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     isDirty, isSaving, setIsSaving, markSaved,
     loadTemplate, resetToBlank, getSerialised, templateId, templateName, templateType,
     undo, redo, canUndo, canRedo, reorderBlocks, prependBlocks, appendBlocks, blocks,
+    pageLayout,
   } = useDocumentStore();
 
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
@@ -68,6 +70,12 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
   );
   const [showPublishModal, setShowPublishModal]     = useState(false);
   const [showDocTypeMenu, setShowDocTypeMenu]       = useState(false);
+  const [zoomLevel, setZoomLevel]                   = useState(100); // percent
+
+  // Auto-adjust zoom when orientation changes so the page fits comfortably
+  useEffect(() => {
+    setZoomLevel(pageLayout.orientation === 'landscape' ? 75 : 100);
+  }, [pageLayout.orientation]);
   const { isPlatformOwner } = usePermissions();
 
   /** Convenience: append a single block to the document */
@@ -202,6 +210,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
     { id: 'form_fields',   label: 'Form Fields',   icon: <FormInput size={13} /> },
     { id: 'system_fields', label: 'System Fields', icon: <Cpu size={13} /> },
     { id: 'advanced',      label: 'Advanced',      icon: <ShieldAlert size={13} /> },
+    { id: 'view',          label: 'View',          icon: <Monitor size={13} /> },
   ];
 
   return (
@@ -373,7 +382,7 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
         )}
 
         {/* STRUCTURE / TABLES / FORM FIELDS / SYSTEM FIELDS / ADVANCED — insert strip + canvas */}
-        {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced') && (
+        {(activeTab === 'structure' || activeTab === 'tables' || activeTab === 'form_fields' || activeTab === 'system_fields' || activeTab === 'advanced' || activeTab === 'view') && (
           <>
             {/* STRUCTURE insert strip */}
             {activeTab === 'structure' && (
@@ -472,13 +481,76 @@ export default function DocumentBuilder({ template, onClose, onSaved }: Props) {
               </RibbonPanel>
             )}
 
+            {/* VIEW panel */}
+            {activeTab === 'view' && (
+              <RibbonPanel title="View">
+                {/* Zoom controls */}
+                <RibbonGroup label="Zoom">
+                  <div className="flex items-center gap-1 px-1 pb-1">
+                    <button
+                      onClick={() => setZoomLevel((z) => Math.max(25, z - 10))}
+                      className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                      title="Zoom out"
+                    ><ZoomOut size={13} /></button>
+                    <span className="flex-1 text-center text-xs font-semibold text-slate-700 tabular-nums">{zoomLevel}%</span>
+                    <button
+                      onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
+                      className="w-7 h-7 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
+                      title="Zoom in"
+                    ><ZoomIn size={13} /></button>
+                  </div>
+                  {/* Preset zoom buttons */}
+                  {[50, 75, 100, 125, 150].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setZoomLevel(pct)}
+                      className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-colors ${zoomLevel === pct ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >{pct}%</button>
+                  ))}
+                  <button
+                    onClick={() => setZoomLevel(100)}
+                    className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-md transition-colors mt-0.5"
+                    title="Reset zoom"
+                  ><RotateCcw size={11} />Reset</button>
+                </RibbonGroup>
+
+                {/* Orientation toggle */}
+                <RibbonGroup label="Orientation">
+                  <button
+                    onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'portrait' })}
+                    className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation !== 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                  >
+                    <span className="inline-block w-3 h-4 border-2 border-current rounded-sm flex-shrink-0" />
+                    Portrait
+                  </button>
+                  <button
+                    onClick={() => useDocumentStore.getState().setPageLayout({ ...pageLayout, orientation: 'landscape' })}
+                    className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs rounded-md transition-colors ${pageLayout.orientation === 'landscape' ? 'bg-primary/10 text-primary font-semibold' : 'text-slate-700 hover:bg-slate-100'}`}
+                  >
+                    <span className="inline-block w-4 h-3 border-2 border-current rounded-sm flex-shrink-0" />
+                    Landscape
+                  </button>
+                </RibbonGroup>
+              </RibbonPanel>
+            )}
+
             {/* Canvas — always visible for insert tabs */}
             <div className="flex-1 flex min-h-0 overflow-hidden">
-              <StructurePanel />
+              <StructurePanel zoom={zoomLevel} />
             </div>
           </>
         )}
 
+      </div>
+
+      {/* ── Status bar ───────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-end gap-2 px-3 py-1 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+        <span className="text-[10px] text-slate-400 capitalize">{pageLayout.orientation}</span>
+        <div className="w-px h-3 bg-slate-300" />
+        <button onClick={() => setZoomLevel((z) => Math.max(25, z - 10))} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"><ZoomOut size={11} /></button>
+        <span className="text-[10px] font-semibold text-slate-600 tabular-nums w-8 text-center">{zoomLevel}%</span>
+        <button onClick={() => setZoomLevel((z) => Math.min(200, z + 10))} className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"><ZoomIn size={11} /></button>
+        <button onClick={() => setZoomLevel(100)} className="text-[10px] text-slate-400 hover:text-slate-700 transition-colors px-1">Reset</button>
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────────────── */}
