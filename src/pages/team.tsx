@@ -263,16 +263,21 @@ function EditMemberModal({
   const targetIsOwner = member.role === 'owner';
   const targetIsAdmin = member.role === 'admin';
 
-  // Permissions are locked (read-only) for owner targets, or when editing an owner's own record
-  const permsLocked = targetIsOwner;
+  // Permissions are editable by owners (even on owner profiles) and admins on non-owner profiles.
+  // Only lock when a non-owner is trying to edit an owner's permissions.
+  const permsLocked = targetIsOwner && !callerIsOwner;
   // Role is locked if: target is owner and caller is not owner
   const roleLocked = targetIsOwner && !callerIsOwner;
-  // Status is locked for owners
-  const statusLocked = targetIsOwner;
+  // Status is locked for owners (only owners can change owner status)
+  const statusLocked = targetIsOwner && !callerIsOwner;
 
   const [role, setRole] = useState<Role>(member.role as Role);
   const [status, setStatus] = useState<Status>(member.status as Status);
-  const [perms, setPerms] = useState<Record<string, boolean>>({ ...member.permissions });
+  // Owners always have all permissions — seed all-true so toggles show correctly
+  const defaultPerms = targetIsOwner
+    ? Object.fromEntries(PERMISSIONS.map(p => [p.key, true]))
+    : { ...member.permissions };
+  const [perms, setPerms] = useState<Record<string, boolean>>(defaultPerms);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -425,13 +430,13 @@ function EditMemberModal({
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Permissions</h3>
               {permsLocked && (
                 <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold">
-                  <Lock size={10} /> Locked — Owner has all permissions
+                  <Lock size={10} /> Locked — requires Owner access to edit
                 </span>
               )}
             </div>
             <div className="flex flex-col gap-2">
               {PERMISSIONS.map((p) => {
-                const on = permsLocked ? true : (perms[p.key] ?? false);
+                const on = perms[p.key] ?? false;
                 return (
                   <button
                     key={p.key}
@@ -488,7 +493,7 @@ function EditMemberModal({
             <button type="button" onClick={onClose} className="border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            {!roleLocked && (
+            {(!roleLocked || callerIsOwner) && (
               <button type="button" onClick={handleSave} disabled={loading}
                 className="bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60">
                 {loading ? <Loader2 size={13} className="animate-spin" /> : null}

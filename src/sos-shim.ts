@@ -42,6 +42,9 @@
   if (trueNative) {
     const _native = trueNative; // close over the clean reference
 
+    // swallowingRemoveChild — always calls the TRUE iframe native directly,
+    // bypassing any stale patchedRemoveChild that may be on Node.prototype.
+    // Guards child.parentNode first so the native never sees a detached child.
     function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
       if (!child || child.parentNode !== this) return child;
       try {
@@ -52,43 +55,44 @@
       }
     }
 
+    // Try to install on Node.prototype first (may already be locked by stale shim).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const proto = Node.prototype as any;
-    const rcDesc = Object.getOwnPropertyDescriptor(proto, 'removeChild');
-    if (!rcDesc || rcDesc.configurable) {
-      try {
-        Object.defineProperty(proto, 'removeChild', {
-          value: swallowingRemoveChild,
-          writable: false,
-          configurable: false,
-          enumerable: false,
-        });
-      } catch { /* stale snapshot locked it — fall through to subclass shadow */ }
-    }
+    try {
+      Object.defineProperty(proto, 'removeChild', {
+        value: swallowingRemoveChild,
+        writable: false,
+        configurable: false,
+        enumerable: false,
+      });
+    } catch { /* locked by stale shim — fall through to subclass shadows */ }
 
-    // If Node.prototype slot is locked (configurable:false) by the stale shim,
-    // shadow it on Element.prototype and HTMLDivElement.prototype — these are
-    // separate objects in the prototype chain and may not be locked.
-    // React calls removeChild on div/element nodes, so shadowing here intercepts
-    // the call before it reaches the locked stale patchedRemoveChild on Node.prototype.
-    const rcDescAfter = Object.getOwnPropertyDescriptor(proto, 'removeChild');
-    const isLocked = rcDescAfter && !rcDescAfter.configurable && rcDescAfter.value !== swallowingRemoveChild;
-    if (isLocked) {
-      for (const subProto of [Element.prototype, HTMLElement.prototype, HTMLDivElement.prototype]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const sp = subProto as any;
-          const d = Object.getOwnPropertyDescriptor(sp, 'removeChild');
-          if (!d || d.configurable) {
-            Object.defineProperty(sp, 'removeChild', {
-              value: swallowingRemoveChild,
-              writable: false,
-              configurable: false,
-              enumerable: false,
-            });
-          }
-        } catch { /* ignore */ }
-      }
+    // Shadow on every subclass prototype in the chain React uses.
+    // An own-property on a subclass prototype takes precedence over an inherited
+    // property on Node.prototype — so even if the stale shim locked Node.prototype,
+    // these own-properties intercept the call first.
+    // We install unconditionally (not just when locked) so the safe wrapper wins
+    // regardless of which shim ran first.
+    for (const subProto of [
+      EventTarget.prototype,
+      Node.prototype,       // retry in case the first attempt above failed
+      Element.prototype,
+      HTMLElement.prototype,
+      HTMLDivElement.prototype,
+    ]) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sp = subProto as any;
+        const d = Object.getOwnPropertyDescriptor(sp, 'removeChild');
+        if (!d || d.configurable) {
+          Object.defineProperty(sp, 'removeChild', {
+            value: swallowingRemoveChild,
+            writable: false,
+            configurable: false,
+            enumerable: false,
+          });
+        }
+      } catch { /* ignore — already locked by a prior shim iteration */ }
     }
   }
 }
@@ -112,7 +116,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784529800000';
+const SOS_SHIM_VERSION = '1784532000000';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 8_000;
 const SOS_SHIM_MAX_RELOADS = 5; // increased — stale shim may need more reloads to evict
