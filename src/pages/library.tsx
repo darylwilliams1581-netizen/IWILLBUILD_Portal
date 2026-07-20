@@ -234,6 +234,31 @@ export function LibraryPage() {
     }
   }
 
+  // ── Uninstall handler ─────────────────────────────────────────────────────
+  const [uninstalling, setUninstalling] = useState<number | null>(null);
+
+  async function handleUninstall(item: InstalledItem) {
+    if (!confirm(`Remove "${item.title}" from your installed items? Your edits will be lost.`)) return;
+    setUninstalling(item.source_item_id);
+    try {
+      const res = await fetch(`/api/library/items/${item.source_item_id}/install`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setInstalled((prev) => prev.filter((i) => i.source_item_id !== item.source_item_id));
+        setInstalledIds((prev) => { const s = new Set(prev); s.delete(item.source_item_id); return s; });
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        alert(data.error ?? 'Uninstall failed. Please try again.');
+      }
+    } catch {
+      alert('Network error — could not uninstall item.');
+    } finally {
+      setUninstalling(null);
+    }
+  }
+
   // ── Delete handler (platform owner only) ─────────────────────────────────
   async function handleDelete(item: LibraryItem) {
     if (!confirm(`Delete "${item.title}" from the Global Library? This cannot be undone.`)) return;
@@ -569,6 +594,17 @@ export function LibraryPage() {
                         <div className="flex items-center gap-3 flex-shrink-0 text-xs text-slate-400">
                           <span className="hidden sm:block">Installed {new Date(item.installed_at).toLocaleDateString('en-AU')}</span>
                           <CheckCircle2 size={15} className="text-emerald-500" />
+                          <button
+                            onClick={() => void handleUninstall(item)}
+                            disabled={uninstalling === item.source_item_id}
+                            title="Uninstall"
+                            className="p-1.5 rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
+                          >
+                            {uninstalling === item.source_item_id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <Trash2 size={13} />
+                            }
+                          </button>
                         </div>
                       </div>
                     ))}
