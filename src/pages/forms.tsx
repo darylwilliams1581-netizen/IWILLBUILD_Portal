@@ -8,7 +8,6 @@ import {
   User, Mail, Calendar, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
@@ -767,7 +766,6 @@ export function FormsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <FleetHeaderIcon />
             <>
               <button
                 onClick={handleSeed}

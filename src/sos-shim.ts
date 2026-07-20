@@ -54,6 +54,22 @@ function isStaleSnapshotError(msg: string, src: string, err?: Error | null): boo
     if (typeof _prevOnerror === 'function') return _prevOnerror(msg, src, line, col, err) ?? false;
     return false;
   };
+
+  // React 19 uses window.reportError / dispatches an ErrorEvent on window
+  // instead of calling window.onerror directly for errors thrown in commit phase.
+  window.addEventListener('error', (ev) => {
+    const err = ev.error instanceof Error ? ev.error : null;
+    const m = String(ev.message ?? '');
+    const s = String(ev.filename ?? '');
+    if (isStaleSnapshotError(m, s, err)) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      if (!shimSosRecentReload()) {
+        try { localStorage.setItem(SOS_SHIM_LS_KEY, String(Date.now())); } catch (_) {}
+        window.location.reload();
+      }
+    }
+  }, true); // capture phase — runs before React's own error listeners
 }
 
 window.addEventListener('unhandledrejection', (ev) => {
@@ -69,33 +85,37 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 // ── removeChild NotFoundError guard ──────────────────────────────────────────
-// The stale sos-shim snapshot (t=1784519099416) chains into this wrapper and
-// re-throws. Fix: check parentNode BEFORE calling native — if the child is not
-// actually a child of this node, return it immediately without any native call.
-// This breaks the chain regardless of how many stale wrappers are stacked.
+// The stale sos-shim snapshot (t=1784519099416) has a re-throwing patchedRemoveChild.
+// It reads proto.__sosNativeRemoveChild and calls it as `native`. 
+// Strategy: make __sosNativeRemoveChild itself a swallowing wrapper around the
+// true browser native. Then the stale snapshot's `native.call(this, child)` calls
+// our swallower — it never reaches the real native and never throws NotFoundError.
 {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proto = Node.prototype as any;
 
-  if (!proto.__sosNativeRemoveChild) {
-    Object.defineProperty(proto, '__sosNativeRemoveChild', {
-      value: proto.removeChild,
+  // Capture the true browser native ONCE before any patching.
+  const trulyNative: typeof Node.prototype.removeChild =
+    proto.__sosTrueNativeRemoveChild ?? proto.removeChild;
+
+  if (!proto.__sosTrueNativeRemoveChild) {
+    Object.defineProperty(proto, '__sosTrueNativeRemoveChild', {
+      value: trulyNative,
       writable: false,
       configurable: false,
       enumerable: false,
     });
   }
 
-  const native = proto.__sosNativeRemoveChild as typeof Node.prototype.removeChild;
-
-  function patchedRemoveChild<T extends Node>(this: Node, child: T): T {
-    // Guard: if child is not actually a child of this node, skip the call.
-    // This prevents NotFoundError from propagating through stale wrapper chains.
+  // The swallowing wrapper — used as BOTH the installed removeChild AND as
+  // __sosNativeRemoveChild so stale snapshots that call `native.call(this,child)`
+  // also go through the swallower instead of the real throwing native.
+  function swallowingRemoveChild<T extends Node>(this: Node, child: T): T {
     if (!child || child.parentNode !== this) {
-      return child;
+      return child; // not a child — skip entirely, no throw
     }
     try {
-      return native.call(this, child) as T;
+      return trulyNative.call(this, child) as T;
     } catch (e) {
       if (e instanceof Error && e.name === 'NotFoundError') {
         return child;
@@ -104,10 +124,29 @@ window.addEventListener('unhandledrejection', (ev) => {
     }
   }
 
-  const existing = Object.getOwnPropertyDescriptor(proto, 'removeChild');
-  if (!existing || existing.configurable) {
+  // Point __sosNativeRemoveChild at the SWALLOWER (not the true native).
+  // Stale snapshots read this property as their `native` — so their
+  // `native.call(this, child)` calls swallowingRemoveChild, not the real native.
+  const existingNative = Object.getOwnPropertyDescriptor(proto, '__sosNativeRemoveChild');
+  if (!existingNative) {
+    Object.defineProperty(proto, '__sosNativeRemoveChild', {
+      value: swallowingRemoveChild,
+      writable: true,   // allow stale snapshots to read; they won't write it
+      configurable: false,
+      enumerable: false,
+    });
+  } else {
+    // Already defined by a stale snapshot — overwrite the value to the swallower.
+    try {
+      proto.__sosNativeRemoveChild = swallowingRemoveChild;
+    } catch (_) { /* non-writable — stale snapshot already locked it; that's ok */ }
+  }
+
+  // Install swallowingRemoveChild as the live removeChild on Node.prototype.
+  const existingRC = Object.getOwnPropertyDescriptor(proto, 'removeChild');
+  if (!existingRC || existingRC.configurable) {
     Object.defineProperty(proto, 'removeChild', {
-      value: patchedRemoveChild,
+      value: swallowingRemoveChild,
       writable: false,
       configurable: false,
       enumerable: false,
