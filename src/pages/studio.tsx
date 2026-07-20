@@ -87,19 +87,22 @@ function revLabel(updatedAt: string) {
 // ── Toolbar icon button ───────────────────────────────────────────────────────
 
 function ToolBtn({
-  icon: Icon, label, onClick, danger = false,
+  icon: Icon, label, onClick, danger = false, variant,
 }: {
-  icon: React.ElementType; label: string; onClick?: (e: React.MouseEvent) => void; danger?: boolean;
+  icon: React.ElementType; label: string; onClick?: (e: React.MouseEvent) => void; danger?: boolean; variant?: 'orange' | 'green';
 }) {
+  const cls = danger
+    ? 'text-slate-400 hover:bg-red-50 hover:text-red-500'
+    : variant === 'orange'
+      ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600'
+      : variant === 'green'
+        ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
+        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700';
   return (
     <button
       title={label}
       onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
-      className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${
-        danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-500'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-      }`}
+      className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${cls}`}
     >
       <Icon size={14} />
     </button>
@@ -196,8 +199,8 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
           {showShareBtn && (
             <ToolBtn icon={Library}  label="Share to Library"  onClick={(e) => { e.stopPropagation(); onShare(doc.id); }} />
           )}
-          <ToolBtn icon={Pencil}     label="Edit"              onClick={(e) => { e.stopPropagation(); openBuilder(); }} />
-          <ToolBtn icon={PlayCircle} label="Use"               onClick={(e) => { e.stopPropagation(); openUse(); }} />
+          <ToolBtn icon={Pencil}     label="Edit"              onClick={(e) => { e.stopPropagation(); openBuilder(); }} variant="orange" />
+          <ToolBtn icon={PlayCircle} label="Use"               onClick={(e) => { e.stopPropagation(); openUse(); }} variant="green" />
           <ToolBtn icon={Trash2}     label="Delete"            onClick={(e) => { e.stopPropagation(); setConfirmDel(true); }} danger />
           <button
             title={expanded ? 'Collapse' : 'Expand'}
@@ -220,11 +223,11 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
             <span>Updated: <span className="text-slate-700 font-medium">{new Date(doc.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span></span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <button onClick={openBuilder} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
-              <Pencil size={11} />Edit
+            <button onClick={openBuilder} className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-xl transition-all hover:brightness-110 bg-primary">
+              <Pencil size={11} /> Edit
             </button>
-            <button onClick={openUse} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors">
-              <PlayCircle size={11} />Use
+            <button onClick={openUse} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
+              <PlayCircle size={11} /> Use
             </button>
           </div>
         </div>
@@ -306,7 +309,7 @@ function DocRow({ doc, index, onDelete, onShare, showShareBtn }: { doc: DocTempl
                 <button
                   onClick={handleJobPickerSubmit}
                   disabled={!jobNumberInput.trim()}
-                  className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <PlayCircle size={14} /> Open Document
                 </button>

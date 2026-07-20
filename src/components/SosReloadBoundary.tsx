@@ -22,10 +22,13 @@ function recentReload(): boolean {
 }
 
 function isSosError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg   = (error as Error).message ?? '';
+  const stack = (error as Error).stack ?? '';
   return (
-    error instanceof ReferenceError &&
-    typeof (error as Error).message === 'string' &&
-    (error as Error).message.includes('SOSAlertPopup')
+    (error instanceof ReferenceError && msg.includes('SOSAlertPopup')) ||
+    stack.includes('patchedRemoveChild') ||
+    (msg.includes('removeChild') && msg.includes('not a child'))
   );
 }
 

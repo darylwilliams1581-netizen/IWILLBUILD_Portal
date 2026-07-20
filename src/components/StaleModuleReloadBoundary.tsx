@@ -58,7 +58,21 @@ function isSosError(error: unknown): boolean {
   return (
     msg.includes('SOSAlertPopup') ||
     stack.includes('SOSAlertPopup') ||
-    stack.includes('1783772358219')
+    stack.includes('1783772358219') ||
+    // stale sos-shim patchedRemoveChild throwing NotFoundError
+    stack.includes('patchedRemoveChild') ||
+    (msg.includes('removeChild') && msg.includes('not a child'))
+  );
+}
+
+/** True for the patchedRemoveChild NotFoundError — swallow silently, no reload needed */
+function isRemoveChildError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const stack = (error as Error).stack ?? '';
+  const msg   = (error as Error).message ?? '';
+  return (
+    stack.includes('patchedRemoveChild') ||
+    (msg.includes('removeChild') && msg.includes('not a child'))
   );
 }
 
@@ -75,12 +89,18 @@ function isSosError(error: unknown): boolean {
 export default class StaleModuleReloadBoundary extends Component<Props, State> {
   state: State = { sosError: false };
   private _otherError: Error | null = null;
+  private _isRemoveChildError = false;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { sosError: isSosError(error) };
   }
 
   componentDidCatch(error: Error) {
+    if (isRemoveChildError(error)) {
+      // patchedRemoveChild NotFoundError from stale shim — swallow silently.
+      this._isRemoveChildError = true;
+      return;
+    }
     if (isSosError(error)) {
       // Fire immediately in componentDidCatch (synchronous, before any render).
       // __sosBoundaryTrigger is set by index.html and also does location.href nav.
@@ -103,6 +123,17 @@ export default class StaleModuleReloadBoundary extends Component<Props, State> {
     }
 
     if (this.state.sosError) {
+      // If it was a removeChild error, recover silently — reset state and render children.
+      // The boundary caught it; React will re-render from here cleanly.
+      // We detect this by checking if the error was a removeChild type via the flag set in componentDidCatch.
+      if (this._isRemoveChildError) {
+        this._isRemoveChildError = false;
+        // Reset error state so children render normally on next tick.
+        // Use setState to trigger re-render without the error state.
+        setTimeout(() => this.setState({ sosError: false }), 0);
+        return null;
+      }
+
       // Shown only if nav guard is exhausted (reloaded MAX_NAV times already).
       return (
         <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
