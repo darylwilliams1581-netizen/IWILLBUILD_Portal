@@ -255,14 +255,19 @@ window.addEventListener('error', (ev) => {
 }, true); // capture phase — runs before React's own listener
 
 const recoverableErrorHandler = (_error: unknown) => { /* swallow */ };
+const caughtErrorHandler = (_error: unknown) => { /* swallow commit-phase errors from stale shim */ };
 
 if (rootElement.firstElementChild) {
   hydrateRoot(rootElement, tree, {
     onRecoverableError: recoverableErrorHandler,
+    // @ts-expect-error — React 19 root option, not yet in @types/react-dom
+    onCaughtError: caughtErrorHandler,
   });
 } else {
   createRoot(rootElement, {
     onRecoverableError: recoverableErrorHandler,
+    // @ts-expect-error — React 19 root option, not yet in @types/react-dom
+    onCaughtError: caughtErrorHandler,
   }).render(tree);
 }
 

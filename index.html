@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v74 -->
+  <!-- cache-bust: v75 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -40,6 +40,37 @@
               set: function() {},
               configurable: true, enumerable: false,
             });
+          } catch(e) {}
+
+          // ── Step 2b: Intercept appendChild so ANY iframe appended after this
+          // point gets its Node.prototype.removeChild pre-patched to our safe
+          // wrapper BEFORE the caller can read it. This is the key fix for the
+          // stale shim (t=1784519099416): it does
+          //   iframe = createElement('iframe')
+          //   head.appendChild(iframe)          ← our intercept fires here
+          //   _native = iframe.contentWindow.Node.prototype.removeChild  ← gets our wrapper
+          // so its patchedRemoveChild calls our wrapper and never throws.
+          try {
+            var _origAppendChild = Node.prototype.appendChild;
+            Node.prototype.appendChild = function(child) {
+              var result = _origAppendChild.call(this, child);
+              if (child instanceof HTMLIFrameElement) {
+                try {
+                  var iw = child.contentWindow;
+                  if (iw && iw.Node && iw.Node.prototype) {
+                    try {
+                      Object.defineProperty(iw.Node.prototype, 'removeChild', {
+                        value: _swallowingNative,
+                        writable: true, configurable: true, enumerable: false,
+                      });
+                    } catch(e2) {
+                      try { iw.Node.prototype.removeChild = _swallowingNative; } catch(e3) {}
+                    }
+                  }
+                } catch(e) {}
+              }
+              return result;
+            };
           } catch(e) {}
 
           var safeRemoveChild = _swallowingNative;

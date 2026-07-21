@@ -21,6 +21,8 @@ interface DelayEntry {
   days: string | number;
   delay_date: string;
   notes: string | null;
+  rainfall_mm: number | null;
+  ground_condition: string | null;
   created_by_name: string;
   created_at: string;
   updated_at: string;
@@ -69,6 +71,8 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
   const [days, setDays] = useState('');
   const [delayDate, setDelayDate] = useState(todayISO());
   const [notes, setNotes] = useState('');
+  const [rainfallMm, setRainfallMm] = useState('');
+  const [groundCondition, setGroundCondition] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -79,11 +83,15 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
       setDays(String(parseDays(editing.days)));
       setDelayDate(editing.delay_date?.slice(0, 10) ?? todayISO());
       setNotes(editing.notes ?? '');
+      setRainfallMm(editing.rainfall_mm != null ? String(editing.rainfall_mm) : '');
+      setGroundCondition(editing.ground_condition ?? '');
     } else {
       setReason('');
       setDays('');
       setDelayDate(todayISO());
       setNotes('');
+      setRainfallMm('');
+      setGroundCondition('');
     }
     setError('');
   }, [editing, open]);
@@ -105,7 +113,14 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
         method,
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason.trim(), days: daysNum, delayDate, notes: notes.trim() || undefined }),
+        body: JSON.stringify({
+          reason: reason.trim(),
+          days: daysNum,
+          delayDate,
+          notes: notes.trim() || undefined,
+          rainfall_mm: rainfallMm !== '' ? parseFloat(rainfallMm) : undefined,
+          ground_condition: groundCondition.trim() || undefined,
+        }),
       });
       const data = await res.json() as { delay?: DelayEntry; error?: string };
       if (!res.ok || !data.delay) {
@@ -189,6 +204,41 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
               rows={2}
               className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
             />
+          </div>
+
+          {/* Rainfall + Ground condition */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5">
+                Rainfall total <span className="text-muted-foreground font-normal">(mm)</span>
+              </label>
+              <input
+                type="number"
+                value={rainfallMm}
+                onChange={(e) => setRainfallMm(e.target.value)}
+                placeholder="e.g. 12.5"
+                min="0"
+                step="0.5"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5">Ground condition</label>
+              <select
+                value={groundCondition}
+                onChange={(e) => setGroundCondition(e.target.value)}
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-background"
+              >
+                <option value="">Select…</option>
+                <option value="dry">Dry</option>
+                <option value="damp">Damp</option>
+                <option value="wet">Wet</option>
+                <option value="saturated">Saturated</option>
+                <option value="flooded">Flooded</option>
+                <option value="muddy">Muddy</option>
+                <option value="frozen">Frozen</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -394,11 +444,18 @@ export default function JobDelays({ jobId, readOnly = false }: Props) {
                 idx < delays.length - 1 ? 'border-b border-border' : ''
               } hover:bg-slate-50/60 transition-colors`}
             >
-              {/* Reason + notes */}
+              {/* Reason + notes + weather */}
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground leading-snug">{delay.reason}</p>
                 {delay.notes && (
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{delay.notes}</p>
+                )}
+                {(delay.rainfall_mm != null || delay.ground_condition) && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {delay.rainfall_mm != null && <span>{delay.rainfall_mm}mm rainfall</span>}
+                    {delay.rainfall_mm != null && delay.ground_condition && <span> · </span>}
+                    {delay.ground_condition && <span className="capitalize">{delay.ground_condition} ground</span>}
+                  </p>
                 )}
               </div>
 
