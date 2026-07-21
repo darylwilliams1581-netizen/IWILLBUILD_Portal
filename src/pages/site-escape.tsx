@@ -8,6 +8,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 const GAME_URL = 'https://www.iwillbuild.com/site-escape.html';
 
@@ -16,9 +17,15 @@ export default function SiteEscapePage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-black z-50">
+      <Helmet>
+        <title>Site Escape – IWILLBUILD</title>
+        <meta name="description" content="Play Site Escape, the construction site mini-game built for the IWILLBUILD platform." />
+        <link rel="canonical" href="https://iwillbuild.com/site-escape" />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-amber-500 shrink-0">
-        <span className="text-white font-bold text-base tracking-wide">Site Escape</span>
+        <h1 className="text-white font-bold text-base tracking-wide">Site Escape</h1>
         <button
           onClick={() => navigate('/home')}
           aria-label="Close and return to Home"

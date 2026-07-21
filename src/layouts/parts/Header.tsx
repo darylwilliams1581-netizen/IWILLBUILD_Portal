@@ -78,7 +78,7 @@ export default function Header() {
         </Link>
 
         {/* ── Desktop nav ── */}
-        <nav className="hidden md:flex" style={{ alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' }}>
+        <nav className="hidden md:flex items-center justify-center flex-1" style={{ gap: 4 }}>
           {/* Features dropdown */}
           <div ref={dropRef} style={{ position: 'relative' }}>
             <button
@@ -192,7 +192,7 @@ export default function Header() {
         </nav>
 
         {/* ── Desktop CTAs ── */}
-        <div className="hidden md:flex" style={{ alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div className="hidden md:flex items-center flex-shrink-0" style={{ gap: 8 }}>
           <Link
             to="/login"
             style={{
@@ -221,7 +221,7 @@ export default function Header() {
         </div>
 
         {/* ── Mobile hamburger (logo + burger only — Sign in lives in the panel) ── */}
-        <div className="md:hidden" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="md:hidden flex items-center" style={{ gap: 8 }}>
           <button
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}

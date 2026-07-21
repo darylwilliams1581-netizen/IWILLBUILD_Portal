@@ -1681,14 +1681,25 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
 // component gives React a stable reconciliation target.
 
 interface HomeIconGridProps {
-  allowedIcons: HomeIconDef[];
+  iconPermissions: string[] | null;
+  role: string;
+  isSolo: boolean;
   isPlatformOwner: boolean;
   activeFilter: FilterTab;
   setActiveFilter: (f: FilterTab) => void;
   onNavigate: (href: string) => void;
 }
 
-function HomeIconGrid({ allowedIcons, isPlatformOwner, activeFilter, setActiveFilter, onNavigate }: HomeIconGridProps) {
+function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFilter, setActiveFilter, onNavigate }: HomeIconGridProps) {
+  // Resolve icons client-side only — SSR and first hydration both use the
+  // SSR-safe default so the DOM structure never changes during hydration,
+  // preventing the sos-shim patchedRemoveChild NotFoundError.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const allowedIcons = mounted
+    ? resolveHomeIcons(iconPermissions, role, isSolo)
+    : resolveHomeIcons(null, '', false);
+
   const platformAsIconDef: HomeIconDef[] = PLATFORM_ICONS.map(p => ({
     ...p,
     key: p.label.toLowerCase().replace(/\s+/g, '_'),
@@ -1786,15 +1797,6 @@ export default function HomeScreen() {
       })
       .catch(() => setIsSolo(false));
   }, [me?.user?.id, loading]);
-
-  // Resolve which icons to show — filtered, no gaps
-  // Use a mounted flag so SSR and first client render both show the same
-  // default set, preventing the removeChild hydration mismatch.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  const allowedIcons = mounted
-    ? resolveHomeIcons(iconPermissions, role ?? '', isSolo)
-    : resolveHomeIcons(null, '', false); // SSR-safe default (field icons only)
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
@@ -1987,7 +1989,9 @@ export default function HomeScreen() {
           is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
       <div className="flex-1 overflow-y-auto pb-28">
         <HomeIconGrid
-          allowedIcons={allowedIcons}
+          iconPermissions={iconPermissions}
+          role={role ?? ''}
+          isSolo={isSolo}
           isPlatformOwner={isPlatformOwner}
           activeFilter={activeFilter}
           setActiveFilter={setActiveFilter}
