@@ -1,4 +1,4 @@
-// sos-shim.ts — imported first in main.tsx before any other module
+// sos-shim.ts v1784900000004 — imported first in main.tsx before any other module
 // The browser has a frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219)
 // that references SOSAlertPopup as a bare identifier (free variable) inside the
 // component JSX. Because module scope is strict, bare identifiers fall back to

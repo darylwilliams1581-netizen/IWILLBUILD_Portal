@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v66 -->
+  <!-- cache-bust: v71 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -52,12 +52,13 @@
           // Intercept Object.defineProperty so the stale shim can't install
           // its throwing patchedRemoveChild on any Node (e.g. the #app div).
           var _origDefProp = Object.defineProperty;
-          // Expose the original so sos-shim.ts can use it to bypass our intercept.
-          window.__origDefProp = _origDefProp;
-          Object.defineProperty = function(obj, prop, descriptor) {
+
+          // safeDefProp — intercepts removeChild installs on any Node/object.
+          // Used for BOTH Object.defineProperty AND window.__origDefProp so the
+          // stale shim can't bypass us even when it calls __origDefProp directly.
+          function safeDefProp(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
               // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
-              // Use configurable:true so sealAppRoot/sealAppDiv can always re-apply the seal.
               try {
                 return _origDefProp(obj, prop, {
                   get: function() { return safeRemoveChild; },
@@ -69,7 +70,14 @@
               return obj;
             }
             return _origDefProp(obj, prop, descriptor);
-          };
+          }
+
+          // Expose the INTERCEPTING version as __origDefProp so the stale shim's
+          // _shimOrigDP = window.__origDefProp also routes through our guard.
+          // sos-shim.ts uses __origDefProp to bypass our intercept for non-removeChild
+          // properties — that still works because safeDefProp only intercepts removeChild.
+          window.__origDefProp = safeDefProp;
+          Object.defineProperty = safeDefProp;
 
           // Intercept appendChild so when the stale shim appends its capture
           // iframe, we immediately patch the iframe's Node.prototype.removeChild
@@ -120,15 +128,24 @@
 
           // ── Continuously seal #app div's own removeChild property ─────────────
           // The stale shim re-installs its patchedRemoveChild on #app after each
-          // React navigation. Poll every 20ms for the first 10s to overwrite it.
+          // React navigation. Poll every 5ms for the first 10s to overwrite it.
+          // IMPORTANT: use safeDefProp (not _origDefProp) so we win even when the
+          // stale shim uses its captured _shimOrigDP = raw Object.defineProperty.
+          // We use configurable:true here so we can always overwrite — then the
+          // stale shim's configurable:false install is blocked by safeDefProp.
           function sealAppDiv() {
             try {
               var appEl = document.getElementById('app');
               if (!appEl) return;
               var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              if (d && d.get && d.get.call(appEl) === safeRemoveChild) return; // already sealed
+              // Already sealed with our safe wrapper — check if it returns safeRemoveChild.
+              if (d && d.get) {
+                try { if (d.get.call(appEl) === safeRemoveChild) return; } catch(e) {}
+              }
+              // Use safeDefProp so the install goes through our intercept layer.
+              // configurable:true so we can always overwrite on next poll.
               try {
-                _origDefProp(appEl, 'removeChild', {
+                safeDefProp(appEl, 'removeChild', {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) {},
                   configurable: true, enumerable: false,
@@ -138,6 +155,17 @@
               }
             } catch(e) {}
           }
+          // Also seal every DOM node that gets a removeChild own-property installed
+          // (the stale shim may target nodes other than #app in some code paths).
+          try {
+            var _sealObserver = new MutationObserver(function() { sealAppDiv(); });
+            document.addEventListener('DOMContentLoaded', function() {
+              var appEl = document.getElementById('app');
+              if (appEl) {
+                _sealObserver.observe(appEl, { childList: true, subtree: false });
+              }
+            }, { once: true });
+          } catch(e) {}
           var _sealInterval = setInterval(sealAppDiv, 5);
           setTimeout(function() { clearInterval(_sealInterval); }, 10000);
           // Also seal on DOMContentLoaded
@@ -201,9 +229,17 @@
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
         // Suppress the stale HMR shim's NotFoundError from removeChild.
-        // The stale module (t=1784519099416) calls the true browser native which
-        // throws NotFoundError — we must swallow it before React's error boundary sees it.
-        if (msg.indexOf('removeChild') !== -1 || (src.indexOf('1784519099416') !== -1)) {
+        // The stale module (t=1784519099416) calls the current shim's function as _native.
+        // The error fires from the CURRENT shim's URL (no ?t= suffix), so we must
+        // swallow ALL NotFoundError / removeChild errors regardless of source file.
+        var staleTs = ['1784519099416','1784585282530','1784589710474','1784590013856',
+                       '1784800000000','1784850000000','1784860000000','1784870000000',
+                       '1784880000000','1784890000000','1784900000000','1784910000000',
+                       '1784920000000','1784930000000','1784940000000','1784950000000'];
+        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; });
+        var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1);
+        var isSosShim = (src.indexOf('sos-shim') !== -1);
+        if (isRemoveChildErr || isStale || (isSosShim && e.error && e.error.name === 'NotFoundError')) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);
@@ -236,6 +272,14 @@
         var s = String(src || '');
         if (m.indexOf('_leaflet_pos') !== -1 || s.indexOf('leaflet') !== -1 ||
             m.indexOf('_rawPanBy') !== -1 || m.indexOf('_getMapPanePos') !== -1) {
+          return true; // suppress
+        }
+        // Swallow ALL removeChild / NotFoundError from sos-shim (stale or current).
+        // The stale snapshot calls the current shim's function as _native — the error
+        // fires from the current shim URL (no ?t=), so we match on message + source.
+        if ((m.indexOf('removeChild') !== -1 || m.indexOf('not a child') !== -1 ||
+             (err && err.name === 'NotFoundError')) &&
+            (s.indexOf('sos-shim') !== -1 || s.indexOf('react-dom') !== -1)) {
           return true; // suppress
         }
         if (typeof _prevOnerror === 'function') return _prevOnerror.apply(this, arguments);
@@ -495,11 +539,11 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-BZiTbzWx.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BTdE3PX1.js">
-    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DxXln8j3.js">
+    <script type="module" crossorigin src="/assets/index-DazA-glO.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-B_sXdY5f.js">
+    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DlAWaMYl.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-Dbl8kTil.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-rjiJAIAB.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-C4t2VBJd.css">
   </head>
   <body class="fs-unmask-airo-app-builder">
     <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>

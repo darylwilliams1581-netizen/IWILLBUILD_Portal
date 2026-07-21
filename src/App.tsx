@@ -35,23 +35,38 @@ function isStaleRemoveChildError(err: unknown): boolean {
 }
 
 const RELOAD_KEY = 'app_stale_reload_ts';
+const RELOAD_COUNT_KEY = 'app_stale_reload_count';
 class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boolean }> {
   state = { caught: false };
   static getDerivedStateFromError(err: unknown) {
-    // Always catch NotFoundError from removeChild — exclusively caused by the stale shim.
-    // Return caught:true so render() shows a blank div while componentDidCatch reloads.
-    if (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild')) {
-      return { caught: true };
+    // Bulletproof — getDerivedStateFromError must never throw.
+    try {
+      if (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild')) {
+        return { caught: true };
+      }
+      return { caught: isStaleRemoveChildError(err) };
+    } catch {
+      return { caught: false };
     }
-    return { caught: isStaleRemoveChildError(err) };
   }
   componentDidCatch(err: unknown) {
-    if (!isStaleRemoveChildError(err)) return; // non-stale errors: let React propagate normally
+    const isStale = isStaleRemoveChildError(err) ||
+      (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild'));
+    if (!isStale) return;
     try {
       const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);
-      if (Date.now() - last > 4000) {
+      const count = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) ?? '0', 10);
+      const elapsed = Date.now() - last;
+      // Allow reload if: first time, or >2s since last reload and under 5 attempts
+      if (last === 0 || (elapsed > 2000 && count < 5)) {
         sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-        window.location.reload();
+        sessionStorage.setItem(RELOAD_COUNT_KEY, String(count + 1));
+        // Hard reload (bypass cache) on 2nd+ attempt to evict the stale shim module
+        if (count >= 1) {
+          window.location.href = window.location.href.split('?')[0] + '?_bust=' + Date.now();
+        } else {
+          window.location.reload();
+        }
       }
     } catch { /* ignore */ }
   }

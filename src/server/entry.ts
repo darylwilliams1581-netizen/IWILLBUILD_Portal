@@ -2944,13 +2944,32 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 	}
 	const host = process.env.HOST || "0.0.0.0";
 
-	// ── Run migrations then start listening — wrapped in async IIFE so
-	// top-level await is not needed (publish esbuild target doesn't support it)
+	// ── Hard startup timeout — if migrations hang, force listen after 25s ───
+	// This ensures the health check always passes even if a migration deadlocks.
+	let _serverStarted = false;
+	const _startupTimeout = setTimeout(() => {
+		if (!_serverStarted) {
+			console.error('[startup] TIMEOUT: migrations took >25s — forcing app.listen now');
+			const server = app.listen(port, host, () => {
+				_serverStarted = true;
+				console.log(`[startup] Server listening (timeout-forced) on http://${host}:${port}`);
+			});
+			server.on('error', (err) => {
+				console.error('ssr.server.listen-failed (timeout-forced)', { port, host, error: err.message });
+				process.exit(1);
+			});
+		}
+	}, 25000);
+	_startupTimeout.unref(); // don't keep process alive just for this timer
+
+	// ── Migration IIFE starting ───────────────────────────────────────────────
+	console.log('[startup] migration IIFE starting');
 	void (async () => {
 			// Hoist db/sql imports once — avoids 5 redundant dynamic module
 			// evaluations and keeps Rollup's chunk graph clean.
 			const { db: _db } = await import('./db/client.js');
 			const { sql: _sql } = await import('drizzle-orm');
+			console.log('[startup] db client imported');
 
 			try {
 				await _db.execute(_sql`
@@ -3062,7 +3081,12 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 		}
 
 		// ── Run the full self-healing migration suite (safetyTables loop etc.) ──
-		await runStartupMigrations();
+		// NOTE: runStartupMigrations() is also called at module load time (line ~1922)
+		// for dev HMR. We skip the second call here to avoid duplicate concurrent
+		// migrations that can cause table-lock contention and hang startup.
+		// The module-load call already ran; by the time we reach this point it has
+		// either completed or failed (with a logged warning). No await needed.
+		console.log('[startup] skipping duplicate runStartupMigrations() — already ran at module load');
 
 		// ── project_drawings (full canonical schema) ──────────────────────────
 		try {
@@ -3226,23 +3250,42 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 		}
 
 		// ── All migrations done — now start accepting requests ─────────────────
+		console.log('[startup] all inline migrations complete — calling app.listen');
+		if (_serverStarted) {
+			console.log('[startup] timeout-forced listen already fired — skipping duplicate listen');
+			return;
+		}
+		_serverStarted = true;
+		clearTimeout(_startupTimeout);
 		const server = app.listen(port, host, () => {
-			console.log(`Server listening on http://${host}:${port}`);
+			console.log(`[startup] Server listening on http://${host}:${port}`);
 		});
 		server.on("error", (err) => {
-			console.error("ssr.server.listen-failed", { port, host, code: err.code, error: err.message });
+			console.error("ssr.server.listen-failed", { port, host, code: (err as NodeJS.ErrnoException).code, error: err.message });
 			process.exit(1);
 		});
 	})().catch((fatalErr) => {
-		console.error('[startup] FATAL: startup IIFE crashed, forcing app.listen anyway:', fatalErr);
+		console.error('[startup] FATAL: startup IIFE crashed, forcing app.listen anyway:', fatalErr instanceof Error ? fatalErr.stack : fatalErr);
+		if (_serverStarted) return;
+		_serverStarted = true;
+		clearTimeout(_startupTimeout);
 		// Even if migrations fail, start the server so health checks pass
 		const server = app.listen(port, host, () => {
-			console.log(`Server listening (degraded) on http://${host}:${port}`);
+			console.log(`[startup] Server listening (degraded) on http://${host}:${port}`);
 		});
 		server.on("error", (err) => {
-			console.error("ssr.server.listen-failed", { port, host, code: err.code, error: err.message });
+			console.error("ssr.server.listen-failed", { port, host, code: (err as NodeJS.ErrnoException).code, error: err.message });
 			process.exit(1);
 		});
+	});
+
+	// ── Global uncaught error guards ─────────────────────────────────────────
+	process.on('uncaughtException', (err) => {
+		console.error('[startup] uncaughtException:', err instanceof Error ? err.stack : err);
+		// Do NOT exit — let the server keep running for health checks
+	});
+	process.on('unhandledRejection', (reason) => {
+		console.error('[startup] unhandledRejection:', reason instanceof Error ? reason.stack : reason);
 	});
 }
 

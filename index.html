@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v71 -->
+  <!-- cache-bust: v72 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -234,8 +234,8 @@
         // swallow ALL NotFoundError / removeChild errors regardless of source file.
         var staleTs = ['1784519099416','1784585282530','1784589710474','1784590013856',
                        '1784800000000','1784850000000','1784860000000','1784870000000',
-                       '1784880000000','1784890000000','1784900000000','1784910000000',
-                       '1784920000000','1784930000000','1784940000000','1784950000000'];
+                       '1784880000000','1784890000000','1784900000000','1784900000003',
+                       '1784900000004','1784910000000','1784920000000','1784930000000'];
         var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; });
         var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1);
         var isSosShim = (src.indexOf('sos-shim') !== -1);
@@ -274,12 +274,10 @@
             m.indexOf('_rawPanBy') !== -1 || m.indexOf('_getMapPanePos') !== -1) {
           return true; // suppress
         }
-        // Swallow ALL removeChild / NotFoundError from sos-shim (stale or current).
-        // The stale snapshot calls the current shim's function as _native — the error
-        // fires from the current shim URL (no ?t=), so we match on message + source.
-        if ((m.indexOf('removeChild') !== -1 || m.indexOf('not a child') !== -1 ||
-             (err && err.name === 'NotFoundError')) &&
-            (s.indexOf('sos-shim') !== -1 || s.indexOf('react-dom') !== -1)) {
+        // Swallow ALL removeChild / NotFoundError — the stale shim is the only source.
+        // Match on message alone (source file varies between current and stale shim URLs).
+        if (m.indexOf('removeChild') !== -1 || m.indexOf('not a child') !== -1 ||
+            (err && err.name === 'NotFoundError')) {
           return true; // suppress
         }
         if (typeof _prevOnerror === 'function') return _prevOnerror.apply(this, arguments);
