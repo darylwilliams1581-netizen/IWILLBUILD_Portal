@@ -89,7 +89,7 @@ export default function StudioBuilderPage() {
   }, [id, isNew]);
 
   function handleClose() {
-    navigate('/studio');
+    navigate('/studio/documents');
   }
 
   function handleSaved(savedId: number) {
