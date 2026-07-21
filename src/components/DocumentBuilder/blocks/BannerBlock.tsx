@@ -1,6 +1,7 @@
 import { AlertTriangle, Info, CheckCircle, ShieldAlert, Shield, AlertOctagon, ImageIcon } from 'lucide-react';
 import { useDocumentStore } from '../useDocumentStore';
 import type { BannerBlock, BannerVariant } from '../types';
+import{useAuthImage,isInternalSrc}from'../useAuthImage';
 import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
