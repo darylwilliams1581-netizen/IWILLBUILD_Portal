@@ -207,6 +207,41 @@ function DevBoundaryShell({ children }: { children: ReactNode }) {
 const rootElement = document.getElementById('app');
 if (!rootElement) throw new Error('Root element not found');
 
+// ── Use a child div as the React root, not #app itself ───────────────────────
+// The stale shim (t=1784519099416) installs a non-configurable throwing
+// patchedRemoveChild on #app. We can't overwrite a non-configurable property.
+// Solution: mount React on a child div inside #app — the stale shim only
+// patches #app, not its children, so React's removeChild calls are safe.
+let reactRoot = rootElement.querySelector<HTMLElement>(':scope > #react-root');
+if (!reactRoot) {
+  reactRoot = document.createElement('div');
+  reactRoot.id = 'react-root';
+  // Move any SSR-rendered children into the new root div
+  while (rootElement.firstChild) {
+    reactRoot.appendChild(rootElement.firstChild);
+  }
+  rootElement.appendChild(reactRoot);
+}
+
+// Seal #react-root's own removeChild immediately — before the stale shim can install
+// its throwing patchedRemoveChild on this element.
+{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
+  const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
+    try { if (trueNative) trueNative.call(this, child); } catch { /* swallow */ }
+    return child;
+  };
+  try {
+    Object.defineProperty(reactRoot, 'removeChild', {
+      get() { return safeRC; },
+      set(_v) { /* block stale shim */ },
+      configurable: false,
+      enumerable: false,
+    });
+  } catch { /* already sealed */ }
+}
+
 // Core providers — identical structure to entry-server.tsx so hydrateRoot
 // sees the same tree the server rendered. Dev boundaries are added by
 // DevBoundaryShell after the first effect (post-hydration).
@@ -257,14 +292,14 @@ window.addEventListener('error', (ev) => {
 const recoverableErrorHandler = (_error: unknown) => { /* swallow */ };
 const caughtErrorHandler = (_error: unknown) => { /* swallow commit-phase errors from stale shim */ };
 
-if (rootElement.firstElementChild) {
-  hydrateRoot(rootElement, tree, {
+if (reactRoot.firstElementChild) {
+  hydrateRoot(reactRoot, tree, {
     onRecoverableError: recoverableErrorHandler,
     // @ts-expect-error — React 19 root option, not yet in @types/react-dom
     onCaughtError: caughtErrorHandler,
   });
 } else {
-  createRoot(rootElement, {
+  createRoot(reactRoot, {
     onRecoverableError: recoverableErrorHandler,
     // @ts-expect-error — React 19 root option, not yet in @types/react-dom
     onCaughtError: caughtErrorHandler,

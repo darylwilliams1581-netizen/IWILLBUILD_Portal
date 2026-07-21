@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v75 -->
+  <!-- cache-bust: v76 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -203,23 +203,23 @@
           // stale shim's configurable:false install is blocked by safeDefProp.
           function sealAppDiv() {
             try {
-              var appEl = document.getElementById('app');
-              if (!appEl) return;
-              var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              // Only skip if already non-configurable with our safe getter.
-              if (d && !d.configurable && d.get) {
-                try { if (d.get.call(appEl) === safeRemoveChild) return; } catch(e) {}
-              }
-              // Use _origDefProp (true native) with configurable:false so the stale
-              // shim's subsequent defineProperty call throws TypeError and is ignored.
-              try {
-                _origDefProp(appEl, 'removeChild', {
-                  get: function() { return safeRemoveChild; },
-                  set: function(_v) {},
-                  configurable: false, enumerable: false,
-                });
-              } catch(e) {
-                try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+              var ids = ['app', 'react-root'];
+              for (var i = 0; i < ids.length; i++) {
+                var appEl = document.getElementById(ids[i]);
+                if (!appEl) continue;
+                var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
+                if (d && !d.configurable && d.get) {
+                  try { if (d.get.call(appEl) === safeRemoveChild) continue; } catch(e) {}
+                }
+                try {
+                  _origDefProp(appEl, 'removeChild', {
+                    get: function() { return safeRemoveChild; },
+                    set: function(_v) {},
+                    configurable: false, enumerable: false,
+                  });
+                } catch(e) {
+                  try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+                }
               }
             } catch(e) {}
           }
