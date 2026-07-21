@@ -387,15 +387,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div ref={patchRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
-      <Helmet>
-        <title>IWILLBUILD Portal</title>
-        <meta
-          name="description"
-          content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
-        />
-      </Helmet>
-      <SosInnerBoundary>
+    <SosInnerBoundary>
+      <div ref={patchRef} suppressHydrationWarning className="min-h-screen bg-background text-foreground flex flex-col">
+        <Helmet>
+          <title>IWILLBUILD Portal</title>
+          <meta
+            name="description"
+            content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal."
+          />
+        </Helmet>
         <ScrollRestoration />
         <ActivePing />
         <PortalBanners pathname={location.pathname} />
@@ -406,7 +406,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div suppressHydrationWarning className="flex-1 flex flex-col overflow-hidden">
           {children}
         </div>
-      </SosInnerBoundary>
-    </div>
+      </div>
+    </SosInnerBoundary>
   );
 }

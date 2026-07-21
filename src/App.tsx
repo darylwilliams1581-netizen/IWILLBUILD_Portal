@@ -38,10 +38,15 @@ const RELOAD_KEY = 'app_stale_reload_ts';
 class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boolean }> {
   state = { caught: false };
   static getDerivedStateFromError(err: unknown) {
+    // Always catch NotFoundError from removeChild — exclusively caused by the stale shim.
+    // Return caught:true so render() shows a blank div while componentDidCatch reloads.
+    if (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild')) {
+      return { caught: true };
+    }
     return { caught: isStaleRemoveChildError(err) };
   }
   componentDidCatch(err: unknown) {
-    if (!isStaleRemoveChildError(err)) { throw err; }
+    if (!isStaleRemoveChildError(err)) return; // non-stale errors: let React propagate normally
     try {
       const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);
       if (Date.now() - last > 4000) {
@@ -81,9 +86,11 @@ export default function App() {
 
   const router = useMemo(() => {
     const layoutElement = (
-      <RootLayout>
-        <Outlet />
-      </RootLayout>
+      <StaleShimBoundary>
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
+      </StaleShimBoundary>
     );
 
     const routeTree: RouteObject[] = [

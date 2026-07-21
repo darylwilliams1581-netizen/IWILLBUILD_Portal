@@ -10,7 +10,7 @@ import {
   Search, Plus, Loader2, FileCheck, Building2, Users,
   ChevronDown, ChevronUp, CheckCircle2, Clock, X,
   AlertCircle, Check, CheckSquare, Square, Copy, Link2,
-  ClipboardCheck, FileText, UserCheck, Printer, PenLine,
+  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 
@@ -45,6 +45,15 @@ interface Signon {
   white_card_number: string | null;
   signed_at: string;
   doc_title: string | null;
+}
+
+interface Stakeholder {
+  id: number;
+  name: string;
+  contact_person: string | null;
+  trade_type: string | null;
+  stakeholder_type: string | null;
+  record_type: string | null;
 }
 
 // ── Job Picker ────────────────────────────────────────────────────────────────
@@ -275,6 +284,62 @@ function SignonForm({ docId, onSigned, onCancel }: {
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
 
+  // Stakeholder picker state
+  const [stakeholders, setStakeholders]     = useState<Stakeholder[]>([]);
+  const [shSearch, setShSearch]             = useState('');
+  const [showPicker, setShowPicker]         = useState(false);
+  const [shLoading, setShLoading]           = useState(false);
+  const [selectedSh, setSelectedSh]         = useState<Stakeholder | null>(null);
+  const pickerRef                           = useRef<HTMLDivElement>(null);
+
+  // Load stakeholders once on mount
+  useEffect(() => {
+    setShLoading(true);
+    fetch('/api/customers?status=active&type=all', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setStakeholders((d as { customers?: Stakeholder[] }).customers ?? []))
+      .catch(() => {})
+      .finally(() => setShLoading(false));
+  }, []);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showPicker) return;
+    function handler(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
+  function selectStakeholder(sh: Stakeholder) {
+    setSelectedSh(sh);
+    // Prefill: use contact_person as the worker name if available, else company name
+    setName(sh.contact_person?.trim() || sh.name.trim());
+    setCompany(sh.name.trim());
+    setRole(sh.trade_type?.trim() || sh.stakeholder_type?.trim() || '');
+    setShowPicker(false);
+    setShSearch('');
+    setError('');
+  }
+
+  function clearSelection() {
+    setSelectedSh(null);
+    setName(''); setCompany(''); setRole(''); setWc('');
+  }
+
+  const filtered = stakeholders.filter(sh => {
+    const q = shSearch.toLowerCase();
+    return (
+      sh.name.toLowerCase().includes(q) ||
+      (sh.contact_person ?? '').toLowerCase().includes(q) ||
+      (sh.trade_type ?? '').toLowerCase().includes(q) ||
+      (sh.stakeholder_type ?? '').toLowerCase().includes(q)
+    );
+  });
+
   async function submit() {
     if (!name.trim()) { setError('Full name is required'); return; }
     setSaving(true); setError('');
@@ -282,7 +347,12 @@ function SignonForm({ docId, onSigned, onCancel }: {
       const r = await fetch(`/api/safety/job-swms/${docId}/signoffs`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerName: name.trim(), companyName: company.trim() || undefined, role: role.trim() || undefined, whiteCardNumber: wc.trim() || undefined }),
+        body: JSON.stringify({
+          workerName: name.trim(),
+          companyName: company.trim() || undefined,
+          role: role.trim() || undefined,
+          whiteCardNumber: wc.trim() || undefined,
+        }),
       });
       const d = await r.json() as { signoff?: Signon; error?: string };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
@@ -305,6 +375,88 @@ function SignonForm({ docId, onSigned, onCancel }: {
           <p className="text-xs font-bold text-teal-800 flex items-center gap-1.5"><PenLine size={12} /> Sign On</p>
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={14} /></button>
         </div>
+
+        {/* Stakeholder quick-select */}
+        <div className="mb-3 relative" ref={pickerRef}>
+          {selectedSh ? (
+            <div className="flex items-center gap-2 bg-teal-100 border border-teal-200 rounded-xl px-3 py-2">
+              <div className="w-6 h-6 rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                {selectedSh.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-teal-900 truncate">{selectedSh.name}</p>
+                {selectedSh.contact_person && (
+                  <p className="text-[10px] text-teal-700 truncate">{selectedSh.contact_person}</p>
+                )}
+              </div>
+              <button onClick={clearSelection} className="text-teal-500 hover:text-teal-700 transition-colors shrink-0">
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowPicker(v => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 hover:border-teal-400 hover:text-teal-700 transition-colors"
+            >
+              <Users size={12} className="shrink-0" />
+              <span className="flex-1 text-left">
+                {shLoading ? 'Loading stakeholders…' : stakeholders.length > 0 ? 'Select a stakeholder to prefill…' : 'No stakeholders — fill in manually'}
+              </span>
+              {stakeholders.length > 0 && <ChevronRight size={12} className={`transition-transform ${showPicker ? 'rotate-90' : ''}`} />}
+            </button>
+          )}
+
+          {/* Dropdown */}
+          <AnimatePresence>
+            {showPicker && stakeholders.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden"
+              >
+                <div className="p-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
+                    <Search size={11} className="text-slate-400 shrink-0" />
+                    <input
+                      autoFocus
+                      value={shSearch}
+                      onChange={e => setShSearch(e.target.value)}
+                      placeholder="Search stakeholders…"
+                      className="flex-1 bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-44 overflow-y-auto">
+                  {filtered.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic px-3 py-3">No matches</p>
+                  ) : (
+                    filtered.map(sh => (
+                      <button
+                        key={sh.id}
+                        onClick={() => selectStakeholder(sh)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-teal-50 transition-colors text-left"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
+                          {sh.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 truncate">{sh.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">
+                            {[sh.contact_person, sh.trade_type || sh.stakeholder_type].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Manual fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Full Name <span className="text-red-500">*</span></label>
@@ -327,6 +479,7 @@ function SignonForm({ docId, onSigned, onCancel }: {
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
           </div>
         </div>
+
         {error && (
           <div className="flex items-center gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">
             <AlertCircle size={12} className="shrink-0" />{error}
