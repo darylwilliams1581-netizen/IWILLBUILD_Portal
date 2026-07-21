@@ -200,6 +200,7 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
     { label: 'PDF / Print Style', icon: FileText, href: '/settings?tab=pdf' },
     { label: 'Fleet Assets', icon: Building2, href: '/fleet' },
     { label: 'Files', icon: FileText, href: '/files' },
+    { label: 'Support Inbox', icon: Mail, href: 'https://outlook.office.com/mail/?realm=iwillbuild.com&login_hint=support@iwillbuild.com', external: true },
   ];
 
   return (
@@ -282,7 +283,7 @@ function SupportSetupPanel({ company, onExit }: { company: Company; onExit: () =
             return (
               <button
                 key={action.label}
-                onClick={() => navigate(action.href)}
+                onClick={() => action.external ? window.open(action.href, '_blank', 'noopener,noreferrer') : navigate(action.href)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-colors text-left group"
               >
                 <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover:border-primary/30 transition-colors">
