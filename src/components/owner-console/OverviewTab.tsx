@@ -124,9 +124,7 @@ export default function OverviewTab({ stats, companies, activity, enteringSuppor
 
       {/* System Map shortcut */}
       <a
-        href="/docs/IWILLBUILD_SYSTEM_MAP.md"
-        target="_blank"
-        rel="noopener noreferrer"
+        href="/owner-console?tab=health-check"
         className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
       >
         <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
