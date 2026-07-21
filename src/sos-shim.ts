@@ -370,7 +370,7 @@
     // Use Object.defineProperty (our intercepted version) — it routes removeChild
     // installs to swallowingRemoveChild automatically.
     function patchAppRoot() {
-      const appEl = document.getElementById('app');
+      const appEl = document.getElementById('sos-root');
       if (appEl) patchInstance(appEl);
     }
     patchAppRoot();
@@ -401,7 +401,7 @@
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // _shimOrigDP already declared above (hoisted for sanitizeNode + sealAppRoot)
     function sealAppRoot() {
-      const appEl = document.getElementById('app');
+      const appEl = document.getElementById('sos-root');
       if (!appEl) return;
       try {
         const d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');

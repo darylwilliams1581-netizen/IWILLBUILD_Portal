@@ -10,7 +10,7 @@ import './sos-shim';
 // call throws a TypeError (can't redefine non-configurable) — which the stale
 // shim itself wraps in try/catch and ignores. Our safe wrapper stays in place.
 {
-  const appEl = document.getElementById('app');
+  const appEl = document.getElementById('sos-root');
   if (appEl) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
@@ -204,8 +204,23 @@ function DevBoundaryShell({ children }: { children: ReactNode }) {
   );
 }
 
-const rootElement = document.getElementById('app');
+const rootElement = document.getElementById('sos-root');
 if (!rootElement) throw new Error('Root element not found');
+
+// Seal the root element itself against the stale shim's querySelectorAll polling
+{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const _tn0: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
+  const _safe0 = function safeRC<T extends Node>(this: Node, child: T): T {
+    try { if (_tn0) _tn0.call(this, child); } catch { /* swallow */ }
+    return child;
+  };
+  try {
+    Object.defineProperty(rootElement, 'removeChild', {
+      get() { return _safe0; }, set(_v) {}, configurable: false, enumerable: false,
+    });
+  } catch { /* ignore */ }
+}
 
 // ── Use a child div as the React root, not #app itself ───────────────────────
 // The stale shim (t=1784519099416) installs a non-configurable throwing
@@ -216,30 +231,34 @@ let reactRoot = rootElement.querySelector<HTMLElement>(':scope > #react-root');
 if (!reactRoot) {
   reactRoot = document.createElement('div');
   reactRoot.id = 'react-root';
+
+  // ── Seal removeChild BEFORE appending to DOM ─────────────────────────────
+  // The stale shim's MutationObserver fires synchronously during appendChild.
+  // We must install our non-configurable safe wrapper BEFORE the node enters
+  // the DOM, so the stale shim's observer sees it already sealed and its own
+  // defineProperty call throws TypeError (can't redefine non-configurable).
+  {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _tn: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
+    const _safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
+      try { if (_tn) _tn.call(this, child); } catch { /* swallow */ }
+      return child;
+    };
+    try {
+      Object.defineProperty(reactRoot, 'removeChild', {
+        get() { return _safeRC; },
+        set(_v) { /* block stale shim */ },
+        configurable: false,
+        enumerable: false,
+      });
+    } catch { /* ignore */ }
+  }
+
   // Move any SSR-rendered children into the new root div
   while (rootElement.firstChild) {
     reactRoot.appendChild(rootElement.firstChild);
   }
   rootElement.appendChild(reactRoot);
-}
-
-// Seal #react-root's own removeChild immediately — before the stale shim can install
-// its throwing patchedRemoveChild on this element.
-{
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const trueNative: ((child: Node) => Node) | undefined = (window as any).__sosTrueNativeRC;
-  const safeRC = function safeRemoveChild<T extends Node>(this: Node, child: T): T {
-    try { if (trueNative) trueNative.call(this, child); } catch { /* swallow */ }
-    return child;
-  };
-  try {
-    Object.defineProperty(reactRoot, 'removeChild', {
-      get() { return safeRC; },
-      set(_v) { /* block stale shim */ },
-      configurable: false,
-      enumerable: false,
-    });
-  } catch { /* already sealed */ }
 }
 
 // Core providers — identical structure to entry-server.tsx so hydrateRoot

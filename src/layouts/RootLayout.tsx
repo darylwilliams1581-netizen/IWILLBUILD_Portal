@@ -379,7 +379,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   // DOM mutations — this is the earliest possible hook to re-seal #app before
   // React calls removeChild on it. Runs on every render.
   useInsertionEffect(() => {
-    const app = document.getElementById('app');
+    const app = document.getElementById('sos-root');
     if (app) patchRemoveChild(app);
     if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
   });
@@ -389,19 +389,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
   // any node the stale shim re-patched between renders gets overwritten before the
   // next commit can call removeChild on it.
   useLayoutEffect(() => {
-    const app = document.getElementById('app');
+    const app = document.getElementById('sos-root');
     if (app) patchRemoveChild(app);
     if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
     try { if (document.body) patchRemoveChild(document.body); } catch { /* ignore */ }
   });
 
-  // Also patch the #app host element and re-patch on every navigation.
-  // The stale shim re-installs its own `removeChild` on #app after each route
-  // transition; polling every 10ms for 5s after mount/navigation catches it.
+  // Also patch the #sos-root host element and re-patch on every navigation.
   useEffect(() => {
     function patchAppHost() {
-      // Patch #app and all its ancestor nodes up to body
-      const app = document.getElementById('app');
+      const app = document.getElementById('sos-root');
       if (app) patchRemoveChild(app);
       if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
       // Also patch body and document.documentElement as the stale shim may

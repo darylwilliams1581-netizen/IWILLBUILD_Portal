@@ -27,18 +27,6 @@ export default async function handler(req: Request, res: Response) {
     if (!prestart) return res.status(404).json({ error: 'Not found' });
     if (prestart.status === 'finalised') return res.status(400).json({ error: 'Already finalised' });
 
-    // Validate: must have at least one SWMS or no_swms_required
-    const swmsIds = prestart.relevant_swms_ids
-      ? (typeof prestart.relevant_swms_ids === 'string'
-          ? JSON.parse(prestart.relevant_swms_ids)
-          : prestart.relevant_swms_ids) as unknown[]
-      : [];
-    if (swmsIds.length === 0 && !prestart.no_swms_required) {
-      return res.status(400).json({
-        error: 'At least one SWMS must be selected, or mark "No SWMS required today" with a reason.',
-      });
-    }
-
     const { supervisorSignature, supervisorSignoffName } = req.body as {
       supervisorSignature?: string;
       supervisorSignoffName?: string;

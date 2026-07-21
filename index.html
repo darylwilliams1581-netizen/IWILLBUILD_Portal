@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v76 -->
+  <!-- cache-bust: v77 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -203,7 +203,7 @@
           // stale shim's configurable:false install is blocked by safeDefProp.
           function sealAppDiv() {
             try {
-              var ids = ['app', 'react-root'];
+              var ids = ['sos-root', 'react-root'];
               for (var i = 0; i < ids.length; i++) {
                 var appEl = document.getElementById(ids[i]);
                 if (!appEl) continue;
@@ -228,7 +228,7 @@
           try {
             var _sealObserver = new MutationObserver(function() { sealAppDiv(); });
             document.addEventListener('DOMContentLoaded', function() {
-              var appEl = document.getElementById('app');
+              var appEl = document.getElementById('sos-root');
               if (appEl) {
                 _sealObserver.observe(appEl, { childList: true, subtree: false });
               }
@@ -611,7 +611,7 @@
     <script src="/airo-logo-orientation.js"></script>
   </head>
   <body class="fs-unmask-airo-app-builder">
-    <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>
+    <div id="sos-root" class="fs-unmask-airo-app-builder"><!--app-html--></div>
     <script type="module" src="/src/main.tsx"></script>
     <script src="/analytics.js"></script>
   </body>

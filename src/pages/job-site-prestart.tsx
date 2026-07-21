@@ -536,8 +536,13 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
           {prestart.planned_work && (
             <p><span className="opacity-70 text-xs">Today's work</span> <span className="line-clamp-2">{prestart.planned_work}</span></p>
           )}
-          {swmsSnapshot.length > 0 && (
+          {swmsSnapshot.length > 0 ? (
             <p><span className="opacity-70 text-xs">SWMS reviewed</span> <span>{swmsSnapshot.map(s => s.title).join(', ')}</span></p>
+          ) : (
+            <p className="flex items-center gap-1.5">
+              <span className="opacity-70 text-xs">SWMS</span>
+              <span className="bg-white/25 text-white text-xs font-medium px-2 py-0.5 rounded-full">No SWMS selected</span>
+            </p>
           )}
         </div>
         <p className="text-xs opacity-70 mt-2 text-center">
@@ -664,7 +669,6 @@ export default function JobSitePrestartPage() {
   const [saveMsg, setSaveMsg] = useState('');
   const [finalising, setFinalising] = useState(false);
   const [finaliseError, setFinaliseError] = useState('');
-  const [swmsError, setSwmsError] = useState('');
   const [showFinaliseConfirm, setShowFinaliseConfirm] = useState(false);
   const [supervisorSig, setSupervisorSig] = useState('');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -765,20 +769,7 @@ export default function JobSitePrestartPage() {
         }),
       });
       const d = await r.json();
-      if (!r.ok) {
-        const msg: string = d.error ?? 'Failed';
-        // If it's the SWMS validation error, close the dialog and scroll to the section
-        if (msg.includes('SWMS')) {
-          setShowFinaliseConfirm(false);
-          setFinaliseError('');
-          setSwmsError(msg);
-          setTimeout(() => {
-            document.getElementById('section-swms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
-          throw new Error(msg);
-        }
-        throw new Error(msg);
-      }
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
       setPrestart(p => p ? { ...p, status: 'finalised' } : p);
       setShowFinaliseConfirm(false);
     } catch (e) {
@@ -1104,13 +1095,6 @@ export default function JobSitePrestartPage() {
 
               {/* Section 7: SWMS */}
               <div id="section-swms">
-                {swmsError && (
-                  <div className="flex items-start gap-2 p-3 bg-red-500/20 border border-red-500/40 rounded-xl">
-                    <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-300 flex-1">{swmsError}</p>
-                    <button type="button" onClick={() => setSwmsError('')} className="text-red-400 hover:text-red-200"><X size={13} /></button>
-                  </div>
-                )}
               <Section title="Relevant SWMS" icon={FileText} accent="bg-indigo-500" badge={`${Array.isArray(prestart.relevant_swms_ids) ? prestart.relevant_swms_ids.length : 0} selected`}>
                 <p className="text-xs text-slate-400 -mt-1">Select the SWMS that apply to today's work. These are the documents reviewed with the crew before work starts.</p>
                 {jobSwms.length === 0 ? (
