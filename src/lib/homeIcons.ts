@@ -98,7 +98,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
-  { key: 'help',          label: 'Help',           icon: BookMarked,       href: '/help',                   bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
+  { key: 'help',          label: 'Help',           icon: BookMarked,       href: '/help',                   bg: 'bg-gray-900',    fg: 'text-white', group: 'management' },
 ];
 
 // ── COMING SOON — 10 reserved placeholder slots ───────────────────────────────
