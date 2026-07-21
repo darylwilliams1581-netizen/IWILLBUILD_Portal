@@ -37,23 +37,12 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface AppIcon {
-  label: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  href: string;
-  /** Solid bg colour class for the tile */
-  bg: string;
-  /** Icon colour class */
-  fg: string;
-  badge?: number;
-}
-
 // ── Icon definitions ──────────────────────────────────────────────────────────
 // Solid, saturated colours — light theme needs full-opacity backgrounds
 // NOTE: Field/Safety/Tools/Management icons are now defined in src/lib/homeIcons.ts
 // These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
-const PLATFORM_ICONS: AppIcon[] = [
+const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
   { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',    fg: 'text-white' },
   { label: 'Old View',  icon: History,     href: '/dashboard',     bg: 'bg-slate-500',  fg: 'text-white' },
 ];
