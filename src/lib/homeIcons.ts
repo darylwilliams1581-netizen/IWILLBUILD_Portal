@@ -23,7 +23,7 @@ import {
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
-  Gamepad2,
+  Gamepad2, BookMarked,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -94,6 +94,7 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
+  { key: 'help',          label: 'Help',           icon: BookMarked,       href: '/help',                   bg: 'bg-blue-500',    fg: 'text-white', group: 'management' },
 ];
 
 // ── COMING SOON — 10 reserved placeholder slots ───────────────────────────────
