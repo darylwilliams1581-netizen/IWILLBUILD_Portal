@@ -73,6 +73,7 @@ export const TOOLS_ICON_DEFS: HomeIconDef[] = [
   { key: 'builders_calc', label: 'Builders Calc',    icon: Ruler,            href: '/builders-calc',              bg: 'bg-violet-500',  fg: 'text-white', group: 'tools' },
   { key: 'takeoff_pad',   label: 'Take-off Pad',     icon: ClipboardList,    href: '/takeoff-pad',                bg: 'bg-sky-500',     fg: 'text-white', group: 'tools' },
   { key: 'estimating',    label: 'Estimating',       icon: Calculator,       href: '/estimating',                 bg: 'bg-indigo-500',  fg: 'text-white', group: 'tools' },
+  { key: 'scheduler',     label: 'Scheduler',        icon: CalendarDays,     href: '/scheduler',                  bg: 'bg-blue-600',    fg: 'text-white', group: 'tools' },
   { key: 'studio_docs',   label: 'Doc Studio',       icon: FileText,         href: '/studio/documents',           bg: 'bg-orange-500',  fg: 'text-white', group: 'tools' },
   { key: 'studio_forms',  label: 'Form Studio',      icon: ClipboardList,    href: '/studio/forms',               bg: 'bg-purple-500',  fg: 'text-white', group: 'tools' },
 ];
@@ -84,7 +85,6 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'invoices_mgmt', label: 'Invoices',       icon: Receipt,          href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'stakeholders',  label: 'Stakeholders',   icon: Users,            href: '/customers',              bg: 'bg-pink-500',    fg: 'text-white', group: 'management' },
   { key: 'ledger',        label: 'Ledger',         icon: BookOpen,         href: '?panel=costs-picker',     bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
-  { key: 'scheduler',     label: 'Scheduler',      icon: CalendarDays,     href: '/scheduler',              bg: 'bg-blue-600',    fg: 'text-white', group: 'management' },
   { key: 'fleet',         label: 'Fleet',          icon: Truck,            href: '/fleet',                  bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-amber-500',   fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
