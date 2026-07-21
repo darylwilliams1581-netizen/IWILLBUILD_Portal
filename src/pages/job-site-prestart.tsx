@@ -6,7 +6,7 @@ import { job_site_prestart } from 'virtual:content';
  * Mobile-first, large touch targets, fast on site.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
@@ -657,6 +657,8 @@ type View = 'list' | 'new' | 'form' | 'signon';
 export default function JobSitePrestartPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo: string = (location.state as { returnTo?: string } | null)?.returnTo ?? '/home';
   const jobId = parseInt(id ?? '0', 10);
 
   const [view, setView] = useState<View>('list');
@@ -813,7 +815,7 @@ export default function JobSitePrestartPage() {
             <button
               onClick={() => {
                 if (view === 'form' || view === 'new') setView('list');
-                else navigate('/home');
+                else navigate(returnTo);
               }}
               className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
             >

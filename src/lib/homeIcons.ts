@@ -22,7 +22,7 @@ import {
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings, Bot,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet,
+  MessageSquare, ClipboardSignature, Wallet, ShieldAlert,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -59,6 +59,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'equipment',     label: 'Equipment',      icon: Wrench,           href: '/studio/asset-manager',   bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
   { key: 'field_docs',   label: 'Docs',           icon: FileCheck,        href: '/job-docs',               bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
   { key: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard,  href: '?panel=dashboard',        bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
+  { key: 'risky',        label: 'Risky',          icon: ShieldAlert,      href: '?panel=risky-picker',     bg: 'bg-rose-600',    fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────

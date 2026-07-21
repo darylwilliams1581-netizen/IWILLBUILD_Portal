@@ -42,6 +42,9 @@ export const schemas = {
     "SITUATION_CHECKS": z.array(z.string()),
     "EXECUTION_CHECKS": z.array(z.string()),
     "ADMIN_CHECKS": z.array(z.string())
+  }),
+  job_risky: z.object({
+    "HAZARD_OPTIONS": z.array(z.string())
   })
 };
 export type Schemas = typeof schemas;

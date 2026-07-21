@@ -1,0 +1,20 @@
+{
+  "HAZARD_OPTIONS": [
+    "Weather / heat",
+    "Wet or muddy ground",
+    "Underground services",
+    "Live electrical assets",
+    "Moving plant",
+    "Traffic / public interface",
+    "Excavation / trenching",
+    "Working at heights",
+    "Manual handling",
+    "Silica / dust",
+    "Noise",
+    "Chemicals / fuel / spill risk",
+    "Slips / trips / falls",
+    "Confined/restricted access",
+    "Delivery/loading/unloading",
+    "Other"
+  ]
+}

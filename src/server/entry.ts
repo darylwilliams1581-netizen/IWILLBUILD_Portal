@@ -407,6 +407,12 @@ import jobs_id_site_prestarts_id_put from "./api/jobs/[id]/site-prestarts/[prest
 import jobs_id_site_prestarts_id_finalise_post from "./api/jobs/[id]/site-prestarts/[prestartId]/finalise/POST";
 import jobs_id_site_prestarts_id_workers_post from "./api/jobs/[id]/site-prestarts/[prestartId]/workers/POST";
 import migrate_site_prestart_post from "./api/migrate-site-prestart/POST";
+import jobs_id_risky_get from "./api/jobs/[id]/risky/GET";
+import jobs_id_risky_post from "./api/jobs/[id]/risky/POST";
+import jobs_id_risky_id_get from "./api/jobs/[id]/risky/[riskyId]/GET";
+import jobs_id_risky_id_put from "./api/jobs/[id]/risky/[riskyId]/PUT";
+import jobs_id_risky_id_finalise_post from "./api/jobs/[id]/risky/[riskyId]/finalise/POST";
+import jobs_id_risky_id_signatures_post from "./api/jobs/[id]/risky/[riskyId]/signatures/POST";
 import jobs_id_swms_post_322 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_323 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import jobs_id_todos_get_324 from "./api/jobs/[id]/todos/GET";
@@ -2026,6 +2032,59 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] guest_checkins CREATE failed:', msg);
     }
   }
+
+  // ── Risky Assessments tables ─────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS risky_assessments (
+        id                  INT PRIMARY KEY AUTO_INCREMENT,
+        company_id          INT NOT NULL,
+        job_id              INT NOT NULL,
+        created_by_user_id  VARCHAR(36) NOT NULL,
+        linked_prestart_id  INT NULL,
+        status              VARCHAR(20) NOT NULL DEFAULT 'draft',
+        assessment_date     DATE NULL,
+        assessment_time     VARCHAR(10) NULL,
+        recorded_by         VARCHAR(255) NULL,
+        activity            TEXT NULL,
+        hazards_selected    JSON NULL,
+        other_hazard_text   TEXT NULL,
+        control_measures    TEXT NULL,
+        workers_briefed     BOOLEAN NOT NULL DEFAULT FALSE,
+        notes               TEXT NULL,
+        finalised_at        DATETIME NULL,
+        created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_risky_job (job_id),
+        INDEX idx_risky_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] risky_assessments table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] risky_assessments CREATE failed:', msg);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS risky_assessment_signatures (
+        id                    INT PRIMARY KEY AUTO_INCREMENT,
+        risky_assessment_id   INT NOT NULL,
+        signer_name           VARCHAR(255) NOT NULL,
+        signature_data        MEDIUMTEXT NOT NULL,
+        signed_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_risky_sig_assessment (risky_assessment_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] risky_assessment_signatures table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] risky_assessment_signatures CREATE failed:', msg);
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
@@ -2459,6 +2518,12 @@ app.put("/api/jobs/:id/site-prestarts/:prestartId", jobs_id_site_prestarts_id_pu
 app.post("/api/jobs/:id/site-prestarts/:prestartId/finalise", jobs_id_site_prestarts_id_finalise_post);
 app.post("/api/jobs/:id/site-prestarts/:prestartId/workers", jobs_id_site_prestarts_id_workers_post);
 app.post("/api/migrate-site-prestart", migrate_site_prestart_post);
+app.get("/api/jobs/:id/risky", jobs_id_risky_get);
+app.post("/api/jobs/:id/risky", jobs_id_risky_post);
+app.get("/api/jobs/:id/risky/:riskyId", jobs_id_risky_id_get);
+app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_id_put);
+app.post("/api/jobs/:id/risky/:riskyId/finalise", jobs_id_risky_id_finalise_post);
+app.post("/api/jobs/:id/risky/:riskyId/signatures", jobs_id_risky_id_signatures_post);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
 app.get("/api/jobs/:id/todos", jobs_id_todos_get_324);

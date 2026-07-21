@@ -16,7 +16,7 @@ import {
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,
-  History,
+  History, ShieldAlert,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -1050,7 +1050,19 @@ function SitePrestartJobPickerSheet({ open, onClose }: { open: boolean; onClose:
       open={open} onClose={onClose}
       title="Site Prestart" subtitle="Select a job to open its site prestart"
       iconBg="bg-lime-100" iconFg="text-lime-700" Icon={HardHat}
-      onSelect={job => navigate(`/jobs/${job.id}/site-prestart`)}
+      onSelect={job => navigate(`/jobs/${job.id}/site-prestart`, { state: { returnTo: '/home' } })}
+    />
+  );
+}
+
+function RiskyJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <JobPickerSheet
+      open={open} onClose={onClose}
+      title="Risky" subtitle="Select a job to start a risk assessment"
+      iconBg="bg-rose-100" iconFg="text-rose-700" Icon={ShieldAlert}
+      onSelect={job => navigate(`/jobs/${job.id}/risky`, { state: { returnTo: '/home' } })}
     />
   );
 }
@@ -1747,6 +1759,7 @@ export default function HomeScreen() {
   const [drivePickerOpen, setDrivePickerOpen] = useState(false);
   const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
   const [sitePrestartPickerOpen, setSitePrestartPickerOpen] = useState(false);
+  const [riskyPickerOpen, setRiskyPickerOpen] = useState(false);
   const [activeStatusKey, setActiveStatusKey] = useState(0);
   const activeStatus = useActiveStatus(activeStatusKey);
 
@@ -1776,6 +1789,7 @@ export default function HomeScreen() {
 
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
+    if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
@@ -2017,6 +2031,7 @@ export default function HomeScreen() {
       )}
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
       <SitePrestartJobPickerSheet open={sitePrestartPickerOpen} onClose={() => setSitePrestartPickerOpen(false)} />
+      <RiskyJobPickerSheet open={riskyPickerOpen} onClose={() => setRiskyPickerOpen(false)} />
       </div>{/* end z-10 content wrapper */}
     </div>
   );
