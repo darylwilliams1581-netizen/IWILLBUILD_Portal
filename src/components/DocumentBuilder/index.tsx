@@ -21,7 +21,7 @@ import {
   Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert,
   Image,
   ZoomIn, ZoomOut, Monitor, RotateCcw,
-  Wrench, Briefcase,
+  Wrench, Briefcase, AlignCenter, AlignRight, PlayCircle,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useDocumentStore } from './useDocumentStore';
