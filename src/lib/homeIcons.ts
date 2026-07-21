@@ -55,7 +55,6 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
   { key: 'drawings',      label: 'Drawings',         icon: Layers,           href: '?panel=drawings-picker',      bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
   { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
-  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────
@@ -70,8 +69,9 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 
 // ── TOOLS ─────────────────────────────────────────────────────────────────────
 export const TOOLS_ICON_DEFS: HomeIconDef[] = [
-  { key: 'builders_calc', label: 'Builders Calc',  icon: Ruler,            href: '/builders-calc',          bg: 'bg-violet-500',  fg: 'text-white', group: 'tools' },
-  { key: 'takeoff_pad',   label: 'Take-off Pad',   icon: ClipboardList,    href: '/takeoff-pad',            bg: 'bg-sky-500',     fg: 'text-white', group: 'tools' },
+  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-orange-500',  fg: 'text-white', group: 'tools' },
+  { key: 'builders_calc', label: 'Builders Calc',    icon: Ruler,            href: '/builders-calc',              bg: 'bg-violet-500',  fg: 'text-white', group: 'tools' },
+  { key: 'takeoff_pad',   label: 'Take-off Pad',     icon: ClipboardList,    href: '/takeoff-pad',                bg: 'bg-sky-500',     fg: 'text-white', group: 'tools' },
 ];
 
 // ── MANAGEMENT ────────────────────────────────────────────────────────────────
