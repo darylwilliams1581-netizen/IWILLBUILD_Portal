@@ -25,7 +25,7 @@ const config: CapacitorConfig = {
   // During development, point at your live server so API calls work.
   // Comment this out for production App Store / Play Store builds.
   server: {
-    // url: 'https://iwillbuild.com',   // ← uncomment for production native build
+    url: 'https://iwillbuild.com',        // ← live URL mode: app shell loads from production
     // url: 'http://192.168.1.x:5173',  // ← uncomment for local dev (use your LAN IP)
     cleartext: false,                   // disallow plain HTTP in production
     allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
