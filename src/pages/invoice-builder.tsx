@@ -721,8 +721,8 @@ export default function InvoiceBuilderPage() {
                       <DollarSign size={13} />Record Payment
                     </button>
                   )}
-                  {/* Xero sync button */}
-                  {!isNew && canEdit && (
+                  {/* Xero sync button — available on any saved, non-void invoice regardless of edit lock */}
+                  {!isNew && !isVoid && (
                     <button
                       onClick={handleXeroSync}
                       disabled={xeroSyncing || saving}
@@ -744,7 +744,9 @@ export default function InvoiceBuilderPage() {
                       ) : (
                         <span className="font-black text-xs">X</span>
                       )}
-                      {invoice?.accounting_invoice_id ? 'Re-sync Xero' : 'Sync to Xero'}
+                      {invoice?.accounting_sync_status === 'synced'
+                        ? (invoice?.accounting_invoice_id ? 'Re-sync Xero' : 'Synced')
+                        : (invoice?.accounting_invoice_id ? 'Re-sync Xero' : 'Sync to Xero')}
                     </button>
                   )}
                   {!isNew && (
