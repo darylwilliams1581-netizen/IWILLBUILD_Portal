@@ -166,7 +166,7 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute left-0 top-10 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-[200] overflow-hidden"
+            className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-[200] overflow-hidden"
             style={{ maxHeight: '480px' }}
           >
             {/* Header */}
