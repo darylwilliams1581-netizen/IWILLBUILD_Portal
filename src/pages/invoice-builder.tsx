@@ -419,9 +419,29 @@ export default function InvoiceBuilderPage() {
       setXeroMsg({ type: 'error', text: 'Please add a customer before syncing to Xero.' });
       return;
     }
+
+    // Per-line validation — report the first offending line by number
+    const nonEmptyLines = lines.filter(l => l.description?.trim() || l.quantity > 0 || l.rate > 0);
+    if (nonEmptyLines.length === 0) {
+      setXeroMsg({ type: 'error', text: 'Please add at least one invoice line before syncing to Xero.' });
+      return;
+    }
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      // Skip completely blank placeholder rows
+      if (!l.description?.trim() && l.quantity === 0 && l.rate === 0) continue;
+      if (!l.description?.trim()) {
+        setXeroMsg({ type: 'error', text: `Line ${i + 1} needs a description before syncing to Xero.` });
+        return;
+      }
+      if (!(l.quantity > 0)) {
+        setXeroMsg({ type: 'error', text: `Line ${i + 1} needs a valid quantity (greater than 0) before syncing to Xero.` });
+        return;
+      }
+    }
     const validLines = lines.filter(l => l.description?.trim() && l.quantity > 0);
     if (validLines.length === 0) {
-      setXeroMsg({ type: 'error', text: 'Please add at least one invoice line (with description and quantity) before syncing to Xero.' });
+      setXeroMsg({ type: 'error', text: 'Please add at least one invoice line before syncing to Xero.' });
       return;
     }
 
@@ -747,7 +767,7 @@ export default function InvoiceBuilderPage() {
                     </button>
                   )}
                   {/* Xero sync button — available on any saved, non-void invoice regardless of edit lock */}
-                  {!isNew && !isVoid && (
+                  {!isNew && !isVoid && canInvoices && (
                     <button
                       onClick={handleXeroSync}
                       disabled={xeroSyncing || saving}
