@@ -376,6 +376,8 @@ import jobs_id_purchase_orders_poId_get_342 from "./api/jobs/[id]/purchase-order
 import jobs_id_purchase_orders_poId_put_343 from "./api/jobs/[id]/purchase-orders/[poId]/PUT";
 import jobs_id_purchase_orders_poId_pdf_get_344 from "./api/jobs/[id]/purchase-orders/[poId]/pdf/GET";
 import jobs_id_risky_get_345 from "./api/jobs/[id]/risky/GET";
+import jobs_id_documents_get from "./api/jobs/[id]/documents/GET";
+import jobs_id_documents_post from "./api/jobs/[id]/documents/POST";
 import jobs_id_risky_post_346 from "./api/jobs/[id]/risky/POST";
 import jobs_id_risky_riskyId_get_347 from "./api/jobs/[id]/risky/[riskyId]/GET";
 import jobs_id_risky_riskyId_put_348 from "./api/jobs/[id]/risky/[riskyId]/PUT";
@@ -1430,6 +1432,7 @@ async function runStartupMigrations() {
     // ── Smart Document Builder ────────────────────────────────────────────────
     { name: 'document_templates', ddl: "CREATE TABLE IF NOT EXISTS document_templates (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, name VARCHAR(255) NOT NULL, template_type VARCHAR(50) NOT NULL DEFAULT 'document', builder_json LONGTEXT NULL, page_layout_json TEXT NULL, theme_json TEXT NULL, source_docx_path VARCHAR(500) NULL, source_docx_name VARCHAR(255) NULL, is_active TINYINT(1) NOT NULL DEFAULT 1, created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_type (company_id, template_type), INDEX idx_active (company_id, is_active))" },
     { name: 'document_submissions', ddl: "CREATE TABLE IF NOT EXISTS document_submissions (id INT AUTO_INCREMENT PRIMARY KEY, template_id INT NOT NULL, company_id INT NOT NULL, job_id INT NULL, submitted_by_user_id VARCHAR(36) NULL, submitted_by_name VARCHAR(255) NULL, status VARCHAR(30) NOT NULL DEFAULT 'draft', answers_json LONGTEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_template (template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_status (company_id, status))" },
+    { name: 'job_document_links', ddl: "CREATE TABLE IF NOT EXISTS job_document_links (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, job_id INT NOT NULL, document_template_id INT NOT NULL, linked_by_user_id VARCHAR(36) NULL, linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_job_doc (job_id, document_template_id), INDEX idx_company (company_id), INDEX idx_job (company_id, job_id), INDEX idx_template (document_template_id))" },
     // ── Asset Bookings (fleet asset → job scheduling) ─────────────────────────
     { name: 'asset_bookings', ddl: "CREATE TABLE IF NOT EXISTS asset_bookings (id INT AUTO_INCREMENT PRIMARY KEY, company_id INT NOT NULL, fleet_asset_id INT NOT NULL, job_id INT NULL, title VARCHAR(255) NOT NULL DEFAULT '', start_date DATE NOT NULL, end_date DATE NOT NULL, start_time TIME NULL, end_time TIME NULL, notes TEXT NULL, status VARCHAR(30) NOT NULL DEFAULT 'booked', created_by_user_id VARCHAR(36) NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, INDEX idx_company (company_id), INDEX idx_asset (fleet_asset_id), INDEX idx_job (company_id, job_id), INDEX idx_dates (company_id, start_date, end_date))" },
     // ── Fleet Service / Maintenance Logs ─────────────────────────────────────
@@ -2639,6 +2642,8 @@ app.get("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_get_
 app.put("/api/jobs/:id/purchase-orders/:poId", jobs_id_purchase_orders_poId_put_343);
 app.get("/api/jobs/:id/purchase-orders/:poId/pdf", jobs_id_purchase_orders_poId_pdf_get_344);
 app.get("/api/jobs/:id/risky", jobs_id_risky_get_345);
+app.get("/api/jobs/:id/documents", jobs_id_documents_get);
+app.post("/api/jobs/:id/documents", jobs_id_documents_post);
 app.post("/api/jobs/:id/risky", jobs_id_risky_post_346);
 app.get("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_get_347);
 app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_riskyId_put_348);

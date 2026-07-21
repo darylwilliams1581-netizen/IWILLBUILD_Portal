@@ -7,7 +7,7 @@
  * Underlying block engine is unchanged — PDF export, logic, fields all work.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
@@ -58,6 +58,158 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   handover:   'Handover',
 };
 
+// ── SaveDropdown — chevron that opens "Save to Job" option ───────────────────
+function SaveDropdown({
+  disabled,
+  saveStatus,
+  onSaveToJob,
+}: {
+  disabled: boolean;
+  saveStatus: 'idle' | 'saved' | 'error';
+  onSaveToJob: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const btnBg = saveStatus === 'saved' ? 'bg-green-600 hover:bg-green-700' : saveStatus === 'error' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center justify-center px-2 py-1.5 rounded-r-lg text-white border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${btnBg}`}
+        title="More save options"
+      >
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-xl min-w-[180px] py-1 text-sm">
+          <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b border-slate-100">Save options</div>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 transition-colors text-left"
+            onClick={() => { setOpen(false); onSaveToJob(); }}
+          >
+            <Briefcase size={13} className="text-orange-500 flex-shrink-0" />
+            <div>
+              <div className="font-medium text-xs">Save to Job</div>
+              <div className="text-xs text-slate-400">Attach this document to a job</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SaveToJobModal — pick a job to attach the saved document to ──────────────
+function SaveToJobModal({ docId, onClose }: { docId: number; onClose: () => void }) {
+  const [jobs, setJobs]       = useState<{ id: number; name: string; jobNumber?: string }[]>([]);
+  const [search, setSearch]   = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
+  const [selected, setSelected] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/jobs?limit=100', { credentials: 'include' })
+      .then((r) => r.json() as Promise<{ jobs?: { id: number; name: string; jobNumber?: string }[] }>)
+      .then((d) => setJobs(d.jobs ?? []))
+      .catch(() => setJobs([]));
+  }, []);
+
+  const filtered = jobs.filter((j) => {
+    const q = search.toLowerCase();
+    return j.name.toLowerCase().includes(q) || (j.jobNumber ?? '').toLowerCase().includes(q);
+  });
+
+  const handleAttach = async () => {
+    if (!selected) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/jobs/${selected}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ documentTemplateId: docId }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Failed to attach');
+      setSaved(true);
+      setTimeout(onClose, 1500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to attach document to job');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Briefcase size={16} className="text-orange-500" />
+            <h2 className="text-sm font-bold text-slate-800">Save to Job</h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-slate-500">Select a job to attach this document to. It will appear in that job's Documents tab.</p>
+          <input
+            type="text"
+            placeholder="Search jobs…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+            {filtered.length === 0 && (
+              <div className="px-3 py-4 text-xs text-slate-400 text-center">No jobs found</div>
+            )}
+            {filtered.map((j) => (
+              <button
+                key={j.id}
+                onClick={() => setSelected(j.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected === j.id ? 'bg-orange-50 border-l-2 border-orange-500' : 'hover:bg-slate-50'}`}
+              >
+                <Briefcase size={13} className={selected === j.id ? 'text-orange-500' : 'text-slate-400'} />
+                <div>
+                  <div className="text-xs font-semibold text-slate-800">{j.name}</div>
+                  {j.jobNumber && <div className="text-xs text-slate-400">#{j.jobNumber}</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+          {saved && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2 flex items-center gap-2"><CheckCircle size={13} /> Document attached to job!</p>}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+          <button
+            onClick={() => void handleAttach()}
+            disabled={!selected || saving || saved}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Briefcase size={13} />}
+            {saving ? 'Attaching…' : 'Attach to Job'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DocumentBuilder({ template, onClose, onSaved, initialMode = 'build' }: Props) {
   const {
     isDirty, isSaving, setIsSaving, markSaved,
@@ -72,6 +224,8 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
   const [showBlocksImporter, setShowBlocksImporter] = useState(false);
   const [saveStatus, setSaveStatus]                 = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
+  const [saveToJobDocId, setSaveToJobDocId]         = useState<number | null>(null);
   const [activeTab, setActiveTab]                   = useState<BuilderTab>('structure');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
     template?.pdfSettings ?? { ...DEFAULT_TEMPLATE_PDF_SETTINGS }
@@ -158,15 +312,18 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         });
       }
       const data = await res.json() as { id?: number; ok?: boolean; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       const savedId = data.id ?? templateId!;
       markSaved(savedId);
       setSaveStatus('saved');
+      setSaveErrorMsg('');
       onSaved?.(savedId);
       setTimeout(() => setSaveStatus('idle'), 2500);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      setSaveErrorMsg(msg);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setTimeout(() => setSaveStatus('idle'), 4000);
     } finally {
       setIsSaving(false);
     }
@@ -206,16 +363,19 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
         credentials: 'include', body: JSON.stringify(payload),
       });
       const data = await res.json() as { id?: number; ok?: boolean; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Save failed');
+      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       const savedId = data.id!;
       markSaved(savedId);
       setSaveStatus('saved');
+      setSaveErrorMsg('');
       onSaved?.(savedId);
       setTimeout(() => setSaveStatus('idle'), 2500);
       return savedId;
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      setSaveErrorMsg(msg);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setTimeout(() => setSaveStatus('idle'), 4000);
       return null;
     } finally {
       setIsSaving(false);
@@ -304,14 +464,35 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                 </button>
               )}
               <div className="w-px h-4 bg-slate-300" />
-              <button
-                onClick={() => void handleSave()}
-                disabled={isSaving || (!isDirty && !!templateId)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
-              >
-                {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
-                {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
-              </button>
+              {/* ── Save split button ── */}
+              <div className="relative flex items-stretch">
+                {/* Primary save — always saves to Studio document library */}
+                <button
+                  onClick={() => void handleSave()}
+                  disabled={isSaving || (!isDirty && !!templateId)}
+                  title={saveStatus === 'error' ? saveErrorMsg : 'Save to Studio document library'}
+                  className={`flex items-center gap-1.5 pl-4 pr-3 py-1.5 rounded-l-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                >
+                  {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
+                  {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+                </button>
+                {/* Dropdown arrow — Save to Job */}
+                <SaveDropdown
+                  disabled={isSaving}
+                  saveStatus={saveStatus}
+                  onSaveToJob={async () => {
+                    // Ensure doc is saved first, then open job picker
+                    const id = await handleSaveFirst();
+                    if (id) setSaveToJobDocId(id);
+                  }}
+                />
+              </div>
+              {/* Error tooltip */}
+              {saveStatus === 'error' && saveErrorMsg && (
+                <div className="absolute top-full right-0 mt-1 z-50 bg-red-600 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs whitespace-pre-wrap pointer-events-none">
+                  {saveErrorMsg}
+                </div>
+              )}
             </>
           ) : (
             /* Use Mode actions — Doc Studio: read, print, download, optional sign-on */
@@ -717,6 +898,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
           <PublishToLibraryModal templateId={templateId} templateName={templateName} onClose={() => setShowPublishModal(false)} />
         )}
       </AnimatePresence>
+      {saveToJobDocId !== null && (
+        <SaveToJobModal docId={saveToJobDocId} onClose={() => setSaveToJobDocId(null)} />
+      )}
     </div>
   );
 }
