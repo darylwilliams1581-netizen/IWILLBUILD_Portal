@@ -89,6 +89,33 @@
           window.__origDefProp = safeDefProp;
           Object.defineProperty = safeDefProp;
 
+          // ── NUCLEAR OPTION: Freeze Object.defineProperty itself ───────────────
+          // The stale shim at t=1784519099416 captured _shimOrigDP = raw Object.defineProperty
+          // before our safeDefProp was installed. It uses that raw reference to bypass
+          // safeDefProp and install its throwing patchedRemoveChild directly on #app.
+          // We can't revoke an already-captured reference. But we CAN make the raw
+          // Object.defineProperty call on a non-configurable property throw TypeError,
+          // which the stale shim catches and falls back to direct assignment.
+          // Direct assignment to a non-configurable accessor (with our no-op setter)
+          // is silently ignored. So the stale shim's install becomes a no-op.
+          //
+          // The key: sealAppDiv must run BEFORE the stale shim's microSeal/sealLoop.
+          // We do this by running sealAppDiv synchronously here AND on every
+          // Object.defineProperty call that targets removeChild on any Node.
+          //
+          // Additionally: wrap the raw _origDefProp itself so even the stale shim's
+          // captured reference goes through our guard. We do this by replacing the
+          // function body via a Proxy (not possible) — instead we make _origDefProp
+          // on the Object constructor non-writable so the stale shim can't restore it.
+          try {
+            _origDefProp(Object, 'defineProperty', {
+              value: safeDefProp,
+              writable: false,
+              configurable: false,
+              enumerable: false,
+            });
+          } catch(e) { /* already locked */ }
+
           // Intercept appendChild so when the stale shim appends its capture
           // iframe, we immediately patch the iframe's Node.prototype.removeChild
           // before the stale shim reads contentWindow.Node.prototype.removeChild.

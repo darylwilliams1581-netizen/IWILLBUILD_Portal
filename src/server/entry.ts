@@ -1521,6 +1521,110 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── Site Prestart tables ─────────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS site_prestarts (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        company_id INT NOT NULL,
+        job_id INT NOT NULL,
+        created_by_user_id VARCHAR(36) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        job_number VARCHAR(50),
+        job_name VARCHAR(255),
+        customer_name VARCHAR(255),
+        site_address TEXT,
+        prestart_date DATE,
+        start_time VARCHAR(10),
+        supervisor_name VARCHAR(255),
+        first_aid_person VARCHAR(255),
+        weather VARCHAR(100),
+        rainfall_mm DECIMAL(6,1),
+        site_conditions TEXT,
+        changed_conditions TEXT,
+        weather_concerns TEXT,
+        access_issues TEXT,
+        public_interface TEXT,
+        live_services TEXT,
+        underground_services TEXT,
+        other_hazards TEXT,
+        situation_checkboxes JSON,
+        planned_work TEXT,
+        work_location TEXT,
+        plant_equipment TEXT,
+        tools_required TEXT,
+        deliveries_expected TEXT,
+        key_tasks TEXT,
+        execution_checklist JSON,
+        critical_controls TEXT,
+        task_sequencing TEXT,
+        supervisor_instructions TEXT,
+        admin_checklist JSON,
+        hazards_actions TEXT,
+        materials_delivered TEXT,
+        plant_used TEXT,
+        emergency_number VARCHAR(20) DEFAULT '000',
+        electricity_emergency VARCHAR(20),
+        radio_channel VARCHAR(100),
+        assembly_point VARCHAR(255),
+        assembly_point_confirmed BOOLEAN DEFAULT FALSE,
+        stop_work_authority_confirmed BOOLEAN DEFAULT FALSE,
+        relevant_swms_ids JSON,
+        swms_reviewed_confirmed BOOLEAN DEFAULT FALSE,
+        swms_review_notes TEXT,
+        swms_snapshot JSON,
+        no_swms_required BOOLEAN DEFAULT FALSE,
+        no_swms_reason TEXT,
+        weather_summary TEXT,
+        ground_condition VARCHAR(20),
+        weather_delay BOOLEAN DEFAULT FALSE,
+        delay_hours DECIMAL(4,1),
+        delay_reason TEXT,
+        supervisor_signoff_name VARCHAR(255),
+        supervisor_signature TEXT,
+        submitted_at TIMESTAMP NULL,
+        copied_from_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_sp_company (company_id),
+        INDEX idx_sp_job (job_id),
+        INDEX idx_sp_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] site_prestarts table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] site_prestarts CREATE failed:', msg);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS site_prestart_workers (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        site_prestart_id INT NOT NULL,
+        company_id INT NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        company_employer VARCHAR(255),
+        role_trade VARCHAR(255),
+        fit_for_work BOOLEAN NOT NULL DEFAULT TRUE,
+        white_card_number VARCHAR(100),
+        signature TEXT,
+        signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        signed_by_user_id VARCHAR(36),
+        INDEX idx_spw_prestart (site_prestart_id),
+        FOREIGN KEY (site_prestart_id) REFERENCES site_prestarts(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] site_prestart_workers table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] site_prestart_workers CREATE failed:', msg);
+    }
+  }
+
   // Seed default platform email settings (idempotent — INSERT IGNORE)
   try {
     const defaultEmailSettings = [

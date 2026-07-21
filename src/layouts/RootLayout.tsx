@@ -7,7 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Component, type ReactElement, type ReactNode, useCallback, useEffect, useInsertionEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -374,6 +374,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
     if (!el) return;
     patchRemoveChild(el);
   }, []);
+
+  // useInsertionEffect fires synchronously DURING the commit phase, before any
+  // DOM mutations — this is the earliest possible hook to re-seal #app before
+  // React calls removeChild on it. Runs on every render.
+  useInsertionEffect(() => {
+    const app = document.getElementById('app');
+    if (app) patchRemoveChild(app);
+    if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
+  });
 
   // Synchronous pre-commit patch — useLayoutEffect fires BEFORE the browser paints
   // but AFTER React's commit phase writes to the DOM. Run it on every render so
