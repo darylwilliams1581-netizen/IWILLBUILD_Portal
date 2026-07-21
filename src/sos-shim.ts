@@ -69,6 +69,43 @@
     } catch { /* ignore */ }
   }
 
+  // ── Synchronous appendChild intercept ────────────────────────────────────────
+  // The stale shim (t=1784519099416) creates an iframe, appends it to document.head,
+  // then IMMEDIATELY reads iframe.contentWindow.Node.prototype.removeChild as _native.
+  // Our load/setTimeout patches fire too late. Intercept appendChild on Node.prototype
+  // so we can patch the iframe's Node.prototype synchronously before the caller reads it.
+  try {
+    const _origAppend = Node.prototype.appendChild.bind
+      ? Node.prototype.appendChild
+      : null;
+    if (_origAppend) {
+      const _safeRC = sosTrueNative; // will be set to swallowingRemoveChildEarly below
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (Node.prototype as any).appendChild = function patchedAppendChild<T extends Node>(this: Node, child: T): T {
+        const result = _origAppend.call(this, child) as T;
+        // If an iframe was just appended, immediately patch its Node.prototype
+        if (child instanceof HTMLIFrameElement) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const iProto = (child as HTMLIFrameElement).contentWindow as any;
+            if (iProto?.Node?.prototype) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const safe = (window as any).__sosTrueNativeRC ?? _safeRC;
+              if (safe) {
+                try {
+                  Object.defineProperty(iProto.Node.prototype, 'removeChild', {
+                    value: safe, writable: false, configurable: false, enumerable: false,
+                  });
+                } catch { iProto.Node.prototype.removeChild = safe; }
+              }
+            }
+          } catch { /* ignore */ }
+        }
+        return result;
+      };
+    }
+  } catch { /* ignore — best-effort */ }
+
   if (trueNative) {
     const _realNative = trueNative;
 
@@ -94,6 +131,10 @@
     // __sosRemoveChildNative also gets the safe version.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__sosRemoveChildNative = swallowingRemoveChildEarly;
+    // Also update __sosTrueNativeRC so the appendChild intercept above uses the
+    // safe wrapper for any iframes created after this point.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__sosTrueNativeRC = swallowingRemoveChildEarly;
 
     // Also overwrite the iframe's own Node.prototype.removeChild with the safe
     // wrapper RIGHT NOW, before the stale shim can read it.
@@ -167,7 +208,6 @@
             } catch { /* ignore */ }
           };
           el.addEventListener('load', patchIframeNow, { once: true });
-          // Also try immediately in case it's already loaded (srcdoc iframes)
           setTimeout(patchIframeNow, 0);
         }
         return el;

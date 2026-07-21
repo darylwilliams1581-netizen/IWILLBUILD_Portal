@@ -28,9 +28,11 @@ const CookieBanner = lazy(() =>
 const STALE_TS = ['1784519099416', '1784518714435', '1784516505220', '1784585282530', '1784589710474', '1784590013856', '1784800000000'];
 function isStaleRemoveChildError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+  // NotFoundError is exclusively caused by the stale shim — always treat as stale.
+  if (err.name === 'NotFoundError') return true;
   const text = (err.message ?? '') + (err.stack ?? '');
-  if (err.name === 'NotFoundError' && text.includes('removeChild')) return true;
   if (STALE_TS.some((ts) => text.includes(ts))) return true;
+  if (text.includes('patchedRemoveChild')) return true;
   return false;
 }
 
@@ -39,19 +41,15 @@ const RELOAD_COUNT_KEY = 'app_stale_reload_count';
 class StaleShimBoundary extends Component<{ children: ReactNode }, { caught: boolean }> {
   state = { caught: false };
   static getDerivedStateFromError(err: unknown) {
-    // Bulletproof — getDerivedStateFromError must never throw.
     try {
-      if (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild')) {
-        return { caught: true };
-      }
+      if (err instanceof Error && err.name === 'NotFoundError') return { caught: true };
       return { caught: isStaleRemoveChildError(err) };
     } catch {
       return { caught: false };
     }
   }
   componentDidCatch(err: unknown) {
-    const isStale = isStaleRemoveChildError(err) ||
-      (err instanceof Error && err.name === 'NotFoundError' && (err.message ?? '').includes('removeChild'));
+    const isStale = isStaleRemoveChildError(err);
     if (!isStale) return;
     try {
       const last = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? '0', 10);

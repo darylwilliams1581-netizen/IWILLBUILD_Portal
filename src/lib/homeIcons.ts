@@ -17,7 +17,7 @@ import type { ComponentType } from 'react';
 import {
   Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote,
   DollarSign, Clock, TrendingUp, Layers, Ruler, ClipboardList,
-  Wrench, Image, FileCheck,
+  Wrench, Image, FileCheck, BookOpen,
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings, Bot,
