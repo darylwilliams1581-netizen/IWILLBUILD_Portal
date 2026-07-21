@@ -122,12 +122,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Step 2: Build Xero Invoice payload ───────────────────────────────────
+    // TaxType intentionally omitted — Xero derives it from AccountCode.
+    // Hardcoding OUTPUT2 caused 400/422 on orgs without that tax rate configured.
+    // AccountCode '200' is the standard Xero AU/NZ "Sales" account.
     const lineItems = validLines.map((l) => ({
       Description: l.description,
       Quantity: parseFloat(String(l.quantity)) || 1,
       UnitAmount: parseFloat(String(l.rate)) || 0,
-      AccountCode: '200', // Default sales account — configurable in future
-      TaxType: 'OUTPUT2', // GST on income (Australia)
+      AccountCode: '200',
     }));
 
     const xeroInvoicePayload: Record<string, unknown> = {
@@ -154,7 +156,21 @@ export default async function handler(req: Request, res: Response) {
     let xeroInvoiceNumber: string;
     let xeroStatus: string;
 
-    console.log('[xero-sync] Sending payload to Xero:', JSON.stringify(xeroInvoicePayload, null, 2));
+    // ── Structured diagnostic log (no tokens / PII) ──────────────────────────
+    console.log('[xero-sync] attempt', JSON.stringify({
+      invoiceId,
+      companyId: profile.companyId,
+      invoiceNumber: invoice.invoice_number,
+      status: invoice.status,
+      hasCustomer: !!(invoice.customer_id || invoice.customer_name),
+      xeroContactId: xeroContactId ? 'present' : 'none',
+      validLineCount: validLines.length,
+      existingXeroId: existingXeroId ? 'present' : 'none',
+      lineAmountTypes: xeroInvoicePayload.LineAmountTypes,
+      accountCode: lineItems[0]?.AccountCode ?? 'none',
+      hasDate: !!xeroInvoicePayload.Date,
+      hasDueDate: !!xeroInvoicePayload.DueDate,
+    }));
 
     if (existingXeroId) {
       // Update existing
