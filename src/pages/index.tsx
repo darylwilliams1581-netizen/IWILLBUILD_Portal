@@ -248,7 +248,7 @@ export default function HomePage() {
         url: `${site}/`,
         logo: {
           '@type': 'ImageObject',
-          url: `${site}/airo-assets/images/logo/primary`,
+          url: `${site}/airo-assets/images/logo/horizontal`,
         },
         sameAs: [
           `${site}/`,
