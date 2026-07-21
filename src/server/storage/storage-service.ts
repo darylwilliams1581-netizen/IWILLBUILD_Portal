@@ -369,6 +369,24 @@ export async function getDownloadStream(
 }
 
 /**
+ * Download a file from storage and return its full contents as a Buffer.
+ * Use for server-side processing (PDF generation, image manipulation, etc.).
+ * For large files prefer getDownloadStream to avoid holding everything in memory.
+ */
+export async function getDownloadBuffer(
+  storageKey: string,
+  bucket: string,
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  const { stream, mimeType } = await activeProvider.getDownloadStream(storageKey, bucket);
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('end', () => resolve({ buffer: Buffer.concat(chunks), mimeType: mimeType ?? 'application/octet-stream' }));
+    stream.on('error', reject);
+  });
+}
+
+/**
  * Delete a file from the active storage provider.
  * Best-effort — does not throw if the file is already gone.
  */

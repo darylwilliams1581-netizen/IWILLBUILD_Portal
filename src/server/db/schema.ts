@@ -269,6 +269,8 @@ export const jobPhotos = mysqlTable('job_photos', {
   imageHeight: int('image_height'),
   uploadedByUserId: varchar('uploaded_by_user_id', { length: 36 }),
   uploadedByName: varchar('uploaded_by_name', { length: 255 }),
+  caption: text('caption'),
+  category: varchar('category', { length: 100 }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

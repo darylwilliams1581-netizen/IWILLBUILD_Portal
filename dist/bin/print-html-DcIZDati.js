@@ -1,1 +1,0 @@
-import{createRequire as i}from"module";const u=i(import.meta.url);function l(r,n=!1){const o=new Blob([r],{type:"text/html;charset=utf-8"}),t=URL.createObjectURL(o),e=window.open(t,"_blank","width=900,height=700");return e?(e.addEventListener("load",()=>{URL.revokeObjectURL(t),n&&(e.focus(),e.print())},{once:!0}),e):(URL.revokeObjectURL(t),null)}export{l as o};

@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Loader2, FileText, ChevronDown, CheckSquare, Square,
-  AlertTriangle, Briefcase, Camera, Check,
+  AlertTriangle, Briefcase, Camera, Check, Download, Tag, LayoutGrid, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,7 +27,10 @@ interface Job {
 interface JobPhoto {
   id: number;
   label: string;
+  caption: string | null;
+  category: string | null;
   thumbUrl: string | null;
+  reportImageUrl: string | null;
   downloadUrl: string;
 }
 
@@ -85,6 +88,16 @@ export default function GenerateJobReportModal({ onClose }: Props) {
   const [jobPhotos, setJobPhotos] = useState<JobPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<number>>(new Set());
+  // Per-photo caption/category overrides (keyed by photo id)
+  const [captions, setCaptions] = useState<Record<number, string>>({});
+  const [categories, setCategories] = useState<Record<number, string>>({});
+  // Which photo is expanded for caption/category editing
+  const [expandedPhotoId, setExpandedPhotoId] = useState<number | null>(null);
+  // PDF layout preference
+  const [pdfLayout, setPdfLayout] = useState<'grid' | 'single'>('grid');
+  // PDF download state
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
   // Load jobs list
   useEffect(() => {
@@ -110,6 +123,15 @@ export default function GenerateJobReportModal({ onClose }: Props) {
         setJobPhotos(photos);
         // Auto-select all by default
         setSelectedPhotoIds(new Set(photos.map(p => p.id)));
+        // Seed caption/category from DB values
+        const initCaptions: Record<number, string> = {};
+        const initCategories: Record<number, string> = {};
+        for (const p of photos) {
+          if (p.caption) initCaptions[p.id] = p.caption;
+          if (p.category) initCategories[p.id] = p.category;
+        }
+        setCaptions(initCaptions);
+        setCategories(initCategories);
       })
       .catch(() => setJobPhotos([]))
       .finally(() => setPhotosLoading(false));
@@ -169,6 +191,51 @@ export default function GenerateJobReportModal({ onClose }: Props) {
       setError('Network error — please try again.');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleGeneratePdf() {
+    if (!selectedJob) { setError('Please select a job.'); return; }
+    if (selectedPhotoIds.size === 0) { setError('Select at least one photo.'); return; }
+
+    setPdfGenerating(true);
+    setPdfBlobUrl(null);
+    setError('');
+    try {
+      const res = await fetch(`/api/jobs/${selectedJob.id}/report/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          photoIds: Array.from(selectedPhotoIds),
+          captions: Object.fromEntries(
+            Object.entries(captions).filter(([, v]) => v.trim())
+          ),
+          categories: Object.fromEntries(
+            Object.entries(categories).filter(([, v]) => v.trim())
+          ),
+          title: `${selectedJob.name} — Site Photos`,
+          layout: pdfLayout,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        setError(d.error ?? 'PDF generation failed.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setPdfBlobUrl(url);
+      // Auto-trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedJob.name.replace(/[^a-zA-Z0-9\s-]/g, '')}-photos.pdf`;
+      a.click();
+      toast.success('Photo report PDF downloaded');
+    } catch {
+      setError('Network error generating PDF — please try again.');
+    } finally {
+      setPdfGenerating(false);
     }
   }
 
@@ -321,26 +388,29 @@ export default function GenerateJobReportModal({ onClose }: Props) {
             {/* Photo picker — shown when Site Photos section is on and a job is selected */}
             {sections.photosLink && selectedJob && (
               <div className="flex flex-col gap-2">
+                {/* Header row */}
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                     <Camera size={12} className="text-slate-400" />
                     Select photos to embed
                   </label>
-                  {jobPhotos.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedPhotoIds.size === jobPhotos.length) {
-                          setSelectedPhotoIds(new Set());
-                        } else {
-                          setSelectedPhotoIds(new Set(jobPhotos.map(p => p.id)));
-                        }
-                      }}
-                      className="text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
-                    >
-                      {selectedPhotoIds.size === jobPhotos.length ? 'Deselect all' : 'Select all'}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {jobPhotos.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedPhotoIds.size === jobPhotos.length) {
+                            setSelectedPhotoIds(new Set());
+                          } else {
+                            setSelectedPhotoIds(new Set(jobPhotos.map(p => p.id)));
+                          }
+                        }}
+                        className="text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+                      >
+                        {selectedPhotoIds.size === jobPhotos.length ? 'Deselect all' : 'Select all'}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {photosLoading ? (
@@ -354,50 +424,114 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                     <p className="text-[10px] text-slate-300">A text reference will be included instead</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-1.5 max-h-52 overflow-y-auto p-1 rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="flex flex-col gap-1 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-1.5">
                     {jobPhotos.map(photo => {
                       const selected = selectedPhotoIds.has(photo.id);
+                      const isExpanded = expandedPhotoId === photo.id;
                       return (
-                        <button
-                          key={photo.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedPhotoIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(photo.id)) next.delete(photo.id);
-                              else next.add(photo.id);
-                              return next;
-                            });
-                          }}
-                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                            selected ? 'border-primary' : 'border-transparent'
-                          }`}
-                        >
-                          {photo.thumbUrl ? (
-                            <img
-                              src={photo.thumbUrl}
-                              alt={photo.label}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-slate-200 flex items-center justify-center">
-                              <Camera size={14} className="text-slate-400" />
+                        <div key={photo.id} className={`rounded-lg border transition-all ${selected ? 'border-primary/40 bg-white' : 'border-transparent bg-slate-100'}`}>
+                          {/* Photo row */}
+                          <div className="flex items-center gap-2 p-1.5">
+                            {/* Thumbnail + select toggle */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPhotoIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(photo.id)) next.delete(photo.id);
+                                  else next.add(photo.id);
+                                  return next;
+                                });
+                              }}
+                              className={`relative w-12 h-12 rounded-md overflow-hidden shrink-0 border-2 transition-all ${selected ? 'border-primary' : 'border-transparent'}`}
+                            >
+                              {photo.thumbUrl ? (
+                                <img src={photo.thumbUrl} alt={photo.label} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                                  <Camera size={14} className="text-slate-400" />
+                                </div>
+                              )}
+                              {selected && (
+                                <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                                  <Check size={8} className="text-white" strokeWidth={3} />
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Label + caption preview */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-semibold text-slate-700 truncate">{photo.label}</p>
+                              {(captions[photo.id] || categories[photo.id]) && (
+                                <p className="text-[9px] text-slate-400 truncate">
+                                  {categories[photo.id] && <span className="text-orange-500 font-semibold">{categories[photo.id]} · </span>}
+                                  {captions[photo.id]}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Expand/edit button */}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedPhotoId(isExpanded ? null : photo.id)}
+                              className={`p-1 rounded transition-colors ${isExpanded ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}
+                              title="Add caption / category"
+                            >
+                              <Tag size={12} />
+                            </button>
+                          </div>
+
+                          {/* Expanded caption/category editor */}
+                          {isExpanded && (
+                            <div className="px-2 pb-2 flex flex-col gap-1.5">
+                              <input
+                                type="text"
+                                value={categories[photo.id] ?? ''}
+                                onChange={e => setCategories(prev => ({ ...prev, [photo.id]: e.target.value }))}
+                                placeholder="Category (e.g. Structural, Electrical, Plumbing…)"
+                                className="w-full px-2 py-1 text-[10px] rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary bg-white"
+                              />
+                              <input
+                                type="text"
+                                value={captions[photo.id] ?? ''}
+                                onChange={e => setCaptions(prev => ({ ...prev, [photo.id]: e.target.value }))}
+                                placeholder="Caption (optional description for this photo)"
+                                className="w-full px-2 py-1 text-[10px] rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary bg-white"
+                              />
                             </div>
                           )}
-                          {selected && (
-                            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                              <Check size={9} className="text-white" strokeWidth={3} />
-                            </div>
-                          )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
                 )}
+
+                {/* Layout + count row */}
                 {jobPhotos.length > 0 && (
-                  <p className="text-[10px] text-slate-400">
-                    {selectedPhotoIds.size} of {jobPhotos.length} photos selected — embedded 2 per row
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-slate-400">
+                      {selectedPhotoIds.size} of {jobPhotos.length} selected
+                    </p>
+                    {/* PDF layout toggle */}
+                    <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setPdfLayout('grid')}
+                        title="2-up grid layout"
+                        className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold transition-colors ${pdfLayout === 'grid' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        <LayoutGrid size={10} /> Grid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPdfLayout('single')}
+                        title="One photo per page"
+                        className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold transition-colors ${pdfLayout === 'single' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        <List size={10} /> Single
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -428,26 +562,44 @@ export default function GenerateJobReportModal({ onClose }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-2 px-5 py-4 border-t border-slate-100 bg-slate-50/60 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleGenerate()}
-              disabled={generating || !selectedJob}
-              className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {generating ? (
-                <><Loader2 size={14} className="animate-spin" />Generating…</>
-              ) : (
-                <><FileText size={14} />Generate Report</>
-              )}
-            </button>
+          <div className="flex flex-col gap-2 px-5 py-4 border-t border-slate-100 bg-slate-50/60 shrink-0">
+            {/* PDF download row — shown when photos are selected */}
+            {sections.photosLink && selectedJob && selectedPhotoIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleGeneratePdf()}
+                disabled={pdfGenerating}
+                className="w-full py-2 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {pdfGenerating ? (
+                  <><Loader2 size={13} className="animate-spin" />Building PDF…</>
+                ) : (
+                  <><Download size={13} />Download Photo Report PDF ({selectedPhotoIds.size} photo{selectedPhotoIds.size !== 1 ? 's' : ''})</>
+                )}
+              </button>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                disabled={generating || !selectedJob}
+                className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {generating ? (
+                  <><Loader2 size={14} className="animate-spin" />Generating…</>
+                ) : (
+                  <><FileText size={14} />Generate Report</>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>

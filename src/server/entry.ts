@@ -404,6 +404,8 @@ import jobs_id_notes_export_csv_get_323 from "./api/jobs/[id]/notes/export-csv/G
 import jobs_id_photos_get_324 from "./api/jobs/[id]/photos/GET";
 import jobs_id_photos_post_325 from "./api/jobs/[id]/photos/POST";
 import jobs_id_photos_picker_get from "./api/jobs/[id]/photos/picker/GET";
+import jobs_id_photos_report_image_get from "./api/jobs/[id]/photos/[photoId]/report-image/GET";
+import jobs_id_report_pdf_post from "./api/jobs/[id]/report/pdf/POST";
 import jobs_id_photos_export_zip_post_326 from "./api/jobs/[id]/photos/export-zip/POST";
 import jobs_id_photos_share_post_327 from "./api/jobs/[id]/photos/share/POST";
 import jobs_id_photos_photoId_delete_328 from "./api/jobs/[id]/photos/[photoId]/DELETE";
@@ -1281,6 +1283,8 @@ async function runStartupMigrations() {
     { table: 'profiles', column: 'emergency_contact_phone',definition: 'VARCHAR(50) NULL' },
     { table: 'profiles', column: 'profile_attachments',    definition: 'TEXT NULL' },
     // ── job_photos: thumbnail + preview + dimensions (v2) ────────────────────
+    { table: 'job_photos', column: 'caption',               definition: 'TEXT NULL' },
+    { table: 'job_photos', column: 'category',              definition: 'VARCHAR(100) NULL' },
     { table: 'job_photos', column: 'thumbnail_key',         definition: 'VARCHAR(255) NULL' },
     { table: 'job_photos', column: 'thumbnail_mime_type',   definition: 'VARCHAR(100) NULL' },
     { table: 'job_photos', column: 'thumbnail_size_bytes',  definition: 'INT NULL' },
@@ -2633,6 +2637,8 @@ app.get("/api/jobs/:id/notes/export-csv", jobs_id_notes_export_csv_get_323);
 app.get("/api/jobs/:id/photos", jobs_id_photos_get_324);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post_325);
 app.get("/api/jobs/:id/photos/picker", jobs_id_photos_picker_get);
+app.get("/api/jobs/:id/photos/:photoId/report-image", jobs_id_photos_report_image_get);
+app.post("/api/jobs/:id/report/pdf", jobs_id_report_pdf_post);
 app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post_326);
 app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post_327);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_328);
