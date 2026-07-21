@@ -118,6 +118,23 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'safety_badge_row', label: 'PPE Required', icon: Shield, description: 'Full PPE required — all 9 standard badges',
+        factory: () => ({
+          id: newId(), type: 'safety_badge_row', size: 'md', align: 'center',
+          badges: [
+            { id: newId(), badgeType: 'helmet',            label: 'Safety Helmet',      required: true },
+            { id: newId(), badgeType: 'hi_vis',            label: 'Hi-Vis Clothing',    required: true },
+            { id: newId(), badgeType: 'footwear',          label: 'Safety Footwear',    required: true },
+            { id: newId(), badgeType: 'eye_protection',    label: 'Eye Protection',     required: true },
+            { id: newId(), badgeType: 'gloves',            label: 'Gloves',             required: true },
+            { id: newId(), badgeType: 'hearing',           label: 'Hearing Protection', required: true },
+            { id: newId(), badgeType: 'fall_arrest',       label: 'Fall Arrest',        required: true },
+            { id: newId(), badgeType: 'ppe',               label: 'PPE',                required: true },
+            { id: newId(), badgeType: 'electrical_gloves', label: 'Electrical Gloves',  required: true },
+          ],
+        }),
+      },
+      {
         type: 'risk_matrix', label: 'Risk Matrix', icon: BarChart2, description: '5×5 AS/NZS risk rating matrix',
         factory: () => ({
           id: newId(), type: 'risk_matrix',
