@@ -122,14 +122,13 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Step 2: Build Xero Invoice payload ───────────────────────────────────
-    // TaxType intentionally omitted — Xero derives it from AccountCode.
-    // Hardcoding OUTPUT2 caused 400/422 on orgs without that tax rate configured.
-    // AccountCode '200' is the standard Xero AU/NZ "Sales" account.
+    // AccountCode and TaxType intentionally omitted — hardcoding '200'/OUTPUT2
+    // fails on orgs where those codes don't exist. Xero will use the org's
+    // default sales account and tax rate when these fields are absent.
     const lineItems = validLines.map((l) => ({
       Description: l.description,
       Quantity: parseFloat(String(l.quantity)) || 1,
       UnitAmount: parseFloat(String(l.rate)) || 0,
-      AccountCode: '200',
     }));
 
     // LineAmountTypes intentionally omitted — Xero rejects both EXCLUSIVE and INCLUSIVE
@@ -167,8 +166,8 @@ export default async function handler(req: Request, res: Response) {
       xeroContactId: xeroContactId ? 'present' : 'none',
       validLineCount: validLines.length,
       existingXeroId: existingXeroId ? 'present' : 'none',
-      lineAmountTypes: 'omitted', // omitted so Xero uses org default
-      accountCode: lineItems[0]?.AccountCode ?? 'none',
+      lineAmountTypes: 'omitted',
+      accountCode: 'omitted',
       hasDate: !!xeroInvoicePayload.Date,
       hasDueDate: !!xeroInvoicePayload.DueDate,
     }));
