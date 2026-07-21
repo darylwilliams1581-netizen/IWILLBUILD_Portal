@@ -813,7 +813,7 @@ export default function JobSitePrestartPage() {
             <button
               onClick={() => {
                 if (view === 'form' || view === 'new') setView('list');
-                else navigate(`/jobs/${jobId}`);
+                else navigate('/home');
               }}
               className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
             >
