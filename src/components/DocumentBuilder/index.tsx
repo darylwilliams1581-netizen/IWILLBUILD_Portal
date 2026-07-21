@@ -7,7 +7,7 @@
  * Underlying block engine is unchanged — PDF export, logic, fields all work.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Save, Undo2, Redo2, Eye, Loader2, CheckCircle,
@@ -788,7 +788,30 @@ function RibbonInsertBtn({ icon, label, onClick, primary = false, accent }: {
 function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => void }) {
   const [size, setSize]   = useState<'small' | 'medium' | 'large' | 'full'>('medium');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const SIZE_LABELS = { small: 'Small', medium: 'Medium', large: 'Large', full: 'Full width' };
+
+  const handleFileInsert = async (file: File) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('name', file.name);
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      const data = await res.json() as { file?: { id: number }; error?: string };
+      if (!res.ok || !data.file?.id) throw new Error(data.error ?? 'Upload failed');
+      const src = ['/api/files', String(data.file.id), 'download'].join('/') + '?inline=1';
+      onInsert({ id: nanoid(10), type: 'image', src, alt: file.name.replace(/\.[^.]+$/, ''), size, align, preserveAspectRatio: true });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="mx-1 mb-1 rounded-lg border border-slate-200 bg-slate-50 p-2 flex flex-col gap-2">
       <div>
@@ -813,10 +836,21 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
           ))}
         </div>
       </div>
-      <button onClick={() => onInsert({ id: nanoid(10), type: 'image', src: '', alt: '', size, align, preserveAspectRatio: true })}
-        className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5">
-        <Image size={11} /> Insert image
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Image size={11} /> {uploading ? 'Uploading…' : 'Insert image'}
       </button>
+      {uploadError && <p className="text-[10px] text-red-500">{uploadError}</p>}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileInsert(f); e.target.value = ''; }}
+      />
     </div>
   );
 }
