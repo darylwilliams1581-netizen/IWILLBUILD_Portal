@@ -62,16 +62,33 @@ export default async function handler(req: Request, res: Response) {
     if (pdfSettingsJson !== null) setParts.push(`pdf_settings_json = ${JSON.stringify(pdfSettingsJson)}`);
     if (name?.trim()) setParts.push(`name = ${JSON.stringify(name.trim())}`);
     if (templateType) setParts.push(`template_type = ${JSON.stringify(templateType)}`);
-    if (docKind) setParts.push(`doc_kind = ${JSON.stringify(docKind)}`);
-    if (requiresAcknowledgement !== undefined) setParts.push(`requires_acknowledgement = ${requiresAcknowledgement ? 1 : 0}`);
-    if (acknowledgementLabel !== undefined) setParts.push(`acknowledgement_label = ${JSON.stringify(acknowledgementLabel)}`);
-    if (acknowledgementText !== undefined) setParts.push(`acknowledgement_text = ${JSON.stringify(acknowledgementText)}`);
-    if (submitLabel !== undefined) setParts.push(`submit_label = ${JSON.stringify(submitLabel)}`);
-    if (requiresSignature !== undefined) setParts.push(`requires_signature = ${requiresSignature ? 1 : 0}`);
 
-    await db.execute(sql.raw(
-      `UPDATE document_templates SET ${setParts.join(', ')} WHERE id = ${id} AND company_id = ${profile.companyId}`
-    ));
+    // Newer columns — only added if they exist on the DB (colsToEnsure adds them on startup)
+    const newerParts: string[] = [];
+    if (docKind) newerParts.push(`doc_kind = ${JSON.stringify(docKind)}`);
+    if (requiresAcknowledgement !== undefined) newerParts.push(`requires_acknowledgement = ${requiresAcknowledgement ? 1 : 0}`);
+    if (acknowledgementLabel !== undefined) newerParts.push(`acknowledgement_label = ${JSON.stringify(acknowledgementLabel)}`);
+    if (acknowledgementText !== undefined) newerParts.push(`acknowledgement_text = ${JSON.stringify(acknowledgementText)}`);
+    if (submitLabel !== undefined) newerParts.push(`submit_label = ${JSON.stringify(submitLabel)}`);
+    if (requiresSignature !== undefined) newerParts.push(`requires_signature = ${requiresSignature ? 1 : 0}`);
+
+    const runUpdate = async (parts: string[]) =>
+      db.execute(sql.raw(
+        `UPDATE document_templates SET ${parts.join(', ')} WHERE id = ${id} AND company_id = ${profile.companyId}`
+      ));
+
+    try {
+      await runUpdate([...setParts, ...newerParts]);
+    } catch (updateErr: unknown) {
+      const msg = String((updateErr as Error)?.message ?? updateErr);
+      if ((msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) && newerParts.length > 0) {
+        // Newer columns don't exist yet on this DB — save core fields only
+        console.warn('[document-templates PUT] Newer columns missing — saving core fields only. Redeploy to apply migrations.');
+        await runUpdate(setParts);
+      } else {
+        throw updateErr;
+      }
+    }
 
     return res.json({ ok: true });
   } catch (err) {

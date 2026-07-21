@@ -54,17 +54,38 @@ export default async function handler(req: Request, res: Response) {
     const subLabel = submitLabel ?? 'Submit Form';
     const reqSig = requiresSignature ? 1 : 0;
 
-    const [result] = await db.execute(sql.raw(
-      `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json,
-        doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text, submit_label, requires_signature,
-        is_active, created_by_user_id)
-       VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)},
-        ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'},
-        ${JSON.stringify(kind)}, ${reqAck}, ${JSON.stringify(ackLabel)}, ${JSON.stringify(ackText)}, ${JSON.stringify(subLabel)}, ${reqSig},
-        1, ${JSON.stringify(session.user.id)})`
-    )) as unknown as [{ insertId: number }, unknown];
+    // Try full INSERT with newer columns first; fall back to core columns if they don't exist yet
+    let insertId: number;
+    try {
+      const [result] = await db.execute(sql.raw(
+        `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json,
+          doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text, submit_label, requires_signature,
+          is_active, created_by_user_id)
+         VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)},
+          ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'},
+          ${JSON.stringify(kind)}, ${reqAck}, ${JSON.stringify(ackLabel)}, ${JSON.stringify(ackText)}, ${JSON.stringify(subLabel)}, ${reqSig},
+          1, ${JSON.stringify(session.user.id)})`
+      )) as unknown as [{ insertId: number }, unknown];
+      insertId = result.insertId;
+    } catch (insertErr: unknown) {
+      const msg = String((insertErr as Error)?.message ?? insertErr);
+      if (msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) {
+        // Newer columns don't exist yet — insert core fields only (DB defaults cover the rest)
+        console.warn('[document-templates POST] Newer columns missing — inserting core fields only. Redeploy to apply migrations.');
+        const [result] = await db.execute(sql.raw(
+          `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json,
+            is_active, created_by_user_id)
+           VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)},
+            ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)},
+            1, ${JSON.stringify(session.user.id)})`
+        )) as unknown as [{ insertId: number }, unknown];
+        insertId = result.insertId;
+      } else {
+        throw insertErr;
+      }
+    }
 
-    return res.status(201).json({ id: result.insertId, ok: true });
+    return res.status(201).json({ id: insertId, ok: true });
   } catch (err) {
     console.error('POST /api/document-templates error:', err);
     return res.status(500).json({ error: 'Failed to create document template' });
