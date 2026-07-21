@@ -154,6 +154,8 @@ export default async function handler(req: Request, res: Response) {
     let xeroInvoiceNumber: string;
     let xeroStatus: string;
 
+    console.log('[xero-sync] Sending payload to Xero:', JSON.stringify(xeroInvoicePayload, null, 2));
+
     if (existingXeroId) {
       // Update existing
       xeroInvoicePayload.InvoiceID = existingXeroId;
@@ -209,7 +211,31 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Xero is not connected. Connect in Settings → Accounting.' });
     }
     if (err instanceof XeroApiError) {
-      return res.status(502).json({ error: `Xero API error: ${err.message}` });
+      // Try to extract a human-readable message from Xero's JSON error body
+      // Xero returns: { Elements: [{ ValidationErrors: [{ Message: "..." }] }] }
+      // or: { Message: "...", Detail: "..." }
+      let userMessage = `Xero rejected the invoice (HTTP ${err.status})`;
+      try {
+        const parsed = JSON.parse(err.body) as Record<string, unknown>;
+        // Validation errors on invoice elements
+        const elements = parsed.Elements as Array<{ ValidationErrors?: Array<{ Message: string }> }> | undefined;
+        const firstValidation = elements?.[0]?.ValidationErrors?.[0]?.Message;
+        if (firstValidation) {
+          userMessage = `Xero validation error: ${firstValidation}`;
+        } else if (typeof parsed.Message === 'string' && parsed.Message) {
+          userMessage = `Xero error: ${parsed.Message}`;
+          if (typeof parsed.Detail === 'string' && parsed.Detail) {
+            userMessage += ` — ${parsed.Detail}`;
+          }
+        } else if (typeof parsed.Detail === 'string' && parsed.Detail) {
+          userMessage = `Xero error: ${parsed.Detail}`;
+        }
+      } catch {
+        // Body wasn't JSON — use raw text (truncated)
+        userMessage = `Xero error (HTTP ${err.status}): ${err.body.substring(0, 200)}`;
+      }
+      console.error('POST /api/integrations/xero/sync-invoice XeroApiError:', err.status, err.body);
+      return res.status(502).json({ error: userMessage });
     }
     console.error('POST /api/integrations/xero/sync-invoice error:', err);
     res.status(500).json({ error: 'Failed to sync invoice to Xero' });
