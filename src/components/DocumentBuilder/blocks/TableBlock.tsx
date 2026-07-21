@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDocumentStore, newId } from '../useDocumentStore';
 import type { TableBlock, TableColumn, TableRow } from '../types';
+import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
   block: TableBlock;
@@ -88,7 +89,7 @@ export default function TableBlockView({ block, columnsBlockId, columnId }: Prop
                         update({ columns: newCols });
                       }}
                       className="outline-none cursor-text min-w-[40px] pr-10"
-                      dangerouslySetInnerHTML={{ __html: col.header }}
+                      dangerouslySetInnerHTML={{ __html: sanitiseHtml(col.header) }}
                     />
 
                     {/* Per-column controls — shown on hover */}
@@ -159,7 +160,7 @@ export default function TableBlockView({ block, columnsBlockId, columnId }: Prop
                           update({ rows: newRows });
                         }}
                         className="outline-none cursor-text min-h-[1em] min-w-[40px]"
-                        dangerouslySetInnerHTML={{ __html: row.cells[col.id] ?? '' }}
+                        dangerouslySetInnerHTML={{ __html: sanitiseHtml(row.cells[col.id] ?? '') }}
                       />
                     </td>
                   ))}
@@ -222,7 +223,7 @@ export default function TableBlockView({ block, columnsBlockId, columnId }: Prop
                       placeholder="—"
                     />
                   ) : (
-                    <span dangerouslySetInnerHTML={{ __html: row.cells[col.id] || '<span style="color:#cbd5e1">—</span>' }} />
+                    <span dangerouslySetInnerHTML={{ __html: sanitiseHtml(row.cells[col.id] || '<span style="color:#cbd5e1">—</span>') }} />
                   )}
                 </td>
               ))}

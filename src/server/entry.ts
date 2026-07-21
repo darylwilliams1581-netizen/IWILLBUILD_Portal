@@ -892,18 +892,18 @@ applyWriteGate(app);
 async function runStartupMigrations() {
   // 1. Ensure company_settings table exists
   try {
-    await db.execute(sql.raw(
-      "CREATE TABLE IF NOT EXISTS company_settings (" +
-      "  id             INT AUTO_INCREMENT PRIMARY KEY," +
-      "  company_id     INT NOT NULL UNIQUE," +
-      "  structure_json LONGTEXT NULL," +
-      "  dazza_json     LONGTEXT NULL," +
-      "  banner_json    LONGTEXT NULL," +
-      "  pdf_json       LONGTEXT NULL," +
-      "  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-      "  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
-      ")"
-    ));
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS company_settings (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        company_id     INT NOT NULL UNIQUE,
+        structure_json LONGTEXT NULL,
+        dazza_json     LONGTEXT NULL,
+        banner_json    LONGTEXT NULL,
+        pdf_json       LONGTEXT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
     console.log('[startup-migration] company_settings table ready');
   } catch (e: unknown) {
     const msg = String((e as Error)?.message ?? e);
@@ -915,21 +915,21 @@ async function runStartupMigrations() {
 
   // 1b. Ensure notifications table exists (must be before column migrations below)
   try {
-    await db.execute(sql.raw(
-      "CREATE TABLE IF NOT EXISTS notifications (" +
-      "  id          INT AUTO_INCREMENT PRIMARY KEY," +
-      "  company_id  INT NOT NULL," +
-      "  user_id     VARCHAR(36) NOT NULL," +
-      "  type        VARCHAR(60) NOT NULL," +
-      "  title       VARCHAR(255) NOT NULL," +
-      "  body        TEXT NULL," +
-      "  link        VARCHAR(500) NULL," +
-      "  is_read     TINYINT(1) NOT NULL DEFAULT 0," +
-      "  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-      "  INDEX idx_company_user (company_id, user_id)," +
-      "  INDEX idx_user_read (user_id, is_read)" +
-      ")"
-    ));
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        company_id  INT NOT NULL,
+        user_id     VARCHAR(36) NOT NULL,
+        type        VARCHAR(60) NOT NULL,
+        title       VARCHAR(255) NOT NULL,
+        body        TEXT NULL,
+        link        VARCHAR(500) NULL,
+        is_read     TINYINT(1) NOT NULL DEFAULT 0,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_company_user (company_id, user_id),
+        INDEX idx_user_read (user_id, is_read)
+      )
+    `);
     console.log('[startup-migration] notifications table ready');
   } catch (e: unknown) {
     const msg = String((e as Error)?.message ?? e);
@@ -941,26 +941,26 @@ async function runStartupMigrations() {
   // 1c. Ensure platform_activity_log exists BEFORE colsToEnsure runs so the
   //     column-healing loop can add any missing columns on older DBs.
   try {
-    await db.execute(sql.raw(
-      "CREATE TABLE IF NOT EXISTS platform_activity_log (" +
-      "  id INT AUTO_INCREMENT PRIMARY KEY," +
-      "  event_type VARCHAR(60) NOT NULL DEFAULT ''," +
-      "  success TINYINT(1) NOT NULL DEFAULT 1," +
-      "  user_id VARCHAR(36) NULL," +
-      "  email VARCHAR(255) NULL," +
-      "  company_id INT NULL," +
-      "  performed_by_user_id VARCHAR(36) NULL," +
-      "  ip_address VARCHAR(100) NULL," +
-      "  user_agent VARCHAR(500) NULL," +
-      "  reason VARCHAR(500) NULL," +
-      "  metadata_json TEXT NULL," +
-      "  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-      "  INDEX idx_company (company_id)," +
-      "  INDEX idx_user (user_id)," +
-      "  INDEX idx_event (event_type)," +
-      "  INDEX idx_created (created_at)" +
-      ")"
-    ));
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS platform_activity_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_type VARCHAR(60) NOT NULL DEFAULT '',
+        success TINYINT(1) NOT NULL DEFAULT 1,
+        user_id VARCHAR(36) NULL,
+        email VARCHAR(255) NULL,
+        company_id INT NULL,
+        performed_by_user_id VARCHAR(36) NULL,
+        ip_address VARCHAR(100) NULL,
+        user_agent VARCHAR(500) NULL,
+        reason VARCHAR(500) NULL,
+        metadata_json TEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_company (company_id),
+        INDEX idx_user (user_id),
+        INDEX idx_event (event_type),
+        INDEX idx_created (created_at)
+      )
+    `);
     console.log('[startup-migration] platform_activity_log table ready');
   } catch (e: unknown) {
     const msg = String((e as Error)?.message ?? e);
@@ -972,26 +972,26 @@ async function runStartupMigrations() {
   // 1d. Ensure document_templates exists — explicit early-create so it is
   //     guaranteed on prod DBs that predate the safetyTables loop entry.
   try {
-    await db.execute(sql.raw(
-      "CREATE TABLE IF NOT EXISTS document_templates (" +
-      "  id INT AUTO_INCREMENT PRIMARY KEY," +
-      "  company_id INT NOT NULL," +
-      "  name VARCHAR(255) NOT NULL," +
-      "  template_type VARCHAR(50) NOT NULL DEFAULT 'document'," +
-      "  builder_json LONGTEXT NULL," +
-      "  page_layout_json TEXT NULL," +
-      "  theme_json TEXT NULL," +
-      "  source_docx_path VARCHAR(500) NULL," +
-      "  source_docx_name VARCHAR(255) NULL," +
-      "  is_active TINYINT(1) NOT NULL DEFAULT 1," +
-      "  created_by_user_id VARCHAR(36) NULL," +
-      "  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-      "  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
-      "  INDEX idx_company (company_id)," +
-      "  INDEX idx_type (company_id, template_type)," +
-      "  INDEX idx_active (company_id, is_active)" +
-      ")"
-    ));
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS document_templates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        template_type VARCHAR(50) NOT NULL DEFAULT 'document',
+        builder_json LONGTEXT NULL,
+        page_layout_json TEXT NULL,
+        theme_json TEXT NULL,
+        source_docx_path VARCHAR(500) NULL,
+        source_docx_name VARCHAR(255) NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_by_user_id VARCHAR(36) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_company (company_id),
+        INDEX idx_type (company_id, template_type),
+        INDEX idx_active (company_id, is_active)
+      )
+    `);
     console.log('[startup-migration] document_templates table ready');
   } catch (e: unknown) {
     const msg = String((e as Error)?.message ?? e);
@@ -1262,7 +1262,8 @@ async function runStartupMigrations() {
       ) as unknown as [Array<{ cnt: number }>, unknown];
       const exists = Number(checkRows?.[0]?.cnt ?? 0) > 0;
       if (!exists) {
-        await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+        const query = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
+        await db.execute(sql.raw(query));
         console.log(`[startup-migration] Added ${table}.${column}`);
       }
     } catch (e: unknown) {
@@ -1308,7 +1309,8 @@ async function runStartupMigrations() {
       if (Number(idxRows?.[0]?.cnt ?? 0) > 0) continue;
 
       const indexType = unique ? 'UNIQUE INDEX' : 'INDEX';
-      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD ${indexType} \`${indexName}\` ${columns}`));
+      const query = `ALTER TABLE \`${table}\` ADD ${indexType} \`${indexName}\` ${columns}`;
+      await db.execute(sql.raw(query));
       console.log(`[startup-migration] Added ${unique ? 'unique ' : ''}index ${indexName} on ${table}`);
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
@@ -1749,7 +1751,7 @@ async function runStartupMigrations() {
   const devPlanEmails = ['darylwilliams1581@gmail.com'];
   for (const email of devPlanEmails) {
     try {
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE companies c
         SET c.plan = 'owner',
             c.subscription_status = 'active',
@@ -1757,10 +1759,10 @@ async function runStartupMigrations() {
         WHERE c.id IN (
           SELECT p.company_id FROM profiles p
           INNER JOIN \`user\` u ON u.id = p.user_id
-          WHERE LOWER(u.email) = LOWER('${email.replace(/'/g, "''")}')
+          WHERE LOWER(u.email) = LOWER(${email})
         )
         AND (c.plan != 'owner' OR c.subscription_status != 'active')
-      `));
+      `);
       console.log(`[startup-migration] Developer plan ensured for ${email}`);
     } catch (e: unknown) {
       console.warn(`[startup-migration] Developer plan fix failed for ${email}:`, String((e as Error)?.message ?? e));

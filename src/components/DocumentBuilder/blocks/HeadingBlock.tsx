@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useDocumentStore } from '../useDocumentStore';
 import type { HeadingBlock } from '../types';
+import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
   block: HeadingBlock;
@@ -40,7 +41,7 @@ export default function HeadingBlockView({ block, columnsBlockId, columnId }: Pr
         onBlur={(e) => update({ content: e.currentTarget.textContent ?? '' })}
         className={`${sizeClass} ${alignClass} outline-none py-1 min-h-[1.5em] cursor-text`}
         style={{ color: block.color ?? 'inherit' }}
-        dangerouslySetInnerHTML={{ __html: block.content }}
+        dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.content) }}
       />
     );
   }

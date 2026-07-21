@@ -192,7 +192,7 @@ export default function Header() {
         </nav>
 
         {/* ── Desktop CTAs ── */}
-        <div className="hidden md:flex" style={{ display: 'none', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <Link
             to="/login"
             style={{

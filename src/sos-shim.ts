@@ -439,12 +439,19 @@ const STALE_TS_SHIM = [
   '1784940000000',
   '1784950000000',
   '1784960000000',
+  '1784970000000', // cover July 21 2026 evening edits
+  '1784980000000',
+  '1784990000000',
+  '1785000000000', // cover July 22 2026
+  '1785010000000',
+  '1785020000000',
+  '1785030000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784900000003';
+const SOS_SHIM_VERSION = '1784900000004'; // bumped 2026-07-21 to reset stale reload counters
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 30_000;  // 30s window — stale shim persists across fast reloads
 const SOS_SHIM_MAX_RELOADS = 12;    // allow more reloads to fully evict the stale module

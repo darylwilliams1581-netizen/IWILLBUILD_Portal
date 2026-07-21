@@ -1,5 +1,6 @@
 import { useDocumentStore } from '../useDocumentStore';
 import type { TextBlock } from '../types';
+import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
   block: TextBlock;
@@ -41,7 +42,7 @@ export default function TextBlockView({ block, columnsBlockId, columnId }: Props
         onBlur={(e) => update({ content: e.currentTarget.textContent ?? '' })}
         className={`${sizeClass} ${alignClass} outline-none py-1 min-h-[1.5em] cursor-text leading-relaxed`}
         style={style}
-        dangerouslySetInnerHTML={{ __html: block.content }}
+        dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.content) }}
       />
     );
   }

@@ -1,6 +1,7 @@
 import { AlertTriangle, Info, CheckCircle, ShieldAlert, Shield, AlertOctagon, ImageIcon } from 'lucide-react';
 import { useDocumentStore } from '../useDocumentStore';
 import type { BannerBlock, BannerVariant } from '../types';
+import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
   block: BannerBlock;
@@ -73,7 +74,7 @@ function SafetyFirstBanner({ block, update }: { block: BannerBlock; update: (p: 
               cursor: 'text',
               minWidth: 40,
             }}
-            dangerouslySetInnerHTML={{ __html: block.title }}
+            dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.title) }}
           />
         ) : (
           <p
@@ -111,7 +112,7 @@ function SafetyFirstBanner({ block, update }: { block: BannerBlock; update: (p: 
               cursor: 'text',
               minWidth: 40,
             }}
-            dangerouslySetInnerHTML={{ __html: block.body }}
+            dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.body ?? '') }}
           />
         ) : (
           block.body && (
@@ -202,7 +203,7 @@ function FirstAidBanner({ block, update }: { block: BannerBlock; update: (p: Par
               outline: 'none',
               cursor: 'text',
             }}
-            dangerouslySetInnerHTML={{ __html: block.title }}
+            dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.title) }}
           />
         ) : (
           <p style={{
@@ -235,7 +236,7 @@ function FirstAidBanner({ block, update }: { block: BannerBlock; update: (p: Par
               outline: 'none',
               cursor: 'text',
             }}
-            dangerouslySetInnerHTML={{ __html: block.body }}
+            dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.body ?? '') }}
           />
         ) : (
           block.body && (
@@ -344,14 +345,14 @@ export default function BannerBlockView({ block, columnsBlockId, columnId }: Pro
                 suppressContentEditableWarning
                 onBlur={(e) => update({ title: e.currentTarget.textContent ?? '' })}
                 className={`${sizeStyle.titleSize} font-bold text-slate-800 outline-none cursor-text`}
-                dangerouslySetInnerHTML={{ __html: block.title }}
+                dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.title) }}
               />
               <div
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => update({ body: e.currentTarget.textContent ?? '' })}
                 className={`${sizeStyle.bodySize} text-slate-600 mt-0.5 outline-none cursor-text`}
-                dangerouslySetInnerHTML={{ __html: block.body }}
+                dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.body ?? '') }}
               />
             </>
           ) : (

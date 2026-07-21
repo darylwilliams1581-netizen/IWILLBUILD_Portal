@@ -292,9 +292,16 @@ export default function LoginPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117]">
       <Helmet>
         <title>Sign In — IWILLBUILD Portal</title>
-        <meta name="description" content="Sign in to the IWILLBUILD internal portal to manage jobs, crews, fleet, and more." />
+        <meta name="description" content="Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more." />
         <link rel="canonical" href="https://iwillbuild.com/login" />
         <meta name="robots" content="noindex" />
+        <meta property="og:title" content="Sign In — IWILLBUILD Portal" />
+        <meta property="og:description" content="Sign in to manage your construction jobs, fleet, safety docs and team." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/login" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       {/* Forced password change modal */}
