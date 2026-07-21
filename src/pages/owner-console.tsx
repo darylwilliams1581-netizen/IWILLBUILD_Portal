@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   RefreshCw, Shield, ChevronRight, Activity, Loader2,
-  ShieldCheck, FileText, ClipboardList,  CheckCircle2, XCircle, ChevronDown, ExternalLink,
+  ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink,
   ShieldAlert, X, Bot,
   Mail, BarChart2, StickyNote, Receipt,
   Send, Ban, RotateCcw, Server, AlertCircle,
   Play, Info, Clock, Copy, Check, Plus, Database,
+  Settings, Users, Building2, LogOut,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
