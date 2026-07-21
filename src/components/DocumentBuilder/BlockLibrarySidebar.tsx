@@ -45,6 +45,10 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'risk_matrix_banner', label: 'Risk Matrix Banner', icon: BarChart2, description: 'Compact risk level strip — drop at top of any document',
+        factory: () => ({ id: newId(), type: 'risk_matrix_banner' }),
+      },
+      {
         type: 'risk_matrix', label: 'Risk Assessment', icon: BarChart2, description: 'AS/NZS risk matrix — likelihood, level & degree of risk',
         factory: () => ({
           id: newId(), type: 'risk_matrix',

@@ -365,6 +365,10 @@ export interface RiskMatrixBlock extends BlockBase {
   showLegend: boolean;
   showOnExport: boolean;
 }
+
+export interface RiskMatrixBannerBlock extends BlockBase {
+  type: 'risk_matrix_banner';
+}
 export type BannerSize = 'compact' | 'standard' | 'large';
 
 export interface BannerBlock extends BlockBase {
@@ -523,6 +527,7 @@ export type DocumentBlock =
   | BannerBlock
   | SafetyBadgeRowBlock
   | RiskMatrixBlock
+  | RiskMatrixBannerBlock
   | TableBlock
   | ImageBlock
   | FieldBlock

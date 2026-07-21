@@ -615,6 +615,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                     <RibbonGroup label="Safety Images">
                       <RibbonInsertBtn icon={<ShieldCheck size={12} />} label="PPE Banner"      accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:"image", src:"/airo-assets/images/safety-badges/ppe-banner-strip",      alt:"PPE Required", size:"full", align:"center", preserveAspectRatio:true })} />
                       <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Assessment" accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix", title:"Risk Assessment Matrix", showLegend:true, showOnExport:true })} />
+                      <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Matrix Banner" accent="amber"  onClick={() => appendBlock({ id:nanoid(10), type:"risk_matrix_banner" })} />
                     </RibbonGroup>
                     <RibbonGroup label="Image">
                       <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
