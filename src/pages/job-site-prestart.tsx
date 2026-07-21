@@ -1165,11 +1165,11 @@ export default function JobSitePrestartPage() {
                     </select>
                   </Field>
                 </div>
-                {/* Delays Recorded — Yes / No toggle */}
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-slate-300">Delays Recorded Today</p>
+                {/* Delays — single Yes/No question only */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-300">Any delays recorded in Delay Register?</p>
                   <div className="flex gap-2">
-                    {[{ label: 'No', value: false }, { label: 'Yes', value: true }].map(opt => (
+                    {([{ label: 'No', value: false }, { label: 'Yes', value: true }] as const).map(opt => (
                       <button
                         key={String(opt.value)}
                         type="button"
@@ -1187,37 +1187,6 @@ export default function JobSitePrestartPage() {
                       </button>
                     ))}
                   </div>
-
-                  {prestart.weather_delay && (
-                    <div className="space-y-2">
-                      {/* Existing delays summary */}
-                      {delays.length > 0 && (
-                        <div className="rounded-xl bg-slate-700/50 border border-slate-600 divide-y divide-slate-600/50">
-                          {delays.map(d => (
-                            <div key={d.id} className="flex items-center gap-3 px-3 py-2.5">
-                              <CalendarDays size={13} className="text-orange-400 shrink-0" />
-                              <span className="text-xs text-slate-200 flex-1 leading-snug">{d.reason}</span>
-                              <span className="text-xs font-bold text-orange-400 shrink-0">
-                                {parseFloat(String(d.days))} {parseFloat(String(d.days)) === 1 ? 'day' : 'days'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Log / view delays button */}
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() => setDelayModalOpen(true)}
-                          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-orange-500/60 text-orange-400 text-xs font-semibold hover:bg-orange-500/10 transition-colors"
-                        >
-                          <Plus size={14} />
-                          {delays.length === 0 ? 'Log a Delay' : 'Add Another Delay'}
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               </Section>
 
