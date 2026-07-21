@@ -59,6 +59,40 @@ export const driver: {
   COST_CATEGORIES: Array<{ value: string; label: string; id: string }>;
 } = { COST_CATEGORIES: [] };
 
+export const job_risky: {
+  HAZARD_OPTIONS: string[];
+  PERMIT_TYPE_OPTIONS: string[];
+} = {
+  HAZARD_OPTIONS: [
+    'Working at heights', 'Electrical hazards', 'Confined space', 'Hot work / welding',
+    'Hazardous chemicals', 'Heavy machinery', 'Excavation / trenching', 'Overhead work',
+    'Slips, trips and falls', 'Manual handling', 'Noise exposure', 'UV / sun exposure',
+    'Traffic management', 'Asbestos / hazardous materials', 'Other',
+  ],
+  PERMIT_TYPE_OPTIONS: [
+    'Hot Work Permit', 'Confined Space Entry', 'Electrical Isolation', 'Working at Heights',
+    'Excavation Permit', 'Crane / Lifting Operations', 'Hazardous Substances',
+    'Environmental / Spill Risk', 'Other',
+  ],
+};
+
+export const incidents: {
+  INCIDENT_TYPES: string[];
+} = {
+  INCIDENT_TYPES: [
+    'Injury', 'Near miss', 'Property damage', 'Environmental spill', 'Vehicle incident',
+    'Plant/equipment incident', 'Public/client complaint', 'Unsafe condition', 'Other',
+  ],
+};
+
+export const incident_detail: {
+  THIRD_PARTY_ROLES: string[];
+} = {
+  THIRD_PARTY_ROLES: [
+    'Client', 'Subcontractor', 'Supplier', 'Member of public', 'Authority/inspector', 'Other',
+  ],
+};
+
 export const job_site_prestart: {
   SITUATION_CHECKS: string[];
   EXECUTION_CHECKS: string[];
