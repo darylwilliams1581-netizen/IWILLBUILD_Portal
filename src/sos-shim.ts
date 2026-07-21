@@ -347,12 +347,10 @@
       const appEl = document.getElementById('app');
       if (!appEl) return;
       try {
-        const existing = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-        // Already sealed with our safe getter — nothing to do.
-        if (existing?.get && existing.get.call(appEl) === swallowingRemoveChild) return;
-        // Use the pre-intercept defineProperty to overwrite whatever the stale
-        // shim installed (even configurable:false value descriptors).
-        // Try accessor (getter always returns safe wrapper, setter is a no-op).
+        // Always re-seal — never early-return. The stale shim's own sealLoop
+        // re-installs patchedRemoveChild every 10ms; we must overwrite it every time.
+        // Use __origDefProp (true Object.defineProperty from index.html) to overwrite
+        // even non-configurable own properties installed by the stale shim.
         try {
           _shimOrigDP(appEl, 'removeChild', {
             get() { return swallowingRemoveChild; },
@@ -362,7 +360,6 @@
           });
           return;
         } catch { /* fall through */ }
-        // Fallback: plain value descriptor.
         try {
           _shimOrigDP(appEl, 'removeChild', {
             value: swallowingRemoveChild,
@@ -377,14 +374,24 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', sealAppRoot, { once: true });
     }
-    // Re-seal every 5ms for 10 seconds AND on every animation frame.
-    // The stale shim's own sealLoop runs every 10ms — we must be faster.
+    // Re-seal every 1ms for the first 2s (React's initial commit window),
+    // then every 5ms for the next 8s. The stale shim's sealLoop runs every 10ms —
+    // we must always be faster to win the race.
     let sealCount = 0;
     function sealLoop() {
       sealAppRoot();
-      if (++sealCount < 2000) setTimeout(sealLoop, 5);
+      sealCount++;
+      if (sealCount < 2000) setTimeout(sealLoop, sealCount < 400 ? 1 : 5);
     }
     sealLoop();
+    // Also seal on every microtask tick during startup — fires between React's
+    // scheduler tasks, ensuring #app is sealed before each React commit.
+    let microCount = 0;
+    function microSeal() {
+      sealAppRoot();
+      if (++microCount < 500) queueMicrotask(microSeal);
+    }
+    queueMicrotask(microSeal);
     // rAF loop — fires before every paint, ensuring #app is sealed before React commits
     let rafActive = true;
     setTimeout(() => { rafActive = false; }, 10000);
@@ -428,12 +435,16 @@ const STALE_TS_SHIM = [
   '1784900000000',
   '1784910000000',
   '1784920000000',
+  '1784930000000', // cover July 21 2026 afternoon edits
+  '1784940000000',
+  '1784950000000',
+  '1784960000000',
 ];
 const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784900000001';
+const SOS_SHIM_VERSION = '1784900000003';
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 30_000;  // 30s window — stale shim persists across fast reloads
 const SOS_SHIM_MAX_RELOADS = 12;    // allow more reloads to fully evict the stale module

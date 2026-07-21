@@ -3,16 +3,16 @@
  * Field worker view: pick a job, then view/review/complete/sign-on to SWMS docs.
  * Tabs: Documents | Sign-ons
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, Plus, Loader2, FileCheck, Building2, Users,
   ChevronDown, ChevronUp, CheckCircle2, Clock, X,
   AlertCircle, Check, CheckSquare, Square, Copy, Link2,
-  ClipboardCheck, FileText, UserCheck,
+  ClipboardCheck, FileText, UserCheck, Printer, PenLine,
 } from 'lucide-react';
-import { fmtDate, statusBadge, JOB_SWMS_STATUSES } from '@/components/safety/safety-types';
+import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -261,23 +261,110 @@ function AddDocModal({ jobId, onClose, onAdded }: {
   );
 }
 
+// ── Inline Sign-on Form ───────────────────────────────────────────────────────
+
+function SignonForm({ docId, onSigned, onCancel }: {
+  docId: number;
+  onSigned: (signon: Signon) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName]       = useState('');
+  const [company, setCompany] = useState('');
+  const [role, setRole]       = useState('');
+  const [wc, setWc]           = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+
+  async function submit() {
+    if (!name.trim()) { setError('Full name is required'); return; }
+    setSaving(true); setError('');
+    try {
+      const r = await fetch(`/api/safety/job-swms/${docId}/signoffs`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workerName: name.trim(), companyName: company.trim() || undefined, role: role.trim() || undefined, whiteCardNumber: wc.trim() || undefined }),
+      });
+      const d = await r.json() as { signoff?: Signon; error?: string };
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
+      if (d.signoff) onSigned(d.signoff);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign on');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.18 }}
+      className="overflow-hidden"
+    >
+      <div className="border-t border-teal-100 bg-teal-50/60 px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-teal-800 flex items-center gap-1.5"><PenLine size={12} /> Sign On</p>
+          <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={14} /></button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Full Name <span className="text-red-500">*</span></label>
+            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="e.g. John Smith"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Company</label>
+            <input value={company} onChange={e => setCompany(e.target.value)} placeholder="e.g. Acme Constructions"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Role / Trade</label>
+            <input value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Carpenter"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">White Card No.</label>
+            <input value={wc} onChange={e => setWc(e.target.value)} placeholder="e.g. QLD-123456"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500" />
+          </div>
+        </div>
+        {error && (
+          <div className="flex items-center gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">
+            <AlertCircle size={12} className="shrink-0" />{error}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-white transition-colors">Cancel</button>
+          <button onClick={() => void submit()} disabled={saving || !name.trim()}
+            className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={12} />}
+            Confirm Sign On
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Sign-on Panel ─────────────────────────────────────────────────────────────
 
-function SignonPanel({ docId, onClose }: { docId: number; onClose: () => void }) {
-  const [signons, setSignons] = useState<Signon[]>([]);
+function SignonPanel({ docId, signons, onNewSignon, onClose }: {
+  docId: number;
+  signons: Signon[];
+  onNewSignon: (s: Signon) => void;
+  onClose: () => void;
+}) {
   const [shareUrl, setShareUrl] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loadingLink, setLoadingLink] = useState(true);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/safety/job-swms/${docId}/signoffs`, { credentials: 'include' }).then(r => r.json()),
-      fetch(`/api/safety/job-swms/${docId}/share-token`, { method: 'POST', credentials: 'include' }).then(r => r.json()),
-    ]).then(([sd, td]) => {
-      setSignons((sd as { signoffs?: Signon[] }).signoffs ?? []);
-      setShareUrl((td as { url?: string }).url ?? '');
-    }).catch(() => {}).finally(() => setLoading(false));
+    fetch(`/api/safety/job-swms/${docId}/share-token`, { method: 'POST', credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setShareUrl((d as { url?: string }).url ?? ''))
+      .catch(() => {})
+      .finally(() => setLoadingLink(false));
   }, [docId]);
 
   async function regenerate() {
@@ -306,11 +393,33 @@ function SignonPanel({ docId, onClose }: { docId: number; onClose: () => void })
       className="overflow-hidden"
     >
       <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 space-y-4">
+
+        {/* Add sign-on inline form */}
+        <AnimatePresence>
+          {showForm && (
+            <SignonForm
+              key="form"
+              docId={docId}
+              onSigned={s => { onNewSignon(s); setShowForm(false); }}
+              onCancel={() => setShowForm(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-teal-300 rounded-xl text-xs font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
+          >
+            <Plus size={13} /> Add Sign-on
+          </button>
+        )}
+
         {/* Share link */}
         <div>
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Sign-on Link</p>
-          <p className="text-xs text-slate-500 mb-2">Share with workers — they can read and sign on their phone, no login needed.</p>
-          {loading ? (
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Share Link</p>
+          <p className="text-xs text-slate-500 mb-2">Workers can sign on from their phone — no login needed.</p>
+          {loadingLink ? (
             <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Generating…</div>
           ) : shareUrl ? (
             <div className="flex items-center gap-2">
@@ -338,10 +447,8 @@ function SignonPanel({ docId, onClose }: { docId: number; onClose: () => void })
               <ChevronUp size={12} /> Hide
             </button>
           </div>
-          {loading ? (
-            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Loading…</div>
-          ) : signons.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No sign-ons yet. Share the link above with workers.</p>
+          {signons.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No sign-ons yet. Add one above or share the link.</p>
           ) : (
             <div className="space-y-1.5">
               {signons.map(s => (
@@ -366,14 +473,154 @@ function SignonPanel({ docId, onClose }: { docId: number; onClose: () => void })
   );
 }
 
+// ── Print View ────────────────────────────────────────────────────────────────
+
+function PrintView({ doc, job, signons, onClose }: {
+  doc: FieldDoc;
+  job: Job;
+  signons: Signon[];
+  onClose: () => void;
+}) {
+  const printRef = useRef<HTMLDivElement>(null);
+
+  function doPrint() {
+    window.print();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto print:static print:overflow-visible field-docs-print-view">
+      {/* Screen-only toolbar */}
+      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center">
+            <Printer size={14} className="text-teal-600" />
+          </div>
+          <span className="text-sm font-semibold text-slate-700">Print Preview</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={doPrint}
+            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors">
+            <Printer size={14} /> Print
+          </button>
+          <button onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Printable content */}
+      <div ref={printRef} className="max-w-3xl mx-auto px-8 py-10 print:px-0 print:py-0 print:max-w-none">
+        {/* Job header */}
+        <div className="border-b-2 border-slate-800 pb-4 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Field Document</p>
+              <h1 className="font-heading font-bold text-xl text-slate-900 leading-tight">{doc.title}</h1>
+              {doc.work_activity && (
+                <p className="text-sm text-slate-600 mt-1">{doc.work_activity}</p>
+              )}
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-slate-500">Rev {doc.revision_number}</p>
+              <p className="text-xs text-slate-500">{new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+            </div>
+          </div>
+
+          {/* Job details row */}
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Job Name', value: job.name },
+              { label: 'Job Number', value: job.job_number ?? '—' },
+              { label: 'Status', value: doc.status.charAt(0).toUpperCase() + doc.status.slice(1) },
+              { label: 'Sign-ons', value: String(signons.length) },
+            ].map(item => (
+              <div key={item.label} className="bg-slate-50 rounded-lg px-3 py-2 print:border print:border-slate-200">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{item.label}</p>
+                <p className="text-sm font-semibold text-slate-800">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sign-on register */}
+        <div>
+          <h2 className="font-heading font-bold text-base text-slate-800 mb-3">Sign-on Register</h2>
+          {signons.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No sign-ons recorded.</p>
+          ) : (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-300">
+                  <th className="text-left py-2 pr-4 text-xs font-bold text-slate-600 uppercase tracking-wide">Name</th>
+                  <th className="text-left py-2 pr-4 text-xs font-bold text-slate-600 uppercase tracking-wide">Company</th>
+                  <th className="text-left py-2 pr-4 text-xs font-bold text-slate-600 uppercase tracking-wide">Role</th>
+                  <th className="text-left py-2 pr-4 text-xs font-bold text-slate-600 uppercase tracking-wide">White Card</th>
+                  <th className="text-left py-2 text-xs font-bold text-slate-600 uppercase tracking-wide">Date / Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {signons.map((s, i) => (
+                  <tr key={s.id} className={`border-b border-slate-100 ${i % 2 === 0 ? '' : 'bg-slate-50'}`}>
+                    <td className="py-2 pr-4 font-semibold text-slate-800">{s.worker_name}</td>
+                    <td className="py-2 pr-4 text-slate-600">{s.company_name ?? '—'}</td>
+                    <td className="py-2 pr-4 text-slate-600">{s.role ?? '—'}</td>
+                    <td className="py-2 pr-4 text-slate-600">{s.white_card_number ?? '—'}</td>
+                    <td className="py-2 text-slate-500 text-xs">{fmtDate(s.signed_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Blank rows for manual sign-on on paper */}
+          {signons.length < 20 && (
+            <div className="mt-4">
+              <p className="text-xs text-slate-400 mb-2 italic">Additional sign-on rows (manual):</p>
+              {Array.from({ length: Math.max(3, 8 - signons.length) }).map((_, i) => (
+                <div key={i} className="border-b border-slate-200 py-3 grid grid-cols-5 gap-2">
+                  {['Name', 'Company', 'Role', 'White Card', 'Signature'].map(col => (
+                    <div key={col}>
+                      <p className="text-[9px] text-slate-300 uppercase tracking-wide">{col}</p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Doc Card ──────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, onStatusChange }: {
+function DocCard({ doc, job, onStatusChange }: {
   doc: FieldDoc;
+  job: Job;
   onStatusChange: (id: number, status: string) => void;
 }) {
-  const [signonOpen, setSignonOpen] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [signonOpen, setSignonOpen]   = useState(false);
+  const [signons, setSignons]         = useState<Signon[]>([]);
+  const [signonsLoaded, setSignonsLoaded] = useState(false);
+  const [updating, setUpdating]       = useState(false);
+  const [showPrint, setShowPrint]     = useState(false);
+  const [signonCount, setSignonCount] = useState(doc.signoff_count);
+
+  // Load signons when panel opens for the first time
+  useEffect(() => {
+    if (!signonOpen || signonsLoaded) return;
+    fetch(`/api/safety/job-swms/${doc.id}/signoffs`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { setSignons((d as { signoffs?: Signon[] }).signoffs ?? []); setSignonsLoaded(true); })
+      .catch(() => { setSignonsLoaded(true); });
+  }, [signonOpen, signonsLoaded, doc.id]);
+
+  function handleNewSignon(s: Signon) {
+    setSignons(prev => [...prev, s]);
+    setSignonCount(c => c + 1);
+  }
 
   async function changeStatus(newStatus: string) {
     setUpdating(true);
@@ -393,99 +640,137 @@ function DocCard({ doc, onStatusChange }: {
     } finally { setUpdating(false); }
   }
 
+  // For print: load signons if not yet loaded
+  async function openPrint() {
+    if (!signonsLoaded) {
+      const r = await fetch(`/api/safety/job-swms/${doc.id}/signoffs`, { credentials: 'include' });
+      const d = await r.json() as { signoffs?: Signon[] };
+      setSignons(d.signoffs ?? []);
+      setSignonsLoaded(true);
+    }
+    setShowPrint(true);
+  }
+
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-slate-300 transition-colors">
-      <div className="p-4">
-        {/* Header row */}
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(doc.status)}`}>
-                {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
-              </span>
-              <span className="text-xs text-slate-400">Rev {doc.revision_number}</span>
-              {doc.review_date && (
-                <span className="text-xs text-slate-400">Review: {fmtDate(doc.review_date)}</span>
+    <>
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-slate-300 transition-colors">
+        <div className="p-4">
+          {/* Header row */}
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(doc.status)}`}>
+                  {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                </span>
+                <span className="text-xs text-slate-400">Rev {doc.revision_number}</span>
+                {doc.review_date && (
+                  <span className="text-xs text-slate-400">Review: {fmtDate(doc.review_date)}</span>
+                )}
+              </div>
+              <h3 className="font-bold text-sm text-slate-800 leading-snug">{doc.title}</h3>
+              {doc.work_activity && (
+                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{doc.work_activity}</p>
               )}
             </div>
-            <h3 className="font-bold text-sm text-slate-800 leading-snug">{doc.title}</h3>
-            {doc.work_activity && (
-              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{doc.work_activity}</p>
-            )}
+
+            {/* Sign-on count badge */}
+            <button
+              onClick={() => setSignonOpen(v => !v)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 ${
+                signonOpen
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : signonCount > 0
+                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+              title="Sign-ons"
+            >
+              <Users size={12} />
+              <span>{signonCount}</span>
+              {signonOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
           </div>
 
-          {/* Sign-on count badge */}
-          <button
-            onClick={() => setSignonOpen(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 ${
-              signonOpen
-                ? 'bg-emerald-100 text-emerald-700'
-                : doc.signoff_count > 0
-                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            }`}
-            title="Sign-ons"
-          >
-            <Users size={12} />
-            <span>{doc.signoff_count}</span>
-            {signonOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-          </button>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+            {/* Review */}
+            {doc.status === 'draft' && (
+              <button
+                onClick={() => void changeStatus('reviewed')}
+                disabled={updating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+              >
+                {updating ? <Loader2 size={11} className="animate-spin" /> : <ClipboardCheck size={11} />}
+                Review
+              </button>
+            )}
+
+            {/* Complete */}
+            {(doc.status === 'draft' || doc.status === 'reviewed') && (
+              <button
+                onClick={() => void changeStatus('approved')}
+                disabled={updating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+              >
+                {updating ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                Complete
+              </button>
+            )}
+
+            {/* Sign On */}
+            <button
+              onClick={() => setSignonOpen(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                signonOpen ? 'bg-teal-600 text-white' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+              }`}
+            >
+              <UserCheck size={11} />
+              Sign On
+            </button>
+
+            {/* Print */}
+            <button
+              onClick={() => void openPrint()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Printer size={11} />
+              Print
+            </button>
+
+            {signonCount === 0 && (
+              <span className="ml-auto text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                Unsigned
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
-          {/* Review */}
-          {(doc.status === 'draft') && (
-            <button
-              onClick={() => void changeStatus('reviewed')}
-              disabled={updating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
-            >
-              {updating ? <Loader2 size={11} className="animate-spin" /> : <ClipboardCheck size={11} />}
-              Review
-            </button>
+        {/* Sign-on panel */}
+        <AnimatePresence>
+          {signonOpen && (
+            <SignonPanel
+              key={doc.id}
+              docId={doc.id}
+              signons={signons}
+              onNewSignon={handleNewSignon}
+              onClose={() => setSignonOpen(false)}
+            />
           )}
-
-          {/* Complete */}
-          {(doc.status === 'draft' || doc.status === 'reviewed') && (
-            <button
-              onClick={() => void changeStatus('approved')}
-              disabled={updating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-            >
-              {updating ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-              Complete
-            </button>
-          )}
-
-          {/* Sign On */}
-          <button
-            onClick={() => setSignonOpen(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-              signonOpen
-                ? 'bg-teal-600 text-white'
-                : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
-            }`}
-          >
-            <UserCheck size={11} />
-            Sign On
-          </button>
-
-          {doc.signoff_count === 0 && (
-            <span className="ml-auto text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-              Unsigned
-            </span>
-          )}
-        </div>
+        </AnimatePresence>
       </div>
 
-      {/* Sign-on panel */}
+      {/* Print overlay */}
       <AnimatePresence>
-        {signonOpen && (
-          <SignonPanel key={doc.id} docId={doc.id} onClose={() => setSignonOpen(false)} />
+        {showPrint && (
+          <PrintView
+            doc={doc}
+            job={job}
+            signons={signons}
+            onClose={() => setShowPrint(false)}
+          />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
@@ -633,7 +918,7 @@ export default function JobFieldDocsPage() {
             )}
 
             {!loading && filteredDocs.map(doc => (
-              <DocCard key={doc.id} doc={doc} onStatusChange={handleStatusChange} />
+              <DocCard key={doc.id} doc={doc} job={selectedJob} onStatusChange={handleStatusChange} />
             ))}
           </div>
         )}

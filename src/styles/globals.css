@@ -303,5 +303,22 @@ body {
     size: A4 portrait;
     margin: 0;
   }
+
+  /* 8. Field Docs print view — hide everything except the print overlay */
+  .field-docs-print-view {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+  .field-docs-print-view,
+  .field-docs-print-view * {
+    visibility: visible !important;
+  }
+  /* When print view is open, hide the rest of the page */
+  body:has(.field-docs-print-view) *:not(.field-docs-print-view):not(.field-docs-print-view *) {
+    visibility: hidden !important;
+  }
 }
 
