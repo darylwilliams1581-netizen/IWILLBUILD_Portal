@@ -3,6 +3,7 @@ import {
   readExistingState,
   clampPan,
   applyStylesToElement,
+  getMediaPanAvailability,
   MIN_ZOOM,
   MAX_ZOOM,
 } from '../useMediaReposition';
@@ -118,6 +119,95 @@ describe('useMediaReposition helpers', () => {
       applyStylesToElement(el, { panX: -10, panY: 200, zoom: 10 });
       expect(el.style.objectPosition).toBe('0% 100%');
       expect(el.style.transform).toBe(`scale(${MAX_ZOOM})`);
+    });
+  });
+
+  describe('getMediaPanAvailability', () => {
+    function createImage(naturalWidth: number, naturalHeight: number): HTMLImageElement {
+      const image: HTMLImageElement = document.createElement('img');
+      Object.defineProperties(image, {
+        naturalWidth: { value: naturalWidth },
+        naturalHeight: { value: naturalHeight },
+      });
+      image.getBoundingClientRect = () => ({ width: 200, height: 200 } as DOMRect);
+      return image;
+    }
+
+    function createVideo(videoWidth: number, videoHeight: number): HTMLVideoElement {
+      const video: HTMLVideoElement = document.createElement('video');
+      Object.defineProperties(video, {
+        videoWidth: { value: videoWidth },
+        videoHeight: { value: videoHeight },
+      });
+      video.getBoundingClientRect = () => ({ width: 200, height: 200 } as DOMRect);
+      return video;
+    }
+
+    function createWrapper(naturalWidth: number, naturalHeight: number): HTMLDivElement {
+      const wrapper: HTMLDivElement = document.createElement('div');
+      const image: HTMLImageElement = document.createElement('img');
+      Object.defineProperties(image, {
+        naturalWidth: { value: naturalWidth },
+        naturalHeight: { value: naturalHeight },
+      });
+      wrapper.appendChild(image);
+      wrapper.getBoundingClientRect = () => ({ width: 200, height: 200 } as DOMRect);
+      return wrapper;
+    }
+
+    it('enables only the overflowing axis at default zoom', () => {
+      expect(getMediaPanAvailability(createImage(400, 200), MIN_ZOOM)).toEqual({
+        horizontal: true,
+        vertical: false,
+      });
+      expect(getMediaPanAvailability(createImage(200, 400), MIN_ZOOM)).toEqual({
+        horizontal: false,
+        vertical: true,
+      });
+    });
+
+    it('disables both axes when the media fits exactly at default zoom', () => {
+      expect(getMediaPanAvailability(createImage(200, 200), MIN_ZOOM)).toEqual({
+        horizontal: false,
+        vertical: false,
+      });
+    });
+
+    it('enables both axes after zooming in', () => {
+      expect(getMediaPanAvailability(createImage(400, 200), 1.1)).toEqual({
+        horizontal: true,
+        vertical: true,
+      });
+    });
+
+    it('keeps axes enabled when intrinsic dimensions are unavailable', () => {
+      expect(getMediaPanAvailability(createImage(0, 0), MIN_ZOOM)).toEqual({
+        horizontal: true,
+        vertical: true,
+      });
+    });
+
+    it('resolves intrinsic size from a nested img when given a wrapper element', () => {
+      expect(getMediaPanAvailability(createWrapper(400, 200), MIN_ZOOM)).toEqual({
+        horizontal: true,
+        vertical: false,
+      });
+    });
+
+    it('uses videoWidth/videoHeight for video elements', () => {
+      expect(getMediaPanAvailability(createVideo(200, 400), MIN_ZOOM)).toEqual({
+        horizontal: false,
+        vertical: true,
+      });
+    });
+
+    it('keeps axes enabled when the element has no box size', () => {
+      const image: HTMLImageElement = createImage(400, 200);
+      image.getBoundingClientRect = () => ({ width: 0, height: 0 } as DOMRect);
+      expect(getMediaPanAvailability(image, MIN_ZOOM)).toEqual({
+        horizontal: true,
+        vertical: true,
+      });
     });
   });
 });

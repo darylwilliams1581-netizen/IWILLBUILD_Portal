@@ -2,13 +2,23 @@ import { useState, useEffect, useRef } from 'react'
 import { safePostMessage, isOriginAllowed } from '../utils/postMessage'
 import { send } from '../utils/eventBus'
 import { captureAndResizeScreenshot, captureViewportScreenshot } from '../utils/screenshot'
+import {
+  buildVisitList,
+  captureDomSnapshot,
+  type DetachedNode,
+  restoreInjectedNodes,
+  stripInjectedNodes,
+  waitForHmrSettle,
+  waitForRouteSettle,
+} from '../utils/dom-snapshot'
+import type { RouteSnapshot } from '../utils/eventBus'
 import { showSelectionOverlay } from '../utils/selection-overlay'
 import { useEditMode } from "../hooks/useEditMode";
 import { useComplianceFieldEditor } from "../hooks/useComplianceFieldEditor";
 import AnnotationMode from "./AnnotationMode";
 import ElementHoverBar from "./ElementHoverBar";
 import { setTranslations } from "../utils/translations";
-import { resolveRouteForModule } from "../route-discovery";
+import { discoverRoutes, resolveRouteForModule } from "../route-discovery";
 import { collectMediaSlotDomMatches } from "../utils/media-slot-dom";
 import { resolveExternalNavigationHref } from "../utils/link-follow";
 import { isClickable, isInsideNavSurface, isDevToolsElement, isManagedPath, hasManagedDocMarkup, FORM_TAGS } from "../utils/element-detection";
@@ -1301,6 +1311,109 @@ export default function DevelopmentMode() {
       onNavigate()
     }
 
+    // Re-entrancy guard for the multi-route DOM snapshot walk. A walk takes
+    // multiple seconds; a second trigger (next commit) must NOT start a second
+    // walk fighting over history/popstate and clobbering the builder's pending
+    // request. Effect-scoped so it lives for the mounted iframe.
+    let domSnapshotWalkInProgress = false
+
+    const navigateToRoute = (route: string): void => {
+      // Use the un-patched pushState so we don't recurse through onNavigate;
+      // popstate notifies React Router of the change.
+      originalPushState(null, '', route)
+      window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
+    }
+
+    const runDomSnapshotWalk = async (requestId: string): Promise<void> => {
+      if (domSnapshotWalkInProgress) {
+        console.warn('[DevTools] DOM snapshot walk already in progress; ignoring request', requestId)
+        return
+      }
+      domSnapshotWalkInProgress = true
+
+      const originalPath: string =
+        window.location.pathname + window.location.search + window.location.hash
+      const originalScroll: { x: number; y: number } = { x: window.scrollX, y: window.scrollY }
+      const routes: RouteSnapshot[] = []
+
+      try {
+        await waitForHmrSettle()
+
+        let discoveredRoutes: { path: string }[] = []
+        try {
+          const manifest: Awaited<ReturnType<typeof discoverRoutes>> = await discoverRoutes()
+          discoveredRoutes = manifest.routes.map((r: { path: string }): { path: string } => ({ path: r.path }))
+        } catch (error: unknown) {
+          console.error('DOM snapshot: route discovery failed', error)
+        }
+
+        const registered: Set<string> = new Set(discoveredRoutes.map((r: { path: string }): string => r.path))
+        const visitList: string[] = buildVisitList(window.location.pathname, discoveredRoutes)
+
+        for (const route of visitList) {
+          try {
+            navigateToRoute(route)
+            await waitForRouteSettle()
+
+            // Detach dev-tools/preview chrome, capture the rrweb blob from the
+            // stripped view, then restore. The strip → capture → restore runs
+            // synchronously (no paint in between) so the live preview never
+            // visibly flashes.
+            const detached: DetachedNode[] = stripInjectedNodes(document)
+            try {
+              const domSnapshot: unknown = captureDomSnapshot(document)
+              // Routes we visit come from discoverRoutes() → registered → 200.
+              // Only the always-included current route can fall outside the
+              // registry (e.g. a stale/404 URL).
+              const status: number = registered.has(route) ? 200 : 404
+              routes.push({ route, status, snapshot: domSnapshot })
+            } finally {
+              restoreInjectedNodes(detached)
+            }
+          } catch (error: unknown) {
+            console.error('DOM snapshot: failed to capture route', route, error)
+          }
+        }
+      } catch (error: unknown) {
+        console.error('DOM snapshot: walk failed', error)
+      } finally {
+        try {
+          navigateToRoute(originalPath)
+          window.scrollTo(originalScroll.x, originalScroll.y)
+        } catch (error: unknown) {
+          console.error('DOM snapshot: failed to restore route after walk', error)
+        }
+        domSnapshotWalkInProgress = false
+        if (window.parent !== window) {
+          send({ type: 'DOM_SNAPSHOT_RESPONSE', requestId, routes })
+        }
+      }
+    }
+
+    // Lightweight single-route capture of the CURRENT page. No route discovery,
+    // no navigation, no walk — so it runs safely on the visible preview while a
+    // user is present (and on Safari, where the offscreen full-site walk can't
+    // authenticate). Reuses the same strip → capture → restore triple as the
+    // walk's loop body; the response reuses DOM_SNAPSHOT_RESPONSE with a
+    // single-element routes[].
+    const captureCurrentPage = (requestId: string): void => {
+      const route: string =
+        window.location.pathname + window.location.search + window.location.hash
+      const routes: RouteSnapshot[] = []
+      const detached: DetachedNode[] = stripInjectedNodes(document)
+      try {
+        const domSnapshot: unknown = captureDomSnapshot(document)
+        routes.push({ route, status: 200, snapshot: domSnapshot })
+      } catch (error: unknown) {
+        console.error('DOM snapshot: current-page capture failed', route, error)
+      } finally {
+        restoreInjectedNodes(detached)
+      }
+      if (window.parent !== window) {
+        send({ type: 'DOM_SNAPSHOT_RESPONSE', requestId, routes })
+      }
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', setupSectionObserver)
@@ -1467,6 +1580,12 @@ export default function DevelopmentMode() {
           }).catch((error) => {
             console.error('Viewport eval screenshot: Error capturing:', error)
           })
+        } else if (event.data && event.data.type === 'REQUEST_DOM_SNAPSHOT') {
+          const requestId: string = event.data.requestId
+          void runDomSnapshotWalk(requestId)
+        } else if (event.data && event.data.type === 'REQUEST_CURRENT_PAGE_SNAPSHOT') {
+          const requestId: string = event.data.requestId
+          captureCurrentPage(requestId)
         } else if (event.data?.type === 'REQUEST_AUDIT') {
           import('../utils/domAudit').then(({ runDomAudit }) => {
             const validRoutes: string[] = event.data.validRoutes ?? []

@@ -13,6 +13,47 @@ export const ZOOM_STEP = 0.1;
 export const PAN_STEP = 5;
 const DEFAULT_PAN = 50;
 
+export interface MediaPanAvailability {
+  horizontal: boolean;
+  vertical: boolean;
+}
+
+function getIntrinsicMediaSize(element: HTMLElement): { width: number; height: number } | null {
+  const mediaElement: HTMLImageElement | HTMLVideoElement | null = element instanceof HTMLImageElement
+    ? element
+    : element instanceof HTMLVideoElement
+      ? element
+      : element.querySelector("img, video");
+  if (!mediaElement) return null;
+
+  const width: number = mediaElement instanceof HTMLVideoElement
+    ? mediaElement.videoWidth
+    : mediaElement.naturalWidth;
+  const height: number = mediaElement instanceof HTMLVideoElement
+    ? mediaElement.videoHeight
+    : mediaElement.naturalHeight;
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+/** Determine which axes have cropped media available to pan at the current zoom. */
+export function getMediaPanAvailability(element: HTMLElement, zoom: number): MediaPanAvailability {
+  const intrinsicSize: { width: number; height: number } | null = getIntrinsicMediaSize(element);
+  if (!intrinsicSize) return { horizontal: true, vertical: true };
+  if (zoom > MIN_ZOOM) return { horizontal: true, vertical: true };
+
+  const bounds: DOMRect = element.getBoundingClientRect();
+  const boxWidth: number = element.clientWidth || element.offsetWidth || bounds.width;
+  const boxHeight: number = element.clientHeight || element.offsetHeight || bounds.height;
+  if (boxWidth <= 0 || boxHeight <= 0) return { horizontal: true, vertical: true };
+
+  const mediaAspectRatio: number = intrinsicSize.width / intrinsicSize.height;
+  const boxAspectRatio: number = boxWidth / boxHeight;
+  return {
+    horizontal: mediaAspectRatio > boxAspectRatio,
+    vertical: mediaAspectRatio < boxAspectRatio,
+  };
+}
+
 /**
  * Read existing reposition state from an element's computed styles.
  * Uses getComputedStyle so it picks up values from stylesheets (e.g. after

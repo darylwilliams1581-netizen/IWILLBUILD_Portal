@@ -661,6 +661,8 @@ if (import.meta.env.MODE === 'development' && import.meta.hot) {
   };
 
   const handleAfterUpdate = () => {
+    // Broadcast to window so waitForHmrSettle() can detect activity.
+    window.dispatchEvent(new CustomEvent('__dev_tools_hmr_update'));
     // On a successful HMR update that follows an error, tear down the
     // overlay we showed (covers both HMR and initial-error surfaces).
     if (currentError || overlayElement) {
@@ -708,6 +710,42 @@ if (import.meta.env.MODE === 'development' && import.meta.hot) {
   };
   import.meta.hot.on('vite:beforeFullReload', handleBeforeFullReload);
 
+  // HMR audit: conditionally emit events to the parent builder for the
+  // debug drawer. Toggled at runtime via SET_HMR_AUDIT postMessage — no
+  // Vite restart needed. The flag resets to false on a full page reload
+  // or if this file itself is edited; the builder re-sends SET_HMR_AUDIT
+  // on IFRAME_READY to re-sync.
+  let hmrAuditEnabled = false;
+  const hmrAuditMessageHandler = (e: MessageEvent): void => {
+    if (!e.origin || !isOriginAllowed(e)) return;
+    if (e.data?.type === 'SET_HMR_AUDIT' && typeof e.data.enabled === 'boolean') {
+      hmrAuditEnabled = e.data.enabled;
+    }
+  };
+  window.addEventListener('message', hmrAuditMessageHandler);
+
+  const handleAuditBeforeUpdate = (payload: { updates?: Array<{ path?: string; type?: string }> }): void => {
+    if (!hmrAuditEnabled) return;
+    const paths: string[] = (payload.updates ?? [])
+      .map((u) => u.path)
+      .filter((p): p is string => typeof p === 'string');
+    postToParent({ type: 'HMR_EVENT', kind: 'update', timestamp: Date.now(), paths });
+  };
+
+  const handleAuditBeforeFullReload = (payload: { path?: string } | undefined): void => {
+    if (!hmrAuditEnabled) return;
+    postToParent({ type: 'HMR_EVENT', kind: 'full-reload', timestamp: Date.now(), reason: payload?.path ?? 'unknown' });
+  };
+
+  const handleAuditError = (payload: { err?: { message?: string } }): void => {
+    if (!hmrAuditEnabled) return;
+    postToParent({ type: 'HMR_EVENT', kind: 'error', timestamp: Date.now(), error: payload?.err?.message ?? 'compile error' });
+  };
+
+  import.meta.hot.on('vite:beforeUpdate', handleAuditBeforeUpdate);
+  import.meta.hot.on('vite:beforeFullReload', handleAuditBeforeFullReload);
+  import.meta.hot.on('vite:error', handleAuditError);
+
   // Clean up listeners on module disposal to prevent accumulation
   import.meta.hot.dispose(() => {
     clearCompileError();
@@ -719,10 +757,14 @@ if (import.meta.env.MODE === 'development' && import.meta.hot) {
       window.removeEventListener('message', processingStateHandler);
       processingStateHandler = null;
     }
+    window.removeEventListener('message', hmrAuditMessageHandler);
     import.meta.hot!.off('vite:error', handleHmrError);
     import.meta.hot!.off('compile-error', handleHmrError);
     import.meta.hot!.off('vite:afterUpdate', handleAfterUpdate);
     import.meta.hot!.off('vite:beforeUpdate', handleBeforeUpdate);
     import.meta.hot!.off('vite:beforeFullReload', handleBeforeFullReload);
+    import.meta.hot!.off('vite:beforeUpdate', handleAuditBeforeUpdate);
+    import.meta.hot!.off('vite:beforeFullReload', handleAuditBeforeFullReload);
+    import.meta.hot!.off('vite:error', handleAuditError);
   });
 }

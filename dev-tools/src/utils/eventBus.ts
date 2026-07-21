@@ -186,6 +186,13 @@ export interface BusComplianceSectionTogglePayload {
   value: boolean;
 }
 
+/** One captured route in a multi-page DOM snapshot walk. */
+export interface RouteSnapshot {
+  route: string;
+  status: number;
+  snapshot: unknown;
+}
+
 // ── Event map ─────────────────────────────────────────────────────────────
 
 export interface BusEventMap {
@@ -262,6 +269,8 @@ export interface BusEventMap {
    *  The builder runs the heal conform and replies with CONFORM_SUCCEEDED or
    *  CONFORM_FAILED via raw window 'message' (not the bus — outbound-to-iframe only). */
   CONFORM_REQUEST: { data: ConformTarget; requestId: string };
+  DOM_SNAPSHOT_RESPONSE: { requestId: string; routes: RouteSnapshot[] };
+  HMR_EVENT: { kind: "update" | "full-reload" | "error"; timestamp: number; paths?: string[]; reason?: string; error?: string };
 }
 
 export type BusUnsupportedFeature = "payment" | "push-notification" | "oauth-popup";

@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "html-to-image": "^1.11.11"
+    "html-to-image": "^1.11.11",
+    "rrweb-snapshot": "^2.0.0-alpha.18"
   },
   "peerDependencies": {
     "lucide-react": "^0.454.0",

@@ -32,6 +32,11 @@ describe('boot spinner injection boundary', () => {
       expect(spinnerIndex).toBeGreaterThan(appIndex)
       expect(bodyCloseIndex).toBeGreaterThan(spinnerIndex)
       expect(servedHtml).toContain('#app:not(:empty) ~ #airo-boot-spinner')
+      // Grace delay: the spinner starts invisible and only fades in after 1s,
+      // so loads that mount within the window never paint it. No sessionStorage
+      // warm-stamp heuristic remains.
+      expect(servedHtml).toContain('animation: airo-boot-fade 0.2s ease 1s forwards')
+      expect(servedHtml).not.toContain('__airo_warm_reload')
     } finally {
       await server.close()
     }

@@ -18,20 +18,19 @@ const DEV_RETRY_MAIN_ENTRY = `<script type="module">
       })
     </script>`;
 
-// Boot spinner (AIROBUILD-3857): injected at SERVE time as a sibling of #app
-// and hidden by CSS alone the instant the app mounts (#app stops matching
-// :empty — the <!--app-html--> placeholder comment does not count as
-// content). Injected here rather than written into index.html so production
-// builds can never carry it: this plugin is `apply: 'serve'` and vite.config
-// additionally gates it to development mode, while `vite build` reads
-// index.html directly. It must stay a SIBLING (not a child of #app) to keep
-// main.tsx's hydrate/createRoot detection (rootElement.firstElementChild)
-// intact. Two guards keep it from ever masking a failure: the z-index sits
-// below common error-overlay ranges (Vite's own HMR overlay is disabled in
-// vite.config — hmr.overlay:false — so dev-tools' error UI is what matters),
-// and the spinner removes itself outright after 90s, revealing whatever
-// state is underneath (a Vite forced reload re-injects a fresh one, so long
-// dep re-optimizations still show a spinner per document).
+// Boot spinner (AIROBUILD-3857): injected at SERVE time as a sibling of #app.
+// Purely load-state-driven: the spinner starts invisible (opacity 0) and only
+// fades in after a 1s grace delay if #app is still empty by then. Loads that
+// mount within the grace window (warm reloads, builder iframe remounts) never
+// show it; anything slower (cold starts, dep re-optimization) gets loading
+// feedback until #app receives its first element child (MutationObserver),
+// then the spinner is removed from the DOM permanently. Injected here rather
+// than in index.html so production builds never carry it: this plugin is
+// `apply: 'serve'` and vite.config gates it to development mode. Must stay a
+// SIBLING (not child of #app) to keep main.tsx's hydrate/createRoot detection
+// (rootElement.firstElementChild) intact. The z-index sits below error-overlay
+// ranges; 90s self-destruct backstop ensures it never permanently masks
+// failures.
 const BOOT_SPINNER_CSS = `
   #airo-boot-spinner {
     position: fixed;
@@ -46,7 +45,8 @@ const BOOT_SPINNER_CSS = `
     color: #555;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     opacity: 0;
-    animation: airo-boot-fade 0.2s ease 0.25s forwards;
+    pointer-events: none;
+    animation: airo-boot-fade 0.2s ease 1s forwards;
   }
   #app:not(:empty) ~ #airo-boot-spinner {
     display: none;
@@ -90,20 +90,33 @@ const BOOT_SPINNER_BODY = `
     `
 
 // Removes the spinner outright when the served HTML has no #app to watch
-// (a heavily customized shell); otherwise reveals the "taking longer" copy
-// after 20s and removes the spinner entirely after 90s so it can never
-// permanently cover a blank-rendering app or an error overlay. Hiding on
-// mount needs no JS — the :empty CSS gate handles it.
+// (a heavily customized shell). Otherwise the spinner stays until #app
+// receives content (MutationObserver) — visibility is handled entirely by
+// the CSS grace-delay fade, so loads that mount within the grace window
+// never paint it. Reveals "taking longer" after 20s and removes entirely
+// after 90s as a backstop.
 const BOOT_SPINNER_SLOW_SCRIPT = `
       (function () {
         var spinner = document.getElementById('airo-boot-spinner');
         if (!spinner) return;
-        if (!document.getElementById('app')) {
+        var appEl = document.getElementById('app');
+        if (!appEl) {
           spinner.remove();
           return;
         }
+        if (appEl.firstElementChild) {
+          spinner.remove();
+          return;
+        }
+        var observer = new MutationObserver(function () {
+          if (appEl.firstElementChild) {
+            observer.disconnect();
+            spinner.remove();
+          }
+        });
+        observer.observe(appEl, { childList: true });
         setTimeout(function () { spinner.classList.add('airo-boot-slow'); }, 20000);
-        setTimeout(function () { spinner.remove(); }, 90000);
+        setTimeout(function () { observer.disconnect(); spinner.remove(); }, 90000);
       })();
     `
 

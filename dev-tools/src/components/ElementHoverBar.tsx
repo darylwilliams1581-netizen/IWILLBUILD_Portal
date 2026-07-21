@@ -45,6 +45,8 @@ import FormatOverrideControls from "./FormatOverrideControls";
 import {
   readExistingState as readRepositionState,
   applyStylesToElement as applyRepositionStyles,
+  getMediaPanAvailability,
+  type MediaPanAvailability,
   clampPan,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -606,6 +608,9 @@ export default function ElementHoverBar({
   const applyRepositionNudge = useCallback((dx: number, dy: number, dz: number) => {
     const el = toolbarElementRef.current;
     if (!el) return;
+    const prev = repositionStateRef.current;
+    const panAvailability: MediaPanAvailability = getMediaPanAvailability(el, prev.zoom);
+    if ((dx !== 0 && !panAvailability.horizontal) || (dy !== 0 && !panAvailability.vertical)) return;
     // Per-direction tracking — each direction is a separate EID for FS funnels
     if (dz > 0) trackEventBus.click("devtools.toolbar.reposition_zoom_in");
     else if (dz < 0) trackEventBus.click("devtools.toolbar.reposition_zoom_out");
@@ -613,7 +618,6 @@ export default function ElementHoverBar({
     else if (dx > 0) trackEventBus.click("devtools.toolbar.reposition_move_right");
     else if (dy < 0) trackEventBus.click("devtools.toolbar.reposition_move_up");
     else if (dy > 0) trackEventBus.click("devtools.toolbar.reposition_move_down");
-    const prev = repositionStateRef.current;
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.zoom + dz));
     const newState = {
       panX: clampPan(prev.panX + dx),
@@ -883,10 +887,12 @@ export default function ElementHoverBar({
 
   if (!toolbarMode) return null;
 
-  const canLeft: boolean = repoUi.panX > 0;
-  const canRight: boolean = repoUi.panX < 100;
-  const canUp: boolean = repoUi.panY > 0;
-  const canDown: boolean = repoUi.panY < 100;
+  const repositionElement: HTMLElement = toolbarElementRef.current ?? element;
+  const panAvailability: MediaPanAvailability = getMediaPanAvailability(repositionElement, repoUi.zoom);
+  const canLeft: boolean = panAvailability.horizontal && repoUi.panX > 0;
+  const canRight: boolean = panAvailability.horizontal && repoUi.panX < 100;
+  const canUp: boolean = panAvailability.vertical && repoUi.panY > 0;
+  const canDown: boolean = panAvailability.vertical && repoUi.panY < 100;
   const canZoomIn: boolean = repoUi.zoom < MAX_ZOOM - 0.001;
   const canZoomOut: boolean = repoUi.zoom > MIN_ZOOM + 0.001;
 
