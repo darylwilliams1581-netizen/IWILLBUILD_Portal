@@ -53,34 +53,43 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
   const Icon = item.icon;
   return (
     <motion.button
-      whileTap={{ scale: 0.88 }}
-      whileHover={{ scale: 1.06, y: -2 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      whileTap={{ scale: 0.86 }}
+      whileHover={{ scale: 1.07, y: -3 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 18 }}
       onClick={() => onNavigate(item.href)}
-      className="flex flex-col items-center gap-2 group"
+      className="flex flex-col items-center gap-[7px] group outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 rounded-[22px]"
     >
+      {/* Tile */}
       <div
-        className={`w-[58px] h-[58px] sm:w-[66px] sm:h-[66px] rounded-[18px] sm:rounded-[20px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
+        className={`w-[60px] h-[60px] sm:w-[68px] sm:h-[68px] rounded-[18px] sm:rounded-[20px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
         style={{
-          boxShadow: '0 6px 16px rgba(0,0,0,0.22), 0 2px 4px rgba(0,0,0,0.12)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.20), 0 1px 3px rgba(0,0,0,0.10)',
         }}
       >
-        {/* Gloss highlight */}
+        {/* Top-left gloss sheen */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(160deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 45%, transparent 100%)',
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)',
           }}
         />
-        <Icon size={24} strokeWidth={1.8} className="sm:hidden relative z-10" />
-        <Icon size={28} strokeWidth={1.8} className="hidden sm:block relative z-10" />
+        {/* Bottom inner shadow for depth */}
+        <div
+          className="absolute inset-0 pointer-events-none rounded-[inherit]"
+          style={{
+            boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.15)',
+          }}
+        />
+        <Icon size={25} strokeWidth={1.75} className="sm:hidden relative z-10 drop-shadow-sm" />
+        <Icon size={29} strokeWidth={1.75} className="hidden sm:block relative z-10 drop-shadow-sm" />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md z-20">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      <span className="text-[10px] sm:text-[11px] text-gray-700 font-semibold text-center leading-tight max-w-[64px] sm:max-w-[72px] tracking-tight">
+      {/* Label */}
+      <span className="text-[10.5px] sm:text-[11.5px] text-gray-800 font-semibold text-center leading-[1.25] max-w-[66px] sm:max-w-[76px] tracking-[-0.01em]">
         {item.label}
       </span>
     </motion.button>
@@ -1724,26 +1733,28 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
   return (
     <>
       {/* Filter chips */}
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex justify-center gap-2 flex-wrap pb-1">
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex justify-center gap-1.5 flex-wrap">
           {FILTER_TABS.map(tab => (
-            <button
+            <motion.button
               key={tab.id}
               onClick={() => setActiveFilter(tab.id)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-150 ${
+              whileTap={{ scale: 0.94 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+              className={`shrink-0 px-4 py-[7px] rounded-full text-[11.5px] font-bold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
                 activeFilter === tab.id
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 scale-105'
-                  : 'bg-white/90 text-gray-500 border border-gray-200/80 hover:bg-white hover:text-gray-800 hover:border-gray-300'
+                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/40'
+                  : 'bg-white/80 text-gray-500 border border-gray-200 hover:bg-white hover:text-gray-900 hover:border-gray-300 hover:shadow-sm'
               }`}
             >
               {tab.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
 
       {/* Icon grid */}
-      <div className="px-4">
+      <div className="px-5 pt-3">
         <div className="mx-auto" style={{ maxWidth: 640 }}>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -1753,12 +1764,12 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(82px, 1fr))',
-                gap: '16px',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                gap: '18px 12px',
               }}
             >
               {filtered.map((item) => (
-                <IconTile key={item.label} item={item} onNavigate={onNavigate} />
+                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
               ))}
             </div>
           )}
@@ -1860,9 +1871,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(160deg, #f0f4f8 0%, #e8edf3 35%, #f5f0eb 70%, #f0f4f8 100%)' }}
-      >
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#edf0f5' }}>
         <div className="w-8 h-8 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
       </div>
     );
@@ -1870,46 +1879,44 @@ export default function HomeScreen() {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(170deg, #eef2f7 0%, #e8ecf3 40%, #f2ede8 75%, #eef2f7 100%)',
-      }}
+      style={{ background: '#edf0f5' }}
     >
-      {/* Subtle dot texture overlay */}
+      {/* Very subtle noise texture */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-          opacity: 0.5,
+          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+          opacity: 0.45,
         }}
       />
-      {/* Radial glow — top right warm accent */}
+      {/* Warm glow — top right */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: '-100px', right: '-100px',
-          width: '400px', height: '400px',
-          background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 65%)',
+          top: '-120px', right: '-120px',
+          width: '420px', height: '420px',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 60%)',
         }}
       />
-      {/* Radial glow — bottom left cool accent */}
+      {/* Cool glow — bottom left */}
       <div
         className="absolute pointer-events-none"
         style={{
-          bottom: '60px', left: '-80px',
-          width: '300px', height: '300px',
-          background: 'radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 65%)',
+          bottom: '40px', left: '-100px',
+          width: '320px', height: '320px',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 60%)',
         }}
       />
-      {/* Backdrop watermark */}
+      {/* Watermark logo */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'url(/airo-assets/images/uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv)',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center 40%',
-          backgroundSize: '50%',
-          opacity: 0.055,
+          backgroundPosition: 'center 38%',
+          backgroundSize: '44%',
+          opacity: 0.045,
         }}
       />
 
@@ -1927,30 +1934,36 @@ export default function HomeScreen() {
       <div
         className="px-5 pb-4"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 20px)',
-          background: 'linear-gradient(135deg, #141923 0%, #1e2636 55%, #251a0f 100%)',
-          boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.25)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 18px)',
+          background: 'linear-gradient(135deg, #111827 0%, #1c2333 50%, #231a0d 100%)',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.05), 0 6px 24px rgba(0,0,0,0.30)',
         }}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-orange-400/60 text-[11px] font-medium tracking-wide">{dateStr}</p>
-            <p className="text-white font-bold text-[22px] leading-tight mt-0.5 tracking-tight">
-              {greeting}, <span className="text-orange-300">{firstName}</span>
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: greeting */}
+          <div className="min-w-0">
+            <p className="text-orange-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
+            <p className="text-white font-extrabold text-[21px] leading-tight mt-0.5 tracking-[-0.02em] truncate">
+              {greeting},{' '}
+              <span
+                className="text-transparent bg-clip-text"
+                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #f97316)' }}
+              >
+                {firstName}
+              </span>
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Notification bell */}
-            <div className="[&_button]:text-gray-300 [&_button:hover]:text-white [&_button]:bg-white/8 [&_button]:rounded-full [&_button]:p-2">
+          {/* Right: actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="[&_button]:text-gray-400 [&_button:hover]:text-white [&_button]:rounded-full [&_button]:p-2 [&_button]:transition-colors">
               <NotificationBell />
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="w-9 h-9 rounded-full bg-orange-500/20 border border-orange-400/25 flex items-center justify-center hover:bg-orange-500/30 transition-colors"
+              className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-400/20 flex items-center justify-center hover:bg-orange-500/25 transition-colors"
             >
-              <User size={16} className="text-orange-300" />
+              <User size={15} className="text-orange-300" />
             </button>
-            {/* Log out */}
             <button
               onClick={async () => {
                 await signOut();
@@ -1961,9 +1974,9 @@ export default function HomeScreen() {
                 navigate('/login');
               }}
               title="Log out"
-              className="w-9 h-9 rounded-full bg-white/8 border border-white/8 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/30 transition-colors"
+              className="w-8 h-8 rounded-full bg-white/5 border border-white/8 flex items-center justify-center hover:bg-red-500/20 hover:border-red-400/25 transition-colors"
             >
-              <LogOut size={15} className="text-gray-400" />
+              <LogOut size={14} className="text-gray-500" />
             </button>
           </div>
         </div>
