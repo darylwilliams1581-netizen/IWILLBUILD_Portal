@@ -7,7 +7,7 @@
  *
  * Groups:
  *   field       — day-to-day field worker tools
- *   safety      — safety-related tools
+ *   safety      — safety posters
  *   tools       — calculation / estimation tools
  *   management  — admin / management section
  *   comingSoon  — placeholder slots for future features (10 reserved)
@@ -17,13 +17,12 @@ import type { ComponentType } from 'react';
 import {
   Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote,
   DollarSign, Clock, TrendingUp, Layers, Ruler, ClipboardList,
-  Wrench, ShieldCheck, Image, BookOpen, FileCheck,
+  Wrench, Image, FileCheck,
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings, Bot,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, ScrollText, Wallet,
-  Library,
+  MessageSquare, ClipboardSignature, Wallet,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -63,8 +62,6 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
 // ── SAFETY ────────────────────────────────────────────────────────────────────
 export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'poster',        label: 'Safety Posters', icon: Image,            href: '/safety/posters',         bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
-  { key: 'policies',      label: 'Policies',       icon: BookOpen,         href: '/safety?tab=policies',    bg: 'bg-violet-500',  fg: 'text-white', group: 'safety',     comingSoon: true },
-  { key: 'safety_plan',   label: 'Safety Plan',    icon: FileCheck,        href: '/safety?tab=swms',        bg: 'bg-orange-600',  fg: 'text-white', group: 'safety',     comingSoon: true },
 ];
 
 // ── TOOLS ─────────────────────────────────────────────────────────────────────
@@ -86,10 +83,8 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-amber-500',   fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
-  { key: 'studio',        label: 'Studio',         icon: Layers,           href: '/studio',                 bg: 'bg-fuchsia-500', fg: 'text-white', group: 'management' },
   { key: 'studio_docs',   label: 'Doc Studio',     icon: FileText,         href: '/studio/documents',       bg: 'bg-orange-500',  fg: 'text-white', group: 'management' },
   { key: 'studio_forms',  label: 'Form Studio',    icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
-  { key: 'studio_library',label: 'Library',        icon: Library,          href: '/studio/library',         bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',      label: 'Dazza AI',       icon: Bot,              href: '/dazza-ai',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },
 ];
@@ -103,7 +98,6 @@ export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'checklist',     label: 'Checklist',      icon: Clipboard,        href: '/checklist',              bg: 'bg-lime-600',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'messages',      label: 'Messages',       icon: MessageSquare,    href: '/messages',               bg: 'bg-green-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'invoices_field',label: 'Invoices',       icon: Wallet,           href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'whs_docs',      label: 'WHS Docs',       icon: ScrollText,       href: '/safety?tab=docs',        bg: 'bg-red-400',     fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'daily_log',     label: 'Daily Log',      icon: ClipboardList,    href: '/daily-log',              bg: 'bg-orange-400',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'weather',       label: 'Weather',        icon: CloudRain,        href: '/weather',                bg: 'bg-cyan-400',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
 ];
@@ -121,7 +115,7 @@ export const ALL_HOME_ICONS: HomeIconDef[] = [
 
 /** Minimal set given to new invited employees */
 export const DEFAULT_FIELD_KEYS: string[] = [
-  'camera', 'sign_in', 'drive', 'safety', 'prestart',
+  'camera', 'sign_in', 'drive', 'prestart',
 ];
 
 /** Full set given to solo users (only person in company) */

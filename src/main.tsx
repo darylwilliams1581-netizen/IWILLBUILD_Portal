@@ -100,15 +100,28 @@ const STALE_TS = [
   '1784748000000', // cover recent edit window
   '1784800000000', // July 21 2026 edit window
   '1784850000000',
+  '1784860000000',
+  '1784870000000',
+  '1784880000000',
+  '1784890000000',
+  '1784900000000',
+  '1784900000003',
+  '1784900000004',
+  '1784900000005',
+  '1784900000006',
+  '1784910000000',
+  '1784920000000',
+  '1784930000000',
 ];
 
 function isSosError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
+  // NotFoundError from removeChild is exclusively caused by the stale shim — always catch it.
+  if (e.name === 'NotFoundError') return true;
   const text = (e.message ?? '') + (e.stack ?? '');
   return (
     text.includes('SOSAlertPopup') ||
     STALE_TS.some((ts) => text.includes(ts)) ||
-    (e.name === 'NotFoundError' && text.includes('removeChild')) ||
     text.includes('patchedRemoveChild')
   );
 }
@@ -227,19 +240,11 @@ const tree = (
 // the window level so it never reaches React's unhandled-error reporter.
 function isStaleShimRemoveChildError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
+  // NotFoundError from removeChild is exclusively the stale shim — always suppress.
+  if (e.name === 'NotFoundError') return true;
   const text = (e.stack ?? '') + (e.message ?? '');
-  if (e.name !== 'NotFoundError' && !e.message.includes('removeChild')) return false;
-  // Match any patchedRemoveChild from any version of sos-shim
-  if (text.includes('patchedRemoveChild')) return true;
-  // Match by specific known timestamps
-  return (
-    text.includes('1784519099416') ||
-    text.includes('1784522000000') ||
-    text.includes('1784545944754') ||
-    text.includes('1784546299827') ||
-    text.includes('1784546491474') ||
-    text.includes('1784549200000')
-  );
+  if (!e.message.includes('removeChild')) return false;
+  return text.includes('patchedRemoveChild');
 }
 
 window.addEventListener('error', (ev) => {

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v72 -->
+  <!-- cache-bust: v73 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -32,6 +32,15 @@
           }
           // Expose the WRAPPER — not the raw native — so the stale shim's _native is safe.
           window.__sosTrueNativeRC = _swallowingNative;
+          // Also expose on every iframe window created later (stale shim reads __sosTrueNativeRC
+          // from its own iframe's contentWindow — pre-seed it there too).
+          try {
+            Object.defineProperty(Window.prototype, '__sosTrueNativeRC', {
+              get: function() { return _swallowingNative; },
+              set: function() {},
+              configurable: true, enumerable: false,
+            });
+          } catch(e) {}
 
           var safeRemoveChild = _swallowingNative;
 
@@ -236,11 +245,14 @@
                        '1784800000000','1784850000000','1784860000000','1784870000000',
                        '1784880000000','1784890000000','1784900000000','1784900000003',
                        '1784900000004','1784900000005','1784910000000','1784920000000',
-                       '1784930000000','1784940000000','1784950000000','1784960000000'];
-        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; });
-        var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1);
+                       '1784930000000','1784940000000','1784950000000','1784960000000',
+                       '1784970000000','1784980000000','1784990000000','1785000000000',
+                       '1785010000000','1785020000000','1785030000000','1785040000000'];
+        // Also catch ANY removeChild / NotFoundError from sos-shim regardless of timestamp
+        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; }) || src.indexOf('sos-shim') !== -1;
+        var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1 || (e.error && e.error.name === 'NotFoundError'));
         var isSosShim = (src.indexOf('sos-shim') !== -1);
-        if (isRemoveChildErr || isStale || (isSosShim && e.error && e.error.name === 'NotFoundError')) {
+        if (isRemoveChildErr || isStale || isSosShim) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);

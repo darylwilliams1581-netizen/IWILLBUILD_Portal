@@ -1,4 +1,4 @@
-// sos-shim.ts v1784900000004 — imported first in main.tsx before any other module
+// sos-shim.ts v1784900000006 — imported first in main.tsx before any other module
 // The browser has a frozen Vite HMR snapshot of RootLayout.tsx (t=1783772358219)
 // that references SOSAlertPopup as a bare identifier (free variable) inside the
 // component JSX. Because module scope is strict, bare identifiers fall back to
@@ -451,7 +451,7 @@ const SOS_SHIM_LS_KEY = 'sos_shim_reload_ts';
 const SOS_SHIM_COUNT_KEY = 'sos_shim_reload_count';
 // Key that tracks which shim version last reset the counter.
 // When the shim is updated, this changes and the counter resets automatically.
-const SOS_SHIM_VERSION = '1784900000005'; // bumped 2026-07-21 to reset stale reload counters
+const SOS_SHIM_VERSION = '1784900000006'; // bumped 2026-07-21 — Window.prototype.__sosTrueNativeRC getter
 const SOS_SHIM_VER_KEY = 'sos_shim_version';
 const SOS_SHIM_WINDOW_MS = 30_000;  // 30s window — stale shim persists across fast reloads
 const SOS_SHIM_MAX_RELOADS = 12;    // allow more reloads to fully evict the stale module
