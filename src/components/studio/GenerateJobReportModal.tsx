@@ -1,16 +1,16 @@
 /**
  * GenerateJobReportModal
  * Opens from the "Generate Job Report" button in the Doc Studio ribbon.
- * User selects a job, toggles sections, adds optional notes override,
- * then hits Generate — the API creates a document_template and we
- * redirect to /studio/builder/:id.
+ * User selects a job, toggles sections, picks site photos to embed,
+ * adds optional notes override, then hits Generate — the API creates a
+ * document_template and we redirect to /studio/builder/:id.
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Loader2, FileText, ChevronDown, CheckSquare, Square,
-  AlertTriangle, Briefcase,
+  AlertTriangle, Briefcase, Camera, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +22,13 @@ interface Job {
   job_number: string | null;
   status: string;
   client: string | null;
+}
+
+interface JobPhoto {
+  id: number;
+  label: string;
+  thumbUrl: string | null;
+  downloadUrl: string;
 }
 
 interface Sections {
@@ -51,7 +58,7 @@ const SECTION_LABELS: { key: keyof Sections; label: string; desc: string }[] = [
   { key: 'incidents', label: 'Incidents',              desc: 'Recorded incidents for this job' },
   { key: 'variations',label: 'Variations & Quotes',    desc: 'Estimates and pending variations' },
   { key: 'notes',     label: 'Notes',                  desc: 'Job notes (editable before sending)' },
-  { key: 'photosLink',label: 'Site Photos Reference',  desc: 'Note directing client to photo library' },
+  { key: 'photosLink',label: 'Site Photos',           desc: 'Embed selected job photos in a 2-up grid' },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -74,6 +81,11 @@ export default function GenerateJobReportModal({ onClose }: Props) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
+  // Photo picker state
+  const [jobPhotos, setJobPhotos] = useState<JobPhoto[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<number>>(new Set());
+
   // Load jobs list
   useEffect(() => {
     fetch('/api/jobs?limit=200', { credentials: 'include' })
@@ -82,6 +94,26 @@ export default function GenerateJobReportModal({ onClose }: Props) {
       .catch(() => {})
       .finally(() => setJobsLoading(false));
   }, []);
+
+  // Load photos when job is selected and photosLink section is on
+  useEffect(() => {
+    if (!selectedJob || !sections.photosLink) {
+      setJobPhotos([]);
+      setSelectedPhotoIds(new Set());
+      return;
+    }
+    setPhotosLoading(true);
+    fetch(`/api/jobs/${selectedJob.id}/photos/picker`, { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { photos?: JobPhoto[] }) => {
+        const photos = d.photos ?? [];
+        setJobPhotos(photos);
+        // Auto-select all by default
+        setSelectedPhotoIds(new Set(photos.map(p => p.id)));
+      })
+      .catch(() => setJobPhotos([]))
+      .finally(() => setPhotosLoading(false));
+  }, [selectedJob, sections.photosLink]);
 
   const filteredJobs = jobs.filter(j => {
     const q = jobSearch.toLowerCase();
@@ -120,6 +152,9 @@ export default function GenerateJobReportModal({ onClose }: Props) {
           jobId: selectedJob.id,
           sections,
           notesOverride: notesOverride.trim() || undefined,
+          selectedPhotoIds: sections.photosLink && selectedPhotoIds.size > 0
+            ? Array.from(selectedPhotoIds)
+            : undefined,
         }),
       });
       const data = await res.json() as { id?: number; error?: string };
@@ -282,6 +317,90 @@ export default function GenerateJobReportModal({ onClose }: Props) {
               </div>
               <p className="text-[10px] text-slate-400">{enabledCount} of {SECTION_LABELS.length} sections selected</p>
             </div>
+
+            {/* Photo picker — shown when Site Photos section is on and a job is selected */}
+            {sections.photosLink && selectedJob && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Camera size={12} className="text-slate-400" />
+                    Select photos to embed
+                  </label>
+                  {jobPhotos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedPhotoIds.size === jobPhotos.length) {
+                          setSelectedPhotoIds(new Set());
+                        } else {
+                          setSelectedPhotoIds(new Set(jobPhotos.map(p => p.id)));
+                        }
+                      }}
+                      className="text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+                    >
+                      {selectedPhotoIds.size === jobPhotos.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  )}
+                </div>
+
+                {photosLoading ? (
+                  <div className="flex items-center justify-center py-6 rounded-xl border border-slate-200 bg-slate-50">
+                    <Loader2 size={16} className="animate-spin text-slate-400" />
+                  </div>
+                ) : jobPhotos.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-5 rounded-xl border border-slate-200 bg-slate-50 gap-1.5">
+                    <Camera size={20} className="text-slate-300" />
+                    <p className="text-xs text-slate-400">No photos uploaded for this job yet</p>
+                    <p className="text-[10px] text-slate-300">A text reference will be included instead</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 max-h-52 overflow-y-auto p-1 rounded-xl border border-slate-200 bg-slate-50">
+                    {jobPhotos.map(photo => {
+                      const selected = selectedPhotoIds.has(photo.id);
+                      return (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPhotoIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(photo.id)) next.delete(photo.id);
+                              else next.add(photo.id);
+                              return next;
+                            });
+                          }}
+                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                            selected ? 'border-primary' : 'border-transparent'
+                          }`}
+                        >
+                          {photo.thumbUrl ? (
+                            <img
+                              src={photo.thumbUrl}
+                              alt={photo.label}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                              <Camera size={14} className="text-slate-400" />
+                            </div>
+                          )}
+                          {selected && (
+                            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                              <Check size={9} className="text-white" strokeWidth={3} />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {jobPhotos.length > 0 && (
+                  <p className="text-[10px] text-slate-400">
+                    {selectedPhotoIds.size} of {jobPhotos.length} photos selected — embedded 2 per row
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Notes override */}
             {sections.notes && (

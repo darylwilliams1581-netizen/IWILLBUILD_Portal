@@ -48,6 +48,8 @@ interface DocumentStore {
   templateId: number | null;
   templateName: string;
   templateType: DocumentTemplate['templateType'];
+  /** Job this report was generated from — enables "Pick from job" photo picker */
+  sourceJobId: number | null;
   pageLayout: PageLayout;
   theme: DocumentTheme;
 
@@ -129,6 +131,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   templateId: null,
   templateName: 'Untitled Document',
   templateType: 'document',
+  sourceJobId: null,
   pageLayout: DEFAULT_PAGE_LAYOUT,
   theme: DEFAULT_THEME,
   // Doc/Form kind defaults
@@ -398,6 +401,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       templateId: template.id ?? null,
       templateName: template.name,
       templateType: template.templateType,
+      sourceJobId: template.sourceJobId ?? null,
       pageLayout: template.pageLayout ?? DEFAULT_PAGE_LAYOUT,
       theme: template.theme ?? DEFAULT_THEME,
       blocks: template.blocks ?? [],
@@ -422,6 +426,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       templateId: null,
       templateName: name,
       templateType: type ?? 'document',
+      sourceJobId: null,
       pageLayout: DEFAULT_PAGE_LAYOUT,
       theme: DEFAULT_THEME,
       blocks: [],

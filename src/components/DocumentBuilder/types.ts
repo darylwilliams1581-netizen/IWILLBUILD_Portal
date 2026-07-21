@@ -656,6 +656,8 @@ export interface DocumentTemplate {
   acknowledgementText?: string;
   submitLabel?: string;
   requiresSignature?: boolean;
+  /** Job this report was generated from — enables "Pick from job" photo picker */
+  sourceJobId?: number | null;
 }
 
 // ── PDF Output Settings (per-template overlay) ────────────────────────────────

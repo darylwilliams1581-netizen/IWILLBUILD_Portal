@@ -25,6 +25,7 @@ import {
 import { useDocumentStore } from './useDocumentStore';
 import { nanoid } from 'nanoid';
 import type { DocumentBlock, BannerVariant } from './types';
+import JobPhotoPicker from './JobPhotoPicker';
 
 interface Props {
   onImportDocx: () => void;
@@ -70,6 +71,8 @@ const BANNER_VARIANTS: {
 
 // ── Image insert panel ────────────────────────────────────────────────────────
 function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => void }) {
+  const { sourceJobId } = useDocumentStore();
+  const [tab, setTab] = useState<'upload' | 'job'>('upload');
   const [size, setSize]   = useState<'small' | 'medium' | 'large' | 'full'>('medium');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
   const [uploading, setUploading] = useState(false);
@@ -99,67 +102,94 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
 
   return (
     <div className="mx-2 mb-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 flex flex-col gap-2">
-      <p className="text-[9px] text-slate-400 leading-tight">Pick size &amp; align, then click Insert. Use the right panel to change after inserting.</p>
-      {/* Size selector */}
-      <div>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Size</p>
-        <div className="grid grid-cols-2 gap-1">
-          {(Object.keys(SIZE_LABELS) as (keyof typeof SIZE_LABELS)[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSize(s)}
-              className={`py-1 rounded text-[10px] font-semibold transition-colors ${
-                size === s
-                  ? 'bg-primary text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
-              }`}
-            >
-              {SIZE_LABELS[s]}
-            </button>
-          ))}
+      {/* Tab bar — only shown for job reports */}
+      {sourceJobId && (
+        <div className="flex rounded-lg overflow-hidden border border-slate-200 bg-white">
+          <button onClick={() => setTab('upload')}
+            className={`flex-1 py-1 text-[10px] font-semibold transition-colors ${tab === 'upload' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+            Upload / URL
+          </button>
+          <button onClick={() => setTab('job')}
+            className={`flex-1 py-1 text-[10px] font-semibold transition-colors flex items-center justify-center gap-1 ${tab === 'job' ? 'bg-primary text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Camera size={10} /> From job
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* Align selector */}
-      <div>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Align</p>
-        <div className="flex gap-1">
-          {(['left', 'center', 'right'] as const).map((a) => (
-            <button
-              key={a}
-              onClick={() => setAlign(a)}
-              title={a.charAt(0).toUpperCase() + a.slice(1)}
-              className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${
-                align === a
-                  ? 'bg-primary text-white'
-                  : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'
-              }`}
-            >
-              {a === 'left'   && <AlignLeft size={12} />}
-              {a === 'center' && <AlignCenter size={12} />}
-              {a === 'right'  && <AlignRight size={12} />}
-            </button>
-          ))}
-        </div>
-      </div>
+      {tab === 'job' && sourceJobId ? (
+        <JobPhotoPicker
+          jobId={sourceJobId}
+          size={size}
+          align={align}
+          onInsertPhoto={(src, alt) =>
+            onInsert({ id: nanoid(10), type: 'image', src, alt, size, align, preserveAspectRatio: true })
+          }
+        />
+      ) : (
+        <>
+          <p className="text-[9px] text-slate-400 leading-tight">Pick size &amp; align, then click Insert. Use the right panel to change after inserting.</p>
+          {/* Size selector */}
+          <div>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Size</p>
+            <div className="grid grid-cols-2 gap-1">
+              {(Object.keys(SIZE_LABELS) as (keyof typeof SIZE_LABELS)[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSize(s)}
+                  className={`py-1 rounded text-[10px] font-semibold transition-colors ${
+                    size === s
+                      ? 'bg-primary text-white'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
+                  }`}
+                >
+                  {SIZE_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Insert button */}
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Image size={11} />
-        {uploading ? 'Uploading…' : 'Insert image'}
-      </button>
-      {uploadError && <p className="text-[10px] text-red-500">{uploadError}</p>}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileInsert(f); e.target.value = ''; }}
-      />
+          {/* Align selector */}
+          <div>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Align</p>
+            <div className="flex gap-1">
+              {(['left', 'center', 'right'] as const).map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setAlign(a)}
+                  title={a.charAt(0).toUpperCase() + a.slice(1)}
+                  className={`flex-1 py-1.5 rounded flex items-center justify-center transition-colors ${
+                    align === a
+                      ? 'bg-primary text-white'
+                      : 'bg-white border border-slate-200 text-slate-500 hover:border-primary/40 hover:text-primary'
+                  }`}
+                >
+                  {a === 'left'   && <AlignLeft size={12} />}
+                  {a === 'center' && <AlignCenter size={12} />}
+                  {a === 'right'  && <AlignRight size={12} />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Insert button */}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Image size={11} />
+            {uploading ? 'Uploading…' : 'Insert image'}
+          </button>
+          {uploadError && <p className="text-[10px] text-red-500">{uploadError}</p>}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileInsert(f); e.target.value = ''; }}
+          />
+        </>
+      )}
     </div>
   );
 }

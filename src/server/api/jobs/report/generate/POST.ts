@@ -98,9 +98,11 @@ export default async function handler(req: Request, res: Response) {
         photosLink?: boolean;
       };
       notesOverride?: string;
+      /** Photo IDs to embed in the Site Photos section (from job_photos table) */
+      selectedPhotoIds?: number[];
     };
 
-    const { jobId, sections = {}, notesOverride } = body;
+    const { jobId, sections = {}, notesOverride, selectedPhotoIds } = body;
     if (!jobId || isNaN(Number(jobId))) return res.status(400).json({ error: 'jobId is required' });
 
     const companyId = profile.companyId;
@@ -298,12 +300,52 @@ export default async function handler(req: Request, res: Response) {
       blocks.push(spacer(16));
     }
 
-    // ── Site Photos Link ──────────────────────────────────────────────────────
+    // ── Site Photos ───────────────────────────────────────────────────────────
     if (sections.photosLink) {
       blocks.push(heading('Site Photos'));
-      blocks.push(richText(
-        `<p>View all site photos for this job in the <strong>Camera / Photos</strong> section of the app.</p>`
-      ));
+
+      const photoIds = Array.isArray(selectedPhotoIds) && selectedPhotoIds.length > 0
+        ? selectedPhotoIds
+        : null;
+
+      if (photoIds) {
+        // Embed selected photos as a 2-up columns grid
+        const pairs: number[][] = [];
+        for (let i = 0; i < photoIds.length; i += 2) {
+          pairs.push(photoIds.slice(i, i + 2));
+        }
+        for (const pair of pairs) {
+          const colBlocks = pair.map((pid) => ({
+            id: uid(),
+            type: 'image' as const,
+            src: `/api/jobs/${jobId}/photos/${pid}/download?inline=1`,
+            alt: `Site photo ${pid}`,
+            size: 'full' as const,
+            align: 'center' as const,
+            preserveAspectRatio: true,
+          }));
+          if (colBlocks.length === 2) {
+            // Two-column layout
+            blocks.push({
+              id: uid(),
+              type: 'columns',
+              columns: [
+                { id: uid(), width: 1, blocks: [colBlocks[0]] },
+                { id: uid(), width: 1, blocks: [colBlocks[1]] },
+              ],
+            });
+          } else {
+            // Single photo — just insert as full-width image
+            blocks.push(colBlocks[0]);
+          }
+          blocks.push(spacer(8));
+        }
+      } else {
+        // No photos selected — fallback text
+        blocks.push(richText(
+          `<p>View all site photos for this job in the <strong>Camera / Photos</strong> section of the app.</p>`
+        ));
+      }
       blocks.push(spacer(16));
     }
 
@@ -314,10 +356,10 @@ export default async function handler(req: Request, res: Response) {
     const [result] = await db.execute(
       sql`INSERT INTO document_templates
             (company_id, name, template_type, builder_json, page_layout_json, theme_json,
-             is_active, created_by_user_id)
+             is_active, created_by_user_id, source_job_id)
           VALUES
             (${companyId}, ${reportName}, ${'job_report'}, ${builderJson}, ${'{}'},  ${'{}'},
-             ${1}, ${session.user.id})`
+             ${1}, ${session.user.id}, ${Number(jobId)})`
     ) as unknown as [{ insertId?: number | bigint }, unknown];
 
     const insertId = Number((result as { insertId?: number | bigint }).insertId ?? 0);

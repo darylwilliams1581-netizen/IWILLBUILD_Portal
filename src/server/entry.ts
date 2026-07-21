@@ -403,6 +403,7 @@ import jobs_id_milestones_milestoneId_patch_322 from "./api/jobs/[id]/milestones
 import jobs_id_notes_export_csv_get_323 from "./api/jobs/[id]/notes/export-csv/GET";
 import jobs_id_photos_get_324 from "./api/jobs/[id]/photos/GET";
 import jobs_id_photos_post_325 from "./api/jobs/[id]/photos/POST";
+import jobs_id_photos_picker_get from "./api/jobs/[id]/photos/picker/GET";
 import jobs_id_photos_export_zip_post_326 from "./api/jobs/[id]/photos/export-zip/POST";
 import jobs_id_photos_share_post_327 from "./api/jobs/[id]/photos/share/POST";
 import jobs_id_photos_photoId_delete_328 from "./api/jobs/[id]/photos/[photoId]/DELETE";
@@ -1234,6 +1235,7 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'acknowledgement_text',        definition: "TEXT NOT NULL DEFAULT 'By signing, I confirm I have read, understood, and agree to comply with this document.'" },
     { table: 'document_templates', column: 'submit_label',                definition: "VARCHAR(255) NOT NULL DEFAULT 'Submit Form'" },
     { table: 'document_templates', column: 'requires_signature',          definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'document_templates', column: 'source_job_id',               definition: 'INT NULL' },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
@@ -2630,6 +2632,7 @@ app.patch("/api/jobs/:id/milestones/:milestoneId", jobs_id_milestones_milestoneI
 app.get("/api/jobs/:id/notes/export-csv", jobs_id_notes_export_csv_get_323);
 app.get("/api/jobs/:id/photos", jobs_id_photos_get_324);
 app.post("/api/jobs/:id/photos", jobs_id_photos_post_325);
+app.get("/api/jobs/:id/photos/picker", jobs_id_photos_picker_get);
 app.post("/api/jobs/:id/photos/export-zip", jobs_id_photos_export_zip_post_326);
 app.post("/api/jobs/:id/photos/share", jobs_id_photos_share_post_327);
 app.delete("/api/jobs/:id/photos/:photoId", jobs_id_photos_photoId_delete_328);

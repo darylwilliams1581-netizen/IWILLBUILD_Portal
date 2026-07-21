@@ -67,6 +67,7 @@ export default async function handler(req: Request, res: Response) {
         acknowledgementText: (row.acknowledgement_text as string) ?? 'By signing, I confirm I have read, understood, and agree to comply with this document.',
         submitLabel: (row.submit_label as string) ?? 'Submit Form',
         requiresSignature: Boolean(row.requires_signature),
+        sourceJobId: row.source_job_id ? Number(row.source_job_id) : null,
       },
     });
   } catch (err) {
