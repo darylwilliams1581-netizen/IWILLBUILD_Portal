@@ -434,7 +434,7 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
           </div>
           <div className="flex-1">
             <p className="font-bold text-sm text-foreground">Xero</p>
-            <p className="text-xs text-muted-foreground">Sync invoices, contacts and payments with Xero.</p>
+            <p className="text-xs text-muted-foreground">Connect your company's Xero organisation to sync invoices and contacts.</p>
           </div>
           {loading ? (
             <Loader2 size={16} className="animate-spin text-muted-foreground" />
@@ -517,7 +517,7 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
             /* ── STATE 2: Configured, not connected ── */
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Your Xero app is set up. Click below to log in to Xero and authorise access to your organisation.
+                Connect <strong>your company's</strong> Xero organisation. Each company on this platform connects to its own separate Xero account — your connection is private and not shared with other companies.
               </p>
 
               <ul className="text-xs text-slate-500 space-y-1">
@@ -637,7 +637,7 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
           </div>
           <div className="flex-1">
             <p className="font-bold text-sm text-foreground">QuickBooks Online</p>
-            <p className="text-xs text-muted-foreground">Sync invoices and customers with QuickBooks Online.</p>
+            <p className="text-xs text-muted-foreground">Connect your company's QuickBooks Online account to sync invoices and customers.</p>
           </div>
           {loading ? <Loader2 size={16} className="animate-spin text-muted-foreground" />
             : qbo?.connected ? (
@@ -693,7 +693,7 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
                 {qbo?.platformReady
-                  ? 'Your QBO app is configured. Click below to authorise access to your QuickBooks company.'
+                  ? 'Your QBO app is configured. Click below to authorise access to your company\'s QuickBooks account. Each company connects to its own separate QuickBooks account — your connection is private.'
                   : 'To connect QuickBooks Online, add QBO_CLIENT_ID, QBO_CLIENT_SECRET, and QBO_REDIRECT_URI in Settings → Secrets.'}
               </p>
               <ul className="text-xs text-slate-500 space-y-1">

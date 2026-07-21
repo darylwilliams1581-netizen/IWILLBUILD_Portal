@@ -39,6 +39,9 @@ function mapStatus(status: string): string {
 }
 
 export default async function handler(req: Request, res: Response) {
+  // Hoisted outside try so the catch block can scope error writes to the correct company
+  let sessionCompanyId: number | undefined;
+
   try {
     const auth = getAuth();
     const headers = new Headers();
@@ -50,6 +53,9 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    // Assign early so catch block can use it
+    sessionCompanyId = profile.companyId;
 
     const isAdmin = profile.role === 'owner' || profile.role === 'admin' || profile.permAdmin === true;
     const canInvoices = isAdmin || profile.permInvoices !== false;
@@ -175,15 +181,15 @@ export default async function handler(req: Request, res: Response) {
       message: existingXeroId ? 'Invoice updated in Xero' : 'Invoice created in Xero',
     });
   } catch (err) {
-    // Save error to invoice row
+    // Save error to invoice row — MUST include company_id guard to prevent cross-tenant writes
     const invoiceId = parseInt(req.params.invoiceId, 10);
-    if (invoiceId) {
+    if (invoiceId && typeof sessionCompanyId === 'number') {
       try {
         const errMsg = err instanceof Error ? err.message : String(err);
         await db.execute(sql`
           UPDATE invoices
           SET accounting_sync_status = 'error', accounting_sync_error = ${errMsg.substring(0, 500)}, updated_at = NOW()
-          WHERE id = ${invoiceId}
+          WHERE id = ${invoiceId} AND company_id = ${sessionCompanyId}
         `);
       } catch { /* non-fatal */ }
     }
