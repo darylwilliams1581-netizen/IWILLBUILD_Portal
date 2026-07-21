@@ -17,7 +17,7 @@ import type { ComponentType } from 'react';
 import {
   Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote,
   DollarSign, Clock, TrendingUp, Layers, Ruler, ClipboardList,
-  Wrench, Image, FileCheck, BookOpen,
+  Wrench, Image, FileCheck, BookOpen, LayoutDashboard,
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings, Bot,
@@ -57,6 +57,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'drawings',      label: 'Drawings',       icon: Layers,           href: '?panel=drawings-picker',  bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
   { key: 'equipment',     label: 'Equipment',      icon: Wrench,           href: '/studio/asset-manager',   bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
   { key: 'field_docs',   label: 'Docs',           icon: FileCheck,        href: '/job-docs',               bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
+  { key: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard,  href: '/dashboard',              bg: 'bg-gray-700',    fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────

@@ -67,15 +67,16 @@
           // stale shim can't bypass us even when it calls __origDefProp directly.
           function safeDefProp(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
-              // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
+              // Always substitute our safe wrapper with configurable:false so
+              // subsequent defineProperty calls throw TypeError and are ignored.
               try {
                 return _origDefProp(obj, prop, {
                   get: function() { return safeRemoveChild; },
-                  set: function(_v) { /* ignore — our wrapper always wins */ },
-                  configurable: true,
+                  set: function(_v) { /* ignore */ },
+                  configurable: false,
                   enumerable: false,
                 });
-              } catch(e) { /* already locked — our wrapper should already be there */ }
+              } catch(e) { /* already non-configurable — our wrapper is locked in */ }
               return obj;
             }
             return _origDefProp(obj, prop, descriptor);
@@ -147,17 +148,17 @@
               var appEl = document.getElementById('app');
               if (!appEl) return;
               var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              // Already sealed with our safe wrapper — check if it returns safeRemoveChild.
-              if (d && d.get) {
+              // Only skip if already non-configurable with our safe getter.
+              if (d && !d.configurable && d.get) {
                 try { if (d.get.call(appEl) === safeRemoveChild) return; } catch(e) {}
               }
-              // Use safeDefProp so the install goes through our intercept layer.
-              // configurable:true so we can always overwrite on next poll.
+              // Use _origDefProp (true native) with configurable:false so the stale
+              // shim's subsequent defineProperty call throws TypeError and is ignored.
               try {
-                safeDefProp(appEl, 'removeChild', {
+                _origDefProp(appEl, 'removeChild', {
                   get: function() { return safeRemoveChild; },
                   set: function(_v) {},
-                  configurable: true, enumerable: false,
+                  configurable: false, enumerable: false,
                 });
               } catch(e) {
                 try { appEl.removeChild = safeRemoveChild; } catch(e2) {}

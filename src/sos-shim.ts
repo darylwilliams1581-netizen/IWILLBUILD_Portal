@@ -387,15 +387,18 @@
       const appEl = document.getElementById('app');
       if (!appEl) return;
       try {
-        // Always re-seal — never early-return. The stale shim's own sealLoop
-        // re-installs patchedRemoveChild every 10ms; we must overwrite it every time.
-        // Use __origDefProp (true Object.defineProperty from index.html) to overwrite
-        // even non-configurable own properties installed by the stale shim.
+        const d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
+        // Only skip if already non-configurable with our safe getter.
+        if (d && !d.configurable && d.get) {
+          try { if (d.get.call(appEl) === swallowingRemoveChild) return; } catch { /* check failed */ }
+        }
+        // configurable:false — the stale shim's defineProperty call will throw
+        // TypeError (can't redefine non-configurable) and be silently ignored.
         try {
           _shimOrigDP(appEl, 'removeChild', {
             get() { return swallowingRemoveChild; },
-            set(_v: unknown) { /* ignore — our wrapper always wins */ },
-            configurable: true,
+            set(_v: unknown) { /* ignore */ },
+            configurable: false,
             enumerable: false,
           });
           return;
@@ -403,8 +406,8 @@
         try {
           _shimOrigDP(appEl, 'removeChild', {
             value: swallowingRemoveChild,
-            writable: true,
-            configurable: true,
+            writable: false,
+            configurable: false,
             enumerable: false,
           });
         } catch { /* truly locked */ }
