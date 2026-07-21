@@ -45,12 +45,12 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
-        type: 'image', label: 'Risk Assessment', icon: BarChart2, description: 'AS/NZS risk matrix — likelihood, level & degree of risk',
+        type: 'risk_matrix', label: 'Risk Assessment', icon: BarChart2, description: 'AS/NZS risk matrix — likelihood, level & degree of risk',
         factory: () => ({
-          id: newId(), type: 'image',
-          src: '/airo-assets/images/safety-badges/risk-assessment-banner',
-          alt: 'Risk Assessment Matrix — Likelihood, Level of Risk, Degree of Risk',
-          size: 'full', align: 'center', preserveAspectRatio: true,
+          id: newId(), type: 'risk_matrix',
+          title: 'Risk Assessment Matrix',
+          showLegend: true,
+          showOnExport: true,
         }),
       },
       {
