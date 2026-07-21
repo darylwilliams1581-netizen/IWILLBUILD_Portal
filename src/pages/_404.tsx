@@ -1,4 +1,5 @@
 import { Link } from '../router';
+import { Helmet } from '@dr.pogodin/react-helmet';
 
 /**
  * 404 Not Found page component
@@ -9,7 +10,14 @@ import { Link } from '../router';
  */
 export default function NotFoundPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, hsl(var(--primary)), hsl(var(--secondary)))' }}>
+    <>
+      <Helmet>
+        <title>Page Not Found — IWILLBUILD</title>
+        <meta name="description" content="The page you requested could not be found." />
+        <link rel="canonical" href="https://iwillbuild.com/" />
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, hsl(var(--primary)), hsl(var(--secondary)))' }}>
     <div className="container mx-auto px-4 max-w-2xl text-center">
       <div className="space-y-8">
         <div className="space-y-4">
@@ -31,5 +39,6 @@ export default function NotFoundPage() {
       </div>
     </div>
   </div>
+    </>
   );
 }

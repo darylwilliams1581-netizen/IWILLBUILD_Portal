@@ -84,6 +84,7 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
         <title>Field Docs | IWILLBUILD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       {/* Home button */}
       <div className="w-full max-w-md mb-2 flex">

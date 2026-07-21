@@ -243,7 +243,7 @@ function SupervisorPermitSignoff({
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-white">
-      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-amber-700">
+      <div className="flex items-center gap-3 px-4 safe-top pb-3 bg-amber-700">
         <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
           <X size={18} />
         </button>
@@ -384,7 +384,7 @@ function SignOffScreen({
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-white">
-      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-rose-700">
+      <div className="flex items-center gap-3 px-4 safe-top pb-3 bg-rose-700">
         <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
           <X size={18} />
         </button>
@@ -872,10 +872,11 @@ export default function JobRiskyPage() {
           <title>Risky & Permits — {jobName}</title>
           <meta name="description" content="Field risk assessment and permit check." />
           <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
+          <meta name="robots" content="noindex, nofollow" />
         </Helmet>
         <div className="flex flex-col min-h-screen bg-slate-50">
           {/* Header */}
-          <div className="bg-rose-700 text-white px-4 pt-safe-top pt-4 pb-3 flex items-center gap-3">
+          <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
             <button
               type="button"
               onClick={() => { setView('list'); void loadList(); }}
@@ -1192,7 +1193,7 @@ export default function JobRiskyPage() {
 
           {/* Bottom actions */}
           {!isFinalised && (
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 flex gap-3">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-bottom flex gap-3">
               <button
                 type="button"
                 onClick={handleSaveDraft}
@@ -1241,9 +1242,10 @@ export default function JobRiskyPage() {
         <title>Risky & Permits — {jobName}</title>
         <meta name="description" content="Field risk assessments and permit checks for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="flex flex-col min-h-screen bg-slate-50">
-        <div className="bg-rose-700 text-white px-4 pt-safe-top pt-4 pb-3 flex items-center gap-3">
+        <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(returnTo)}

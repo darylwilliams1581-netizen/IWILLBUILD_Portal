@@ -1,4 +1,3 @@
-import { incidents } from 'virtual:content';
 /**
  * /incidents — Company Incident Register
  * Source of truth for all company incidents, near misses, injuries,
@@ -143,11 +142,12 @@ export default function IncidentsPage() {
         <title>Incident Register — IWILLBUILD</title>
         <meta name="description" content="Company incident register — injuries, near misses, property damage, and safety events." />
         <link rel="canonical" href="https://iwillbuild.com/incidents" />
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-red-700 text-white px-4 pt-safe-top pt-4 pb-3">
+        <div className="bg-red-700 text-white px-4 safe-top pb-3">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-red-200" />
@@ -235,7 +235,7 @@ export default function IncidentsPage() {
                 className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
               >
                 <option value="">All types</option>
-                {incidents.INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>

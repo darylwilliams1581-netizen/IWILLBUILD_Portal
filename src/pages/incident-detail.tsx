@@ -429,11 +429,12 @@ export default function IncidentDetailPage() {
         <title>{pageTitle} — IWILLBUILD</title>
         <meta name="description" content="Incident record detail and corrective actions." />
         <link rel="canonical" href={`https://iwillbuild.com/incidents/${id}`} />
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-red-700 text-white px-4 pt-safe-top pt-4 pb-3 flex items-center gap-3">
+        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
           <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
             <ChevronLeft size={20} />
           </button>
@@ -934,7 +935,7 @@ export default function IncidentDetailPage() {
         </div>
 
         {/* Bottom actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 flex gap-3">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-bottom flex gap-3">
           {!isClosed && (
             <>
               <button

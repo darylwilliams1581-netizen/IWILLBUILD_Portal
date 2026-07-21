@@ -298,7 +298,7 @@ export default function HomePage() {
         about: { '@id': `${site}/#app` },
         publisher: { '@id': `${site}/#organization` },
         datePublished: '2026-06-25',
-        dateModified: '2026-07-13',
+        dateModified: '2026-07-21',
       },
     ],
   };
