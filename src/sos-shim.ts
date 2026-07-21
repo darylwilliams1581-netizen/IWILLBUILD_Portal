@@ -22,12 +22,12 @@
     return child;
   }
   try {
-    // Use a getter so the stale shim's Object.defineProperty call cannot
-    // overwrite this with a throwing version — the setter silently ignores writes.
+    // Use configurable:false so the stale shim cannot redefine this property.
+    // The setter silently ignores any direct assignment attempts.
     Object.defineProperty(Node.prototype, 'removeChild', {
       get() { return _safeRC; },
       set(_v) { /* ignore — our wrapper always wins */ },
-      configurable: true,
+      configurable: false,
       enumerable: false,
     });
   } catch {

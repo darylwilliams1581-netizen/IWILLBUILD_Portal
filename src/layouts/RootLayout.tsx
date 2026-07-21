@@ -7,7 +7,7 @@
 // at the same line offset. Keeping the export pinned to line 122 here ensures
 // the frozen snapshot never throws a ReferenceError.
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Component, type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Component, type ReactElement, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ScrollRestoration, useLocation } from 'react-router-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -375,19 +375,46 @@ export default function RootLayout({ children }: RootLayoutProps) {
     patchRemoveChild(el);
   }, []);
 
+  // Synchronous pre-commit patch — useLayoutEffect fires BEFORE the browser paints
+  // but AFTER React's commit phase writes to the DOM. Run it on every render so
+  // any node the stale shim re-patched between renders gets overwritten before the
+  // next commit can call removeChild on it.
+  useLayoutEffect(() => {
+    const app = document.getElementById('app');
+    if (app) patchRemoveChild(app);
+    if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
+    try { if (document.body) patchRemoveChild(document.body); } catch { /* ignore */ }
+  });
+
   // Also patch the #app host element and re-patch on every navigation.
   // The stale shim re-installs its own `removeChild` on #app after each route
-  // transition; polling every 50ms for 3s after mount/navigation catches it.
+  // transition; polling every 10ms for 5s after mount/navigation catches it.
   useEffect(() => {
     function patchAppHost() {
+      // Patch #app and all its ancestor nodes up to body
       const app = document.getElementById('app');
       if (app) patchRemoveChild(app);
       if (rootDivRef.current) patchRemoveChild(rootDivRef.current);
+      // Also patch body and document.documentElement as the stale shim may
+      // install on any ancestor node during a commit phase.
+      try { if (document.body) patchRemoveChild(document.body); } catch { /* ignore */ }
     }
+    // Run immediately and synchronously before first paint
     patchAppHost();
-    const id = setInterval(patchAppHost, 50);
-    const stop = setTimeout(() => clearInterval(id), 3000);
-    return () => { clearInterval(id); clearTimeout(stop); };
+    // Then poll at 10ms for 5s to catch any re-installs by the stale shim
+    const id = setInterval(patchAppHost, 10);
+    const stop = setTimeout(() => {
+      clearInterval(id);
+      // After the fast poll, keep a slow background poll indefinitely
+      const slow = setInterval(patchAppHost, 500);
+      // Store so we can clear on unmount
+      (patchAppHost as any).__slowId = slow;
+    }, 5000);
+    return () => {
+      clearInterval(id);
+      clearTimeout(stop);
+      if ((patchAppHost as any).__slowId) clearInterval((patchAppHost as any).__slowId);
+    };
   }, [location.pathname]);
 
   return (
