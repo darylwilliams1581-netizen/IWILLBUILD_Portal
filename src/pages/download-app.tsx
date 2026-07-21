@@ -41,6 +41,16 @@ export default function DownloadAppPage() {
         <meta name="twitter:title" content="Download the IWILLBUILD Driver App" />
         <meta name="twitter:description" content="Live GPS tracking, job management, SWMS safety forms, and fleet tools for drivers." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "@id": "https://iwillbuild.com/download-app#webpage",
+          "name": "Download the IWILLBUILD Driver App",
+          "url": "https://iwillbuild.com/download-app",
+          "description": "Download the IWILLBUILD driver app for Android. Live GPS tracking, job management, SWMS safety forms, and fleet tools — all in your pocket.",
+          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
+          "about": { "@id": "https://iwillbuild.com/#organization" }
+        })}</script>
       </Helmet>
 
       <main className="min-h-screen bg-gray-950 text-white">

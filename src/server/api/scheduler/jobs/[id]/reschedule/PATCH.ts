@@ -9,7 +9,8 @@ import { db } from '@/server/db/client';
 import { sql } from 'drizzle-orm';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
+// Fixed-length alternatives avoid optional-group backtracking (ReDoS mitigation)
+const TIME_RE = /^\d{2}:\d{2}$|^\d{2}:\d{2}:\d{2}$/;
 
 export default async function handler(req: Request, res: Response) {
   try {

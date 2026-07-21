@@ -12,6 +12,15 @@ export default function BuildersCalcPage() {
         <meta name="description" content="Construction calculators — areas, volumes, materials and more." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
+        <meta property="og:title" content="Builders Calc — IWILLBUILD" />
+        <meta property="og:description" content="Construction calculators for areas, volumes, materials and more. Part of the IWILLBUILD construction management platform." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/builders-calc" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Builders Calc — IWILLBUILD" />
+        <meta name="twitter:description" content="Construction calculators for areas, volumes, materials and more." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
       <h1 className="sr-only">Builders Calc</h1>
 
