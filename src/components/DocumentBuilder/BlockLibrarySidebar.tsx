@@ -32,6 +32,57 @@ interface BlockGroup {
 
 const BLOCK_GROUPS: BlockGroup[] = [
   {
+    label: 'Safety',
+    icon: Shield,
+    blocks: [
+      {
+        type: 'banner', label: 'First Aid Banner', icon: ShieldCheck, description: 'Red cross first aid header — single block',
+        factory: () => ({
+          id: newId(), type: 'banner', variant: 'first_aid',
+          title: 'FIRST AID',
+          body: 'IN AN EMERGENCY CALL 000',
+          size: 'standard', align: 'left', showOnExport: true,
+        }),
+      },
+      {
+        type: 'banner', label: 'Safety First Banner', icon: Shield, description: 'Hazard-stripe safety poster',
+        factory: () => ({
+          id: newId(), type: 'banner', variant: 'safety_first',
+          title: 'SAFETY FIRST',
+          body: 'ARRIVE SAFE • WORK SAFE • GO HOME SAFE',
+          size: 'standard', align: 'center', showOnExport: true,
+        }),
+      },
+      {
+        type: 'safety_badge_row', label: 'PPE Required', icon: ShieldCheck, description: 'Full PPE required — all 9 standard badges, single block',
+        factory: () => ({
+          id: newId(), type: 'safety_badge_row', size: 'md', align: 'center',
+          badges: [
+            { id: newId(), badgeType: 'helmet',            label: 'Safety Helmet',      required: true },
+            { id: newId(), badgeType: 'hi_vis',            label: 'Hi-Vis Clothing',    required: true },
+            { id: newId(), badgeType: 'footwear',          label: 'Safety Footwear',    required: true },
+            { id: newId(), badgeType: 'eye_protection',    label: 'Eye Protection',     required: true },
+            { id: newId(), badgeType: 'gloves',            label: 'Gloves',             required: true },
+            { id: newId(), badgeType: 'hearing',           label: 'Hearing Protection', required: true },
+            { id: newId(), badgeType: 'fall_arrest',       label: 'Fall Arrest',        required: true },
+            { id: newId(), badgeType: 'ppe',               label: 'PPE',                required: true },
+            { id: newId(), badgeType: 'electrical_gloves', label: 'Electrical Gloves',  required: true },
+          ],
+        }),
+      },
+      {
+        type: 'safety_badge_row', label: 'Safety Badges', icon: ShieldCheck, description: 'Custom PPE badge row — pick your own',
+        factory: () => ({
+          id: newId(), type: 'safety_badge_row', size: 'md', align: 'left',
+          badges: [
+            { id: newId(), badgeType: 'helmet', label: 'Safety Helmet', required: true },
+            { id: newId(), badgeType: 'hi_vis', label: 'Hi-Vis Clothing', required: true },
+          ],
+        }),
+      },
+    ],
+  },
+  {
     label: 'Basic',
     icon: Type,
     blocks: [
@@ -83,55 +134,10 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
-        type: 'banner', label: 'Safety First Banner', icon: Shield, description: 'Hazard-stripe safety poster',
-        factory: () => ({
-          id: newId(), type: 'banner', variant: 'safety_first',
-          title: 'SAFETY FIRST',
-          body: 'ARRIVE SAFE • WORK SAFE • GO HOME SAFE',
-          size: 'standard', align: 'center', showOnExport: true,
-        }),
-      },
-      {
-        type: 'banner', label: 'First Aid Banner', icon: Shield, description: 'Professional first aid header',
-        factory: () => ({
-          id: newId(), type: 'banner', variant: 'first_aid',
-          title: 'FIRST AID',
-          body: 'IN AN EMERGENCY CALL 000',
-          size: 'standard', align: 'left', showOnExport: true,
-        }),
-      },
-      {
         type: 'banner', label: 'Image Banner', icon: Image, description: 'Upload any image as a full-width banner',
         factory: () => ({
           id: newId(), type: 'banner', variant: 'image_banner',
           title: '', body: '', size: 'standard', align: 'left', showOnExport: true,
-        }),
-      },
-      {
-        type: 'safety_badge_row', label: 'Safety Badges', icon: ShieldCheck, description: 'PPE / safety icons',
-        factory: () => ({
-          id: newId(), type: 'safety_badge_row', size: 'md', align: 'left',
-          badges: [
-            { id: newId(), badgeType: 'helmet', label: 'Safety Helmet', required: true },
-            { id: newId(), badgeType: 'hi_vis', label: 'Hi-Vis Clothing', required: true },
-          ],
-        }),
-      },
-      {
-        type: 'safety_badge_row', label: 'PPE Required', icon: Shield, description: 'Full PPE required — all 9 standard badges',
-        factory: () => ({
-          id: newId(), type: 'safety_badge_row', size: 'md', align: 'center',
-          badges: [
-            { id: newId(), badgeType: 'helmet',            label: 'Safety Helmet',      required: true },
-            { id: newId(), badgeType: 'hi_vis',            label: 'Hi-Vis Clothing',    required: true },
-            { id: newId(), badgeType: 'footwear',          label: 'Safety Footwear',    required: true },
-            { id: newId(), badgeType: 'eye_protection',    label: 'Eye Protection',     required: true },
-            { id: newId(), badgeType: 'gloves',            label: 'Gloves',             required: true },
-            { id: newId(), badgeType: 'hearing',           label: 'Hearing Protection', required: true },
-            { id: newId(), badgeType: 'fall_arrest',       label: 'Fall Arrest',        required: true },
-            { id: newId(), badgeType: 'ppe',               label: 'PPE',                required: true },
-            { id: newId(), badgeType: 'electrical_gloves', label: 'Electrical Gloves',  required: true },
-          ],
         }),
       },
       {
