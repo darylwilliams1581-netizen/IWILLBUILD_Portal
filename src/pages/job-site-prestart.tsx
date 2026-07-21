@@ -12,12 +12,13 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, CloudRain, Wrench, Phone,
+  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -656,6 +657,8 @@ export default function JobSitePrestartPage() {
   const [view, setView] = useState<View>('list');
   const [prestart, setPrestart] = useState<SitePrestart | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [delayModalOpen, setDelayModalOpen] = useState(false);
+  const [delays, setDelays] = useState<DelayEntry[]>([]);
   const [jobSwms, setJobSwms] = useState<JobSwms[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -687,6 +690,14 @@ export default function JobSitePrestartPage() {
     }
     setPrestart(full);
     setWorkers(d.workers ?? []);
+    // Load existing delays for this job
+    try {
+      const dr = await fetch(`/api/jobs/${jobId}/delays`, { credentials: 'include' });
+      if (dr.ok) {
+        const dd = await dr.json() as { delays?: DelayEntry[] };
+        setDelays(dd.delays ?? []);
+      }
+    } catch { /* non-critical */ }
     setView('form');
   }
 
@@ -1154,22 +1165,60 @@ export default function JobSitePrestartPage() {
                     </select>
                   </Field>
                 </div>
-                <CheckRow
-                  label="Weather delay today"
-                  checked={!!prestart.weather_delay}
-                  onChange={v => update('weather_delay', v)}
-                  disabled={isReadOnly}
-                />
-                {prestart.weather_delay && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Delay Hours">
-                      <Input type="number" step="0.5" value={prestart.delay_hours ?? ''} onChange={e => update('delay_hours', parseFloat(e.target.value) || null)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                    </Field>
-                    <Field label="Delay Reason">
-                      <Input value={prestart.delay_reason ?? ''} onChange={e => update('delay_reason', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                    </Field>
+                {/* Delays Recorded — Yes / No toggle */}
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-slate-300">Delays Recorded Today</p>
+                  <div className="flex gap-2">
+                    {[{ label: 'No', value: false }, { label: 'Yes', value: true }].map(opt => (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        disabled={isReadOnly}
+                        onClick={() => update('weather_delay', opt.value)}
+                        className={`flex-1 h-10 rounded-xl text-sm font-semibold border transition-colors ${
+                          prestart.weather_delay === opt.value
+                            ? opt.value
+                              ? 'bg-orange-500 border-orange-500 text-white'
+                              : 'bg-slate-600 border-slate-600 text-white'
+                            : 'bg-transparent border-slate-600 text-slate-400 hover:border-slate-400'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
-                )}
+
+                  {prestart.weather_delay && (
+                    <div className="space-y-2">
+                      {/* Existing delays summary */}
+                      {delays.length > 0 && (
+                        <div className="rounded-xl bg-slate-700/50 border border-slate-600 divide-y divide-slate-600/50">
+                          {delays.map(d => (
+                            <div key={d.id} className="flex items-center gap-3 px-3 py-2.5">
+                              <CalendarDays size={13} className="text-orange-400 shrink-0" />
+                              <span className="text-xs text-slate-200 flex-1 leading-snug">{d.reason}</span>
+                              <span className="text-xs font-bold text-orange-400 shrink-0">
+                                {parseFloat(String(d.days))} {parseFloat(String(d.days)) === 1 ? 'day' : 'days'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Log / view delays button */}
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setDelayModalOpen(true)}
+                          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-orange-500/60 text-orange-400 text-xs font-semibold hover:bg-orange-500/10 transition-colors"
+                        >
+                          <Plus size={14} />
+                          {delays.length === 0 ? 'Log a Delay' : 'Add Another Delay'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </Section>
 
               {/* Section 9: Supervisor Sign-Off */}

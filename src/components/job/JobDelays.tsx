@@ -32,7 +32,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+export type { DelayEntry };
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '—';
@@ -63,7 +63,8 @@ interface ModalProps {
   onSaved: (delay: DelayEntry) => void;
 }
 
-function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProps) {
+export { type ModalProps as DelayModalProps };
+export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProps) {
   const [reason, setReason] = useState('');
   const [days, setDays] = useState('');
   const [delayDate, setDelayDate] = useState(todayISO());
