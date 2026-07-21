@@ -314,12 +314,10 @@ export default async function handler(req: Request, res: Response) {
     const [result] = await db.execute(
       sql`INSERT INTO document_templates
             (company_id, name, template_type, builder_json, page_layout_json, theme_json,
-             doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text,
-             submit_label, requires_signature, is_active, created_by_user_id)
+             is_active, created_by_user_id)
           VALUES
             (${companyId}, ${reportName}, ${'job_report'}, ${builderJson}, ${'{}'},  ${'{}'},
-             ${'doc'}, ${0}, ${'Sign Onto / Acknowledge'}, ${'By signing, I confirm I have read and understood this report.'},
-             ${'Submit'}, ${0}, ${1}, ${session.user.id})`
+             ${1}, ${session.user.id})`
     ) as unknown as [{ insertId?: number | bigint }, unknown];
 
     const insertId = Number((result as { insertId?: number | bigint }).insertId ?? 0);
