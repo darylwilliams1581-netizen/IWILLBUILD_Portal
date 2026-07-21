@@ -54,7 +54,6 @@ interface AppIcon {
 // These local arrays remain for the PLATFORM section (platform owner only, not permission-controlled)
 
 const PLATFORM_ICONS: AppIcon[] = [
-  { label: 'Dazza AI',  icon: Bot,         href: '/dazza-ai',      bg: 'bg-cyan-600',   fg: 'text-white' },
   { label: 'Console',   icon: ShieldCheck, href: '/owner-console', bg: 'bg-red-600',    fg: 'text-white' },
   { label: 'Old View',  icon: History,     href: '/dashboard',     bg: 'bg-slate-500',  fg: 'text-white' },
 ];
