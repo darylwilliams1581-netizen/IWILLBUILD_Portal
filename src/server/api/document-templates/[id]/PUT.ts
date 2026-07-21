@@ -83,8 +83,14 @@ export default async function handler(req: Request, res: Response) {
     try {
       await runUpdate([...setParts, ...newerParts]);
     } catch (updateErr: unknown) {
-      const msg = String((updateErr as Error)?.message ?? updateErr);
-      if ((msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) && newerParts.length > 0) {
+      // Drizzle wraps the MySQL error: top-level message is "Failed query: ..."
+      // and the actual MySQL error is in .cause.message or .cause.sqlMessage
+      const errObj = updateErr as { message?: string; cause?: { message?: string; sqlMessage?: string; code?: string } };
+      const topMsg = String(errObj?.message ?? updateErr);
+      const causeMsg = String(errObj?.cause?.message ?? errObj?.cause?.sqlMessage ?? '');
+      const combined = topMsg + ' ' + causeMsg;
+      const isMissingCol = combined.includes('ER_BAD_FIELD_ERROR') || combined.includes('Unknown column');
+      if (isMissingCol && newerParts.length > 0) {
         // Newer columns don't exist yet on this DB — save core fields only
         console.warn('[document-templates PUT] Newer columns missing — saving core fields only. Redeploy to apply migrations.');
         await runUpdate(setParts);

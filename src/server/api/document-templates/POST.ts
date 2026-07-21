@@ -73,8 +73,11 @@ export default async function handler(req: Request, res: Response) {
       )) as unknown as [{ insertId: number }, unknown];
       insertId = result.insertId;
     } catch (insertErr: unknown) {
-      const msg = String((insertErr as Error)?.message ?? insertErr);
-      if (msg.includes('ER_BAD_FIELD_ERROR') || msg.includes('Unknown column')) {
+      const errObj = insertErr as { message?: string; cause?: { message?: string; sqlMessage?: string; code?: string } };
+      const topMsg = String(errObj?.message ?? insertErr);
+      const causeMsg = String(errObj?.cause?.message ?? errObj?.cause?.sqlMessage ?? '');
+      const combined = topMsg + ' ' + causeMsg;
+      if (combined.includes('ER_BAD_FIELD_ERROR') || combined.includes('Unknown column')) {
         // Newer columns don't exist yet — insert core fields only (DB defaults cover the rest)
         console.warn('[document-templates POST] Newer columns missing — inserting core fields only. Redeploy to apply migrations.');
         const [result] = await db.execute(sql.raw(
