@@ -191,8 +191,11 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/auth\/validate-reset-token$/ },
   // PIN login (no session — this IS the login)
   { method: 'POST', pattern: /^\/api\/auth\/pin-login$/ },
-  // OneDrive OAuth callback — Microsoft redirects here before session is re-established
+  // OAuth callbacks — provider redirects here before session is re-established; state param carries companyId
   { method: 'GET',  pattern: /^\/api\/integrations\/onedrive\/callback$/ },
+  { method: 'GET',  pattern: /^\/api\/integrations\/xero\/callback$/ },
+  { method: 'GET',  pattern: /^\/api\/integrations\/qbo\/callback$/ },
+  { method: 'GET',  pattern: /^\/api\/integrations\/myob\/callback$/ },
   // Public contact form — no auth required, spam-protected by honeypot + timing
   { method: 'POST', pattern: /^\/api\/contact$/ },
   // Legacy share link viewer — token-validated, no session required
