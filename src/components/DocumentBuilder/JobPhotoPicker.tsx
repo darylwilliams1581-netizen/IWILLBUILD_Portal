@@ -21,7 +21,7 @@ interface Props {
   onInsertPhoto: (src: string, alt: string) => void;
 }
 
-export default function JobPhotoPicker({ jobId, onInsertPhoto }: Props) {
+export default function JobPhotoPicker({ jobId, size, align, onInsertPhoto }: Props) {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
