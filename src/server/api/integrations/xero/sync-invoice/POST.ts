@@ -132,12 +132,13 @@ export default async function handler(req: Request, res: Response) {
       AccountCode: '200',
     }));
 
+    // LineAmountTypes intentionally omitted — Xero rejects both EXCLUSIVE and INCLUSIVE
+    // on some org configurations. Omitting it lets Xero use the org's default tax setting.
     const xeroInvoicePayload: Record<string, unknown> = {
       Type: 'ACCREC',
       InvoiceNumber: invoice.invoice_number,
       Reference: invoice.title,
       Status: mapStatus(invoice.status as string),
-      LineAmountTypes: 'INCLUSIVE', // GST-inclusive amounts — matches AU org tax settings
       LineItems: lineItems,
     };
 
@@ -166,7 +167,7 @@ export default async function handler(req: Request, res: Response) {
       xeroContactId: xeroContactId ? 'present' : 'none',
       validLineCount: validLines.length,
       existingXeroId: existingXeroId ? 'present' : 'none',
-      lineAmountTypes: xeroInvoicePayload.LineAmountTypes, // INCLUSIVE
+      lineAmountTypes: 'omitted', // omitted so Xero uses org default
       accountCode: lineItems[0]?.AccountCode ?? 'none',
       hasDate: !!xeroInvoicePayload.Date,
       hasDueDate: !!xeroInvoicePayload.DueDate,
