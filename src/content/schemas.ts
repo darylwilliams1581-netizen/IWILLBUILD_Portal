@@ -52,6 +52,85 @@ export const schemas = {
   }),
   incident_detail: z.object({
     "THIRD_PARTY_ROLES": z.array(z.string())
+  }),
+  forms: z.object({
+    "page": z.object({
+      "title": z.string(),
+      "heading": z.string(),
+      "metaDescription": z.string()
+    }),
+    "FORM_TYPES": z.array(z.string()),
+    "emptyState": z.object({
+      "heading": z.string(),
+      "body": z.string()
+    }),
+    "deleteConfirm": z.object({
+      "heading": z.string(),
+      "body": z.string(),
+      "confirmLabel": z.string(),
+      "deletingLabel": z.string(),
+      "cancelLabel": z.string()
+    }),
+    "drawer": z.object({
+      "createHeading": z.string(),
+      "editHeading": z.string(),
+      "namePlaceholder": z.string(),
+      "categoryPlaceholder": z.string(),
+      "descriptionPlaceholder": z.string(),
+      "availabilityLabel": z.string(),
+      "activeLabel": z.string(),
+      "dashboardLabel": z.string(),
+      "jobsLabel": z.string(),
+      "fleetLabel": z.string()
+    })
+  }),
+  job_field_docs: z.object({
+    "page": z.object({
+      "title": z.string(),
+      "heading": z.string(),
+      "metaDescription": z.string()
+    }),
+    "emptyState": z.object({
+      "heading": z.string(),
+      "body": z.string(),
+      "addLabel": z.string()
+    }),
+    "signOnRegister": z.object({
+      "heading": z.string(),
+      "workerNote": z.string(),
+      "noSignOnsBody": z.string()
+    }),
+    "addDocModal": z.object({
+      "heading": z.string(),
+      "addLabel": z.string(),
+      "cancelLabel": z.string()
+    })
+  }),
+  login: z.object({
+    "page": z.object({
+      "title": z.string(),
+      "metaDescription": z.string(),
+      "ogTitle": z.string(),
+      "ogDescription": z.string()
+    }),
+    "heading": z.string(),
+    "subheading": z.string(),
+    "tabs": z.object({
+      "password": z.string(),
+      "pin": z.string()
+    }),
+    "twoFactor": z.object({
+      "heading": z.string()
+    }),
+    "banners": z.object({
+      "emailVerified": z.string()
+    }),
+    "errors": z.object({
+      "missingCredentials": z.string(),
+      "pinLength": z.string(),
+      "pinVerifiedFallback": z.string()
+    }),
+    "submitLabel": z.string()
   })
 };
 export type Schemas = typeof schemas;

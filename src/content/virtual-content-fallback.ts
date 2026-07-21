@@ -93,6 +93,52 @@ export const incident_detail: {
   ],
 };
 
+export const forms: {
+  page: { title: string; heading: string; metaDescription: string };
+  FORM_TYPES: string[];
+  emptyState: { heading: string; body: string };
+  deleteConfirm: { heading: string; body: string; confirmLabel: string; deletingLabel: string; cancelLabel: string };
+  drawer: { createHeading: string; editHeading: string; namePlaceholder: string; categoryPlaceholder: string; descriptionPlaceholder: string; availabilityLabel: string; activeLabel: string; dashboardLabel: string; jobsLabel: string; fleetLabel: string };
+} = {
+  page: { title: 'Forms — IWILLBUILD', heading: 'Forms', metaDescription: 'Manage form templates for jobs, fleet, safety and company operations.' },
+  FORM_TYPES: ['Job', 'Company', 'Fleet', 'Accounts'],
+  emptyState: { heading: 'No form templates yet', body: 'Create your first form template to get started.' },
+  deleteConfirm: { heading: 'Delete Template?', body: 'will be permanently deleted. This cannot be undone.', confirmLabel: 'Delete', deletingLabel: 'Deleting…', cancelLabel: 'Cancel' },
+  drawer: { createHeading: 'New Form Template', editHeading: 'Edit Form Template', namePlaceholder: 'e.g. Site Induction Form', categoryPlaceholder: 'e.g. Safety, HR', descriptionPlaceholder: 'What is this form used for?', availabilityLabel: 'Availability', activeLabel: 'Active', dashboardLabel: 'Available on Dashboard', jobsLabel: 'Available for Jobs', fleetLabel: 'Available for Fleet' },
+};
+
+export const job_field_docs: {
+  page: { title: string; heading: string; metaDescription: string };
+  emptyState: { heading: string; body: string; addLabel: string };
+  signOnRegister: { heading: string; workerNote: string; noSignOnsBody: string };
+  addDocModal: { heading: string; addLabel: string; cancelLabel: string };
+} = {
+  page: { title: 'Field Docs | IWILLBUILD', heading: 'Field Docs', metaDescription: 'View, review and sign on to job documents in the field.' },
+  emptyState: { heading: 'No documents added', body: 'Add SWMS documents to this job so workers can review and sign on.', addLabel: 'Add Document' },
+  signOnRegister: { heading: 'Sign-on Register', workerNote: 'Workers can sign on from their phone — no login needed.', noSignOnsBody: 'Workers sign on via the share link on each document.' },
+  addDocModal: { heading: 'Add Document to Job', addLabel: 'Add Docs', cancelLabel: 'Cancel' },
+};
+
+export const login: {
+  page: { title: string; metaDescription: string; ogTitle: string; ogDescription: string };
+  heading: string;
+  subheading: string;
+  tabs: { password: string; pin: string };
+  twoFactor: { heading: string };
+  banners: { emailVerified: string };
+  errors: { missingCredentials: string; pinLength: string; pinVerifiedFallback: string };
+  submitLabel: string;
+} = {
+  page: { title: 'Sign In — IWILLBUILD Portal', metaDescription: 'Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more.', ogTitle: 'Sign In — IWILLBUILD Portal', ogDescription: 'Sign in to manage your construction jobs, fleet, safety docs and team.' },
+  heading: 'Portal Sign In',
+  subheading: 'Internal access only',
+  tabs: { password: 'Password', pin: 'PIN Login' },
+  twoFactor: { heading: 'Two-Factor Authentication' },
+  banners: { emailVerified: 'Email verified — you\'re all set!' },
+  errors: { missingCredentials: 'Please enter your email and PIN.', pinLength: 'PIN must be 4–6 digits.', pinVerifiedFallback: 'PIN verified. Please sign in with your password to complete login.' },
+  submitLabel: 'Sign In',
+};
+
 export const job_site_prestart: {
   SITUATION_CHECKS: string[];
   EXECUTION_CHECKS: string[];

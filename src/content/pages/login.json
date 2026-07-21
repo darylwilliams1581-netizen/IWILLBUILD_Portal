@@ -1,0 +1,26 @@
+{
+  "page": {
+    "title": "Sign In — IWILLBUILD Portal",
+    "metaDescription": "Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more.",
+    "ogTitle": "Sign In — IWILLBUILD Portal",
+    "ogDescription": "Sign in to manage your construction jobs, fleet, safety docs and team."
+  },
+  "heading": "Portal Sign In",
+  "subheading": "Internal access only",
+  "tabs": {
+    "password": "Password",
+    "pin": "PIN Login"
+  },
+  "twoFactor": {
+    "heading": "Two-Factor Authentication"
+  },
+  "banners": {
+    "emailVerified": "Email verified — you're all set!"
+  },
+  "errors": {
+    "missingCredentials": "Please enter your email and PIN.",
+    "pinLength": "PIN must be 4–6 digits.",
+    "pinVerifiedFallback": "PIN verified. Please sign in with your password to complete login."
+  },
+  "submitLabel": "Sign In"
+}

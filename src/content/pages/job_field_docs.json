@@ -1,0 +1,22 @@
+{
+  "page": {
+    "title": "Field Docs | IWILLBUILD",
+    "heading": "Field Docs",
+    "metaDescription": "View, review and sign on to job documents in the field."
+  },
+  "emptyState": {
+    "heading": "No documents added",
+    "body": "Add SWMS documents to this job so workers can review and sign on.",
+    "addLabel": "Add Document"
+  },
+  "signOnRegister": {
+    "heading": "Sign-on Register",
+    "workerNote": "Workers can sign on from their phone — no login needed.",
+    "noSignOnsBody": "Workers sign on via the share link on each document."
+  },
+  "addDocModal": {
+    "heading": "Add Document to Job",
+    "addLabel": "Add Docs",
+    "cancelLabel": "Cancel"
+  }
+}
