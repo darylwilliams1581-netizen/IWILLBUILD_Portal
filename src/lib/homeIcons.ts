@@ -62,7 +62,6 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────
 export const SAFETY_ICON_DEFS: HomeIconDef[] = [
-  { key: 'safety',        label: 'Safety',         icon: ShieldCheck,      href: '/safety',                 bg: 'bg-red-600',     fg: 'text-white', group: 'safety' },
   { key: 'poster',        label: 'Safety Posters', icon: Image,            href: '/safety/posters',         bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
   { key: 'policies',      label: 'Policies',       icon: BookOpen,         href: '/safety?tab=policies',    bg: 'bg-violet-500',  fg: 'text-white', group: 'safety',     comingSoon: true },
   { key: 'safety_plan',   label: 'Safety Plan',    icon: FileCheck,        href: '/safety?tab=swms',        bg: 'bg-orange-600',  fg: 'text-white', group: 'safety',     comingSoon: true },
