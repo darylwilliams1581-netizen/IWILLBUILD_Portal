@@ -28,6 +28,11 @@ export default async function handler(req: Request, res: Response) {
       hazardsSelected,
       otherHazardText,
       controlMeasures,
+      permitRequired,
+      permitTypes,
+      otherPermitText,
+      permitNotes,
+      workersInvolved,
       workersBriefed,
       notes,
     } = req.body as Record<string, unknown>;
@@ -39,7 +44,9 @@ export default async function handler(req: Request, res: Response) {
         assessment_date, assessment_time,
         recorded_by, activity,
         hazards_selected, other_hazard_text,
-        control_measures, workers_briefed,
+        control_measures,
+        permit_required, permit_types, other_permit_text, permit_notes,
+        workers_involved, workers_briefed,
         notes, status
       ) VALUES (
         ${profile.companyId}, ${jobId}, ${session.user.id},
@@ -47,7 +54,9 @@ export default async function handler(req: Request, res: Response) {
         ${assessmentDate ?? null}, ${assessmentTime ?? null},
         ${recordedBy ?? null}, ${activity ?? null},
         ${JSON.stringify(hazardsSelected ?? [])}, ${otherHazardText ?? null},
-        ${controlMeasures ?? null}, ${workersBriefed ? 1 : 0},
+        ${controlMeasures ?? null},
+        ${permitRequired ? 1 : 0}, ${JSON.stringify(permitTypes ?? [])}, ${otherPermitText ?? null}, ${permitNotes ?? null},
+        ${workersInvolved ?? null}, ${workersBriefed ? 1 : 0},
         ${notes ?? null}, 'draft'
       )
     `) as unknown as [{ insertId: number }, unknown];

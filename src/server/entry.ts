@@ -413,6 +413,7 @@ import jobs_id_risky_id_get from "./api/jobs/[id]/risky/[riskyId]/GET";
 import jobs_id_risky_id_put from "./api/jobs/[id]/risky/[riskyId]/PUT";
 import jobs_id_risky_id_finalise_post from "./api/jobs/[id]/risky/[riskyId]/finalise/POST";
 import jobs_id_risky_id_signatures_post from "./api/jobs/[id]/risky/[riskyId]/signatures/POST";
+import jobs_id_risky_id_supervisor_signoff_post from "./api/jobs/[id]/risky/[riskyId]/supervisor-signoff/POST";
 import jobs_id_swms_post_322 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_323 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import jobs_id_todos_get_324 from "./api/jobs/[id]/todos/GET";
@@ -2085,6 +2086,29 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] risky_assessment_signatures CREATE failed:', msg);
     }
   }
+
+  // ── Risky Assessments: add permit columns (idempotent ALTERs) ────────────────
+  const riskyAlters: Array<{ col: string; ddl: string }> = [
+    { col: 'permit_required',              ddl: 'BOOLEAN NOT NULL DEFAULT FALSE' },
+    { col: 'permit_types',                 ddl: 'JSON NULL' },
+    { col: 'other_permit_text',            ddl: 'TEXT NULL' },
+    { col: 'permit_notes',                 ddl: 'TEXT NULL' },
+    { col: 'permit_supervisor_name',       ddl: 'VARCHAR(255) NULL' },
+    { col: 'permit_supervisor_signature',  ddl: 'MEDIUMTEXT NULL' },
+    { col: 'permit_supervisor_signed_at',  ddl: 'DATETIME NULL' },
+    { col: 'workers_involved',             ddl: 'TEXT NULL' },
+  ];
+  for (const { col, ddl } of riskyAlters) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE risky_assessments ADD COLUMN ${col} ${ddl}`));
+      console.log(`[startup-migration] risky_assessments: added column ${col}`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] risky_assessments ALTER ${col} failed:`, msg);
+      }
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
@@ -2524,6 +2548,7 @@ app.get("/api/jobs/:id/risky/:riskyId", jobs_id_risky_id_get);
 app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_id_put);
 app.post("/api/jobs/:id/risky/:riskyId/finalise", jobs_id_risky_id_finalise_post);
 app.post("/api/jobs/:id/risky/:riskyId/signatures", jobs_id_risky_id_signatures_post);
+app.post("/api/jobs/:id/risky/:riskyId/supervisor-signoff", jobs_id_risky_id_supervisor_signoff_post);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
 app.get("/api/jobs/:id/todos", jobs_id_todos_get_324);

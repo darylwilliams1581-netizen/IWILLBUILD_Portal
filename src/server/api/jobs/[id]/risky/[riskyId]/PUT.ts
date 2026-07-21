@@ -29,6 +29,11 @@ export default async function handler(req: Request, res: Response) {
       hazardsSelected,
       otherHazardText,
       controlMeasures,
+      permitRequired,
+      permitTypes,
+      otherPermitText,
+      permitNotes,
+      workersInvolved,
       workersBriefed,
       notes,
     } = req.body as Record<string, unknown>;
@@ -43,6 +48,11 @@ export default async function handler(req: Request, res: Response) {
         hazards_selected    = ${JSON.stringify(hazardsSelected ?? [])},
         other_hazard_text   = ${otherHazardText ?? null},
         control_measures    = ${controlMeasures ?? null},
+        permit_required     = ${permitRequired ? 1 : 0},
+        permit_types        = ${JSON.stringify(permitTypes ?? [])},
+        other_permit_text   = ${otherPermitText ?? null},
+        permit_notes        = ${permitNotes ?? null},
+        workers_involved    = ${workersInvolved ?? null},
         workers_briefed     = ${workersBriefed ? 1 : 0},
         notes               = ${notes ?? null},
         updated_at          = NOW()

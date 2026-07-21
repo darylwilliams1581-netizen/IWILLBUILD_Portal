@@ -27,18 +27,33 @@ export default async function handler(req: Request, res: Response) {
     if (!record) return res.status(404).json({ error: 'Not found' });
     if (record.status === 'finalised') return res.status(400).json({ error: 'Already finalised' });
 
-    // Validate required fields
+    // Required field validation
     if (!record.activity) return res.status(400).json({ error: 'Activity/task is required' });
+
     const hazards = typeof record.hazards_selected === 'string'
       ? JSON.parse(record.hazards_selected)
       : (record.hazards_selected ?? []);
     if (!Array.isArray(hazards) || hazards.length === 0) {
       return res.status(400).json({ error: 'At least one hazard must be selected' });
     }
+
     if (!record.control_measures) return res.status(400).json({ error: 'Control measures are required' });
     if (!record.workers_briefed) return res.status(400).json({ error: 'Workers must be confirmed as briefed' });
 
-    // Check at least one signature
+    // Permit validation
+    if (record.permit_required) {
+      const permitTypes = typeof record.permit_types === 'string'
+        ? JSON.parse(record.permit_types)
+        : (record.permit_types ?? []);
+      if (!Array.isArray(permitTypes) || permitTypes.length === 0) {
+        return res.status(400).json({ error: 'At least one permit type is required' });
+      }
+      if (!record.permit_supervisor_signature) {
+        return res.status(400).json({ error: 'Supervisor permit sign-off is required when a permit is required' });
+      }
+    }
+
+    // At least one worker signature
     const [sigRows] = await db.execute(sql`
       SELECT COUNT(*) as cnt FROM risky_assessment_signatures WHERE risky_assessment_id = ${riskyId}
     `) as unknown as [Array<{ cnt: number }>, unknown];

@@ -16,5 +16,12 @@
     "Confined/restricted access",
     "Delivery/loading/unloading",
     "Other"
+  ],
+  "PERMIT_TYPE_OPTIONS": [
+    "Hot Works",
+    "Working at Height",
+    "Excavation over 300mm",
+    "Confined Space",
+    "Other"
   ]
 }

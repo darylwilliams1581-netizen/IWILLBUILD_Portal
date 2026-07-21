@@ -1,8 +1,10 @@
 import { job_risky } from 'virtual:content';
 /**
- * /jobs/:id/risky — Field Risk Assessment (Risky)
- * Quick risk assessment for changed conditions, new hazards, or task-specific risks.
- * Flow: Activity → Hazards → Controls → Sign-off → Finalise
+ * /jobs/:id/risky — Risky & Permits
+ * Quick field risk assessment and permit check for changed site conditions,
+ * new hazards, or task-specific risks found during the day.
+ *
+ * Flow: Activity → Hazards → Controls → Permit Required? → Sign-off → Finalise
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -10,6 +12,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, Plus, ShieldAlert, CheckCircle2, AlertTriangle,
   Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2,
+  FileWarning,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,6 +29,14 @@ interface RiskyAssessment {
   hazards_selected: string[] | string | null;
   other_hazard_text: string | null;
   control_measures: string | null;
+  permit_required: boolean | number;
+  permit_types: string[] | string | null;
+  other_permit_text: string | null;
+  permit_notes: string | null;
+  permit_supervisor_name: string | null;
+  permit_supervisor_signature: string | null;
+  permit_supervisor_signed_at: string | null;
+  workers_involved: string | null;
   workers_briefed: boolean | number;
   notes: string | null;
   finalised_at: string | null;
@@ -40,9 +51,34 @@ interface Signature {
   signed_at: string;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseJson(raw: string[] | string | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // ── Signature pad ─────────────────────────────────────────────────────────────
 
-function SignaturePad({ onSave, onCancel }: { onSave: (data: string) => void; onCancel: () => void }) {
+function SignaturePad({
+  onSave,
+  onCancel,
+  label = 'Sign above',
+}: {
+  onSave: (data: string) => void;
+  onCancel: () => void;
+  label?: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasStrokes, setHasStrokes] = useState(false);
@@ -106,12 +142,6 @@ function SignaturePad({ onSave, onCancel }: { onSave: (data: string) => void; on
     setHasStrokes(false);
   }
 
-  function save() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    onSave(canvas.toDataURL('image/png'));
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-white touch-none">
@@ -124,13 +154,16 @@ function SignaturePad({ onSave, onCancel }: { onSave: (data: string) => void; on
           onTouchStart={start} onTouchMove={move} onTouchEnd={end}
         />
       </div>
-      <p className="text-xs text-slate-400 text-center">Sign above</p>
+      <p className="text-xs text-slate-400 text-center">{label}</p>
       <div className="flex gap-2">
         <button type="button" onClick={clear} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm">Clear</button>
         <button type="button" onClick={onCancel} className="flex-1 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm">Cancel</button>
         <button
           type="button"
-          onClick={save}
+          onClick={() => {
+            const canvas = canvasRef.current;
+            if (canvas) onSave(canvas.toDataURL('image/png'));
+          }}
           disabled={!hasStrokes}
           className="flex-1 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold disabled:opacity-40"
         >
@@ -141,7 +174,165 @@ function SignaturePad({ onSave, onCancel }: { onSave: (data: string) => void; on
   );
 }
 
-// ── Sign-off screen ───────────────────────────────────────────────────────────
+// ── Supervisor permit sign-off panel ─────────────────────────────────────────
+
+function SupervisorPermitSignoff({
+  assessment,
+  jobId,
+  onDone,
+  onClose,
+}: {
+  assessment: RiskyAssessment;
+  jobId: number;
+  onDone: (name: string, sig: string) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(assessment.permit_supervisor_name ?? '');
+  const [showPad, setShowPad] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSave(signatureData: string) {
+    if (!name.trim()) { setError('Enter supervisor name'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const r = await fetch(`/api/jobs/${jobId}/risky/${assessment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // pass through all existing fields unchanged
+          linkedPrestartId: assessment.linked_prestart_id,
+          assessmentDate: assessment.assessment_date,
+          assessmentTime: assessment.assessment_time,
+          recordedBy: assessment.recorded_by,
+          activity: assessment.activity,
+          hazardsSelected: parseJson(assessment.hazards_selected),
+          otherHazardText: assessment.other_hazard_text,
+          controlMeasures: assessment.control_measures,
+          permitRequired: Boolean(assessment.permit_required),
+          permitTypes: parseJson(assessment.permit_types),
+          otherPermitText: assessment.other_permit_text,
+          permitNotes: assessment.permit_notes,
+          workersInvolved: assessment.workers_involved,
+          workersBriefed: Boolean(assessment.workers_briefed),
+          notes: assessment.notes,
+          // supervisor sign-off via a dedicated endpoint would be cleaner,
+          // but we store it directly on the record for simplicity
+        }),
+      });
+      if (!r.ok) throw new Error('Save failed');
+
+      // Save supervisor signature via dedicated endpoint
+      const r2 = await fetch(`/api/jobs/${jobId}/risky/${assessment.id}/supervisor-signoff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supervisorName: name.trim(), signatureData }),
+      });
+      const d2 = await r2.json() as { error?: string };
+      if (!r2.ok) throw new Error(d2.error ?? 'Failed');
+      onDone(name.trim(), signatureData);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const permitTypes = parseJson(assessment.permit_types);
+
+  return (
+    <div className="flex flex-col h-full bg-slate-900 text-white">
+      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-amber-700">
+        <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
+          <X size={18} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <span className="font-bold text-sm">Supervisor Permit Sign-Off</span>
+          <p className="text-xs text-amber-200 truncate">{assessment.activity}</p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {/* Permit types */}
+        <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3">
+          <p className="text-xs text-amber-200 font-semibold mb-2">Permit types required</p>
+          <div className="flex flex-wrap gap-1.5">
+            {permitTypes.map(pt => (
+              <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>
+            ))}
+          </div>
+          {assessment.permit_notes && (
+            <p className="text-xs text-slate-300 mt-2">{assessment.permit_notes}</p>
+          )}
+        </div>
+
+        {/* Consent text */}
+        <div className="bg-white/10 rounded-xl p-3">
+          <p className="text-xs text-slate-200 leading-relaxed">
+            By signing, I confirm the required permit type has been identified and the required controls are in place before work continues.
+          </p>
+        </div>
+
+        {/* Already signed */}
+        {assessment.permit_supervisor_signature && (
+          <div className="bg-emerald-500/20 border border-emerald-500/40 rounded-xl p-3 flex items-center gap-3">
+            <img
+              src={assessment.permit_supervisor_signature}
+              alt={assessment.permit_supervisor_name ?? 'Supervisor'}
+              className="h-10 w-24 object-contain bg-white rounded"
+            />
+            <div>
+              <p className="text-sm font-semibold text-emerald-300">{assessment.permit_supervisor_name}</p>
+              <p className="text-xs text-slate-400">Permit sign-off recorded</p>
+            </div>
+          </div>
+        )}
+
+        {!assessment.permit_supervisor_signature && (
+          <>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Supervisor name"
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 text-sm"
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
+            {!showPad ? (
+              <button
+                type="button"
+                onClick={() => { if (!name.trim()) { setError('Enter supervisor name'); return; } setError(''); setShowPad(true); }}
+                className="w-full py-3 rounded-xl bg-amber-600 text-white font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Pencil size={15} /> Sign as Supervisor
+              </button>
+            ) : (
+              <SignaturePad
+                label="Supervisor signature"
+                onSave={handleSave}
+                onCancel={() => setShowPad(false)}
+              />
+            )}
+            {saving && <div className="flex justify-center"><Loader2 size={20} className="animate-spin text-amber-400" /></div>}
+          </>
+        )}
+      </div>
+
+      <div className="p-4 border-t border-white/10">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold text-sm"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Party sign-off screen ─────────────────────────────────────────────────────
 
 function SignOffScreen({
   assessment,
@@ -170,9 +361,14 @@ function SignOffScreen({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signerName: signerName.trim(), signatureData }),
       });
-      const d = await r.json();
+      const d = await r.json() as { id?: number; error?: string };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
-      setSignatures(prev => [...prev, { id: d.id, signer_name: signerName.trim(), signature_data: signatureData, signed_at: new Date().toISOString() }]);
+      setSignatures(prev => [...prev, {
+        id: d.id ?? 0,
+        signer_name: signerName.trim(),
+        signature_data: signatureData,
+        signed_at: new Date().toISOString(),
+      }]);
       setSignerName('');
       setShowPad(false);
     } catch (e) {
@@ -182,11 +378,12 @@ function SignOffScreen({
     }
   }
 
-  const hazards = parseHazards(assessment.hazards_selected);
+  const hazards = parseJson(assessment.hazards_selected);
+  const permitTypes = parseJson(assessment.permit_types);
+  const permitRequired = Boolean(assessment.permit_required);
 
   return (
     <div className="flex flex-col h-full bg-slate-900 text-white">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-rose-700">
         <button type="button" onClick={onClose} className="p-1.5 rounded-lg bg-white/20">
           <X size={18} />
@@ -200,24 +397,34 @@ function SignOffScreen({
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {/* Briefing summary */}
-        <div className="bg-white/10 rounded-xl p-3 text-sm space-y-1">
-          <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide mb-2">Hazards identified</p>
+        <div className="bg-white/10 rounded-xl p-3 text-sm space-y-2">
+          <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide">Hazards</p>
           <div className="flex flex-wrap gap-1.5">
             {hazards.map(h => (
               <span key={h} className="bg-rose-600/60 text-white text-xs px-2 py-0.5 rounded-full">{h}</span>
             ))}
           </div>
           {assessment.other_hazard_text && (
-            <p className="text-xs text-slate-300 mt-1">Other: {assessment.other_hazard_text}</p>
+            <p className="text-xs text-slate-300">Other: {assessment.other_hazard_text}</p>
           )}
-          <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide mt-3 mb-1">Controls</p>
+          <p className="font-semibold text-rose-200 text-xs uppercase tracking-wide mt-2">Controls</p>
           <p className="text-xs text-slate-200">{assessment.control_measures}</p>
+          {permitRequired && permitTypes.length > 0 && (
+            <>
+              <p className="font-semibold text-amber-300 text-xs uppercase tracking-wide mt-2">Permits required</p>
+              <div className="flex flex-wrap gap-1.5">
+                {permitTypes.map(pt => (
+                  <span key={pt} className="bg-amber-600/60 text-white text-xs px-2 py-0.5 rounded-full">{pt}</span>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Consent text */}
         <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl p-3">
           <p className="text-xs text-amber-200 leading-relaxed">
-            By signing, I confirm I have been briefed on this activity, hazard, risk, and control measure before continuing work.
+            By signing, I confirm I have been briefed on this activity, hazard, risk, control measure, and any required permit controls before continuing work.
           </p>
         </div>
 
@@ -250,7 +457,11 @@ function SignOffScreen({
             {error && <p className="text-xs text-red-400">{error}</p>}
             <button
               type="button"
-              onClick={() => { if (!signerName.trim()) { setError('Enter your name first'); return; } setError(''); setShowPad(true); }}
+              onClick={() => {
+                if (!signerName.trim()) { setError('Enter your name first'); return; }
+                setError('');
+                setShowPad(true);
+              }}
               className="w-full py-3 rounded-xl bg-rose-600 text-white font-semibold text-sm flex items-center justify-center gap-2"
             >
               <Pencil size={15} /> Sign
@@ -263,7 +474,6 @@ function SignOffScreen({
         {saving && <div className="flex justify-center"><Loader2 size={20} className="animate-spin text-rose-400" /></div>}
       </div>
 
-      {/* Done */}
       <div className="p-4 border-t border-white/10">
         <button
           type="button"
@@ -278,24 +488,7 @@ function SignOffScreen({
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function parseHazards(raw: string[] | string | null | undefined): string[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  try { return JSON.parse(raw); } catch { return []; }
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function nowTime() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-// ── Assessment form ───────────────────────────────────────────────────────────
+// ── Form state ────────────────────────────────────────────────────────────────
 
 interface FormState {
   assessmentDate: string;
@@ -305,6 +498,11 @@ interface FormState {
   hazardsSelected: string[];
   otherHazardText: string;
   controlMeasures: string;
+  permitRequired: boolean | null; // null = not yet answered
+  permitTypes: string[];
+  otherPermitText: string;
+  permitNotes: string;
+  workersInvolved: string;
   workersBriefed: boolean;
   notes: string;
 }
@@ -318,28 +516,94 @@ function emptyForm(): FormState {
     hazardsSelected: [],
     otherHazardText: '',
     controlMeasures: '',
+    permitRequired: null,
+    permitTypes: [],
+    otherPermitText: '',
+    permitNotes: '',
+    workersInvolved: '',
     workersBriefed: false,
     notes: '',
   };
 }
 
 function formFromAssessment(a: RiskyAssessment): FormState {
+  // permit_required may be null (column not yet added) — treat as null
+  const pr = a.permit_required === null || a.permit_required === undefined
+    ? null
+    : Boolean(a.permit_required);
   return {
     assessmentDate: a.assessment_date ?? today(),
     assessmentTime: a.assessment_time ?? nowTime(),
     recordedBy: a.recorded_by ?? '',
     activity: a.activity ?? '',
-    hazardsSelected: parseHazards(a.hazards_selected),
+    hazardsSelected: parseJson(a.hazards_selected),
     otherHazardText: a.other_hazard_text ?? '',
     controlMeasures: a.control_measures ?? '',
+    permitRequired: pr,
+    permitTypes: parseJson(a.permit_types),
+    otherPermitText: a.other_permit_text ?? '',
+    permitNotes: a.permit_notes ?? '',
+    workersInvolved: a.workers_involved ?? '',
     workersBriefed: Boolean(a.workers_briefed),
     notes: a.notes ?? '',
   };
 }
 
+function formToBody(f: FormState) {
+  return {
+    assessmentDate: f.assessmentDate,
+    assessmentTime: f.assessmentTime,
+    recordedBy: f.recordedBy,
+    activity: f.activity,
+    hazardsSelected: f.hazardsSelected,
+    otherHazardText: f.otherHazardText,
+    controlMeasures: f.controlMeasures,
+    permitRequired: f.permitRequired ?? false,
+    permitTypes: f.permitTypes,
+    otherPermitText: f.otherPermitText,
+    permitNotes: f.permitNotes,
+    workersInvolved: f.workersInvolved,
+    workersBriefed: f.workersBriefed,
+    notes: f.notes,
+  };
+}
+
+// ── Chip toggle ───────────────────────────────────────────────────────────────
+
+function Chip({
+  label,
+  selected,
+  onClick,
+  disabled,
+  color = 'rose',
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  color?: 'rose' | 'amber';
+}) {
+  const sel = color === 'amber'
+    ? 'bg-amber-600 text-white border-amber-600'
+    : 'bg-rose-600 text-white border-rose-600';
+  const unsel = color === 'amber'
+    ? 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+    : 'bg-white text-slate-600 border-slate-200 hover:border-rose-300';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:cursor-default ${selected ? sel : unsel}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type View = 'list' | 'form' | 'signoff';
+type View = 'list' | 'form' | 'signoff' | 'supervisor-signoff';
 
 export default function JobRiskyPage() {
   const { id } = useParams<{ id: string }>();
@@ -365,10 +629,7 @@ export default function JobRiskyPage() {
     setLoading(true);
     try {
       const r = await fetch(`/api/jobs/${jobId}/risky`);
-      if (r.ok) {
-        const data = await r.json() as RiskyAssessment[];
-        setAssessments(data);
-      }
+      if (r.ok) setAssessments(await r.json() as RiskyAssessment[]);
     } finally {
       setLoading(false);
     }
@@ -394,17 +655,7 @@ export default function JobRiskyPage() {
         await fetch(`/api/jobs/${jobId}/risky/${assessmentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            assessmentDate: f.assessmentDate,
-            assessmentTime: f.assessmentTime,
-            recordedBy: f.recordedBy,
-            activity: f.activity,
-            hazardsSelected: f.hazardsSelected,
-            otherHazardText: f.otherHazardText,
-            controlMeasures: f.controlMeasures,
-            workersBriefed: f.workersBriefed,
-            notes: f.notes,
-          }),
+          body: JSON.stringify(formToBody(f)),
         });
       } catch { /* silent */ }
     }, 1200);
@@ -416,7 +667,6 @@ export default function JobRiskyPage() {
       if (activeAssessment?.status === 'draft') scheduleSave(next, activeAssessment.id);
       return next;
     });
-    // Clear relevant errors
     const keys = Object.keys(patch) as (keyof FormState)[];
     if (keys.some(k => errors[k])) {
       setErrors(prev => {
@@ -435,6 +685,14 @@ export default function JobRiskyPage() {
     });
   }
 
+  function togglePermitType(pt: string) {
+    updateForm({
+      permitTypes: form.permitTypes.includes(pt)
+        ? form.permitTypes.filter(x => x !== pt)
+        : [...form.permitTypes, pt],
+    });
+  }
+
   // Create new assessment
   async function handleCreate() {
     setSaving(true);
@@ -444,18 +702,16 @@ export default function JobRiskyPage() {
       const r = await fetch(`/api/jobs/${jobId}/risky`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assessmentDate: f.assessmentDate,
-          assessmentTime: f.assessmentTime,
-        }),
+        body: JSON.stringify(formToBody(f)),
       });
-      const d = await r.json() as { id: number };
-      if (!r.ok) throw new Error((d as { error?: string }).error ?? 'Failed');
-      // Load the new record
-      const r2 = await fetch(`/api/jobs/${jobId}/risky/${d.id}`);
+      const d = await r.json() as { id?: number; error?: string };
+      if (!r.ok) throw new Error(d.error ?? 'Failed');
+      const r2 = await fetch(`/api/jobs/${jobId}/risky/${d.id!}`);
       const assessment = await r2.json() as RiskyAssessment;
       setActiveAssessment(assessment);
       setForm(formFromAssessment(assessment));
+      setErrors({});
+      setFinaliseError('');
       setView('form');
     } catch (e) {
       setErrors({ general: String(e) });
@@ -472,13 +728,15 @@ export default function JobRiskyPage() {
       const full = await r.json() as RiskyAssessment;
       setActiveAssessment(full);
       setForm(formFromAssessment(full));
+      setErrors({});
+      setFinaliseError('');
       setView('form');
     } finally {
       setLoading(false);
     }
   }
 
-  // Validate form
+  // Validate
   function validate(): boolean {
     const e: typeof errors = {};
     if (!form.activity.trim()) e.activity = 'Activity / task is required';
@@ -487,11 +745,18 @@ export default function JobRiskyPage() {
       e.otherHazardText = 'Describe the other hazard';
     }
     if (!form.controlMeasures.trim()) e.controlMeasures = 'Control measures are required';
+    if (form.permitRequired === null) e.permitRequired = 'Answer whether a permit is required';
+    if (form.permitRequired) {
+      if (form.permitTypes.length === 0) e.permitTypes = 'Select at least one permit type';
+      if (form.permitTypes.includes('Other') && !form.otherPermitText.trim()) {
+        e.otherPermitText = 'Describe the other permit';
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  // Save draft manually
+  // Save draft
   async function handleSaveDraft() {
     if (!activeAssessment) return;
     setSaving(true);
@@ -499,17 +764,7 @@ export default function JobRiskyPage() {
       await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assessmentDate: form.assessmentDate,
-          assessmentTime: form.assessmentTime,
-          recordedBy: form.recordedBy,
-          activity: form.activity,
-          hazardsSelected: form.hazardsSelected,
-          otherHazardText: form.otherHazardText,
-          controlMeasures: form.controlMeasures,
-          workersBriefed: form.workersBriefed,
-          notes: form.notes,
-        }),
+        body: JSON.stringify(formToBody(form)),
       });
       await loadList();
       setView('list');
@@ -519,38 +774,24 @@ export default function JobRiskyPage() {
   }
 
   // Go to sign-off
-  function handleGoSignOff() {
+  async function handleGoSignOff() {
     if (!validate()) return;
     if (!form.workersBriefed) {
       setErrors(prev => ({ ...prev, workersBriefed: 'Confirm workers have been briefed' }));
       return;
     }
-    // Save first, then open sign-off
-    if (activeAssessment) {
-      fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assessmentDate: form.assessmentDate,
-          assessmentTime: form.assessmentTime,
-          recordedBy: form.recordedBy,
-          activity: form.activity,
-          hazardsSelected: form.hazardsSelected,
-          otherHazardText: form.otherHazardText,
-          controlMeasures: form.controlMeasures,
-          workersBriefed: form.workersBriefed,
-          notes: form.notes,
-        }),
-      }).then(() => {
-        // Reload to get fresh record
-        return fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
-      }).then(r => r.json())
-        .then((full: RiskyAssessment) => {
-          setActiveAssessment(full);
-          setView('signoff');
-        })
-        .catch(() => setView('signoff'));
-    }
+    if (!activeAssessment) return;
+    // Save first
+    await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formToBody(form)),
+    });
+    // Reload fresh record
+    const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
+    const full = await r.json() as RiskyAssessment;
+    setActiveAssessment(full);
+    setView('signoff');
   }
 
   // Finalise
@@ -563,7 +804,7 @@ export default function JobRiskyPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const d = await r.json();
+      const d = await r.json() as { error?: string };
       if (!r.ok) throw new Error(d.error ?? 'Failed');
       await loadList();
       setView('list');
@@ -575,7 +816,31 @@ export default function JobRiskyPage() {
     }
   }
 
-  // ── Sign-off view ─────────────────────────────────────────────────────────
+  // Reload active assessment
+  async function reloadActive() {
+    if (!activeAssessment) return;
+    const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
+    const full = await r.json() as RiskyAssessment;
+    setActiveAssessment(full);
+    setForm(formFromAssessment(full));
+  }
+
+  // ── Supervisor sign-off view ──────────────────────────────────────────────
+  if (view === 'supervisor-signoff' && activeAssessment) {
+    return (
+      <SupervisorPermitSignoff
+        assessment={activeAssessment}
+        jobId={jobId}
+        onClose={() => setView('form')}
+        onDone={async () => {
+          await reloadActive();
+          setView('form');
+        }}
+      />
+    );
+  }
+
+  // ── Party sign-off view ───────────────────────────────────────────────────
   if (view === 'signoff' && activeAssessment) {
     return (
       <SignOffScreen
@@ -583,10 +848,7 @@ export default function JobRiskyPage() {
         jobId={jobId}
         onClose={() => setView('form')}
         onDone={async () => {
-          // Reload assessment with fresh signatures
-          const r = await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`);
-          const full = await r.json() as RiskyAssessment;
-          setActiveAssessment(full);
+          await reloadActive();
           setView('form');
         }}
       />
@@ -597,12 +859,18 @@ export default function JobRiskyPage() {
   if (view === 'form' && activeAssessment) {
     const isFinalised = activeAssessment.status === 'finalised';
     const sigCount = activeAssessment.signatures?.length ?? 0;
+    const hasSupervisorSig = Boolean(activeAssessment.permit_supervisor_signature);
+    const permitRequired = form.permitRequired === true;
+    const permitRequiredNo = form.permitRequired === false;
+
+    // Determine if ready to finalise
+    const canFinalise = sigCount > 0 && (!permitRequired || hasSupervisorSig);
 
     return (
       <>
         <Helmet>
-          <title>Risky — {jobName}</title>
-          <meta name="description" content="Field risk assessment for changed conditions and new hazards." />
+          <title>Risky & Permits — {jobName}</title>
+          <meta name="description" content="Field risk assessment and permit check." />
           <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
         </Helmet>
         <div className="flex flex-col min-h-screen bg-slate-50">
@@ -628,7 +896,7 @@ export default function JobRiskyPage() {
 
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
 
-            {/* Date / time / recorded by */}
+            {/* Details */}
             <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Details</h2>
               <div className="grid grid-cols-2 gap-3">
@@ -664,6 +932,17 @@ export default function JobRiskyPage() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                 />
               </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Workers / parties involved</label>
+                <input
+                  type="text"
+                  value={form.workersInvolved}
+                  onChange={e => updateForm({ workersInvolved: e.target.value })}
+                  disabled={isFinalised}
+                  placeholder="Names or crew"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+                />
+              </div>
             </section>
 
             {/* Activity */}
@@ -687,28 +966,17 @@ export default function JobRiskyPage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                 <AlertTriangle size={13} className="text-amber-500" /> Hazards Identified
               </h2>
-              {errors.hazardsSelected && (
-                <p className="text-xs text-red-500">{errors.hazardsSelected}</p>
-              )}
+              {errors.hazardsSelected && <p className="text-xs text-red-500">{errors.hazardsSelected}</p>}
               <div className="flex flex-wrap gap-2">
-                {job_risky.HAZARD_OPTIONS.map(h => {
-                  const selected = form.hazardsSelected.includes(h);
-                  return (
-                    <button
-                      key={h}
-                      type="button"
-                      onClick={() => !isFinalised && toggleHazard(h)}
-                      disabled={isFinalised}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                        selected
-                          ? 'bg-rose-600 text-white border-rose-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-rose-300'
-                      } disabled:cursor-default`}
-                    >
-                      {h}
-                    </button>
-                  );
-                })}
+                {job_risky.HAZARD_OPTIONS.map(h => (
+                  <Chip
+                    key={h}
+                    label={h}
+                    selected={form.hazardsSelected.includes(h)}
+                    onClick={() => !isFinalised && toggleHazard(h)}
+                    disabled={isFinalised}
+                  />
+                ))}
               </div>
               {form.hazardsSelected.includes('Other') && (
                 <div>
@@ -743,6 +1011,109 @@ export default function JobRiskyPage() {
               {errors.controlMeasures && <p className="text-xs text-red-500">{errors.controlMeasures}</p>}
             </section>
 
+            {/* Permit required */}
+            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                <FileWarning size={13} className="text-amber-500" /> Is a permit required for this activity?
+              </h2>
+              {errors.permitRequired && <p className="text-xs text-red-500">{errors.permitRequired}</p>}
+              <div className="flex gap-3">
+                {[{ label: 'No', value: false }, { label: 'Yes', value: true }].map(opt => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => !isFinalised && updateForm({ permitRequired: opt.value, permitTypes: opt.value ? form.permitTypes : [], otherPermitText: '' })}
+                    disabled={isFinalised}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors disabled:cursor-default ${
+                      form.permitRequired === opt.value
+                        ? opt.value
+                          ? 'border-amber-500 bg-amber-50 text-amber-700'
+                          : 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Permit types — shown only when Yes */}
+              {permitRequired && (
+                <div className="space-y-3 pt-1">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-xs text-amber-700">Confirm required permit controls are in place before work continues.</p>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">Permit type(s)</p>
+                  {errors.permitTypes && <p className="text-xs text-red-500">{errors.permitTypes}</p>}
+                  <div className="flex flex-wrap gap-2">
+                    {job_risky.PERMIT_TYPE_OPTIONS.map(pt => (
+                      <Chip
+                        key={pt}
+                        label={pt}
+                        selected={form.permitTypes.includes(pt)}
+                        onClick={() => !isFinalised && togglePermitType(pt)}
+                        disabled={isFinalised}
+                        color="amber"
+                      />
+                    ))}
+                  </div>
+                  {form.permitTypes.includes('Other') && (
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">Describe other permit</label>
+                      <input
+                        type="text"
+                        value={form.otherPermitText}
+                        onChange={e => updateForm({ otherPermitText: e.target.value })}
+                        disabled={isFinalised}
+                        placeholder="Required"
+                        className={`w-full border rounded-xl px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 ${errors.otherPermitText ? 'border-red-400' : 'border-slate-200'}`}
+                      />
+                      {errors.otherPermitText && <p className="text-xs text-red-500 mt-1">{errors.otherPermitText}</p>}
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Permit notes (optional)</label>
+                    <textarea
+                      value={form.permitNotes}
+                      onChange={e => updateForm({ permitNotes: e.target.value })}
+                      disabled={isFinalised}
+                      placeholder="Additional permit details…"
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
+
+                  {/* Supervisor permit sign-off */}
+                  <div>
+                    <p className="text-xs text-slate-500 font-medium mb-2">Supervisor permit sign-off</p>
+                    {hasSupervisorSig ? (
+                      <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <img
+                          src={activeAssessment.permit_supervisor_signature!}
+                          alt={activeAssessment.permit_supervisor_name ?? 'Supervisor'}
+                          className="h-10 w-24 object-contain bg-white rounded border border-slate-100"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-700">{activeAssessment.permit_supervisor_name}</p>
+                          <p className="text-xs text-slate-400">Permit sign-off recorded</p>
+                        </div>
+                      </div>
+                    ) : (
+                      !isFinalised && (
+                        <button
+                          type="button"
+                          onClick={() => setView('supervisor-signoff')}
+                          className="w-full py-3 rounded-xl border-2 border-dashed border-amber-300 text-amber-600 text-sm font-semibold flex items-center justify-center gap-2"
+                        >
+                          <Pencil size={14} /> Supervisor Sign Off Permit
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* Workers briefed */}
             <section className="bg-white rounded-2xl p-4 shadow-sm">
               <button
@@ -760,7 +1131,7 @@ export default function JobRiskyPage() {
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${form.workersBriefed ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
                   {form.workersBriefed && <CheckCircle2 size={14} className="text-white" />}
                 </div>
-                <span className={`text-sm font-medium ${form.workersBriefed ? 'text-emerald-700' : 'text-slate-600'}`}>
+                <span className={`text-sm font-medium text-left ${form.workersBriefed ? 'text-emerald-700' : 'text-slate-600'}`}>
                   All workers have been briefed on this risk assessment
                 </span>
               </button>
@@ -772,7 +1143,7 @@ export default function JobRiskyPage() {
               <section className="bg-white rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                    <Users size={13} className="text-slate-400" /> Signatures
+                    <Users size={13} className="text-slate-400" /> Party Signatures
                   </h2>
                   <span className="text-xs text-emerald-600 font-semibold">{sigCount} signed</span>
                 </div>
@@ -802,10 +1173,19 @@ export default function JobRiskyPage() {
               />
             </section>
 
+            {/* Finalise error */}
             {finaliseError && (
               <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
                 <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-red-600">{finaliseError}</p>
+              </div>
+            )}
+
+            {/* Permit required — sign-off reminder */}
+            {permitRequired && !hasSupervisorSig && !isFinalised && (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">Supervisor permit sign-off is required before you can finalise.</p>
               </div>
             )}
           </div>
@@ -829,7 +1209,7 @@ export default function JobRiskyPage() {
                 >
                   <Users size={15} /> Sign Off
                 </button>
-              ) : (
+              ) : canFinalise ? (
                 <button
                   type="button"
                   onClick={handleFinalise}
@@ -837,6 +1217,14 @@ export default function JobRiskyPage() {
                   className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2"
                 >
                   {finalising ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={15} /> Finalise</>}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGoSignOff}
+                  className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+                >
+                  <Users size={15} /> Add Signatures
                 </button>
               )}
             </div>
@@ -850,12 +1238,11 @@ export default function JobRiskyPage() {
   return (
     <>
       <Helmet>
-        <title>Risky — {jobName}</title>
-        <meta name="description" content="Field risk assessments for this job." />
+        <title>Risky & Permits — {jobName}</title>
+        <meta name="description" content="Field risk assessments and permit checks for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
       </Helmet>
       <div className="flex flex-col min-h-screen bg-slate-50">
-        {/* Header */}
         <div className="bg-rose-700 text-white px-4 pt-safe-top pt-4 pb-3 flex items-center gap-3">
           <button
             type="button"
@@ -865,7 +1252,7 @@ export default function JobRiskyPage() {
             <ChevronLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm">Risky</h1>
+            <h1 className="font-bold text-sm">Risky & Permits</h1>
             <p className="text-xs text-rose-200 truncate">{jobName}</p>
           </div>
           <button
@@ -899,8 +1286,10 @@ export default function JobRiskyPage() {
           ) : (
             <div className="space-y-3">
               {assessments.map(a => {
-                const hazards = parseHazards(a.hazards_selected);
+                const hazards = parseJson(a.hazards_selected);
+                const permitTypes = parseJson(a.permit_types);
                 const isFinalised = a.status === 'finalised';
+                const hasPermit = Boolean(a.permit_required);
                 return (
                   <button
                     key={a.id}
@@ -912,20 +1301,32 @@ export default function JobRiskyPage() {
                       <p className="text-sm font-semibold text-slate-800 leading-snug flex-1">
                         {a.activity ?? 'Untitled assessment'}
                       </p>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                        isFinalised ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {isFinalised ? 'Finalised' : 'Draft'}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {hasPermit && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Permit</span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          isFinalised ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {isFinalised ? 'Finalised' : 'Draft'}
+                        </span>
+                      </div>
                     </div>
                     {hazards.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {hazards.slice(0, 4).map(h => (
+                        {hazards.slice(0, 3).map(h => (
                           <span key={h} className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">{h}</span>
                         ))}
-                        {hazards.length > 4 && (
-                          <span className="text-xs text-slate-400">+{hazards.length - 4} more</span>
+                        {hazards.length > 3 && (
+                          <span className="text-xs text-slate-400">+{hazards.length - 3} more</span>
                         )}
+                      </div>
+                    )}
+                    {hasPermit && permitTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {permitTypes.slice(0, 2).map(pt => (
+                          <span key={pt} className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">{pt}</span>
+                        ))}
                       </div>
                     )}
                     <div className="flex items-center gap-3 text-xs text-slate-400">
