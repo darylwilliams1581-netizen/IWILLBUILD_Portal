@@ -73,6 +73,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   const [showDocxImporter, setShowDocxImporter]     = useState(false);
   const [showBlocksImporter, setShowBlocksImporter] = useState(false);
   const [saveStatus, setSaveStatus]                 = useState<'idle' | 'saved' | 'error'>('idle');
+  const [docStatus, setDocStatus]                   = useState<'draft' | 'published' | 'archived'>(
+    (template?.docStatus as 'draft' | 'published' | 'archived') ?? 'draft'
+  );
   const [saveErrorMsg, setSaveErrorMsg]             = useState<string>('');
   const [activeTab, setActiveTab]                   = useState<BuilderTab>('structure');
   const [pdfSettings, setPdfSettings]               = useState<TemplatePdfSettings>(
@@ -146,7 +149,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     setIsSaving(true);
     setSaveStatus('idle');
     try {
-      const payload = { ...getSerialised(), pdfSettings };
+      const payload = { ...getSerialised(), pdfSettings, docStatus };
       let res: Response;
       if (templateId) {
         res = await fetch(`/api/document-templates/${templateId}`, {
@@ -205,7 +208,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
     setIsSaving(true);
     setSaveStatus('idle');
     try {
-      const payload = { ...getSerialised(), pdfSettings };
+      const payload = { ...getSerialised(), pdfSettings, docStatus };
       const res = await fetch('/api/document-templates', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include', body: JSON.stringify(payload),
@@ -234,8 +237,18 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
   //    .studio-doc-page becomes the only visible element; all .studio-no-print
   //    controls are hidden. Just call window.print() here.
   const handlePrint = useCallback(() => {
+    // Inject a dynamic @page rule to honour the document's orientation setting
+    const orientation = pageLayout.orientation ?? 'portrait';
+    const styleId = '__studio_print_orientation__';
+    let el = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement('style');
+      el.id = styleId;
+      document.head.appendChild(el);
+    }
+    el.textContent = `@page { size: A4 ${orientation}; margin: 0; }`;
     window.print();
-  }, []);
+  }, [pageLayout.orientation]);
 
   const docTypeLabel = DOC_TYPE_LABELS[templateType ?? ''] ?? 'Document';
 
@@ -272,6 +285,15 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
           placeholder="Untitled document"
         />
         {isDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" title="Unsaved changes" />}
+
+        {/* ── Document status badge ── */}
+        <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+          docStatus === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : docStatus === 'archived' ? 'bg-slate-100 text-slate-500 border-slate-200'
+          : 'bg-amber-50 text-amber-700 border-amber-200'
+        }`}>
+          {docStatus}
+        </span>
 
         {/* ── Mode indicator (read-only — mode is set from the list) ── */}
         <div className="flex-1 flex justify-center">
@@ -337,7 +359,18 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
               <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
                 <Printer size={12} /> Print
               </button>
-              <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200">
+              <button
+                onClick={() => {
+                  // Inject orientation rule then open browser Save-as-PDF dialog
+                  const orientation = pageLayout.orientation ?? 'portrait';
+                  const styleId = '__studio_print_orientation__';
+                  let el = document.getElementById(styleId) as HTMLStyleElement | null;
+                  if (!el) { el = document.createElement('style'); el.id = styleId; document.head.appendChild(el); }
+                  el.textContent = `@page { size: A4 ${orientation}; margin: 0; }`;
+                  window.print();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
+              >
                 <Download size={12} /> Download PDF
               </button>
               {requiresAcknowledgement && (
@@ -440,6 +473,24 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                           <option value="">document</option>
                           {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</label>
+                        <select
+                          value={docStatus}
+                          onChange={(e) => setDocStatus(e.target.value as 'draft' | 'published' | 'archived')}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white appearance-none"
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="published">Published</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                        {docStatus === 'published' && (
+                          <p className="text-[10px] text-emerald-600 mt-1">Published documents are read-only for workers. Edit here to create a new version.</p>
+                        )}
+                        {docStatus === 'archived' && (
+                          <p className="text-[10px] text-slate-400 mt-1">Archived documents are hidden from workers.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -557,7 +608,9 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       <RibbonInsertBtn icon={<Hash size={12} />} label="Heading (H2)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Section Heading', level: 2, align: 'left' })} />
                       <RibbonInsertBtn icon={<Hash size={12} />} label="Sub-section (H3)" onClick={() => appendBlock({ id: nanoid(10), type: 'heading', content: 'Sub-section', level: 3, align: 'left' })} />
                       <RibbonInsertBtn icon={<Type size={12} />} label="Paragraph" onClick={() => appendBlock({ id: nanoid(10), type: 'text', content: 'Enter text here…', align: 'left' })} />
+                      <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Rich Text" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<p>Click to type…</p>' })} />
                       <RibbonInsertBtn icon={<List size={12} />} label="Bullet List" onClick={() => appendBlock({ id: nanoid(10), type: 'rich_text', html: '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>' })} />
+                      <RibbonInsertBtn icon={<Image size={12} />} label="Image" onClick={() => appendBlock({ id: nanoid(10), type: 'image', src: '', alt: '', size: 'medium', align: 'center', preserveAspectRatio: true })} />
                       <RibbonInsertBtn icon={<Minus size={12} />} label="Divider" onClick={() => appendBlock({ id: nanoid(10), type: 'divider', style: 'solid', thickness: 1 })} />
                       <RibbonInsertBtn icon={<AlignLeft size={12} />} label="Page Break" onClick={() => appendBlock({ id: nanoid(10), type: 'page_break' })} />
                     </RibbonGroup>

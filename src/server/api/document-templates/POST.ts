@@ -23,7 +23,7 @@ export default async function handler(req: Request, res: Response) {
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
 
     const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
-            sourceJobId,
+            sourceJobId, docStatus,
             docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
       name?: string;
       templateType?: string;
@@ -34,6 +34,7 @@ export default async function handler(req: Request, res: Response) {
       sourceAttachments?: unknown;
       pdfSettings?: unknown;
       sourceJobId?: number | null;
+      docStatus?: string;
       docKind?: string;
       requiresAcknowledgement?: boolean;
       acknowledgementLabel?: string;
@@ -56,6 +57,7 @@ export default async function handler(req: Request, res: Response) {
     const subLabel = submitLabel ?? 'Submit Form';
     const reqSig = requiresSignature ? 1 : 0;
     const srcJobId = sourceJobId != null ? Number(sourceJobId) : null;
+    const dStatus = docStatus ?? 'draft';
 
     // Try full INSERT with newer columns first; fall back to core columns if they don't exist yet
     let insertId: number;
@@ -63,12 +65,12 @@ export default async function handler(req: Request, res: Response) {
       const [result] = await db.execute(sql.raw(
         `INSERT INTO document_templates (company_id, name, template_type, builder_json, page_layout_json, theme_json, pdf_settings_json,
           doc_kind, requires_acknowledgement, acknowledgement_label, acknowledgement_text, submit_label, requires_signature,
-          source_job_id,
+          source_job_id, doc_status,
           is_active, created_by_user_id)
          VALUES (${profile.companyId}, ${JSON.stringify(name.trim())}, ${JSON.stringify(tType)}, ${JSON.stringify(builderJson)},
           ${JSON.stringify(pageLayoutJson)}, ${JSON.stringify(themeJson)}, ${pdfSettingsJson ? JSON.stringify(pdfSettingsJson) : 'NULL'},
           ${JSON.stringify(kind)}, ${reqAck}, ${JSON.stringify(ackLabel)}, ${JSON.stringify(ackText)}, ${JSON.stringify(subLabel)}, ${reqSig},
-          ${srcJobId != null ? srcJobId : 'NULL'},
+          ${srcJobId != null ? srcJobId : 'NULL'}, ${JSON.stringify(dStatus)},
           1, ${JSON.stringify(session.user.id)})`
       )) as unknown as [{ insertId: number }, unknown];
       insertId = result.insertId;

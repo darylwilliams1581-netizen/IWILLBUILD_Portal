@@ -105,7 +105,7 @@ const BLOCK_GROUPS: BlockGroup[] = [
     ],
   },
   {
-    label: 'Basic',
+    label: 'Text & Content',
     icon: Type,
     blocks: [
       {
@@ -135,7 +135,7 @@ const BLOCK_GROUPS: BlockGroup[] = [
     ],
   },
   {
-    label: 'Layout',
+    label: 'Layout & Media',
     icon: Columns,
     blocks: [
       {
@@ -196,7 +196,7 @@ const BLOCK_GROUPS: BlockGroup[] = [
     ],
   },
   {
-    label: 'Fields',
+    label: 'Form Fields',
     icon: CheckSquare,
     blocks: [
       { type: 'field_short_text',   label: 'Short Text',       icon: Type,             description: 'Single-line text input',   factory: () => ({ id: newId(), type: 'field', fieldType: 'short_text',   label: 'Short Text',   required: false }) },
@@ -218,7 +218,7 @@ const BLOCK_GROUPS: BlockGroup[] = [
     ],
   },
   {
-    label: 'System',
+    label: 'Auto-fill Fields',
     icon: Zap,
     blocks: [
       { type: 'system_job',      label: 'Job Field',      icon: Briefcase,  description: 'Auto-filled job data',      factory: () => ({ id: newId(), type: 'system_field', fieldKey: 'job_name',         label: 'Job Name',      fallback: '[Job Name]',      showLabel: true }) },
@@ -239,7 +239,7 @@ interface Props {
 
 export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, collapsed = false, onToggleCollapse }: Props) {
   const { addBlock, mode } = useDocumentStore();
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Basic', 'Layout', 'Fields']));
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Text & Content', 'Layout & Media', 'Form Fields']));
   const [search, setSearch] = useState('');
 
   if (mode !== 'edit') return null;

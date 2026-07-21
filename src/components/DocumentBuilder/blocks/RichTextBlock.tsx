@@ -127,8 +127,9 @@ export default function RichTextBlockView({ block, columnsBlockId, columnId }: P
         contentEditable
         suppressContentEditableWarning
         onBlur={(e) => update({ html: sanitiseHtml(e.currentTarget.innerHTML) })}
-        className="outline-none py-2 min-h-[3em] cursor-text leading-relaxed prose prose-sm max-w-none"
-        style={{ minHeight: block.minHeight ?? undefined }}
+        className="outline-none py-2 cursor-text leading-relaxed prose prose-sm max-w-none rounded transition-colors focus:bg-slate-50/60 hover:bg-slate-50/40"
+        style={{ minHeight: block.minHeight ?? '4em' }}
+        data-placeholder="Click to type…"
         dangerouslySetInnerHTML={{ __html: safeHtml }}
       />
     );

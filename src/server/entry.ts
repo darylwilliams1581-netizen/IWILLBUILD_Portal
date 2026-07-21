@@ -1238,6 +1238,7 @@ async function runStartupMigrations() {
     { table: 'document_templates', column: 'submit_label',                definition: "VARCHAR(255) NULL" },
     { table: 'document_templates', column: 'requires_signature',          definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
     { table: 'document_templates', column: 'source_job_id',               definition: 'INT NULL' },
+    { table: 'document_templates', column: 'doc_status',                  definition: "VARCHAR(20) NOT NULL DEFAULT 'draft'" },
     // ── project_drawings: columns added after initial table creation ──────────
     { table: 'project_drawings', column: 'name',                  definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },
     { table: 'project_drawings', column: 'title',                 definition: 'VARCHAR(500) NOT NULL DEFAULT \'\'' },

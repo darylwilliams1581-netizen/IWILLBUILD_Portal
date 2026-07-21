@@ -593,6 +593,7 @@ export default function HelpPage() {
         <title>User Manual — IWILLBUILD Portal</title>
         <meta name="description" content="How to use every feature in the IWILLBUILD Portal." />
         <meta name="robots" content="noindex" />
+        <link rel="canonical" href="https://iwillbuild.com/help" />
       </Helmet>
 
       <main className="min-h-screen bg-[#F4F5F7] pb-20">

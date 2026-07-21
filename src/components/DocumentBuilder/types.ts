@@ -262,6 +262,8 @@ export type BlockType =
   | 'columns'
   | 'banner'
   | 'safety_badge_row'
+  | 'risk_matrix'
+  | 'risk_matrix_banner'
   | 'table'
   | 'image'
   | 'field'
@@ -658,6 +660,8 @@ export interface DocumentTemplate {
   requiresSignature?: boolean;
   /** Job this report was generated from — enables "Pick from job" photo picker */
   sourceJobId?: number | null;
+  /** Document status: draft, published, or archived */
+  docStatus?: 'draft' | 'published' | 'archived';
 }
 
 // ── PDF Output Settings (per-template overlay) ────────────────────────────────

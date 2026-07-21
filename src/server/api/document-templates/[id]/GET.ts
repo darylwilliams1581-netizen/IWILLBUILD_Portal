@@ -68,6 +68,7 @@ export default async function handler(req: Request, res: Response) {
         submitLabel: (row.submit_label as string) ?? 'Submit Form',
         requiresSignature: Boolean(row.requires_signature),
         sourceJobId: row.source_job_id ? Number(row.source_job_id) : null,
+        docStatus: (row.doc_status as string) ?? 'draft',
       },
     });
   } catch (err) {
