@@ -413,27 +413,52 @@ export default function InvoiceBuilderPage() {
 
   async function handleXeroSync() {
     if (!invoice) return;
-    // Save first if dirty
+
+    // ── Client-side validation ────────────────────────────────────────────────
+    if (!selectedCustomer) {
+      setXeroMsg({ type: 'error', text: 'Please add a customer before syncing to Xero.' });
+      return;
+    }
+    const validLines = lines.filter(l => l.description?.trim() && l.quantity > 0);
+    if (validLines.length === 0) {
+      setXeroMsg({ type: 'error', text: 'Please add at least one invoice line (with description and quantity) before syncing to Xero.' });
+      return;
+    }
+
+    // Save first if dirty so the server reads the latest data
     if (dirty) await handleSave(false);
+
     setXeroSyncing(true); setXeroMsg(null);
     try {
       const res = await fetch(`/api/integrations/xero/sync-invoice/${invoice.id}`, {
         method: 'POST', credentials: 'include',
       });
-      const d = await res.json() as { ok?: boolean; message?: string; error?: string; xeroInvoiceId?: string };
+
+      // Always try to parse JSON — the server always returns JSON
+      let d: { ok?: boolean; message?: string; error?: string; xeroInvoiceId?: string } = {};
+      try {
+        d = await res.json() as typeof d;
+      } catch {
+        // Non-JSON response (e.g. unexpected HTML 404/500) — surface status code
+        setXeroMsg({ type: 'error', text: `Sync failed: server returned HTTP ${res.status}` });
+        return;
+      }
+
       if (!res.ok) {
-        setXeroMsg({ type: 'error', text: d.error ?? 'Xero sync failed' });
+        setXeroMsg({ type: 'error', text: d.error ?? `Xero sync failed (HTTP ${res.status})` });
       } else {
         setXeroMsg({ type: 'ok', text: d.message ?? 'Synced to Xero' });
-        // Refresh invoice to get updated accounting fields
+        // Refresh invoice to get updated accounting_invoice_id / sync_status
         const updated = await fetch(`/api/invoices/${invoice.id}`, { credentials: 'include' });
         if (updated.ok) {
           const ud = await updated.json() as { invoice: Invoice };
           setInvoice(ud.invoice);
         }
       }
-    } catch {
-      setXeroMsg({ type: 'error', text: 'Network error syncing to Xero' });
+    } catch (err) {
+      // True network failure (offline, DNS, etc.)
+      const msg = err instanceof Error ? err.message : String(err);
+      setXeroMsg({ type: 'error', text: `Network error: ${msg}` });
     } finally {
       setXeroSyncing(false);
     }

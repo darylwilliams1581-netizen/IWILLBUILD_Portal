@@ -81,6 +81,17 @@ export default async function handler(req: Request, res: Response) {
       sql`SELECT * FROM invoice_lines WHERE invoice_id = ${invoiceId} ORDER BY sort_order ASC`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
+    // ── Validation ───────────────────────────────────────────────────────────
+    if (!invoice.customer_id && !invoice.customer_name) {
+      return res.status(400).json({ error: 'Please add a customer before syncing to Xero.' });
+    }
+    const validLines = (lineRows ?? []).filter(
+      l => l.description && String(l.description).trim() && parseFloat(String(l.quantity)) > 0
+    );
+    if (validLines.length === 0) {
+      return res.status(400).json({ error: 'Please add at least one invoice line (with description and quantity) before syncing to Xero.' });
+    }
+
     // ── Step 1: Ensure Xero Contact ──────────────────────────────────────────
     let xeroContactId = invoice.xero_contact_id as string | null;
 
@@ -111,7 +122,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Step 2: Build Xero Invoice payload ───────────────────────────────────
-    const lineItems = (lineRows ?? []).map((l) => ({
+    const lineItems = validLines.map((l) => ({
       Description: l.description,
       Quantity: parseFloat(String(l.quantity)) || 1,
       UnitAmount: parseFloat(String(l.rate)) || 0,
