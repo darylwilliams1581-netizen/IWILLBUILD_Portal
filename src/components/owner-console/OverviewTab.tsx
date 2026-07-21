@@ -1,4 +1,4 @@
-import { Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn, ChevronRight, Activity, ShieldAlert, Loader2, ExternalLink, BookOpen } from 'lucide-react';
+import { Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn, ChevronRight, Activity, ShieldAlert, Loader2, ExternalLink, BookOpen, Mail } from 'lucide-react';
 
 interface Stats {
   totalCompanies: number;
@@ -133,6 +133,23 @@ export default function OverviewTab({ stats, companies, activity, enteringSuppor
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">System Map / Product Bible</p>
           <p className="text-xs text-slate-400 truncate">Full platform architecture, modules, permissions, DB schema, API reference</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
+      {/* Support Email shortcut */}
+      <a
+        href="https://sso.godaddy.com/login?domain=iwillbuild.com&realm=pass&app=o365&client-request-id=d9b6abfa-6b11-af49-1da1-0d3c288edc32&wa=wsignin1.0&wtrealm=urn%3Afederation%3AMicrosoftOnline&wctx=LoginOptions%3D3%26estsredirect%3D2%26estsrequest%3DrQQIARAAjZJPbNtUAMbtus0y061pkAZCQoqigaaBHT8nTuxolciSLnVImrZqmj8IRY793Dh-9nP9nps2o1e0E9oRceLPLRw27TBgXNi1px5HtcOGOPUy4FQ4TCjabRISl0_fJ336Dj99fEwRgSxK1zlZlIpXNaBpA1uWBANkbSEHpIKgKpYpSDIAuYJagHZODZN84p_vH_667Or33v3m0o1rXzyVp-x7Q0oDUsxkcEQRxq5oIhxZoueYISbYphnPcFDmR5Y9Ydnp3FUJaLaakxVBtgxNKNi2JhhAVYS8VChoqpRXZEs-nVtqliI6lGeCQ2cCz-YuE4igSfuGaeLIp3_Nxe3Q2PWgT7_ivmPhYS3olfW8PiodNNvd3HpFB_Xtmtvddum6vDPslcGwK7fG9XZr0vBuuc3KZrZZ0Sc9Rye6B5BVXXWaPnGMtiL1OrVhN7sVDGSlBTs3kT7CjuntuEanhrrZTcfuSCufGWtbkrnWyNcPtX2rs0UGshbWvXUyyO64dQ8E3Wxt35Q1zyprtNtGpD6ecu-8TgrbtmNC0cTeAy5mYs_D_jFX-u9WRrSgbUSIpnAAfcdKBSG2HQRT2LaR48MZHEjIE479jbtCoiDAIf3IGTsIDSIHWbOJk3n2bP5KfCGx-DaTYq69L3HFeJxPMLN0Ps9-u5DkE_QG9_Pf9x5WfnjB_fnyyVvM8UKGFg6lbOUgGue9WlPVA7BRJR_7290sbe0F40lZ0XdKoF6QGjZZUYvgboy9G3vzQexinEswaa68AY5jSx4xkDgi4iDEYwLDP2LsnQvMo4v_7z9f8uyU_2DS3AxJ61AH_bEyzsOyPhl2dvdaaxDcNISB71aFgjJQ-xDv4fs8e_IGe7q4yF8wkWMZ1Eiy4HRR5WMmMhyPJMXb6Ve4-hS70E8Xb6cPPNI3zZnbN1AESbr4Sbq8AdKfHh0d_XKJOb_8--PPv375_KcXa2dLH8q0Vs1WzaqkNohNLXeUu1VqT-hud6PdBKNar7m_Gh1sNral1fHK_QTzLME8W2bOl1N3ksw0yYJ_AQ2&cbcxt=&username=support%40iwillbuild.com&mkt=&lc=&status=5"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+          <Mail size={18} className="text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">Support Email</p>
+          <p className="text-xs text-slate-400 truncate">Sign in to support@iwillbuild.com inbox</p>
         </div>
         <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
       </a>
