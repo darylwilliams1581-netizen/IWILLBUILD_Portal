@@ -330,5 +330,18 @@
       "/airo-assets/uploads/reference-cta-style-d861f093.jpg": "f38wenbvln_1784520111532_file_AE4Jh39Ws-.jpg"
     },
     "uploadContentHash": "3d406ba11048ffba09ce598036ff95e12b30596a60844c7a98df231a26ecd73f"
+  },
+  "safety-badges/ppe-banner-strip": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-21T08:18:43.272Z",
+    "lastUpdated": "2026-07-21T08:18:43.272Z",
+    "uploadSources": {
+      "/airo-assets/uploads/safety-badges-ppe-banner-strip-ff13a3c9.png": "f38wenbvln_1784621907364_file_jBjjOx9Zdc.png"
+    },
+    "uploadContentHash": "8ac76528a17930089fa670e2a4fd8a4f8bffc39997d3bfe6268dabedf45b6235"
   }
 }

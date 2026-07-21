@@ -36,6 +36,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
     icon: Shield,
     blocks: [
       {
+        type: 'image', label: 'PPE Banner', icon: ShieldCheck, description: 'Full PPE required — icon strip image, single block',
+        factory: () => ({
+          id: newId(), type: 'image',
+          src: '/airo-assets/images/safety-badges/ppe-banner-strip',
+          alt: 'PPE Required — Personal Protective Equipment',
+          size: 'full', align: 'center', preserveAspectRatio: true,
+        }),
+      },
+      {
         type: 'banner', label: 'First Aid Banner', icon: ShieldCheck, description: 'Red cross first aid header — single block',
         factory: () => ({
           id: newId(), type: 'banner', variant: 'first_aid',
