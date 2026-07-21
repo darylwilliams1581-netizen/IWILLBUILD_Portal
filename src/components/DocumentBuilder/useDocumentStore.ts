@@ -453,6 +453,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     return {
       name: s.templateName,
       templateType: s.templateType,
+      sourceJobId: s.sourceJobId ?? null,
       pageLayout: s.pageLayout,
       theme: s.theme,
       blocks: s.blocks,

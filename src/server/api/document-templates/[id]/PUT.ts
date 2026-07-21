@@ -32,6 +32,7 @@ export default async function handler(req: Request, res: Response) {
     if (!rows?.[0]) return res.status(404).json({ error: 'Template not found' });
 
     const { name, templateType, pageLayout, theme, blocks, systemFields, sourceAttachments, pdfSettings,
+            sourceJobId,
             docKind, requiresAcknowledgement, acknowledgementLabel, acknowledgementText, submitLabel, requiresSignature } = req.body as {
       name?: string;
       templateType?: string;
@@ -41,6 +42,7 @@ export default async function handler(req: Request, res: Response) {
       systemFields?: unknown;
       sourceAttachments?: unknown;
       pdfSettings?: unknown;
+      sourceJobId?: number | null;
       docKind?: string;
       requiresAcknowledgement?: boolean;
       acknowledgementLabel?: string;
@@ -65,6 +67,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Newer columns — only added if they exist on the DB (colsToEnsure adds them on startup)
     const newerParts: string[] = [];
+    if (sourceJobId !== undefined) newerParts.push(`source_job_id = ${sourceJobId != null ? Number(sourceJobId) : 'NULL'}`);
     if (docKind) newerParts.push(`doc_kind = ${JSON.stringify(docKind)}`);
     if (requiresAcknowledgement !== undefined) newerParts.push(`requires_acknowledgement = ${requiresAcknowledgement ? 1 : 0}`);
     if (acknowledgementLabel !== undefined) newerParts.push(`acknowledgement_label = ${JSON.stringify(acknowledgementLabel)}`);
