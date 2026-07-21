@@ -65,6 +65,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'forms',         label: 'Forms',            icon: FileText,         href: '?panel=forms-picker',         bg: 'bg-purple-500',  fg: 'text-white', group: 'safety' },
   { key: 'field_docs',    label: 'Docs',             icon: FileCheck,        href: '/job-docs',                   bg: 'bg-teal-600',    fg: 'text-white', group: 'safety' },
   { key: 'prestart',      label: 'Vehicle Prestart', icon: ClipboardCheck,   href: '?panel=prestart-picker',      bg: 'bg-amber-500',   fg: 'text-white', group: 'safety' },
+  { key: 'incidents',     label: 'Incidents',        icon: AlertTriangle,    href: '/incidents',                  bg: 'bg-red-600',     fg: 'text-white', group: 'safety' },
 ];
 
 // ── TOOLS ─────────────────────────────────────────────────────────────────────
@@ -88,7 +89,6 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'studio_docs',   label: 'Doc Studio',     icon: FileText,         href: '/studio/documents',       bg: 'bg-orange-500',  fg: 'text-white', group: 'management' },
   { key: 'studio_forms',  label: 'Form Studio',    icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
-  { key: 'incidents',     label: 'Incidents',      icon: AlertTriangle,    href: '/incidents',              bg: 'bg-red-600',     fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
 ];
 
