@@ -196,6 +196,8 @@ export const PUBLIC_API_ROUTES: Array<{ method: string; pattern: RegExp }> = [
   { method: 'GET',  pattern: /^\/api\/integrations\/xero\/callback$/ },
   { method: 'GET',  pattern: /^\/api\/integrations\/qbo\/callback$/ },
   { method: 'GET',  pattern: /^\/api\/integrations\/myob\/callback$/ },
+  // Xero webhook — POST from Xero servers, no session; validated by HMAC signature inside handler
+  { method: 'POST', pattern: /^\/api\/integrations\/xero\/webhook$/ },
   // Public contact form — no auth required, spam-protected by honeypot + timing
   { method: 'POST', pattern: /^\/api\/contact$/ },
   // Legacy share link viewer — token-validated, no session required
