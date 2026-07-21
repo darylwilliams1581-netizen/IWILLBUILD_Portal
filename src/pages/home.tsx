@@ -12,7 +12,7 @@ import {
   Camera, Car, FileText, StickyNote, BookOpen,
   Clock, TrendingUp, Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
-  Building2, Layers, Settings, CreditCard, Bot, Wrench,
+  Building2, Layers, Settings, CreditCard, Wrench,
   ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
   User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,

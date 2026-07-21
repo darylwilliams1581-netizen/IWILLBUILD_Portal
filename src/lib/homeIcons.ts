@@ -20,7 +20,7 @@ import {
   Wrench, Image, FileCheck, BookOpen, LayoutDashboard,
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
-  CreditCard, Settings, Bot,
+  CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
 } from 'lucide-react';
@@ -45,21 +45,21 @@ export interface HomeIconDef {
 
 // ── FIELD ─────────────────────────────────────────────────────────────────────
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'camera',        label: 'Camera',        icon: Camera,           href: '?panel=camera',           bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
-  { key: 'sign_in',       label: 'Sign In',        icon: LogIn,            href: '?panel=signin',           bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
-  { key: 'drive',         label: 'Drive',          icon: Car,              href: '?panel=drive-picker',     bg: 'bg-blue-500',    fg: 'text-white', group: 'field' },
-  { key: 'prestart',      label: 'Vehicle Prestart', icon: ClipboardCheck,   href: '?panel=prestart-picker',  bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
-  { key: 'site_prestart', label: 'Site Prestart',  icon: HardHat,          href: '?panel=site-prestart-picker', bg: 'bg-lime-600',    fg: 'text-white', group: 'field' },
-  { key: 'forms',         label: 'Forms',          icon: FileText,         href: '?panel=forms-picker',     bg: 'bg-purple-500',  fg: 'text-white', group: 'field' },
-  { key: 'notes',         label: 'Notes',          icon: StickyNote,       href: '?panel=notes-picker',     bg: 'bg-yellow-400',  fg: 'text-white', group: 'field' },
-  { key: 'log_cost',      label: 'Log Cost',       icon: DollarSign,       href: '?panel=log-cost',         bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
-  { key: 'delays',        label: 'Delays',         icon: Clock,            href: '?panel=delays-picker',    bg: 'bg-red-500',     fg: 'text-white', group: 'field' },
-  { key: 'progress',      label: 'Progress',       icon: TrendingUp,       href: '?panel=progress-picker',  bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
-  { key: 'drawings',      label: 'Drawings',       icon: Layers,           href: '?panel=drawings-picker',  bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
-  { key: 'equipment',     label: 'Equipment',      icon: Wrench,           href: '/studio/asset-manager',   bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
-  { key: 'field_docs',   label: 'Docs',           icon: FileCheck,        href: '/job-docs',               bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
-  { key: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard,  href: '?panel=dashboard',        bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
-  { key: 'risky',        label: 'Risky & Permits', icon: ShieldAlert,      href: '?panel=risky-picker',     bg: 'bg-rose-600',    fg: 'text-white', group: 'field' },
+  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '?panel=camera',               bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
+  { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
+  { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-blue-500',    fg: 'text-white', group: 'field' },
+  { key: 'prestart',      label: 'Vehicle Prestart', icon: ClipboardCheck,   href: '?panel=prestart-picker',      bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
+  { key: 'site_prestart', label: 'Site Prestart',    icon: HardHat,          href: '?panel=site-prestart-picker', bg: 'bg-lime-600',    fg: 'text-white', group: 'field' },
+  { key: 'forms',         label: 'Forms',            icon: FileText,         href: '?panel=forms-picker',         bg: 'bg-purple-500',  fg: 'text-white', group: 'field' },
+  { key: 'notes',         label: 'Notes',            icon: StickyNote,       href: '?panel=notes-picker',         bg: 'bg-yellow-400',  fg: 'text-white', group: 'field' },
+  { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
+  { key: 'delays',        label: 'Delays',           icon: Clock,            href: '?panel=delays-picker',        bg: 'bg-red-500',     fg: 'text-white', group: 'field' },
+  { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
+  { key: 'drawings',      label: 'Drawings',         icon: Layers,           href: '?panel=drawings-picker',      bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
+  { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
+  { key: 'field_docs',    label: 'Docs',             icon: FileCheck,        href: '/job-docs',                   bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
+  { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
+  { key: 'risky',         label: 'Risky & Permits',  icon: ShieldAlert,      href: '?panel=risky-picker',         bg: 'bg-rose-600',    fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────
@@ -90,7 +90,6 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'studio_forms',  label: 'Form Studio',    icon: ClipboardList,    href: '/studio/forms',           bg: 'bg-purple-500',  fg: 'text-white', group: 'management' },
   { key: 'incidents',     label: 'Incidents',      icon: AlertTriangle,    href: '/incidents',              bg: 'bg-red-600',     fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
-  { key: 'dazza_ai',      label: 'Dazza AI',       icon: Bot,              href: '/dazza-ai',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'management' },
 ];
 
 // ── COMING SOON — 10 reserved placeholder slots ───────────────────────────────
