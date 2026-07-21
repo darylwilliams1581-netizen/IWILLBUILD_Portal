@@ -395,6 +395,8 @@ export const ClipboardCheck = NullIcon;
 // ── Additional icons ──────────────────────────────────────────────────────────
 export const AlarmClock = NullIcon;
 
+export const Gamepad2 = NullIcon;
+
 // lucide-react utility exports
 export const createLucideIcon = () => NullIcon;
 export const LucideIcon = NullIcon;

@@ -1,0 +1,1 @@
+import{createRequire as t}from"module";import{j as m}from"./radix-ui-DB7-u4XC.js";import{at as o}from"../server.bundle.mjs";const i=t(import.meta.url);function u({className:e,...r}){return m.jsx("div",{className:o("animate-pulse rounded-md bg-muted",e),...r})}export{u as S};

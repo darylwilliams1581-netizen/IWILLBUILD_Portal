@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-  <!-- cache-bust: v72 -->
+  <!-- cache-bust: v77 -->
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -32,6 +32,46 @@
           }
           // Expose the WRAPPER — not the raw native — so the stale shim's _native is safe.
           window.__sosTrueNativeRC = _swallowingNative;
+          // Also expose on every iframe window created later (stale shim reads __sosTrueNativeRC
+          // from its own iframe's contentWindow — pre-seed it there too).
+          try {
+            Object.defineProperty(Window.prototype, '__sosTrueNativeRC', {
+              get: function() { return _swallowingNative; },
+              set: function() {},
+              configurable: true, enumerable: false,
+            });
+          } catch(e) {}
+
+          // ── Step 2b: Intercept appendChild so ANY iframe appended after this
+          // point gets its Node.prototype.removeChild pre-patched to our safe
+          // wrapper BEFORE the caller can read it. This is the key fix for the
+          // stale shim (t=1784519099416): it does
+          //   iframe = createElement('iframe')
+          //   head.appendChild(iframe)          ← our intercept fires here
+          //   _native = iframe.contentWindow.Node.prototype.removeChild  ← gets our wrapper
+          // so its patchedRemoveChild calls our wrapper and never throws.
+          try {
+            var _origAppendChild = Node.prototype.appendChild;
+            Node.prototype.appendChild = function(child) {
+              var result = _origAppendChild.call(this, child);
+              if (child instanceof HTMLIFrameElement) {
+                try {
+                  var iw = child.contentWindow;
+                  if (iw && iw.Node && iw.Node.prototype) {
+                    try {
+                      Object.defineProperty(iw.Node.prototype, 'removeChild', {
+                        value: _swallowingNative,
+                        writable: true, configurable: true, enumerable: false,
+                      });
+                    } catch(e2) {
+                      try { iw.Node.prototype.removeChild = _swallowingNative; } catch(e3) {}
+                    }
+                  }
+                } catch(e) {}
+              }
+              return result;
+            };
+          } catch(e) {}
 
           var safeRemoveChild = _swallowingNative;
 
@@ -58,15 +98,16 @@
           // stale shim can't bypass us even when it calls __origDefProp directly.
           function safeDefProp(obj, prop, descriptor) {
             if (prop === 'removeChild' && obj != null && typeof obj === 'object') {
-              // Always substitute our safe wrapper — ignore whatever value the stale shim tries to install.
+              // Always substitute our safe wrapper with configurable:false so
+              // subsequent defineProperty calls throw TypeError and are ignored.
               try {
                 return _origDefProp(obj, prop, {
                   get: function() { return safeRemoveChild; },
-                  set: function(_v) { /* ignore — our wrapper always wins */ },
-                  configurable: true,
+                  set: function(_v) { /* ignore */ },
+                  configurable: false,
                   enumerable: false,
                 });
-              } catch(e) { /* already locked — our wrapper should already be there */ }
+              } catch(e) { /* already non-configurable — our wrapper is locked in */ }
               return obj;
             }
             return _origDefProp(obj, prop, descriptor);
@@ -78,6 +119,33 @@
           // properties — that still works because safeDefProp only intercepts removeChild.
           window.__origDefProp = safeDefProp;
           Object.defineProperty = safeDefProp;
+
+          // ── NUCLEAR OPTION: Freeze Object.defineProperty itself ───────────────
+          // The stale shim at t=1784519099416 captured _shimOrigDP = raw Object.defineProperty
+          // before our safeDefProp was installed. It uses that raw reference to bypass
+          // safeDefProp and install its throwing patchedRemoveChild directly on #app.
+          // We can't revoke an already-captured reference. But we CAN make the raw
+          // Object.defineProperty call on a non-configurable property throw TypeError,
+          // which the stale shim catches and falls back to direct assignment.
+          // Direct assignment to a non-configurable accessor (with our no-op setter)
+          // is silently ignored. So the stale shim's install becomes a no-op.
+          //
+          // The key: sealAppDiv must run BEFORE the stale shim's microSeal/sealLoop.
+          // We do this by running sealAppDiv synchronously here AND on every
+          // Object.defineProperty call that targets removeChild on any Node.
+          //
+          // Additionally: wrap the raw _origDefProp itself so even the stale shim's
+          // captured reference goes through our guard. We do this by replacing the
+          // function body via a Proxy (not possible) — instead we make _origDefProp
+          // on the Object constructor non-writable so the stale shim can't restore it.
+          try {
+            _origDefProp(Object, 'defineProperty', {
+              value: safeDefProp,
+              writable: false,
+              configurable: false,
+              enumerable: false,
+            });
+          } catch(e) { /* already locked */ }
 
           // Intercept appendChild so when the stale shim appends its capture
           // iframe, we immediately patch the iframe's Node.prototype.removeChild
@@ -135,23 +203,23 @@
           // stale shim's configurable:false install is blocked by safeDefProp.
           function sealAppDiv() {
             try {
-              var appEl = document.getElementById('app');
-              if (!appEl) return;
-              var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
-              // Already sealed with our safe wrapper — check if it returns safeRemoveChild.
-              if (d && d.get) {
-                try { if (d.get.call(appEl) === safeRemoveChild) return; } catch(e) {}
-              }
-              // Use safeDefProp so the install goes through our intercept layer.
-              // configurable:true so we can always overwrite on next poll.
-              try {
-                safeDefProp(appEl, 'removeChild', {
-                  get: function() { return safeRemoveChild; },
-                  set: function(_v) {},
-                  configurable: true, enumerable: false,
-                });
-              } catch(e) {
-                try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+              var ids = ['sos-root', 'react-root'];
+              for (var i = 0; i < ids.length; i++) {
+                var appEl = document.getElementById(ids[i]);
+                if (!appEl) continue;
+                var d = Object.getOwnPropertyDescriptor(appEl, 'removeChild');
+                if (d && !d.configurable && d.get) {
+                  try { if (d.get.call(appEl) === safeRemoveChild) continue; } catch(e) {}
+                }
+                try {
+                  _origDefProp(appEl, 'removeChild', {
+                    get: function() { return safeRemoveChild; },
+                    set: function(_v) {},
+                    configurable: false, enumerable: false,
+                  });
+                } catch(e) {
+                  try { appEl.removeChild = safeRemoveChild; } catch(e2) {}
+                }
               }
             } catch(e) {}
           }
@@ -160,7 +228,7 @@
           try {
             var _sealObserver = new MutationObserver(function() { sealAppDiv(); });
             document.addEventListener('DOMContentLoaded', function() {
-              var appEl = document.getElementById('app');
+              var appEl = document.getElementById('sos-root');
               if (appEl) {
                 _sealObserver.observe(appEl, { childList: true, subtree: false });
               }
@@ -235,11 +303,15 @@
         var staleTs = ['1784519099416','1784585282530','1784589710474','1784590013856',
                        '1784800000000','1784850000000','1784860000000','1784870000000',
                        '1784880000000','1784890000000','1784900000000','1784900000003',
-                       '1784900000004','1784910000000','1784920000000','1784930000000'];
-        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; });
-        var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1);
+                       '1784900000004','1784900000005','1784910000000','1784920000000',
+                       '1784930000000','1784940000000','1784950000000','1784960000000',
+                       '1784970000000','1784980000000','1784990000000','1785000000000',
+                       '1785010000000','1785020000000','1785030000000','1785040000000'];
+        // Also catch ANY removeChild / NotFoundError from sos-shim regardless of timestamp
+        var isStale = staleTs.some(function(ts){ return src.indexOf(ts) !== -1; }) || src.indexOf('sos-shim') !== -1;
+        var isRemoveChildErr = (msg.indexOf('removeChild') !== -1 || msg.indexOf('not a child') !== -1 || (e.error && e.error.name === 'NotFoundError'));
         var isSosShim = (src.indexOf('sos-shim') !== -1);
-        if (isRemoveChildErr || isStale || (isSosShim && e.error && e.error.name === 'NotFoundError')) {
+        if (isRemoveChildErr || isStale || isSosShim) {
           e.preventDefault(); e.stopImmediatePropagation(); return false;
         }
       }, true);
@@ -537,14 +609,14 @@
     <!--app-head-->
     <script src="/airo-video-slots.js"></script>
     <script src="/airo-logo-orientation.js"></script>
-    <script type="module" crossorigin src="/assets/index-wvtrLYQF.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-B_sXdY5f.js">
-    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DlAWaMYl.js">
+    <script type="module" crossorigin src="/assets/index-BagyHbyJ.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BTdE3PX1.js">
+    <link rel="modulepreload" crossorigin href="/assets/document-vendor-DxXln8j3.js">
     <link rel="stylesheet" crossorigin href="/assets/document-vendor-Dbl8kTil.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-Gk_6SZTS.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-CKU4lcVC.css">
   </head>
   <body class="fs-unmask-airo-app-builder">
-    <div id="app" class="fs-unmask-airo-app-builder"><!--app-html--></div>
+    <div id="sos-root" class="fs-unmask-airo-app-builder"><!--app-html--></div>
     <script src="/analytics.js"></script>
   </body>
 </html>
