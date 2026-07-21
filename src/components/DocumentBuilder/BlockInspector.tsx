@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef } from 'react';
+import{useAuthImage,isInternalSrc}from'./useAuthImage';
 import { Settings, Zap, X, Plus, Trash2, Upload, Loader2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
@@ -26,6 +27,15 @@ const lbl = 'block text-[10px] font-bold text-slate-400 uppercase tracking-wider
 interface InspectorProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+}
+
+function AuthImg({src,alt,cls}:{src:string;alt:string;cls:string}){
+  const na=isInternalSrc(src);
+  const{blobUrl,loading}=useAuthImage(na?src:undefined);
+  const ds=na?blobUrl:src;
+  if(na&&loading)return<div className={cls+' flex items-center justify-center bg-slate-50'}><div className='w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin'/></div>;
+  if(!ds)return null;
+  return<img src={ds} alt={alt} className={cls}/>;
 }
 
 export default function BlockInspector({ collapsed = false, onToggleCollapse }: InspectorProps) {
@@ -570,7 +580,7 @@ function BannerInspector({ block, upd }: { block: BannerBlock; upd: (p: Partial<
           <label className={lbl}>Image</label>
           {block.customImageUrl && (
             <div className="relative rounded overflow-hidden border border-slate-200">
-              <img src={block.customImageUrl} alt="Banner" className="w-full object-contain max-h-24" />
+              <AuthImg src={block.customImageUrl!} alt="Banner" cls="w-full object-contain max-h-24" />
               <button
                 onClick={() => upd({ customImageUrl: undefined })}
                 className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-black/80"
@@ -704,7 +714,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {badge.customImageUrl ? (
-                    <img src={badge.customImageUrl} alt={badge.label} className="w-full h-full object-contain p-0.5" />
+                    <AuthImg src={badge.customImageUrl!} alt={badge.label} cls="w-full h-full object-contain p-0.5" />
                   ) : (
                     <span className="text-xl">{BADGE_TYPE_OPTIONS.find((o) => o.value === badge.badgeType)?.emoji ?? '🛡️'}</span>
                   )}
@@ -861,7 +871,7 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
       {/* Preview thumbnail */}
       {block.src && (
         <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center h-20">
-          <img src={block.src} alt="" className="max-h-full max-w-full object-contain" />
+          <AuthImg src={block.src} alt="" cls="max-h-full max-w-full object-contain" />
         </div>
       )}
 

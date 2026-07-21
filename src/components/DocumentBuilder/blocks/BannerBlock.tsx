@@ -268,6 +268,9 @@ function FirstAidBanner({ block, update }: { block: BannerBlock; update: (p: Par
 // Simple full-width image — no text overlay, no interaction. Upload via inspector.
 function ImageBannerView({ block }: { block: BannerBlock }) {
   const { mode } = useDocumentStore();
+  const na = !!block.customImageUrl && isInternalSrc(block.customImageUrl);
+  const { blobUrl, loading, failed } = useAuthImage(na ? block.customImageUrl : undefined);
+  const ds = na ? blobUrl : (block.customImageUrl || null);
 
   if (!block.customImageUrl) {
     if (mode !== 'edit') return null;
@@ -279,11 +282,14 @@ function ImageBannerView({ block }: { block: BannerBlock }) {
       </div>
     );
   }
+  if (na && loading) return <div className="my-1 w-full flex items-center justify-center h-20 rounded-lg bg-slate-50 border border-slate-200"><div className="w-5 h-5 border-2 border-slate-300 border-t-primary rounded-full animate-spin"/></div>;
+  if (na && failed) return <div className="my-1 w-full flex flex-col items-center justify-center h-20 rounded-lg bg-red-50 border border-red-200 gap-1"><ImageIcon size={18} className="text-red-400"/><p className="text-[10px] text-red-500">Image could not be loaded</p></div>;
+  if (!ds) return null;
 
   return (
     <div className="my-1 w-full">
       <img
-        src={block.customImageUrl}
+        src={ds}
         alt={block.title || 'Banner image'}
         className="w-full rounded"
         style={{ display: 'block', objectFit: 'contain' }}

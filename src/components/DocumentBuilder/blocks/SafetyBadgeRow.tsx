@@ -1,5 +1,14 @@
 import { ShieldCheck } from 'lucide-react';
+import{useAuthImage,isInternalSrc}from'../useAuthImage';
 import type { SafetyBadgeRowBlock, SafetyBadgeType } from '../types';
+function BadgeImg({src,alt}:{src:string;alt:string}){
+  const na=isInternalSrc(src);
+  const{blobUrl,loading}=useAuthImage(na?src:undefined);
+  const ds=na?blobUrl:src;
+  if(na&&loading)return<div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:10,height:10,borderRadius:'50%',border:'2px solid #ccc',borderTopColor:'#f97316'}}/></div>;
+  if(!ds)return null;
+  return<img src={ds} alt={alt} style={{width:'100%',height:'100%',objectFit:'contain'}}/>;
+}
 
 interface Props {
   block: SafetyBadgeRowBlock;
@@ -201,11 +210,7 @@ function BadgeCircle({
             style={{ width: iconSize, height: iconSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {badge.customImageUrl ? (
-              <img
-                src={badge.customImageUrl}
-                alt={badge.label}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
+              <BadgeImg src={badge.customImageUrl} alt={badge.label} />
             ) : (
               BADGE_SVG[badge.badgeType] ?? BADGE_SVG.custom
             )}
