@@ -23,6 +23,7 @@ import {
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
+  Gamepad2,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -78,6 +79,7 @@ export const TOOLS_ICON_DEFS: HomeIconDef[] = [
   { key: 'scheduler',     label: 'Scheduler',        icon: CalendarDays,     href: '/scheduler',                  bg: 'bg-blue-600',    fg: 'text-white', group: 'tools' },
   { key: 'studio_docs',   label: 'Doc Studio',       icon: FileText,         href: '/studio/documents',           bg: 'bg-orange-500',  fg: 'text-white', group: 'tools' },
   { key: 'studio_forms',  label: 'Form Studio',      icon: ClipboardList,    href: '/studio/forms',               bg: 'bg-purple-500',  fg: 'text-white', group: 'tools' },
+  { key: 'site_escape',   label: 'SE',               icon: Gamepad2,         href: '/site-escape',                bg: 'bg-amber-500',   fg: 'text-white', group: 'tools' },
 ];
 
 // ── MANAGEMENT ────────────────────────────────────────────────────────────────

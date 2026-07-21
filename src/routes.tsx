@@ -20,6 +20,7 @@ import SharePage from './pages/share';
 import ExternalFormPage from './pages/external-form';
 import LoginHelpPage from './pages/login-help';
 const DownloadAppPage = lazy(() => import('./pages/download-app'));
+const SiteEscapePage  = lazy(() => import('./pages/site-escape'));
 import { Navigate } from 'react-router-dom';
 
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
@@ -150,8 +151,9 @@ export const routes: RouteObject[] = [
   { path: '/reset-password',  element: <ResetPasswordPage /> },
   { path: '/login-help',      element: <LoginHelpPage /> },
   { path: '/download-app',   element: <Suspense fallback={<PageLoader />}><DownloadAppPage /></Suspense> },
-  { path: '/driver',    element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,   errorElement: routeError },
-  { path: '/prestart',  element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>, errorElement: routeError },
+  { path: '/driver',       element: <ProtectedRoute><Suspense fallback={<PageLoader />}><DriverPage /></Suspense></ProtectedRoute>,      errorElement: routeError },
+  { path: '/prestart',     element: <ProtectedRoute><Suspense fallback={<PageLoader />}><PrestartPage /></Suspense></ProtectedRoute>,    errorElement: routeError },
+  { path: '/site-escape',  element: <ProtectedRoute><Suspense fallback={<PageLoader />}><SiteEscapePage /></Suspense></ProtectedRoute>,  errorElement: routeError },
   // Public share pages — no login required
   { path: '/share/:token',          element: <SharePage /> },
   { path: '/external/form/:token',  element: <ExternalFormPage /> },

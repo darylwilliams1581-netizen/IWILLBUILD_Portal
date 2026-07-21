@@ -1982,24 +1982,17 @@ export default function HomeScreen() {
       </AnimatePresence>
 
       {/* ── Filter chips + icon grid ── */}
-      {/* suppressHydrationWarning + mounted guard: SSR renders an empty shell;
-          client fills it after first paint — prevents the stale-shim removeChild
-          NotFoundError caused by SSR/client icon-count mismatch. */}
-      <div className="flex-1 overflow-y-auto pb-28" suppressHydrationWarning>
-        {/* Stable wrapper — always rendered so React never removes/re-adds this subtree.
-            Content is hidden (opacity-0 pointer-events-none) until mounted to avoid
-            SSR/client mismatch that triggers the sos-shim patchedRemoveChild error. */}
-        {/* Render nothing until client-mounted — keeps SSR and hydration DOM
-            node counts identical, preventing the sos-shim removeChild mismatch. */}
-        {mounted && (
-          <HomeIconGrid
-            allowedIcons={allowedIcons}
-            isPlatformOwner={isPlatformOwner}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            onNavigate={handleNavigate}
-          />
-        )}
+      {/* HomeIconGrid is always rendered (SSR + client) with the same icon list
+          so React never adds/removes child nodes during hydration — that mismatch
+          is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
+      <div className="flex-1 overflow-y-auto pb-28">
+        <HomeIconGrid
+          allowedIcons={allowedIcons}
+          isPlatformOwner={isPlatformOwner}
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          onNavigate={handleNavigate}
+        />
       </div>
 
       {/* ── Sheets ── */}
