@@ -150,7 +150,7 @@ function Sheet({
 
 // ── Camera job-picker sheet ───────────────────────────────────────────────────
 
-interface JobOption { id: string; name: string; jobNumber?: string | null; }
+interface JobOption { id: number; name: string; jobNumber?: string | null; }
 
 function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -1985,11 +1985,13 @@ export default function HomeScreen() {
       {/* suppressHydrationWarning + mounted guard: SSR renders an empty shell;
           client fills it after first paint — prevents the stale-shim removeChild
           NotFoundError caused by SSR/client icon-count mismatch. */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto pb-28" suppressHydrationWarning>
         {/* Stable wrapper — always rendered so React never removes/re-adds this subtree.
             Content is hidden (opacity-0 pointer-events-none) until mounted to avoid
             SSR/client mismatch that triggers the sos-shim patchedRemoveChild error. */}
-        <div className={mounted ? undefined : 'opacity-0 pointer-events-none'}>
+        {/* Render nothing until client-mounted — keeps SSR and hydration DOM
+            node counts identical, preventing the sos-shim removeChild mismatch. */}
+        {mounted && (
           <HomeIconGrid
             allowedIcons={allowedIcons}
             isPlatformOwner={isPlatformOwner}
@@ -1997,7 +1999,7 @@ export default function HomeScreen() {
             setActiveFilter={setActiveFilter}
             onNavigate={handleNavigate}
           />
-        </div>
+        )}
       </div>
 
       {/* ── Sheets ── */}
