@@ -1,0 +1,13 @@
+{
+  "INCIDENT_TYPES": [
+    "Injury",
+    "Near miss",
+    "Property damage",
+    "Environmental spill",
+    "Vehicle incident",
+    "Plant/equipment incident",
+    "Public/client complaint",
+    "Unsafe condition",
+    "Other"
+  ]
+}

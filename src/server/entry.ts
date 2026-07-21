@@ -414,6 +414,15 @@ import jobs_id_risky_id_put from "./api/jobs/[id]/risky/[riskyId]/PUT";
 import jobs_id_risky_id_finalise_post from "./api/jobs/[id]/risky/[riskyId]/finalise/POST";
 import jobs_id_risky_id_signatures_post from "./api/jobs/[id]/risky/[riskyId]/signatures/POST";
 import jobs_id_risky_id_supervisor_signoff_post from "./api/jobs/[id]/risky/[riskyId]/supervisor-signoff/POST";
+import incidents_get from "./api/incidents/GET";
+import incidents_post from "./api/incidents/POST";
+import incidents_id_get from "./api/incidents/[incidentId]/GET";
+import incidents_id_put from "./api/incidents/[incidentId]/PUT";
+import incidents_id_close_post from "./api/incidents/[incidentId]/close/POST";
+import incidents_id_corrective_actions_post from "./api/incidents/[incidentId]/corrective-actions/POST";
+import incidents_id_corrective_actions_id_put from "./api/incidents/[incidentId]/corrective-actions/[actionId]/PUT";
+import incidents_id_third_parties_post from "./api/incidents/[incidentId]/third-parties/POST";
+import incidents_id_third_parties_id_delete from "./api/incidents/[incidentId]/third-parties/[thirdPartyId]/DELETE";
 import jobs_id_swms_post_322 from "./api/jobs/[id]/swms/POST";
 import jobs_id_swms_swmsId_signoff_post_323 from "./api/jobs/[id]/swms/[swmsId]/signoff/POST";
 import jobs_id_todos_get_324 from "./api/jobs/[id]/todos/GET";
@@ -2109,6 +2118,104 @@ async function runStartupMigrations() {
       }
     }
   }
+
+  // ── Incident Register tables ──────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS incidents (
+        id                          INT PRIMARY KEY AUTO_INCREMENT,
+        company_id                  INT NOT NULL,
+        created_by_user_id          VARCHAR(36) NOT NULL,
+        job_id                      INT NULL,
+        job_number                  VARCHAR(100) NULL,
+        job_name                    VARCHAR(255) NULL,
+        customer_name               VARCHAR(255) NULL,
+        site_address                TEXT NULL,
+        incident_date               DATE NOT NULL,
+        incident_time               VARCHAR(10) NULL,
+        reported_by                 VARCHAR(255) NOT NULL,
+        location                    TEXT NULL,
+        incident_type               VARCHAR(100) NOT NULL,
+        severity                    VARCHAR(20) NOT NULL DEFAULT 'medium',
+        description                 TEXT NOT NULL,
+        immediate_action_taken      TEXT NULL,
+        injury_occurred             BOOLEAN NOT NULL DEFAULT FALSE,
+        person_injured              VARCHAR(255) NULL,
+        medical_treatment_required  BOOLEAN NOT NULL DEFAULT FALSE,
+        property_damage             BOOLEAN NOT NULL DEFAULT FALSE,
+        environmental_impact        BOOLEAN NOT NULL DEFAULT FALSE,
+        witnesses                   TEXT NULL,
+        third_parties_involved      BOOLEAN NOT NULL DEFAULT FALSE,
+        notes                       TEXT NULL,
+        status                      VARCHAR(30) NOT NULL DEFAULT 'open',
+        closed_at                   DATETIME NULL,
+        closed_by                   VARCHAR(255) NULL,
+        manager_sign_off            TEXT NULL,
+        created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_incidents_company (company_id),
+        INDEX idx_incidents_job (job_id),
+        INDEX idx_incidents_date (incident_date),
+        INDEX idx_incidents_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] incidents table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] incidents CREATE failed:', msg);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS incident_corrective_actions (
+        id           INT PRIMARY KEY AUTO_INCREMENT,
+        incident_id  INT NOT NULL,
+        action       TEXT NOT NULL,
+        owner        VARCHAR(255) NULL,
+        due_date     DATE NULL,
+        status       VARCHAR(30) NOT NULL DEFAULT 'open',
+        completed_at DATETIME NULL,
+        notes        TEXT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_ica_incident (incident_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] incident_corrective_actions table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] incident_corrective_actions CREATE failed:', msg);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS incident_third_parties (
+        id                    INT PRIMARY KEY AUTO_INCREMENT,
+        incident_id           INT NOT NULL,
+        name                  VARCHAR(255) NULL,
+        company_org           VARCHAR(255) NULL,
+        role_type             VARCHAR(100) NULL,
+        contact_phone         VARCHAR(50) NULL,
+        contact_email         VARCHAR(255) NULL,
+        involvement           TEXT NOT NULL,
+        injury_damage_alleged BOOLEAN NOT NULL DEFAULT FALSE,
+        statement_taken       BOOLEAN NOT NULL DEFAULT FALSE,
+        is_witness            BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_itp_incident (incident_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[startup-migration] incident_third_parties table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] incident_third_parties CREATE failed:', msg);
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
@@ -2549,6 +2656,17 @@ app.put("/api/jobs/:id/risky/:riskyId", jobs_id_risky_id_put);
 app.post("/api/jobs/:id/risky/:riskyId/finalise", jobs_id_risky_id_finalise_post);
 app.post("/api/jobs/:id/risky/:riskyId/signatures", jobs_id_risky_id_signatures_post);
 app.post("/api/jobs/:id/risky/:riskyId/supervisor-signoff", jobs_id_risky_id_supervisor_signoff_post);
+
+// ── Incident Register ─────────────────────────────────────────────────────────
+app.get("/api/incidents", incidents_get);
+app.post("/api/incidents", incidents_post);
+app.get("/api/incidents/:incidentId", incidents_id_get);
+app.put("/api/incidents/:incidentId", incidents_id_put);
+app.post("/api/incidents/:incidentId/close", incidents_id_close_post);
+app.post("/api/incidents/:incidentId/corrective-actions", incidents_id_corrective_actions_post);
+app.put("/api/incidents/:incidentId/corrective-actions/:actionId", incidents_id_corrective_actions_id_put);
+app.post("/api/incidents/:incidentId/third-parties", incidents_id_third_parties_post);
+app.delete("/api/incidents/:incidentId/third-parties/:thirdPartyId", incidents_id_third_parties_id_delete);
 app.post("/api/jobs/:id/swms", jobs_id_swms_post_322);
 app.post("/api/jobs/:id/swms/:swmsId/signoff", jobs_id_swms_swmsId_signoff_post_323);
 app.get("/api/jobs/:id/todos", jobs_id_todos_get_324);

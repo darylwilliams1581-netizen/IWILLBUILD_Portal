@@ -46,6 +46,12 @@ export const schemas = {
   job_risky: z.object({
     "HAZARD_OPTIONS": z.array(z.string()),
     "PERMIT_TYPE_OPTIONS": z.array(z.string())
+  }),
+  incidents: z.object({
+    "INCIDENT_TYPES": z.array(z.string())
+  }),
+  incident_detail: z.object({
+    "THIRD_PARTY_ROLES": z.array(z.string())
   })
 };
 export type Schemas = typeof schemas;
