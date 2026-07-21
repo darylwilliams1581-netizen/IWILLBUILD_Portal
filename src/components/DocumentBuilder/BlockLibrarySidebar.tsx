@@ -45,6 +45,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
         }),
       },
       {
+        type: 'image', label: 'Risk Assessment', icon: BarChart2, description: 'AS/NZS risk matrix — likelihood, level & degree of risk',
+        factory: () => ({
+          id: newId(), type: 'image',
+          src: '/airo-assets/images/safety-badges/risk-assessment-banner',
+          alt: 'Risk Assessment Matrix — Likelihood, Level of Risk, Degree of Risk',
+          size: 'full', align: 'center', preserveAspectRatio: true,
+        }),
+      },
+      {
         type: 'banner', label: 'First Aid Banner', icon: ShieldCheck, description: 'Red cross first aid header — single block',
         factory: () => ({
           id: newId(), type: 'banner', variant: 'first_aid',
