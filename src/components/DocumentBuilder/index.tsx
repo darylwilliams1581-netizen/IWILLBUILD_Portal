@@ -18,8 +18,8 @@ import {
   LayoutGrid, PenLine, Zap, Camera,
   CheckSquare, Calendar, MapPin, User,
   Building2, ClipboardList,
-  Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert,
-  Image,
+  Info, AlertTriangle, AlertOctagon, Shield, ShieldAlert, ShieldCheck,
+  Image, BarChart2,
   ZoomIn, ZoomOut, Monitor, RotateCcw,
   Wrench, Briefcase, AlignCenter, AlignRight, PlayCircle,
 } from 'lucide-react';
@@ -611,6 +611,10 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                       <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Safety First"  accent="yellow" onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'safety_first' as BannerVariant, title:'SAFETY FIRST',  body:'THINK SAFE. WORK SAFE.',    size:'standard', align:'left', showOnExport:true })} />
                       <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="First Aid"     accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'first_aid'    as BannerVariant, title:'FIRST AID',      body:'KNOW YOUR NEAREST KIT',     size:'standard', align:'left', showOnExport:true })} />
                       <RibbonInsertBtn icon={<ShieldAlert size={12} />}    label="Custom"                        onClick={() => appendBlock({ id:nanoid(10), type:'banner', variant:'custom'       as BannerVariant, title:'Custom Banner',  body:'Enter text here.',          size:'standard', align:'left', showOnExport:true })} />
+                    </RibbonGroup>
+                    <RibbonGroup label="Safety Images">
+                      <RibbonInsertBtn icon={<ShieldCheck size={12} />} label="PPE Banner"      accent="orange" onClick={() => appendBlock({ id:nanoid(10), type:"image", src:"/airo-assets/images/safety-badges/ppe-banner-strip",      alt:"PPE Required", size:"full", align:"center", preserveAspectRatio:true })} />
+                      <RibbonInsertBtn icon={<BarChart2   size={12} />} label="Risk Assessment" accent="red"    onClick={() => appendBlock({ id:nanoid(10), type:"image", src:"/airo-assets/images/safety-badges/risk-assessment-banner", alt:"Risk Assessment Matrix", size:"full", align:"center", preserveAspectRatio:true })} />
                     </RibbonGroup>
                     <RibbonGroup label="Image">
                       <ImageInsertPanel onInsert={(block) => appendBlock(block)} />
