@@ -1,1 +1,0 @@
-const s={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};function i(r){return r==null?"":String(r).replace(/[&<>"']/g,t=>s[t]??t)}const n=i;function a(r){if(r==null)return"";const t=String(r).trim();return t.startsWith("https://")||t.startsWith("http://")||t.startsWith("data:image/")||t.startsWith("/")||t.startsWith("./")?n(t):""}export{i as e,a as s};

@@ -63,6 +63,10 @@ pids
 *.seed
 *.pid.lock
 
+# User-uploaded files (runtime, not source)
+uploads/
+backups/
+
 # TypeScript cache
 *.tsbuildinfo
 
