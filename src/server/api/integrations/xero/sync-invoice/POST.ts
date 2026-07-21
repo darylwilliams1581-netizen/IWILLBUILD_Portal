@@ -137,7 +137,7 @@ export default async function handler(req: Request, res: Response) {
       InvoiceNumber: invoice.invoice_number,
       Reference: invoice.title,
       Status: mapStatus(invoice.status as string),
-      LineAmountTypes: 'EXCLUSIVE', // Amounts are ex-GST; Xero calculates GST
+      LineAmountTypes: 'INCLUSIVE', // GST-inclusive amounts — matches AU org tax settings
       LineItems: lineItems,
     };
 
@@ -166,7 +166,7 @@ export default async function handler(req: Request, res: Response) {
       xeroContactId: xeroContactId ? 'present' : 'none',
       validLineCount: validLines.length,
       existingXeroId: existingXeroId ? 'present' : 'none',
-      lineAmountTypes: xeroInvoicePayload.LineAmountTypes,
+      lineAmountTypes: xeroInvoicePayload.LineAmountTypes, // INCLUSIVE
       accountCode: lineItems[0]?.AccountCode ?? 'none',
       hasDate: !!xeroInvoicePayload.Date,
       hasDueDate: !!xeroInvoicePayload.DueDate,
