@@ -279,6 +279,20 @@ async function emitVirtualModule(
     }
   }
 
+  // Accept HMR updates to prevent Vite's full-reload fallback when the
+  // module structure changes (new exports from content_scaffold). The accept
+  // callback invalidates the module so Vite re-propagates to importers —
+  // React components with Fast Refresh boundaries re-render with new data.
+  // On the initial structural change (no importer in graph yet), invalidate
+  // is a no-op but at least prevents the disruptive full-page reload; the
+  // paired .tsx write triggers its own Fast Refresh.
+  lines.push('');
+  lines.push('if (import.meta.hot) {');
+  lines.push('  import.meta.hot.accept(() => {');
+  lines.push('    import.meta.hot.invalidate();');
+  lines.push('  });');
+  lines.push('}');
+
   return lines.join('\n') + '\n';
 }
 
