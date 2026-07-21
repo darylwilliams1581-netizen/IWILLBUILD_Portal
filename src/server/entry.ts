@@ -361,6 +361,7 @@ import jobs_id_photos_photoId_delete_328 from "./api/jobs/[id]/photos/[photoId]/
 import jobs_id_photos_photoId_patch_329 from "./api/jobs/[id]/photos/[photoId]/PATCH";
 import jobs_id_photos_photoId_download_get_330 from "./api/jobs/[id]/photos/[photoId]/download/GET";
 import jobs_id_photos_photoId_replace_post_331 from "./api/jobs/[id]/photos/[photoId]/replace/POST";
+import jobs_report_generate_post from "./api/jobs/report/generate/POST.js";
 import jobs_id_progress_get_332 from "./api/jobs/[id]/progress/GET";
 import jobs_id_progress_put_333 from "./api/jobs/[id]/progress/PUT";
 import jobs_id_progress_export_csv_get_334 from "./api/jobs/[id]/progress/export-csv/GET";
@@ -2580,6 +2581,7 @@ app.get("/api/job-forms/:id/share", job_forms_id_share_get_285);
 app.post("/api/job-forms/:id/share", job_forms_id_share_post_286);
 app.get("/api/jobs", jobs_get_287);
 app.post("/api/jobs", jobs_post_288);
+app.post("/api/jobs/report/generate", jobs_report_generate_post);
 app.get("/api/jobs/:id", jobs_id_get_289);
 app.put("/api/jobs/:id", jobs_id_put_290);
 app.post("/api/jobs/:id/attendance/:attendanceId/close", jobs_id_attendance_attendanceId_close_post_291);

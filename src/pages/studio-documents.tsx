@@ -11,8 +11,9 @@ import {
   Layers, Plus, Lock, Copy, Share2, Pencil,
   ChevronDown, Loader2, AlertTriangle, Search, Trash2, X,
   FileUp, Library, Inbox, ArrowLeft, User, Calendar,
-  ChevronUp, Eye,
+  ChevronUp, Eye, FileText,
 } from 'lucide-react';
+import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
@@ -370,6 +371,72 @@ function SubmissionsTab({ templates }: { templates: DocTemplate[] }) {
   );
 }
 
+// ── Job Reports tab ───────────────────────────────────────────────────────────
+
+function JobReportsTab({ onGenerate, templates }: { onGenerate: () => void; templates: DocTemplate[] }) {
+  const navigate = useNavigate();
+  const reports = templates.filter(t => t.template_type === 'job_report');
+
+  return (
+    <div className="p-6 pb-16 flex flex-col gap-6">
+      {/* Intro card */}
+      <div className="flex items-start gap-4 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4">
+        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
+          <FileText size={18} className="text-orange-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 leading-tight">Job Reports</p>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Generate a client-facing report for any job. Select the job, choose which sections to include,
+            and the report opens in Doc Studio where you can review, edit, and send it as a PDF.
+          </p>
+          <button
+            onClick={onGenerate}
+            className="mt-3 flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors"
+          >
+            <FileText size={13} />Generate Job Report
+          </button>
+        </div>
+      </div>
+
+      {/* Previously generated reports */}
+      {reports.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Previously generated reports</p>
+          {reports.map(r => (
+            <div
+              key={r.id}
+              className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 hover:border-slate-300 transition-colors cursor-pointer group"
+              onClick={() => navigate(`/studio/builder/${r.id}`)}
+            >
+              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                <FileText size={14} className="text-orange-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{r.name}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {new Date(r.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <Pencil size={13} className="text-slate-300 group-hover:text-orange-500 transition-colors shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {reports.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-3">
+            <FileText size={20} className="text-slate-400" />
+          </div>
+          <p className="text-sm font-semibold text-slate-600">No reports yet</p>
+          <p className="text-xs text-slate-400 mt-1">Hit "Generate Job Report" to create your first one.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function StudioDocumentsPage() {
@@ -377,15 +444,21 @@ export default function StudioDocumentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isPlatformOwner } = usePermissions();
 
-  const tabParam = searchParams.get('tab') as 'documents' | 'submissions' | 'library' | null;
-  const [pageTab, setPageTab] = useState<'documents' | 'submissions' | 'library'>(
-    tabParam === 'submissions' ? 'submissions' : tabParam === 'library' ? 'library' : 'documents'
+  const tabParam = searchParams.get('tab') as 'documents' | 'submissions' | 'library' | 'reports' | null;
+  const [pageTab, setPageTab] = useState<'documents' | 'submissions' | 'library' | 'reports'>(
+    tabParam === 'submissions' ? 'submissions'
+    : tabParam === 'library' ? 'library'
+    : tabParam === 'reports' ? 'reports'
+    : 'documents'
   );
 
-  function switchTab(t: 'documents' | 'submissions' | 'library') {
+  function switchTab(t: 'documents' | 'submissions' | 'library' | 'reports') {
     setPageTab(t);
     setSearchParams(t === 'documents' ? {} : { tab: t }, { replace: true });
   }
+
+  // ── Job Report modal state ───────────────────────────────────────────────────
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // ── Template list state ──────────────────────────────────────────────────────
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
@@ -481,14 +554,21 @@ export default function StudioDocumentsPage() {
             </button>
           </div>
         )}
+        {pageTab === 'reports' && (
+          <button onClick={() => setShowReportModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors shrink-0">
+            <FileText size={14} /><span className="hidden sm:inline">Generate Job Report</span>
+          </button>
+        )}
       </header>
 
-      {/* Tab bar — Documents / Submissions / Library */}
+      {/* Tab bar — Documents / Submissions / Library / Reports */}
       <div className="flex border-b border-slate-200 bg-white px-6 gap-1 shrink-0">
         {([
           { key: 'documents' as const,   label: 'Documents',   icon: Layers },
           { key: 'submissions' as const, label: 'Submissions', icon: Inbox },
           { key: 'library' as const,     label: 'Library',     icon: Library },
+          { key: 'reports' as const,     label: 'Job Reports', icon: FileText },
         ]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => switchTab(key)}
             className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
@@ -577,6 +657,11 @@ export default function StudioDocumentsPage() {
         {pageTab === 'library' && (
           <LibraryPage />
         )}
+
+        {/* ── Job Reports tab ── */}
+        {pageTab === 'reports' && (
+          <JobReportsTab onGenerate={() => setShowReportModal(true)} templates={templates} />
+        )}
       </div>
 
       {/* Share to Library modal */}
@@ -593,6 +678,11 @@ export default function StudioDocumentsPage() {
           onClose={() => { setShowImporter(false); setImportTemplateId(null); }}
           onImported={(blocks, name) => { setShowImporter(false); void handleStudioImported(blocks, name, importTemplateId); }}
           onSaveFirst={async () => importTemplateId} />
+      )}
+
+      {/* Generate Job Report modal */}
+      {showReportModal && (
+        <GenerateJobReportModal onClose={() => setShowReportModal(false)} />
       )}
     </div>
   );
