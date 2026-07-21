@@ -518,7 +518,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Locked summary */}
-      <div className="bg-orange-500 text-white px-4 pt-10 pb-4">
+      <div className="bg-orange-500 text-white px-4 pt-3 pb-4 safe-top">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Shield size={18} />
@@ -810,8 +810,8 @@ export default function JobSitePrestartPage() {
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="flex items-center gap-3 px-4 pt-10 pb-3">
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
+          <div className="flex items-center gap-3 px-4 pt-3 pb-3">
             <button
               onClick={() => {
                 if (view === 'form' || view === 'new') setView('list');

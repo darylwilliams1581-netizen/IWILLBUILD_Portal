@@ -131,10 +131,9 @@ export default function JobPhotosPage() {
 
       {/* ── Safe-area top bar ── */}
       <div
-        className="bg-black border-b border-white/10 shrink-0 sticky top-0 z-10"
+        className="bg-black border-b border-white/10 shrink-0 sticky top-0 z-10 safe-top"
         style={{
           boxShadow: '0 1px 0 rgba(0,0,0,0.3)',
-          paddingTop: 'max(env(safe-area-inset-top), 12px)',
         }}
       >
         <div className="flex items-center gap-2 px-3 pb-3">
@@ -232,10 +231,9 @@ export default function JobPhotosPage() {
 
       {/* ── Mobile bottom action bar ── */}
       <div
-        className="fixed bottom-0 inset-x-0 z-20 bg-black border-t border-white/10"
+        className="fixed bottom-0 inset-x-0 z-20 bg-black border-t border-white/10 safe-bottom"
         style={{
           boxShadow: '0 -2px 12px rgba(0,0,0,0.4)',
-          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
         }}
       >
         {/* Normal mode */}

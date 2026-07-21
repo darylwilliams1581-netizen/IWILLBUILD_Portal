@@ -425,7 +425,7 @@ export default function JobProgressPage() {
       </div>
 
       {/* ── Mobile bottom bar ── */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100" style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100 safe-bottom" style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.05)' }}>
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="w-8 h-8 rounded-xl bg-cyan-100 flex items-center justify-center shrink-0">
             <TrendingUp size={15} className="text-cyan-600" />

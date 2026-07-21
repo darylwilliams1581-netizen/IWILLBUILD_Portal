@@ -75,7 +75,7 @@ export default function JobPickerSheet({
                 <X size={14} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5">
+            <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1.5 safe-bottom">
               {loading ? (
                 <div className="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
                   <Loader2 size={16} className="animate-spin" /> Loading jobs…
