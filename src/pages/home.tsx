@@ -81,11 +81,10 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
 
 // ── Filter chip types ─────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'favourites' | 'field' | 'safety' | 'tools' | 'management';
+type FilterTab = 'all' | 'field' | 'safety' | 'tools' | 'management';
 
 const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: 'all',        label: 'All' },
-  { id: 'favourites', label: 'Favourites' },
   { id: 'field',      label: 'Field' },
   { id: 'safety',     label: 'Safety' },
   { id: 'tools',      label: 'Tools' },
@@ -1712,15 +1711,13 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
 
   const filtered = activeFilter === 'all'
     ? allIcons
-    : activeFilter === 'favourites'
-      ? []
-      : allIcons.filter(i => i.group === activeFilter);
+    : allIcons.filter(i => i.group === activeFilter);
 
   return (
     <>
       {/* Filter chips */}
       <div className="px-4 pt-4 pb-3">
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+        <div className="flex justify-center gap-2 flex-wrap pb-1">
           {FILTER_TABS.map(tab => (
             <button
               key={tab.id}
