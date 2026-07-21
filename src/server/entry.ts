@@ -1894,7 +1894,15 @@ async function runStartupMigrations() {
 
   // ── Permanently set developer/platform-owner accounts to 'owner' plan ────────
   // These emails are the platform developers and should never be on trial limits.
-  const devPlanEmails = ['darylwilliams1581@gmail.com'];
+  // Primary source: PLATFORM_OWNER_EMAIL secret (comma-separated). Falls back to
+  // the hardcoded address so the owner account is always promoted even before the
+  // secret is configured.
+  const { getSecret } = await import('#airo/secrets');
+  const ownerEmailSecret = (() => { try { return getSecret('PLATFORM_OWNER_EMAIL'); } catch { return ''; } })();
+  const devPlanEmails = Array.from(new Set([
+    'darylwilliams1581@gmail.com',
+    ...(ownerEmailSecret ? ownerEmailSecret.split(',').map((e: string) => e.trim()).filter(Boolean) : []),
+  ]));
   for (const email of devPlanEmails) {
     try {
       await db.execute(sql`

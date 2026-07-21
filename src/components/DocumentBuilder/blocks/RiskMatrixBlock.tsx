@@ -13,6 +13,7 @@
  */
 import { useDocumentStore } from '../useDocumentStore';
 import type { RiskMatrixBlock } from '../types';
+import { sanitiseHtml } from '../sanitiseHtml';
 
 interface Props {
   block: RiskMatrixBlock;
@@ -131,7 +132,7 @@ export default function RiskMatrixBlockView({ block, columnsBlockId, columnId }:
           suppressContentEditableWarning
           onBlur={(e) => update({ title: e.currentTarget.textContent ?? '' })}
           style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, outline: 'none', cursor: 'text' }}
-          dangerouslySetInnerHTML={{ __html: block.title }}
+          dangerouslySetInnerHTML={{ __html: sanitiseHtml(block.title) }}
         />
       ) : (
         block.title && (
