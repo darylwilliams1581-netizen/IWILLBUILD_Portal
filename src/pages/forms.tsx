@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
+import { LibraryPage } from '@/pages/library';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -678,7 +679,7 @@ export function FormsPage() {
   }
 
   // ── Document Builder state removed — Documents tab moved to Studio ───────────
-  const [pageTab, setPageTab] = useState<'forms' | 'submissions'>('forms');
+  const [pageTab, setPageTab] = useState<'forms' | 'submissions' | 'library'>('forms');
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -806,6 +807,7 @@ export function FormsPage() {
           {([
             { key: 'forms', label: 'Forms', icon: FileText },
             { key: 'submissions', label: 'Submissions', icon: Inbox },
+            { key: 'library', label: 'Library', icon: Library },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -908,6 +910,13 @@ export function FormsPage() {
           {/* ── Submissions tab ── */}
           {pageTab === 'submissions' && (
             <SubmissionsInbox templates={templates} />
+          )}
+
+          {/* ── Library tab ── */}
+          {pageTab === 'library' && (
+            <div className="-m-6">
+              <LibraryPage initialTypeFilter="form" />
+            </div>
           )}
         </div>
       </div>

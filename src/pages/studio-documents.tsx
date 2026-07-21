@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
 import { studio } from 'virtual:content';
+import { LibraryPage } from '@/pages/library';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -376,12 +377,12 @@ export default function StudioDocumentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isPlatformOwner } = usePermissions();
 
-  const tabParam = searchParams.get('tab') as 'documents' | 'submissions' | null;
-  const [pageTab, setPageTab] = useState<'documents' | 'submissions'>(
-    tabParam === 'submissions' ? 'submissions' : 'documents'
+  const tabParam = searchParams.get('tab') as 'documents' | 'submissions' | 'library' | null;
+  const [pageTab, setPageTab] = useState<'documents' | 'submissions' | 'library'>(
+    tabParam === 'submissions' ? 'submissions' : tabParam === 'library' ? 'library' : 'documents'
   );
 
-  function switchTab(t: 'documents' | 'submissions') {
+  function switchTab(t: 'documents' | 'submissions' | 'library') {
     setPageTab(t);
     setSearchParams(t === 'documents' ? {} : { tab: t }, { replace: true });
   }
@@ -470,8 +471,7 @@ export default function StudioDocumentsPage() {
         <Layers size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Documents</h1>
         {pageTab === 'documents' && (
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => void handleOpenImporter()}
+          <div className="flex items-center gap-2 shrink-0">            <button onClick={() => void handleOpenImporter()}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors">
               <FileUp size={14} /><span className="hidden sm:inline">Import</span>
             </button>
@@ -483,11 +483,12 @@ export default function StudioDocumentsPage() {
         )}
       </header>
 
-      {/* Tab bar — Documents / Submissions */}
+      {/* Tab bar — Documents / Submissions / Library */}
       <div className="flex border-b border-slate-200 bg-white px-6 gap-1 shrink-0">
         {([
           { key: 'documents' as const,   label: 'Documents',   icon: Layers },
           { key: 'submissions' as const, label: 'Submissions', icon: Inbox },
+          { key: 'library' as const,     label: 'Library',     icon: Library },
         ]).map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => switchTab(key)}
             className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
@@ -571,6 +572,11 @@ export default function StudioDocumentsPage() {
         )}
 
         {pageTab === 'submissions' && <SubmissionsTab templates={templates} />}
+
+        {/* ── Library tab ── */}
+        {pageTab === 'library' && (
+          <LibraryPage />
+        )}
       </div>
 
       {/* Share to Library modal */}
