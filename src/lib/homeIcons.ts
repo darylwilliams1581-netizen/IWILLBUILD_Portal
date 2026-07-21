@@ -48,7 +48,6 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'camera',        label: 'Camera',          icon: Camera,           href: '?panel=camera',               bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
   { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
   { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-blue-500',    fg: 'text-white', group: 'field' },
-  { key: 'notes',         label: 'Notes',            icon: StickyNote,       href: '?panel=notes-picker',         bg: 'bg-yellow-400',  fg: 'text-white', group: 'field' },
   { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
   { key: 'delays',        label: 'Delays',           icon: Clock,            href: '?panel=delays-picker',        bg: 'bg-red-500',     fg: 'text-white', group: 'field' },
   { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-cyan-500',    fg: 'text-white', group: 'field' },
@@ -70,6 +69,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // ── TOOLS ─────────────────────────────────────────────────────────────────────
 export const TOOLS_ICON_DEFS: HomeIconDef[] = [
   { key: 'dashboard',     label: 'Dashboard',        icon: LayoutDashboard,  href: '?panel=dashboard',            bg: 'bg-orange-500',  fg: 'text-white', group: 'tools' },
+  { key: 'notes',         label: 'Notes',            icon: StickyNote,       href: '?panel=notes-picker',         bg: 'bg-yellow-400',  fg: 'text-white', group: 'tools' },
   { key: 'builders_calc', label: 'Builders Calc',    icon: Ruler,            href: '/builders-calc',              bg: 'bg-violet-500',  fg: 'text-white', group: 'tools' },
   { key: 'takeoff_pad',   label: 'Take-off Pad',     icon: ClipboardList,    href: '/takeoff-pad',                bg: 'bg-sky-500',     fg: 'text-white', group: 'tools' },
 ];
