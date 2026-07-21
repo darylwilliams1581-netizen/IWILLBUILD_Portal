@@ -1763,6 +1763,7 @@ export default function HomeScreen() {
 
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
+    if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
   }
 
@@ -1941,29 +1942,6 @@ export default function HomeScreen() {
             )}
           </>
         )}
-      </div>
-
-      {/* ── Bottom bar — Home ── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3"
-        style={{
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(16px)',
-          boxShadow: '0 -1px 0 rgba(0,0,0,0.08), 0 -4px 16px rgba(0,0,0,0.06)',
-        }}
-      >
-        <button
-          onClick={() => setDashOpen(true)}
-          className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 transition-colors"
-          style={{
-            background: 'linear-gradient(135deg, #f97316 0%, #ea6c0a 100%)',
-            boxShadow: '0 4px 14px rgba(249,115,22,0.35)',
-          }}
-        >
-          <LayoutDashboard size={16} className="text-white" />
-          <span className="text-white text-sm font-bold">Dashboard</span>
-          <ChevronUp size={14} className="text-white/70" />
-        </button>
       </div>
 
       {/* ── Sheets ── */}

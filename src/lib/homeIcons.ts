@@ -57,7 +57,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'drawings',      label: 'Drawings',       icon: Layers,           href: '?panel=drawings-picker',  bg: 'bg-lime-500',    fg: 'text-white', group: 'field' },
   { key: 'equipment',     label: 'Equipment',      icon: Wrench,           href: '/studio/asset-manager',   bg: 'bg-rose-500',    fg: 'text-white', group: 'field' },
   { key: 'field_docs',   label: 'Docs',           icon: FileCheck,        href: '/job-docs',               bg: 'bg-teal-600',    fg: 'text-white', group: 'field' },
-  { key: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard,  href: '/dashboard',              bg: 'bg-gray-700',    fg: 'text-white', group: 'field' },
+  { key: 'dashboard',    label: 'Dashboard',      icon: LayoutDashboard,  href: '?panel=dashboard',        bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────

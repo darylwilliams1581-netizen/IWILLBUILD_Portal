@@ -79,24 +79,25 @@
       ? Node.prototype.appendChild
       : null;
     if (_origAppend) {
-      const _safeRC = sosTrueNative; // will be set to swallowingRemoveChildEarly below
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (Node.prototype as any).appendChild = function patchedAppendChild<T extends Node>(this: Node, child: T): T {
         const result = _origAppend.call(this, child) as T;
-        // If an iframe was just appended, immediately patch its Node.prototype
+        // If an iframe was just appended, immediately patch its Node.prototype.
+        // Read __sosTrueNativeRC at call-time (not capture-time) so we always
+        // get swallowingRemoveChildEarly once it's been defined below.
         if (child instanceof HTMLIFrameElement) {
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const iProto = (child as HTMLIFrameElement).contentWindow as any;
-            if (iProto?.Node?.prototype) {
+            const safe = (window as any).__sosTrueNativeRC;
+            if (safe) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const safe = (window as any).__sosTrueNativeRC ?? _safeRC;
-              if (safe) {
+              const iProto = (child as HTMLIFrameElement).contentWindow as any;
+              if (iProto?.Node?.prototype) {
                 try {
                   Object.defineProperty(iProto.Node.prototype, 'removeChild', {
                     value: safe, writable: false, configurable: false, enumerable: false,
                   });
-                } catch { iProto.Node.prototype.removeChild = safe; }
+                } catch { try { iProto.Node.prototype.removeChild = safe; } catch { /* ignore */ } }
               }
             }
           } catch { /* ignore */ }
@@ -221,16 +222,33 @@
     // The stale shim installs patchedRemoveChild as a non-configurable own prop
     // on the #app div. Use a MutationObserver to catch every added node and
     // immediately overwrite any own removeChild with our safe wrapper.
+    // True Object.defineProperty — captured from index.html before any intercept.
+    // Defined here so sanitizeNode and sealAppRoot can both use it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _shimOrigDP: typeof Object.defineProperty = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
+
     function sanitizeNode(node: Node) {
       try {
         const d = Object.getOwnPropertyDescriptor(node, 'removeChild');
-        if (d && typeof d.value === 'function' && d.value !== swallowingRemoveChild) {
+        if (!d) return;
+        // Check both value-form and getter-form own properties
+        const isOurs = (d.value === swallowingRemoveChild) ||
+          (typeof d.get === 'function' && (() => { try { return d.get!.call(node) === swallowingRemoveChild; } catch { return false; } })());
+        if (isOurs) return;
+        // Overwrite with our safe wrapper — try getter first, fall back to value
+        try {
+          _shimOrigDP(node, 'removeChild', {
+            get() { return swallowingRemoveChild; },
+            set(_v: unknown) { /* ignore */ },
+            configurable: false, enumerable: false,
+          });
+        } catch {
           try {
-            Object.defineProperty(node, 'removeChild', {
+            _shimOrigDP(node, 'removeChild', {
               value: swallowingRemoveChild,
-              writable: true, configurable: true, enumerable: false,
+              writable: false, configurable: false, enumerable: false,
             });
-          } catch { /* non-configurable — can't overwrite, rely on _native guard */ }
+          } catch { /* truly locked — nothing more we can do */ }
         }
       } catch { /* ignore */ }
     }
@@ -382,7 +400,7 @@
     // before any shim ran — it can overwrite even non-configurable own properties
     // that were installed via the same original function.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const _shimOrigDP: typeof Object.defineProperty = (window as any).__origDefProp ?? Object.defineProperty.bind(Object);
+    // _shimOrigDP already declared above (hoisted for sanitizeNode + sealAppRoot)
     function sealAppRoot() {
       const appEl = document.getElementById('app');
       if (!appEl) return;
