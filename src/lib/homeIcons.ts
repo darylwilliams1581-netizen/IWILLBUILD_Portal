@@ -41,6 +41,8 @@ export interface HomeIconDef {
   group: IconGroup;
   /** If true: shown greyed in permission grid, never rendered on home screen */
   comingSoon?: boolean;
+  /** Optional badge count to display on the tile */
+  badge?: number;
 }
 
 // ── FIELD ─────────────────────────────────────────────────────────────────────

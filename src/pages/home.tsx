@@ -60,7 +60,7 @@ const PLATFORM_ICONS: AppIcon[] = [
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
 
-function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: string) => void }) {
+function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: string) => void }) {
   const Icon = item.icon;
   return (
     <motion.button
@@ -90,29 +90,18 @@ function IconTile({ item, onNavigate }: { item: AppIcon; onNavigate: (href: stri
   );
 }
 
-// ── Section ───────────────────────────────────────────────────────────────────
+// ── Filter chip types ─────────────────────────────────────────────────────────
 
-function Section({ label, icons, onNavigate }: { label: string; icons: { label: string; icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; href: string; bg: string; fg: string; badge?: number }[]; onNavigate: (href: string) => void }) {
-  return (
-    <div className="px-4">
-      <div
-        className="rounded-2xl px-3 sm:px-4 pt-3.5 pb-5"
-        style={{
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(12px)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)',
-        }}
-      >
-        <p className="text-[10px] font-bold text-gray-400 mb-4 uppercase tracking-widest">{label}</p>
-        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-1.5 sm:gap-x-2 gap-y-4 sm:gap-y-5">
-          {icons.map((item) => (
-            <IconTile key={item.label} item={item} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+type FilterTab = 'all' | 'favourites' | 'field' | 'safety' | 'tools' | 'management';
+
+const FILTER_TABS: { id: FilterTab; label: string }[] = [
+  { id: 'all',        label: 'All' },
+  { id: 'favourites', label: 'Favourites' },
+  { id: 'field',      label: 'Field' },
+  { id: 'safety',     label: 'Safety' },
+  { id: 'tools',      label: 'Tools' },
+  { id: 'management', label: 'Management' },
+];
 
 // ── Shared sheet backdrop + panel ─────────────────────────────────────────────
 
@@ -1697,6 +1686,83 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+// ── HomeIconGrid — extracted component so React always has a stable node tree ──
+// Using an IIFE inside JSX causes React to lose track of the subtree on HMR,
+// which triggers the sos-shim patchedRemoveChild NotFoundError. A named
+// component gives React a stable reconciliation target.
+
+interface HomeIconGridProps {
+  allowedIcons: HomeIconDef[];
+  isPlatformOwner: boolean;
+  activeFilter: FilterTab;
+  setActiveFilter: (f: FilterTab) => void;
+  onNavigate: (href: string) => void;
+}
+
+function HomeIconGrid({ allowedIcons, isPlatformOwner, activeFilter, setActiveFilter, onNavigate }: HomeIconGridProps) {
+  const platformAsIconDef: HomeIconDef[] = PLATFORM_ICONS.map(p => ({
+    ...p,
+    key: p.label.toLowerCase().replace(/\s+/g, '_'),
+    group: 'management' as const,
+  }));
+  const allIcons: HomeIconDef[] = [
+    ...allowedIcons,
+    ...(isPlatformOwner ? platformAsIconDef : []),
+  ];
+
+  const filtered = activeFilter === 'all'
+    ? allIcons
+    : activeFilter === 'favourites'
+      ? []
+      : allIcons.filter(i => i.group === activeFilter);
+
+  return (
+    <>
+      {/* Filter chips */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+          {FILTER_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id)}
+              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeFilter === tab.id
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'bg-white/80 text-gray-500 border border-gray-200 hover:bg-white hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Icon grid */}
+      <div className="px-4">
+        <div className="mx-auto" style={{ maxWidth: 640 }}>
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <p className="text-sm font-medium">No icons in this category</p>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                gap: '12px',
+              }}
+            >
+              {filtered.map((item) => (
+                <IconTile key={item.label} item={item} onNavigate={onNavigate} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -1740,6 +1806,8 @@ export default function HomeScreen() {
   const allowedIcons = mounted
     ? resolveHomeIcons(iconPermissions, role ?? '', isSolo)
     : resolveHomeIcons(null, '', false); // SSR-safe default (field icons only)
+
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
   const [dashOpen, setDashOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -1924,51 +1992,23 @@ export default function HomeScreen() {
         )}
       </AnimatePresence>
 
-      {/* ── Scrollable icon grid ── */}
+      {/* ── Filter chips + icon grid ── */}
       {/* suppressHydrationWarning + mounted guard: SSR renders an empty shell;
           client fills it after first paint — prevents the stale-shim removeChild
           NotFoundError caused by SSR/client icon-count mismatch. */}
-      <div className="flex-1 overflow-y-auto pb-28 pt-5 space-y-4" suppressHydrationWarning>
-        {mounted && (
-          <>
-            {/* Field icons — filtered by permissions, auto-packed (no gaps) */}
-            {(() => {
-              const fieldIcons = allowedIcons.filter(i => i.group === 'field');
-              return fieldIcons.length > 0 ? (
-                <Section label="Field" icons={fieldIcons} onNavigate={handleNavigate} />
-              ) : null;
-            })()}
-
-            {/* Safety icons */}
-            {(() => {
-              const safetyIcons = allowedIcons.filter(i => i.group === 'safety');
-              return safetyIcons.length > 0 ? (
-                <Section label="Safety" icons={safetyIcons} onNavigate={handleNavigate} />
-              ) : null;
-            })()}
-
-            {/* Tools icons */}
-            {(() => {
-              const toolsIcons = allowedIcons.filter(i => i.group === 'tools');
-              return toolsIcons.length > 0 ? (
-                <Section label="Tools" icons={toolsIcons} onNavigate={handleNavigate} />
-              ) : null;
-            })()}
-
-            {/* Management icons — only for admins/owners */}
-            {isAdmin && (() => {
-              const mgmtIcons = allowedIcons.filter(i => i.group === 'management');
-              return mgmtIcons.length > 0 ? (
-                <Section label="Management" icons={mgmtIcons} onNavigate={handleNavigate} />
-              ) : null;
-            })()}
-
-            {/* Platform icons — platform owner only, not permission-controlled */}
-            {isPlatformOwner && (
-              <Section label="Platform" icons={PLATFORM_ICONS} onNavigate={handleNavigate} />
-            )}
-          </>
-        )}
+      <div className="flex-1 overflow-y-auto pb-28">
+        {/* Stable wrapper — always rendered so React never removes/re-adds this subtree.
+            Content is hidden (opacity-0 pointer-events-none) until mounted to avoid
+            SSR/client mismatch that triggers the sos-shim patchedRemoveChild error. */}
+        <div className={mounted ? undefined : 'opacity-0 pointer-events-none'}>
+          <HomeIconGrid
+            allowedIcons={allowedIcons}
+            isPlatformOwner={isPlatformOwner}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+            onNavigate={handleNavigate}
+          />
+        </div>
       </div>
 
       {/* ── Sheets ── */}
