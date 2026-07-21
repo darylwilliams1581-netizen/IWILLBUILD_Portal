@@ -4,13 +4,14 @@
  * Tabs: Documents | Sign-ons
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, Plus, Loader2, FileCheck, Building2, Users,
   ChevronDown, ChevronUp, CheckCircle2, Clock, X,
   AlertCircle, Check, CheckSquare, Square, Copy, Link2,
-  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight,
+  ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, Home,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
 
@@ -84,6 +85,16 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
       </Helmet>
+      {/* Home button */}
+      <div className="w-full max-w-md mb-2 flex">
+        <button
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <Home size={14} />
+          Home
+        </button>
+      </div>
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
@@ -930,6 +941,7 @@ function DocCard({ doc, job, onStatusChange }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function JobFieldDocsPage() {
+  const navigate = useNavigate();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [docs, setDocs] = useState<FieldDoc[]>([]);
   const [signons, setSignons] = useState<Signon[]>([]);
@@ -972,6 +984,13 @@ export default function JobFieldDocsPage() {
     <div className="flex flex-col h-full">
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
+        <button
+          onClick={() => navigate('/home')}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          title="Home"
+        >
+          <Home size={16} />
+        </button>
         <button
           onClick={() => { setSelectedJob(null); setDocs([]); setSignons([]); }}
           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
