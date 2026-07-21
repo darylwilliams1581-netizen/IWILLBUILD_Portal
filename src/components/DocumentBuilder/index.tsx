@@ -814,6 +814,7 @@ function ImageInsertPanel({ onInsert }: { onInsert: (block: DocumentBlock) => vo
 
   return (
     <div className="mx-1 mb-1 rounded-lg border border-slate-200 bg-slate-50 p-2 flex flex-col gap-2">
+      <p className="text-[9px] text-slate-400 leading-tight">Pick size &amp; align, then click Insert. Use the right panel to change after inserting.</p>
       <div>
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Size</p>
         <div className="grid grid-cols-2 gap-1">

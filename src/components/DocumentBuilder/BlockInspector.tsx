@@ -879,13 +879,26 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
       <input type="text" value={block.alt} onChange={(e) => upd({ alt: e.target.value })} className={inp} />
       <label className={`${lbl} mt-2`}>Caption</label>
       <input type="text" value={block.caption ?? ''} onChange={(e) => upd({ caption: e.target.value })} className={inp} />
+
+      {/* Size — button pickers */}
       <label className={`${lbl} mt-2`}>Size</label>
-      <select value={block.size} onChange={(e) => upd({ size: e.target.value as ImageBlock['size'] })} className={sel}>
-        <option value="small">Small (200px)</option>
-        <option value="medium">Medium (400px)</option>
-        <option value="large">Large (600px)</option>
-        <option value="full">Full Width</option>
-      </select>
+      <div className="grid grid-cols-2 gap-1">
+        {([['small','Small (200px)'],['medium','Medium (400px)'],['large','Large (600px)'],['full','Full Width']] as const).map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => upd({ size: val })}
+            className={`py-1.5 rounded text-[10px] font-semibold transition-colors ${
+              block.size === val
+                ? 'bg-primary text-white'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Align */}
       <label className={`${lbl} mt-2`}>Align</label>
       <AlignPicker value={block.align} onChange={(v) => upd({ align: v })} />
     </Section>

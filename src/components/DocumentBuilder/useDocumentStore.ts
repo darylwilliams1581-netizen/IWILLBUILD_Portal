@@ -301,7 +301,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   appendBlocks: (incoming) => {
     (get() as unknown as { _pushHistory: () => void })._pushHistory();
-    set((s) => ({ blocks: [...s.blocks, ...incoming], isDirty: true }));
+    const last = incoming[incoming.length - 1];
+    set((s) => ({ blocks: [...s.blocks, ...incoming], isDirty: true, selection: last ? { blockId: last.id } : s.selection }));
   },
 
   // ── Logic rules ───────────────────────────────────────────────────────────
