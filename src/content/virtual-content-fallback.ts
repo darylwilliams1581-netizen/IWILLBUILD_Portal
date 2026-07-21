@@ -58,3 +58,39 @@ export const studio: { ALL_TYPES: string[]; CATEGORIES: string[] } = { ALL_TYPES
 export const driver: {
   COST_CATEGORIES: Array<{ value: string; label: string; id: string }>;
 } = { COST_CATEGORIES: [] };
+
+export const job_site_prestart: {
+  SITUATION_CHECKS: string[];
+  EXECUTION_CHECKS: string[];
+  ADMIN_CHECKS: string[];
+} = {
+  SITUATION_CHECKS: [
+    'Weather / heat',
+    'Site access',
+    'Public interface',
+    'Live electrical services',
+    'Underground services',
+    'Traffic / plant movement',
+    'Other hazards',
+  ],
+  EXECUTION_CHECKS: [
+    'Relevant SWMS reviewed',
+    'Permits confirmed',
+    'DBYD / services marked',
+    'Plant pre-starts complete',
+    'Exclusion zones set',
+    'Traffic controls in place if required',
+    'Spotter / observer assigned if required',
+    'Critical controls explained',
+  ],
+  ADMIN_CHECKS: [
+    'PPE worn / available',
+    'First aid kit available',
+    'Spill kit available',
+    'Fire extinguisher available',
+    'Water / shade available',
+    'Waste controls in place',
+    'Emergency access clear',
+    'Amenities available if required',
+  ],
+};
