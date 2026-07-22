@@ -359,5 +359,18 @@
       "/airo-assets/uploads/safety-badges-risk-assessment-banner-0f3303a2.png": "f38wenbvln_1784621937174_file_iqsZE3JojZ.png"
     },
     "uploadContentHash": "29015dcfa2229d1a17196fe9970769821a0d27e57a3d193f5c6d1db1ef63a640"
+  },
+  "reference/screenshot-9": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-07-22T20:12:01.600Z",
+    "lastUpdated": "2026-07-22T20:12:01.600Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png": "f38wenbvln_1784750804802_file_EN7n3SkvHS.png"
+    },
+    "uploadContentHash": "0f39837151b378c20b4863e7fe7c8efdba608a188c84d1854ddd237f2498d2e9"
   }
 }

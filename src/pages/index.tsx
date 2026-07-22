@@ -135,7 +135,7 @@ const plans = [
   },
 ];
 
-// ── Portal mockup component ───────────────────────────────────────────────────
+// ── Desktop portal mockup ─────────────────────────────────────────────────────
 function PortalMockup() {
   return (
     <div suppressHydrationWarning style={{
@@ -145,79 +145,184 @@ function PortalMockup() {
       boxShadow: '0 32px 80px rgba(0,0,0,.55)',
       border: '1px solid rgba(255,255,255,.08)',
       width: '100%',
-      maxWidth: 560,
     }}>
       {/* Window chrome */}
       <div style={{ backgroundColor: '#1e293b', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} />
-        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
-        <span style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-        <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 18, marginLeft: 8 }} />
+        <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} />
+        <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
+        <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+        <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 16, marginLeft: 8 }} />
+        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>iwillbuild.com/home</span>
       </div>
       {/* Sidebar + content */}
-      <div style={{ display: 'flex', minHeight: 340 }}>
+      <div style={{ display: 'flex', minHeight: 300 }}>
         {/* Sidebar */}
-        <div style={{ width: 52, backgroundColor: '#111827', padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-          {[LayoutDashboard, Briefcase, Truck, FileText, FileText].map((Icon, i) => (
+        <div style={{ width: 48, backgroundColor: '#111827', padding: '12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          {[LayoutDashboard, Briefcase, Truck, FileText, ShieldCheck].map((Icon, i) => (
             <div key={i} style={{
-              width: 34, height: 34, borderRadius: 8,
-              backgroundColor: i === 0 ? '#1263d8' : 'transparent',
+              width: 32, height: 32, borderRadius: 8,
+              backgroundColor: i === 0 ? '#f97316' : 'transparent',
               display: 'grid', placeItems: 'center',
-              color: i === 0 ? '#fff' : '#64748b',
+              color: i === 0 ? '#fff' : '#475569',
             }}>
-              <Icon size={16} />
+              <Icon size={15} />
             </div>
           ))}
         </div>
 
         {/* Main panel */}
-        <div style={{ flex: 1, padding: '16px 18px', color: '#f1f5f9' }}>
-          {/* Tab bar */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-            {homeTabs.map((t, i) => (
-              <span key={t} style={{
-                fontSize: 11, fontWeight: 700, padding: '4px 10px',
-                borderRadius: 6,
-                backgroundColor: i === 0 ? '#1263d8' : '#1e293b',
-                color: i === 0 ? '#fff' : '#94a3b8',
-                border: i === 0 ? 'none' : '1px solid #334155',
-              }}>{t}</span>
-            ))}
+        <div style={{ flex: 1, padding: '14px 16px', color: '#f1f5f9', overflow: 'hidden' }}>
+          {/* Header row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em' }}>Office Portal</span>
+            <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700 }}>● Live</span>
           </div>
 
           {/* Stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7, marginBottom: 14 }}>
             {[
-              { label: 'Active Jobs', val: '12' },
-              { label: 'Forms Due',   val: '4'  },
-              { label: 'Fleet Flags', val: '2'  },
+              { label: 'Active Jobs', val: '12', color: '#f97316' },
+              { label: 'Forms Due',   val: '4',  color: '#3b82f6' },
+              { label: 'Fleet OK',    val: '8',  color: '#22c55e' },
             ].map((s) => (
               <div key={s.label} style={{
-                backgroundColor: '#1e293b', borderRadius: 8, padding: '10px 12px',
+                backgroundColor: '#1e293b', borderRadius: 7, padding: '9px 10px',
                 border: '1px solid #334155',
               }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#f97316' }}>{s.val}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Job rows */}
-          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Jobs</div>
-          {homeRows.map((r) => (
+          <div style={{ fontSize: 10, color: '#475569', marginBottom: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Jobs</div>
+          {homeRows.slice(0, 3).map((r) => (
             <div key={r.label} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              backgroundColor: '#1e293b', borderRadius: 7, padding: '9px 12px',
-              marginBottom: 6, border: '1px solid #334155',
+              backgroundColor: '#1e293b', borderRadius: 6, padding: '8px 10px',
+              marginBottom: 5, border: '1px solid #334155',
             }}>
-              <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{r.label}</span>
+              <span style={{ fontSize: 11, color: '#e2e8f0', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{r.label}</span>
               <span style={{
-                fontSize: 10, fontWeight: 700, padding: '3px 8px',
+                fontSize: 9, fontWeight: 700, padding: '2px 7px',
                 borderRadius: 20, backgroundColor: `${r.color}22`, color: r.color,
+                flexShrink: 0, marginLeft: 6,
               }}>{r.status}</span>
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Phone field app mockup ────────────────────────────────────────────────────
+function PhoneMockup() {
+  return (
+    <div suppressHydrationWarning style={{
+      width: 168,
+      flexShrink: 0,
+      backgroundColor: '#111827',
+      borderRadius: 28,
+      overflow: 'hidden',
+      boxShadow: '0 24px 60px rgba(0,0,0,.6), inset 0 0 0 1.5px rgba(255,255,255,.1)',
+      border: '2px solid #1e293b',
+      position: 'relative',
+    }}>
+      {/* Status bar */}
+      <div style={{
+        backgroundColor: '#0f172a', padding: '10px 16px 6px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>9:41</span>
+        <div style={{ width: 48, height: 14, backgroundColor: '#1e293b', borderRadius: 7 }} />
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 9, color: '#94a3b8' }}>●●●</span>
+        </div>
+      </div>
+
+      {/* App header */}
+      <div style={{
+        backgroundColor: '#f97316', padding: '10px 14px 8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>IWILLBUILD</span>
+        <div style={{ width: 26, height: 26, borderRadius: 8, backgroundColor: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center' }}>
+          <Users size={13} color="#fff" />
+        </div>
+      </div>
+
+      {/* Home grid */}
+      <div style={{ backgroundColor: '#f8fafc', padding: '12px 10px' }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Field App</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+          {[
+            { Icon: Briefcase,   label: 'Jobs',    bg: '#eff6ff', fg: '#1263d8' },
+            { Icon: Camera,      label: 'Photos',  bg: '#fff7ed', fg: '#f97316' },
+            { Icon: FileText,    label: 'Forms',   bg: '#f0fdf4', fg: '#16a34a' },
+            { Icon: ShieldCheck, label: 'Safety',  bg: '#fef2f2', fg: '#dc2626' },
+            { Icon: Truck,       label: 'Fleet',   bg: '#f5f3ff', fg: '#7c3aed' },
+            { Icon: Users,       label: 'Team',    bg: '#ecfdf5', fg: '#059669' },
+            { Icon: Calendar,    label: 'Schedule',bg: '#fefce8', fg: '#ca8a04' },
+            { Icon: FolderOpen,  label: 'Files',   bg: '#f0f9ff', fg: '#0284c7' },
+          ].map(({ Icon, label, bg, fg }) => (
+            <div key={label} style={{
+              backgroundColor: '#fff', borderRadius: 10, padding: '8px 4px 6px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: bg, display: 'grid', placeItems: 'center' }}>
+                <Icon size={13} color={fg} />
+              </div>
+              <span style={{ fontSize: 7.5, fontWeight: 700, color: '#374151', textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Active job card */}
+        <div style={{
+          marginTop: 10, backgroundColor: '#fff', borderRadius: 10, padding: '9px 10px',
+          border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Current Job</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Riverside Apartments</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 8, fontWeight: 700, backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: 10, padding: '2px 6px' }}>On Site</span>
+            <span style={{ fontSize: 8, color: '#94a3b8' }}>Stage 2</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom tab bar */}
+      <div style={{
+        backgroundColor: '#fff', borderTop: '1px solid #e2e8f0',
+        display: 'flex', padding: '6px 0 10px',
+      }}>
+        {[
+          { Icon: LayoutDashboard, label: 'Home',   active: true  },
+          { Icon: Briefcase,       label: 'Jobs',   active: false },
+          { Icon: Camera,          label: '',       active: false, fab: true },
+          { Icon: ShieldCheck,     label: 'Safety', active: false },
+          { Icon: FolderOpen,      label: 'More',   active: false },
+        ].map(({ Icon, label, active, fab }, i) => (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative' }}>
+            {fab ? (
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%',
+                backgroundColor: '#f97316', display: 'grid', placeItems: 'center',
+                marginTop: -14, boxShadow: '0 4px 12px rgba(249,115,22,.4)',
+                border: '3px solid #fff',
+              }}>
+                <Icon size={15} color="#fff" />
+              </div>
+            ) : (
+              <Icon size={16} color={active ? '#f97316' : '#94a3b8'} />
+            )}
+            {!fab && <span style={{ fontSize: 7, fontWeight: 700, color: active ? '#f97316' : '#94a3b8' }}>{label}</span>}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -298,7 +403,7 @@ export default function HomePage() {
         about: { '@id': `${site}/#app` },
         publisher: { '@id': `${site}/#organization` },
         datePublished: '2026-06-25',
-        dateModified: '2026-07-21',
+        dateModified: '2026-07-23',
       },
     ],
   };
@@ -341,39 +446,70 @@ export default function HomePage() {
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.06,
           backgroundImage: `linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)`,
-          backgroundSize: '48px 48px',
+          backgroundSize: '48px 48px', pointerEvents: 'none',
         }} />
 
         <div style={{
           position: 'relative',
           maxWidth: 1180, margin: '0 auto',
-          padding: '80px 22px 72px',
+          padding: '72px 22px 64px',
           display: 'grid',
-          gap: 48,
+          gap: 52,
           alignItems: 'center',
         }} className="hero-grid">
-          {/* Left copy */}
+
+          {/* ── Left: copy ── */}
           <div>
+            {/* Eyebrow */}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
-              borderRadius: 20, padding: '5px 14px', marginBottom: 22,
+              borderRadius: 20, padding: '5px 14px', marginBottom: 24,
             }}>
               <Star size={13} color="#f97316" fill="#f97316" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>30-day free trial — no credit card needed</span>
             </div>
 
-            <div style={{
-              fontSize: 'clamp(32px,4.8vw,58px)',
-              lineHeight: 1.04, letterSpacing: '-0.04em',
-              color: '#fff', margin: '0 0 20px',
+            {/* Headline — dual interface concept */}
+            <h1 style={{
+              fontSize: 'clamp(30px,4.4vw,54px)',
+              lineHeight: 1.06, letterSpacing: '-0.04em',
+              color: '#fff', margin: '0 0 10px',
+              fontWeight: 900,
             }}>
-              <h1 style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit', color: 'inherit', margin: 0 }}>
-                Construction job management — jobs, forms, fleet, safety and files in one clean portal.
-              </h1>
+              One system.{' '}
+              <span style={{ color: '#f97316' }}>Two interfaces.</span>
+            </h1>
+
+            {/* Sub-headline — the split */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'stretch', gap: 0,
+                borderRadius: 10, overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,.1)',
+              }}>
+                <div style={{
+                  padding: '9px 16px', backgroundColor: 'rgba(249,115,22,.18)',
+                  borderRight: '1px solid rgba(255,255,255,.1)',
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Phone</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Field app</div>
+                </div>
+                <div style={{ padding: '9px 16px', backgroundColor: 'rgba(255,255,255,.06)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Desktop</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Office portal</div>
+                </div>
+              </div>
             </div>
 
-            {/* ── CTA block — top of body, stacked on mobile ── */}
+            <p style={{
+              color: '#94a3b8', fontSize: 17, lineHeight: 1.65,
+              margin: '0 0 28px', maxWidth: 540,
+            }}>
+              Same jobs, photos, forms, safety records, invoices, incidents, users and files underneath — your crew works from site, your office stays across everything.
+            </p>
+
+            {/* CTA block */}
             <div className="hero-cta-block" style={{ marginBottom: 28 }}>
               <Link to="/signup" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -395,21 +531,41 @@ export default function HomePage() {
                 Sign in
               </Link>
               <p style={{ color: '#64748b', fontSize: 13, margin: '10px 0 0' }}>
-                No setup fee. Cancel anytime. View-only access keeps your records available if you cancel.
+                No setup fee. Cancel anytime.
               </p>
             </div>
-
-            <p style={{
-              color: '#94a3b8', fontSize: 18, lineHeight: 1.6,
-              margin: '0', maxWidth: 600,
-            }}>
-              IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files. As the platform grows, accounting integrations help approved invoices, customers and supporting documents flow into Xero, QuickBooks and MYOB.
-            </p>
           </div>
 
-          {/* Right: portal mockup */}
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <PortalMockup />
+          {/* ── Right: dual mockup — phone + desktop side by side ── */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            gap: 20, position: 'relative',
+          }}>
+            {/* Phone — slightly raised */}
+            <div style={{ position: 'relative', zIndex: 2, transform: 'translateY(-16px)' }}>
+              {/* Label */}
+              <div style={{
+                textAlign: 'center', marginBottom: 10,
+                fontSize: 11, fontWeight: 700, color: '#f97316',
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+              }}>
+                📱 Field app
+              </div>
+              <PhoneMockup />
+            </div>
+
+            {/* Desktop portal */}
+            <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+              {/* Label */}
+              <div style={{
+                textAlign: 'center', marginBottom: 10,
+                fontSize: 11, fontWeight: 700, color: '#94a3b8',
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+              }}>
+                🖥 Office portal
+              </div>
+              <PortalMockup />
+            </div>
           </div>
         </div>
       </section>
@@ -810,10 +966,22 @@ export default function HomePage() {
         .dazza-grid {
           grid-template-columns: minmax(0,1fr) 420px;
         }
-        @media (max-width: 900px) {
-          .hero-grid, .dazza-grid {
+        @media (max-width: 960px) {
+          .hero-grid {
             grid-template-columns: 1fr !important;
           }
+          .hero-grid .phone-hide {
+            display: none;
+          }
+        }
+        @media (max-width: 900px) {
+          .dazza-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        /* On tablet/mobile, hide the phone mockup to keep the hero clean */
+        @media (max-width: 960px) {
+          .hero-phone-col { display: none !important; }
         }
         /* CTA block: stacked full-width on mobile, inline row on desktop */
         .hero-cta-block {
