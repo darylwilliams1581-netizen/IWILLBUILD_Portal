@@ -35,9 +35,45 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     backgroundColor: '#111827',
-    // Background location — required for driver GPS tracking while screen is off
-    // You must also add NSLocationAlwaysAndWhenInUseUsageDescription to Info.plist
-    // and enable "Background Modes > Location updates" in Xcode capabilities
+
+    // ── Info.plist usage description strings ─────────────────────────────────
+    // These are injected by Capacitor / Appflow into Info.plist during `cap sync`.
+    // Apple requires every permission your app requests to have a usage string.
+    // Strings must explain WHY the app needs the permission — vague strings cause
+    // App Store review rejection.
+    infoPlist: {
+      // Camera — job photos, receipts, incidents, site records
+      NSCameraUsageDescription:
+        'IWILLBUILD uses the camera to capture job photos, receipts, incidents, and site records.',
+
+      // Photo library read — upload existing photos as job evidence
+      NSPhotoLibraryUsageDescription:
+        'IWILLBUILD uses your photo library so you can upload job photos, receipts, and site evidence.',
+
+      // Photo library write — save captured photos back to the camera roll
+      NSPhotoLibraryAddUsageDescription:
+        'IWILLBUILD saves captured photos to your photo library.',
+
+      // Location while in use — attendance, job travel, fleet tracking
+      NSLocationWhenInUseUsageDescription:
+        'IWILLBUILD uses your location for job travel, fleet tracking, and site attendance records.',
+
+      // Location always — background GPS for active drive sessions
+      // Also requires "Background Modes > Location updates" in Xcode Capabilities
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        'IWILLBUILD uses your location in the background to track active drive sessions for fleet management.',
+
+      // Legacy key — still required for iOS 10 compatibility
+      NSLocationAlwaysUsageDescription:
+        'IWILLBUILD uses your location in the background to track active drive sessions for fleet management.',
+
+      // Microphone — voice notes and dictation
+      NSMicrophoneUsageDescription:
+        'IWILLBUILD uses the microphone for voice notes and dictation where enabled.',
+
+      // Background modes — location + push notifications
+      UIBackgroundModes: ['location', 'fetch', 'remote-notification'],
+    },
   },
 
   // ── Android specific ──────────────────────────────────────────────────────

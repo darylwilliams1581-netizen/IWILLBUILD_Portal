@@ -87,15 +87,27 @@ so you can update the app without going through App Store review for most change
 2. **Push Notifications**
    - Required for job/fleet alerts
 
-### Required Info.plist keys
+### Info.plist usage descriptions
 
-Add these in Xcode → Info tab:
+These are now **automatically injected** by Capacitor via `capacitor.config.json → ios.infoPlist`
+when you run `npx cap sync`. You do **not** need to add them manually in Xcode.
 
-| Key | Value |
+The following strings are configured:
+
+| Key | Purpose |
 |---|---|
-| `NSLocationWhenInUseUsageDescription` | "IWILLBUILD uses your location to track your driving session for fleet management." |
-| `NSLocationAlwaysAndWhenInUseUsageDescription` | "IWILLBUILD uses your location in the background to keep your driving session active when the screen is off." |
-| `NSLocationAlwaysUsageDescription` | "IWILLBUILD uses your location in the background for fleet tracking." |
+| `NSCameraUsageDescription` | Job photos, receipts, incidents, site records |
+| `NSPhotoLibraryUsageDescription` | Upload existing photos as job evidence |
+| `NSPhotoLibraryAddUsageDescription` | Save captured photos to camera roll |
+| `NSLocationWhenInUseUsageDescription` | Job travel, fleet tracking, site attendance |
+| `NSLocationAlwaysAndWhenInUseUsageDescription` | Background GPS for active drive sessions |
+| `NSLocationAlwaysUsageDescription` | Background GPS (legacy iOS 10 key) |
+| `NSMicrophoneUsageDescription` | Voice notes and dictation |
+| `UIBackgroundModes` | `location`, `fetch`, `remote-notification` |
+
+> **App Store review tip:** Apple reviewers check that usage strings clearly explain
+> the user benefit — not just "the app needs this". The strings above are written
+> to pass review. Do not shorten them to generic phrases like "for app functionality".
 
 ### App Store submission
 

@@ -200,16 +200,19 @@
   },
   "debug/current-error": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/debug-current-error-987023a9.jpg",
+    "currentUrl": "/airo-assets/uploads/debug-current-error-a76ee59e.jpg",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/debug-current-error-987023a9.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-11T02:40:15.547Z",
-    "lastUpdated": "2026-07-11T02:40:15.547Z",
+    "lastUpdated": "2026-07-22T18:14:16.897Z",
     "uploadSources": {
-      "/airo-assets/uploads/debug-current-error-987023a9.jpg": "f38wenbvln_1783734873845_file_QmHrafxyAN.jpg"
+      "/airo-assets/uploads/debug-current-error-987023a9.jpg": "f38wenbvln_1783734873845_file_QmHrafxyAN.jpg",
+      "/airo-assets/uploads/debug-current-error-a76ee59e.jpg": "f38wenbvln_1784667669262_file_eEA2OY-Bhs.jpg"
     },
-    "uploadContentHash": "afb30cd5949f4f1a1b9eb11af7b166896f5cb025ddf089c190fc690cd695b7e3"
+    "uploadContentHash": "7c0cb32c6dd82cda8d4ea5ead12521e28bff9ff7efdeb5223d213db0008b81ff"
   },
   "debug/screenshot-081835": {
     "mediaType": "image",

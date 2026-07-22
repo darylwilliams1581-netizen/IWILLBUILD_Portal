@@ -498,11 +498,6 @@ export default function IncidentDetailPage() {
               />
             )}
           </div>
-              <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
-                <Lock size={11} /> Closed
-              </span>
-            )}
-          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
