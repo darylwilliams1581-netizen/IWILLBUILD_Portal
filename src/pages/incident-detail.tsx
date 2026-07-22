@@ -9,8 +9,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ChevronLeft, AlertTriangle, Plus, Trash2, CheckCircle2,
   Lock, Loader2, Users, ClipboardCheck, X, Save,
-  ShieldAlert,
+  ShieldAlert, Home, ChevronRight,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   INCIDENT_TYPES, SEVERITY_OPTIONS, STATUS_OPTIONS,
   severityBadge, statusBadge,
@@ -134,6 +135,8 @@ export default function IncidentDetailPage() {
   const [incident, setIncident] = useState<FullIncident | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [closing, setClosing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -291,6 +294,8 @@ export default function IncidentDetailPage() {
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
+    setSaveSuccess(false);
+    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
     try {
       if (isNew) {
         const r = await fetch('/api/incidents', {
@@ -308,6 +313,8 @@ export default function IncidentDetailPage() {
           body: JSON.stringify(formToBody(form)),
         });
         await loadIncident();
+        setSaveSuccess(true);
+        saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3500);
       }
     } catch (e) {
       setErrors({ general: String(e) });
@@ -434,26 +441,48 @@ export default function IncidentDetailPage() {
 
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
-          <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
-            <ChevronLeft size={20} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-sm">{pageTitle}</h1>
-            {!isNew && incident && (
-              <p className="text-xs text-red-200">{incident.incident_type}</p>
+        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5">
+            <button
+              type="button"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1 hover:text-white transition-colors"
+            >
+              <Home size={11} /> Home
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <button
+              type="button"
+              onClick={() => navigate(returnTo)}
+              className="hover:text-white transition-colors"
+            >
+              Incidents
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <span className="text-red-100 font-medium truncate max-w-[120px]">{pageTitle}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-sm">{pageTitle}</h1>
+              {!isNew && incident && (
+                <p className="text-xs text-red-200">{incident.incident_type}</p>
+              )}
+            </div>
+            {!isNew && incident && !isClosed && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(incident.status)}`}>
+                {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
+              </span>
+            )}
+            {isClosed && (
+              <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
+                <Lock size={11} /> Closed
+              </span>
             )}
           </div>
-          {!isNew && incident && !isClosed && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(incident.status)}`}>
-              {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
-            </span>
-          )}
-          {isClosed && (
-            <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
-              <Lock size={11} /> Closed
-            </span>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-32">
@@ -935,37 +964,54 @@ export default function IncidentDetailPage() {
         </div>
 
         {/* Bottom actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-bottom flex gap-3">
-          {!isClosed && (
-            <>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 safe-bottom">
+          {/* Save success banner — slides up above the action bar */}
+          <AnimatePresence>
+            {saveSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border-t border-emerald-200 text-emerald-700 text-sm font-medium"
               >
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
-              </button>
-              {!isNew && (
+                <CheckCircle2 size={15} className="shrink-0" />
+                Incident saved
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-3 p-4">
+            {!isClosed && (
+              <>
                 <button
                   type="button"
-                  onClick={() => setShowCloseModal(true)}
-                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center gap-2"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2"
                 >
-                  <Lock size={14} /> Close
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
                 </button>
-              )}
-            </>
-          )}
-          {isClosed && (
-            <button
-              type="button"
-              onClick={() => navigate(returnTo)}
-              className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold"
-            >
-              Back to register
-            </button>
-          )}
+                {!isNew && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCloseModal(true)}
+                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Lock size={14} /> Close Incident
+                  </button>
+                )}
+              </>
+            )}
+            {isClosed && (
+              <button
+                type="button"
+                onClick={() => navigate(returnTo)}
+                className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold"
+              >
+                Back to register
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

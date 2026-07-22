@@ -14,7 +14,6 @@ import {
   Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2,
   FileWarning,
 } from 'lucide-react';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RiskyAssessment {
@@ -618,6 +617,8 @@ export default function JobRiskyPage() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveDraftSuccess, setSaveDraftSuccess] = useState(false);
+  const saveDraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [finalising, setFinalising] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState | 'general', string>>>({});
   const [finaliseError, setFinaliseError] = useState('');
@@ -760,6 +761,8 @@ export default function JobRiskyPage() {
   async function handleSaveDraft() {
     if (!activeAssessment) return;
     setSaving(true);
+    setSaveDraftSuccess(false);
+    if (saveDraftTimer.current) clearTimeout(saveDraftTimer.current);
     try {
       await fetch(`/api/jobs/${jobId}/risky/${activeAssessment.id}`, {
         method: 'PUT',
@@ -767,7 +770,9 @@ export default function JobRiskyPage() {
         body: JSON.stringify(formToBody(form)),
       });
       await loadList();
-      setView('list');
+      setSaveDraftSuccess(true);
+      saveDraftTimer.current = setTimeout(() => setSaveDraftSuccess(false), 3000);
+      // Don't navigate away — stay on form so user can continue
     } finally {
       setSaving(false);
     }
@@ -863,7 +868,10 @@ export default function JobRiskyPage() {
     const permitRequired = form.permitRequired === true;
     const permitRequiredNo = form.permitRequired === false;
 
-    // Determine if ready to finalise
+    // Can finalise when:
+    // - At least one party has signed
+    // - If a permit is required, the supervisor has also signed
+    // - If no permit required (or permit_required is null/false), supervisor sig not needed
     const canFinalise = sigCount > 0 && (!permitRequired || hasSupervisorSig);
 
     return (
@@ -1193,41 +1201,63 @@ export default function JobRiskyPage() {
 
           {/* Bottom actions */}
           {!isFinalised && (
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 safe-bottom flex gap-3">
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold"
-              >
-                {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save Draft'}
-              </button>
-              {sigCount === 0 ? (
-                <button
-                  type="button"
-                  onClick={handleGoSignOff}
-                  className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                >
-                  <Users size={15} /> Sign Off
-                </button>
-              ) : canFinalise ? (
-                <button
-                  type="button"
-                  onClick={handleFinalise}
-                  disabled={finalising}
-                  className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                >
-                  {finalising ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={15} /> Finalise</>}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleGoSignOff}
-                  className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                >
-                  <Users size={15} /> Add Signatures
-                </button>
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 safe-bottom">
+              {/* Save draft success banner */}
+              {saveDraftSuccess && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border-t border-emerald-200 text-emerald-700 text-sm font-medium">
+                  <CheckCircle2 size={14} className="shrink-0" />
+                  Draft saved
+                </div>
               )}
+              {/* Finalise blocker hint */}
+              {sigCount > 0 && permitRequired && !hasSupervisorSig && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-t border-amber-200 text-amber-700 text-xs">
+                  <AlertTriangle size={12} className="shrink-0" />
+                  Supervisor permit sign-off required to finalise
+                </div>
+              )}
+              {sigCount === 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-slate-500 text-xs">
+                  <Users size={12} className="shrink-0" />
+                  At least one party signature required to finalise
+                </div>
+              )}
+              <div className="flex gap-3 p-4">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center justify-center gap-2"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save Draft'}
+                </button>
+                {sigCount === 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleGoSignOff}
+                    className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    <Users size={15} /> Sign Off
+                  </button>
+                ) : canFinalise ? (
+                  <button
+                    type="button"
+                    onClick={handleFinalise}
+                    disabled={finalising}
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    {finalising ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={15} /> Finalise</>}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGoSignOff}
+                    className="flex-1 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    <Users size={15} /> Add Signatures
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

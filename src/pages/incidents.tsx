@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
-  Loader2, CheckCircle2, Clock, Search,
+  Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -148,6 +148,18 @@ export default function IncidentsPage() {
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
         <div className="bg-red-700 text-white px-4 safe-top pb-3">
+          {/* Breadcrumb row */}
+          <div className="flex items-center gap-1.5 text-xs text-red-300 mb-2 pt-1">
+            <button
+              type="button"
+              onClick={() => navigate('/home')}
+              className="flex items-center gap-1 hover:text-white transition-colors"
+            >
+              <Home size={11} /> Home
+            </button>
+            <ChevronRight size={10} className="text-red-400" />
+            <span className="text-red-100 font-medium">Incident Register</span>
+          </div>
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle size={20} className="text-red-200" />

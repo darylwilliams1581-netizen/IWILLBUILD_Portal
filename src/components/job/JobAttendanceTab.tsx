@@ -4,11 +4,12 @@
  * Lets portal users sign in / sign out of a job and view the live roster
  * plus the full attendance log.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
   Clock, QrCode, RefreshCw, User, UserCheck, History,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import JobQrModal from './JobQrModal';
 
 interface OnSiteEntry {
@@ -66,6 +67,8 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
   const [message, setMessage]     = useState<{ text: string; ok: boolean } | null>(null);
   const [qrOpen, setQrOpen]       = useState(false);
   const [qrAction, setQrAction]   = useState<'signin' | 'signout'>('signin');
+  // Auto-dismiss success message after 4 s
+  const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -84,6 +87,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
   async function handleAction(action: 'signin' | 'signout') {
     setActionLoading(true);
     setMessage(null);
+    if (msgTimer.current) clearTimeout(msgTimer.current);
     try {
       const res = await fetch(`/api/jobs/${jobId}/${action}`, {
         method: 'POST',
@@ -97,15 +101,16 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
         alreadySignedIn?: boolean;
         notSignedIn?: boolean;
       };
-      setMessage({ text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok });
+      const msg = { text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok };
+      setMessage(msg);
+      // Auto-dismiss success after 4 s
       if (res.ok) {
-        // Optimistically update signedIn immediately so buttons reflect new state
+        msgTimer.current = setTimeout(() => setMessage(null), 4000);
         if (action === 'signin') {
           setStatus((prev) => prev ? { ...prev, signedIn: true, lastAction: 'signin' } : prev);
         } else {
           setStatus((prev) => prev ? { ...prev, signedIn: false, lastAction: 'signout' } : prev);
         }
-        // Then refresh from server for accurate state + recent log
         await fetchStatus();
       }
     } catch {
@@ -187,18 +192,26 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
       </div>
 
       {/* ── Feedback message ──────────────────────────────────────────────── */}
-      {message && (
-        <div className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm ${
-          message.ok
-            ? 'bg-green-50 border border-green-200 text-green-700'
-            : 'bg-red-50 border border-red-200 text-red-700'
-        }`}>
-          {message.ok
-            ? <CheckCircle2 size={14} className="shrink-0" />
-            : <AlertCircle size={14} className="shrink-0" />}
-          {message.text}
-        </div>
-      )}
+      <AnimatePresence>
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
+              message.ok
+                ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}
+          >
+            {message.ok
+              ? <CheckCircle2 size={16} className="shrink-0" />
+              : <AlertCircle size={16} className="shrink-0" />}
+            {message.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── QR codes ─────────────────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl p-4">

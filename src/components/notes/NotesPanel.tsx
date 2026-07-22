@@ -19,7 +19,6 @@ import NotesFeed from './NotesFeed';
 import TagTaskCard from './TagTaskCard';
 import { type Note, type TagTask, type NoteType, getTaskUrgency } from '@/lib/notes-types';
 import type { MentionMember } from './MentionInput';
-
 interface Props {
   entityType: 'job' | 'fleet';
   entityId: number;
@@ -122,6 +121,20 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
         n.id === noteId ? { ...n, comments: [...n.comments, data.comment] } : n,
       ),
     );
+  }
+
+  async function handleDeleteNote(noteId: number) {
+    // Optimistic remove
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    try {
+      await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch {
+      // If delete fails, reload to restore
+      void loadNotes();
+    }
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -286,6 +299,7 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
           currentUserRole={userRole}
           onTaskUpdate={handleTaskUpdate}
           onCommentAdd={handleCommentAdd}
+          onDeleteNote={handleDeleteNote}
         />
       )}
 
