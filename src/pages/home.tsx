@@ -155,7 +155,7 @@ function Sheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -163,7 +163,7 @@ function Sheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden"
             style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             {/* Handle */}
@@ -226,7 +226,7 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -234,8 +234,11 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -295,8 +298,8 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
               )}
             </div>
 
-            {/* Safe area spacer */}
-            <div className="h-4 shrink-0" />
+            {/* Safe area spacer — clears iPhone home indicator */}
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -335,14 +338,17 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -396,7 +402,7 @@ function NotesJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -435,14 +441,17 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -496,7 +505,7 @@ function DelaysJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -650,14 +659,17 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -863,7 +875,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
             {/* Footer CTA */}
             {!saved && selectedJob && (
-              <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
+              <div className="px-4 pt-3 border-t border-gray-100 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
                 <button
                   onClick={() => void handleSubmit()}
                   disabled={saving}
@@ -1040,12 +1052,15 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
@@ -1089,6 +1104,7 @@ function DriveFleetPickerSheet({ open, onClose }: { open: boolean; onClose: () =
                 </button>
               ))}
             </div>
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1191,12 +1207,15 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
@@ -1240,6 +1259,7 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
                 </button>
               ))}
             </div>
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1409,14 +1429,17 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
@@ -1593,6 +1616,8 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                 </motion.div>
               )}
             </div>
+            {/* Safe area spacer — clears iPhone home indicator + tab bar */}
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1631,14 +1656,17 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            style={{
+              boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+              maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)',
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -1692,7 +1720,7 @@ function CostsJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
                 ))
               )}
             </div>
-            <div className="h-4 shrink-0" />
+            <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }} />
           </motion.div>
         </>
       )}
@@ -1726,7 +1754,7 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
           <motion.div
@@ -1734,7 +1762,7 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl overflow-hidden"
             style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.12)' }}
           >
             <div className="flex justify-center pt-3 pb-1">
@@ -1867,7 +1895,7 @@ function MobileFilterBar({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+              className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
               onClick={() => setSheetOpen(false)}
             />
 
@@ -1877,7 +1905,7 @@ function MobileFilterBar({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              className="fixed left-0 right-0 z-50 bg-white rounded-t-3xl flex flex-col overflow-hidden"
+              className="fixed left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
               style={{
                 bottom: 0,
                 // Sit above the MobileTabBar (~64 px) + safe area
