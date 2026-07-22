@@ -390,6 +390,54 @@ input, select, textarea {
   font-size: 0.875rem;
 }
 
+/* ── Viewer touch-action rules ───────────────────────────────────────────────
+   PDF viewers, drawing canvases, and map containers need precise touch control.
+
+   .viewer-canvas
+     The scrollable PDF / drawing area.
+     touch-action: none  → hand all touch events to JS (pinch-zoom, pan).
+     overscroll-behavior: contain  → stops the parent page from bouncing when
+       the user reaches the edge of the PDF canvas.
+
+   .viewer-toolbar
+     The toolbar row above the PDF.
+     touch-action: manipulation  → allows tap + double-tap but suppresses the
+       300 ms tap delay on iOS without disabling scroll.
+     overscroll-behavior: none  → toolbar row should never trigger pull-to-refresh.
+
+   .viewer-shell
+     The fixed-position full-screen wrapper (fixed inset-0).
+     overscroll-behavior: none  → prevents the OS rubber-band effect from
+       showing the page behind the viewer on iOS.
+
+   .map-container
+     Leaflet / Google Maps containers.
+     touch-action: none  → lets the map library own all touch events.
+     overscroll-behavior: contain  → stops the page scrolling when the user
+       pans to the edge of the map.
+*/
+.viewer-canvas {
+  touch-action: none;
+  overscroll-behavior: contain;
+  /* Momentum scrolling on iOS — still needed for the overflow:auto scroll
+     container that wraps the PDF page when the PDF is larger than the screen */
+  -webkit-overflow-scrolling: touch;
+}
+
+.viewer-toolbar {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+.viewer-shell {
+  overscroll-behavior: none;
+}
+
+.map-container {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
 /* ── Studio Document Builder — Print styles ──────────────────────────────────
    When the user clicks Print inside the Document Builder, only the document
    canvas (.studio-doc-page) should appear. Everything else is hidden.

@@ -2,6 +2,15 @@
  * DrawingPdfViewer
  * Full-screen PDF viewer with zoom/pan/rotate/fit, page navigation,
  * markup tools (text, arrow, rect, highlight, pen), and markup save.
+ *
+ * Mobile (Sprint 5 — Gesture Viewer):
+ * - useMobileViewer hook: two-finger pinch-zoom, double-tap toggle, body-scroll lock
+ * - Fit-to-screen default on mobile (auto-fit on first page load)
+ * - Markup toolbar collapses into "…" overflow menu on mobile (< md)
+ * - Rotate button hidden on mobile (in overflow menu)
+ * - Safe-area bottom padding via env(safe-area-inset-bottom)
+ * - touch-action: none on PDF canvas area prevents browser pan/zoom interfering
+ * - Tested at 375 / 390 / 430 px viewport widths
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -11,7 +20,9 @@ import {
   X, ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2,
   ChevronLeft, ChevronRight, Save, Trash2, Loader2,
   Type, ArrowUpRight, Square, Highlighter, Pen,
+  MoreHorizontal, Shrink,
 } from 'lucide-react';
+import { useMobileViewer } from '@/lib/useMobileViewer';
 
 // react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
@@ -185,7 +196,34 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
   const [pdfError, setPdfError] = useState('');
+  // Mobile overflow menu (markup tools + rotate on small screens)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // ── Mobile gesture hook ──────────────────────────────────────────────────
+  const mobileViewer = useMobileViewer({
+    containerRef,
+    scale,
+    onScaleChange: setScale,
+    onFitWidthOff: () => {},   // DrawingPdfViewer has no fitWidth state
+  });
+
+  // ── Fit-to-screen on first page load (mobile default) ───────────────────
+  const fittedOnMount = useRef(false);
+
+  function handlePageLoad(page: { width: number; height: number }) {
+    setPageWidth(Math.round(page.width));
+    setPageHeight(Math.round(page.height));
+
+    if (!containerRef.current) return;
+    const containerW = containerRef.current.clientWidth;
+    if (!fittedOnMount.current && containerW > 0 && containerW < 768) {
+      fittedOnMount.current = true;
+      const w = containerW - 32; // 16 px padding each side
+      const fitted = Math.round((w / page.width) * 100) / 100;
+      setScale(Math.max(0.25, Math.min(4, fitted)));
+    }
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setActiveTool('none'); }
@@ -276,50 +314,51 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
-      {/* Top toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700 shrink-0 flex-wrap">
-        <div className="flex items-center gap-2 mr-1 min-w-0">
+    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflowX: 'hidden' }}>
+      {/* ── Top toolbar ──────────────────────────────────────────────────────── */}
+      <div className="viewer-toolbar flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 shrink-0" style={{ overflowX: 'hidden' }}>
+
+        {/* Title */}
+        <div className="flex items-center gap-1.5 min-w-0 mr-1">
           <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-          <span className="text-white font-semibold text-sm truncate max-w-[180px]">{title}</span>
+          <span className="text-white font-semibold text-sm truncate max-w-[120px] sm:max-w-[200px]">{title}</span>
         </div>
 
-        <div className="h-5 w-px bg-slate-600 mx-1" />
+        <div className="hidden sm:block h-5 w-px bg-slate-600 mx-0.5" />
 
-        {/* Page nav */}
+        {/* Page nav — always visible */}
         <div className="flex items-center gap-0.5">
           <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700 disabled:opacity-30">
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 disabled:opacity-30">
             <ChevronLeft size={15} />
           </button>
-          <span className="text-slate-300 text-xs font-mono px-1 whitespace-nowrap">{currentPage} / {numPages || '—'}</span>
+          <span className="text-slate-300 text-xs font-mono px-1 whitespace-nowrap tabular-nums">{currentPage} / {numPages || '—'}</span>
           <button onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))} disabled={currentPage >= numPages}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700 disabled:opacity-30">
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 disabled:opacity-30">
             <ChevronRight size={15} />
           </button>
         </div>
 
-        <div className="h-5 w-px bg-slate-600 mx-1" />
+        <div className="h-5 w-px bg-slate-600 mx-0.5" />
 
-        {/* Zoom */}
+        {/* Zoom — always visible */}
         <div className="flex items-center gap-0.5">
-          <button onClick={() => setScale((s) => Math.max(0.25, s - 0.15))} className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700"><ZoomOut size={14} /></button>
-          <span className="text-slate-400 text-xs font-mono w-11 text-center">{Math.round(scale * 100)}%</span>
-          <button onClick={() => setScale((s) => Math.min(5, s + 0.15))} className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700"><ZoomIn size={14} /></button>
-          <button onClick={fitToWidth} className="px-2 py-1 rounded-lg text-slate-300 hover:bg-slate-700 text-xs">Fit</button>
+          <button onClick={() => mobileViewer.zoomOut()} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700" title="Zoom out"><ZoomOut size={14} /></button>
+          <span className="text-slate-400 text-xs font-mono w-10 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+          <button onClick={() => mobileViewer.zoomIn()} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700" title="Zoom in"><ZoomIn size={14} /></button>
         </div>
 
-        <div className="h-5 w-px bg-slate-600 mx-1" />
+        {/* Rotate + Fullscreen — desktop only */}
+        <div className="hidden md:flex items-center gap-0.5">
+          <div className="h-5 w-px bg-slate-600 mx-0.5" />
+          <button onClick={() => setRotation((r) => (r + 90) % 360)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700" title="Rotate 90°"><RotateCw size={14} /></button>
+          <button onClick={toggleFullscreen} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700">
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+        </div>
 
-        <button onClick={() => setRotation((r) => (r + 90) % 360)} className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700" title="Rotate 90°"><RotateCw size={14} /></button>
-        <button onClick={toggleFullscreen} className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700">
-          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
-
-        <div className="flex-1" />
-
-        {/* Markup tools */}
-        <div className="flex items-center gap-0.5 bg-slate-700/60 rounded-xl px-1.5 py-1">
+        {/* Markup tools — desktop only */}
+        <div className="hidden md:flex items-center gap-0.5 bg-slate-700/60 rounded-xl px-1.5 py-1 ml-1">
           {(['text', 'arrow', 'rect', 'highlight', 'pen'] as ToolType[]).map((tool) => {
             const Icon = { text: Type, arrow: ArrowUpRight, rect: Square, highlight: Highlighter, pen: Pen }[tool];
             return (
@@ -332,19 +371,88 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
           })}
         </div>
 
-        <button onClick={clearMarkup} disabled={!markupItems.length}
-          className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-30">
-          <Trash2 size={12} /> Clear
+        <div className="hidden md:flex items-center gap-0.5 ml-0.5">
+          <button onClick={clearMarkup} disabled={!markupItems.length}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-30">
+            <Trash2 size={12} /> Clear
+          </button>
+          <button onClick={() => void saveMarkup()} disabled={saving || !markupItems.length}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-xs font-bold disabled:opacity-40">
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            Save Markup
+          </button>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Mobile "…" overflow menu button */}
+        <button
+          onClick={() => setMobileMenuOpen(s => !s)}
+          className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+          title="More options"
+        >
+          <MoreHorizontal size={16} />
         </button>
 
-        <button onClick={() => void saveMarkup()} disabled={saving || !markupItems.length}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-xs font-bold disabled:opacity-40">
-          {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-          Save Markup
+        <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white ml-0.5">
+          <X size={17} />
         </button>
-
-        <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white ml-1"><X size={17} /></button>
       </div>
+
+      {/* ── Mobile overflow menu ─────────────────────────────────────────────── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700 shrink-0">
+          {/* Fit to screen */}
+          <button
+            onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-semibold border border-orange-500/30"
+          >
+            <Shrink size={13} /> Fit to screen
+          </button>
+          {/* Reset zoom */}
+          <button
+            onClick={() => { mobileViewer.resetZoom(); setMobileMenuOpen(false); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
+          >
+            <Maximize2 size={13} /> Reset zoom
+          </button>
+          {/* Rotate */}
+          <button
+            onClick={() => { setRotation((r) => (r + 90) % 360); setMobileMenuOpen(false); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
+          >
+            <RotateCw size={13} /> Rotate
+          </button>
+          {/* Markup tools */}
+          <div className="w-full flex items-center gap-1.5 pt-1 border-t border-slate-700">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Markup</span>
+            {(['text', 'arrow', 'rect', 'highlight', 'pen'] as ToolType[]).map((tool) => {
+              const Icon = { text: Type, arrow: ArrowUpRight, rect: Square, highlight: Highlighter, pen: Pen }[tool];
+              return (
+                <button key={tool}
+                  onClick={() => { setActiveTool((t) => t === tool ? 'none' : tool); setMobileMenuOpen(false); }}
+                  title={TOOL_LABELS[tool]}
+                  className={`p-2 rounded-lg transition-colors ${activeTool === tool ? 'bg-primary text-white' : 'bg-slate-700 text-slate-300'}`}>
+                  <Icon size={14} />
+                </button>
+              );
+            })}
+          </div>
+          {/* Save / Clear markup */}
+          <div className="w-full flex items-center gap-2 pt-1 border-t border-slate-700">
+            <button onClick={() => { clearMarkup(); setMobileMenuOpen(false); }} disabled={!markupItems.length}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-700 disabled:opacity-30">
+              <Trash2 size={12} /> Clear
+            </button>
+            <button onClick={() => { void saveMarkup(); setMobileMenuOpen(false); }} disabled={saving || !markupItems.length}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-40">
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              Save Markup
+            </button>
+          </div>
+        </div>
+      )}
 
       {saveMsg && (
         <div className={`px-4 py-2 text-xs font-semibold text-center shrink-0 ${saveMsg.startsWith('Error') ? 'bg-red-900/60 text-red-200' : 'bg-emerald-900/60 text-emerald-200'}`}>
@@ -358,23 +466,32 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
         </div>
       )}
 
-      {/* PDF area */}
-      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center items-start py-6 px-4 bg-slate-800"
+      {/* ── PDF area ─────────────────────────────────────────────────────────── */}
+      <div
+        ref={containerRef}
+        className="viewer-canvas flex-1 overflow-auto flex justify-center items-start py-4 px-4 bg-slate-800"
+        style={{
+          ...mobileViewer.containerStyle,
+          // Safe-area bottom padding for iPhone home indicator
+          paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          overflowX: 'hidden',
+        }}
         onWheel={(e) => {
           if (e.ctrlKey || e.metaKey) { e.preventDefault(); setScale((s) => Math.max(0.25, Math.min(5, s - e.deltaY * 0.002))); }
-        }}>
+        }}
+      >
         {pdfError ? (
           <div className="flex flex-col items-center gap-3 text-slate-400 mt-20">
             <X size={32} className="text-red-400" />
             <p className="text-sm">{pdfError}</p>
           </div>
         ) : (
-          <div className="relative shadow-2xl">
+          <div className="relative shadow-2xl inline-block">
             <Document file={fileUrl} onLoadSuccess={({ numPages: n }) => { setNumPages(n); setCurrentPage(1); }}
               onLoadError={(err) => setPdfError(err.message)}
-              loading={<div className="flex items-center gap-3 text-slate-400 mt-20 min-w-[400px] justify-center"><Loader2 size={22} className="animate-spin text-primary" /><span className="text-sm">Loading drawing…</span></div>}>
+              loading={<div className="flex items-center gap-3 text-slate-400 mt-20 justify-center"><Loader2 size={22} className="animate-spin text-primary" /><span className="text-sm">Loading drawing…</span></div>}>
               <Page pageNumber={currentPage} scale={scale} rotate={rotation}
-                onLoadSuccess={(page) => { setPageWidth(Math.round(page.width)); setPageHeight(Math.round(page.height)); }}
+                onLoadSuccess={handlePageLoad}
                 renderTextLayer={false} renderAnnotationLayer={false} />
             </Document>
             {pageWidth > 0 && pageHeight > 0 && (
