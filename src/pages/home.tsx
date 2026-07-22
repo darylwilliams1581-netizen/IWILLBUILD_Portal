@@ -13,7 +13,6 @@ import {
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
   LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
-  SlidersHorizontal, ChevronDown,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -119,18 +118,6 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
     </motion.button>
   );
 }
-
-// ── Filter chip types ─────────────────────────────────────────────────────────
-
-type FilterTab = 'all' | 'field' | 'safety' | 'tools' | 'management';
-
-const FILTER_TABS: { id: FilterTab; label: string }[] = [
-  { id: 'all',        label: 'All' },
-  { id: 'field',      label: 'Field' },
-  { id: 'safety',     label: 'Safety' },
-  { id: 'tools',      label: 'Tools' },
-  { id: 'management', label: 'Management' },
-];
 
 // ── Shared sheet backdrop + panel ─────────────────────────────────────────────
 
@@ -1802,172 +1789,6 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
-// ── MobileFilterBar ───────────────────────────────────────────────────────────
-// Mobile (< sm):  "All" pill always visible + compact "Filter ▾" button.
-//   Tapping the button opens a bottom sheet listing the 4 category options.
-//   The active category name is shown inside the button so the user always
-//   knows which filter is active.
-// Desktop (≥ sm): Full pill row, unchanged from before.
-
-const CATEGORY_TABS = FILTER_TABS.filter(t => t.id !== 'all');
-
-function MobileFilterBar({
-  activeFilter,
-  setActiveFilter,
-}: {
-  activeFilter: FilterTab;
-  setActiveFilter: (f: FilterTab) => void;
-}) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-
-  const activeCategory = CATEGORY_TABS.find(t => t.id === activeFilter);
-
-  function pick(id: FilterTab) {
-    setActiveFilter(id);
-    setSheetOpen(false);
-  }
-
-  return (
-    <>
-      {/* ── Mobile row (< sm) ─────────────────────────────────────────────── */}
-      <div className="sm:hidden px-4 pt-4 pb-2 flex items-center gap-2">
-        {/* "All" pill — always visible */}
-        <motion.button
-          whileTap={{ scale: 0.94 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-          onClick={() => setActiveFilter('all')}
-          className={`shrink-0 px-4 py-[7px] rounded-full text-[11.5px] font-bold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
-            activeFilter === 'all'
-              ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/40'
-              : 'bg-white/80 text-gray-500 border border-gray-200'
-          }`}
-        >
-          All
-        </motion.button>
-
-        {/* Compact filter dropdown button */}
-        <motion.button
-          whileTap={{ scale: 0.94 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-          onClick={() => setSheetOpen(true)}
-          className={`flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[11.5px] font-bold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 min-h-[34px] ${
-            activeFilter !== 'all'
-              ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/40'
-              : 'bg-white/80 text-gray-500 border border-gray-200'
-          }`}
-        >
-          <SlidersHorizontal size={12} strokeWidth={2.2} />
-          <span>{activeFilter !== 'all' ? activeCategory?.label : 'Filter'}</span>
-          <ChevronDown size={11} strokeWidth={2.5} className="opacity-70" />
-        </motion.button>
-      </div>
-
-      {/* ── Desktop row (≥ sm) ────────────────────────────────────────────── */}
-      <div className="hidden sm:block px-4 pt-4 pb-2">
-        <div className="flex justify-center gap-1.5 flex-wrap">
-          {FILTER_TABS.map(tab => (
-            <motion.button
-              key={tab.id}
-              onClick={() => setActiveFilter(tab.id)}
-              whileTap={{ scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-              className={`shrink-0 px-4 py-[7px] rounded-full text-[11.5px] font-bold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
-                activeFilter === tab.id
-                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/40'
-                  : 'bg-white/80 text-gray-500 border border-gray-200 hover:bg-white hover:text-gray-900 hover:border-gray-300 hover:shadow-sm'
-              }`}
-            >
-              {tab.label}
-            </motion.button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Category picker bottom sheet ──────────────────────────────────── */}
-      <AnimatePresence>
-        {sheetOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-              onClick={() => setSheetOpen(false)}
-            />
-
-            {/* Sheet panel */}
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              className="fixed left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden"
-              style={{
-                bottom: 0,
-                // Sit above the MobileTabBar (~64 px) + safe area
-                paddingBottom: 'max(env(safe-area-inset-bottom), 0px)',
-                boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1 shrink-0">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
-              </div>
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal size={15} className="text-orange-500" />
-                  <span className="text-gray-900 font-bold text-sm">Filter by category</span>
-                </div>
-                <button
-                  onClick={() => setSheetOpen(false)}
-                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* Category options */}
-              <div className="px-4 py-3 flex flex-col gap-2 shrink-0">
-                {CATEGORY_TABS.map(tab => {
-                  const isActive = activeFilter === tab.id;
-                  return (
-                    <motion.button
-                      key={tab.id}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => pick(tab.id)}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-left transition-colors ${
-                        isActive
-                          ? 'bg-orange-50 border-2 border-orange-400'
-                          : 'bg-gray-50 border border-gray-200 hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100'
-                      }`}
-                    >
-                      <span className={`text-sm font-semibold ${isActive ? 'text-orange-600' : 'text-gray-800'}`}>
-                        {tab.label}
-                      </span>
-                      {isActive && (
-                        <span className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
-                          <CheckCircle2 size={12} className="text-white" />
-                        </span>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              {/* Bottom safe-area spacer — keeps sheet above tab bar */}
-              <div className="shrink-0" style={{ height: 'max(calc(64px + env(safe-area-inset-bottom)), 80px)' }} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
-
 // ── HomeIconGrid — extracted component so React always has a stable node tree ──
 // Using an IIFE inside JSX causes React to lose track of the subtree on HMR,
 // which triggers the sos-shim patchedRemoveChild NotFoundError. A named
@@ -1978,12 +1799,10 @@ interface HomeIconGridProps {
   role: string;
   isSolo: boolean;
   isPlatformOwner: boolean;
-  activeFilter: FilterTab;
-  setActiveFilter: (f: FilterTab) => void;
   onNavigate: (href: string) => void;
 }
 
-function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFilter, setActiveFilter, onNavigate }: HomeIconGridProps) {
+function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, onNavigate }: HomeIconGridProps) {
   // Resolve icons client-side only — SSR and first hydration both use the
   // SSR-safe default so the DOM structure never changes during hydration,
   // preventing the sos-shim patchedRemoveChild NotFoundError.
@@ -2003,56 +1822,22 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
     ...(isPlatformOwner ? platformAsIconDef : []),
   ];
 
-  const filtered = activeFilter === 'all'
-    ? allIcons
-    : allIcons.filter(i => i.group === activeFilter);
-
   return (
-    <>
-      {/* Filter row — two layouts:
-          Mobile (< sm):  "All" pill + compact "Filter ▾" dropdown button.
-                          Never wraps; fits 375 / 390 / 430 px in one line.
-          Desktop (≥ sm): Full pill row, unchanged.
-      */}
-      <MobileFilterBar
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-      />
-
-      {/* Icon grid
-          ─────────────────────────────────────────────────────────────────
-          Mobile  (< 640 px / sm):  4 columns, tight 10 px column gap,
-                                    14 px row gap.
-          Desktop (≥ 640 px / sm):  auto-fill with 80 px minimum columns,
-                                    18 px row / 14 px column gap.
-
-          The mobile grid uses a fixed 4-column track so every cell is
-          exactly (containerWidth − 3 × colGap) / 4 wide.  This guarantees
-          perfect alignment at 375, 390, and 430 px without any cell ever
-          overflowing the viewport.
-
-          px-4 on the wrapper gives 16 px side padding each side.
-          At 375 px: usable width = 375 − 32 = 343 px
-            cell width = (343 − 3 × 10) / 4 = 78.25 px  ✓ fits the 54 px tile
-          At 430 px: usable width = 430 − 32 = 398 px
-            cell width = (398 − 3 × 10) / 4 = 92 px      ✓ still compact
-      */}
-      <div className="px-4 pt-3">
-        <div className="mx-auto" style={{ maxWidth: 640 }}>
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <p className="text-sm font-medium">No icons in this category</p>
-            </div>
-          ) : (
-            <div className="home-icon-grid">
-              {filtered.map((item) => (
-                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="px-4 pt-3">
+      <div className="mx-auto" style={{ maxWidth: 640 }}>
+        {allIcons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <p className="text-sm font-medium">No icons available</p>
+          </div>
+        ) : (
+          <div className="home-icon-grid">
+            {allIcons.map((item) => (
+              <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+            ))}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -2090,8 +1875,6 @@ export default function HomeScreen() {
       })
       .catch(() => setIsSolo(false));
   }, [me?.user?.id, loading]);
-
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
   const [dashOpen, setDashOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -2279,14 +2062,12 @@ export default function HomeScreen() {
       {/* HomeIconGrid is always rendered (SSR + client) with the same icon list
           so React never adds/removes child nodes during hydration — that mismatch
           is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(80px + max(env(safe-area-inset-bottom), 4px))' }}>
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
         <HomeIconGrid
           iconPermissions={iconPermissions}
           role={role ?? ''}
           isSolo={isSolo}
           isPlatformOwner={isPlatformOwner}
-          activeFilter={activeFilter}
-          setActiveFilter={setActiveFilter}
           onNavigate={handleNavigate}
         />
       </div>
