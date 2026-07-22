@@ -83,9 +83,8 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
           className="absolute inset-0 pointer-events-none rounded-[inherit]"
           style={{ boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.12)' }}
         />
-        {/* 21 px icon on mobile, 26 px on sm+ */}
-        <Icon size={21} strokeWidth={1.8} className="sm:hidden relative z-10 drop-shadow-sm" />
-        <Icon size={26} strokeWidth={1.8} className="hidden sm:block relative z-10 drop-shadow-sm" />
+        {/* Icon — single element, size controlled via CSS class */}
+        <Icon size={21} strokeWidth={1.8} className="home-icon-glyph relative z-10 drop-shadow-sm" />
         {item.badge != null && item.badge > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
@@ -2047,35 +2046,11 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
               <p className="text-sm font-medium">No icons in this category</p>
             </div>
           ) : (
-            <>
-              {/* Mobile grid — 4 fixed columns */}
-              <div
-                className="sm:hidden"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  columnGap: '10px',
-                  rowGap: '14px',
-                }}
-              >
-                {filtered.map((item) => (
-                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-                ))}
-              </div>
-
-              {/* Desktop / tablet grid — auto-fill */}
-              <div
-                className="hidden sm:grid"
-                style={{
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                  gap: '18px 14px',
-                }}
-              >
-                {filtered.map((item) => (
-                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-                ))}
-              </div>
-            </>
+            <div className="home-icon-grid">
+              {filtered.map((item) => (
+                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+              ))}
+            </div>
           )}
         </div>
       </div>

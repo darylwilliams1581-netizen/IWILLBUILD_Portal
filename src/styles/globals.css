@@ -424,6 +424,38 @@ input, select, textarea {
   }
 }
 
+/* ── Home icon grid ──────────────────────────────────────────────────────────
+   Single grid — no duplicate mobile/desktop DOM trees.
+   Mobile  (< 640 px): 4 fixed columns, 10 px col gap, 14 px row gap.
+   Desktop (≥ 640 px): auto-fill with 80 px min columns, 18 px row / 14 px col gap.
+*/
+.home-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: 10px;
+  row-gap: 14px;
+}
+
+@media (min-width: 640px) {
+  .home-icon-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 18px 14px;
+  }
+}
+
+/* Icon glyph: 21 px on mobile, 26 px on desktop — single element, no duplicate */
+.home-icon-glyph {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+@media (min-width: 640px) {
+  .home-icon-glyph {
+    width: 26px !important;
+    height: 26px !important;
+  }
+}
+
 /* ── Sticky bottom action bar safe area ─────────────────────────────────────
    Adds bottom padding equal to the home-indicator height on iPhone.
    max(var(--safe-bottom), 0.75rem) ensures a sensible minimum on desktop.
