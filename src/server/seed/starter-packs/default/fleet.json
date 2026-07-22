@@ -1,0 +1,7 @@
+{
+  "name": "Test Vehicle",
+  "type": "Vehicle",
+  "rego": "TEST123",
+  "status": "Active",
+  "notes": "Sample fleet asset. You can delete this when you add your real vehicles."
+}
