@@ -442,9 +442,9 @@ export default function IncidentDetailPage() {
 
       <div className="flex flex-col min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0">
+        <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5 min-w-0 overflow-hidden">
             <button
               type="button"
               onClick={() => navigate('/home')}
@@ -463,7 +463,7 @@ export default function IncidentDetailPage() {
             <ChevronRight size={10} className="text-red-400" />
             <span className="text-red-100 font-medium truncate max-w-[120px]">{pageTitle}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
               <ChevronLeft size={20} />
             </button>
@@ -577,7 +577,7 @@ export default function IncidentDetailPage() {
 
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Severity <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 incident-severity-grid">
                 {SEVERITY_OPTIONS.map(s => (
                   <button
                     key={s.value}

@@ -314,9 +314,9 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
   }
 
   return (
-    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflowX: 'hidden' }}>
+    <div className="viewer-shell fixed inset-0 z-50 flex flex-col bg-slate-900" style={{ overflowX: 'clip' }}>
       {/* ── Top toolbar ──────────────────────────────────────────────────────── */}
-      <div className="viewer-toolbar flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 shrink-0" style={{ overflowX: 'hidden' }}>
+      <div className="viewer-toolbar flex items-center gap-1.5 px-2 py-2 bg-slate-800 border-b border-slate-700 shrink-0" style={{ overflowX: 'clip' }}>
 
         {/* Title */}
         <div className="flex items-center gap-1.5 min-w-0 mr-1">
@@ -474,7 +474,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
           ...mobileViewer.containerStyle,
           // Safe-area bottom padding for iPhone home indicator
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-          overflowX: 'hidden',
+          overflowX: 'clip',
         }}
         onWheel={(e) => {
           if (e.ctrlKey || e.metaKey) { e.preventDefault(); setScale((s) => Math.max(0.25, Math.min(5, s - e.deltaY * 0.002))); }

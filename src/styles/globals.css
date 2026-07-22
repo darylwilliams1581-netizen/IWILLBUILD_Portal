@@ -118,18 +118,28 @@
   box-sizing: border-box;
 }
 
-/* Unless told otherwise, keep it for smooth scrolling */
+/* ── Root overflow strategy ──────────────────────────────────────────────────
+   IMPORTANT: We use overflow-x: clip (not hidden) on html/body/#sos-root.
+
+   overflow-x: hidden creates a new scroll container, which:
+     - Breaks position: sticky children (they scroll with the container, not
+       the viewport) — a common iOS Safari bug
+     - Hides content that legitimately overflows (e.g. dropdown shadows)
+
+   overflow-x: clip does NOT create a scroll container. It clips content at
+   the padding edge without any of the sticky/scroll side-effects.
+   Supported in all modern browsers (Safari 16+, Chrome 90+, Firefox 81+).
+
+   width: 100% (not 100vw) avoids the scrollbar-width issue on desktop where
+   100vw includes the scrollbar and causes a 1–17px horizontal overflow.
+*/
 html {
   scroll-behavior: smooth;
-  /* Prevent horizontal overflow at the root */
-  overflow-x: hidden;
-  /* Hard cap — nothing can be wider than the viewport */
-  max-width: 100vw;
+  overflow-x: clip;
+  width: 100%;
   /* ── Fix min-h-screen on iOS Safari ─────────────────────────────────────
      100vh on iOS Safari = full screen height INCLUDING the area behind the
      status bar and home indicator. 100dvh = the actual visible viewport.
-     Overriding --vh here means Tailwind's min-h-screen resolves to 100dvh
-     on every page without touching any TSX file.
   */
   height: 100%;
 }
@@ -147,21 +157,32 @@ html {
 }
 
 /* ── Mobile overflow guard ───────────────────────────────────────────────────
-   Prevents any child from causing horizontal page scroll.
-   Applied to body so all portal pages benefit automatically.
+   overflow-x: clip — see html comment above for why clip not hidden.
+   width: 100% — avoids scrollbar-width issue on desktop.
+   Safe-area insets for notched phones (iPhone X+).
 */
 body {
-  overflow-x: hidden;
-  max-width: 100vw;
+  overflow-x: clip;
+  width: 100%;
   /* Safe-area insets for notched phones (iPhone X+) */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
+/* ── App root overflow guard ─────────────────────────────────────────────────
+   #sos-root is the React mount point. Clip overflow here too so any
+   component that accidentally overflows doesn't cause page-level scroll.
+   min-width: 0 prevents flex/grid children from overflowing their container.
+*/
+#sos-root {
+  overflow-x: clip;
+  width: 100%;
+  min-width: 0;
+}
+
 /* ── Universal width cap ─────────────────────────────────────────────────────
-   Every element is capped at 100% of its container.
-   This is the single most effective rule to stop horizontal overflow.
-   Exceptions (images, tables, canvas) are handled below.
+   Media elements are capped at 100% of their container.
+   height: auto preserves aspect ratio when width is constrained.
 */
 img, video, svg, canvas, iframe {
   max-width: 100%;
@@ -178,6 +199,8 @@ img, video, svg, canvas, iframe {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  /* Prevent the scroll container itself from overflowing its parent */
+  min-width: 0;
 }
 
 /* Ensure tables inside portal-content scroll horizontally, not the page */
@@ -234,21 +257,39 @@ img, video, svg, canvas, iframe {
 }
 
 /* ── Modal / drawer mobile containment ───────────────────────────────────────
-   Radix Dialog and Sheet components use data attributes.
-   Ensure they never exceed the viewport on small screens.
+   Radix Dialog and AlertDialog content panels.
+   The [role="dialog"] selector catches both Radix and any custom dialogs.
+   max-width uses min() so it never exceeds 32rem on desktop but shrinks to
+   fit on narrow phones with a 1rem margin on each side.
+   max-height uses 100dvh so the modal never taller than the visible viewport
+   (important on iOS where 100vh includes the area behind the browser chrome).
 */
-[data-radix-dialog-content],
-[data-radix-alert-dialog-content] {
-  max-width: min(calc(100vw - 2rem), 32rem);
+[role="dialog"] {
+  max-width: min(calc(100dvw - 2rem), 32rem);
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
 }
 
 @media (max-width: 640px) {
-  [data-radix-dialog-content],
-  [data-radix-alert-dialog-content] {
-    max-width: calc(100vw - 1rem);
+  [role="dialog"] {
+    max-width: calc(100dvw - 1rem);
     max-height: calc(100dvh - 1rem);
+  }
+}
+
+/* ── Alert dialogs (confirmation modals) ─────────────────────────────────────
+   AlertDialog is typically narrower than a full dialog.
+   Same containment rules apply.
+*/
+[role="alertdialog"] {
+  max-width: min(calc(100dvw - 2rem), 28rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  [role="alertdialog"] {
+    max-width: calc(100dvw - 1rem);
   }
 }
 
@@ -264,11 +305,12 @@ img, video, svg, canvas, iframe {
 /* ── Mobile page-level overflow guard ───────────────────────────────────────
    Any page wrapper that uses .mobile-page-wrap will be constrained to the
    viewport width and will not cause horizontal scroll.
+   Uses clip (not hidden) to avoid creating a scroll container.
 */
 .mobile-page-wrap {
   width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* ── Card / panel width cap ──────────────────────────────────────────────────
@@ -287,17 +329,52 @@ img, video, svg, canvas, iframe {
 
 /* ── Input / select / textarea width cap ────────────────────────────────────
    Prevent form fields from overflowing their container on mobile.
+   max-width: 100% ensures they shrink to fit their parent.
+   min-width: 0 allows them to shrink below their intrinsic size in flex/grid.
 */
 input, select, textarea {
   max-width: 100%;
+  min-width: 0;
+}
+
+/* ── iOS font-size zoom prevention ──────────────────────────────────────────
+   iOS Safari zooms in when an input has font-size < 16px.
+   Setting font-size: 16px on focus prevents the zoom without changing the
+   visual appearance (the zoom is a browser behaviour, not a CSS effect).
+   We use max() so the font never goes below 16px on iOS but respects larger
+   sizes set by the component.
+*/
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
 }
 
 /* ── Flex children overflow guard ───────────────────────────────────────────
    Flex children with text content must have min-width: 0 to allow truncation.
    This is the most common cause of flex containers overflowing on mobile.
-   Applied globally so developers don't need to remember it.
+
+   SCOPED to portal layout containers only — NOT applied globally.
+   A global `.flex > *` rule breaks Radix UI popovers, dropdowns, and tooltips
+   because those components rely on their natural min-width for sizing.
+
+   Add min-width: 0 directly on any flex child that needs text truncation,
+   or use the .min-w-0 Tailwind utility class.
 */
-.flex > * {
+.portal-main > *,
+.portal-content > *,
+.portal-page > * {
   min-width: 0;
 }
 
@@ -312,6 +389,8 @@ input, select, textarea {
   height: 100dvh;          /* dynamic viewport height — correct on mobile */
   overflow: hidden;
   background-color: #F4F5F7;
+  width: 100%;             /* avoid scrollbar-width issue (100vw includes scrollbar) */
+  max-width: 100%;         /* hard cap — never wider than the viewport */
 }
 
 .portal-main {
@@ -436,6 +515,69 @@ input, select, textarea {
 .map-container {
   touch-action: none;
   overscroll-behavior: contain;
+}
+
+/* ── Viewer classes — overflow containment ───────────────────────────────────
+   Ensure viewer shells and toolbars never cause horizontal page scroll.
+   The viewer-shell is fixed/absolute positioned so it doesn't affect layout,
+   but its children (toolbars, canvases) must be contained.
+*/
+.viewer-shell {
+  max-width: 100dvw;
+  overflow-x: clip;
+}
+
+.viewer-toolbar {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* ── Mobile-specific layout fixes ───────────────────────────────────────────
+   Targeted fixes for pages in the validation list.
+   These are mobile-only rules that do not affect desktop.
+*/
+
+/* Incident severity grid — 4 short labels fit 2-per-row on very narrow phones */
+@media (max-width: 374px) {
+  .incident-severity-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Toolbar rows — prevent fixed-width button groups from overflowing */
+@media (max-width: 767px) {
+  /* Any flex row inside a sticky/fixed header should wrap rather than overflow */
+  .mobile-toolbar-row {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  /* Breadcrumb rows — truncate the last segment, never let the row overflow */
+  .mobile-breadcrumb {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Bottom action bars — ensure they never exceed the viewport width */
+  .mobile-bottom-bar {
+    width: 100%;
+    max-width: 100dvw;
+    overflow-x: clip;
+  }
+
+  /* Fleet live map sidebar — on mobile it becomes a bottom sheet, not a sidebar */
+  .fleet-driver-list {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  /* Job photos bottom bar — the view-size toggle can get tight on 375px */
+  .photos-bottom-bar {
+    flex-wrap: nowrap;
+    overflow-x: clip;
+  }
 }
 
 /* ── Studio Document Builder — Print styles ──────────────────────────────────

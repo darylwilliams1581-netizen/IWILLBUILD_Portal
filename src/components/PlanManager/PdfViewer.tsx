@@ -129,9 +129,9 @@ export default function PdfViewer({
   const scaledH = Math.round(pageHeight * scale);
 
   return (
-    // overflow-x: hidden on the outer shell prevents the viewer from causing
-    // horizontal page scroll on the parent document
-    <div className="flex flex-1 min-h-0 overflow-hidden" style={{ overflowX: 'hidden' }}>
+    // overflow-x: clip on the outer shell prevents the viewer from causing
+    // horizontal page scroll without creating a new scroll container
+    <div className="flex flex-1 min-h-0 overflow-hidden" style={{ overflowX: 'clip' }}>
 
       {/* Thumbnail strip — hidden on mobile (md: show) */}
       {thumbnailsOpen && (
@@ -160,7 +160,7 @@ export default function PdfViewer({
       )}
 
       {/* Main viewer */}
-      <div className="flex flex-col flex-1 min-w-0" style={{ overflowX: 'hidden' }}>
+      <div className="flex flex-col flex-1 min-w-0" style={{ overflowX: 'clip' }}>
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">

@@ -283,11 +283,12 @@ export default function JobPhotosPage() {
         className="fixed bottom-0 inset-x-0 z-20 bg-black border-t border-white/10 safe-bottom"
         style={{
           boxShadow: '0 -2px 12px rgba(0,0,0,0.4)',
+          overflowX: 'clip',
         }}
       >
         {/* Normal mode */}
         {!selectMode && (
-          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
+          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 min-w-0 overflow-x-clip">
 
             {/* Back — mobile only */}
             <button
