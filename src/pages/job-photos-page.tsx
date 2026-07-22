@@ -303,7 +303,7 @@ export default function JobPhotosPage() {
             <button
               onClick={() => navigate('/home')}
               aria-label="Dashboard"
-              className="md:hidden w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center text-orange-400 active:bg-orange-500/30 transition-colors touch-manipulation shrink-0"
+              className="md:hidden w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white active:bg-white/20 transition-colors touch-manipulation shrink-0"
             >
               <Home size={16} />
             </button>

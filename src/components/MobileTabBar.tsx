@@ -250,7 +250,6 @@ export default function MobileTabBar({ onCameraPress, onSignInPress }: MobileTab
                 className={`
                   flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1
                   transition-colors duration-150 outline-none
-                  focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-inset
                   ${isCamera
                     ? 'relative'
                     : active
@@ -258,12 +257,13 @@ export default function MobileTabBar({ onCameraPress, onSignInPress }: MobileTab
                       : 'text-gray-400 hover:text-gray-600 active:text-gray-700'
                   }
                 `}
+                style={isCamera ? { WebkitTapHighlightColor: 'transparent' } : undefined}
                 aria-label={tab.label}
                 aria-current={active ? 'page' : undefined}
               >
                 {isCamera ? (
-                  /* Camera gets a prominent raised button */
-                  <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg -mt-5 border-4 border-white">
+                  /* Camera FAB — raised pill, no ring/border colour */
+                  <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-200 -mt-5 ring-4 ring-white">
                     <Icon size={22} className="text-white" strokeWidth={2} />
                   </div>
                 ) : (
