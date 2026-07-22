@@ -14,6 +14,7 @@ import {
   Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2,
   FileWarning,
 } from 'lucide-react';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RiskyAssessment {
@@ -900,6 +901,26 @@ export default function JobRiskyPage() {
               <span className="flex items-center gap-1 text-xs bg-emerald-600 px-2 py-0.5 rounded-full">
                 <Lock size={11} /> Finalised
               </span>
+            )}
+            {/* Overflow menu — secondary actions */}
+            {!isFinalised && (
+              <MobileOverflowMenu
+                surface="dark"
+                items={[
+                  {
+                    label: 'Save Draft',
+                    icon: saving ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />,
+                    onSelect: () => void handleSaveDraft(),
+                    disabled: saving,
+                  },
+                  {
+                    label: 'Back to list',
+                    icon: <ChevronLeft size={15} />,
+                    onSelect: () => { setView('list'); void loadList(); },
+                    dividerAbove: true,
+                  },
+                ]}
+              />
             )}
           </div>
 

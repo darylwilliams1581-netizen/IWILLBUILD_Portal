@@ -17,6 +17,7 @@ import {
   severityBadge, statusBadge,
   type Incident,
 } from './incidents';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -478,6 +479,25 @@ export default function IncidentDetailPage() {
               </span>
             )}
             {isClosed && (
+              <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
+                <Lock size={11} /> Closed
+              </span>
+            )}
+            {/* Overflow menu — secondary actions */}
+            {!isNew && !isClosed && (
+              <MobileOverflowMenu
+                surface="dark"
+                items={[
+                  {
+                    label: 'Close Incident',
+                    icon: <Lock size={15} />,
+                    onSelect: () => setShowCloseModal(true),
+                    destructive: true,
+                  },
+                ]}
+              />
+            )}
+          </div>
               <span className="flex items-center gap-1 text-xs bg-slate-600 px-2 py-0.5 rounded-full">
                 <Lock size={11} /> Closed
               </span>
@@ -982,25 +1002,14 @@ export default function IncidentDetailPage() {
           </AnimatePresence>
           <div className="flex gap-3 p-4">
             {!isClosed && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
-                </button>
-                {!isNew && (
-                  <button
-                    type="button"
-                    onClick={() => setShowCloseModal(true)}
-                    className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <Lock size={14} /> Close Incident
-                  </button>
-                )}
-              </>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
+              </button>
             )}
             {isClosed && (
               <button

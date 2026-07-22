@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
+import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -828,12 +829,27 @@ export default function JobSitePrestartPage() {
             {view === 'form' && prestart && (
               <div className="flex items-center gap-2">
                 {saving && <Loader2 size={14} className="animate-spin text-slate-400" />}
-                {saveMsg && <span className="text-xs text-green-600">{saveMsg}</span>}
-                {prestart.status === 'finalised' && (
-                  <button onClick={printPrestart} className="p-2 rounded-xl hover:bg-slate-100">
-                    <Printer size={18} className="text-slate-600" />
-                  </button>
-                )}
+                {saveMsg && <span className="text-xs text-green-600 hidden sm:inline">{saveMsg}</span>}
+                {/* Overflow menu — secondary actions (Print visible on desktop too) */}
+                <div className="hidden sm:flex items-center gap-2">
+                  {prestart.status === 'finalised' && (
+                    <button onClick={printPrestart} className="p-2 rounded-xl hover:bg-slate-100" title="Print">
+                      <Printer size={18} className="text-slate-600" />
+                    </button>
+                  )}
+                </div>
+                <MobileOverflowMenu
+                  surface="light"
+                  className="sm:hidden"
+                  items={[
+                    {
+                      label: 'Print',
+                      icon: <Printer size={15} />,
+                      onSelect: printPrestart,
+                      disabled: prestart.status !== 'finalised',
+                    },
+                  ]}
+                />
               </div>
             )}
           </div>
@@ -906,7 +922,7 @@ export default function JobSitePrestartPage() {
                       <Users size={13} className="mr-1" />
                       Sign-on ({workers.length})
                     </Button>
-                    <button onClick={printPrestart} className="text-xs text-slate-500 underline">Print</button>
+                    <button onClick={printPrestart} className="hidden sm:inline text-xs text-slate-500 underline">Print</button>
                   </div>
                 )}
               </div>
