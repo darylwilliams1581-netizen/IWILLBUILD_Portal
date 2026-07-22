@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, Trash2, Loader2, CheckCircle2, AlertCircle, ClipboardList } from 'lucide-react';
-import { getPlatform } from '@/lib/capacitor-plugins';
+import { getPlatform, isNative } from '@/lib/capacitor-plugins';
+import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
+import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 
 // ── Speech recognition types ──────────────────────────────────────────────────
 interface SpeechRecognitionEvent extends Event {
@@ -60,6 +62,9 @@ export default function TakeoffPad() {
   const [listening, setListening] = useState(false);
   const [micUnsupported, setMicUnsupported] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
+  const [showMicExplainer, setShowMicExplainer] = useState(false);
+
+  const permExplainer = usePermissionExplainer();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -133,6 +138,16 @@ export default function TakeoffPad() {
       return;
     }
 
+    // Show pre-permission explainer on native before first mic use
+    if (isNative() && permExplainer.shouldShow('microphone')) {
+      setShowMicExplainer(true);
+      return;
+    }
+
+    doStartListening(SR);
+  }
+
+  function doStartListening(SR: new () => SpeechRecognitionInstance) {
     const rec = new SR();
     rec.continuous = true;
     rec.interimResults = false;
@@ -213,6 +228,21 @@ export default function TakeoffPad() {
 
   return (
     <div className="flex flex-col gap-4 max-w-3xl">
+      {/* Microphone pre-permission explainer */}
+      <PermissionExplainerModal
+        type="microphone"
+        open={showMicExplainer}
+        onNotNow={() => {
+          permExplainer.markShown('microphone');
+          setShowMicExplainer(false);
+        }}
+        onEnable={() => {
+          permExplainer.markShown('microphone');
+          setShowMicExplainer(false);
+          const SR = getSpeechRecognition();
+          if (SR) doStartListening(SR);
+        }}
+      />
       {/* Header row */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-xl bg-primary/10 shrink-0">

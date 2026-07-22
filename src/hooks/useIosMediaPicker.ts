@@ -52,6 +52,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { isNative, getPlatform } from '@/lib/capacitor-plugins';
+import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,27 @@ export interface IosMediaPickerState {
   clear: () => void;
   /** Render this inside your component — the hidden file inputs */
   inputsRef: React.RefObject<HTMLDivElement>;
+  /**
+   * Explainer modal state — set when the pre-permission explainer should be shown.
+   * Callers render <PermissionExplainerModal> when this is non-null.
+   *
+   * Example:
+   *   {picker.explainer && (
+   *     <PermissionExplainerModal
+   *       type={picker.explainer.type}
+   *       open
+   *       denied={picker.explainer.denied}
+   *       onNotNow={picker.explainer.onNotNow}
+   *       onEnable={picker.explainer.onEnable}
+   *     />
+   *   )}
+   */
+  explainer: {
+    type: 'camera' | 'photos';
+    denied: boolean;
+    onNotNow: () => void;
+    onEnable: () => Promise<void>;
+  } | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -150,6 +172,16 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   const [checkingPermission, setChecking]   = useState(false);
   const [permissionDenied, setDenied]       = useState<'camera' | 'photos' | null>(null);
 
+  // ── Explainer modal state ─────────────────────────────────────────────────
+  type ExplainerState = {
+    type: 'camera' | 'photos';
+    denied: boolean;
+    onNotNow: () => void;
+    onEnable: () => Promise<void>;
+  } | null;
+  const [explainer, setExplainer] = useState<ExplainerState>(null);
+  const permExplainer = usePermissionExplainer();
+
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
   // Wrapper div so callers can render both inputs with a single ref
@@ -187,13 +219,21 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     e.target.value = '';
   }, [handleFile]);
 
-  const openCamera = useCallback(async () => {
+  // ── Internal: actually request camera permission + open input ─────────────
+  const doOpenCamera = useCallback(async () => {
     setDenied(null);
     setChecking(true);
     try {
       const perm = await ensureCameraPermission();
       if (perm === 'denied') {
         setDenied('camera');
+        // Show denied variant of explainer
+        setExplainer({
+          type: 'camera',
+          denied: true,
+          onNotNow: () => setExplainer(null),
+          onEnable: async () => { setExplainer(null); },
+        });
         return;
       }
     } finally {
@@ -202,13 +242,20 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     cameraInputRef.current?.click();
   }, []);
 
-  const openLibrary = useCallback(async () => {
+  // ── Internal: actually request photos permission + open input ─────────────
+  const doOpenLibrary = useCallback(async () => {
     setDenied(null);
     setChecking(true);
     try {
       const perm = await ensurePhotosPermission();
       if (perm === 'denied') {
         setDenied('photos');
+        setExplainer({
+          type: 'photos',
+          denied: true,
+          onNotNow: () => setExplainer(null),
+          onEnable: async () => { setExplainer(null); },
+        });
         return;
       }
     } finally {
@@ -216,6 +263,49 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     }
     libraryInputRef.current?.click();
   }, []);
+
+  // ── Public: openCamera — shows explainer first if not yet seen ────────────
+  const openCamera = useCallback(async () => {
+    // Only show explainer on native iOS/Android — browser doesn't need it
+    if (isNative() && permExplainer.shouldShow('camera')) {
+      setExplainer({
+        type: 'camera',
+        denied: false,
+        onNotNow: () => {
+          permExplainer.markShown('camera');
+          setExplainer(null);
+        },
+        onEnable: async () => {
+          permExplainer.markShown('camera');
+          setExplainer(null);
+          await doOpenCamera();
+        },
+      });
+      return;
+    }
+    await doOpenCamera();
+  }, [permExplainer, doOpenCamera]);
+
+  // ── Public: openLibrary — shows explainer first if not yet seen ───────────
+  const openLibrary = useCallback(async () => {
+    if (isNative() && permExplainer.shouldShow('photos')) {
+      setExplainer({
+        type: 'photos',
+        denied: false,
+        onNotNow: () => {
+          permExplainer.markShown('photos');
+          setExplainer(null);
+        },
+        onEnable: async () => {
+          permExplainer.markShown('photos');
+          setExplainer(null);
+          await doOpenLibrary();
+        },
+      });
+      return;
+    }
+    await doOpenLibrary();
+  }, [permExplainer, doOpenLibrary]);
 
   const clear = useCallback(() => {
     if (prevUrlRef.current) {
@@ -226,6 +316,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     setPreviewUrl(null);
     setIsHeic(false);
     setDenied(null);
+    setExplainer(null);
   }, []);
 
   // Attach event listeners to the inputs once the wrapper div mounts
@@ -247,6 +338,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     openLibrary,
     clear,
     inputsRef,
+    explainer,
     // Expose refs so callers can render the inputs
     _cameraInputRef: cameraInputRef,
     _libraryInputRef: libraryInputRef,

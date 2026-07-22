@@ -11,6 +11,8 @@
  */
 import { useState, useEffect } from 'react';
 import { Bell, BellOff, BellRing, Loader2, CheckCircle2, AlertCircle, Smartphone } from 'lucide-react';
+import { usePermissionExplainer } from '@/lib/usePermissionExplainer';
+import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 
 type PermState = 'unsupported' | 'default' | 'granted' | 'denied' | 'loading';
 
@@ -27,6 +29,9 @@ export default function PushNotificationSettings() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showExplainer, setShowExplainer] = useState(false);
+
+  const permExplainer = usePermissionExplainer();
 
   useEffect(() => {
     void init();
@@ -53,6 +58,15 @@ export default function PushNotificationSettings() {
   }
 
   async function handleEnable() {
+    // Show pre-permission explainer if not yet seen
+    if (permExplainer.shouldShow('notifications')) {
+      setShowExplainer(true);
+      return;
+    }
+    await doEnable();
+  }
+
+  async function doEnable() {
     setWorking(true);
     setError(null);
     setSuccess(null);
@@ -139,6 +153,21 @@ export default function PushNotificationSettings() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Notifications pre-permission explainer */}
+      <PermissionExplainerModal
+        type="notifications"
+        open={showExplainer}
+        denied={permState === 'denied'}
+        onNotNow={() => {
+          permExplainer.markShown('notifications');
+          setShowExplainer(false);
+        }}
+        onEnable={async () => {
+          permExplainer.markShown('notifications');
+          setShowExplainer(false);
+          await doEnable();
+        }}
+      />
       {/* Header row */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
