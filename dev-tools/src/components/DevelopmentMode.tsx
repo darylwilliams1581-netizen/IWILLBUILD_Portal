@@ -26,6 +26,7 @@ import CarouselSlotEditNav from "./CarouselSlotEditNav";
 import { setCarouselSlotEdit, setCarouselToolbarPause } from "../utils/carousel-slot-edit";
 import { bindCarouselSlotPanelSync } from "../utils/carousel-slot-panel-sync";
 import { pauseEditModeTimers, resumeEditModeTimers, advancePausedCarouselTimers, getPausedCarouselTimerCount } from "../utils/edit-mode-timer-pause";
+import { HOVER_BAR_VIEWPORT_CHANGE_EVENT } from "../utils/hover-bar-placement";
 
 export default function DevelopmentMode() {
   const [isEditModeActive, setIsEditModeActive] = useState(false); // off by default, parent enables via EDIT_MODE_ENABLED message
@@ -1495,6 +1496,7 @@ export default function DevelopmentMode() {
         if (event.data && event.data.type === 'SET_SCROLL_GUTTER') {
           const paddingBottom = typeof event.data.paddingBottom === 'number' ? event.data.paddingBottom : 0;
           document.body.style.paddingBottom = paddingBottom > 0 ? `${paddingBottom}px` : '';
+          window.dispatchEvent(new Event(HOVER_BAR_VIEWPORT_CHANGE_EVENT));
           return;
         }
         if (event.data && event.data.type === 'RESTORE_SCROLL_POSITION') {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../utils/postMessage', () => ({ safePostMessage: vi.fn() }))
 
@@ -8,6 +8,10 @@ import { postIframeBootingBeacon } from '../iframe-booting'
 describe('postIframeBootingBeacon', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(function restore(): void {
+    Object.defineProperty(window, 'parent', { configurable: true, value: window })
   })
 
   it('posts an IFRAME_BOOTING message to the parent when embedded in an iframe', () => {
@@ -43,5 +47,14 @@ describe('postIframeBootingBeacon', () => {
     })
 
     expect(() => postIframeBootingBeacon(win)).not.toThrow()
+  })
+
+  it('posts when the error client loads', async function load(): Promise<void> {
+    const parent: typeof window = {} as typeof window
+    Object.defineProperty(window, 'parent', { configurable: true, value: parent })
+
+    await import('../error-client')
+
+    expect(safePostMessage).toHaveBeenCalledWith(parent, { type: 'IFRAME_BOOTING' })
   })
 })

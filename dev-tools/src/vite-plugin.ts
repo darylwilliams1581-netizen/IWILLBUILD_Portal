@@ -170,7 +170,7 @@ export function devToolsInjectorPlugin(): Plugin {
           const lastImport = imports[imports.length - 1]
           result = result.replace(
             lastImport,
-            lastImport + `\nif (import.meta.env.MODE === 'development') {\n  await import('../dev-tools/src/utils/edit-mode-timer-pause');\n}\n// Auto-inject dev tools in development (v7)\nif (import.meta.env.MODE === 'development') {\n  import('${V7_CONFIG.importPath}').then(({ injectDevelopmentMode }) => {\n    injectDevelopmentMode();\n  });\n}`
+            lastImport + `\nif (import.meta.env.MODE === 'development') {\n  await import('../dev-tools/src/utils/edit-mode-timer-pause');\n}\n// Auto-inject dev tools in development (v7)\nif (import.meta.env.MODE === 'development') {\n  import('${V7_CONFIG.importPath}').catch((error: unknown) => {\n    console.warn('[dev-tools] initial load failed; retrying:', error);\n    return new Promise<void>((resolve: () => void): void => setTimeout(resolve, 2000)).then(() => import('${V7_CONFIG.importPath}'));\n  }).then(({ injectDevelopmentMode }: { injectDevelopmentMode: () => void }): void => {\n    injectDevelopmentMode();\n  }).catch((error: unknown): void => {\n    console.warn('[dev-tools] failed to load dev tools:', error);\n  });\n}`
           )
         }
         

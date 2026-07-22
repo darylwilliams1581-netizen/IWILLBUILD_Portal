@@ -2,10 +2,11 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import type { HoveredElement } from '../../hooks/useImageHoverDetection';
 import { safePostMessage } from '../../utils/postMessage';
+import { HOVER_BAR_VIEWPORT_CHANGE_EVENT } from '../../utils/hover-bar-placement';
 import { computePopoverPlacement } from '../ElementHoverBar';
 
 type ImageHoveredElement = Extract<HoveredElement, { type: 'image' }>;
@@ -133,10 +134,31 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
   document.body.innerHTML = '';
+  document.body.style.paddingBottom = '';
   vi.unstubAllEnvs();
   vi.stubGlobal('ResizeObserver', class ResizeObserver {
     observe = vi.fn();
     disconnect = vi.fn();
+  });
+});
+
+describe('ElementHoverBar - viewport gutter changes', () => {
+  it('repositions when the hover-bar viewport changes', async () => {
+    vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue({
+      top: 0, left: 0, width: 1024, height: 768, right: 1024, bottom: 768, x: 0, y: 0, toJSON: () => {},
+    } as DOMRect);
+    const img: HTMLElement = makeImageElement();
+    const hovered: ImageHoveredElement = makeImageHover(img);
+
+    renderHoverBar(hovered);
+
+    const bar: HTMLElement = document.querySelector('.edit-mode-hover-bar') as HTMLElement;
+    await waitFor(() => expect(bar.style.top).toBe('316px'));
+
+    document.body.style.paddingBottom = '500px';
+    window.dispatchEvent(new Event(HOVER_BAR_VIEWPORT_CHANGE_EVENT));
+
+    await waitFor(() => expect(bar.style.top).toBe('84px'));
   });
 });
 
@@ -275,7 +297,7 @@ describe('ElementHoverBar - link follow bar', () => {
 
     expect(screen.queryByTitle('Follow link')).toBeNull();
     expect(await screen.findByTestId('devtools-link-follow-destination')).not.toBeNull();
-    expect(screen.getByText(/Go to: loom\.com\/share\//)).toBeTruthy();
+    expect(screen.getByText('Go to: loom.com · /share')).toBeTruthy();
   });
 });
 

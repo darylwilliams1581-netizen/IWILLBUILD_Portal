@@ -1,4 +1,5 @@
 import { advanceCycleId, getCurrentCycleId } from './cycle-state';
+import { postIframeBootingBeacon } from './iframe-booting';
 import { type BusEventType, type BusMessage, send } from './utils/eventBus';
 import { injectDevToolsStyles } from './utils/injectDevToolsStyles';
 import { isOriginAllowed } from './utils/postMessage';
@@ -611,11 +612,10 @@ async function copyErrorToClipboard(parsed: ParsedViteError) {
   }
 }
 
-// Announce the initial cycle to the parent as soon as this module loads.
-// Full-page reloads re-run this module (it's dynamically imported from
-// `index.html` under the dev-mode guard) and the server sees a fresh
-// cycleId, so any stale entries from the prior page session are evicted
-// before the next render starts throwing.
+// Signal app execution before the optional dev-tools entry loads, then
+// announce the initial cycle. Full-page reloads re-run this module and the
+// server sees a fresh cycleId before the next render starts throwing.
+postIframeBootingBeacon();
 beginNewRenderCycle();
 clearRecoveryReloadBudgetAfterCleanMount();
 

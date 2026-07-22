@@ -19,6 +19,8 @@ import {
   clipBoundsToParent,
   computeHoverBarStyle,
   computeLinkFollowBarStyle,
+  getHoverBarViewport,
+  HOVER_BAR_VIEWPORT_CHANGE_EVENT,
   OUTLINE_PAD,
   type VerticalPlacement,
 } from "../utils/hover-bar-placement";
@@ -337,12 +339,10 @@ export default function ElementHoverBar({
   // the diff appear in a different part of the page breaks the action↔result
   // visual link.
   //
-  // The clearance threshold is 200px (the popover's worst-case height) —
-  // larger than the toolbar strictly needs, but using a single threshold
-  // keeps both surfaces consistent. Trade-off: for an element 80px from the
-  // viewport top, the toolbar will render below it instead of squeezing
-  // above. That's acceptable; the alternative (toolbar above, popover below)
-  // is the bug we're fixing here.
+  // The top-clearance threshold is 200px (the popover's worst-case height) —
+  // larger than the toolbar strictly needs, but using a single threshold keeps
+  // both surfaces consistent. When the bottom edge is blocked, the toolbar can
+  // still use the smaller toolbar-height threshold to stay visible above.
   const [barStyle, setBarStyle] = useState<React.CSSProperties>({});
   const [linkBarStyle, setLinkBarStyle] = useState<React.CSSProperties>({});
   const [linkBarPlacement, setLinkBarPlacement] = useState<VerticalPlacement>("below");
@@ -358,7 +358,7 @@ export default function ElementHoverBar({
     const update = () => {
       const bounds = clipBoundsToParent(element);
       const rect = element.getBoundingClientRect();
-      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const viewport = getHoverBarViewport();
       const toolbar = computeHoverBarStyle(bounds, viewport);
       const linkBar = computeLinkFollowBarStyle(bounds, toolbar.placement, viewport);
       setBarStyle(toolbar.style);
@@ -385,11 +385,13 @@ export default function ElementHoverBar({
     update();
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
+    window.addEventListener(HOVER_BAR_VIEWPORT_CHANGE_EVENT, update);
     const elementResizeObserver = new ResizeObserver(update);
     elementResizeObserver.observe(element);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      window.removeEventListener(HOVER_BAR_VIEWPORT_CHANGE_EVENT, update);
       elementResizeObserver.disconnect();
     };
   }, [element]);

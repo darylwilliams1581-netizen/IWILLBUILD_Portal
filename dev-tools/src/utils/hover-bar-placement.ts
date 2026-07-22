@@ -11,6 +11,8 @@ const ESTIMATED_LINK_BAR_WIDTH = 280;
 const ESTIMATED_TOOLBAR_HEIGHT = 40;
 const ESTIMATED_LINK_BAR_HEIGHT = 32;
 
+export const HOVER_BAR_VIEWPORT_CHANGE_EVENT = "airo:hover-bar-viewport-change";
+
 export interface Bounds {
   top: number;
   left: number;
@@ -103,12 +105,28 @@ function fitsAbove(anchor: number): boolean {
   return anchor - ESTIMATED_LINK_BAR_HEIGHT >= EDGE_MARGIN;
 }
 
+function getBodyBottomGutter(): number {
+  const gutter: number = Number.parseFloat(document.body.style.paddingBottom);
+  return Number.isFinite(gutter) ? gutter : 0;
+}
+
+export function getHoverBarViewport(): Viewport {
+  return {
+    width: window.innerWidth,
+    height: Math.max(0, window.innerHeight - getBodyBottomGutter()),
+  };
+}
+
 export function computeHoverBarStyle(
   bounds: Bounds,
-  viewport: Viewport = { width: window.innerWidth, height: window.innerHeight },
+  viewport: Viewport = getHoverBarViewport(),
 ): PlacedBarStyle {
   const hasSpaceAbove = bounds.top > MIN_CLEARANCE_ABOVE;
   const horizontal = horizontalPosition(bounds, ESTIMATED_TOOLBAR_WIDTH, viewport.width);
+  const belowTop: number = bounds.bottom + GAP + OUTLINE_PAD;
+  const fitsBelowToolbar: boolean = belowTop + ESTIMATED_TOOLBAR_HEIGHT <= viewport.height - EDGE_MARGIN;
+  const aboveAnchor: number = bounds.top - GAP - OUTLINE_PAD;
+  const fitsAboveToolbar: boolean = aboveAnchor - ESTIMATED_TOOLBAR_HEIGHT >= EDGE_MARGIN;
 
   const style: CSSProperties = {
     position: "fixed",
@@ -117,26 +135,32 @@ export function computeHoverBarStyle(
   };
 
   if (hasSpaceAbove) {
-    style.top = `${bounds.top - GAP - OUTLINE_PAD}px`;
+    style.top = `${aboveAnchor}px`;
     style.transform = combineTransform(horizontal.horizontalTransform, true);
     return { style, placement: "above" };
   }
 
-  // When the element is taller than the viewport (e.g. full-page hero image),
-  // place the toolbar inside at the top rather than below the off-screen bottom.
-  if (bounds.bottom > viewport.height) {
+  if (!fitsBelowToolbar && fitsAboveToolbar) {
+    style.top = `${aboveAnchor}px`;
+    style.transform = combineTransform(horizontal.horizontalTransform, true);
+    return { style, placement: "above" };
+  }
+
+  // When the element is taller than the usable viewport (or neither edge can
+  // fit the toolbar), place it inside at the top rather than below the hidden bottom.
+  if (!fitsBelowToolbar || bounds.bottom > viewport.height) {
     style.top = `${Math.max(bounds.top, 0) + GAP + OUTLINE_PAD}px`;
     return { style, placement: "above" };
   }
 
-  style.top = `${bounds.bottom + GAP + OUTLINE_PAD}px`;
+  style.top = `${belowTop}px`;
   return { style, placement: "below" };
 }
 
 export function computeLinkFollowBarStyle(
   bounds: Bounds,
   toolbarPlacement: VerticalPlacement,
-  viewport: Viewport = { width: window.innerWidth, height: window.innerHeight },
+  viewport: Viewport = getHoverBarViewport(),
 ): PlacedBarStyle {
   const horizontal = horizontalPosition(bounds, ESTIMATED_LINK_BAR_WIDTH, viewport.width);
   const belowElementTop = bounds.bottom + GAP + OUTLINE_PAD;
