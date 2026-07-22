@@ -15,6 +15,7 @@ import {
   clearSessionRecovery,
 } from './session-recovery';
 import { clearSessionExpiry } from './session-timeout';
+import { isNativeApp } from '@/lib/native-routing';
 
 // Reads and consumes the sessionStorage flag set by useSessionTimeout when it
 // initiates a hard redirect to /login?reason=expired. Kept inline to avoid a
@@ -274,7 +275,9 @@ export function LogoutButton({
     try {
       clearSessionExpiry(); // clear 14h / 06:00 cutoff stamp
       await signOut();
-      window.location.href = '/login';
+      // Native app → always return to login (never the public landing page)
+      // Web browser → /login (same behaviour, landing page is at /)
+      window.location.href = isNativeApp ? '/login' : '/login';
     } catch (error) {
       console.error('Logout failed:', error);
       setIsLoading(false);

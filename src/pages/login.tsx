@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink } from 'lucide-react';
 import { signIn, useSession } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 import { stampSessionExpiry } from '@/lib/auth/session-timeout';
+import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -96,7 +97,10 @@ export default function LoginPage() {
         (fromParam ? decodeURIComponent(fromParam) : null) ||
         '/home';
       const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home';
+      // Native app always lands on /home — never the public landing page
+      const from = isNativeApp
+        ? '/home'
+        : (rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home');
       authLog('already_authenticated', { redirectTo: from });
       navigate(from, { replace: true });
     }
@@ -217,7 +221,10 @@ export default function LoginPage() {
         (fromParam ? decodeURIComponent(fromParam) : null) ||
         '/home';
       const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from = rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home';
+      // Native app always goes to /home — never back to the public landing page
+      const from = isNativeApp
+        ? '/home'
+        : (rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some((b) => rawFrom.startsWith(b)) ? rawFrom : '/home');
       authLog('redirect', { to: from });
       navigate(from, { replace: true });
     } catch (err) {
@@ -282,7 +289,9 @@ export default function LoginPage() {
       if (!res.ok || !d.ok) { setError(d.error ?? 'Invalid code. Please try again.'); return; }
       const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
       const SAFE_BLOCKLIST_2FA = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from2fa = rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some((b) => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/home';
+      const from2fa = isNativeApp
+        ? '/home'
+        : (rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some((b) => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/home');
       navigate(from2fa, { replace: true });
     } catch { setError('Something went wrong. Please try again.'); }
     finally { setTfaLoading(false); }
@@ -311,7 +320,9 @@ export default function LoginPage() {
             setMustChangePassword(false);
             const rawFromPwChange = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
             const SAFE_BLOCKLIST_PW = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-            const fromPwChange = rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some((b) => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/home';
+            const fromPwChange = isNativeApp
+              ? '/home'
+              : (rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some((b) => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/home');
             navigate(fromPwChange, { replace: true });
           }}
         />
@@ -738,13 +749,25 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <Link
-            to="/"
-            className="text-xs text-white/30 hover:text-primary transition-colors"
-          >
-            &larr; Back to home
-          </Link>
+        <div className="mt-4 flex flex-col items-center gap-3">
+          {/* Native app: open full web portal in system browser */}
+          {isNativeApp ? (
+            <button
+              type="button"
+              onClick={() => openExternalUrl(WEB_PORTAL_URL)}
+              className="flex items-center gap-1.5 text-xs text-white/35 hover:text-primary transition-colors"
+            >
+              <ExternalLink size={12} />
+              Open web portal
+            </button>
+          ) : (
+            <Link
+              to="/"
+              className="text-xs text-white/30 hover:text-primary transition-colors"
+            >
+              &larr; Back to home
+            </Link>
+          )}
         </div>
       </motion.div>
     </div>

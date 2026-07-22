@@ -5,6 +5,7 @@ import RouteErrorFallback from '@/components/RouteErrorFallback';
 import { usePermissions } from '@/lib/usePermissions';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
+import NativeStartupGate from '@/components/NativeStartupGate';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
@@ -139,7 +140,7 @@ function protectDev(element: React.ReactElement) {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/',              element: <HomePage /> },
+  { path: '/',              element: <NativeStartupGate><HomePage /></NativeStartupGate> },
   { path: '/home',          element: protect(<HomeScreenPage />), errorElement: routeError },
   { path: '/login',         element: <LoginPage /> },
   { path: '/signup',        element: <SignupPage /> },
