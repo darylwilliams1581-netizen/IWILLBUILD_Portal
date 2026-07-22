@@ -31,8 +31,6 @@ import NotificationBell from '@/components/NotificationBell';
 import {
   resolveHomeIcons, type HomeIconDef,
 } from '@/lib/homeIcons';
-import MobileTabBar from '@/components/MobileTabBar';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -2355,11 +2353,6 @@ export default function HomeScreen() {
       <RiskyJobPickerSheet open={riskyPickerOpen} onClose={() => setRiskyPickerOpen(false)} />
       </div>{/* end z-10 content wrapper */}
 
-      {/* ── Mobile tab bar ── */}
-      <MobileTabBar
-        onCameraPress={() => setCameraPickerOpen(true)}
-        onSignInPress={() => setSignInOutOpen(true)}
-      />
     </div>
   );
 }

@@ -19,7 +19,6 @@
 import { lazy, Suspense } from 'react';
 import { useShell } from '@/lib/useShell';
 import OfficeShell from '@/layouts/OfficeShell';
-import { isNativeApp } from '@/lib/native-routing';
 import { Smartphone, Monitor } from 'lucide-react';
 
 // Lazy-load both home pages — only one will be rendered per session
@@ -55,11 +54,13 @@ function PageLoader() {
 /**
  * ShellToggle — floating button that lets desktop users switch between
  * App view (icon grid) and Office view (dashboard + sidebar).
- * Hidden on native (always app) and on mobile viewports (always app).
+ * Hidden on native (always app) and on mobile viewports (< 768px).
  */
 function ShellToggle() {
-  const { shell, canToggle, toggleShell } = useShell();
+  const { shell, canToggle, toggleShell, viewportShell } = useShell();
+  // Never show on native; never show when the viewport is mobile-sized
   if (!canToggle) return null;
+  if (viewportShell === 'app') return null;
 
   const isApp = shell === 'app';
 
@@ -96,15 +97,14 @@ export default function ShellRouter() {
   const { isAppShell } = useShell();
 
   if (isAppShell) {
-    // Mobile / field app — HomeScreen manages its own full-screen layout
-    // (top bar, icon grid, MobileTabBar). No wrapper needed.
+    // Mobile / field app — HomeScreen manages its own full-screen layout.
+    // ShellToggle hides itself on mobile viewports, so it's safe to render here.
     return (
       <>
         <Suspense fallback={<PageLoader />}>
           <HomeScreen />
         </Suspense>
-        {/* Toggle only shown on desktop browsers, hidden on native */}
-        {!isNativeApp && <ShellToggle />}
+        <ShellToggle />
       </>
     );
   }
