@@ -49,16 +49,23 @@ const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [
 function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: string) => void }) {
   const Icon = item.icon;
   return (
+    /*
+     * Fixed-width cell — every tile is exactly the same width so the grid
+     * columns stay perfectly aligned at all phone widths (375 / 390 / 430 px).
+     * The outer button is the grid cell; it does NOT grow or shrink.
+     * w-full fills the grid column; items-center centres the icon + label.
+     */
     <motion.button
       whileTap={{ scale: 0.88 }}
       whileHover={{ scale: 1.06, y: -2 }}
       transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
-      className="flex flex-col items-center gap-[6px] group outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 rounded-[22px] pb-1"
+      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+      style={{ gap: '5px' }}
     >
-      {/* Tile */}
+      {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
       <div
-        className={`w-[60px] h-[60px] sm:w-[66px] sm:h-[66px] rounded-[16px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
+        className={`w-[54px] h-[54px] sm:w-[66px] sm:h-[66px] rounded-[14px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden flex-shrink-0`}
         style={{
           boxShadow: '0 3px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)',
         }}
@@ -75,24 +82,38 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
           className="absolute inset-0 pointer-events-none rounded-[inherit]"
           style={{ boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.12)' }}
         />
-        <Icon size={24} strokeWidth={1.8} className="sm:hidden relative z-10 drop-shadow-sm" />
-        <Icon size={27} strokeWidth={1.8} className="hidden sm:block relative z-10 drop-shadow-sm" />
+        {/* 21 px icon on mobile, 26 px on sm+ */}
+        <Icon size={21} strokeWidth={1.8} className="sm:hidden relative z-10 drop-shadow-sm" />
+        <Icon size={26} strokeWidth={1.8} className="hidden sm:block relative z-10 drop-shadow-sm" />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-0.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      {/* Label — two-line max, fixed height so grid rows stay aligned */}
+
+      {/*
+       * Label — fixed two-line reserved area so every cell is the same height
+       * regardless of label length.  Long labels clamp with ellipsis after
+       * line 2 and never push the row taller.
+       *
+       * Height maths (mobile):
+       *   font-size  9px  ×  line-height 1.25  =  11.25 px / line
+       *   2 lines                               =  22.5 px  → round to 23 px
+       *   We use minHeight: '23px' so single-line labels still reserve the
+       *   same vertical space as two-line labels.
+       */}
       <span
-        className="text-[10px] sm:text-[11px] text-gray-800 font-semibold text-center leading-[1.2] tracking-[-0.01em]"
+        className="text-[9px] sm:text-[11px] text-gray-800 font-semibold text-center w-full px-0.5"
         style={{
-          maxWidth: '64px',
+          lineHeight: 1.25,
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          minHeight: '24px',   /* reserve space for two lines so single-line labels don't shift the row */
+          minHeight: '23px',
+          wordBreak: 'break-word',
+          hyphens: 'auto',
         }}
       >
         {item.label}
@@ -1817,25 +1838,60 @@ function HomeIconGrid({ iconPermissions, role, isSolo, isPlatformOwner, activeFi
         </div>
       </div>
 
-      {/* Icon grid */}
-      <div className="px-5 pt-3">
+      {/* Icon grid
+          ─────────────────────────────────────────────────────────────────
+          Mobile  (< 640 px / sm):  4 columns, tight 10 px column gap,
+                                    14 px row gap.
+          Desktop (≥ 640 px / sm):  auto-fill with 80 px minimum columns,
+                                    18 px row / 14 px column gap.
+
+          The mobile grid uses a fixed 4-column track so every cell is
+          exactly (containerWidth − 3 × colGap) / 4 wide.  This guarantees
+          perfect alignment at 375, 390, and 430 px without any cell ever
+          overflowing the viewport.
+
+          px-4 on the wrapper gives 16 px side padding each side.
+          At 375 px: usable width = 375 − 32 = 343 px
+            cell width = (343 − 3 × 10) / 4 = 78.25 px  ✓ fits the 54 px tile
+          At 430 px: usable width = 430 − 32 = 398 px
+            cell width = (398 − 3 × 10) / 4 = 92 px      ✓ still compact
+      */}
+      <div className="px-4 pt-3">
         <div className="mx-auto" style={{ maxWidth: 640 }}>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <p className="text-sm font-medium">No icons in this category</p>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                gap: '18px 12px',
-              }}
-            >
-              {filtered.map((item) => (
-                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-              ))}
-            </div>
+            <>
+              {/* Mobile grid — 4 fixed columns */}
+              <div
+                className="sm:hidden"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  columnGap: '10px',
+                  rowGap: '14px',
+                }}
+              >
+                {filtered.map((item) => (
+                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+                ))}
+              </div>
+
+              {/* Desktop / tablet grid — auto-fill */}
+              <div
+                className="hidden sm:grid"
+                style={{
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '18px 14px',
+                }}
+              >
+                {filtered.map((item) => (
+                  <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
