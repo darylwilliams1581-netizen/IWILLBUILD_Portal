@@ -44,7 +44,7 @@ const config: CapacitorConfig = {
     infoPlist: {
       // Camera — job photos, receipts, incidents, site records
       NSCameraUsageDescription:
-        'IWILLBUILD uses the camera to capture job photos, receipts, incidents, and site records.',
+        'IWILLBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.',
 
       // Photo library read — upload existing photos as job evidence
       NSPhotoLibraryUsageDescription:
