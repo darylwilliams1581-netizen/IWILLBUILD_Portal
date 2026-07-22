@@ -64,25 +64,58 @@ function canPreview(file: File): boolean {
 }
 
 async function normaliseToJpeg(file: File): Promise<File | null> {
+  // createImageBitmap + canvas.toBlob is not supported for HEIC in WKWebView
+  // and can throw "The operation is not supported". Guard every step.
   let bitmap: ImageBitmap;
-  try { bitmap = await createImageBitmap(file); } catch { return null; }
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    // Cannot decode — return null so the caller falls back to raw upload
+    return null;
+  }
+
   let { width, height } = bitmap;
   if (width > MAX_PX || height > MAX_PX) {
     if (width >= height) { height = Math.round((height / width) * MAX_PX); width = MAX_PX; }
     else                 { width  = Math.round((width  / height) * MAX_PX); height = MAX_PX; }
   }
-  const canvas = document.createElement('canvas');
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  let canvas: HTMLCanvasElement;
+  let ctx: CanvasRenderingContext2D | null;
+  try {
+    canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext('2d');
+  } catch {
+    bitmap.close();
+    return null;
+  }
+
+  if (!ctx) {
+    bitmap.close();
+    return file;
+  }
+
+  try {
+    ctx.drawImage(bitmap, 0, 0, width, height);
+  } catch {
+    bitmap.close();
+    return null;
+  }
   bitmap.close();
+
   return await new Promise<File>((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) { resolve(file); return; }
-      const stem = file.name.replace(/\.[^.]+$/, '');
-      resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
-    }, 'image/jpeg', JPEG_QUALITY);
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; }
+        const stem = file.name.replace(/\.[^.]+$/, '');
+        resolve(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
+      }, 'image/jpeg', JPEG_QUALITY);
+    } catch {
+      // toBlob can throw on some iOS versions — fall back to raw file
+      resolve(file);
+    }
   });
 }
 

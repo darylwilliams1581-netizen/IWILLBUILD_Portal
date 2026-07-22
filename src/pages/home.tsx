@@ -498,10 +498,13 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   const [reference, setReference] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoIsHeic, setPhotoIsHeic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Track blob URL so we can revoke it on unmount / clear
+  const photoBlobRef = useRef<string | null>(null);
 
   // Load jobs on open
   useEffect(() => {
@@ -517,7 +520,7 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
       .finally(() => setJobsLoading(false));
   }, [open]);
 
-  // Reset on close
+  // Reset on close — also revoke any blob URL
   useEffect(() => {
     if (!open) {
       setSelectedJob(null);
@@ -526,8 +529,14 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
       setAmount('');
       setEntryDate(new Date().toISOString().slice(0, 10));
       setReference('');
+      // Revoke blob URL before clearing
+      if (photoBlobRef.current) {
+        URL.revokeObjectURL(photoBlobRef.current);
+        photoBlobRef.current = null;
+      }
       setPhotoFile(null);
       setPhotoPreview(null);
+      setPhotoIsHeic(false);
       setSaved(false);
       setError('');
     }
@@ -536,10 +545,37 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
   function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+
+    // Revoke previous blob URL to avoid memory leak
+    if (photoBlobRef.current) {
+      URL.revokeObjectURL(photoBlobRef.current);
+      photoBlobRef.current = null;
+    }
+
+    // Detect HEIC — WKWebView cannot render HEIC in an <img> tag
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    const isHeic = f.type === 'image/heic' || f.type === 'image/heif' ||
+                   ext === 'heic' || ext === 'heif';
+
     setPhotoFile(f);
-    const reader = new FileReader();
-    reader.onload = ev => setPhotoPreview(ev.target?.result as string);
-    reader.readAsDataURL(f);
+    setPhotoIsHeic(isHeic);
+
+    if (isHeic) {
+      // No preview available — show placeholder instead
+      setPhotoPreview(null);
+    } else {
+      // Use createObjectURL — never FileReader.readAsDataURL which can OOM on iOS
+      try {
+        const url = URL.createObjectURL(f);
+        photoBlobRef.current = url;
+        setPhotoPreview(url);
+      } catch {
+        setPhotoPreview(null);
+      }
+    }
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   }
 
   async function handleSubmit() {
@@ -669,12 +705,35 @@ function LogCostSheet({ open, onClose }: { open: boolean; onClose: () => void })
                       {/* Receipt photo */}
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Receipt Photo <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
-                        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handlePhoto} />
-                        {photoPreview ? (
-                          <div className="relative w-full h-36 rounded-xl overflow-hidden border border-gray-200">
-                            <img src={photoPreview} alt="Receipt" className="w-full h-full object-cover" />
+                        {/* No capture="environment" — let iOS show the full picker (camera + library).
+                            capture= forces camera-only and can crash if permission not yet granted. */}
+                        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePhoto} />
+                        {photoFile ? (
+                          <div className="relative w-full rounded-xl overflow-hidden border border-gray-200">
+                            {photoPreview ? (
+                              <img
+                                src={photoPreview}
+                                alt="Receipt"
+                                className="w-full h-36 object-cover"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : photoIsHeic ? (
+                              /* HEIC cannot be previewed in WKWebView — show a placeholder */
+                              <div className="w-full h-24 flex flex-col items-center justify-center gap-1.5 bg-slate-100">
+                                <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">HEIC</span>
+                                <span className="text-xs text-slate-400">{photoFile.name}</span>
+                                <span className="text-[10px] text-slate-400">Will upload correctly</span>
+                              </div>
+                            ) : (
+                              <div className="w-full h-24 flex items-center justify-center bg-slate-100">
+                                <span className="text-xs text-slate-400">{photoFile.name}</span>
+                              </div>
+                            )}
                             <button
-                              onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                              onClick={() => {
+                                if (photoBlobRef.current) { URL.revokeObjectURL(photoBlobRef.current); photoBlobRef.current = null; }
+                                setPhotoFile(null); setPhotoPreview(null); setPhotoIsHeic(false);
+                              }}
                               className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white"
                             >
                               <X size={12} />

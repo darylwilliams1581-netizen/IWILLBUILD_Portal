@@ -226,56 +226,92 @@ function EditModal({ photo, cacheBust, onClose, onSaved }: EditModalProps) {
   const busy = saving || rotating !== null || replacing;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+    // On mobile: sheet slides up from bottom. On desktop: centred dialog.
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 8 }} transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col"
+        style={{
+          // On mobile: fill up to 92dvh so it doesn't go behind the status bar
+          maxHeight: 'min(92dvh, 700px)',
+          // On desktop: normal max-height
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        {/* Drag handle — mobile only */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
           <h3 className="font-heading font-bold text-base text-slate-900">Edit Photo</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={16} /></button>
         </div>
-        <div className="bg-slate-100 flex items-center justify-center" style={{ height: 220 }}>
-          <img key={localBust} src={previewSrc(photo, localBust)} alt={photo.label ?? photo.originalName ?? 'Photo'} className="max-w-full max-h-full object-contain" />
-        </div>
-        <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
-          <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
-          <button onClick={() => doRotate('left')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-            {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Left 90°
-          </button>
-          <button onClick={() => doRotate('right')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
-            {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Right 90°
-          </button>
-        </div>
-        <div className="px-5 py-4 flex flex-col gap-3">
-          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={12} /> {error}</p>}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Caption / Label</label>
-            <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. North wall framing"
-              className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              onKeyDown={(e) => { if (e.key === 'Enter' && !busy) doSave(); }} />
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 overscroll-contain">
+          {/* Photo preview — capped height so it doesn't dominate on small phones */}
+          <div className="bg-slate-100 flex items-center justify-center" style={{ height: 'min(180px, 30dvh)' }}>
+            <img
+              key={localBust}
+              src={previewSrc(photo, localBust)}
+              alt={photo.label ?? photo.originalName ?? 'Photo'}
+              className="max-w-full max-h-full object-contain"
+              // Prevent crash if the image URL fails to load
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-xs font-semibold text-slate-700">Upload edited version</p>
-            <p className="text-[11px] text-slate-400 leading-snug">Download → mark up → save → upload here to replace.</p>
-            <button type="button" onClick={() => replaceRef.current?.click()} disabled={busy}
-              className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-border bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-semibold text-slate-700 rounded-lg transition-colors">
-              {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-              {replacing ? 'Replacing…' : 'Choose file to replace'}
+
+          {/* Rotate */}
+          <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border bg-slate-50">
+            <span className="text-xs font-semibold text-muted-foreground mr-1">Rotate:</span>
+            <button onClick={() => doRotate('left')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
+              {rotating === 'left' ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />} Left 90°
             </button>
-            <input ref={replaceRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
+            <button onClick={() => doRotate('right')} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white hover:bg-muted text-xs font-semibold text-slate-700 disabled:opacity-40 transition-colors">
+              {rotating === 'right' ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} Right 90°
+            </button>
           </div>
-          <div className="flex flex-col gap-1 pt-1">
-            {photo.uploadedByName && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
-            )}
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
+
+          {/* Fields */}
+          <div className="px-5 py-4 flex flex-col gap-3">
+            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2"><AlertCircle size={12} /> {error}</p>}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Caption / Label</label>
+              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. North wall framing"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !busy) doSave(); }} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-semibold text-slate-700">Upload edited version</p>
+              <p className="text-[11px] text-slate-400 leading-snug">Download → mark up → save → upload here to replace.</p>
+              <button type="button" onClick={() => replaceRef.current?.click()} disabled={busy}
+                className="flex items-center gap-2 self-start mt-1 px-3 py-2 border border-border bg-white hover:bg-slate-50 disabled:opacity-40 text-sm font-semibold text-slate-700 rounded-lg transition-colors">
+                {replacing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                {replacing ? 'Replacing…' : 'Choose file to replace'}
+              </button>
+              <input ref={replaceRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { if (e.target.files?.[0]) void doReplace(e.target.files[0]); }} />
+            </div>
+            <div className="flex flex-col gap-1 pt-1">
+              {photo.uploadedByName && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5"><User size={11} className="shrink-0" /> Uploaded by <span className="font-semibold text-slate-700">{photo.uploadedByName}</span></p>
+              )}
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock size={11} className="shrink-0" /> {formatDateTime(photo.createdAt)}</p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border bg-slate-50">
+
+        {/* Footer — always visible */}
+        <div
+          className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border bg-slate-50 shrink-0"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+        >
           <a href={`/api/jobs/${photo.jobId}/photos/${photo.id}/download`} download={photo.originalName ?? photo.filename}
             className="flex items-center gap-1.5 px-4 py-2 border border-border bg-white hover:bg-muted text-sm font-semibold text-slate-600 rounded-lg transition-colors">
             <Download size={13} /> Download
