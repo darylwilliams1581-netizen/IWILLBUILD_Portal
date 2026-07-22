@@ -10,13 +10,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Camera, Car, FileText, StickyNote, BookOpen,
-  Clock, TrendingUp, Calculator, Receipt, Users,
-  HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
-  Building2, Layers, Settings, CreditCard, Wrench,
-  ShieldCheck, LayoutDashboard, X, ChevronUp, ChevronRight, LogOut,
-  User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
-  HardHat as HardHatIcon, Navigation, ClipboardCheck, Ruler, ClipboardList,
-  History, ShieldAlert,
+  Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
+  Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
+  LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -34,6 +30,7 @@ import NotificationBell from '@/components/NotificationBell';
 import {
   resolveHomeIcons, type HomeIconDef,
 } from '@/lib/homeIcons';
+import MobileTabBar from '@/components/MobileTabBar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2002,7 +1999,7 @@ export default function HomeScreen() {
       {/* HomeIconGrid is always rendered (SSR + client) with the same icon list
           so React never adds/removes child nodes during hydration — that mismatch
           is what triggers the sos-shim patchedRemoveChild NotFoundError. */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(80px + max(env(safe-area-inset-bottom), 4px))' }}>
         <HomeIconGrid
           iconPermissions={iconPermissions}
           role={role ?? ''}
@@ -2075,6 +2072,12 @@ export default function HomeScreen() {
       <SitePrestartJobPickerSheet open={sitePrestartPickerOpen} onClose={() => setSitePrestartPickerOpen(false)} />
       <RiskyJobPickerSheet open={riskyPickerOpen} onClose={() => setRiskyPickerOpen(false)} />
       </div>{/* end z-10 content wrapper */}
+
+      {/* ── Mobile tab bar ── */}
+      <MobileTabBar
+        onCameraPress={() => setCameraPickerOpen(true)}
+        onSignInPress={() => setSignInOutOpen(true)}
+      />
     </div>
   );
 }

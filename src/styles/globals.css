@@ -110,11 +110,21 @@
   }
 }
 
+/* ── Global box-sizing reset ─────────────────────────────────────────────────
+   Ensures padding and borders are included in element widths.
+   Prevents any element from accidentally exceeding its container width.
+*/
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 /* Unless told otherwise, keep it for smooth scrolling */
 html {
   scroll-behavior: smooth;
   /* Prevent horizontal overflow at the root */
   overflow-x: hidden;
+  /* Hard cap — nothing can be wider than the viewport */
+  max-width: 100vw;
   /* ── Fix min-h-screen on iOS Safari ─────────────────────────────────────
      100vh on iOS Safari = full screen height INCLUDING the area behind the
      status bar and home indicator. 100dvh = the actual visible viewport.
@@ -142,9 +152,104 @@ html {
 */
 body {
   overflow-x: hidden;
+  max-width: 100vw;
   /* Safe-area insets for notched phones (iPhone X+) */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* ── Universal width cap ─────────────────────────────────────────────────────
+   Every element is capped at 100% of its container.
+   This is the single most effective rule to stop horizontal overflow.
+   Exceptions (images, tables, canvas) are handled below.
+*/
+img, video, svg, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Table overflow containment ──────────────────────────────────────────────
+   Tables with many columns will overflow on mobile. Wrap them in a
+   horizontally-scrollable container rather than breaking the page layout.
+   Any element with class .table-scroll-wrap gets this treatment.
+   Direct <table> elements inside .portal-content also get it automatically.
+*/
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Ensure tables inside portal-content scroll horizontally, not the page */
+.portal-content table {
+  min-width: max-content;
+}
+.portal-content > .overflow-x-auto,
+.portal-content > div > .overflow-x-auto {
+  max-width: 100%;
+}
+
+/* ── Form field mobile stacking ──────────────────────────────────────────────
+   .form-row: a flex row that stacks vertically on mobile.
+   .form-grid-2: a 2-column grid that collapses to 1 column on mobile.
+   .form-grid-3: a 3-column grid that collapses to 1 column on mobile.
+*/
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.form-row > * {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Toolbar / button-group wrapping ─────────────────────────────────────────
+   .btn-toolbar: a flex row of buttons that wraps on mobile.
+   Prevents toolbars from overflowing the viewport width.
+*/
+.btn-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Modal / drawer mobile containment ───────────────────────────────────────
+   Radix Dialog and Sheet components use data attributes.
+   Ensure they never exceed the viewport on small screens.
+*/
+[data-radix-dialog-content],
+[data-radix-alert-dialog-content] {
+  max-width: min(calc(100vw - 2rem), 32rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  [data-radix-dialog-content],
+  [data-radix-alert-dialog-content] {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
 }
 
 /* ── iOS safe-area top inset ────────────────────────────────────────────────
@@ -154,6 +259,46 @@ body {
    max(var(--safe-top), 12px) ensures desktop gets a minimum 12px top padding. */
 .safe-top {
   padding-top: max(var(--safe-top), 12px);
+}
+
+/* ── Mobile page-level overflow guard ───────────────────────────────────────
+   Any page wrapper that uses .mobile-page-wrap will be constrained to the
+   viewport width and will not cause horizontal scroll.
+*/
+.mobile-page-wrap {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ── Card / panel width cap ──────────────────────────────────────────────────
+   Cards, panels, and form containers should never exceed the viewport.
+   This prevents fixed-width desktop cards from overflowing on mobile.
+*/
+@media (max-width: 640px) {
+  .card-mobile-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* ── Input / select / textarea width cap ────────────────────────────────────
+   Prevent form fields from overflowing their container on mobile.
+*/
+input, select, textarea {
+  max-width: 100%;
+}
+
+/* ── Flex children overflow guard ───────────────────────────────────────────
+   Flex children with text content must have min-width: 0 to allow truncation.
+   This is the most common cause of flex containers overflowing on mobile.
+   Applied globally so developers don't need to remember it.
+*/
+.flex > * {
+  min-width: 0;
 }
 
 /* ── Portal layout helpers ───────────────────────────────────────────────────
@@ -178,11 +323,11 @@ body {
   min-height: 0;           /* allow flex children to shrink below content size */
 }
 
-/* On mobile, reserve space at the bottom for the fixed tab bar (~56px bar + safe area).
+/* On mobile, reserve space at the bottom for the fixed tab bar (~64px bar + safe area).
    The top strip is rendered inside portal-main so no top padding needed here. */
 @media (max-width: 767px) {
   .portal-main {
-    padding-bottom: calc(56px + var(--safe-bottom));
+    padding-bottom: calc(64px + var(--safe-bottom));
   }
 }
 

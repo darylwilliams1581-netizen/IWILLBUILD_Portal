@@ -7,7 +7,7 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-
+  Camera,
   LogOut,
   Settings,
   FolderOpen,
@@ -26,8 +26,6 @@ import {
   Calculator,
   UserCircle,
   MoreHorizontal,
-  Smartphone,
-
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -142,7 +140,6 @@ function SidebarContent({
   onToggle?: () => void;
 }) {
   const location  = useLocation();
-  const navigate  = useNavigate();
   const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
   const subInfo   = useSubscriptionStatus();
   const { workPlural } = useTerminology();
@@ -220,7 +217,7 @@ function SidebarContent({
 
       {/* ── Main nav ── */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((item) => {
-          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
+          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey as any)) return null;
           if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
@@ -476,17 +473,16 @@ function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
 }
 
 // ─── Mobile bottom tab bar ────────────────────────────────────────────────────
-// Shown only on mobile (<768px). Provides one-thumb access to primary routes.
-// "More" opens the full sidebar drawer.
+// Shown only on mobile (<768px). Field-first: Home, Jobs, Camera, Sign In, More.
+// "More" opens the full sidebar drawer for access to all portal pages.
 const MOBILE_TAB_ITEMS = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
-  { label: 'Forms',     icon: Layers,          href: '/forms' },
-  { label: 'Safety',    icon: ShieldCheck,     href: '/safety' },
+  { label: 'Home',  icon: LayoutDashboard, href: '/home' },
+  { label: 'Jobs',  icon: HardHat,         href: '/jobs' },
 ] as const;
 
 function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (href: string) => {
     if (href.includes('?')) {
@@ -499,19 +495,20 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
       }
       return true;
     }
-    if (href === '/studio') {
-      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
-    }
     return location.pathname === href || location.pathname.startsWith(href + '/');
   };
 
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      aria-label="Mobile navigation"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        boxShadow: '0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.06)',
+      }}
+      aria-label="Field navigation"
     >
       <div className="flex items-stretch">
+        {/* Home + Jobs tabs */}
         {MOBILE_TAB_ITEMS.map((item) => {
           const Icon   = item.icon;
           const active = isActive(item.href);
@@ -519,38 +516,62 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
             <Link
               key={item.href}
               to={item.href}
-              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
               style={{
                 color: active ? '#f97316' : 'rgba(0,0,0,0.4)',
                 WebkitTapHighlightColor: 'transparent',
               }}
               aria-current={active ? 'page' : undefined}
             >
-              {active && (
-                <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
-                  aria-hidden="true"
-                />
-              )}
-              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: '0.01em',
-                  lineHeight: 1,
-                }}
-              >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, letterSpacing: '0.01em', lineHeight: 1 }}>
                 {item.label}
               </span>
+              {active && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-500" aria-hidden="true" />
+              )}
             </Link>
           );
         })}
 
+        {/* Camera — raised orange FAB */}
+        <button
+          onClick={() => navigate('/jobs')}
+          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px]"
+          style={{ WebkitTapHighlightColor: 'transparent', background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Camera"
+        >
+          <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg -mt-5 border-4 border-white">
+            <Camera size={22} className="text-white" strokeWidth={2} />
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1, color: '#f97316', marginTop: 2 }}>
+            Camera
+          </span>
+        </button>
+
+        {/* Safety */}
+        <Link
+          to="/safety"
+          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
+          style={{
+            color: isActive('/safety') ? '#f97316' : 'rgba(0,0,0,0.4)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          aria-current={isActive('/safety') ? 'page' : undefined}
+        >
+          <ShieldCheck size={22} strokeWidth={isActive('/safety') ? 2.2 : 1.8} />
+          <span style={{ fontSize: 10, fontWeight: isActive('/safety') ? 700 : 500, letterSpacing: '0.01em', lineHeight: 1 }}>
+            Safety
+          </span>
+          {isActive('/safety') && (
+            <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-500" aria-hidden="true" />
+          )}
+        </Link>
+
         {/* More — opens full sidebar drawer */}
         <button
           onClick={onMoreClick}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
           style={{
             color: 'rgba(0,0,0,0.4)',
             background: 'none',
@@ -560,10 +581,8 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           } as React.CSSProperties}
           aria-label="More navigation options"
         >
-          <MoreHorizontal size={20} strokeWidth={1.8} />
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>
-            More
-          </span>
+          <MoreHorizontal size={22} strokeWidth={1.8} />
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>More</span>
         </button>
       </div>
     </nav>
