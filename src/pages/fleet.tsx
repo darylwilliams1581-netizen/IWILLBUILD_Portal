@@ -88,7 +88,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-heading font-bold text-base">New Fleet Asset</h2>

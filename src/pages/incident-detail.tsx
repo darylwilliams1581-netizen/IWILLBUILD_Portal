@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import {
   INCIDENT_TYPES, SEVERITY_OPTIONS, STATUS_OPTIONS,
-  severityBadge, statusBadge,
+  statusBadge,
   type Incident,
 } from './incidents';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
@@ -440,7 +440,7 @@ export default function IncidentDetailPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex flex-col min-h-dvh bg-slate-50">
         {/* Header */}
         <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}
@@ -1022,7 +1022,9 @@ export default function IncidentDetailPage() {
       {/* Close modal */}
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
             <h3 className="font-bold text-slate-800">Close Incident</h3>
             <p className="text-sm text-slate-500">This will mark the incident as closed. This action cannot be undone.</p>
             <div>

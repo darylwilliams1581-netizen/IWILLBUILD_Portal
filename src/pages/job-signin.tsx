@@ -241,6 +241,13 @@ export default function JobSignInPage() {
                 <p className="text-xs text-slate-400 mt-2">
                   {new Date().toLocaleString('en-AU')}
                 </p>
+                {/* Give authenticated users a way back — QR pages have no nav bar */}
+                <a
+                  href="/home"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2"
+                >
+                  Go to portal home
+                </a>
               </div>
             )}
 
@@ -255,6 +262,12 @@ export default function JobSignInPage() {
                 <p className="text-xs text-slate-400 mt-1">
                   If this QR code has expired, please ask for a new one to be generated.
                 </p>
+                <a
+                  href="/home"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-800 underline underline-offset-2"
+                >
+                  Go to portal home
+                </a>
               </div>
             )}
 

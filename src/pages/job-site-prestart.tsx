@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Plus, CheckCircle2,
   AlertTriangle, Loader2, ClipboardCheck, Users, FileText,
   Pen, X, Check, Printer, HardHat, Shield, Info,
-  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays,
+  ChevronRight, Clock, CloudRain, Wrench, Phone, CalendarDays, Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -489,7 +489,7 @@ function WorkerSignOnScreen({ prestart, workers, onWorkerAdded, onClose }: {
     setSubmitting(true);
     setError('');
     try {
-      const r = await fetch(`/api/jobs/${prestart.job_id ?? jobId}/site-prestarts/${prestart.id}/workers`, {
+      const r = await fetch(`/api/jobs/${prestart.job_id}/site-prestarts/${prestart.id}/workers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -809,7 +809,7 @@ export default function JobSitePrestartPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-dvh bg-slate-50">
         {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
           <div className="flex items-center gap-3 px-4 pt-3 pb-3">
@@ -819,12 +819,15 @@ export default function JobSitePrestartPage() {
                 else navigate(returnTo);
               }}
               className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+              aria-label="Back"
             >
               <ChevronLeft size={20} className="text-slate-600" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="font-bold text-slate-900 text-base leading-tight">Site Prestart</h1>
-              <p className="text-xs text-slate-500">Daily site safety briefing</p>
+              <h1 className="font-bold text-slate-900 text-base leading-tight truncate">Site Prestart</h1>
+              <p className="text-xs text-slate-500 truncate">
+                {prestart?.job_name ?? 'Daily site safety briefing'}
+              </p>
             </div>
             {view === 'form' && prestart && (
               <div className="flex items-center gap-2">
@@ -847,6 +850,12 @@ export default function JobSitePrestartPage() {
                       icon: <Printer size={15} />,
                       onSelect: printPrestart,
                       disabled: prestart.status !== 'finalised',
+                    },
+                    {
+                      label: 'Home',
+                      icon: <ChevronLeft size={15} />,
+                      onSelect: () => navigate('/home'),
+                      dividerAbove: true,
                     },
                   ]}
                 />
@@ -1268,7 +1277,9 @@ export default function JobSitePrestartPage() {
               {/* Finalise confirm */}
               {showFinaliseConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
-                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto"
+                    style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+                  >
                     <h3 className="font-bold text-slate-800">Finalise Prestart?</h3>
                     <p className="text-sm text-slate-600">Once finalised, the briefing content becomes read-only. Workers can still sign on after finalising.</p>
                     {finaliseError && (

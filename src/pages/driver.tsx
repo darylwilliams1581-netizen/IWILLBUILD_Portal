@@ -510,7 +510,7 @@ export default function DriverPage() {
   const [vehiclesLoading, setVehiclesLoading]   = useState(false);
   const [starting, setStarting]                 = useState(false);
   const [stopping, setStopping]                 = useState(false);
-  const [showStopConfirm, setShowStopConfirm]   = useState(false);
+
   const [actionError, setActionError]           = useState('');
   const [showBuildersCalc, setShowBuildersCalc] = useState(false);
   const [showTakeoffPad, setShowTakeoffPad]     = useState(false);
@@ -610,7 +610,6 @@ export default function DriverPage() {
     try {
       await stopSession(session.id);
       void hapticSuccess();
-      setShowStopConfirm(false);
       navigate('/home');
     } catch {
       setActionError('Failed to end session — please try again');
@@ -631,7 +630,7 @@ export default function DriverPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-dvh bg-gray-50 flex flex-col">
         <h1 className="sr-only">Drive — IWILLBUILD</h1>
 
         {/* ── Top bar ── */}
@@ -902,7 +901,8 @@ export default function DriverPage() {
               <span className="text-base">Launch</span>
             </Link>
 
-            <div className="h-8" />
+            {/* Bottom spacer — ensures last card clears MobileTabBar on iPhone */}
+            <div className="h-24" />
           </div>
         </div>
       </div>

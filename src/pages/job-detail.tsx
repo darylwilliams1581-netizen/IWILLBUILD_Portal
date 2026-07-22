@@ -303,7 +303,7 @@ export default function JobDetailPage() {
   const activeNavItem = ALL_NAV_ITEMS.find((i) => i.key === activeTab);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-dvh bg-gray-50 flex flex-col">
       <Helmet>
         <title>{job ? `${job.jobNumber ?? job.name} — IWILLBUILD` : 'Job — IWILLBUILD'}</title>
         <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWILLBUILD Portal'} />
@@ -607,7 +607,8 @@ export default function JobDetailPage() {
                 </aside>
 
                 {/* ── Content area ── */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-16 min-w-0">
+                {/* pb-24 on mobile reserves space above MobileTabBar (~64px bar + safe area) */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 min-w-0">
 
                   {/* Save error */}
                   {saveError && (

@@ -867,7 +867,6 @@ export default function JobRiskyPage() {
     const sigCount = activeAssessment.signatures?.length ?? 0;
     const hasSupervisorSig = Boolean(activeAssessment.permit_supervisor_signature);
     const permitRequired = form.permitRequired === true;
-    const permitRequiredNo = form.permitRequired === false;
 
     // Can finalise when:
     // - At least one party has signed
@@ -883,7 +882,7 @@ export default function JobRiskyPage() {
           <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
           <meta name="robots" content="noindex, nofollow" />
         </Helmet>
-        <div className="flex flex-col min-h-screen bg-slate-50">
+        <div className="flex flex-col min-h-dvh bg-slate-50">
           {/* Header */}
           <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
             <button
@@ -1295,7 +1294,7 @@ export default function JobRiskyPage() {
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/risky`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex flex-col min-h-dvh bg-slate-50">
         <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
           <button
             type="button"

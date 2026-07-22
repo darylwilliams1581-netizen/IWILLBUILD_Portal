@@ -580,6 +580,31 @@ input, select, textarea {
   }
 }
 
+/* ── Modal height — dvh upgrade ──────────────────────────────────────────────
+   Tailwind's max-h-[90vh] / max-h-[80vh] use vh, which on iOS Safari includes
+   the area behind the browser chrome (address bar + home indicator).
+   This means modals can be taller than the visible viewport and their bottom
+   buttons end up hidden behind the browser chrome.
+
+   We override these with dvh (dynamic viewport height) which tracks the
+   actual visible area. The @supports guard ensures we only apply this on
+   browsers that support dvh (Safari 16+, Chrome 108+, Firefox 116+).
+   Older browsers keep the vh fallback — acceptable since they don't have
+   the iOS Safari chrome-overlap problem.
+
+   We target the most common patterns used in this app:
+   - max-h-[90vh]  → max-h-[90dvh]
+   - max-h-[80vh]  → max-h-[80dvh]
+   - max-h-[85vh]  → max-h-[85dvh]
+   - max-h-[95vh]  → max-h-[95dvh]
+*/
+@supports (max-height: 1dvh) {
+  .max-h-\[90vh\] { max-height: 90dvh; }
+  .max-h-\[80vh\] { max-height: 80dvh; }
+  .max-h-\[85vh\] { max-height: 85dvh; }
+  .max-h-\[95vh\] { max-height: 95dvh; }
+}
+
 /* ── Studio Document Builder — Print styles ──────────────────────────────────
    When the user clicks Print inside the Document Builder, only the document
    canvas (.studio-doc-page) should appear. Everything else is hidden.
