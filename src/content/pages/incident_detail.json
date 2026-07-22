@@ -1,0 +1,10 @@
+{
+  "THIRD_PARTY_ROLES": [
+    "Client",
+    "Subcontractor",
+    "Supplier",
+    "Member of public",
+    "Authority/inspector",
+    "Other"
+  ]
+}

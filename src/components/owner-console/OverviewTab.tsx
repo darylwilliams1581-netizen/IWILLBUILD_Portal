@@ -1,0 +1,233 @@
+import { Building2, Users, UserCheck, UserX, Clock, Wifi, LogIn, ChevronRight, Activity, ShieldAlert, Loader2, ExternalLink, BookOpen, Mail } from 'lucide-react';
+
+interface Stats {
+  totalCompanies: number;
+  totalUsers: number;
+  activeUsers: number;
+  invitedUsers: number;
+  inactiveUsers: number;
+  onlineNow: number;
+  loginsToday: number;
+}
+
+interface Company {
+  id: number;
+  name: string;
+  owner: string;
+  totalUsers: number;
+  activeUsers: number;
+  createdAt: string;
+  status: string;
+}
+
+interface ActivityEvent {
+  id: number;
+  userId: string;
+  companyId: number;
+  eventType: string;
+  metadataJson: string | null;
+  createdAt: string;
+  userName: string | null;
+  userEmail: string | null;
+}
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function eventBadge(type: string): string {
+  if (type === 'login_success' || type === 'login') return 'bg-emerald-50 text-emerald-700';
+  if (type === 'logout') return 'bg-slate-100 text-slate-600';
+  if (type.includes('fail') || type.includes('block')) return 'bg-red-50 text-red-600';
+  return 'bg-blue-50 text-blue-600';
+}
+
+function StatCard({ label, value, icon: Icon, color, sub }: {
+  label: string; value: number; icon: React.ElementType; color: string; sub?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+          <Icon size={16} />
+        </div>
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
+      </div>
+      <p className="text-2xl font-black text-slate-900">{value.toLocaleString()}</p>
+      {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+interface Props {
+  stats: Stats | null;
+  companies: Company[];
+  activity: ActivityEvent[];
+  enteringSupport: number | null;
+  onEnterSupport: (c: Company) => Promise<void>;
+  onViewCompanies: () => void;
+  onViewActivity: () => void;
+}
+
+export default function OverviewTab({ stats, companies, activity, enteringSupport, onEnterSupport, onViewCompanies, onViewActivity }: Props) {
+  return (
+    <div className="flex flex-col gap-6 max-w-5xl">
+      {/* GoDaddy Dev Dashboard shortcut */}
+      <a
+        href="https://dashboard.godaddy.com/venture?ventureId=97327aea-9a8c-4bb2-bad7-3bd8ec50d6c6&ua_placement=shared_header"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-[#1BDBAD]/10 border border-[#1BDBAD]/30 flex items-center justify-center shrink-0">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 3C8.82 3 3 8.82 3 16s5.82 13 13 13 13-5.82 13-13S23.18 3 16 3zm0 23.4A10.4 10.4 0 1 1 16 5.6a10.4 10.4 0 0 1 0 20.8z" fill="#1BDBAD"/>
+            <path d="M16 10.4a5.6 5.6 0 1 0 0 11.2A5.6 5.6 0 0 0 16 10.4z" fill="#1BDBAD"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">GoDaddy Developer Dashboard</p>
+          <p className="text-xs text-slate-400 truncate">Open the IWILLBUILD Portal development workspace</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
+      {/* Google Cloud Console shortcut */}
+      <a
+        href="https://console.cloud.google.com/apis/credentials?project=project-8f83830f-523d-4461-a2a"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#4285F4"/>
+            <path d="M17.6 12.2c0-.4-.04-.8-.1-1.2H12v2.3h3.1c-.1.8-.6 1.5-1.3 1.9v1.6h2.1c1.2-1.1 1.9-2.8 1.9-4.6z" fill="#fff"/>
+            <path d="M12 18c1.6 0 2.9-.5 3.9-1.4l-2.1-1.6c-.5.4-1.1.6-1.8.6-1.4 0-2.6-.9-3-2.2H6.8v1.7C7.8 16.9 9.8 18 12 18z" fill="#fff"/>
+            <path d="M9 13.4c-.1-.4-.2-.8-.2-1.4s.1-1 .2-1.4V8.9H6.8C6.3 9.8 6 10.9 6 12s.3 2.2.8 3.1L9 13.4z" fill="#fff"/>
+            <path d="M12 8.6c.8 0 1.5.3 2 .8l1.5-1.5C14.9 7 13.6 6.4 12 6.4c-2.2 0-4.2 1.1-5.2 2.8l2.2 1.7c.4-1.3 1.6-2.3 3-2.3z" fill="#fff"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">Google Cloud Console</p>
+          <p className="text-xs text-slate-400 truncate">Manage API keys, Maps credentials & billing</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
+      {/* System Map shortcut */}
+      <a
+        href="/owner-console?tab=health-check"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+          <BookOpen size={18} className="text-violet-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">System Map / Product Bible</p>
+          <p className="text-xs text-slate-400 truncate">Full platform architecture, modules, permissions, DB schema, API reference</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
+      {/* Support Email shortcut */}
+      <a
+        href="https://sso.godaddy.com/login?domain=iwillbuild.com&realm=pass&app=o365&client-request-id=d9b6abfa-6b11-af49-1da1-0d3c288edc32&wa=wsignin1.0&wtrealm=urn%3Afederation%3AMicrosoftOnline&wctx=LoginOptions%3D3%26estsredirect%3D2%26estsrequest%3DrQQIARAAjZJPbNtUAMbtus0y061pkAZCQoqigaaBHT8nTuxolciSLnVImrZqmj8IRY793Dh-9nP9nps2o1e0E9oRceLPLRw27TBgXNi1px5HtcOGOPUy4FQ4TCjabRISl0_fJ336Dj99fEwRgSxK1zlZlIpXNaBpA1uWBANkbSEHpIKgKpYpSDIAuYJagHZODZN84p_vH_667Or33v3m0o1rXzyVp-x7Q0oDUsxkcEQRxq5oIhxZoueYISbYphnPcFDmR5Y9Ydnp3FUJaLaakxVBtgxNKNi2JhhAVYS8VChoqpRXZEs-nVtqliI6lGeCQ2cCz-YuE4igSfuGaeLIp3_Nxe3Q2PWgT7_ivmPhYS3olfW8PiodNNvd3HpFB_Xtmtvddum6vDPslcGwK7fG9XZr0vBuuc3KZrZZ0Sc9Rye6B5BVXXWaPnGMtiL1OrVhN7sVDGSlBTs3kT7CjuntuEanhrrZTcfuSCufGWtbkrnWyNcPtX2rs0UGshbWvXUyyO64dQ8E3Wxt35Q1zyprtNtGpD6ecu-8TgrbtmNC0cTeAy5mYs_D_jFX-u9WRrSgbUSIpnAAfcdKBSG2HQRT2LaR48MZHEjIE479jbtCoiDAIf3IGTsIDSIHWbOJk3n2bP5KfCGx-DaTYq69L3HFeJxPMLN0Ps9-u5DkE_QG9_Pf9x5WfnjB_fnyyVvM8UKGFg6lbOUgGue9WlPVA7BRJR_7290sbe0F40lZ0XdKoF6QGjZZUYvgboy9G3vzQexinEswaa68AY5jSx4xkDgi4iDEYwLDP2LsnQvMo4v_7z9f8uyU_2DS3AxJ61AH_bEyzsOyPhl2dvdaaxDcNISB71aFgjJQ-xDv4fs8e_IGe7q4yF8wkWMZ1Eiy4HRR5WMmMhyPJMXb6Ve4-hS70E8Xb6cPPNI3zZnbN1AESbr4Sbq8AdKfHh0d_XKJOb_8--PPv375_KcXa2dLH8q0Vs1WzaqkNohNLXeUu1VqT-hud6PdBKNar7m_Gh1sNral1fHK_QTzLME8W2bOl1N3ksw0yYJ_AQ2&cbcxt=&username=support%40iwillbuild.com&mkt=&lc=&status=5"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+          <Mail size={18} className="text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">Support Email</p>
+          <p className="text-xs text-slate-400 truncate">Sign in to support@iwillbuild.com inbox</p>
+        </div>
+        <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
+      </a>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <StatCard label="Total Companies" value={stats?.totalCompanies ?? 0} icon={Building2} color="bg-blue-50 text-blue-600" />
+        <StatCard label="Total Users" value={stats?.totalUsers ?? 0} icon={Users} color="bg-slate-100 text-slate-600" />
+        <StatCard label="Active Users" value={stats?.activeUsers ?? 0} icon={UserCheck} color="bg-green-50 text-green-600" />
+        <StatCard label="Invited" value={stats?.invitedUsers ?? 0} icon={Clock} color="bg-amber-50 text-amber-600" />
+        <StatCard label="Inactive" value={stats?.inactiveUsers ?? 0} icon={UserX} color="bg-red-50 text-red-500" />
+        <StatCard label="Online Now" value={stats?.onlineNow ?? 0} icon={Wifi} color="bg-emerald-50 text-emerald-600" sub="Active in last 5 min" />
+        <StatCard label="Logins Today" value={stats?.loginsToday ?? 0} icon={LogIn} color="bg-primary/10 text-primary" />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="font-bold text-slate-800">Companies</h2>
+          <button onClick={onViewCompanies} className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
+            View all <ChevronRight size={12} />
+          </button>
+        </div>
+        {companies.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">No companies found</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {companies.slice(0, 5).map((c) => (
+              <div key={c.id} className="px-5 py-3 flex items-center gap-4">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                  <Building2 size={14} className="text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                  <p className="text-xs text-slate-400">Owner: {c.owner}</p>
+                </div>
+                <div className="text-right shrink-0 mr-3">
+                  <p className="text-sm font-bold text-slate-700">{c.totalUsers}</p>
+                  <p className="text-[11px] text-slate-400">users</p>
+                </div>
+                <button
+                  onClick={() => void onEnterSupport(c)}
+                  disabled={enteringSupport === c.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {enteringSupport === c.id ? <Loader2 size={11} className="animate-spin" /> : <ShieldAlert size={11} />}
+                  Support
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="font-bold text-slate-800">Recent Activity</h2>
+          <button onClick={onViewActivity} className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
+            View all <ChevronRight size={12} />
+          </button>
+        </div>
+        {activity.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">No activity recorded yet.</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {activity.slice(0, 8).map((e) => (
+              <div key={e.id} className="px-5 py-3 flex items-center gap-3">
+                <Activity size={13} className="text-slate-300 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700 truncate">
+                    <span className="font-semibold">{e.userName ?? e.userEmail ?? e.userId}</span>
+                  </p>
+                </div>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${eventBadge(e.eventType)}`}>{e.eventType}</span>
+                <span className="text-[11px] text-slate-400 shrink-0">{timeAgo(e.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

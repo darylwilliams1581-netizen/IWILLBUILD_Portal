@@ -1,0 +1,102 @@
+import type { Request, Response } from 'express';
+import { db } from '../../db/client.js';
+import { estimates, estimateLines, profiles, jobs } from '../../db/schema.js';
+import { eq, and } from 'drizzle-orm';
+import { getAuth } from '../../../lib/auth/auth.js';
+import { ensureDocument, logEvent } from '../../lib/document-engine.js';
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    const auth = getAuth();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.userId, session.user.id),
+    });
+    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    const { jobId, title, status, markupPercent, gstMode, notes, lines } = req.body as {
+      jobId: number;
+      title: string;
+      status?: string;
+      markupPercent?: string;
+      gstMode?: string;
+      notes?: string;
+      lines?: Array<{ description: string; quantity?: string; unit?: string; rate?: string; lineOrder?: number }>;
+    };
+
+    if (!jobId || !title?.trim()) return res.status(400).json({ error: 'jobId and title required' });
+
+    // Verify job belongs to company
+    const job = await db.query.jobs.findFirst({
+      where: and(eq(jobs.id, jobId), eq(jobs.companyId, profile.companyId)),
+    });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    const now = new Date();
+    const insertValues = {
+      jobId,
+      companyId: profile.companyId,
+      title: title.trim(),
+      status: status ?? 'Draft',
+      markupPercent: markupPercent ?? '0',
+      gstMode: gstMode ?? 'No GST',
+      notes: notes?.trim() ?? null,
+    };
+
+    const [inserted] = await db.insert(estimates).values(insertValues).$returningId();
+
+    // Insert lines if provided (used for duplicate)
+    if (lines && lines.length > 0) {
+      await db.insert(estimateLines).values(
+        lines.map((l, i) => ({
+          estimateId: inserted.id,
+          description: l.description,
+          quantity: l.quantity ?? '1',
+          unit: l.unit ?? null,
+          rate: l.rate ?? '0',
+          lineOrder: l.lineOrder ?? i,
+        }))
+      );
+    }
+
+    // Build the estimate object directly from what we inserted — avoids a
+    // second round-trip that can return undefined under load or on mobile.
+    const estimate = {
+      id: inserted.id,
+      ...insertValues,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    // ── Document Engine: create a document record for this estimate ──
+    try {
+      const docId = await ensureDocument({
+        companyId: profile.companyId,
+        jobId,
+        sourceModule: 'estimate',
+        sourceId: String(inserted.id),
+        documentType: 'estimate',
+        title: `${title.trim()} — ${job.jobNumber ?? `Job #${jobId}`}`,
+        status: (status ?? 'Draft').toLowerCase(),
+        createdByUserId: session.user.id,
+      });
+      await logEvent(docId, profile.companyId, 'created', {
+        eventNote: `Estimate created: ${title.trim()}`,
+        userId: session.user.id,
+      });
+    } catch (docErr) {
+      console.warn('[document-engine] Failed to create document for estimate:', docErr);
+    }
+
+    res.status(201).json({ estimate });
+  } catch (error) {
+    console.error('POST /api/estimates error:', error);
+    res.status(500).json({ error: 'Failed to create estimate' });
+  }
+}

@@ -1,0 +1,575 @@
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  LayoutDashboard,
+  HardHat,
+  Truck,
+  ChevronLeft,
+  ChevronRight,
+
+  LogOut,
+  Settings,
+  FolderOpen,
+  Menu,
+  X,
+  ShieldCheck,
+  CreditCard,
+  AlertTriangle,
+  CalendarDays,
+  Users,
+  Receipt,
+  Bot,
+  Layers,
+  Map,
+  Building2,
+  Calculator,
+  UserCircle,
+  MoreHorizontal,
+  Smartphone,
+
+} from 'lucide-react';
+import { signOut } from '@/lib/auth/auth-client';
+import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
+
+import NotificationBell from '@/components/NotificationBell';
+import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
+import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
+import { invalidateSupportModeCache } from '@/lib/useSupportMode';
+import { useSessionTimeout } from '@/lib/auth/useSessionTimeout';
+import SessionExpiredBanner from '@/components/auth/SessionExpiredBanner';
+
+// ── Trial/subscription status hook ───────────────────────────────────────────
+interface SubInfo {
+  status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'no_company';
+  plan: string;
+  daysLeft: number | null;
+}
+
+function useSubscriptionStatus() {
+  const [info, setInfo] = useState<SubInfo | null>(null);
+  useEffect(() => {
+    fetch('/api/subscription/status', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: SubInfo | null) => { if (d) setInfo(d); })
+      .catch(() => {});
+  }, []);
+  return info;
+}
+
+// ── Nav structure ─────────────────────────────────────────────────────────────
+// Top-level items render as plain links.
+// Items inside a group render under a collapsible dropdown.
+
+interface NavItem {
+  label: string;
+  icon: React.ElementType;
+  href: string;
+  permKey: string | null;
+}
+
+function buildNavEntries(_workPlural: string): NavItem[] {
+  return [
+    { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
+    { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
+    { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
+    { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', permKey: null },
+    { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
+    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
+    { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
+    { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
+    { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
+    { label: 'Customers',    icon: Users,           href: '/customers',            permKey: 'jobs' },
+    { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
+  ];
+}
+
+// ── Manage group ──────────────────────────────────────────────────────────────
+const adminItems = [
+  { label: 'Subscription', icon: CreditCard,  href: '/billing',  adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'Settings',     icon: Settings,    href: '/settings', adminOnly: false, ownerOnly: false, permKey: null as string | null },
+  { label: 'Dazza AI',     icon: Bot,         href: '/dazza-ai', adminOnly: false, ownerOnly: true,  permKey: null as string | null },
+] as const;
+
+// ─── User strip sub-component ─────────────────────────────────────────────────
+function SidebarUserStrip({
+  sessionUser,
+  me,
+  collapsed,
+}: {
+  sessionUser: { name?: string; email?: string } | null;
+  me: import('@/lib/usePermissions').MeData | null;
+  collapsed: boolean;
+}) {
+  const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
+  const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
+  const initial = (displayName || displayEmail || '?')[0].toUpperCase();
+
+  // Only show skeleton on very first load before any data arrives.
+  // Once me or sessionUser is available, always render the real strip.
+  if (!me && !sessionUser) {
+    return (
+      <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5 opacity-40">
+        <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0" />
+        <div className="min-w-0 flex-1"><div className="h-2.5 w-20 bg-gray-200 rounded" /></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5">
+      <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
+        {initial}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-semibold text-gray-800 truncate">{displayName || 'User'}</div>
+        <div className="text-[10px] text-gray-400 truncate">{displayEmail}</div>
+      </div>
+      <NotificationBell collapsed={collapsed} />
+    </div>
+  );
+}
+
+// ─── Shared nav content ───────────────────────────────────────────────────────
+function SidebarContent({
+  collapsed,
+  onClose,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onClose?: () => void;
+  onToggle?: () => void;
+}) {
+  const location  = useLocation();
+  const navigate  = useNavigate();
+  const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
+  const subInfo   = useSubscriptionStatus();
+  const { workPlural } = useTerminology();
+  const navEntries = buildNavEntries(workPlural);
+
+  const isActive = (href: string) => {
+    // Handle query-param tabs like /studio?tab=safety
+    if (href.includes('?')) {
+      const [hPath, hQuery] = href.split('?');
+      const hParams = new URLSearchParams(hQuery);
+      const locParams = new URLSearchParams(location.search);
+      if (location.pathname !== hPath) return false;
+      for (const [k, v] of hParams.entries()) {
+        if (locParams.get(k) !== v) return false;
+      }
+      return true;
+    }
+    // For /studio (no query param), only active when NOT on a tab
+    if (href === '/studio') {
+      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
+    }    return location.pathname === href || location.pathname.startsWith(href + '/');
+  };
+
+  async function handleLogout() {
+    try {
+      invalidateMeCache();
+      invalidateSubscriptionCache();
+      invalidateTerminologyCache();
+      invalidateSupportModeCache();
+      await signOut();
+    } catch {
+      // ignore
+    } finally {
+      window.location.replace('/login');
+    }
+  }
+
+  const linkClass = (active: boolean) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
+      active ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+    }`;
+
+  return (
+    <>
+      {/* ── Logo / header ── */}
+      <div className="flex items-center h-16 px-4 border-b border-gray-200 shrink-0 gap-2">
+        {collapsed ? (
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            className="h-8 w-auto object-contain shrink-0"
+          />
+        ) : (
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            className="h-9 w-auto object-contain shrink-0 flex-1 min-w-0"
+          />
+        )}
+        {onToggle && (
+          <button
+            onClick={onToggle}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="ml-auto w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white hover:bg-orange-600 transition-colors shrink-0"
+          >
+            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          </button>
+        )}
+        {onClose && (
+          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Main nav ── */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">        {navEntries.map((item) => {
+          if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey)) return null;
+          if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
+          const Icon  = item.icon;
+          const active = isActive(item.href);
+          const isDazza = item.href === '/dazza-ai';
+
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={onClose}
+              title={collapsed ? item.label : undefined}
+              className={
+                isDazza
+                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
+                  : linkClass(active)
+              }
+            >
+              <Icon size={17} className="shrink-0" />
+              {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
+              {collapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                  {item.label}
+                </div>
+              )}
+            </Link>
+          );
+        })}
+
+        {/* ── Admin group ── */}
+        <div className="mt-3">
+          {!collapsed && (
+            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 select-none">
+              Manage
+            </p>
+          )}
+          {collapsed && <div className="mx-3 border-t border-gray-200 mb-2" />}
+
+          {adminItems.map((item) => {
+            if (!permsLoading && item.adminOnly && !isAdmin) return null;
+            // ownerOnly items: hide until permissions resolve, then hide if not platform owner
+            if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
+            const Icon   = item.icon;
+            const active = isActive(item.href);
+            const isDazza = item.href === '/dazza-ai';
+            return (
+              <div key={item.href}>
+                <Link
+                  to={item.href}
+                  onClick={onClose}
+                  title={collapsed ? item.label : undefined}
+                  className={
+                    isDazza
+                      ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
+                      : linkClass(active)
+                  }
+                >
+                  <Icon size={17} className="shrink-0" />
+                  {!collapsed && <span className="text-sm font-semibold truncate flex-1">{item.label}</span>}
+                  {collapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                      {item.label}
+                    </div>
+                  )}
+                </Link>
+              </div>
+            );
+          })}
+
+          {/* Developer Console — platform developer only (NOT company admin/owner) */}
+          {/* Show once loaded and confirmed as platform developer; hide once loaded and confirmed NOT */}
+          {(permsLoading || isPlatformOwner) && (() => {
+            if (!permsLoading && !isPlatformOwner) return null;
+            const active = isActive('/owner-console');
+            return (
+              <Link
+                to="/owner-console"
+                onClick={onClose}
+                title={collapsed ? 'Developer Console' : undefined}
+                className={`${linkClass(active)} border border-orange-300`}
+              >
+                <ShieldCheck size={17} className="shrink-0 text-orange-500" />
+                {!collapsed && <span className="text-sm font-semibold truncate flex-1 text-orange-600">Developer Console</span>}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+                    Developer Console
+                  </div>
+                )}
+              </Link>
+            );
+          })()}
+        </div>
+      </nav>
+
+      {/* ── Divider ── */}
+      <div className="mx-3 border-t border-gray-200" />
+
+      {/* ── Bottom strip ── */}
+      <div className="py-3 px-2 flex flex-col gap-0.5">
+        <button
+          onClick={handleLogout}
+          title={collapsed ? 'Log out' : undefined}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150 group relative w-full"
+        >
+          <LogOut size={17} className="shrink-0" />
+          {!collapsed && <span className="text-sm font-semibold">Log out</span>}
+          {collapsed && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150">
+              Log out
+            </div>
+          )}
+        </button>
+
+        {/* Trial / subscription banner */}
+        {subInfo && !isOwner && subInfo.status !== 'active' && (
+          <Link
+            to="/billing"
+            className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
+              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
+                ? 'bg-red-50 hover:bg-red-100 border border-red-200'
+                : (subInfo.daysLeft ?? 14) <= 5
+                ? 'bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            {subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
+              ? <AlertTriangle size={13} className="text-red-500 shrink-0" />
+              : <CreditCard size={13} className="text-amber-500 shrink-0" />
+            }
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                {subInfo.status === 'trial_expired' ? (
+                  <p className="text-xs font-bold text-red-600">Trial expired</p>
+                ) : subInfo.status === 'cancelled' ? (
+                  <p className="text-xs font-bold text-red-600">Subscription cancelled</p>
+                ) : subInfo.status === 'past_due' ? (
+                  <p className="text-xs text-red-600 font-bold">Payment past due</p>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-amber-600">Free trial</p>
+                    <p className="text-[10px] text-gray-500">
+                      {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </Link>
+        )}
+
+        {/* User strip */}
+        {!collapsed && <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />}
+        {collapsed && (
+          <div className="flex justify-center mt-1">
+            <NotificationBell collapsed={collapsed} />
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Mobile hamburger button (exported for use in page top bars) ──────────────
+export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
+      aria-label="Open menu"
+    >
+      <Menu size={20} />
+    </button>
+  );
+}
+
+// ─── Main export ─────────────────────────────────────────────────────────────
+export default function PortalSidebar() {
+  const [collapsed, setCollapsed]   = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location    = useLocation();
+
+  // ── Session timeout enforcement ───────────────────────────────────────────
+  const { isExpired } = useSessionTimeout();
+
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMobileOpen(false); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <>
+      {/* ── Session expired banner (shown above everything) ── */}
+      {isExpired && <SessionExpiredBanner />}
+
+      {/* ── Desktop sidebar ── */}
+      <motion.aside
+        animate={{ width: collapsed ? 72 : 240 }}
+        transition={{ duration: 0.2, ease: 'easeInOut' as const }}
+        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-200 shrink-0 overflow-hidden"
+        style={{ minWidth: collapsed ? 72 : 240 }}
+      >
+        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+      </motion.aside>
+
+      {/* ── Mobile overlay drawer (full sidebar, opened via More or hamburger) ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            />
+            <motion.aside
+              key="drawer"
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.25, ease: 'easeOut' as const }}
+              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+              <SidebarContent collapsed={false} onClose={() => setMobileOpen(false)} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile bottom tab bar ── */}
+      <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
+
+      <MobileMenuTrigger onOpen={() => setMobileOpen(true)} />
+    </>
+  );
+}
+
+// Listens for the custom event dispatched by MobileMenuButton in page top bars
+function MobileMenuTrigger({ onOpen }: { onOpen: () => void }) {
+  useEffect(() => {
+    const handler = () => onOpen();
+    window.addEventListener('portal:open-menu', handler);
+    return () => window.removeEventListener('portal:open-menu', handler);
+  }, [onOpen]);
+  return null;
+}
+
+// ─── Mobile bottom tab bar ────────────────────────────────────────────────────
+// Shown only on mobile (<768px). Provides one-thumb access to primary routes.
+// "More" opens the full sidebar drawer.
+const MOBILE_TAB_ITEMS = [
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'Jobs',      icon: HardHat,         href: '/jobs' },
+  { label: 'Forms',     icon: Layers,          href: '/forms' },
+  { label: 'Safety',    icon: ShieldCheck,     href: '/safety' },
+] as const;
+
+function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
+  const location = useLocation();
+
+  const isActive = (href: string) => {
+    if (href.includes('?')) {
+      const [hPath, hQuery] = href.split('?');
+      const hParams = new URLSearchParams(hQuery);
+      const locParams = new URLSearchParams(location.search);
+      if (location.pathname !== hPath) return false;
+      for (const [k, v] of hParams.entries()) {
+        if (locParams.get(k) !== v) return false;
+      }
+      return true;
+    }
+    if (href === '/studio') {
+      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
+    }
+    return location.pathname === href || location.pathname.startsWith(href + '/');
+  };
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      aria-label="Mobile navigation"
+    >
+      <div className="flex items-stretch">
+        {MOBILE_TAB_ITEMS.map((item) => {
+          const Icon   = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+              style={{
+                color: active ? '#f97316' : 'rgba(0,0,0,0.4)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              aria-current={active ? 'page' : undefined}
+            >
+              {active && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
+              )}
+              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: active ? 700 : 500,
+                  letterSpacing: '0.01em',
+                  lineHeight: 1,
+                }}
+              >
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* More — opens full sidebar drawer */}
+        <button
+          onClick={onMoreClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors duration-150"
+          style={{
+            color: 'rgba(0,0,0,0.4)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          } as React.CSSProperties}
+          aria-label="More navigation options"
+        >
+          <MoreHorizontal size={20} strokeWidth={1.8} />
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1 }}>
+            More
+          </span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+// ─── Global mobile SOS modal ──────────────────────────────────────────────────
+// Shown when the user taps SOS in the bottom nav.
+

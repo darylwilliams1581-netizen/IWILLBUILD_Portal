@@ -1,0 +1,415 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  RefreshCw, AlertCircle, TrendingUp, CheckSquare, Square,
+  Plus, ExternalLink,
+} from 'lucide-react';
+import {
+  type ProgressLine, type Contractor, type PurchaseOrder,
+  lineTotal, fmt, fmtDate, TRADE_TYPES, PO_STATUS_CONFIG,
+  AssignmentBadge, POStatusBadge, CreatePOModal, PODetailModal,
+} from './JobProgressPOModals';
+
+interface Props { jobId: number; }
+
+export default function JobProgress({ jobId }: Props) {
+  const [lines, setLines] = useState<ProgressLine[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [contractors, setContractors] = useState<Contractor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [syncMsg, setSyncMsg] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [tradeFilter, setTradeFilter] = useState('');
+  const [showCreatePO, setShowCreatePO] = useState(false);
+  const [activePO, setActivePO] = useState<PurchaseOrder | null>(null);
+  const pendingRef = useRef<Record<number, { percentComplete?: number; progressNote?: string }>>({});
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [progRes, poRes, contRes] = await Promise.all([
+        fetch(`/api/jobs/${jobId}/progress`, { credentials: 'include' }),
+        fetch(`/api/jobs/${jobId}/purchase-orders`, { credentials: 'include' }),
+        fetch(`/api/customers?type=contractor&status=active`, { credentials: 'include' }),
+      ]);
+      if (progRes.ok) {
+        const d = await progRes.json() as { lines: ProgressLine[] };
+        setLines(d.lines ?? []);
+      }
+      if (poRes.ok) {
+        const d = await poRes.json() as { purchaseOrders: PurchaseOrder[] };
+        setPurchaseOrders(d.purchaseOrders ?? []);
+      }
+      if (contRes.ok) {
+        const d = await contRes.json() as { customers: Contractor[] };
+        setContractors(d.customers ?? []);
+      }
+    } catch {
+      setError('Failed to load progress.');
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function syncFromEstimate() {
+    if (!confirm('This will replace current progress lines with lines from the approved estimate. Continue?')) return;
+    setSyncing(true); setError(''); setSyncMsg('');
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/progress/sync`, { method: 'POST', credentials: 'include' });
+      const data = await res.json() as { lines?: ProgressLine[]; estimateTitle?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
+      setLines(data.lines ?? []);
+      setSyncMsg(`Synced from "${data.estimateTitle}"`);
+      pendingRef.current = {};
+      setSelectedIds(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function scheduleSave() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const updates = Object.entries(pendingRef.current).map(([id, vals]) => ({ id: parseInt(id), ...vals }));
+      if (updates.length === 0) return;
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/jobs/${jobId}/progress`, {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updates }),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json() as { lines: ProgressLine[] };
+        setLines(data.lines ?? []);
+        pendingRef.current = {};
+      } catch {
+        setError('Failed to save progress.');
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+  }
+
+  function handlePercent(lineId: number, value: string) {
+    const num = Math.max(0, Math.min(100, parseInt(value) || 0));
+    setLines((prev) => prev.map((l) => l.id === lineId ? { ...l, percentComplete: num } : l));
+    pendingRef.current[lineId] = { ...pendingRef.current[lineId], percentComplete: num };
+    scheduleSave();
+  }
+
+  function handleNote(lineId: number, value: string) {
+    setLines((prev) => prev.map((l) => l.id === lineId ? { ...l, progressNote: value } : l));
+    pendingRef.current[lineId] = { ...pendingRef.current[lineId], progressNote: value };
+    scheduleSave();
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    const visible = filteredLines.map((l) => l.id);
+    const allSelected = visible.every((id) => selectedIds.has(id));
+    setSelectedIds(allSelected ? new Set() : new Set(visible));
+  }
+
+  const filteredLines = tradeFilter
+    ? lines.filter((l) => l.tradeType === tradeFilter || (!l.tradeType && tradeFilter === ''))
+    : lines;
+
+  const selectedLines = lines.filter((l) => selectedIds.has(l.id));
+
+  const totalValue = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const totalCompleted = lines.reduce((s, l) => s + completedValue(l), 0);
+  const totalRemaining = totalValue - totalCompleted;
+  const overallPct = totalValue > 0 ? Math.round((totalCompleted / totalValue) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-border p-8 flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ── Header card ── */}
+      <div className="bg-white rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Job Progress</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
+            <button
+              onClick={() => void syncFromEstimate()}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted disabled:opacity-40 transition-colors"
+            >
+              <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Syncing…' : 'Sync from Estimate'}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2 mb-3">
+            <AlertCircle size={12} /> {error}
+          </p>
+        )}
+        {syncMsg && (
+          <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3">{syncMsg}</p>
+        )}
+
+        {lines.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <TrendingUp size={18} className="text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-foreground mb-1">No approved estimate yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Approve an estimate on the Estimates tab, then click "Sync from Estimate" to set up progress tracking.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg bg-muted/40 p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-0.5">Total Value</p>
+                <p className="font-heading font-bold text-sm text-foreground">{fmt(totalValue)}</p>
+              </div>
+              <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-center">
+                <p className="text-xs text-emerald-700 mb-0.5">Completed</p>
+                <p className="font-heading font-bold text-sm text-emerald-700">{fmt(totalCompleted)}</p>
+              </div>
+              <div className="rounded-lg bg-red-50 border border-red-100 p-3 text-center">
+                <p className="text-xs text-red-600 mb-0.5">Remaining</p>
+                <p className="font-heading font-bold text-sm text-red-600">{fmt(totalRemaining)}</p>
+              </div>
+            </div>
+            <div className="mb-1 flex items-center justify-between text-xs font-semibold">
+              <span className="text-muted-foreground">Overall Progress</span>
+              <span className="text-foreground">{overallPct}%</span>
+            </div>
+            <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${overallPct}%` }} />
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Scope lines with assignment controls ── */}
+      {lines.length > 0 && (
+        <div className="bg-white rounded-xl border border-border overflow-hidden">
+          {/* Toolbar */}
+          <div className="px-4 py-3 border-b border-border bg-muted/20 flex items-center gap-2 flex-wrap">
+            {/* Trade filter */}
+            <select
+              value={tradeFilter}
+              onChange={(e) => setTradeFilter(e.target.value)}
+              className="border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+            >
+              <option value="">All trades</option>
+              {TRADE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <div className="flex-1" />
+
+            {selectedIds.size > 0 && (
+              <>
+                <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
+                <button
+                  onClick={() => setShowCreatePO(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors"
+                >
+                  <Plus size={12} />Generate PO / Work Order
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-3 py-3 w-8">
+                    <button onClick={toggleAll} className="text-muted-foreground hover:text-foreground">
+                      {filteredLines.length > 0 && filteredLines.every((l) => selectedIds.has(l.id))
+                        ? <CheckSquare size={14} className="text-primary" />
+                        : <Square size={14} />}
+                    </button>
+                  </th>
+                  <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Description</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">Qty / Unit</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground">Line Total</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">% Done</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold text-emerald-700">Completed $</th>
+                  <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Assignment</th>
+                  <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredLines.map((line) => {
+                  const total = lineTotal(line);
+                  const done = completedValue(line);
+                  const isSelected = selectedIds.has(line.id);
+                  return (
+                    <tr key={line.id} className={`transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-muted/20'}`}>
+                      <td className="px-3 py-3">
+                        <button onClick={() => toggleSelect(line.id)} className="text-muted-foreground hover:text-foreground">
+                          {isSelected ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} />}
+                        </button>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-foreground max-w-[180px]">
+                        <p className="truncate">{line.description}</p>
+                      </td>
+                      <td className="px-3 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">
+                        {line.quantity}{line.unit ? ` ${line.unit}` : ''}
+                      </td>
+                      <td className="px-3 py-3 text-right text-xs font-mono text-foreground whitespace-nowrap">{fmt(total)}</td>
+                      <td className="px-3 py-3 text-center">
+                        <input
+                          type="number" min={0} max={100} value={line.percentComplete}
+                          onChange={(e) => handlePercent(line.id, e.target.value)}
+                          className="w-16 text-center px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                        />
+                      </td>
+                      <td className="px-3 py-3 text-right text-xs font-mono font-semibold text-emerald-700 whitespace-nowrap">{fmt(done)}</td>
+                      <td className="px-3 py-3">
+                        <AssignmentBadge line={line} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input
+                          type="text" placeholder="Note…" value={line.progressNote ?? ''}
+                          onChange={(e) => handleNote(line.id, e.target.value)}
+                          className="w-full min-w-[100px] px-2 py-1 border border-border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Purchase Orders section ── */}
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="font-heading font-bold text-sm text-foreground flex items-center gap-2">
+            <FileText size={14} className="text-primary" />
+            Purchase Orders / Work Orders
+            {purchaseOrders.length > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">{purchaseOrders.length}</span>
+            )}
+          </h3>
+          {lines.length > 0 && selectedIds.size === 0 && (
+            <button
+              onClick={() => {
+                if (lines.length > 0) {
+                  setSelectedIds(new Set(lines.map((l) => l.id)));
+                  setShowCreatePO(true);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"
+            >
+              <Plus size={12} />New PO
+            </button>
+          )}
+        </div>
+
+        {purchaseOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <FileText size={18} className="text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-foreground mb-1">No purchase orders yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Select scope lines above and click "Generate PO / Work Order" to create one.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {purchaseOrders.map((po) => {
+              const total = parseFloat(po.total) || 0;
+              return (
+                <button
+                  key={po.id}
+                  onClick={() => setActivePO(po)}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors text-left"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileText size={14} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-foreground">{po.po_number}</p>
+                      <POStatusBadge status={po.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{po.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {po.assigned_to_type === 'internal'
+                        ? `Internal${po.assigned_to_name ? ` — ${po.assigned_to_name}` : ''}`
+                        : (po.contractor_name ?? po.assigned_to_name ?? 'Contractor')}
+                      {po.trade_type ? ` · ${po.trade_type}` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold font-mono text-foreground">{fmt(total)}</p>
+                    <p className="text-xs text-muted-foreground">{po.lines.length} line{po.lines.length !== 1 ? 's' : ''}</p>
+                  </div>
+                  <ExternalLink size={13} className="text-muted-foreground shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Modals ── */}
+      {showCreatePO && (
+        <CreatePOModal
+          jobId={jobId}
+          selectedLines={selectedLines}
+          contractors={contractors}
+          onClose={() => setShowCreatePO(false)}
+          onCreated={(po) => {
+            setPurchaseOrders((prev) => [po, ...prev]);
+            setSelectedIds(new Set());
+            setShowCreatePO(false);
+            // Refresh lines to show updated assignment badges
+            void load();
+          }}
+        />
+      )}
+
+      {activePO && (
+        <PODetailModal
+          po={activePO}
+          jobId={jobId}
+          onClose={() => setActivePO(null)}
+          onUpdated={(updated) => {
+            setPurchaseOrders((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            setActivePO(updated);
+          }}
+          onDeleted={(poId) => {
+            setPurchaseOrders((prev) => prev.filter((p) => p.id !== poId));
+            setActivePO(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}

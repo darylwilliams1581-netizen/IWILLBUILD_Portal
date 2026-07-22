@@ -1,0 +1,124 @@
+import type { Request, Response } from 'express';
+import { db } from '../../../db/client.js';
+import { jobs, profiles } from '../../../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
+import { getAuth } from '../../../../lib/auth/auth.js';
+import { sendPushToUser } from '../../../lib/push-notifications.js';
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    const auth = getAuth();
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
+    }
+    const session = await auth.api.getSession({ headers });
+    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.userId, session.user.id),
+    });
+    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
+    const jobId = parseInt(String(req.params.id), 10);
+    if (isNaN(jobId)) return res.status(400).json({ error: 'Invalid job ID' });
+
+    const existing = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
+    if (!existing) return res.status(404).json({ error: 'Job not found' });
+    if (existing.companyId !== profile.companyId) return res.status(403).json({ error: 'Forbidden' });
+
+    const {
+      name, client, address, status, notes, jobNumber, customerId, assetId,
+      scheduledStartDate, expectedCompletionDate,
+      scheduledStartTime, scheduledEndTime,
+      actualStartDate, actualCompletionDate,
+      assignedSupervisorUserId, assignedTeamLabel,
+    } = req.body as {
+      name?: string;
+      client?: string;
+      address?: string;
+      status?: string;
+      notes?: string;
+      jobNumber?: string;
+      customerId?: number | null;
+      assetId?: number | null;
+      scheduledStartDate?: string | null;
+      expectedCompletionDate?: string | null;
+      scheduledStartTime?: string | null;
+      scheduledEndTime?: string | null;
+      actualStartDate?: string | null;
+      actualCompletionDate?: string | null;
+      assignedSupervisorUserId?: string | null;
+      assignedTeamLabel?: string | null;
+    };
+
+    // Normalise date strings — strip ISO timestamps to YYYY-MM-DD only
+    function toDateStr(v: string | null | undefined): string | null {
+      if (!v) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      const iso = v.slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+    }
+
+    await db.update(jobs).set({
+      ...(name !== undefined && { name: name.trim() }),
+      ...(client !== undefined && { client: client.trim() || null }),
+      ...(address !== undefined && { address: address.trim() || null }),
+      ...(status !== undefined && { status }),
+      ...(notes !== undefined && { notes: notes.trim() || null }),
+      ...(jobNumber !== undefined && { jobNumber: jobNumber.trim() || null }),
+      ...(scheduledStartDate !== undefined && { scheduledStartDate: toDateStr(scheduledStartDate) }),
+      ...(expectedCompletionDate !== undefined && { expectedCompletionDate: toDateStr(expectedCompletionDate) }),
+      ...(actualStartDate !== undefined && { actualStartDate: toDateStr(actualStartDate) }),
+      ...(actualCompletionDate !== undefined && { actualCompletionDate: toDateStr(actualCompletionDate) }),
+      ...(assignedSupervisorUserId !== undefined && { assignedSupervisorUserId: assignedSupervisorUserId || null }),
+      ...(assignedTeamLabel !== undefined && { assignedTeamLabel: assignedTeamLabel?.trim() || null }),
+    }).where(eq(jobs.id, jobId));
+
+    // customer_id via raw SQL (not in Drizzle schema)
+    if (customerId !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET customer_id = ${customerId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+
+    // asset_id via raw SQL (added via colsToEnsure, not in Drizzle schema)
+    if (assetId !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET asset_id = ${assetId ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+
+    // scheduled_start_time / scheduled_end_time via raw SQL (added via startup migration)
+    if (scheduledStartTime !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET scheduled_start_time = ${scheduledStartTime ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+    if (scheduledEndTime !== undefined) {
+      await db.execute(
+        sql`UPDATE jobs SET scheduled_end_time = ${scheduledEndTime ?? null} WHERE id = ${jobId} AND company_id = ${profile.companyId}`
+      );
+    }
+
+    const updated = await db.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
+
+    // Push notification: if supervisor was just assigned (changed), notify them
+    if (
+      assignedSupervisorUserId &&
+      assignedSupervisorUserId !== existing.assignedSupervisorUserId
+    ) {
+      void sendPushToUser(assignedSupervisorUserId, {
+        title: 'Job Assigned',
+        body: `You've been assigned to: ${updated?.name ?? `Job #${jobId}`}`,
+        url: `/jobs/${jobId}`,
+        tag: `job-assigned-${jobId}`,
+      });
+    }
+
+    res.json({ job: updated });
+  } catch (error) {
+    console.error('PUT /api/jobs/:id error:', error);
+    res.status(500).json({ error: 'Failed to update job' });
+  }
+}

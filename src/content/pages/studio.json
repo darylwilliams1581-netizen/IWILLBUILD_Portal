@@ -1,0 +1,26 @@
+{
+  "ALL_TYPES": [
+    "All",
+    "swms",
+    "policy",
+    "procedure",
+    "form",
+    "contract",
+    "quote",
+    "report",
+    "induction",
+    "custom"
+  ],
+  "CATEGORIES": [
+    "All",
+    "swms",
+    "policy",
+    "procedure",
+    "form",
+    "contract",
+    "quote",
+    "report",
+    "induction",
+    "custom"
+  ]
+}

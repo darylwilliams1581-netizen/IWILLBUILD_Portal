@@ -1,0 +1,114 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+
+# ── Pre-built SSR artifacts ──────────────────────────────────────────────────
+# dist/ is fully ignored. The platform runs `npm run build` (no pre-built
+# artifact fast-path) and then starts the app with `npm start`.
+# Build artifacts are produced fresh on every deploy — not committed to git.
+*.local
+pnpm-lock.yaml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+build/
+.next/
+out/
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.vite/
+
+# Publish temporary files
+.publish/
+
+# OS generated files
+Thumbs.db
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# User-uploaded files (runtime, not source)
+uploads/
+backups/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Development port configuration
+.dev-ports.json
+
+# Generated API
+.api/
+
+# SSL certificates
+.ssl/*.pem
+
+# AI Assistant Files
+.claude/
+
+# Import temporary files
+.import-*
+
+# Agent memory store
+.memory/
+
+# Turnscript platform execution scripts (never commit/deploy)
+.airo/turnscript-*
+
+# Authoring workspace — excluded from deploy package entirely.
+# The app never reads from content/ at runtime.
+# Runtime seed data lives in src/server/seed/ (copied to dist/server/seed/ at build time).
+# Source DOCX files and the full content/ authoring tree are stored in /private/iwillbuild-dev-assets/.
+# NOTE: only the ROOT-LEVEL content/ directory is ignored — NOT src/content/ which
+# contains virtual:content JSON files that ARE required at build time.
+/content/
+
+# Internal platform reports — not needed at runtime
+.airo/security-report.json
+
+# Temporary working directories
+tmp/
+
+# docs/ — authoring/reference files only; none are read at runtime.
+# The only runtime-served doc is public/docs/IWILLBUILD_SYSTEM_MAP.md (kept in public/).
+# Exclude all docs/ content from deploy package.
+docs/
+
+# Videos — not served by the app
+public/videos/

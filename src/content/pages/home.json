@@ -1,0 +1,9 @@
+{
+  "tabs": ["All", "Jobs", "Estimates", "Invoices", "Safety"],
+  "rows": [
+    { "id": "row-1", "label": "Riverside Apartments — Stage 2", "status": "In Progress", "color": "#1263d8" },
+    { "id": "row-2", "label": "Warehouse Fitout — Lot 14",       "status": "On Site",     "color": "#22c55e" },
+    { "id": "row-3", "label": "Office Reno — Level 3",            "status": "Quoting",     "color": "#f97316" },
+    { "id": "row-4", "label": "Carpark Drainage — CBD",           "status": "Closed",      "color": "#64748b" }
+  ]
+}

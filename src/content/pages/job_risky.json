@@ -1,0 +1,30 @@
+{
+  "HAZARD_OPTIONS": [
+    "Working at heights",
+    "Electrical hazards",
+    "Confined space",
+    "Hot work / welding",
+    "Hazardous chemicals",
+    "Heavy machinery",
+    "Excavation / trenching",
+    "Overhead work",
+    "Slips, trips and falls",
+    "Manual handling",
+    "Noise exposure",
+    "UV / sun exposure",
+    "Traffic management",
+    "Asbestos / hazardous materials",
+    "Other"
+  ],
+  "PERMIT_TYPE_OPTIONS": [
+    "Hot Work Permit",
+    "Confined Space Entry",
+    "Electrical Isolation",
+    "Working at Heights",
+    "Excavation Permit",
+    "Crane / Lifting Operations",
+    "Hazardous Substances",
+    "Environmental / Spill Risk",
+    "Other"
+  ]
+}

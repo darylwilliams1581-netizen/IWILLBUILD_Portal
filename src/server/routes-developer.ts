@@ -1,0 +1,53 @@
+import type { Express } from 'express';
+
+import developer_activity_log_get_61 from "./api/developer/activity-log/GET";
+import developer_audit_log_get_62 from "./api/developer/audit-log/GET";
+import developer_companies_id_archive_post_63 from "./api/developer/companies/[id]/archive/POST";
+import developer_company_health_get_64 from "./api/developer/company-health/GET";
+import developer_email_log_get_65 from "./api/developer/email-log/GET";
+import developer_email_settings_get_66 from "./api/developer/email-settings/GET";
+import developer_email_settings_put_67 from "./api/developer/email-settings/PUT";
+import developer_email_settings_test_post_68 from "./api/developer/email-settings/test/POST";
+import developer_support_notes_get_69 from "./api/developer/support-notes/GET";
+import developer_support_notes_post_70 from "./api/developer/support-notes/POST";
+import developer_support_notes_id_delete_71 from "./api/developer/support-notes/[id]/DELETE";
+import developer_users_id_assign_company_post_72 from "./api/developer/users/[id]/assign-company/POST";
+import developer_users_id_deactivate_post_73 from "./api/developer/users/[id]/deactivate/POST";
+import developer_users_id_delete_orphan_post_74 from "./api/developer/users/[id]/delete-orphan/POST";
+import developer_users_id_force_temp_password_post_75 from "./api/developer/users/[id]/force-temp-password/POST";
+import developer_users_id_impersonate_delete_76 from "./api/developer/users/[id]/impersonate/DELETE";
+import developer_users_id_impersonate_post_77 from "./api/developer/users/[id]/impersonate/POST";
+import developer_users_id_reactivate_post_78 from "./api/developer/users/[id]/reactivate/POST";
+import developer_users_id_resend_verification_post_79 from "./api/developer/users/[id]/resend-verification/POST";
+import developer_users_id_role_put_80 from "./api/developer/users/[id]/role/PUT";
+import developer_users_id_send_reset_email_post_81 from "./api/developer/users/[id]/send-reset-email/POST";
+import developer_users_id_sessions_delete_82 from "./api/developer/users/[id]/sessions/DELETE";
+import developer_users_id_sessions_get_83 from "./api/developer/users/[id]/sessions/GET";
+import developer_users_id_unlock_account_post_84 from "./api/developer/users/[id]/unlock-account/POST";
+
+export function register(app: Express): void {
+  app.get("/api/developer/activity-log", developer_activity_log_get_61);
+  app.get("/api/developer/audit-log", developer_audit_log_get_62);
+  app.post("/api/developer/companies/:id/archive", developer_companies_id_archive_post_63);
+  app.get("/api/developer/company-health", developer_company_health_get_64);
+  app.get("/api/developer/email-log", developer_email_log_get_65);
+  app.get("/api/developer/email-settings", developer_email_settings_get_66);
+  app.put("/api/developer/email-settings", developer_email_settings_put_67);
+  app.post("/api/developer/email-settings/test", developer_email_settings_test_post_68);
+  app.get("/api/developer/support-notes", developer_support_notes_get_69);
+  app.post("/api/developer/support-notes", developer_support_notes_post_70);
+  app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_71);
+  app.post("/api/developer/users/:id/assign-company", developer_users_id_assign_company_post_72);
+  app.post("/api/developer/users/:id/deactivate", developer_users_id_deactivate_post_73);
+  app.post("/api/developer/users/:id/delete-orphan", developer_users_id_delete_orphan_post_74);
+  app.post("/api/developer/users/:id/force-temp-password", developer_users_id_force_temp_password_post_75);
+  app.delete("/api/developer/users/:id/impersonate", developer_users_id_impersonate_delete_76);
+  app.post("/api/developer/users/:id/impersonate", developer_users_id_impersonate_post_77);
+  app.post("/api/developer/users/:id/reactivate", developer_users_id_reactivate_post_78);
+  app.post("/api/developer/users/:id/resend-verification", developer_users_id_resend_verification_post_79);
+  app.put("/api/developer/users/:id/role", developer_users_id_role_put_80);
+  app.post("/api/developer/users/:id/send-reset-email", developer_users_id_send_reset_email_post_81);
+  app.delete("/api/developer/users/:id/sessions", developer_users_id_sessions_delete_82);
+  app.get("/api/developer/users/:id/sessions", developer_users_id_sessions_get_83);
+  app.post("/api/developer/users/:id/unlock-account", developer_users_id_unlock_account_post_84);
+}
