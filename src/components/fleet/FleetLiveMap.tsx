@@ -361,7 +361,7 @@ export default function FleetLiveMap() {
   const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0" style={{ height: '100%' }}>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
       {/* Header bar */}
       <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
         <div className="flex items-center gap-2">
@@ -404,8 +404,8 @@ export default function FleetLiveMap() {
       </div>
 
       {/* Body: sidebar + map */}
-      <div className="flex flex-1 min-h-0">
-        {/* Driver sidebar */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Driver sidebar — desktop only */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-200 bg-white">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -452,18 +452,21 @@ export default function FleetLiveMap() {
           </div>
         </div>
 
-        {/* Map area */}
-        <div className="flex-1 relative min-w-0 min-h-0">
+        {/* Map area — explicit min-height so it doesn't collapse on mobile */}
+        <div
+          className="flex-1 relative min-w-0 overflow-hidden"
+          style={{ minHeight: 'min(60vh, 400px)' }}
+        >
           {/* Google Maps container */}
           <div ref={mapRef} className="absolute inset-0" />
 
           {/* Map load error */}
           {mapError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
-              <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10 p-4">
+              <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs w-full">
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700 mb-1">Map unavailable</p>
-                <p className="text-xs text-slate-500">{mapError}</p>
+                <p className="text-xs text-slate-500 break-words">{mapError}</p>
                 {!GOOGLE_MAPS_KEY && (
                   <p className="text-xs text-amber-600 mt-2 font-medium">
                     Add VITE_GOOGLE_MAPS_API_KEY to your environment secrets.
@@ -510,26 +513,62 @@ export default function FleetLiveMap() {
             )}
           </div>
 
-          {/* No GPS overlay */}
+          {/* ── Improved empty / no-GPS overlays ── */}
+
+          {/* Active drivers but none have sent a GPS fix yet */}
           {!loading && sessions.length > 0 && withGps.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
-                <AlertCircle size={28} className="text-amber-400 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700 mb-1">No GPS signal yet</p>
-                <p className="text-xs text-slate-500">
-                  {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active but haven't sent a GPS location yet.
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
+              <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-5 py-5 shadow-lg text-center max-w-xs w-full">
+                <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-3">
+                  <Crosshair size={22} className="text-amber-500 animate-pulse" />
+                </div>
+                <p className="text-sm font-bold text-slate-700 mb-1">Waiting for GPS fix</p>
+                <p className="text-xs text-slate-500 leading-snug">
+                  {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active.
+                  {' '}GPS location will appear once their device gets a signal.
+                </p>
+                <p className="text-[11px] text-amber-600 mt-2 font-medium">
+                  Make sure location permission is enabled on the driver's device.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Empty state overlay */}
+          {/* No active sessions at all */}
           {!loading && sessions.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-xs">
-                <Truck size={32} className="text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-500">No active drivers</p>
-                <p className="text-xs text-slate-400 mt-1">Drivers will appear on the map when they start a session.</p>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
+              <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl px-5 py-5 shadow-lg text-center max-w-xs w-full">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                  <Truck size={24} className="text-slate-300" />
+                </div>
+                <p className="text-sm font-semibold text-slate-500 mb-1">No active drivers</p>
+                <p className="text-xs text-slate-400 leading-snug">
+                  Drivers will appear on the map when they start a session from the Driver screen.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile driver list — shown below map on small screens */}
+          {sessions.length > 0 && (
+            <div className="sm:hidden absolute bottom-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm border-t border-slate-200 max-h-36 overflow-y-auto">
+              <div className="px-3 py-2 border-b border-slate-100">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users size={10} />
+                  {sessions.length} Active Driver{sessions.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="p-2 flex flex-col gap-1.5">
+                {sessions.map(session => (
+                  <DriverCard
+                    key={session.session_id}
+                    session={session}
+                    selected={selectedId === session.session_id}
+                    onClick={() => setSelectedId(
+                      selectedId === session.session_id ? null : session.session_id
+                    )}
+                  />
+                ))}
               </div>
             </div>
           )}

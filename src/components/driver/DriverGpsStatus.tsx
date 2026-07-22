@@ -16,8 +16,12 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
+  MapPin,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { getNativeGeo, isNative } from '@/lib/capacitor-plugins';
+import { useGpsPermission } from '@/lib/useGpsPermission';
 
 export interface GpsReading {
   lat: number;
@@ -61,10 +65,13 @@ function timeAgo(ts: number): string {
 }
 
 export default function DriverGpsStatus({ onPosition, variant = 'card', active = true }: DriverGpsStatusProps) {
+  const { status: permStatus, request: requestPerm, openSettings } = useGpsPermission();
+
   const [state, setState] = useState<GpsState>('waiting');
   const [reading, setReading] = useState<GpsReading | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [tick, setTick] = useState(0); // forces re-render for timeAgo
+  const [requesting, setRequesting] = useState(false);
   const watchIdRef = useRef<number | string | null>(null);
   const nativeWatchRef = useRef<(() => void) | null>(null);
 
@@ -106,9 +113,17 @@ export default function DriverGpsStatus({ onPosition, variant = 'card', active =
     }
   }, []);
 
+  // ── Start watching only when permission is granted ────────────────────────
   useEffect(() => {
-    if (!active) {
-      setState('waiting');
+    if (!active || permStatus !== 'granted') {
+      // Not active or permission not yet granted — stop any existing watch
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current as number);
+        watchIdRef.current = null;
+      }
+      nativeWatchRef.current?.();
+      nativeWatchRef.current = null;
+      if (!active) setState('waiting');
       return;
     }
 
@@ -167,10 +182,42 @@ export default function DriverGpsStatus({ onPosition, variant = 'card', active =
       nativeWatchRef.current?.();
       nativeWatchRef.current = null;
     };
-  }, [active, handlePosition, handleError]);
+  }, [active, permStatus, handlePosition, handleError]);
+
+  // ── Handle "Enable Location" tap ──────────────────────────────────────────
+  async function handleEnableLocation() {
+    setRequesting(true);
+    await requestPerm();
+    setRequesting(false);
+  }
 
   // ── Pill variant ──────────────────────────────────────────────────────────
   if (variant === 'pill') {
+    // Permission not yet granted — show a compact "Enable" pill
+    if (active && (permStatus === 'prompt' || permStatus === 'checking' || permStatus === 'unknown')) {
+      return (
+        <button
+          onClick={() => void handleEnableLocation()}
+          disabled={requesting || permStatus === 'checking'}
+          className="inline-flex items-center gap-1.5 bg-amber-500 rounded-full px-3 py-1.5 border border-amber-400 active:bg-amber-600 transition-colors"
+        >
+          {requesting ? <Loader2 size={11} className="animate-spin text-white" /> : <MapPin size={11} className="text-white" />}
+          <span className="text-xs text-white font-semibold">Enable Location</span>
+        </button>
+      );
+    }
+    if (active && permStatus === 'denied') {
+      return (
+        <button
+          onClick={() => void openSettings()}
+          className="inline-flex items-center gap-1.5 bg-red-900/60 rounded-full px-3 py-1.5 border border-red-700 active:bg-red-800 transition-colors"
+        >
+          <WifiOff size={11} className="text-red-400" />
+          <span className="text-xs text-red-300 font-semibold">Location denied — Settings</span>
+          <ExternalLink size={9} className="text-red-400" />
+        </button>
+      );
+    }
     const dotColor = state === 'good' ? 'bg-emerald-400' : state === 'poor' ? 'bg-amber-400' : state === 'acquiring' ? 'bg-blue-400' : 'bg-red-400';
     const label = state === 'good' ? `±${Math.round(reading?.accuracy ?? 0)}m` : state === 'acquiring' ? 'Acquiring…' : state === 'denied' ? 'Denied' : state === 'waiting' ? 'GPS off' : 'No signal';
     return (
@@ -186,6 +233,78 @@ export default function DriverGpsStatus({ onPosition, variant = 'card', active =
   }
 
   // ── Card variant ──────────────────────────────────────────────────────────
+
+  // Permission not yet requested — show "Enable Location" card
+  if (active && (permStatus === 'prompt' || permStatus === 'unknown')) {
+    return (
+      <div className="rounded-2xl border border-amber-800/50 bg-amber-950/40 overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+            <MapPin size={18} className="text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-300">Location access needed</p>
+            <p className="text-xs text-amber-500 mt-0.5 leading-snug">
+              GPS tracking requires location permission to record your drive.
+            </p>
+          </div>
+        </div>
+        <div className="px-4 pb-4">
+          <button
+            onClick={() => void handleEnableLocation()}
+            disabled={requesting}
+            className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-60"
+          >
+            {requesting ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
+            {requesting ? 'Requesting…' : 'Enable Location'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Permission checking
+  if (permStatus === 'checking') {
+    return (
+      <div className="rounded-2xl border border-gray-700 bg-gray-800 overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Loader2 size={18} className="text-gray-400 animate-spin shrink-0" />
+          <p className="text-xs text-gray-400">Checking location permission…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Permission denied — show Settings link
+  if (active && permStatus === 'denied') {
+    return (
+      <div className="rounded-2xl border border-red-800/50 bg-red-950/40 overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
+            <WifiOff size={18} className="text-red-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-red-300">Location access denied</p>
+            <p className="text-xs text-red-400 mt-0.5 leading-snug">
+              GPS tracking is disabled. Enable location for this app in your device Settings.
+            </p>
+          </div>
+        </div>
+        {isNative() && (
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => void openSettings()}
+              className="w-full flex items-center justify-center gap-2 bg-red-800/60 hover:bg-red-700/60 active:bg-red-900/60 text-red-200 font-semibold py-3 rounded-xl transition-colors border border-red-700/50"
+            >
+              <ExternalLink size={14} />
+              Open Settings
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const accInfo = reading ? accuracyLabel(reading.accuracy) : null;
 
   const stateConfig = {

@@ -26,6 +26,7 @@ import TakeoffPad from '../components/estimating/TakeoffPad';
 import { useDriverSession } from '@/lib/useDriverSession';
 import { hapticImpact, hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
 import DriverGpsStatus from '@/components/driver/DriverGpsStatus';
+import { useGpsPermission } from '@/lib/useGpsPermission';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -501,6 +502,9 @@ export default function DriverPage() {
   const [searchParams] = useSearchParams();
   const { session, refresh, stopSession } = useDriverSession();
 
+  // GPS permission — checked on mount, used to gate session start
+  const { status: gpsPermStatus, request: requestGpsPerm, openSettings: openGpsSettings } = useGpsPermission();
+
   const [showPicker, setShowPicker]             = useState(false);
   const [vehicles, setVehicles]                 = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading]   = useState(false);
@@ -748,7 +752,62 @@ export default function DriverPage() {
                     {stopping ? <Loader2 size={18} className="animate-spin" /> : <Square size={18} className="fill-white" />}
                     {stopping ? 'Ending session…' : 'End Drive Session'}
                   </button>
+                ) : gpsPermStatus === 'prompt' || gpsPermStatus === 'unknown' ? (
+                  /* ── Permission not yet requested — show Enable Location first ── */
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+                      <MapPin size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-amber-800">Location access needed</p>
+                        <p className="text-xs text-amber-700 mt-0.5 leading-snug">
+                          GPS tracking requires location permission. Tap below to enable it before starting your drive.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => void requestGpsPerm()}
+                      className="w-full flex items-center justify-center gap-2.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-amber-200"
+                    >
+                      <MapPin size={18} />
+                      Enable Location
+                    </button>
+                    <button
+                      onClick={async () => { await loadVehicles(); setShowPicker(true); }}
+                      disabled={starting}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-gray-200 text-gray-500 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      Skip — start without GPS
+                    </button>
+                  </div>
+                ) : gpsPermStatus === 'denied' ? (
+                  /* ── Permission denied — show Settings link + allow skip ── */
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3.5">
+                      <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-red-800">Location access denied</p>
+                        <p className="text-xs text-red-700 mt-0.5 leading-snug">
+                          GPS tracking won't work. Enable location for IWILLBUILD in your device Settings to track this drive.
+                        </p>
+                        <button
+                          onClick={() => void openGpsSettings()}
+                          className="mt-2 flex items-center gap-1 text-xs font-semibold text-red-700 underline underline-offset-2"
+                        >
+                          Open Settings
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => { await loadVehicles(); setShowPicker(true); }}
+                      disabled={starting}
+                      className="w-full flex items-center justify-center gap-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-blue-200 disabled:opacity-60"
+                    >
+                      {starting ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} className="fill-white" />}
+                      {starting ? 'Starting…' : 'Start Without GPS'}
+                    </button>
+                  </div>
                 ) : (
+                  /* ── Permission granted (or unavailable on web) — normal start ── */
                   <button
                     onClick={async () => { await loadVehicles(); setShowPicker(true); }}
                     disabled={starting}
