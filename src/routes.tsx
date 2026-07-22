@@ -6,6 +6,7 @@ import { usePermissions } from '@/lib/usePermissions';
 
 // ── Eagerly loaded: public pages (tiny, needed immediately) ──────────────────
 import NativeStartupGate from '@/components/NativeStartupGate';
+import ShellRouter from '@/components/ShellRouter';
 import HomePage from './pages/index';
 import LoginPage from './pages/login';
 import SignupPage from './pages/signup';
@@ -90,7 +91,7 @@ const FormDetailPage          = lazy(() => import('./pages/form-detail'));
 const DriverPage              = lazy(() => import('./pages/driver'));
 const PrestartPage            = lazy(() => import('./pages/prestart'));
 const HelpPage                = lazy(() => import('./pages/help'));
-const HomeScreenPage          = lazy(() => import('./pages/home'));
+// HomeScreenPage is loaded inside ShellRouter (lazy, only when app shell is active)
 // ── Customer portal (public, token-based) ────────────────────────────────────
 const PortalLoginPage          = lazy(() => import('./pages/portal/login'));
 const PortalDashboardPage      = lazy(() => import('./pages/portal/dashboard'));
@@ -141,7 +142,7 @@ function protectDev(element: React.ReactElement) {
 
 export const routes: RouteObject[] = [
   { path: '/',              element: <NativeStartupGate><HomePage /></NativeStartupGate> },
-  { path: '/home',          element: protect(<HomeScreenPage />), errorElement: routeError },
+  { path: '/home',          element: protect(<ShellRouter />), errorElement: routeError },
   { path: '/login',         element: <LoginPage /> },
   { path: '/signup',        element: <SignupPage /> },
   { path: '/privacy',       element: <PrivacyPage /> },
