@@ -197,12 +197,12 @@ const GROUPS: GroupDoc[] = [
       },
       {
         key: 'risky',
-        label: 'Risky & Permits',
+        label: 'Risk & Permits',
         icon: ShieldAlert,
         bg: 'bg-rose-600',
         purpose: 'Create risk assessments and work permit checks for site activities, changed conditions, new hazards, or high-risk work. Captures hazards, control measures, permit requirements, supervisor sign-off, and worker/party sign-ons.',
         howTo: [
-          'Tap Risky & Permits on the home screen.',
+          'Tap Risk & Permits on the home screen.',
           'Select the job.',
           'Choose to create a new assessment or view existing ones.',
           'Fill in the activity, hazards, control measures, and any permit requirements.',
@@ -320,12 +320,12 @@ const GROUPS: GroupDoc[] = [
       },
       {
         key: 'takeoff_pad',
-        label: 'Take-off Pad',
+        label: 'Takeoff Pad',
         icon: ClipboardList,
         bg: 'bg-sky-500',
         purpose: 'A digital quantity take-off tool. Measure and count items from drawings or plans to build a materials list or estimate.',
         howTo: [
-          'Tap Take-off Pad on the home screen.',
+          'Tap Takeoff Pad on the home screen.',
           'Create a new take-off or open an existing one.',
           'Add line items — enter quantities, units, and descriptions.',
           'Totals are calculated automatically.',

@@ -50,43 +50,51 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
   const Icon = item.icon;
   return (
     <motion.button
-      whileTap={{ scale: 0.86 }}
-      whileHover={{ scale: 1.07, y: -3 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+      whileTap={{ scale: 0.88 }}
+      whileHover={{ scale: 1.06, y: -2 }}
+      transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
-      className="flex flex-col items-center gap-[7px] group outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 rounded-[22px]"
+      className="flex flex-col items-center gap-[6px] group outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 rounded-[22px] pb-1"
     >
       {/* Tile */}
       <div
-        className={`w-[60px] h-[60px] sm:w-[68px] sm:h-[68px] rounded-[18px] sm:rounded-[20px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
+        className={`w-[60px] h-[60px] sm:w-[66px] sm:h-[66px] rounded-[16px] sm:rounded-[18px] ${item.bg} ${item.fg} flex items-center justify-center relative overflow-hidden`}
         style={{
-          boxShadow: '0 4px 12px rgba(0,0,0,0.20), 0 1px 3px rgba(0,0,0,0.10)',
+          boxShadow: '0 3px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)',
         }}
       >
         {/* Top-left gloss sheen */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)',
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)',
           }}
         />
         {/* Bottom inner shadow for depth */}
         <div
           className="absolute inset-0 pointer-events-none rounded-[inherit]"
-          style={{
-            boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.15)',
-          }}
+          style={{ boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.12)' }}
         />
-        <Icon size={25} strokeWidth={1.75} className="sm:hidden relative z-10 drop-shadow-sm" />
-        <Icon size={29} strokeWidth={1.75} className="hidden sm:block relative z-10 drop-shadow-sm" />
+        <Icon size={24} strokeWidth={1.8} className="sm:hidden relative z-10 drop-shadow-sm" />
+        <Icon size={27} strokeWidth={1.8} className="hidden sm:block relative z-10 drop-shadow-sm" />
         {item.badge != null && item.badge > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md z-20 border-2 border-white/20">
             {item.badge > 9 ? '9+' : item.badge}
           </span>
         )}
       </div>
-      {/* Label */}
-      <span className="text-[10.5px] sm:text-[11.5px] text-gray-800 font-semibold text-center leading-[1.25] max-w-[66px] sm:max-w-[76px] tracking-[-0.01em]">
+      {/* Label — two-line max, fixed height so grid rows stay aligned */}
+      <span
+        className="text-[10px] sm:text-[11px] text-gray-800 font-semibold text-center leading-[1.2] tracking-[-0.01em]"
+        style={{
+          maxWidth: '64px',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          minHeight: '24px',   /* reserve space for two lines so single-line labels don't shift the row */
+        }}
+      >
         {item.label}
       </span>
     </motion.button>
@@ -1937,13 +1945,13 @@ export default function HomeScreen() {
     <div className="min-h-screen flex flex-col relative overflow-hidden"
       style={{ background: '#edf0f5' }}
     >
-      {/* Very subtle noise texture */}
+      {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-          opacity: 0.45,
+          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.035) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+          opacity: 0.28,
         }}
       />
       {/* Warm glow — top right */}
@@ -1952,7 +1960,7 @@ export default function HomeScreen() {
         style={{
           top: '-120px', right: '-120px',
           width: '420px', height: '420px',
-          background: 'radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.07) 0%, transparent 60%)',
         }}
       />
       {/* Cool glow — bottom left */}
@@ -1961,18 +1969,18 @@ export default function HomeScreen() {
         style={{
           bottom: '40px', left: '-100px',
           width: '320px', height: '320px',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.04) 0%, transparent 60%)',
         }}
       />
-      {/* Watermark logo */}
+      {/* Watermark logo — very faint, just enough to brand the background */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'url(/airo-assets/images/uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv)',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center 38%',
-          backgroundSize: '44%',
-          opacity: 0.045,
+          backgroundSize: '40%',
+          opacity: 0.028,
         }}
       />
 
