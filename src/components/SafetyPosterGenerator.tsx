@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Printer, Save, Loader2, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { openPrintWindow } from '@/lib/print-html';
@@ -167,6 +167,24 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const posterWrapRef = useRef<HTMLDivElement>(null);
+  const [posterScale, setPosterScale] = useState(1);
+
+  // Scale the poster preview to fit the container width on mobile
+  useEffect(() => {
+    if (!posterWrapRef.current) return;
+    const POSTER_WIDTH = 794; // A4 at 96dpi
+    const obs = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      if (w > 0 && w < POSTER_WIDTH) {
+        setPosterScale(Math.round((w / POSTER_WIDTH) * 1000) / 1000);
+      } else {
+        setPosterScale(1);
+      }
+    });
+    obs.observe(posterWrapRef.current);
+    return () => obs.disconnect();
+  }, [step]); // re-run when entering preview step
 
   function handlePick(def: PosterDef) {
     setSelected(def);
@@ -334,9 +352,24 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                   </div>
                 </div>
 
-                {/* Poster preview */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                  <div ref={printRef} className="overflow-x-auto">
+                {/* Poster preview — scales to fit phone width */}
+                <div
+                  ref={posterWrapRef}
+                  className="border border-slate-200 rounded-xl overflow-hidden bg-white"
+                  style={{
+                    // Reserve the correct height so the container doesn't collapse
+                    // when the inner content is scaled down
+                    minHeight: posterScale < 1 ? `calc(${posterScale} * 1122px)` : undefined,
+                  }}
+                >
+                  <div
+                    ref={printRef}
+                    style={{
+                      transformOrigin: 'top left',
+                      transform: posterScale < 1 ? `scale(${posterScale})` : undefined,
+                      width: posterScale < 1 ? '794px' : undefined,
+                    }}
+                  >
                     {renderPoster(selected.type, formData)}
                   </div>
                 </div>

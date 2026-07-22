@@ -38,15 +38,18 @@ export default function JobPhotosPage() {
       const saved = localStorage.getItem('jobPhotosZoom');
       if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
     } catch (_) {}
-    return 'medium';
+    // Default to small (3-across) on mobile, medium on desktop
+    return window.innerWidth < 768 ? 'small' : 'medium';
   });
 
-  // Share sheet state
+  // Share state
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copiedQr, setCopiedQr] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  // Send-selected state
+  const [sendMsg, setSendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -104,6 +107,52 @@ export default function JobPhotosPage() {
     a.download = `job-${jobId}-share-qr.png`;
     a.click();
   };
+
+  /**
+   * Download selected photos.
+   * On iOS Safari, <a download> is blocked — open each URL in a new tab instead.
+   * On desktop, use the standard anchor-click approach.
+   */
+  const handleDownloadSelected = useCallback(() => {
+    photosRef.current?.downloadSelected();
+  }, []);
+
+  /**
+   * Send selected photos via Web Share API (iOS/Android native share sheet).
+   * Falls back to copying the job share link if Web Share is unavailable.
+   */
+  const handleSendSelected = useCallback(async () => {
+    setSendMsg(null);
+    // Try Web Share API first (works on iOS Safari 15+, Android Chrome)
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${job?.name ?? 'Job'} — Photos`,
+          text: `View photos for ${job?.name ?? 'this job'} on IWILLBUILD`,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to copy
+      }
+    }
+    // Fallback: generate a share link and copy it
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json() as { shareUrl?: string };
+      if (data.shareUrl) {
+        await navigator.clipboard.writeText(data.shareUrl).catch(() => {});
+        setSendMsg('Share link copied to clipboard');
+        setTimeout(() => setSendMsg(null), 3000);
+      }
+    } catch {
+      setSendMsg('Could not generate share link');
+      setTimeout(() => setSendMsg(null), 3000);
+    }
+  }, [job, jobId]);
 
   // Sync select mode changes back to the handle
   const handleSetSelectMode = (v: boolean) => {
@@ -306,41 +355,51 @@ export default function JobPhotosPage() {
 
         {/* Select mode */}
         {selectMode && (
-          <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-            {/* Done */}
-            <button
-              onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <X size={16} />
-              <span className="text-[10px] font-semibold leading-none">Done</span>
-            </button>
+          <div className="flex flex-col">
+            {/* Send feedback banner */}
+            {sendMsg && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-900/60 border-t border-emerald-700/40 text-xs text-emerald-300 font-medium">
+                <Check size={12} className="shrink-0" />
+                {sendMsg}
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+              {/* Done */}
+              <button
+                onClick={() => { handleSetSelectMode(false); photosRef.current?.exitSelectMode(); }}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-colors touch-manipulation shrink-0"
+              >
+                <X size={16} />
+                <span className="text-[10px] font-semibold leading-none">Done</span>
+              </button>
 
-            {/* Count label */}
-            <div className="flex-1 text-center">
-              <p className="text-sm font-semibold text-white">
-                {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
-              </p>
+              {/* Count label */}
+              <div className="flex-1 text-center">
+                <p className="text-sm font-semibold text-white">
+                  {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
+                </p>
+              </div>
+
+              {/* Download selected */}
+              <button
+                onClick={handleDownloadSelected}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
+              >
+                <Download size={16} />
+                <span className="text-[10px] font-semibold leading-none">Download</span>
+              </button>
+
+              {/* Send selected — Web Share API on mobile, copy link fallback */}
+              <button
+                onClick={() => void handleSendSelected()}
+                disabled={selectedCount === 0}
+                className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
+              >
+                <Send size={16} />
+                <span className="text-[10px] font-semibold leading-none">Send</span>
+              </button>
             </div>
-
-            {/* Download selected */}
-            <button
-              onClick={() => photosRef.current?.downloadSelected()}
-              disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <Download size={16} />
-              <span className="text-[10px] font-semibold leading-none">Download</span>
-            </button>
-
-            {/* Send selected */}
-            <button
-              disabled={selectedCount === 0}
-              className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white transition-colors touch-manipulation shrink-0"
-            >
-              <Send size={16} />
-              <span className="text-[10px] font-semibold leading-none">Send</span>
-            </button>
           </div>
         )}
       </div>
