@@ -2,11 +2,15 @@
  * PdfViewer — renders a PDF using react-pdf with zoom/rotate/page nav/thumbnail strip.
  * Overlays AnnotationCanvas on each page.
  *
- * Mobile improvements (Sprint 4):
- * - Thumbnail strip hidden on mobile (< md) — saves ~96px of precious width
- * - Toolbar collapses into a "…" overflow menu on mobile
- * - Touch pinch-zoom and pan via pointer events on the canvas area
- * - overflow-x: hidden on the outer shell prevents sideways page scroll
+ * Mobile (Sprint 5 — Gesture Viewer):
+ * - useMobileViewer hook: two-finger pinch-zoom, double-tap toggle, body-scroll lock
+ * - Fit-to-screen is the default open state on mobile (fitWidth=true on mount)
+ * - "Reset zoom" added to the mobile "…" overflow menu
+ * - Thumbnail strip hidden on mobile (< md)
+ * - Rotate buttons hidden on mobile (in overflow menu)
+ * - overflow-x: hidden on outer shell prevents sideways page scroll
+ * - Safe-area bottom padding via env(safe-area-inset-bottom)
+ * - Tested at 375 / 390 / 430 px viewport widths
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -16,9 +20,11 @@ import {
   ZoomIn, ZoomOut, RotateCcw, RotateCw,
   ChevronLeft, ChevronRight, Maximize2, Minimize2,
   Loader2, AlertCircle, MoreHorizontal, X as XIcon,
+  Shrink,
 } from 'lucide-react';
 import AnnotationCanvas from './AnnotationCanvas';
 import type { Annotation, AnnotationStyle, ToolType } from './types';
+import { useMobileViewer } from '@/lib/useMobileViewer';
 
 // react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.5.4.296.min.mjs';
@@ -67,58 +73,20 @@ export default function PdfViewer({
   // Mobile overflow toolbar menu
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ── Pinch-zoom / pan via pointer events ────────────────────────────────────
-  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
-  const panRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  // ── Mobile gesture hook ────────────────────────────────────────────────────
+  const mobileViewer = useMobileViewer({
+    containerRef,
+    scale,
+    onScaleChange,
+    onFitWidthOff: () => onFitWidth(false),
+  });
 
-  function getPointerDist(e: React.PointerEvent<HTMLDivElement>) {
-    // We track two active pointers via a simple map
-    return 0; // placeholder — real logic below via touch events
-  }
+  // ── Fit-to-screen on first page load (mobile default) ─────────────────────
+  // On desktop fitWidth is already handled by the ResizeObserver below.
+  // On mobile we trigger it once the first page dimensions are known.
+  const fittedOnMount = useRef(false);
 
-  // Use native touch events for pinch (pointer events don't give us multi-touch easily)
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    let startDist = 0;
-    let startScale = scale;
-
-    function onTouchStart(e: TouchEvent) {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        startDist = Math.hypot(dx, dy);
-        startScale = scale;
-        e.preventDefault();
-      }
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const dist = Math.hypot(dx, dy);
-        if (startDist > 0) {
-          const ratio = dist / startDist;
-          const newScale = Math.min(4, Math.max(0.25, startScale * ratio));
-          onScaleChange(Math.round(newScale * 100) / 100);
-          onFitWidth(false);
-        }
-        e.preventDefault();
-      }
-    }
-
-    el.addEventListener('touchstart', onTouchStart, { passive: false });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale, onScaleChange, onFitWidth]);
-
-  // Fit-width: measure container and set scale accordingly
+  // ── Fit-width: measure container and set scale accordingly ─────────────────
   useEffect(() => {
     if (!fitWidth || !containerRef.current) return;
     const obs = new ResizeObserver(entries => {
@@ -139,11 +107,23 @@ export default function PdfViewer({
   const handlePageLoad = useCallback((page: { width: number; height: number }) => {
     setPageWidth(page.width);
     setPageHeight(page.height);
-    if (fitWidth && containerRef.current) {
-      const w = containerRef.current.clientWidth - 48; // padding
+
+    if (!containerRef.current) return;
+    const containerW = containerRef.current.clientWidth;
+
+    if (fitWidth && containerW > 0) {
+      // Desktop fit-width
+      const w = containerW - 48; // padding
       onScaleChange(Math.round((w / page.width) * 100) / 100);
+    } else if (!fittedOnMount.current && containerW > 0 && containerW < 768) {
+      // Mobile: auto-fit to screen on first load
+      fittedOnMount.current = true;
+      const w = containerW - 32; // 16px padding each side
+      const fitted = Math.round((w / page.width) * 100) / 100;
+      onScaleChange(Math.max(0.25, Math.min(4, fitted)));
+      onFitWidth(true);
     }
-  }, [fitWidth, onScaleChange]);
+  }, [fitWidth, onScaleChange, onFitWidth]);
 
   const scaledW = Math.round(pageWidth * scale);
   const scaledH = Math.round(pageHeight * scale);
@@ -152,6 +132,7 @@ export default function PdfViewer({
     // overflow-x: hidden on the outer shell prevents the viewer from causing
     // horizontal page scroll on the parent document
     <div className="flex flex-1 min-h-0 overflow-hidden" style={{ overflowX: 'hidden' }}>
+
       {/* Thumbnail strip — hidden on mobile (md: show) */}
       {thumbnailsOpen && (
         <div className="hidden md:flex w-24 flex-shrink-0 bg-slate-950 border-r border-slate-700 overflow-y-auto flex-col gap-2 p-2">
@@ -180,6 +161,7 @@ export default function PdfViewer({
 
       {/* Main viewer */}
       <div className="flex flex-col flex-1 min-w-0" style={{ overflowX: 'hidden' }}>
+
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-2 bg-slate-900 border-b border-slate-700 flex-shrink-0">
 
@@ -217,8 +199,9 @@ export default function PdfViewer({
 
           {/* Zoom — always visible */}
           <button
-            onClick={() => { onScaleChange(nextScale(scale, -1)); onFitWidth(false); }}
+            onClick={() => { mobileViewer.zoomOut(); }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            title="Zoom out"
           >
             <ZoomOut size={14} />
           </button>
@@ -233,8 +216,9 @@ export default function PdfViewer({
             {fitWidth ? 'Fit' : `${Math.round(scale * 100)}%`}
           </button>
           <button
-            onClick={() => { onScaleChange(nextScale(scale, 1)); onFitWidth(false); }}
+            onClick={() => { mobileViewer.zoomIn(); }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors"
+            title="Zoom in"
           >
             <ZoomIn size={14} />
           </button>
@@ -271,22 +255,39 @@ export default function PdfViewer({
           </button>
         </div>
 
-        {/* Mobile overflow menu — rotate + thumbnail toggle */}
+        {/* Mobile overflow menu — rotate + fit-to-screen + reset zoom */}
         {mobileMenuOpen && (
-          <div className="md:hidden flex items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Rotate</span>
+          <div className="md:hidden flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-800 border-b border-slate-700">
+            {/* Fit to screen */}
             <button
-              onClick={() => { onRotate(-90); setMobileMenuOpen(false); }}
+              onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-semibold border border-orange-500/30"
+            >
+              <Shrink size={13} /> Fit to screen
+            </button>
+            {/* Reset zoom */}
+            <button
+              onClick={() => { mobileViewer.resetZoom(); setMobileMenuOpen(false); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
             >
-              <RotateCcw size={13} /> Left
+              <Maximize2 size={13} /> Reset zoom
             </button>
-            <button
-              onClick={() => { onRotate(90); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
-            >
-              <RotateCw size={13} /> Right
-            </button>
+            {/* Rotate */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Rotate</span>
+              <button
+                onClick={() => { onRotate(-90); setMobileMenuOpen(false); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
+              >
+                <RotateCcw size={13} /> Left
+              </button>
+              <button
+                onClick={() => { onRotate(90); setMobileMenuOpen(false); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-semibold"
+              >
+                <RotateCw size={13} /> Right
+              </button>
+            </div>
           </div>
         )}
 
@@ -294,7 +295,11 @@ export default function PdfViewer({
         <div
           ref={containerRef}
           className="flex-1 overflow-auto bg-slate-950 flex justify-center p-4 md:p-6"
-          style={{ touchAction: 'pan-x pan-y pinch-zoom', overflowX: 'auto' }}
+          style={{
+            ...mobileViewer.containerStyle,
+            // Safe-area bottom padding for iPhone home indicator
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          }}
         >
           {loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
