@@ -500,7 +500,7 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
 export default function DriverPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, refresh, stopSession } = useDriverSession();
+  const { session, refresh, stopSession, reportGpsState } = useDriverSession();
 
   // GPS permission — checked on mount, used to gate session start
   const { status: gpsPermStatus, request: requestGpsPerm, openSettings: openGpsSettings } = useGpsPermission();
@@ -824,7 +824,7 @@ export default function DriverPage() {
             <AnimatePresence>
               {sessionActive && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}>
-                  <DriverGpsStatus variant="card" active={true} />
+                  <DriverGpsStatus variant="card" active={true} onStateChange={reportGpsState} />
                 </motion.div>
               )}
             </AnimatePresence>

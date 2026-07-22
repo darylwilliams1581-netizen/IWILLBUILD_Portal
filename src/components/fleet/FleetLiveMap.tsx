@@ -2,12 +2,20 @@
  * FleetLiveMap — Live GPS tracking map using Google Maps JS API.
  * Uses VITE_GOOGLE_MAPS_API_KEY. No Leaflet dependency.
  * Auto-refreshes every 5 seconds.
+ *
+ * GPS status visibility (Sprint 5):
+ * - Each driver card shows a colour-coded GpsStatusBadge
+ * - Map overlay shows a banner when ALL active drivers have no usable GPS
+ * - Status is driven by location_permission_status + gps_status from the
+ *   driver heartbeat, not just the presence/absence of a lat/lng fix
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle, Clock, Crosshair, Gauge, Loader2,
   MapPin, Navigation, RefreshCw, Truck, Users, ZoomIn, ZoomOut,
 } from 'lucide-react';
+import GpsStatusBadge from './GpsStatusBadge';
+import type { LocationPermissionStatus, GpsStatusValue } from './GpsStatusBadge';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +33,10 @@ interface LiveSession {
   speed_kmh: number | null;
   heading: number | null;
   last_seen_at: string | null;
+  // GPS / permission status from driver heartbeat
+  location_permission_status: LocationPermissionStatus;
+  gps_status: GpsStatusValue;
+  last_heartbeat_at: string | null;
 }
 
 // ── Google Maps window types ──────────────────────────────────────────────────
@@ -171,6 +183,7 @@ function DriverCard({
           <p className="text-[11px] text-slate-500 truncate">
             {session.asset_name}{session.rego ? ` · ${session.rego}` : ''}
           </p>
+          {/* Duration + speed row */}
           <div className="flex items-center gap-2 mt-1">
             <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
               <Clock size={9} />{formatDuration(session.start_at)}
@@ -180,9 +193,24 @@ function DriverCard({
                 <Gauge size={9} />{Math.round(session.speed_kmh)} km/h
               </span>
             )}
-            <span className={['text-[10px] font-medium', hasGps ? 'text-emerald-600' : 'text-amber-500'].join(' ')}>
-              {hasGps ? formatLastSeen(session.last_seen_at) : 'No GPS'}
-            </span>
+          </div>
+          {/* GPS status badge */}
+          <div className="mt-1.5">
+            {hasGps ? (
+              <GpsStatusBadge
+                locationPermissionStatus={session.location_permission_status ?? 'granted'}
+                gpsStatus={session.gps_status ?? 'live'}
+                lastSeenAt={session.last_seen_at}
+                size="sm"
+              />
+            ) : (
+              <GpsStatusBadge
+                locationPermissionStatus={session.location_permission_status}
+                gpsStatus={session.gps_status}
+                lastSeenAt={session.last_seen_at}
+                size="sm"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -360,6 +388,18 @@ export default function FleetLiveMap() {
   const withGps = sessions.filter(s => s.lat != null && s.lng != null);
   const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
 
+  // Derive a summary of why drivers have no GPS — used for the map overlay banner
+  const noGpsSummary = (() => {
+    if (noGps.length === 0) return null;
+    const denied    = noGps.filter(s => s.gps_status === 'denied' || s.location_permission_status === 'denied');
+    const waiting   = noGps.filter(s => s.gps_status === 'waiting_permission' || s.location_permission_status === 'prompt');
+    const noFix     = noGps.filter(s => s.gps_status === 'waiting_fix' || (!s.gps_status && !s.last_heartbeat_at));
+    if (denied.length > 0)  return 'denied';
+    if (waiting.length > 0) return 'waiting_permission';
+    if (noFix.length > 0)   return 'waiting_fix';
+    return 'unknown';
+  })();
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
       {/* Header bar */}
@@ -513,23 +553,61 @@ export default function FleetLiveMap() {
             )}
           </div>
 
-          {/* ── Improved empty / no-GPS overlays ── */}
+          {/* ── GPS status overlays ── */}
 
-          {/* Active drivers but none have sent a GPS fix yet */}
+          {/* All active drivers have no usable GPS — show a contextual banner */}
           {!loading && sessions.length > 0 && withGps.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
-              <div className="bg-white/95 backdrop-blur-sm border border-amber-200 rounded-2xl px-5 py-5 shadow-lg text-center max-w-xs w-full">
-                <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-3">
-                  <Crosshair size={22} className="text-amber-500 animate-pulse" />
+              <div className="bg-white/95 backdrop-blur-sm border rounded-2xl px-5 py-5 shadow-lg text-center max-w-sm w-full"
+                style={{ borderColor: noGpsSummary === 'denied' ? '#fca5a5' : '#fcd34d' }}>
+                <div className={[
+                  'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 border',
+                  noGpsSummary === 'denied'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-amber-50 border-amber-200',
+                ].join(' ')}>
+                  {noGpsSummary === 'denied'
+                    ? <AlertCircle size={22} className="text-red-500" />
+                    : <Crosshair size={22} className="text-amber-500 animate-pulse" />
+                  }
                 </div>
-                <p className="text-sm font-bold text-slate-700 mb-1">Waiting for GPS fix</p>
-                <p className="text-xs text-slate-500 leading-snug">
-                  {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active.
-                  {' '}GPS location will appear once their device gets a signal.
-                </p>
-                <p className="text-[11px] text-amber-600 mt-2 font-medium">
-                  Make sure location permission is enabled on the driver's device.
-                </p>
+
+                {noGpsSummary === 'denied' && (
+                  <>
+                    <p className="text-sm font-bold text-slate-700 mb-1">Location access denied</p>
+                    <p className="text-xs text-slate-500 leading-snug">
+                      No live GPS yet. One or more drivers may need to enable location access on their phone.
+                    </p>
+                    <p className="text-[11px] text-red-600 mt-2 font-medium">
+                      Ask the driver to open Settings and enable location for IWILLBUILD.
+                    </p>
+                  </>
+                )}
+
+                {noGpsSummary === 'waiting_permission' && (
+                  <>
+                    <p className="text-sm font-bold text-slate-700 mb-1">Waiting for location permission</p>
+                    <p className="text-xs text-slate-500 leading-snug">
+                      No live GPS yet. One or more drivers may need to enable location access on their phone.
+                    </p>
+                    <p className="text-[11px] text-amber-600 mt-2 font-medium">
+                      Ask the driver to tap "Enable Location" on their Drive screen.
+                    </p>
+                  </>
+                )}
+
+                {(noGpsSummary === 'waiting_fix' || noGpsSummary === 'unknown') && (
+                  <>
+                    <p className="text-sm font-bold text-slate-700 mb-1">Waiting for GPS fix</p>
+                    <p className="text-xs text-slate-500 leading-snug">
+                      {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active.
+                      {' '}GPS location will appear once their device gets a signal.
+                    </p>
+                    <p className="text-[11px] text-amber-600 mt-2 font-medium">
+                      Make sure location permission is enabled on the driver's device.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

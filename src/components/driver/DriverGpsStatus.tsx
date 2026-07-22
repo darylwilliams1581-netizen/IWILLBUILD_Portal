@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { getNativeGeo, isNative } from '@/lib/capacitor-plugins';
 import { useGpsPermission } from '@/lib/useGpsPermission';
+import type { GpsStatusValue } from '@/lib/useDriverSession';
 
 export interface GpsReading {
   lat: number;
@@ -36,6 +37,12 @@ export interface GpsReading {
 interface DriverGpsStatusProps {
   /** Called whenever a new GPS fix arrives */
   onPosition?: (pos: GpsReading) => void;
+  /**
+   * Called whenever the local permission or GPS state changes.
+   * Used by useDriverSession to send heartbeats to the server so the
+   * office Fleet view can show the correct status.
+   */
+  onStateChange?: (permStatus: import('@/lib/useGpsPermission').GpsPermissionStatus, gpsStatus: GpsStatusValue) => void;
   /** Show the full expanded card (default) or a compact pill */
   variant?: 'card' | 'pill';
   /** Whether GPS tracking is currently expected (session active) */
@@ -64,7 +71,7 @@ function timeAgo(ts: number): string {
   return `${Math.round(sec / 60)}m ago`;
 }
 
-export default function DriverGpsStatus({ onPosition, variant = 'card', active = true }: DriverGpsStatusProps) {
+export default function DriverGpsStatus({ onPosition, onStateChange, variant = 'card', active = true }: DriverGpsStatusProps) {
   const { status: permStatus, request: requestPerm, openSettings } = useGpsPermission();
 
   const [state, setState] = useState<GpsState>('waiting');
@@ -80,6 +87,27 @@ export default function DriverGpsStatus({ onPosition, variant = 'card', active =
     const t = setInterval(() => setTick(n => n + 1), 5000);
     return () => clearInterval(t);
   }, []);
+
+  // ── Report permission + GPS state to parent (useDriverSession heartbeat) ──
+  useEffect(() => {
+    if (!onStateChange) return;
+    // Map local GpsState → GpsStatusValue for the server
+    const gpsStatusMap: Record<GpsState, GpsStatusValue> = {
+      waiting:   'waiting_fix',
+      acquiring: 'waiting_fix',
+      good:      'live',
+      poor:      'live',
+      error:     'unavailable',
+      denied:    'denied',
+    };
+    // Map permission status → GpsStatusValue override when no fix possible
+    let gpsStatus: GpsStatusValue = gpsStatusMap[state];
+    if (permStatus === 'denied')      gpsStatus = 'denied';
+    if (permStatus === 'unavailable') gpsStatus = 'unavailable';
+    if (permStatus === 'prompt' || permStatus === 'unknown') gpsStatus = 'waiting_permission';
+    onStateChange(permStatus, gpsStatus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permStatus, state]);
 
   const handlePosition = useCallback((pos: { coords: {
     latitude: number; longitude: number; accuracy: number;
