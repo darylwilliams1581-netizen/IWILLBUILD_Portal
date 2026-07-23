@@ -61,6 +61,49 @@ export interface ReloadMediaSlotMessage {
 }
 
 /**
+ * Provisional canvas preview while picking a replacement (no API/manifest write).
+ */
+export interface PreviewMediaSlotMessage {
+  type: 'PREVIEW_MEDIA_SLOT'
+  slotPath: string
+  previewUrl: string
+  isVideo?: boolean
+  occurrenceIndex?: number
+}
+
+/**
+ * Restore the last PREVIEW_MEDIA_SLOT stash (img/video `src` or
+ * `style.backgroundImage`). Revert is global (single module-level stash),
+ * not slot-scoped.
+ */
+export interface RevertMediaSlotMessage {
+  type: 'REVERT_MEDIA_SLOT'
+}
+
+/**
+ * Pin purple selection overlay for the Commander Replace Image session.
+ */
+export interface MediaReplaceSessionStartMessage {
+  type: 'MEDIA_REPLACE_SESSION_START'
+  slotPath: string
+  occurrenceIndex?: number
+}
+
+/**
+ * End Replace Image session and clear the pinned selection overlay.
+ */
+export interface MediaReplaceSessionEndMessage {
+  type: 'MEDIA_REPLACE_SESSION_END'
+}
+
+/** Parent→iframe messages handled by media-replace-messages.ts */
+export type MediaReplaceParentMessage =
+  | PreviewMediaSlotMessage
+  | RevertMediaSlotMessage
+  | MediaReplaceSessionStartMessage
+  | MediaReplaceSessionEndMessage
+
+/**
  * Message to open the media slot dialog from dev-tools
  */
 export interface OpenMediaSlotDialogMessage {

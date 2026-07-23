@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
-import { isOriginAllowed } from "../utils/postMessage";
+import {
+	isContentElement,
+	isDevToolsElement,
+	detectImage,
+} from "../utils/element-detection";
 import { send } from "../utils/eventBus";
+import { isMediaReplaceSessionActive } from "../utils/media-replace-session";
+import { isOriginAllowed } from "../utils/postMessage";
 import {
 	showSelectionOverlay,
 	clearSelectionOverlay,
@@ -9,11 +15,6 @@ import {
 	clearAllNumberedOverlays,
 	updateAllNumberedOverlays,
 } from "../utils/selection-overlay";
-import {
-	isContentElement,
-	isDevToolsElement,
-	detectImage,
-} from "../utils/element-detection";
 
 /**
  * Hook for the AI sparkle button on hovered elements, selection overlay,
@@ -49,6 +50,9 @@ export function useHoverHint(
 		const multiSelectElements = new Map<number, HTMLElement>();
 
 		const clearSelection = () => {
+			if (isMediaReplaceSessionActive()) {
+				return;
+			}
 			const hadSelection =
 				!!selectedEl || !!document.querySelector("[data-ai-selected]");
 			clearSelectionOverlay();

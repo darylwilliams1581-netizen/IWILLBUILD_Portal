@@ -1,4 +1,9 @@
 import { clipBoundsToParent } from "./hover-bar-placement";
+import {
+  getMediaReplaceLockedElement,
+  isMediaReplaceSessionActive,
+  setMediaReplaceLockedElement,
+} from "./media-replace-session";
 
 const OVERLAY_ID = "ai-select-overlay";
 const SELECTION_COLOR = "#8b5cf6";
@@ -13,14 +18,6 @@ function positionOverlay(overlay: HTMLElement, el: HTMLElement): void {
   overlay.style.left = `${b.left - pad}px`;
   overlay.style.width = `${width + pad * 2}px`;
   overlay.style.height = `${height + pad * 2}px`;
-}
-
-/** Remove the selection overlay and clear data-ai-selected from any element */
-export function clearSelectionOverlay(): void {
-  const overlay = document.getElementById(OVERLAY_ID);
-  if (overlay) overlay.remove();
-  const prev = document.querySelector("[data-ai-selected]") as HTMLElement | null;
-  if (prev) prev.removeAttribute("data-ai-selected");
 }
 
 /** Inject pulse keyframe once */
@@ -41,48 +38,6 @@ function ensurePulseKeyframes(): void {
   document.head.appendChild(style);
 }
 
-/** Create a fixed-position overlay that highlights the element.
- *  Not affected by parent overflow:hidden or z-index stacking. */
-export function showSelectionOverlay(el: HTMLElement): void {
-  clearSelectionOverlay();
-  ensurePulseKeyframes();
-  el.setAttribute("data-ai-selected", "true");
-
-  const overlay = document.createElement("div");
-  overlay.id = OVERLAY_ID;
-  overlay.style.cssText = `
-    position: fixed;
-    border: 2px solid ${SELECTION_COLOR};
-    border-radius: 6px;
-    box-shadow: 0 0 0 2px ${SELECTION_COLOR}4D, 0 0 16px ${SELECTION_COLOR}80, inset 0 0 16px ${SELECTION_COLOR}1A;
-    background: ${SELECTION_COLOR}0F;
-    pointer-events: none;
-    z-index: 10001;
-    animation: aiSelectPulse 4s ease-in-out infinite;
-  `;
-  positionOverlay(overlay, el);
-  document.body.appendChild(overlay);
-}
-
-/** Update overlay position to track the selected element on scroll/resize.
- *  Clears the overlay if the selected element is no longer in the DOM
- *  (e.g. after page navigation). */
-export function updateSelectionOverlay(): void {
-  const overlay = document.getElementById(OVERLAY_ID);
-  if (!overlay) return;
-  const el = document.querySelector("[data-ai-selected]") as HTMLElement | null;
-  if (!el || !document.body.contains(el)) {
-    clearSelectionOverlay();
-    return;
-  }
-  positionOverlay(overlay, el);
-}
-
-// === Multi-overlay support (flag: appbuilder-multi-element-select) ===
-
-const NUMBERED_OVERLAY_PREFIX = "ai-select-overlay-";
-const numberedOverlays = new Map<number, { overlay: HTMLElement; el: HTMLElement }>();
-
 function createOverlayStyle(): string {
   return `
     position: fixed;
@@ -95,6 +50,90 @@ function createOverlayStyle(): string {
     animation: aiSelectPulse 4s ease-in-out infinite;
   `;
 }
+
+/** Create and mount the primary purple selection overlay for `el`. */
+function createOverlayElement(el: HTMLElement): HTMLDivElement {
+  ensurePulseKeyframes();
+  const overlay: HTMLDivElement = document.createElement("div");
+  overlay.id = OVERLAY_ID;
+  overlay.style.cssText = createOverlayStyle();
+  positionOverlay(overlay, el);
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+/**
+ * Remove the selection overlay and clear data-ai-selected from any element.
+ * During a media replace session the purple pin stays unless `force` is set.
+ */
+export function clearSelectionOverlay(options?: { force?: boolean }): void {
+  if (!options?.force && isMediaReplaceSessionActive()) {
+    const locked: HTMLElement | null = getMediaReplaceLockedElement();
+    if (locked && document.body.contains(locked)) {
+      const overlay: HTMLElement | null = document.getElementById(OVERLAY_ID);
+      locked.setAttribute("data-ai-selected", "true");
+      if (!overlay) {
+        // Re-pin without recursion through the force-clear path below
+        createOverlayElement(locked);
+      } else {
+        positionOverlay(overlay, locked);
+      }
+      return;
+    }
+  }
+
+  const overlay = document.getElementById(OVERLAY_ID);
+  if (overlay) overlay.remove();
+  const prev = document.querySelector("[data-ai-selected]") as HTMLElement | null;
+  if (prev) prev.removeAttribute("data-ai-selected");
+}
+
+/** Create a fixed-position overlay that highlights the element.
+ *  Not affected by parent overflow:hidden or z-index stacking. */
+export function showSelectionOverlay(el: HTMLElement): void {
+  clearSelectionOverlay({ force: true });
+  el.setAttribute("data-ai-selected", "true");
+  if (isMediaReplaceSessionActive()) {
+    setMediaReplaceLockedElement(el);
+  }
+  createOverlayElement(el);
+}
+
+/** Update overlay position to track the selected element on scroll/resize.
+ *  Clears the overlay if the selected element is no longer in the DOM
+ *  (e.g. after page navigation). During a media replace session, re-pins the
+ *  locked element when possible. */
+export function updateSelectionOverlay(): void {
+  const overlay = document.getElementById(OVERLAY_ID);
+  if (!overlay) {
+    if (isMediaReplaceSessionActive()) {
+      const locked: HTMLElement | null = getMediaReplaceLockedElement();
+      if (locked && document.body.contains(locked)) {
+        showSelectionOverlay(locked);
+      }
+    }
+    return;
+  }
+  const el = document.querySelector("[data-ai-selected]") as HTMLElement | null;
+  if (!el || !document.body.contains(el)) {
+    if (isMediaReplaceSessionActive()) {
+      const locked: HTMLElement | null = getMediaReplaceLockedElement();
+      if (locked && document.body.contains(locked)) {
+        locked.setAttribute("data-ai-selected", "true");
+        positionOverlay(overlay, locked);
+        return;
+      }
+    }
+    clearSelectionOverlay({ force: true });
+    return;
+  }
+  positionOverlay(overlay, el);
+}
+
+// === Multi-overlay support (flag: appbuilder-multi-element-select) ===
+
+const NUMBERED_OVERLAY_PREFIX = "ai-select-overlay-";
+const numberedOverlays = new Map<number, { overlay: HTMLElement; el: HTMLElement }>();
 
 function createNumberBadge(number: number, onRemove: () => void): HTMLElement {
   const badge = document.createElement("div");

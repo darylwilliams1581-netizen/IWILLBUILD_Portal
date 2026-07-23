@@ -11,6 +11,7 @@ import {
   removeNumberedOverlay,
   getNextSelectionNumber,
 } from "../utils/selection-overlay";
+import { isMediaReplaceSessionActive } from "../utils/media-replace-session";
 import type { HoveredElement } from "../hooks/useImageHoverDetection";
 import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Image, MousePointerClick, Move, Pencil, Sparkles, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { isClickable, isTextElement, isTextBlockElement, isListElement } from "../utils/element-detection";
@@ -303,8 +304,10 @@ export default function ElementHoverBar({
       if (target.closest(".edit-mode-link-follow-bar")) return;
       if (element.contains(target)) return;
       if (target.closest("[data-dev-tools]") || target.closest("[data-airo-dev-tools]")) return;
-      // Clear scroll-to-media selection overlay on click outside
-      clearSelectionOverlay();
+      // Clear scroll-to-media selection overlay on click outside (unless Replace session is pinning it)
+      if (!isMediaReplaceSessionActive()) {
+        clearSelectionOverlay();
+      }
       // Revert inline styles when dismissing reposition mode via click-outside
       // (mirrors handleRepositionCancel, but inlined here because that callback
       // is declared later in the component and can't appear in this dep array).

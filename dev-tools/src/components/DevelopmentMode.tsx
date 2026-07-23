@@ -19,7 +19,15 @@ import AnnotationMode from "./AnnotationMode";
 import ElementHoverBar from "./ElementHoverBar";
 import { setTranslations } from "../utils/translations";
 import { discoverRoutes, resolveRouteForModule } from "../route-discovery";
+import {
+  BG_VIDEO_FILL_STYLE,
+  configureAutoplayVideo,
+  prepareBackgroundVideoHost,
+  restoreBackgroundVideoHost,
+} from "../utils/autoplay-video";
+import { handleMediaReplaceParentMessage } from "../utils/media-replace-messages";
 import { collectMediaSlotDomMatches } from "../utils/media-slot-dom";
+import { discardMediaSlotPreviewStash, revertMediaSlotPreview } from "../utils/media-slot-preview";
 import { resolveExternalNavigationHref } from "../utils/link-follow";
 import { isClickable, isInsideNavSurface, isDevToolsElement, isManagedPath, hasManagedDocMarkup, FORM_TAGS } from "../utils/element-detection";
 import CarouselSlotEditNav from "./CarouselSlotEditNav";
@@ -351,11 +359,6 @@ export default function DevelopmentMode() {
       if (existing) existing.remove()
 
       const video = document.createElement('video')
-      video.src = videoSrc
-      video.autoplay = true
-      video.muted = true
-      video.loop = true
-      video.playsInline = true
       video.className = img.className
       video.style.cssText = img.style.cssText
       if (img.width) video.width = img.width
@@ -365,9 +368,27 @@ export default function DevelopmentMode() {
       if (caption) video.setAttribute('aria-label', caption)
       video.setAttribute('data-airo-video', '')
       video.setAttribute('data-slot', slotPath)
+      configureAutoplayVideo(video)
+      video.src = videoSrc
       img.setAttribute('data-airo-video-patched', 'true')
       img.style.display = 'none'
       img.parentNode?.insertBefore(video, img.nextSibling)
+    }
+
+    /** Insert absolute-fill background video; Safari-safe (clear host bg + autoplay attrs). */
+    function insertBackgroundVideo(el: HTMLElement, videoSrc: string, slotPath: string) {
+      const existingBgVideo = el.querySelector<HTMLVideoElement>('video[data-airo-bg-video]')
+      if (existingBgVideo) existingBgVideo.remove()
+      el.style.backgroundImage = 'none'
+      el.setAttribute('data-airo-video-bg-patched', slotPath)
+      const video = document.createElement('video')
+      video.setAttribute('data-airo-bg-video', '')
+      video.setAttribute('data-slot', slotPath)
+      video.style.cssText = BG_VIDEO_FILL_STYLE
+      configureAutoplayVideo(video)
+      video.src = videoSrc
+      prepareBackgroundVideoHost(el)
+      el.insertBefore(video, el.firstChild)
     }
 
     /** Patch <video> elements: apply version params, or remove if slot changed to image */
@@ -414,26 +435,11 @@ export default function DevelopmentMode() {
       const extracted = extractSlotPath(urlMatch[1])
       if (extracted && mediaState.types[extracted.slotPath] === 'video') {
         if (el.getAttribute('data-airo-video-bg-patched') === extracted.slotPath) return
-        const existingBgVideo = el.querySelector<HTMLVideoElement>('video[data-airo-bg-video]')
-        if (existingBgVideo) existingBgVideo.remove()
-        el.style.backgroundImage = 'none'
-        el.setAttribute('data-airo-video-bg-patched', extracted.slotPath)
         const videoUrl = new URL(window.location.origin + SLOT_URL_PREFIX_VIDEOS + extracted.slotPath)
         const version = mediaState.versions[extracted.slotPath]
         if (version) videoUrl.searchParams.set('_v', version)
         videoUrl.searchParams.set('_t', String(Date.now()))
-        const video = document.createElement('video')
-        video.src = videoUrl.toString()
-        video.autoplay = true
-        video.muted = true
-        video.loop = true
-        video.playsInline = true
-        video.setAttribute('data-airo-bg-video', '')
-        video.setAttribute('data-slot', extracted.slotPath)
-        video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;'
-        const pos = window.getComputedStyle(el).position
-        if (pos === 'static') el.style.position = 'relative'
-        el.insertBefore(video, el.firstChild)
+        insertBackgroundVideo(el, videoUrl.toString(), extracted.slotPath)
         return
       }
 
@@ -456,26 +462,11 @@ export default function DevelopmentMode() {
         const extracted = extractSlotPath(urlMatch[1])
         if (extracted && mediaState.types[extracted.slotPath] === 'video') {
           if (el.getAttribute('data-airo-video-bg-patched') === extracted.slotPath) return
-          const existingBgVideo = el.querySelector<HTMLVideoElement>('video[data-airo-bg-video]')
-          if (existingBgVideo) existingBgVideo.remove()
-          el.style.backgroundImage = 'none'
-          el.setAttribute('data-airo-video-bg-patched', extracted.slotPath)
           const videoUrl = new URL(window.location.origin + SLOT_URL_PREFIX_VIDEOS + extracted.slotPath)
           const version = mediaState.versions[extracted.slotPath]
           if (version) videoUrl.searchParams.set('_v', version)
           videoUrl.searchParams.set('_t', String(Date.now()))
-          const video = document.createElement('video')
-          video.src = videoUrl.toString()
-          video.autoplay = true
-          video.muted = true
-          video.loop = true
-          video.playsInline = true
-          video.setAttribute('data-airo-bg-video', '')
-          video.setAttribute('data-slot', extracted.slotPath)
-          video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;'
-          const pos = window.getComputedStyle(el).position
-          if (pos === 'static') el.style.position = 'relative'
-          el.insertBefore(video, el.firstChild)
+          insertBackgroundVideo(el, videoUrl.toString(), extracted.slotPath)
           return
         }
 
@@ -589,6 +580,12 @@ export default function DevelopmentMode() {
     }
 
     function reloadMediaSlot(slotPath: string, isVideo?: boolean) {
+      // Restore original slot URLs before matching — live preview may have
+      // rewritten img/video src (or inserted provisional nodes), which would
+      // make the slot-path queries below miss the element.
+      revertMediaSlotPreview()
+      discardMediaSlotPreviewStash()
+
       const timestamp = Date.now()
       const imageSlotPattern = `/airo-assets/images/${slotPath}`
       const videoSlotPattern = `/airo-assets/videos/${slotPath}`
@@ -670,6 +667,7 @@ export default function DevelopmentMode() {
             const url = new URL(video.src)
             url.pathname = videoSlotPattern
             url.searchParams.set('_t', String(timestamp))
+            configureAutoplayVideo(video)
             video.src = url.toString()
             video.load()
           }
@@ -692,32 +690,16 @@ export default function DevelopmentMode() {
         if (!wasBgPatched && !(bgImage && (bgImage.includes(imageSlotPattern) || bgImage.includes(videoSlotPattern)))) return
 
         if (isVideo) {
-          // Replace background-image with a <video> element filling the container
-          const existingBgVideo = el.querySelector<HTMLVideoElement>('video[data-airo-bg-video]')
-          if (existingBgVideo) existingBgVideo.remove()
-          el.style.backgroundImage = 'none'
-          el.setAttribute('data-airo-video-bg-patched', slotPath)
           const videoUrl = new URL(window.location.origin + videoSlotPattern)
           videoUrl.searchParams.set('_t', String(timestamp))
-          const video = document.createElement('video')
-          video.src = videoUrl.toString()
-          video.autoplay = true
-          video.muted = true
-          video.loop = true
-          video.playsInline = true
-          video.setAttribute('data-airo-bg-video', '')
-          video.setAttribute('data-slot', slotPath)
-          video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;'
-          // Ensure parent is positioned so the video fills it
-          const pos = window.getComputedStyle(el).position
-          if (pos === 'static') el.style.position = 'relative'
-          el.insertBefore(video, el.firstChild)
+          insertBackgroundVideo(el, videoUrl.toString(), slotPath)
         } else {
           // Remove bg video if slot changed back to image
           const bgVideo = el.querySelector<HTMLVideoElement>('video[data-airo-bg-video]')
           if (bgVideo) {
             bgVideo.remove()
             el.removeAttribute('data-airo-video-bg-patched')
+            restoreBackgroundVideoHost(el)
             // Restore background-image with the image slot URL (inline style was set to 'none' during patching)
             const imgUrl = new URL(window.location.origin + imageSlotPattern)
             imgUrl.searchParams.set('_t', String(timestamp))
@@ -725,6 +707,7 @@ export default function DevelopmentMode() {
           } else if (wasBgPatched) {
             // Element was marked as patched but video already gone — just restore bg
             el.removeAttribute('data-airo-video-bg-patched')
+            restoreBackgroundVideoHost(el)
             const imgUrl = new URL(window.location.origin + imageSlotPattern)
             imgUrl.searchParams.set('_t', String(timestamp))
             el.style.backgroundImage = `url("${imgUrl.toString()}")`
@@ -1603,6 +1586,13 @@ export default function DevelopmentMode() {
           })
         } else if (event.data?.type === 'RELOAD_MEDIA_SLOT' && event.data.slotPath) {
           reloadMediaSlot(event.data.slotPath, event.data.isVideo)
+        } else if (
+          event.data?.type === 'PREVIEW_MEDIA_SLOT' ||
+          event.data?.type === 'REVERT_MEDIA_SLOT' ||
+          event.data?.type === 'MEDIA_REPLACE_SESSION_START' ||
+          event.data?.type === 'MEDIA_REPLACE_SESSION_END'
+        ) {
+          handleMediaReplaceParentMessage(event.data)
         } else if (event.data?.type === 'PREVIEW_THEME' && event.data.palette) {
           applyThemePreview(event.data.palette)
         } else if (event.data?.type === 'REVERT_THEME') {
