@@ -102,27 +102,23 @@ function SidebarUserStrip({
 
   if (!me && !sessionUser) {
     return (
-      <div className="mt-1 px-2 py-2 rounded-lg bg-white/5 flex items-center gap-2.5 opacity-40">
-        <div className="w-7 h-7 rounded-lg bg-white/10 shrink-0" />
-        <div className="sidebar-label min-w-0 flex-1 overflow-hidden">
-          <div className="h-2.5 w-20 bg-white/10 rounded" />
-        </div>
+      <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5 opacity-40">
+        <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0" />
+        <div className="min-w-0 flex-1"><div className="h-2.5 w-20 bg-gray-200 rounded" /></div>
       </div>
     );
   }
 
   return (
-    <div className="mt-1 px-2 py-2 rounded-lg bg-white/5 flex items-center gap-2.5">
+    <div className="mt-1 px-3 py-2.5 rounded-lg bg-gray-100 flex items-center gap-2.5">
       <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xs shrink-0">
         {initial}
       </div>
-      <div className="sidebar-label min-w-0 flex-1 overflow-hidden">
-        <div className="text-xs font-semibold text-white/80 truncate">{displayName || 'User'}</div>
-        <div className="text-[10px] text-white/40 truncate">{displayEmail}</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-semibold text-gray-800 truncate">{displayName || 'User'}</div>
+        <div className="text-[10px] text-gray-400 truncate">{displayEmail}</div>
       </div>
-      <div className="sidebar-label shrink-0">
-        <NotificationBell collapsed={false} />
-      </div>
+      <NotificationBell collapsed={false} />
     </div>
   );
 }
@@ -170,36 +166,32 @@ function SidebarContent({
     }
   }
 
-  // Nav link classes — dark sidebar style
+  // Nav link classes — light sidebar style
   const linkClass = (active: boolean) =>
-    `sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 group relative ${
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${
       active
         ? 'bg-primary text-white'
-        : 'text-white/50 hover:bg-white/8 hover:text-white'
+        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
     }`;
 
   return (
     <>
       {/* ── Logo / header ── */}
-      <div className="flex items-center h-14 px-3 border-b border-white/8 shrink-0 overflow-hidden">
+      <div className="flex items-center h-16 px-4 border-b border-gray-200 shrink-0 gap-2">
         <img
           src="/assets/logo.png"
           alt="IWILLBUILD"
-          className="h-8 w-auto object-contain shrink-0"
+          className="h-9 w-auto object-contain shrink-0 flex-1 min-w-0"
         />
-        {/* Wordmark — hidden when collapsed, fades in on expand */}
-        <span className="sidebar-label ml-2 text-sm font-black text-white tracking-tight whitespace-nowrap overflow-hidden">
-          IWILLBUILD
-        </span>
         {onClose && (
-          <button onClick={onClose} className="ml-auto p-1 text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors">
             <X size={18} />
           </button>
         )}
       </div>
 
       {/* ── Main nav ── */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 flex flex-col gap-0.5" aria-label="Main navigation">
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5" aria-label="Main navigation">
         {navEntries.map((item) => {
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey as any)) return null;
           if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
@@ -212,30 +204,24 @@ function SidebarContent({
               key={item.href}
               to={item.href}
               onClick={onClose}
-              aria-label={item.label}
               aria-current={active ? 'page' : undefined}
               className={
                 isDazza
-                  ? `sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-400 hover:bg-violet-500/10 hover:text-violet-300'}`
+                  ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
                   : linkClass(active)
               }
             >
               <Icon size={17} className="shrink-0" aria-hidden="true" />
-              <span className="sidebar-label text-sm font-semibold truncate flex-1 whitespace-nowrap overflow-hidden">
-                {item.label}
-              </span>
-              {/* Tooltip — only visible when sidebar is collapsed (CSS-driven) */}
-              <span className="sidebar-tooltip" aria-hidden="true">{item.label}</span>
+              <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
             </Link>
           );
         })}
 
         {/* ── Manage group ── */}
-        <div className="mt-2">
-          <p className="sidebar-label px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-white/25 select-none">
+        <div className="mt-3">
+          <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 select-none">
             Manage
           </p>
-          <div className="sidebar-divider mx-2 border-t border-white/10 mb-2" />
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
@@ -248,19 +234,15 @@ function SidebarContent({
                 key={item.href}
                 to={item.href}
                 onClick={onClose}
-                aria-label={item.label}
                 aria-current={active ? 'page' : undefined}
                 className={
                   isDazza
-                    ? `sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-400 hover:bg-violet-500/10 hover:text-violet-300'}`
+                    ? `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 group relative ${active ? 'bg-primary text-white' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'}`
                     : linkClass(active)
                 }
               >
                 <Icon size={17} className="shrink-0" aria-hidden="true" />
-                <span className="sidebar-label text-sm font-semibold truncate flex-1 whitespace-nowrap overflow-hidden">
-                  {item.label}
-                </span>
-                <span className="sidebar-tooltip" aria-hidden="true">{item.label}</span>
+                <span className="text-sm font-semibold truncate flex-1">{item.label}</span>
               </Link>
             );
           })}
@@ -273,15 +255,11 @@ function SidebarContent({
               <Link
                 to="/owner-console"
                 onClick={onClose}
-                aria-label="Developer Console"
                 aria-current={active ? 'page' : undefined}
-                className={`${linkClass(active)} border border-orange-500/30`}
+                className={`${linkClass(active)} border border-orange-300`}
               >
-                <ShieldCheck size={17} className="shrink-0 text-orange-400" aria-hidden="true" />
-                <span className="sidebar-label text-sm font-semibold truncate flex-1 text-orange-400 whitespace-nowrap overflow-hidden">
-                  Developer Console
-                </span>
-                <span className="sidebar-tooltip" aria-hidden="true">Developer Console</span>
+                <ShieldCheck size={17} className="shrink-0 text-orange-500" aria-hidden="true" />
+                <span className="text-sm font-semibold truncate flex-1 text-orange-600">Developer Console</span>
               </Link>
             );
           })()}
@@ -289,47 +267,46 @@ function SidebarContent({
       </nav>
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-white/8" />
+      <div className="mx-3 border-t border-gray-200" />
 
       {/* ── Bottom strip ── */}
-      <div className="py-2 px-2 flex flex-col gap-0.5">
+      <div className="py-3 px-2 flex flex-col gap-0.5">
         <button
           onClick={handleLogout}
           aria-label="Log out"
-          className="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-white/40 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 group relative w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-150 w-full"
         >
           <LogOut size={17} className="shrink-0" aria-hidden="true" />
-          <span className="sidebar-label text-sm font-semibold whitespace-nowrap overflow-hidden">Log out</span>
-          <span className="sidebar-tooltip" aria-hidden="true">Log out</span>
+          <span className="text-sm font-semibold">Log out</span>
         </button>
 
         {/* Trial / subscription banner */}
         {subInfo && !isOwner && subInfo.status !== 'active' && (
           <Link
             to="/billing"
-            className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-2 transition-colors ${
+            className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
               subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
-                ? 'bg-red-500/10 hover:bg-red-500/20 border border-red-500/30'
+                ? 'bg-red-50 hover:bg-red-100 border border-red-200'
                 : (subInfo.daysLeft ?? 14) <= 5
-                ? 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30'
-                : 'bg-white/5 hover:bg-white/8 border border-white/10'
+                ? 'bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
             }`}
           >
             {subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
-              ? <AlertTriangle size={13} className="text-red-400 shrink-0" />
-              : <CreditCard size={13} className="text-amber-400 shrink-0" />
+              ? <AlertTriangle size={13} className="text-red-500 shrink-0" />
+              : <CreditCard size={13} className="text-amber-500 shrink-0" />
             }
-            <div className="sidebar-label min-w-0 flex-1 overflow-hidden">
+            <div className="min-w-0 flex-1">
               {subInfo.status === 'trial_expired' ? (
-                <p className="text-xs font-bold text-red-400 whitespace-nowrap">Trial expired</p>
+                <p className="text-xs font-bold text-red-600">Trial expired</p>
               ) : subInfo.status === 'cancelled' ? (
-                <p className="text-xs font-bold text-red-400 whitespace-nowrap">Subscription cancelled</p>
+                <p className="text-xs font-bold text-red-600">Subscription cancelled</p>
               ) : subInfo.status === 'past_due' ? (
-                <p className="text-xs text-red-400 font-bold whitespace-nowrap">Payment past due</p>
+                <p className="text-xs text-red-600 font-bold">Payment past due</p>
               ) : (
                 <>
-                  <p className="text-xs font-bold text-amber-400 whitespace-nowrap">Free trial</p>
-                  <p className="text-[10px] text-white/40 whitespace-nowrap">
+                  <p className="text-xs font-bold text-amber-600">Free trial</p>
+                  <p className="text-[10px] text-gray-500">
                     {subInfo.daysLeft ?? 0} day{subInfo.daysLeft !== 1 ? 's' : ''} remaining
                   </p>
                 </>
@@ -383,17 +360,11 @@ export default function PortalSidebar() {
       {/* ── Session expired banner ── */}
       {isExpired && <SessionExpiredBanner />}
 
-      {/* ── Desktop sidebar — hover/focus-within auto-expand ── */}
-      {/*
-        CSS approach: sidebar starts at 56px (icon rail).
-        On :hover or :focus-within it transitions to 220px.
-        .sidebar-label elements are width:0 / opacity:0 when collapsed,
-        width:auto / opacity:1 when expanded — driven purely by CSS.
-        No JS state needed for the expand/collapse cycle.
-      */}
+      {/* ── Desktop sidebar — always expanded ── */}
       <aside
         ref={_sidebarRef}
-        className="sidebar-rail relative hidden md:flex flex-col h-screen bg-[#111827] border-r border-white/6 shrink-0 overflow-hidden"
+        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-200 shrink-0 overflow-hidden"
+        style={{ width: 240, minWidth: 240 }}
         aria-label="Portal navigation"
       >
         <SidebarContent />
@@ -418,7 +389,7 @@ export default function PortalSidebar() {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.25, ease: 'easeOut' as const }}
-              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-[#111827] flex flex-col z-50 md:hidden shadow-2xl border-r border-white/8"
+              className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               <SidebarContent onClose={() => setMobileOpen(false)} />
