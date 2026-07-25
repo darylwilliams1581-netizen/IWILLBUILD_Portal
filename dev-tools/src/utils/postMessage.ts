@@ -29,13 +29,9 @@ export function isOriginAllowed(event: MessageEvent): boolean {
   const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN
 
   if (!allowedOrigin || allowedOrigin === '*') {
-    // If no specific origin is configured, we're in development mode
-    // Allow localhost origins and GoDaddy domains for development flexibility
+    // Dev mode: no specific origin configured — allow localhost and GoDaddy domains.
     const origin = event.origin
-
-    // Pattern matches: airo-builder.godaddy.com, airo-builder.dev-godaddy.com, airo-builder.test-godaddy.com
     const airoBuilderPattern = /^https:\/\/airo-builder\.(dev-|test-)?godaddy\.com(:\d+)?$/
-
     return origin.startsWith('http://localhost:') ||
            origin.startsWith('https://localhost:') ||
            origin.startsWith('https://local.gasket.dev-godaddy.com:') ||
@@ -44,9 +40,20 @@ export function isOriginAllowed(event: MessageEvent): boolean {
            airoBuilderPattern.test(origin)
   }
 
-  // In production or when specific origin is set, only allow that exact origin
-  // Normalize by removing trailing slash since event.origin never has one
-  return event.origin === allowedOrigin.replace(/\/$/, '')
+  // Exact match: the configured production builder URL.
+  if (event.origin === allowedOrigin.replace(/\/$/, '')) return true
+
+  // Dark-release / staging: the builder URL may differ from VITE_PARENT_ORIGIN (configured for
+  // the production URL). Trust the direct parent frame when its origin is on a GoDaddy-owned
+  // domain so those environments keep working. event.source cannot be spoofed by the browser,
+  // but we bound the trust to GoDaddy domains — arbitrary third-party embedders are NOT trusted
+  // even if they happen to be the direct parent (e.g. a customer site that is itself embedded).
+  if (typeof window !== 'undefined' && window.parent !== window && event.source === window.parent) {
+    const godaddyPattern = /^https:\/\/[a-zA-Z0-9][a-zA-Z0-9.-]*\.(dev-|test-)?godaddy\.com(:\d+)?$/
+    if (godaddyPattern.test(event.origin)) return true
+  }
+
+  return false
 }
 
 /**

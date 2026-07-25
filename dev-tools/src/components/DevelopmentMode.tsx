@@ -1496,30 +1496,44 @@ export default function DevelopmentMode() {
           // live route registry so skill-installed pages (mounted at
           // non-filename paths) navigate correctly. Falls back to the raw
           // `url` when the registry can't help.
+          //
+          // When only `url` is provided (no modulePath), navigate synchronously
+          // — no registry fetch needed. This is the common case for direct-URL
+          // navigation (campaign landing-page previews, scroll restores, etc.)
+          // and avoids an async fetch that caused the preview to flash the old
+          // page while the route manifest was being downloaded.
           const url: string | null = typeof event.data.url === 'string' ? event.data.url : null
           const modulePath: string | null =
             typeof event.data.modulePath === 'string' ? event.data.modulePath : null
           const currentPath = window.location.pathname + window.location.search + window.location.hash
-          const resolvePromise: Promise<string | null> = (url || modulePath)
-            ? resolveRouteForModule({ url, modulePath }, currentPath).catch((error) => {
-                console.error('Failed to resolve route for checkout hint:', error)
-                return url && url !== currentPath ? url : null
-              })
-            : Promise.resolve(null)
 
-          resolvePromise.then((target) => {
-            if (target && target !== currentPath) {
-              try {
-                // Use original pushState to avoid triggering our monkey-patched navigation handler
-                originalPushState(null, '', target)
-                // Dispatch a popstate event to notify React Router of the navigation
-                const popStateEvent = new PopStateEvent('popstate', { state: null })
-                window.dispatchEvent(popStateEvent)
-              } catch (error) {
-                console.error('Failed to restore URL:', error)
-              }
+          const applyNavigation = (target: string | null): void => {
+            if (!target || target === currentPath) return
+            try {
+              // Use original pushState to avoid triggering our monkey-patched navigation handler
+              originalPushState(null, '', target)
+              // Dispatch a popstate event to notify React Router of the navigation
+              window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
+            } catch (error) {
+              console.error('Failed to restore URL:', error)
             }
-          })
+          }
+
+          if (url && !modulePath) {
+            // Direct-URL navigation: synchronous, no route-registry fetch.
+            applyNavigation(url !== currentPath ? url : null)
+          } else {
+            // modulePath present (agent checkout hint): resolve against registry
+            // to map source files to their registered route paths.
+            const resolvePromise: Promise<string | null> = (url || modulePath)
+              ? resolveRouteForModule({ url, modulePath }, currentPath).catch((error) => {
+                  console.error('Failed to resolve route for checkout hint:', error)
+                  return url && url !== currentPath ? url : null
+                })
+              : Promise.resolve(null)
+
+            resolvePromise.then(applyNavigation)
+          }
 
           // Then restore scroll position after a delay to ensure page has updated
           if (event.data.scrollPosition) {
