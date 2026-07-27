@@ -268,6 +268,8 @@ import forms_id_fields_fieldId_patch_235 from "./api/forms/[id]/fields/[fieldId]
 import forms_id_fields_fieldId_thumbnail_post_236 from "./api/forms/[id]/fields/[fieldId]/thumbnail/POST";
 import health_get_237 from "./api/health/GET";
 import lists_listType_get from "./api/lists/GET";
+import userLogs_get from "./api/user-logs/GET";
+import userLogs_users_get from "./api/user-logs/users/GET";
 import incidents_get_238 from "./api/incidents/GET";
 import incidents_post_239 from "./api/incidents/POST";
 import incidents_incidentId_get_240 from "./api/incidents/[incidentId]/GET";
@@ -2559,6 +2561,8 @@ app.patch("/api/forms/:id/fields/:fieldId", forms_id_fields_fieldId_patch_235);
 app.post("/api/forms/:id/fields/:fieldId/thumbnail", forms_id_fields_fieldId_thumbnail_post_236);
 app.get("/api/health", health_get_237);
 app.get("/api/lists/:listType", lists_listType_get);
+app.get("/api/user-logs/users", userLogs_users_get);
+app.get("/api/user-logs", userLogs_get);
 app.get("/api/incidents", incidents_get_238);
 app.post("/api/incidents", incidents_post_239);
 app.get("/api/incidents/:incidentId", incidents_incidentId_get_240);
