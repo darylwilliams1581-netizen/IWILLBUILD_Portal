@@ -62,24 +62,6 @@ function addDays(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Monday of the current week */
-function thisMonday(): string {
-  const d = new Date();
-  const day = d.getDay(); // 0=Sun
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Monday of next week */
-function nextMonday(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 1 : 8 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
 /** Sunday of the current week */
 function thisSunday(): string {
   const d = new Date();
