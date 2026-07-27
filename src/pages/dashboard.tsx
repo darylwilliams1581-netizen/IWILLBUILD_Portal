@@ -16,8 +16,6 @@ import {
   Clock,
   XCircle,
   BarChart3,
-  Calculator,
-  Ruler,
   Car,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -175,27 +173,9 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0 ml-auto">
-              {/* Quick-access tool icons — Take-off Pad & Builders Calc */}
-              <Link to="/estimating?tab=takeoff-pad" title="Take-off Pad"
-                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
-                <Ruler size={15} />
-              </Link>
-              <Link to="/estimating?tab=builders-calc" title="Builders Calc"
-                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
-                <Calculator size={15} />
-              </Link>
               <button className="relative p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
                 <Bell size={15} />
               </button>
-              <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
-                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {initials}
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-xs font-semibold text-gray-900 leading-none">{displayName}</p>
-                  <p className="text-[10px] text-gray-400 truncate max-w-[130px]">{user?.email ?? ''}</p>
-                </div>
-              </div>
             </div>
         </header>
 
@@ -216,14 +196,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-3 md:p-4">
+        <main className="flex-1 overflow-y-auto p-2 md:p-3">
 
           {/* ── Usage warning banner ── */}
           {usageWarning && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mb-3 flex items-start gap-2 rounded-lg border px-3 py-2.5 ${
+              className={`mb-2 flex items-start gap-2 rounded-lg border px-3 py-2 ${
                 usageWarning.hasBlocked
                   ? 'bg-red-50 border-red-200'
                   : 'bg-amber-50 border-amber-200'
@@ -261,7 +241,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' as const }}
-              className="mb-3 rounded-xl bg-[#1A1D23] text-white px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              className="mb-2 rounded-lg bg-[#1A1D23] text-white px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
             >
               {isSetup ? (
                 <>
@@ -391,7 +371,7 @@ export default function DashboardPage() {
               variants={itemVariants}
               initial="hidden"
               animate="visible"
-              className="mb-3 flex flex-col gap-2"
+              className="mb-2 flex flex-col gap-2"
             >
               {overdueTodos.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex flex-col gap-1.5">
@@ -445,7 +425,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── Bottom panels ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
 
             {/* Mobile: Scheduler shortcut | Desktop: Recent Jobs */}
             <motion.div
