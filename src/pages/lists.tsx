@@ -22,6 +22,7 @@ import {
   Loader2, AlertCircle, ChevronLeft, ChevronRight,
   HardHat, CheckSquare, StickyNote, ShieldAlert,
   LogIn, DollarSign, Filter, X, Truck, ScrollText,
+  LayoutDashboard, ChevronRight as Crumb,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -436,8 +437,21 @@ export default function ListsPage() {
       <div className="portal-page">
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
-          {/* ── List selector tabs (no page header above) ── */}
-          <div className="shrink-0 px-5 pt-3 pb-0 border-b border-gray-200 bg-white">
+          {/* ── Breadcrumb ── */}
+          <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-orange-500 transition-colors group"
+            >
+              <LayoutDashboard size={12} className="group-hover:text-orange-500 transition-colors" />
+              <span>Dashboard</span>
+            </button>
+            <Crumb size={11} className="text-gray-300" />
+            <span className="text-[11px] font-medium text-gray-600">Lists</span>
+          </div>
+
+          {/* ── List selector tabs ── */}
+          <div className="shrink-0 px-5 pt-0 pb-0 border-b border-gray-200 bg-white">
             <div className="flex items-center gap-1 overflow-x-auto">
               {LIST_DEFS.map((l) => {
                 const Icon = l.icon;
