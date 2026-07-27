@@ -15,13 +15,13 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, Download, ChevronUp, ChevronDown, ChevronsUpDown,
   Loader2, AlertCircle, ChevronLeft, ChevronRight,
   HardHat, CheckSquare, StickyNote, ShieldAlert,
-  LogIn, DollarSign, Filter, X, Truck,
+  LogIn, DollarSign, Filter, X, Truck, ScrollText,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -44,6 +44,9 @@ const LIST_DEFS: ListMeta[] = [
   { key: 'costs',       label: 'Costs',       icon: DollarSign,  description: 'Job costs, purchases, and expenses' },
   { key: 'driver-logs', label: 'Driver Logs', icon: Truck,       description: 'Fleet vehicle usage and driver sign-in/out logs' },
 ];
+
+// User Logs tab is a link-out to /user-logs — not a data list type
+const USER_LOGS_TAB = { label: 'User Logs', icon: ScrollText, href: '/user-logs' };
 
 interface ColDef {
   key: string;
@@ -244,6 +247,8 @@ const STATUS_OPTIONS: Record<ListType, string[]> = {
   'driver-logs':  [],
 };
 
+const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 interface ListData {
@@ -339,6 +344,7 @@ const PAGE_SIZE = 50;
 
 export default function ListsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const activeList = (searchParams.get('list') as ListType) || 'jobs';
   const setActiveList = (l: ListType) => {
@@ -430,17 +436,9 @@ export default function ListsPage() {
       <div className="portal-page">
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
-          {/* ── Page header ── */}
-          <div className="shrink-0 px-5 pt-5 pb-3 border-b border-gray-200 bg-white">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-[18px] font-bold text-gray-900 leading-tight">Lists</h1>
-                <p className="text-[12px] text-gray-400 mt-0.5">View and export system records</p>
-              </div>
-            </div>
-
-            {/* ── List selector tabs ── */}
-            <div className="flex items-center gap-1 mt-3 -mb-px overflow-x-auto">
+          {/* ── List selector tabs (no page header above) ── */}
+          <div className="shrink-0 px-5 pt-3 pb-0 border-b border-gray-200 bg-white">
+            <div className="flex items-center gap-1 overflow-x-auto">
               {LIST_DEFS.map((l) => {
                 const Icon = l.icon;
                 const active = l.key === activeList;
@@ -448,7 +446,7 @@ export default function ListsPage() {
                   <button
                     key={l.key}
                     onClick={() => setActiveList(l.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-t border-b-2 transition-colors whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-t border-b-2 transition-colors whitespace-nowrap ${
                       active
                         ? 'border-primary text-primary bg-orange-50'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -459,6 +457,15 @@ export default function ListsPage() {
                   </button>
                 );
               })}
+
+              {/* User Logs — navigates to /user-logs */}
+              <button
+                onClick={() => navigate(USER_LOGS_TAB.href)}
+                className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-t border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap ml-1"
+              >
+                <ScrollText size={13} />
+                {USER_LOGS_TAB.label}
+              </button>
             </div>
           </div>
 
