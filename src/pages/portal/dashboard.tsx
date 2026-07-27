@@ -42,11 +42,6 @@ function fmtMoney(n?: number | null) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(n);
 }
 
-function fmtDate(iso?: string) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 export default function PortalDashboardPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();

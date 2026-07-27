@@ -1340,39 +1340,29 @@ export default function SchedulerPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* ── Top bar ── */}
-        <div className="h-14 bg-white border-b border-slate-200 flex items-center gap-2 px-3 shrink-0 min-w-0">
+        <div className="op-page-header flex items-center gap-2 shrink-0 min-w-0">
 
-          {/* Back + Home — compact icon buttons, always visible */}
-          <button
-            type="button"
-            onClick={() => rrNavigate(-1)}
-            title="Back"
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            <ArrowLeft size={16} />
+          {/* Back + Home */}
+          <button type="button" onClick={() => rrNavigate(-1)} title="Back"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <ArrowLeft size={14} />
           </button>
-          <Link
-            to="/home"
-            title="Home"
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            <Home size={16} />
+          <Link to="/home" title="Home"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+            <Home size={14} />
           </Link>
 
-          <CalendarDays size={18} className="text-orange-500 shrink-0" />
-          <h1 className="text-base font-bold text-slate-800 shrink-0">Scheduler</h1>
+          <CalendarDays size={14} className="text-primary shrink-0" />
+          <h1 className="op-page-title shrink-0">Scheduler</h1>
 
           {/* ── Top-level page tabs ── */}
-          <div className="ml-4 flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setSearchParams({})}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
+          <div className="ml-3 flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
+            <button onClick={() => setSearchParams({})}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${activeTab === 'jobs' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               Jobs
             </button>
-            <button
-              onClick={() => setSearchParams({ tab: 'tasks' })}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeTab === 'tasks' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            <button onClick={() => setSearchParams({ tab: 'tasks' })}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${activeTab === 'tasks' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Tasks
             </button>
@@ -1397,39 +1387,29 @@ export default function SchedulerPage() {
               <>
                 {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
                 {view !== 'table' && view !== 'assets' && (
-                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                  <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
                     {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
-                      <button
-                        key={key}
-                        onClick={() => switchWindow(key)}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                          timeWindow === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                      >
+                      <button key={key} onClick={() => switchWindow(key)}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${timeWindow === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                         {WINDOW_LABELS[key]}
                       </button>
                     ))}
                   </div>
                 )}
 
-                <div className="h-5 w-px bg-slate-200" />
+                <div className="h-4 w-px bg-gray-200" />
 
                 {/* View toggle */}
-                <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                <div className="flex items-center bg-gray-100 rounded p-0.5 gap-0.5">
                   {([
-                    { key: 'table',    icon: <List size={13} />,        label: 'Table' },
-                    { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
-                    { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
-                    { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
-                    { key: 'assets',   icon: <Truck size={13} />,       label: 'Assets' },
+                    { key: 'table',    icon: <List size={12} />,        label: 'Table' },
+                    { key: 'timeline', icon: <BarChart2 size={12} />,   label: 'Timeline' },
+                    { key: 'calendar', icon: <Calendar size={12} />,    label: 'Calendar' },
+                    { key: 'crew',     icon: <Users size={12} />,       label: 'Crew' },
+                    { key: 'assets',   icon: <Truck size={12} />,       label: 'Assets' },
                   ] as const).map(({ key, icon, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => setView(key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                        view === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
+                    <button key={key} onClick={() => setView(key)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all ${view === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                       {icon} {label}
                     </button>
                   ))}
@@ -1441,22 +1421,22 @@ export default function SchedulerPage() {
 
           {/* ── Filters + period nav bar — jobs tab only, hidden in assets view ── */}
           {activeTab === 'jobs' && view !== 'assets' && (
-          <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
+          <div className="op-toolbar flex-wrap">
           <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search jobs..."
-              className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-40"
+              className="op-toolbar-search pl-7 w-40"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            className="op-toolbar-search appearance-none cursor-pointer"
           >
             <option value="All">All statuses</option>
             {JOB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1466,7 +1446,7 @@ export default function SchedulerPage() {
             <select
               value={supervisorFilter}
               onChange={e => setSupervisorFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              className="op-toolbar-search appearance-none cursor-pointer"
             >
               {supervisors.map(s => (
                 <option key={s} value={s}>{s === 'All' ? 'All supervisors' : s}</option>
@@ -1477,31 +1457,31 @@ export default function SchedulerPage() {
           {/* Period navigation */}
           {view !== 'table' && (
             <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => navigate(-1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Previous period">
-                <ChevronLeft size={14} />
+              <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
+                <ChevronLeft size={13} />
               </button>
-              <span className="text-xs font-semibold text-slate-700 min-w-[140px] text-center px-1">{windowLabel}</span>
-              <button onClick={() => navigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Next period">
-                <ChevronRight size={14} />
+              <span className="text-xs font-semibold text-gray-700 min-w-[130px] text-center px-1">{windowLabel}</span>
+              <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Next period">
+                <ChevronRight size={13} />
               </button>
-              <button onClick={goToToday} className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1">
+              <button onClick={goToToday} className="px-2 py-0.5 text-xs font-semibold text-primary hover:bg-orange-50 rounded transition-colors border border-orange-200 ml-1">
                 Today
               </button>
             </div>
           )}
 
-          <div className="text-xs text-slate-400 hidden lg:block">
+          <div className="text-[11px] text-gray-400 hidden lg:block ml-auto">
             {visibleCount} scheduled · {unscheduled.length} unscheduled
           </div>
           </div>
           )}
 
         {/* ── Main content ── */}
-        <div className={`flex-1 overflow-y-auto ${view === 'assets' && activeTab === 'jobs' ? '' : 'p-4'}`}>
+        <div className={`flex-1 overflow-y-auto ${view === 'assets' && activeTab === 'jobs' ? '' : 'p-3 md:p-4'}`}>
 
           {/* ── Tasks tab ── */}
           {activeTab === 'tasks' && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
               <TasksSchedulerView />
             </div>
           )}
@@ -1511,7 +1491,7 @@ export default function SchedulerPage() {
             <>
               {/* Assets view — full-height, manages its own layout */}
               {view === 'assets' && (
-                <div className="h-full flex flex-col bg-white border border-slate-200 rounded-none overflow-hidden">
+                <div className="h-full flex flex-col bg-white border border-gray-200 rounded-none overflow-hidden">
                   <AssetSchedulerView
                     timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
                     anchorDate={anchorDate}
@@ -1530,7 +1510,7 @@ export default function SchedulerPage() {
               )}
 
               {view !== 'assets' && !loading && error && (
-                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4">
                   <AlertCircle size={16} /> {error}
                 </div>
               )}
@@ -1541,7 +1521,7 @@ export default function SchedulerPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
                     {view === 'table' && <TableView jobs={filtered} />}
                     {view === 'timeline' && timeWindow === 'day' && (
                       <DayView

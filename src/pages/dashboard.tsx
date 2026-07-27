@@ -163,52 +163,40 @@ export default function DashboardPage() {
       <div className="portal-main">
 
         {/* Top bar — desktop only */}
-        <header className="hidden md:block bg-white border-b border-border shrink-0 print:hidden">
-          {/* Main header row */}
-          <div className="h-16 flex items-center justify-between px-4 md:px-6">
-            <div className="flex items-center gap-3 shrink-0">
-              <div>
-                <h1 className="font-heading font-bold text-base md:text-lg text-foreground leading-tight">Dashboard</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
-              </div>
-            </div>
+        <header className="hidden md:flex op-page-header shrink-0 print:hidden">
+          <div className="flex items-center gap-2 shrink-0">
+            <h1 className="op-page-title">Dashboard</h1>
+            <span className="op-page-subtitle hidden sm:block">— {today}</span>
+          </div>
 
             {/* Banner strip — desktop: sits between title and profile */}
-            <div className="hidden md:flex flex-1 min-w-0 items-center">
+            <div className="hidden md:flex flex-1 min-w-0 items-center px-4">
               <DashboardBanner userId={user?.id ?? 'anon'} />
             </div>
 
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
               {/* Quick-access tool icons — Take-off Pad & Builders Calc */}
-              <Link
-                to="/estimating?tab=takeoff-pad"
-                title="Take-off Pad"
-                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
-              >
-                <Ruler size={18} />
+              <Link to="/estimating?tab=takeoff-pad" title="Take-off Pad"
+                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
+                <Ruler size={15} />
               </Link>
-              <Link
-                to="/estimating?tab=builders-calc"
-                title="Builders Calc"
-                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150"
-              >
-                <Calculator size={18} />
+              <Link to="/estimating?tab=builders-calc" title="Builders Calc"
+                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
+                <Calculator size={15} />
               </Link>
-
-              <button className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150">
-                <Bell size={18} />
+              <button className="relative p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
+                <Bell size={15} />
               </button>
-              <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
                   {initials}
                 </div>
                 <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
-                  <p className="text-xs text-muted-foreground truncate max-w-[140px]">{user?.email ?? ''}</p>
+                  <p className="text-xs font-semibold text-gray-900 leading-none">{displayName}</p>
+                  <p className="text-[10px] text-gray-400 truncate max-w-[130px]">{user?.email ?? ''}</p>
                 </div>
               </div>
             </div>
-          </div>
         </header>
 
         {/* Mobile top strip — safe-area aware, below phone status bar */}
@@ -228,7 +216,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-3 md:p-6">
+        <main className="flex-1 overflow-y-auto p-3 md:p-4">
 
           {/* ── Usage warning banner ── */}
           {usageWarning && (

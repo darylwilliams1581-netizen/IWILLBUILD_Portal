@@ -118,7 +118,7 @@ export default function PortalJobDetailPage() {
       });
       const data = await res.json() as { ok?: boolean; status?: string; error?: string };
       if (data.ok) {
-        setActionDone(prev => ({ ...prev, [estId]: action }));
+        setActionDone(prev => ({ ...prev, [estId]: action === 'approve' ? 'approved' : 'declined' }));
         setEstimates(prev => prev.map(e => e.id === estId ? { ...e, status: data.status ?? e.status } : e));
         setActionEstId(null);
         setActionNotes('');

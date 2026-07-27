@@ -307,7 +307,7 @@ export default function JobDetailPage() {
   const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
 
   return (
-    <div className="min-h-dvh bg-gray-50 flex flex-col">
+    <div className="min-h-dvh bg-[#f5f6f8] flex flex-col">
       <Helmet>
         <title>{job ? `${job.jobNumber ?? job.name} — IWILLBUILD` : 'Job — IWILLBUILD'}</title>
         <meta name="description" content={job ? `Job details for ${job.name}${job.client ? ` — ${job.client}` : ''}` : 'Job details — IWILLBUILD Portal'} />
@@ -316,18 +316,14 @@ export default function JobDetailPage() {
       </Helmet>
 
       <div className="flex flex-col flex-1 min-h-0">
-        {/* ── Top bar ── */}
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => navigate('/jobs')}
-              className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              aria-label="Back to Jobs"
-            >
-              <ChevronLeft size={20} />
+        {/* ── Mobile top bar ── */}
+        <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30 safe-top">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => navigate('/jobs')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+              <ChevronLeft size={18} />
             </button>
-            <HardHat size={16} className="text-primary shrink-0" />
-            <h1 className="font-heading font-bold text-sm md:text-base truncate">
+            <HardHat size={15} className="text-primary shrink-0" />
+            <h1 className="font-heading font-bold text-sm truncate text-gray-900">
               {job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : 'Loading…'}
             </h1>
           </div>
@@ -347,35 +343,65 @@ export default function JobDetailPage() {
                 }}
                 size="sm"
               />
-            <button
-              onClick={() => setEditing(true)}
-              className="flex items-center gap-2 text-sm font-semibold text-primary hover:bg-orange-50 px-3 py-1.5 rounded-lg transition-colors shrink-0"
-            >
-              <Edit2 size={14} />
-              <span className="hidden sm:inline">Edit</span>
+            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded transition-colors shrink-0">
+              <Edit2 size={13} /><span className="hidden sm:inline">Edit</span>
             </button>
             </>
           )}
           {editing && (
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleCancel}
-                disabled={saving}
-                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
-              >
-                <X size={14} />
-                <span className="hidden sm:inline">Cancel</span>
+              <button onClick={handleCancel} disabled={saving} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded hover:bg-muted transition-colors">
+                <X size={13} /><span className="hidden sm:inline">Cancel</span>
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
-              >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-orange-600 text-white px-2.5 py-1.5 rounded transition-colors disabled:opacity-60">
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                 <span className="hidden sm:inline">Save</span>
               </button>
             </div>
           )}
+          </div>
+        </header>
+
+        {/* ── Desktop op-page-header ── */}
+        <header className="op-page-header hidden md:flex sticky top-0 z-30">
+          <button onClick={() => navigate('/jobs')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+            <ChevronLeft size={15} />
+          </button>
+          <HardHat size={14} className="text-primary shrink-0" />
+          <span className="op-page-title flex-1 min-w-0 truncate">
+            {job ? (job.jobNumber ? `${job.jobNumber} — ${job.name}` : job.name) : 'Loading…'}
+          </span>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <FleetHeaderIcon />
+            {job && !editing && (
+              <>
+                <OutlookEmailButton
+                  context={{
+                    kind: 'job',
+                    jobNumber: job.jobNumber ?? `#${job.id}`,
+                    jobName: job.name,
+                    status: job.status,
+                    customerName: (job as unknown as Record<string, unknown>).customerName as string | undefined,
+                    siteAddress: (job as unknown as Record<string, unknown>).siteAddress as string | undefined,
+                    link: `${window.location.origin}/jobs/${job.id}`,
+                  }}
+                  size="sm"
+                />
+                <button onClick={() => setEditing(true)} className="op-btn op-btn-ghost">
+                  <Edit2 size={12} />Edit
+                </button>
+              </>
+            )}
+            {editing && (
+              <div className="flex items-center gap-1.5">
+                <button onClick={handleCancel} disabled={saving} className="op-btn op-btn-ghost">
+                  <X size={12} />Cancel
+                </button>
+                <button onClick={handleSave} disabled={saving} className="op-btn op-btn-primary disabled:opacity-60">
+                  {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}Save
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -404,7 +430,7 @@ export default function JobDetailPage() {
               className="flex flex-col h-full"
             >
               {/* ── Status bar ── */}
-              <div className="bg-white border-b border-border px-4 md:px-6 py-3 flex flex-col gap-2 shrink-0">
+              <div className="bg-white border-b border-gray-200 px-4 md:px-4 py-2 flex flex-col gap-1.5 shrink-0">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     {statusStyle && (
@@ -578,30 +604,20 @@ export default function JobDetailPage() {
               <div className="flex flex-1 min-h-0">
 
                 {/* ── Left side nav (desktop only) ── */}
-                <aside className="hidden md:flex flex-col w-52 shrink-0 border-r border-border bg-white overflow-y-auto">
-                  <nav className="py-4 px-3 flex flex-col gap-5">
+                <aside className="op-side-nav hidden md:flex flex-col">
+                  <nav className="flex flex-col">
                     {NAV_GROUPS.map((group) => (
                       <div key={group.label}>
-                        <p className="px-2 mb-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</p>
-                        <div className="flex flex-col gap-0.5">
+                        <p className="op-side-nav-group-label">{group.label}</p>
+                        <div className="flex flex-col">
                           {group.items.map(({ key, label, icon: Icon }) => (
                             <button
                               key={key}
                               onClick={() => switchTab(key)}
-                              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left w-full ${
-                                activeTab === key
-                                  ? 'bg-orange-50 text-primary font-semibold'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                              }`}
+                              className={`op-side-nav-item ${activeTab === key ? 'active' : ''}`}
                             >
-                              <Icon
-                                size={15}
-                                className={activeTab === key ? 'text-primary' : 'text-muted-foreground'}
-                              />
+                              <Icon size={13} className="shrink-0" />
                               {label}
-                              {activeTab === key && (
-                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                              )}
                             </button>
                           ))}
                         </div>
