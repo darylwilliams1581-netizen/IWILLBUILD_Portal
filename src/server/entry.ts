@@ -1299,6 +1299,11 @@ async function runStartupMigrations() {
     { table: 'job_photos', column: 'image_height',          definition: 'INT NULL' },
     // ── profiles: home screen icon permissions (JSON array of allowed icon keys) ─
     { table: 'profiles', column: 'home_icon_permissions',   definition: 'TEXT NULL' },
+    // ── job_todos: extended task fields (Step 3 upgrade) ─────────────────────
+    { table: 'job_todos', column: 'description',       definition: 'TEXT NULL' },
+    { table: 'job_todos', column: 'start_date',        definition: 'VARCHAR(20) NULL' },
+    { table: 'job_todos', column: 'assigned_user_id',  definition: 'VARCHAR(36) NULL' },
+    { table: 'job_todos', column: 'assigned_name',     definition: 'VARCHAR(255) NULL' },
   ];
   for (const { table, column, definition } of colsToEnsure) {
     try {

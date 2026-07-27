@@ -446,8 +446,13 @@ export const jobTodos = mysqlTable('job_todos', {
     .notNull()
     .references(() => companies.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 255 }).notNull(),
-  dueDate: varchar('due_date', { length: 20 }), // ISO date string YYYY-MM-DD
-  status: varchar('status', { length: 30 }).notNull().default('Open'), // Open | Completed
+  description: text('description'),                          // longer detail field (new)
+  startDate: varchar('start_date', { length: 20 }),          // ISO date YYYY-MM-DD (new)
+  dueDate: varchar('due_date', { length: 20 }),              // ISO date string YYYY-MM-DD
+  // Open | In Progress | Completed | Cancelled
+  status: varchar('status', { length: 30 }).notNull().default('Open'),
+  assignedUserId: varchar('assigned_user_id', { length: 36 }), // user.id (new)
+  assignedName: varchar('assigned_name', { length: 255 }),     // denormalised display name (new)
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
