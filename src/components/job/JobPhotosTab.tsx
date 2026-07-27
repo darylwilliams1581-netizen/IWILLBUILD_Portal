@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import {
-  Upload, Camera, CheckSquare, X, Download, Send, Share2,
+  Upload, CheckSquare, X, Download, Send, Share2,
   Grid2x2, Grid3x3, LayoutGrid, Loader2, Copy, Check,
   QrCode, ExternalLink,
 } from 'lucide-react';
@@ -125,14 +125,7 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
           Upload
         </button>
 
-        {/* Camera */}
-        <button
-          onClick={() => photosRef.current?.openCamera()}
-          disabled={uploading || atLimit}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted hover:bg-gray-200 disabled:opacity-50 text-foreground text-xs font-semibold rounded-lg transition-colors"
-        >
-          <Camera size={12} /> Camera
-        </button>
+        {/* Camera — removed: Upload button already opens file picker which includes camera on mobile */}
 
         {/* Select / Done */}
         {!selectMode ? (
