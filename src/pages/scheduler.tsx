@@ -25,6 +25,7 @@ import {
 import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
 import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
+import TasksSchedulerView from '@/components/scheduler/TasksSchedulerView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -695,7 +696,6 @@ function TimelineView({ jobs, window: timeWindow, anchorDate, onReschedule }: Ti
   // Drag state
   const [dragging, setDragging] = useState<{ jobId: number; startX: number; origStart: string; origEnd: string } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [dropTarget, setDropTarget] = useState<string | null>(null); // for unscheduled drop
 
   function barProps(job: SchedulerJob) {
     if (!job.scheduledStartDate || !job.expectedCompletionDate) return null;
@@ -1169,7 +1169,7 @@ function QuickScheduleModal({ job, onClose, onSave }: {
 
 export default function SchedulerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs';
+  const activeTab = (searchParams.get('tab') === 'tasks' ? 'tasks' : searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs') as 'jobs' | 'tasks' | 'team-shifts';
 
   const [jobs,            setJobs]            = useState<SchedulerJob[]>([]);
   const [crewMembers,     setCrewMembers]      = useState<CrewMember[]>([]);
@@ -1352,6 +1352,12 @@ export default function SchedulerPage() {
             >
               Jobs
             </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'tasks' })}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${activeTab === 'tasks' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Tasks
+            </button>
           </div>
 
           {/* Save message toast */}
@@ -1368,50 +1374,55 @@ export default function SchedulerPage() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
-            {view !== 'table' && view !== 'assets' && (
-              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-                {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
-                  <button
-                    key={key}
-                    onClick={() => switchWindow(key)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      timeWindow === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {WINDOW_LABELS[key]}
-                  </button>
-                ))}
-              </div>
+            {/* Time window and view toggle — jobs tab only */}
+            {activeTab === 'jobs' && (
+              <>
+                {/* Time window — only for timeline/crew/calendar views (assets has its own) */}
+                {view !== 'table' && view !== 'assets' && (
+                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                    {(Object.keys(WINDOW_LABELS) as TimeWindow[]).map(key => (
+                      <button
+                        key={key}
+                        onClick={() => switchWindow(key)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                          timeWindow === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {WINDOW_LABELS[key]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="h-5 w-px bg-slate-200" />
+
+                {/* View toggle */}
+                <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                  {([
+                    { key: 'table',    icon: <List size={13} />,        label: 'Table' },
+                    { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
+                    { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
+                    { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
+                    { key: 'assets',   icon: <Truck size={13} />,       label: 'Assets' },
+                  ] as const).map(({ key, icon, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setView(key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                        view === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-
-            <div className="h-5 w-px bg-slate-200" />
-
-            {/* View toggle */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
-              {([
-                { key: 'table',    icon: <List size={13} />,        label: 'Table' },
-                { key: 'timeline', icon: <BarChart2 size={13} />,   label: 'Timeline' },
-                { key: 'calendar', icon: <Calendar size={13} />,    label: 'Calendar' },
-                { key: 'crew',     icon: <Users size={13} />,       label: 'Crew' },
-                { key: 'assets',   icon: <Truck size={13} />,       label: 'Assets' },
-              ] as const).map(({ key, icon, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setView(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    view === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {icon} {label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
-          {/* ── Filters + period nav bar — hidden in assets view (has its own toolbar) ── */}
-          {view !== 'assets' && (
+          {/* ── Filters + period nav bar — jobs tab only, hidden in assets view ── */}
+          {activeTab === 'jobs' && view !== 'assets' && (
           <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2 shrink-0">
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1468,83 +1479,96 @@ export default function SchedulerPage() {
           )}
 
         {/* ── Main content ── */}
-        <div className={`flex-1 overflow-y-auto ${view === 'assets' ? '' : 'p-4'}`}>
-          {/* Assets view — full-height, manages its own layout */}
-          {view === 'assets' && (
-            <div className="h-full flex flex-col bg-white border border-slate-200 rounded-none overflow-hidden">
-              <AssetSchedulerView
-                timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
-                anchorDate={anchorDate}
-                onWindowChange={(tw) => switchWindow(tw)}
-                onNavigate={navigate}
-                onGoToday={goToToday}
-                windowLabel={windowLabel}
-              />
+        <div className={`flex-1 overflow-y-auto ${view === 'assets' && activeTab === 'jobs' ? '' : 'p-4'}`}>
+
+          {/* ── Tasks tab ── */}
+          {activeTab === 'tasks' && (
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <TasksSchedulerView />
             </div>
           )}
 
-          {view !== 'assets' && loading && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="animate-spin text-orange-500" size={28} />
-            </div>
-          )}
-
-          {view !== 'assets' && !loading && error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4">
-              <AlertCircle size={16} /> {error}
-            </div>
-          )}
-
-          {view !== 'assets' && !loading && !error && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                {view === 'table' && <TableView jobs={filtered} />}
-                {view === 'timeline' && timeWindow === 'day' && (
-                  <DayView
-                    jobs={filtered}
+          {/* ── Jobs tab ── */}
+          {activeTab === 'jobs' && (
+            <>
+              {/* Assets view — full-height, manages its own layout */}
+              {view === 'assets' && (
+                <div className="h-full flex flex-col bg-white border border-slate-200 rounded-none overflow-hidden">
+                  <AssetSchedulerView
+                    timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'}
                     anchorDate={anchorDate}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-                {view === 'timeline' && timeWindow !== 'day' && (
-                  <TimelineView
-                    jobs={filtered}
-                    window={timeWindow}
-                    anchorDate={anchorDate}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-                {view === 'calendar' && (
-                  <CalendarView
-                    jobs={filtered}
-                    anchorDate={anchorDate}
+                    onWindowChange={(tw) => switchWindow(tw)}
                     onNavigate={navigate}
-                    onReschedule={handleReschedule}
+                    onGoToday={goToToday}
+                    windowLabel={windowLabel}
                   />
-                )}
-                {view === 'crew' && (
-                  <CrewView
-                    members={crewMembers}
-                    unassignedJobs={unassignedJobs}
-                    window={timeWindow}
-                    anchorDate={anchorDate}
-                    loading={crewLoading}
-                    onReschedule={handleReschedule}
-                  />
-                )}
-              </div>
-
-              {view !== 'crew' && (
-                <UnscheduledSection
-                  jobs={unscheduled}
-                  onSchedule={setScheduleTarget}
-                />
+                </div>
               )}
-            </motion.div>
+
+              {view !== 'assets' && loading && (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="animate-spin text-orange-500" size={28} />
+                </div>
+              )}
+
+              {view !== 'assets' && !loading && error && (
+                <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4">
+                  <AlertCircle size={16} /> {error}
+                </div>
+              )}
+
+              {view !== 'assets' && !loading && !error && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    {view === 'table' && <TableView jobs={filtered} />}
+                    {view === 'timeline' && timeWindow === 'day' && (
+                      <DayView
+                        jobs={filtered}
+                        anchorDate={anchorDate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'timeline' && timeWindow !== 'day' && (
+                      <TimelineView
+                        jobs={filtered}
+                        window={timeWindow}
+                        anchorDate={anchorDate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'calendar' && (
+                      <CalendarView
+                        jobs={filtered}
+                        anchorDate={anchorDate}
+                        onNavigate={navigate}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                    {view === 'crew' && (
+                      <CrewView
+                        members={crewMembers}
+                        unassignedJobs={unassignedJobs}
+                        window={timeWindow}
+                        anchorDate={anchorDate}
+                        loading={crewLoading}
+                        onReschedule={handleReschedule}
+                      />
+                    )}
+                  </div>
+
+                  {view !== 'crew' && (
+                    <UnscheduledSection
+                      jobs={unscheduled}
+                      onSchedule={setScheduleTarget}
+                    />
+                  )}
+                </motion.div>
+              )}
+            </>
           )}
         </div>
       </div>

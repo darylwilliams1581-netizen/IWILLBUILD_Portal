@@ -618,6 +618,7 @@ import safety_swms_id_publish_to_library_post_585 from "./api/safety/swms/[id]/p
 import scheduler_crew_get_586 from "./api/scheduler/crew/GET";
 import scheduler_jobs_get_587 from "./api/scheduler/jobs/GET";
 import scheduler_jobs_id_reschedule_patch_588 from "./api/scheduler/jobs/[id]/reschedule/PATCH";
+import scheduler_tasks_get_588b from "./api/scheduler/tasks/GET";
 import secure_share_get_589 from "./api/secure-share/GET";
 import secure_share_post_590 from "./api/secure-share/POST";
 import secure_share_id_delete_591 from "./api/secure-share/[id]/DELETE";
@@ -2907,6 +2908,7 @@ app.post("/api/safety/swms/:id/publish-to-library", safety_swms_id_publish_to_li
 app.get("/api/scheduler/crew", scheduler_crew_get_586);
 app.get("/api/scheduler/jobs", scheduler_jobs_get_587);
 app.patch("/api/scheduler/jobs/:id/reschedule", scheduler_jobs_id_reschedule_patch_588);
+app.get("/api/scheduler/tasks", scheduler_tasks_get_588b);
 app.get("/api/secure-share", secure_share_get_589);
 app.post("/api/secure-share", secure_share_post_590);
 app.delete("/api/secure-share/:id", secure_share_id_delete_591);
