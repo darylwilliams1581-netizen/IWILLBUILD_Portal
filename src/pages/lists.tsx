@@ -1,4 +1,3 @@
-import { lists } from 'virtual:content';
 /**
  * /lists — Office Lists view
  *
