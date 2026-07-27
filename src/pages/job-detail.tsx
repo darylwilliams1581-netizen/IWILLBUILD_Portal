@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -7,20 +7,15 @@ import {
   ChevronLeft,
   Edit2,
   ChevronDown,
-  Camera,
   Calculator,
   FolderOpen,
   StickyNote,
   TrendingUp,
-  Upload,
-  Mail,
   ClipboardList,
   ShieldAlert,
   Receipt,
   Clock,
   UserCheck,
-  Phone,
-  ExternalLink,
   DollarSign,
   Users,
   CalendarCheck,
@@ -28,13 +23,9 @@ import {
   Layers,
   Image,
   LogIn,
-  Building2,
   FileText,
   Check,
   X,
-  MapPin,
-  User,
-  Calendar,
   Loader2,
   AlertCircle,
   CheckSquare,
@@ -50,16 +41,27 @@ import JobSafety from '@/components/job/JobSafety';
 import JobCosts from '@/components/job/JobCosts';
 import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
-import CustomerSelector from '@/components/CustomerSelector';
+import CustomerSelectorComponent from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import JobTodos from '@/components/job/JobTodos';
-import AssetSelector from '@/components/AssetManager/AssetSelector';
+import AssetSelectorComponent from '@/components/AssetManager/AssetSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
-import { fetchCustomer, type Customer } from '@/lib/customers-api';
+import { fetchCustomer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
+import JobDetailsDashboard, { type JobSummary, type Customer } from '@/components/job/JobDetailsDashboard';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
+
+// ── Wrapper components to adapt actual selectors to JobDetailsDashboard interface ──
+
+const CustomerSelectorWrapper: React.ComponentType<{ value: Customer | null; onChange: (c: Customer | null) => void }> = ({ value, onChange }) => (
+  <CustomerSelectorComponent value={value as any} onChange={onChange as any} />
+);
+
+const AssetSelectorWrapper: React.ComponentType<{ value: number | null; onChange: (id: number | null, name?: string) => void }> = ({ value, onChange }) => (
+  <AssetSelectorComponent value={value} onChange={(id, name) => onChange(id, name ?? undefined)} />
+);
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -123,6 +125,7 @@ export default function JobDetailPage() {
   const [linkedAssetId, setLinkedAssetId] = useState<number | null>(null);
   const [linkedAssetName, setLinkedAssetName] = useState<string>('');
   const [editingAssetId, setEditingAssetId] = useState<number | null>(null);
+  const [jobSummary, setJobSummary] = useState<JobSummary | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
@@ -168,6 +171,26 @@ export default function JobDetailPage() {
           setCostSummary({ actual, approved: d.approvedTotal ?? 0 });
         })
         .catch(() => {});
+    }
+    // ── Summary data for the Details dashboard ────────────────────────────
+    if (id) {
+      Promise.all([
+        fetch(`/api/jobs/${id}/todos`, { credentials: 'include' }).then((r) => r.ok ? r.json() : { todos: [] }),
+        fetch(`/api/jobs/${id}/signin-status`, { credentials: 'include' }).then((r) => r.ok ? r.json() : { currentlyOnSite: [] }),
+        fetch(`/api/jobs/${id}/photos?limit=1`, { credentials: 'include' }).then((r) => r.ok ? r.json() : { total: 0 }),
+      ]).then(([todosData, attendanceData, photosData]: [
+        { todos?: Array<{ status?: string }> },
+        { currentlyOnSite?: unknown[] },
+        { total?: number; photos?: unknown[] },
+      ]) => {
+        const todos = todosData.todos ?? [];
+        setJobSummary({
+          tasksTotal: todos.length,
+          tasksDone: todos.filter((t) => t.status === 'done' || t.status === 'completed').length,
+          onSiteCount: (attendanceData.currentlyOnSite ?? []).length,
+          photosCount: photosData.total ?? (photosData.photos ?? []).length,
+        });
+      }).catch(() => {});
     }
   }, [id]);
 
@@ -630,303 +653,38 @@ export default function JobDetailPage() {
                     </div>
                   )}
 
-                  {/* ── Details ── */}
+                  {/* ── Details dashboard ── */}
                   {activeTab === 'details' && (
-                    <div className="flex flex-col gap-4 max-w-2xl">
-                      <QuickCameraCard jobId={job.id} onPhotoTab={() => navigate(`/jobs/${job.id}/photos`)} />
-
-                      <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
-                        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">{workSingular} Details</h2>
-
-                        {editing ? (
-                          <div className="flex flex-col gap-4">
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                              <input
-                                type="text"
-                                value={form.name}
-                                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1.5">Job Number</label>
-                                <input
-                                  type="text"
-                                  value={form.jobNumber}
-                                  onChange={(e) => setForm((f) => ({ ...f, jobNumber: e.target.value }))}
-                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1.5">Status</label>
-                                <select
-                                  value={form.status}
-                                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                                >
-                                  {JOB_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Link Customer <span className="text-muted-foreground font-normal">(optional)</span></label>
-                              <CustomerSelector
-                                value={editingCustomer}
-                                onChange={(c) => {
-                                  setEditingCustomer(c);
-                                  if (c && !form.client) setForm((f) => ({ ...f, client: c.name }));
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Link Asset <span className="text-muted-foreground font-normal">(optional)</span></label>
-                              <AssetSelector
-                                value={editingAssetId}
-                                onChange={(id, name) => { setEditingAssetId(id); if (name) setLinkedAssetName(name); }}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Client Name</label>
-                              <input
-                                type="text"
-                                value={form.client}
-                                onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
-                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Site Address / Suburb</label>
-                              <input
-                                type="text"
-                                value={form.address}
-                                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1.5">Description / Notes</label>
-                              <textarea
-                                value={form.notes}
-                                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                                rows={4}
-                                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
-                              />
-                            </div>
-
-                            {/* Schedule */}
-                            <div className="pt-2 border-t border-border">
-                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule</p>
-                              {/* Scheduled Start — date + time */}
-                              <div className="mb-3">
-                                <label className="block text-xs font-semibold mb-1.5">Scheduled Start</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input
-                                    type="date"
-                                    value={form.scheduledStartDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, scheduledStartDate: e.target.value }))}
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                  <input
-                                    type="time"
-                                    value={form.scheduledStartTime}
-                                    onChange={(e) => setForm((f) => ({ ...f, scheduledStartTime: e.target.value }))}
-                                    placeholder="Start time"
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                </div>
-                              </div>
-                              {/* Expected Completion — date + time */}
-                              <div className="mb-3">
-                                <label className="block text-xs font-semibold mb-1.5">Expected Completion</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input
-                                    type="date"
-                                    value={form.expectedCompletionDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, expectedCompletionDate: e.target.value }))}
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                  <input
-                                    type="time"
-                                    value={form.scheduledEndTime}
-                                    onChange={(e) => setForm((f) => ({ ...f, scheduledEndTime: e.target.value }))}
-                                    placeholder="End time"
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                </div>
-                              </div>
-                              {/* Actual dates — date only */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1.5">Actual Start</label>
-                                  <input
-                                    type="date"
-                                    value={form.actualStartDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, actualStartDate: e.target.value }))}
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1.5">Actual Completion</label>
-                                  <input
-                                    type="date"
-                                    value={form.actualCompletionDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, actualCompletionDate: e.target.value }))}
-                                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                  />
-                                </div>
-                              </div>
-                              <div className="mt-3">
-                                <label className="block text-xs font-semibold mb-1.5">Assigned Supervisor</label>
-                                <select
-                                  value={form.assignedSupervisorUserId}
-                                  onChange={(e) => setForm((f) => ({ ...f, assignedSupervisorUserId: e.target.value }))}
-                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white"
-                                >
-                                  <option value="">— Unassigned —</option>
-                                  {teamMembers.map((m) => (
-                                    <option key={m.userId} value={m.userId}>{m.name}{m.role === 'owner' ? ' (Owner)' : m.role === 'admin' ? ' (Admin)' : ''}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="mt-3">
-                                <label className="block text-xs font-semibold mb-1.5">Team / Crew Label</label>
-                                <input
-                                  type="text"
-                                  value={form.assignedTeamLabel}
-                                  onChange={(e) => setForm((f) => ({ ...f, assignedTeamLabel: e.target.value }))}
-                                  placeholder="e.g. Crew A, Framing Team"
-                                  className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-3">
-                            <DetailRow icon={HardHat} label="Job Title" value={job.name} />
-                            {job.jobNumber && <DetailRow icon={FileText} label="Job Number" value={job.jobNumber} mono />}
-                            {job.client && <DetailRow icon={User} label="Client" value={job.client} />}
-                            {linkedAssetId && linkedAssetName && (
-                              <DetailRow
-                                icon={Building2}
-                                label="Linked Asset"
-                                value={linkedAssetName}
-                                href={`/asset-manager?assetId=${linkedAssetId}`}
-                              />
-                            )}
-                            {job.address && (
-                              <DetailRow
-                                icon={MapPin}
-                                label="Site Address"
-                                value={job.address}
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
-                              />
-                            )}
-                            <DetailRow
-                              icon={Calendar}
-                              label="Created"
-                              value={new Date(job.createdAt).toLocaleDateString('en-AU', {
-                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                              })}
-                            />
-
-                            {(job.scheduledStartDate || job.expectedCompletionDate || job.actualStartDate || job.actualCompletionDate || job.assignedTeamLabel || job.assignedSupervisorUserId) && (
-                              <div className="pt-2 border-t border-border flex flex-col gap-3">
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
-                                {job.scheduledStartDate && (
-                                  <DetailRow
-                                    icon={CalendarClock}
-                                    label="Scheduled Start"
-                                    value={(() => { const [y,m,d] = job.scheduledStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
-                                  />
-                                )}
-                                {job.expectedCompletionDate && (
-                                  <DetailRow
-                                    icon={CalendarCheck}
-                                    label="Expected Completion"
-                                    value={(() => { const [y,m,d] = job.expectedCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
-                                  />
-                                )}
-                                {job.actualStartDate && (
-                                  <DetailRow
-                                    icon={CalendarClock}
-                                    label="Actual Start"
-                                    value={(() => { const [y,m,d] = job.actualStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
-                                  />
-                                )}
-                                {job.actualCompletionDate && (
-                                  <DetailRow
-                                    icon={CalendarCheck}
-                                    label="Actual Completion"
-                                    value={(() => { const [y,m,d] = job.actualCompletionDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); })()}
-                                  />
-                                )}
-                                {job.assignedSupervisorUserId && (
-                                  <DetailRow
-                                    icon={UserCheck}
-                                    label="Supervisor"
-                                    value={teamMembers.find((m) => m.userId === job.assignedSupervisorUserId)?.name ?? 'Assigned'}
-                                  />
-                                )}
-                                {job.assignedTeamLabel && (
-                                  <DetailRow icon={Users} label="Team / Crew" value={job.assignedTeamLabel} />
-                                )}
-                              </div>
-                            )}
-                            {job.notes && (
-                              <div className="pt-2 border-t border-border">
-                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Notes</p>
-                                <p className="text-sm text-foreground whitespace-pre-wrap">{job.notes}</p>
-                              </div>
-                            )}
-                            {!job.client && !job.address && !job.notes && (
-                              <p className="text-sm text-muted-foreground italic">
-                                No additional details. Click Edit to add client, address, and notes.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Linked customer card */}
-                      {!editing && linkedCustomer && (
-                        <div className="bg-white rounded-xl border border-border p-5">
-                          <div className="flex items-center justify-between mb-3">
-                            <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Linked Customer</h2>
-                            <Link
-                              to={`/customers/${linkedCustomer.id}`}
-                              className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                            >
-                              Open Customer <ExternalLink size={11} />
-                            </Link>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <span className="text-primary font-black text-sm">{linkedCustomer.name[0].toUpperCase()}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm text-foreground">{linkedCustomer.name}</p>
-                              {linkedCustomer.contact_person && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><User size={10} />{linkedCustomer.contact_person}</p>
-                              )}
-                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                                {linkedCustomer.phone && (
-                                  <a href={`tel:${linkedCustomer.phone}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.phone}</a>
-                                )}
-                                {linkedCustomer.mobile && (
-                                  <a href={`tel:${linkedCustomer.mobile}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Phone size={10} />{linkedCustomer.mobile}</a>
-                                )}
-                                {linkedCustomer.email && (
-                                  <a href={`mailto:${linkedCustomer.email}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"><Mail size={10} />{linkedCustomer.email}</a>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <JobDetailsDashboard
+                      job={job}
+                      summary={jobSummary}
+                      costSummary={costSummary}
+                      linkedCustomer={linkedCustomer}
+                      linkedAssetId={linkedAssetId}
+                      linkedAssetName={linkedAssetName}
+                      teamMembers={teamMembers}
+                      editing={editing}
+                      saving={saving}
+                      saveError={saveError}
+                      form={form}
+                      editingCustomer={editingCustomer}
+                      editingAssetId={editingAssetId}
+                      JOB_STATUSES={JOB_STATUSES}
+                      onEdit={() => setEditing(true)}
+                      onCancelEdit={() => { setEditing(false); setSaveError(''); }}
+                      onSave={handleSave}
+                      onFormChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                      onTabSwitch={(tab) => switchTab(tab as Tab)}
+                      CustomerSelector={CustomerSelectorWrapper}
+                      AssetSelector={AssetSelectorWrapper}
+                      onEditingCustomerChange={setEditingCustomer}
+                      onEditingAssetIdChange={(id, name) => { setEditingAssetId(id); if (name !== null && name !== undefined) setLinkedAssetName(name); }}
+                      workSingular={workSingular}
+                    />
                   )}
+
+                  {/* ── Photos — dedicated page ── */}
+                  {activeTab === 'photos' && (() => { navigate(`/jobs/${job.id}/photos`); return null; })()}
 
                   {/* ── Photos — dedicated page ── */}
                   {activeTab === 'photos' && (() => { navigate(`/jobs/${job.id}/photos`); return null; })()}
@@ -1009,153 +767,4 @@ function fmtJobTime(timeStr: string | null | undefined): string {
   const ampm = h < 12 ? 'am' : 'pm';
   const h12  = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m}${ampm}`;
-}
-
-// ── Detail row ────────────────────────────────────────────────────────────────
-
-function DetailRow({
-  icon: Icon,
-  label,
-  value,
-  mono = false,
-  href,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  mono?: boolean;
-  href?: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="p-1.5 rounded-md bg-muted shrink-0 mt-0.5">
-        <Icon size={13} className="text-muted-foreground" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`text-sm font-medium text-primary underline underline-offset-2 hover:text-orange-600 transition-colors ${mono ? 'font-mono' : ''}`}
-          >
-            {value}
-          </a>
-        ) : (
-          <p className={`text-sm font-medium text-foreground ${mono ? 'font-mono' : ''}`}>{value}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Quick camera card ─────────────────────────────────────────────────────────
-
-function QuickCameraCard({ jobId, onPhotoTab }: { jobId: number; onPhotoTab: () => void }) {
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState('');
-
-  async function doUpload(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    const arr = Array.from(files);
-    setUploading(true);
-    setUploadMsg('');
-
-    // iOS Safari: skip ALL client-side canvas processing.
-    // Minified constructors (File, Promise, etc.) can throw "o is not a constructor".
-    // Server accepts HEIC/HEIF and image/jpg alias natively.
-    const isIos = /iP(hone|od|ad)/.test(navigator.userAgent);
-    let prepared: File[];
-
-    if (isIos) {
-      prepared = arr; // upload raw — server handles everything
-    } else {
-      prepared = [];
-      for (const f of arr) {
-        const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-        const isHeic = ['heic', 'heif'].includes(ext) || ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'].includes(f.type);
-        if (isHeic) {
-          try {
-            const bitmap = await createImageBitmap(f);
-            const canvas = document.createElement('canvas');
-            canvas.width = bitmap.width; canvas.height = bitmap.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(bitmap, 0, 0);
-              bitmap.close();
-              const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.88));
-              if (blob) {
-                const stem = f.name.replace(/\.[^.]+$/, '');
-                prepared.push(new File([blob], `${stem}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));
-                continue;
-              }
-            }
-            bitmap.close();
-          } catch { /* fall through — push raw */ }
-          prepared.push(f);
-          continue;
-        }
-        prepared.push(f);
-      }
-    }
-
-    const fd = new FormData();
-    prepared.forEach((f) => fd.append('photos', f));
-    try {
-      const res = await fetch(`/api/jobs/${jobId}/photos`, {
-        method: 'POST',
-        credentials: 'include',
-        body: fd,
-      });
-      const data = await res.json() as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-      setUploadMsg(`${prepared.length} photo${prepared.length !== 1 ? 's' : ''} uploaded`);
-      setTimeout(() => setUploadMsg(''), 3000);
-    } catch (e) {
-      setUploadMsg(e instanceof Error ? e.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-      if (cameraRef.current) cameraRef.current.value = '';
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-border p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Quick Photo</h2>
-        <button onClick={onPhotoTab} className="text-xs font-semibold text-primary hover:underline">
-          View all photos →
-        </button>
-      </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => cameraRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-        >
-          {uploading ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
-          {uploading ? 'Uploading…' : 'Take Photo'}
-        </button>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Upload size={15} />
-          Upload
-        </button>
-        {uploadMsg && (
-          <span className={`text-xs font-semibold ${uploadMsg.includes('uploaded') ? 'text-emerald-600' : 'text-red-600'}`}>
-            {uploadMsg}
-          </span>
-        )}
-      </div>
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => doUpload(e.target.files)} />
-      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => doUpload(e.target.files)} />
-    </div>
-  );
 }
