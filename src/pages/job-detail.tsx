@@ -50,6 +50,7 @@ import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/l
 import { fetchCustomer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 import JobDetailsDashboard, { type JobSummary, type Customer } from '@/components/job/JobDetailsDashboard';
+import JobPhotosTab from '@/components/job/JobPhotosTab';
 
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
@@ -683,12 +684,10 @@ export default function JobDetailPage() {
                     />
                   )}
 
-                  {/* ── Photos — dedicated page ── */}
-                  {activeTab === 'photos' && (() => { navigate(`/jobs/${job.id}/photos`); return null; })()}
-
-                  {/* ── Photos — dedicated page ── */}
-                  {activeTab === 'photos' && (() => { navigate(`/jobs/${job.id}/photos`); return null; })()}
-
+                  {/* ── Photos — embedded in tab panel ── */}
+                  {activeTab === 'photos' && (
+                    <JobPhotosTab jobId={job.id} jobName={job.name} />
+                  )}
                   {/* ── Drawings ── */}
                   {activeTab === 'drawings' && <JobPlanManagerTab jobId={job.id} jobName={job.name} />}
 
