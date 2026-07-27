@@ -66,6 +66,7 @@ const InvoicesPage       = lazy(() => import('./pages/invoices'));
 const InvoiceBuilderPage = lazy(() => import('./pages/invoice-builder'));
 const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
+const ListsPage          = lazy(() => import('./pages/lists'));
 
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
@@ -245,6 +246,7 @@ export const routes: RouteObject[] = [
   { path: '/developer-console', loader: () => redirect('/owner-console') },
   { path: '/roadmap',           loader: () => redirect('/dashboard') },
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
+  { path: '/lists',         element: protect(<ListsPage />),           errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
   { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },

@@ -131,6 +131,9 @@ export const schemas = {
       "pinVerifiedFallback": z.string()
     }),
     "submitLabel": z.string()
+  }),
+  lists: z.object({
+    "SEVERITY_OPTIONS": z.array(z.string())
   })
 };
 export type Schemas = typeof schemas;

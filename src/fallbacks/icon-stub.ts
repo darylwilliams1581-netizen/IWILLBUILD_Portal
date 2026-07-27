@@ -218,6 +218,7 @@ export const StopCircle = NullIcon;
 export const Sun = NullIcon;
 export const Table = NullIcon;
 export const Table2 = NullIcon;
+export const TableProperties = NullIcon;
 export const Tag = NullIcon;
 export const Terminal = NullIcon;
 export const Timer = NullIcon;
