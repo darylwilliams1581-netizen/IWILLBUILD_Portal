@@ -1,54 +1,81 @@
 /**
- * /lists — Office Lists view
+ * /lists — Office Lists
  *
- * Desktop-only data table feature. Gives office users a SharePoint-style
- * interface to inspect, filter, sort, and export key IWILLBUILD records.
+ * Desktop-only data table. User clicks "Generate List", picks a list type
+ * and optional filters in a centred modal, then the table renders the result.
  *
- * Lists: Jobs | Tasks | Notes | Incidents | Attendance | Costs
- *
- * Design principles:
- *  - Compact rows, sticky header, no cards, no hero sections
- *  - Search + filter toolbar above table
- *  - Pagination
- *  - CSV export of current filtered view
- *  - Company isolation enforced server-side
+ * No tab strip. No side drawer. One table at a time.
+ * Company isolation enforced server-side on every request.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, Download, ChevronUp, ChevronDown, ChevronsUpDown,
   Loader2, AlertCircle, ChevronLeft, ChevronRight,
   HardHat, CheckSquare, StickyNote, ShieldAlert,
-  LogIn, DollarSign, Filter, X, Truck, ScrollText,
-  LayoutDashboard, ChevronRight as Crumb,
-  FileBarChart2, User, Briefcase, Calendar, Play,
+  LogIn, DollarSign, Truck, LayoutDashboard,
+  ChevronRight as Crumb, X, ListFilter,
+  FileText, Users, Clock, Wrench, ClipboardList,
+  FolderOpen, CalendarDays, Receipt, Calculator,
+  ShoppingCart, Car, Gauge, Milestone, MapPin,
+  UserCheck, Package, Play, Filter,
 } from 'lucide-react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
-type ListType = 'jobs' | 'tasks' | 'notes' | 'incidents' | 'attendance' | 'costs' | 'driver-logs';
+type ListType =
+  // Existing (live)
+  | 'jobs' | 'tasks' | 'notes' | 'incidents' | 'attendance' | 'costs' | 'driver-logs'
+  // Group 1 — new live
+  | 'invoices' | 'estimates' | 'purchase-orders' | 'customers'
+  | 'time-entries' | 'fleet-assets' | 'swms' | 'form-submissions' | 'files' | 'team-shifts'
+  // Group 2 — coming soon
+  | 'fleet-prestarts' | 'fleet-service-logs' | 'milestones' | 'site-prestarts'
+  | 'swms-signoffs' | 'drawings' | 'job-delays' | 'guest-checkins' | 'asset-bookings';
 
-interface ListMeta {
+interface ListCatalogEntry {
   key: ListType;
   label: string;
   icon: React.ElementType;
+  group: 1 | 2;
+  live: boolean;
   description: string;
 }
 
-const LIST_DEFS: ListMeta[] = [
-  { key: 'jobs',        label: 'Jobs',        icon: HardHat,     description: 'All jobs with status, customer, and progress' },
-  { key: 'tasks',       label: 'Tasks',       icon: CheckSquare, description: 'Job tasks and to-dos across all jobs' },
-  { key: 'notes',       label: 'Notes',       icon: StickyNote,  description: 'Notes and comments attached to jobs' },
-  { key: 'incidents',   label: 'Incidents',   icon: ShieldAlert, description: 'Safety incidents and corrective actions' },
-  { key: 'attendance',  label: 'Attendance',  icon: LogIn,       description: 'Sign-in / sign-out records across all jobs' },
-  { key: 'costs',       label: 'Costs',       icon: DollarSign,  description: 'Job costs, purchases, and expenses' },
-  { key: 'driver-logs', label: 'Driver Logs', icon: Truck,       description: 'Fleet vehicle usage and driver sign-in/out logs' },
+const CATALOG: ListCatalogEntry[] = [
+  // ── Group 1 — Core Lists ──────────────────────────────────────────────────
+  { key: 'jobs',            label: 'Jobs',             icon: HardHat,       group: 1, live: true,  description: 'All jobs with status, customer, and progress' },
+  { key: 'invoices',        label: 'Invoices',         icon: Receipt,       group: 1, live: true,  description: 'Invoice register across all jobs and customers' },
+  { key: 'estimates',       label: 'Estimates',        icon: Calculator,    group: 1, live: true,  description: 'Estimates and quotes across all jobs' },
+  { key: 'purchase-orders', label: 'Purchase Orders',  icon: ShoppingCart,  group: 1, live: true,  description: 'Purchase orders and contractor spend' },
+  { key: 'customers',       label: 'Customers',        icon: Users,         group: 1, live: true,  description: 'Customer and client register' },
+  { key: 'time-entries',    label: 'Time Entries',     icon: Clock,         group: 1, live: true,  description: 'Timesheet entries across all workers and jobs' },
+  { key: 'fleet-assets',    label: 'Fleet Assets',     icon: Car,           group: 1, live: true,  description: 'Equipment and vehicle register' },
+  { key: 'swms',            label: 'SWMS',             icon: ClipboardList, group: 1, live: true,  description: 'Safe Work Method Statements register' },
+  { key: 'form-submissions',label: 'Form Submissions', icon: FileText,      group: 1, live: true,  description: 'All submitted forms across all jobs' },
+  { key: 'files',           label: 'Files',            icon: FolderOpen,    group: 1, live: true,  description: 'Document and file register across all jobs' },
+  { key: 'team-shifts',     label: 'Team Shifts',      icon: CalendarDays,  group: 1, live: true,  description: 'Roster and shift records across all workers' },
+  { key: 'tasks',           label: 'Tasks',            icon: CheckSquare,   group: 1, live: true,  description: 'Job tasks and to-dos across all jobs' },
+  { key: 'incidents',       label: 'Incidents',        icon: ShieldAlert,   group: 1, live: true,  description: 'Safety incidents and corrective actions' },
+  { key: 'attendance',      label: 'Attendance',       icon: LogIn,         group: 1, live: true,  description: 'Site sign-in / sign-out records' },
+  { key: 'costs',           label: 'Costs',            icon: DollarSign,    group: 1, live: true,  description: 'Job costs, purchases, and expenses' },
+  { key: 'notes',           label: 'Notes',            icon: StickyNote,    group: 1, live: true,  description: 'Notes and comments attached to jobs' },
+  { key: 'driver-logs',     label: 'Driver Logs',      icon: Truck,         group: 1, live: true,  description: 'Fleet vehicle usage and driver logs' },
+  // ── Group 2 — Second Wave ─────────────────────────────────────────────────
+  { key: 'fleet-prestarts',  label: 'Fleet Prestarts',  icon: Gauge,        group: 2, live: false, description: 'Daily vehicle prestart check records' },
+  { key: 'fleet-service-logs',label:'Fleet Service Logs',icon: Wrench,      group: 2, live: false, description: 'Vehicle and equipment service history' },
+  { key: 'milestones',       label: 'Milestones',       icon: Milestone,    group: 2, live: false, description: 'Project milestones across all jobs' },
+  { key: 'site-prestarts',   label: 'Site Prestarts',   icon: MapPin,       group: 2, live: false, description: 'Daily site prestart check submissions' },
+  { key: 'swms-signoffs',    label: 'SWMS Sign-offs',   icon: UserCheck,    group: 2, live: false, description: 'Worker SWMS sign-off records' },
+  { key: 'drawings',         label: 'Drawings',         icon: FolderOpen,   group: 2, live: false, description: 'Drawing register with revision history' },
+  { key: 'job-delays',       label: 'Job Delays',       icon: Clock,        group: 2, live: false, description: 'Delay events and reasons across all jobs' },
+  { key: 'guest-checkins',   label: 'Guest Check-ins',  icon: UserCheck,    group: 2, live: false, description: 'Visitor and guest site check-in register' },
+  { key: 'asset-bookings',   label: 'Asset Bookings',   icon: Package,      group: 2, live: false, description: 'Fleet and equipment booking register' },
 ];
-
-// User Logs tab is a link-out to /user-logs — not a data list type
-const USER_LOGS_TAB = { label: 'User Logs', icon: ScrollText, href: '/user-logs' };
 
 interface ColDef {
   key: string;
@@ -58,7 +85,9 @@ interface ColDef {
   render?: (val: unknown, row: Record<string, unknown>) => React.ReactNode;
 }
 
-// ── Column definitions per list ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Formatters & badges
+// ─────────────────────────────────────────────────────────────────────────────
 
 function fmtDate(v: unknown): string {
   if (!v) return '—';
@@ -70,30 +99,44 @@ function fmtDate(v: unknown): string {
 function fmtDateTime(v: unknown): string {
   if (!v) return '—';
   const s = String(v);
-  // "2026-07-15T04:30:00.000Z" → "2026-07-15 14:30" (local)
   try {
     const d = new Date(s);
     if (isNaN(d.getTime())) return s.slice(0, 16).replace('T', ' ');
-    return d.toLocaleString('en-AU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+    return d.toLocaleString('en-AU', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
   } catch {
     return s.slice(0, 16).replace('T', ' ');
   }
 }
 
+function fmtCurrency(v: unknown): React.ReactNode {
+  if (v == null || v === '') return <span className="text-gray-300">—</span>;
+  return <span className="tabular-nums text-[12px] font-medium">${Number(v).toFixed(2)}</span>;
+}
+
 function statusBadge(status: unknown): React.ReactNode {
   const s = String(status ?? '').toLowerCase();
   const map: Record<string, string> = {
-    active: 'bg-green-100 text-green-700',
+    active:        'bg-green-100 text-green-700',
     'in progress': 'bg-blue-100 text-blue-700',
-    complete: 'bg-gray-100 text-gray-600',
-    completed: 'bg-gray-100 text-gray-600',
-    cancelled: 'bg-red-100 text-red-600',
-    open: 'bg-orange-100 text-orange-700',
-    closed: 'bg-gray-100 text-gray-600',
-    pending: 'bg-yellow-100 text-yellow-700',
+    complete:      'bg-gray-100 text-gray-600',
+    completed:     'bg-gray-100 text-gray-600',
+    cancelled:     'bg-red-100 text-red-600',
+    open:          'bg-orange-100 text-orange-700',
+    closed:        'bg-gray-100 text-gray-600',
+    pending:       'bg-yellow-100 text-yellow-700',
     'not started': 'bg-gray-100 text-gray-500',
-    draft: 'bg-gray-100 text-gray-500',
+    draft:         'bg-gray-100 text-gray-500',
     investigating: 'bg-purple-100 text-purple-700',
+    sent:          'bg-blue-100 text-blue-700',
+    approved:      'bg-green-100 text-green-700',
+    paid:          'bg-green-100 text-green-700',
+    overdue:       'bg-red-100 text-red-700',
+    accepted:      'bg-green-100 text-green-700',
+    declined:      'bg-red-100 text-red-600',
+    submitted:     'bg-blue-100 text-blue-700',
   };
   const cls = map[s] ?? 'bg-gray-100 text-gray-600';
   return (
@@ -107,9 +150,9 @@ function severityBadge(sev: unknown): React.ReactNode {
   const s = String(sev ?? '').toLowerCase();
   const map: Record<string, string> = {
     critical: 'bg-red-100 text-red-700',
-    high: 'bg-orange-100 text-orange-700',
-    medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-green-100 text-green-700',
+    high:     'bg-orange-100 text-orange-700',
+    medium:   'bg-yellow-100 text-yellow-700',
+    low:      'bg-green-100 text-green-700',
   };
   const cls = map[s] ?? 'bg-gray-100 text-gray-600';
   return (
@@ -119,16 +162,21 @@ function severityBadge(sev: unknown): React.ReactNode {
   );
 }
 
-const COLS: Record<ListType, ColDef[]> = {  jobs: [
-    { key: 'job_number',          label: 'Job #',       sortable: true, width: '90px' },
-    { key: 'name',                label: 'Job Name',    sortable: true },
-    { key: 'customer_name',       label: 'Customer',    sortable: false },
-    { key: 'site_address',        label: 'Site',        sortable: false },
-    { key: 'status',              label: 'Status',      sortable: true, width: '110px', render: (v) => statusBadge(v) },
-    { key: 'start_date',          label: 'Start',       sortable: true, width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'expected_completion', label: 'Due',         sortable: true, width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'supervisor_name',     label: 'Supervisor',  sortable: false, width: '120px' },
-    { key: 'progress_percent',    label: 'Progress',    sortable: true,  width: '80px',
+// ─────────────────────────────────────────────────────────────────────────────
+// Column definitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLS: Partial<Record<ListType, ColDef[]>> = {
+  jobs: [
+    { key: 'job_number',          label: 'Job #',      sortable: true,  width: '90px' },
+    { key: 'name',                label: 'Job Name',   sortable: true },
+    { key: 'customer_name',       label: 'Customer',   sortable: false },
+    { key: 'site_address',        label: 'Site',       sortable: false },
+    { key: 'status',              label: 'Status',     sortable: true,  width: '110px', render: (v) => statusBadge(v) },
+    { key: 'start_date',          label: 'Start',      sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'expected_completion', label: 'Due',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'supervisor_name',     label: 'Supervisor', sortable: false, width: '120px' },
+    { key: 'progress_percent',    label: 'Progress',   sortable: true,  width: '80px',
       render: (v) => v != null ? (
         <div className="flex items-center gap-1.5">
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden" style={{ minWidth: 40 }}>
@@ -136,150 +184,264 @@ const COLS: Record<ListType, ColDef[]> = {  jobs: [
           </div>
           <span className="text-[11px] text-gray-500 tabular-nums">{Number(v)}%</span>
         </div>
-      ) : '—'
+      ) : '—',
     },
   ],
-  tasks: [
-    { key: 'title',         label: 'Task',       sortable: true },
-    { key: 'job_name',      label: 'Job',        sortable: false },
-    { key: 'job_number',    label: 'Job #',      sortable: false, width: '80px' },
-    { key: 'assigned_name', label: 'Assigned To',sortable: true,  width: '130px' },
-    { key: 'status',        label: 'Status',     sortable: true,  width: '110px', render: (v) => statusBadge(v) },
-    { key: 'start_date',    label: 'Start',      sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'due_date',      label: 'Due',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'notes',         label: 'Notes',      sortable: false, render: (v) => v ? <span className="text-gray-500 text-[12px] line-clamp-1">{String(v)}</span> : '—' },
+
+  invoices: [
+    { key: 'invoice_number', label: 'Invoice #',  sortable: true,  width: '110px' },
+    { key: 'title',          label: 'Title',      sortable: true },
+    { key: 'customer_name',  label: 'Customer',   sortable: false, width: '150px' },
+    { key: 'job_number',     label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'status',         label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'issue_date',     label: 'Issued',     sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'due_date',       label: 'Due',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'total',          label: 'Total',      sortable: true,  width: '100px', render: (v) => fmtCurrency(v) },
+    { key: 'amount_paid',    label: 'Paid',       sortable: false, width: '100px', render: (v) => fmtCurrency(v) },
+    { key: 'balance_due',    label: 'Balance',    sortable: true,  width: '100px', render: (v) => fmtCurrency(v) },
   ],
+
+  estimates: [
+    { key: 'estimate_number', label: 'Estimate #', sortable: true,  width: '110px' },
+    { key: 'title',           label: 'Title',      sortable: true },
+    { key: 'customer_name',   label: 'Customer',   sortable: false, width: '150px' },
+    { key: 'job_number',      label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'status',          label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'issue_date',      label: 'Date',       sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'expiry_date',     label: 'Expires',    sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'subtotal',        label: 'Subtotal',   sortable: true,  width: '100px', render: (v) => fmtCurrency(v) },
+    { key: 'total',           label: 'Total',      sortable: true,  width: '100px', render: (v) => fmtCurrency(v) },
+  ],
+
+  'purchase-orders': [
+    { key: 'po_number',          label: 'PO #',       sortable: true,  width: '100px' },
+    { key: 'title',              label: 'Title',      sortable: true },
+    { key: 'job_number',         label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'assigned_to_name',   label: 'Assigned To',sortable: false, width: '140px' },
+    { key: 'trade_type',         label: 'Trade',      sortable: false, width: '110px' },
+    { key: 'status',             label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'start_date',         label: 'Start',      sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'finish_date',        label: 'Finish',     sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'total',              label: 'Total',      sortable: true,  width: '100px', render: (v) => fmtCurrency(v) },
+  ],
+
+  customers: [
+    { key: 'name',           label: 'Name',         sortable: true },
+    { key: 'contact_person', label: 'Contact',      sortable: false, width: '140px' },
+    { key: 'email',          label: 'Email',        sortable: false, width: '180px' },
+    { key: 'phone',          label: 'Phone',        sortable: false, width: '120px' },
+    { key: 'abn',            label: 'ABN',          sortable: false, width: '110px' },
+    { key: 'status',         label: 'Status',       sortable: true,  width: '90px',  render: (v) => statusBadge(v) },
+    { key: 'created_at',     label: 'Added',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+  ],
+
+  'time-entries': [
+    { key: 'user_name',   label: 'Worker',     sortable: true },
+    { key: 'job_name',    label: 'Job',        sortable: false },
+    { key: 'job_number',  label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'shift_date',  label: 'Date',       sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'start_time',  label: 'Start',      sortable: true,  width: '80px' },
+    { key: 'end_time',    label: 'End',        sortable: true,  width: '80px' },
+    { key: 'hours',       label: 'Hours',      sortable: true,  width: '75px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toFixed(2)}h</span> : '—',
+    },
+    { key: 'status',      label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'notes',       label: 'Notes',      sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
+    },
+  ],
+
+  'fleet-assets': [
+    { key: 'asset_number', label: 'Asset #',    sortable: true,  width: '100px' },
+    { key: 'name',         label: 'Name',       sortable: true },
+    { key: 'make_model',   label: 'Make/Model', sortable: false, width: '150px' },
+    { key: 'type',         label: 'Type',       sortable: true,  width: '110px' },
+    { key: 'rego',         label: 'Rego',       sortable: false, width: '100px' },
+    { key: 'status',       label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'created_at',   label: 'Added',      sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+  ],
+
+  swms: [
+    { key: 'title',           label: 'Title',         sortable: true },
+    { key: 'work_activity',   label: 'Work Activity', sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-600 line-clamp-1">{String(v)}</span> : '—',
+    },
+    { key: 'status',          label: 'Status',        sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'revision_number', label: 'Rev',           sortable: false, width: '60px' },
+    { key: 'review_date',     label: 'Review Date',   sortable: true,  width: '105px', render: (v) => fmtDate(v) },
+    { key: 'created_by_name', label: 'Created By',    sortable: false, width: '130px' },
+    { key: 'created_at',      label: 'Created',       sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+  ],
+
+  'form-submissions': [
+    { key: 'template_name',      label: 'Form',        sortable: false },
+    { key: 'job_name',           label: 'Job',         sortable: false, width: '140px' },
+    { key: 'submitted_by_name',  label: 'Submitted By',sortable: false, width: '130px' },
+    { key: 'status',             label: 'Status',      sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'created_at',         label: 'Submitted',   sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  files: [
+    { key: 'title',          label: 'File Name',   sortable: true },
+    { key: 'document_type',  label: 'Type',        sortable: true,  width: '110px' },
+    { key: 'job_name',       label: 'Job',         sortable: false, width: '140px' },
+    { key: 'status',         label: 'Status',      sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'created_by_name',label: 'Uploaded By', sortable: false, width: '130px' },
+    { key: 'created_at',     label: 'Date',        sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  'team-shifts': [
+    { key: 'user_name',  label: 'Worker',   sortable: true },
+    { key: 'job_name',   label: 'Job',      sortable: false },
+    { key: 'job_number', label: 'Job #',    sortable: false, width: '80px' },
+    { key: 'shift_date', label: 'Date',     sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'start_time', label: 'Start',    sortable: true,  width: '80px' },
+    { key: 'end_time',   label: 'End',      sortable: true,  width: '80px' },
+    { key: 'role',       label: 'Role',     sortable: false, width: '110px' },
+    { key: 'status',     label: 'Status',   sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+  ],
+
+  tasks: [
+    { key: 'title',         label: 'Task',        sortable: true },
+    { key: 'job_name',      label: 'Job',         sortable: false },
+    { key: 'job_number',    label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'assigned_name', label: 'Assigned To', sortable: true,  width: '130px' },
+    { key: 'status',        label: 'Status',      sortable: true,  width: '110px', render: (v) => statusBadge(v) },
+    { key: 'start_date',    label: 'Start',       sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'due_date',      label: 'Due',         sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'notes',         label: 'Notes',       sortable: false,
+      render: (v) => v ? <span className="text-gray-500 text-[12px] line-clamp-1">{String(v)}</span> : '—',
+    },
+  ],
+
   notes: [
     { key: 'body',        label: 'Note',       sortable: false,
-      render: (v) => <span className="text-[12px] line-clamp-2 text-gray-700">{String(v ?? '')}</span>
+      render: (v) => <span className="text-[12px] line-clamp-2 text-gray-700">{String(v ?? '')}</span>,
     },
     { key: 'job_name',    label: 'Job',        sortable: false, width: '160px' },
     { key: 'note_type',   label: 'Type',       sortable: false, width: '80px',
-      render: (v) => <span className="text-[11px] text-gray-500 capitalize">{String(v ?? '')}</span>
+      render: (v) => <span className="text-[11px] text-gray-500 capitalize">{String(v ?? '')}</span>,
     },
     { key: 'author_name', label: 'Created By', sortable: true,  width: '130px' },
     { key: 'created_at',  label: 'Date',       sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
   ],
+
   incidents: [
-    { key: 'incident_number',       label: 'Incident #',  sortable: true,  width: '100px' },
-    { key: 'job_name',              label: 'Job',         sortable: false, width: '140px' },
-    { key: 'incident_type',         label: 'Type',        sortable: true },
-    { key: 'severity',              label: 'Severity',    sortable: true,  width: '90px', render: (v) => severityBadge(v) },
-    { key: 'status',                label: 'Status',      sortable: true,  width: '110px', render: (v) => statusBadge(v) },
-    { key: 'incident_date',         label: 'Date',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'reported_by_name',      label: 'Reported By', sortable: false, width: '130px' },
-    { key: 'corrective_action_count', label: 'Actions',  sortable: false, width: '70px',
-      render: (v) => <span className="tabular-nums text-[12px]">{String(v ?? 0)}</span>
+    { key: 'incident_number',         label: 'Incident #',  sortable: true,  width: '100px' },
+    { key: 'job_name',                label: 'Job',         sortable: false, width: '140px' },
+    { key: 'incident_type',           label: 'Type',        sortable: true },
+    { key: 'severity',                label: 'Severity',    sortable: true,  width: '90px',  render: (v) => severityBadge(v) },
+    { key: 'status',                  label: 'Status',      sortable: true,  width: '110px', render: (v) => statusBadge(v) },
+    { key: 'incident_date',           label: 'Date',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'reported_by_name',        label: 'Reported By', sortable: false, width: '130px' },
+    { key: 'corrective_action_count', label: 'Actions',     sortable: false, width: '70px',
+      render: (v) => <span className="tabular-nums text-[12px]">{String(v ?? 0)}</span>,
     },
   ],
+
   attendance: [
-    { key: 'user_name',     label: 'User',       sortable: true },
-    { key: 'user_email',    label: 'Email',      sortable: false },
-    { key: 'job_name',      label: 'Job',        sortable: false },
-    { key: 'job_number',    label: 'Job #',      sortable: false, width: '80px' },
-    { key: 'signed_in_at',  label: 'Signed In',  sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
-    { key: 'signed_out_at', label: 'Signed Out', sortable: true,  width: '140px', render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">Still on site</span> },
-    { key: 'duration_hours',label: 'Duration',   sortable: false, width: '80px',
-      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toFixed(1)}h</span> : '—'
+    { key: 'user_name',      label: 'User',       sortable: true },
+    { key: 'user_email',     label: 'Email',      sortable: false },
+    { key: 'job_name',       label: 'Job',        sortable: false },
+    { key: 'job_number',     label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'signed_in_at',   label: 'Signed In',  sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+    { key: 'signed_out_at',  label: 'Signed Out', sortable: true,  width: '140px',
+      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">Still on site</span>,
     },
-    { key: 'source',        label: 'Source',     sortable: false, width: '80px',
-      render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>
+    { key: 'duration_hours', label: 'Duration',   sortable: false, width: '80px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toFixed(1)}h</span> : '—',
+    },
+    { key: 'source',         label: 'Source',     sortable: false, width: '80px',
+      render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>,
     },
   ],
+
   costs: [
-    { key: 'job_name',     label: 'Job',         sortable: false },
-    { key: 'job_number',   label: 'Job #',       sortable: false, width: '80px' },
-    { key: 'description',  label: 'Description', sortable: true },
-    { key: 'category',     label: 'Category',    sortable: true,  width: '110px' },
-    { key: 'amount',       label: 'Amount',      sortable: true,  width: '90px',
-      render: (v) => v != null ? <span className="tabular-nums text-[12px] font-medium">${Number(v).toFixed(2)}</span> : '—'
+    { key: 'job_name',    label: 'Job',         sortable: false },
+    { key: 'job_number',  label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'description', label: 'Description', sortable: true },
+    { key: 'category',    label: 'Category',    sortable: true,  width: '110px' },
+    { key: 'amount',      label: 'Amount',      sortable: true,  width: '90px',  render: (v) => fmtCurrency(v) },
+    { key: 'gst_amount',  label: 'GST',         sortable: false, width: '80px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px] text-gray-500">${Number(v).toFixed(2)}</span> : '—',
     },
-    { key: 'gst_amount',   label: 'GST',         sortable: false, width: '80px',
-      render: (v) => v != null ? <span className="tabular-nums text-[12px] text-gray-500">${Number(v).toFixed(2)}</span> : '—'
-    },
-    { key: 'purchase_date',label: 'Date',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
-    { key: 'supplier',     label: 'Supplier',    sortable: false, width: '120px' },
-    { key: 'cost_type',    label: 'Type',        sortable: false, width: '80px',
-      render: (v) => <span className="text-[11px] text-gray-500 capitalize">{String(v ?? '')}</span>
-    },
+    { key: 'purchase_date',label: 'Date',       sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'supplier',    label: 'Supplier',    sortable: false, width: '120px' },
   ],
+
   'driver-logs': [
-    { key: 'user_name',          label: 'Driver',       sortable: true },
-    { key: 'fleet_name',         label: 'Vehicle',      sortable: true },
-    { key: 'fleet_registration', label: 'Rego',         sortable: false, width: '90px' },
-    { key: 'job_name',           label: 'Job',          sortable: false },
-    { key: 'job_number',         label: 'Job #',        sortable: false, width: '80px' },
-    { key: 'started_at',         label: 'Started',      sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
-    { key: 'ended_at',           label: 'Ended',        sortable: true,  width: '140px',
-      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">In use</span>
+    { key: 'user_name',          label: 'Driver',      sortable: true },
+    { key: 'fleet_name',         label: 'Vehicle',     sortable: true },
+    { key: 'fleet_registration', label: 'Rego',        sortable: false, width: '90px' },
+    { key: 'job_name',           label: 'Job',         sortable: false },
+    { key: 'job_number',         label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'started_at',         label: 'Started',     sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+    { key: 'ended_at',           label: 'Ended',       sortable: true,  width: '140px',
+      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">In use</span>,
     },
-    { key: 'duration_minutes',   label: 'Duration',     sortable: true,  width: '85px',
+    { key: 'duration_minutes',   label: 'Duration',    sortable: true,  width: '85px',
       render: (v) => v != null ? (
         <span className="tabular-nums text-[12px]">
-          {Number(v) >= 60
-            ? `${Math.floor(Number(v) / 60)}h ${Number(v) % 60}m`
-            : `${Number(v)}m`}
+          {Number(v) >= 60 ? `${Math.floor(Number(v) / 60)}h ${Number(v) % 60}m` : `${Number(v)}m`}
         </span>
-      ) : '—'
+      ) : '—',
     },
-    { key: 'meter_start',        label: 'Meter Start',  sortable: true,  width: '95px',
-      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—'
+    { key: 'meter_start',        label: 'Meter Start', sortable: true,  width: '95px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—',
     },
-    { key: 'meter_end',          label: 'Meter End',    sortable: true,  width: '95px',
-      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—'
+    { key: 'meter_end',          label: 'Meter End',   sortable: true,  width: '95px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—',
     },
-    { key: 'note',               label: 'Note',         sortable: false,
-      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—'
-    },
-    { key: 'source',             label: 'Source',       sortable: false, width: '75px',
-      render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>
+    { key: 'note',               label: 'Note',        sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
     },
   ],
 };
 
-// ── Filter options per list ───────────────────────────────────────────────────
+// Fallback columns for any list type without a definition yet
+const FALLBACK_COLS: ColDef[] = [
+  { key: 'id',         label: 'ID',      sortable: true,  width: '70px' },
+  { key: 'title',      label: 'Title',   sortable: true },
+  { key: 'status',     label: 'Status',  sortable: true,  width: '110px', render: (v) => statusBadge(v) },
+  { key: 'created_at', label: 'Created', sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+];
 
-const STATUS_OPTIONS: Record<ListType, string[]> = {
-  jobs:           ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft'],
-  tasks:          ['Not Started', 'In Progress', 'Complete', 'Cancelled'],
-  notes:          [],
-  incidents:      ['Open', 'Investigating', 'Closed'],
-  attendance:     [],
-  costs:          [],
-  'driver-logs':  [],
+// ─────────────────────────────────────────────────────────────────────────────
+// Data hook
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ListData { rows: Record<string, unknown>[]; total: number; }
+
+// Map new list types to their API endpoint slugs
+const API_SLUG: Partial<Record<ListType, string>> = {
+  'purchase-orders': 'purchase-orders',
+  'time-entries':    'time-entries',
+  'fleet-assets':    'fleet-assets',
+  'form-submissions':'form-submissions',
+  'team-shifts':     'team-shifts',
 };
 
-const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
-
-// ── Hooks ─────────────────────────────────────────────────────────────────────
-
-interface ListData {
-  rows: Record<string, unknown>[];
-  total: number;
+function apiSlug(lt: ListType): string {
+  return API_SLUG[lt] ?? lt;
 }
 
 function useListData(
-  listType: ListType,
+  listType: ListType | null,
   params: {
-    q: string;
-    status: string;
-    severity: string;
-    dateFrom: string;
-    dateTo: string;
-    userId: string;
-    jobId: string;
-    page: number;
-    pageSize: number;
-    sortBy: string;
-    sortDir: 'asc' | 'desc';
+    q: string; status: string; severity: string;
+    dateFrom: string; dateTo: string;
+    userId: string; jobId: string;
+    page: number; pageSize: number;
+    sortBy: string; sortDir: 'asc' | 'desc';
   }
 ) {
-  const [data, setData] = useState<ListData>({ rows: [], total: 0 });
+  const [data, setData]       = useState<ListData>({ rows: [], total: 0 });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const abortRef = useRef<AbortController | null>(null);
+  const [error, setError]     = useState('');
+  const abortRef              = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(() => {
+    if (!listType) return;
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -297,10 +459,10 @@ function useListData(
     if (params.jobId)    qs.set('jobId', params.jobId);
     qs.set('page', String(params.page));
     qs.set('pageSize', String(params.pageSize));
-    if (params.sortBy)  qs.set('sortBy', params.sortBy);
+    if (params.sortBy)   qs.set('sortBy', params.sortBy);
     qs.set('sortDir', params.sortDir);
 
-    fetch(`/api/lists/${listType}?${qs}`, { credentials: 'include', signal: ctrl.signal })
+    fetch(`/api/lists/${apiSlug(listType)}?${qs}`, { credentials: 'include', signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d: ListData) => { setData(d); setLoading(false); })
       .catch((e) => {
@@ -308,19 +470,31 @@ function useListData(
         setError('Failed to load data');
         setLoading(false);
       });
-  }, [listType, params.q, params.status, params.severity, params.dateFrom, params.dateTo, params.userId, params.jobId, params.page, params.pageSize, params.sortBy, params.sortDir]);
+  }, [listType, params.q, params.status, params.severity, params.dateFrom, params.dateTo,
+      params.userId, params.jobId, params.page, params.pageSize, params.sortBy, params.sortDir]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
-  return { data, loading, error, refresh: fetch_ };
+  return { data, loading, error };
 }
 
-// ── Report Generator types & hook ────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Generate List modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface GenerateParams {
+  listType: ListType;
+  q: string;
+  userId: string;
+  jobId: string;
+  dateFrom: string;
+  dateTo: string;
+}
 
 interface ReportUser { id: string; name: string; email: string; }
 interface ReportJob  { id: number; name: string; job_number: string; }
 
-function useReportOptions() {
+function useModalOptions() {
   const [users, setUsers] = useState<ReportUser[]>([]);
   const [jobs,  setJobs]  = useState<ReportJob[]>([]);
 
@@ -339,193 +513,218 @@ function useReportOptions() {
   return { users, jobs };
 }
 
-// ── Report Generator panel ────────────────────────────────────────────────────
-
-const ALL_LIST_TYPES: { key: ListType; label: string; icon: React.ElementType }[] = [
-  { key: 'jobs',        label: 'Jobs',        icon: HardHat     },
-  { key: 'tasks',       label: 'Tasks',       icon: CheckSquare },
-  { key: 'notes',       label: 'Notes',       icon: StickyNote  },
-  { key: 'incidents',   label: 'Incidents',   icon: ShieldAlert },
-  { key: 'attendance',  label: 'Attendance',  icon: LogIn       },
-  { key: 'costs',       label: 'Costs',       icon: DollarSign  },
-  { key: 'driver-logs', label: 'Driver Logs', icon: Truck       },
-];
-
-interface ReportPanelProps {
+interface GenerateModalProps {
   open: boolean;
+  initial: ListType | null;
   onClose: () => void;
-  onGenerate: (params: ReportGenParams) => void;
-  generating: boolean;
+  onGenerate: (p: GenerateParams) => void;
 }
 
-export interface ReportGenParams {
-  listType: ListType;
-  userId: string;
-  jobId: string;
-  dateFrom: string;
-  dateTo: string;
-}
-
-function ReportPanel({ open, onClose, onGenerate, generating }: ReportPanelProps) {
-  const { users, jobs } = useReportOptions();
-  const [listType, setListType] = useState<ListType>('attendance');
+function GenerateModal({ open, initial, onClose, onGenerate }: GenerateModalProps) {
+  const { users, jobs } = useModalOptions();
+  const [listType, setListType] = useState<ListType>(initial ?? 'jobs');
+  const [q,        setQ]        = useState('');
   const [userId,   setUserId]   = useState('');
   const [jobId,    setJobId]    = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
 
-  function handleGenerate() {
-    onGenerate({ listType, userId, jobId, dateFrom, dateTo });
-  }
+  // Reset when modal opens
+  useEffect(() => {
+    if (open) {
+      setListType(initial ?? 'jobs');
+      setQ('');
+      setUserId('');
+      setJobId('');
+      setDateFrom('');
+      setDateTo('');
+    }
+  }, [open, initial]);
 
   if (!open) return null;
+
+  const group1 = CATALOG.filter((c) => c.group === 1);
+  const group2 = CATALOG.filter((c) => c.group === 2);
+
+  function submit() {
+    onGenerate({ listType, q, userId, jobId, dateFrom, dateTo });
+  }
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 z-[60]"
+        className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center"
         onClick={onClose}
-      />
-      {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-[340px] bg-white shadow-2xl z-[70] flex flex-col border-l border-gray-200">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <FileBarChart2 size={16} className="text-primary" />
-            <span className="text-[14px] font-semibold text-gray-800">Generate Report</span>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
-
-          {/* List type */}
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              List Type
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {ALL_LIST_TYPES.map((lt) => {
-                const Icon = lt.icon;
-                const active = listType === lt.key;
-                return (
-                  <button
-                    key={lt.key}
-                    onClick={() => setListType(lt.key)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
-                      active
-                        ? 'border-primary bg-orange-50 text-primary'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon size={13} />
-                    {lt.label}
-                  </button>
-                );
-              })}
+      >
+        {/* Modal */}
+        <div
+          className="relative bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-[560px] mx-4 flex flex-col"
+          style={{ maxHeight: 'calc(100vh - 80px)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
+            <div className="flex items-center gap-2">
+              <ListFilter size={15} className="text-primary" />
+              <span className="text-[14px] font-semibold text-gray-800">Generate List</span>
             </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100">
+              <X size={15} />
+            </button>
           </div>
 
-          {/* User filter */}
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              <User size={11} /> User
-            </label>
-            <select
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="w-full text-[12px] border border-gray-200 rounded px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">All users</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name || u.email}</option>
-              ))}
-            </select>
-          </div>
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
 
-          {/* Job filter */}
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              <Briefcase size={11} /> Job
-            </label>
-            <select
-              value={jobId}
-              onChange={(e) => setJobId(e.target.value)}
-              className="w-full text-[12px] border border-gray-200 rounded px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">All jobs</option>
-              {jobs.map((j) => (
-                <option key={j.id} value={String(j.id)}>
-                  {j.job_number ? `${j.job_number} — ` : ''}{j.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* List Type */}
+            <div>
+              <p className="text-[11px] font-semibold text-gray-500 mb-2">List Type</p>
 
-          {/* Date range */}
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              <Calendar size={11} /> Date Range
-            </label>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 w-8">From</span>
+              {/* Group 1 */}
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Core Lists</p>
+              <div className="grid grid-cols-3 gap-1.5 mb-3">
+                {group1.map((entry) => {
+                  const Icon = entry.icon;
+                  const active = listType === entry.key;
+                  return (
+                    <button
+                      key={entry.key}
+                      onClick={() => setListType(entry.key)}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded border text-[12px] font-medium transition-colors text-left ${
+                        active
+                          ? 'border-primary bg-orange-50 text-primary'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon size={13} className="shrink-0" />
+                      <span className="truncate">{entry.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Group 2 */}
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Second Wave</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {group2.map((entry) => {
+                  const Icon = entry.icon;
+                  return (
+                    <div
+                      key={entry.key}
+                      title="Coming soon"
+                      className="flex items-center gap-2 px-2.5 py-2 rounded border border-dashed border-gray-200 text-[12px] text-gray-300 cursor-not-allowed select-none"
+                    >
+                      <Icon size={13} className="shrink-0" />
+                      <span className="truncate">{entry.label}</span>
+                      <span className="ml-auto text-[9px] font-semibold text-gray-300 shrink-0">SOON</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Filters row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Search */}
+              <div className="col-span-2">
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">Search</label>
+                <div className="relative">
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Filter by keyword…"
+                    className="w-full pl-7 pr-3 py-1.5 text-[12px] border border-gray-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* User */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">User</label>
+                <select
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="w-full text-[12px] border border-gray-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">All users</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Job */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">Job</label>
+                <select
+                  value={jobId}
+                  onChange={(e) => setJobId(e.target.value)}
+                  className="w-full text-[12px] border border-gray-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">All jobs</option>
+                  {jobs.map((j) => (
+                    <option key={j.id} value={String(j.id)}>
+                      {j.job_number ? `${j.job_number} — ` : ''}{j.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">Date From</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="flex-1 text-[12px] border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full text-[12px] border border-gray-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 w-8">To</span>
+
+              {/* Date To */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">Date To</label>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="flex-1 text-[12px] border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full text-[12px] border border-gray-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>
           </div>
 
-        </div>
-
-        {/* Footer — Generate button */}
-        <div className="shrink-0 px-5 py-4 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-[13px] font-semibold rounded hover:bg-orange-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {generating ? (
-              <><Loader2 size={14} className="animate-spin" /> Generating…</>
-            ) : (
-              <><Play size={13} /> Generate Report</>
-            )}
-          </button>
-          <p className="text-[10px] text-gray-400 text-center mt-2">
-            Results will appear in the table below
-          </p>
+          {/* Footer */}
+          <div className="shrink-0 px-5 py-3.5 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-2 rounded-b-lg">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-[12px] font-medium text-gray-600 border border-gray-200 rounded hover:bg-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white text-[13px] font-semibold rounded hover:bg-orange-600 transition-colors"
+            >
+              <Play size={12} />
+              Generate
+            </button>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// ── Sort header cell ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Sort header cell
+// ─────────────────────────────────────────────────────────────────────────────
 
-function SortTh({
-  col, sortBy, sortDir, onSort,
-}: {
-  col: ColDef;
-  sortBy: string;
-  sortDir: 'asc' | 'desc';
-  onSort: (key: string) => void;
+function SortTh({ col, sortBy, sortDir, onSort }: {
+  col: ColDef; sortBy: string; sortDir: 'asc' | 'desc'; onSort: (k: string) => void;
 }) {
   const active = sortBy === col.key;
   return (
@@ -546,43 +745,35 @@ function SortTh({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 50;
 
 export default function ListsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const activeList = (searchParams.get('list') as ListType) || 'jobs';
-  const setActiveList = (l: ListType) => {
-    setSearchParams({ list: l });
-    setPage(1);
-    setQ('');
-    setStatus('');
-    setSeverity('');
-    setDateFrom('');
-    setDateTo('');
-    setUserId('');
-    setJobId('');
-    setSortBy('');
-    setSortDir('desc');
-  };
+  // Active list state — null = nothing generated yet
+  const [activeList, setActiveList] = useState<ListType | null>(null);
+  const [activeLabel, setActiveLabel] = useState('');
 
-  const [q, setQ]             = useState('');
+  // Table filters (applied after Generate)
+  const [q, setQ]               = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
-  const [status, setStatus]   = useState('');
+  const [status, setStatus]     = useState('');
   const [severity, setSeverity] = useState('');
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo]   = useState('');
-  const [userId, setUserId]   = useState('');
-  const [jobId, setJobId]     = useState('');
-  const [page, setPage]       = useState(1);
-  const [sortBy, setSortBy]   = useState('');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [dateTo, setDateTo]     = useState('');
+  const [userId, setUserId]     = useState('');
+  const [jobId, setJobId]       = useState('');
+  const [page, setPage]         = useState(1);
+  const [sortBy, setSortBy]     = useState('');
+  const [sortDir, setSortDir]   = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
-  const [showReportPanel, setShowReportPanel] = useState(false);
-  const [reportGenerating, setReportGenerating] = useState(false);
+
+  // Modal
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -591,30 +782,37 @@ export default function ListsPage() {
   }, [q]);
 
   const { data, loading, error } = useListData(activeList, {
-    q: debouncedQ,
-    status,
-    severity,
-    dateFrom,
-    dateTo,
-    userId,
-    jobId,
-    page,
-    pageSize: PAGE_SIZE,
-    sortBy,
-    sortDir,
+    q: debouncedQ, status, severity, dateFrom, dateTo,
+    userId, jobId, page, pageSize: PAGE_SIZE, sortBy, sortDir,
   });
 
+  function handleGenerate(params: GenerateParams) {
+    setActiveList(params.listType);
+    const entry = CATALOG.find((c) => c.key === params.listType);
+    setActiveLabel(entry?.label ?? params.listType);
+    setQ(params.q);
+    setDebouncedQ(params.q);
+    setStatus('');
+    setSeverity('');
+    setDateFrom(params.dateFrom);
+    setDateTo(params.dateTo);
+    setUserId(params.userId);
+    setJobId(params.jobId);
+    setSortBy('');
+    setSortDir('desc');
+    setPage(1);
+    setShowFilters(false);
+    setModalOpen(false);
+  }
+
   function handleSort(key: string) {
-    if (sortBy === key) {
-      setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(key);
-      setSortDir('desc');
-    }
+    if (sortBy === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(key); setSortDir('desc'); }
     setPage(1);
   }
 
   function handleCsvExport() {
+    if (!activeList) return;
     const qs = new URLSearchParams();
     if (debouncedQ) qs.set('q', debouncedQ);
     if (status)     qs.set('status', status);
@@ -626,61 +824,43 @@ export default function ListsPage() {
     if (sortBy)     qs.set('sortBy', sortBy);
     qs.set('sortDir', sortDir);
     qs.set('format', 'csv');
-    window.open(`/api/lists/${activeList}?${qs}`, '_blank');
+    window.open(`/api/lists/${apiSlug(activeList)}?${qs}`, '_blank');
   }
 
   function clearFilters() {
-    setStatus('');
-    setSeverity('');
-    setDateFrom('');
-    setDateTo('');
-    setUserId('');
-    setJobId('');
-    setPage(1);
-  }
-
-  function handleGenerate(params: ReportGenParams) {
-    // Switch to the chosen list type and apply all filters, then close panel
-    setSearchParams({ list: params.listType });
-    setQ('');
-    setDebouncedQ('');
-    setStatus('');
-    setSeverity('');
-    setDateFrom(params.dateFrom);
-    setDateTo(params.dateTo);
-    setUserId(params.userId);
-    setJobId(params.jobId);
-    setSortBy('');
-    setSortDir('desc');
-    setPage(1);
-    setReportGenerating(true);
-    setTimeout(() => {
-      setReportGenerating(false);
-      setShowReportPanel(false);
-    }, 300);
+    setStatus(''); setSeverity(''); setDateFrom(''); setDateTo('');
+    setUserId(''); setJobId(''); setPage(1);
   }
 
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const cols = COLS[activeList];
-  const listMeta = LIST_DEFS.find((l) => l.key === activeList)!;
+  const cols = activeList ? (COLS[activeList] ?? FALLBACK_COLS) : FALLBACK_COLS;
   const hasFilters = !!(status || severity || dateFrom || dateTo || userId || jobId);
-  const statusOpts = STATUS_OPTIONS[activeList];
+  const statusOpts: string[] = activeList === 'jobs'      ? ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft']
+                             : activeList === 'tasks'     ? ['Not Started', 'In Progress', 'Complete', 'Cancelled']
+                             : activeList === 'incidents' ? ['Open', 'Investigating', 'Closed']
+                             : activeList === 'invoices'  ? ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
+                             : activeList === 'estimates' ? ['Draft', 'Sent', 'Accepted', 'Declined', 'Cancelled']
+                             : activeList === 'purchase-orders' ? ['Draft', 'Sent', 'Approved', 'Complete', 'Cancelled']
+                             : activeList === 'customers' ? ['Active', 'Inactive']
+                             : activeList === 'swms'      ? ['Draft', 'Active', 'Archived']
+                             : activeList === 'form-submissions' ? ['Draft', 'Submitted', 'Approved']
+                             : activeList === 'fleet-assets' ? ['Active', 'Inactive', 'Archived']
+                             : [];
 
   return (
     <>
       <Helmet>
         <title>Lists — IWILLBUILD</title>
-        <meta name="description" content="View, filter, and export system records as tables." />
+        <meta name="description" content="Generate, filter, and export office records as tables." />
         <link rel="canonical" href="https://iwillbuild.com/lists" />
       </Helmet>
 
       <div className="portal-page">
-        {/* Visually-hidden h1 for SEO / accessibility */}
         <h1 className="sr-only">Lists — IWILLBUILD</h1>
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
           {/* ── Breadcrumb ── */}
-          <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5">
+          <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5 border-b border-gray-100">
             <button
               onClick={() => navigate('/dashboard')}
               className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-orange-500 transition-colors group"
@@ -690,116 +870,98 @@ export default function ListsPage() {
             </button>
             <Crumb size={11} className="text-gray-300" />
             <span className="text-[11px] font-medium text-gray-600">Lists</span>
-          </div>
-
-          {/* ── List selector tabs ── */}
-          <div className="shrink-0 px-5 pt-0 pb-0 border-b border-gray-200 bg-white">
-            <div className="flex items-center gap-1 overflow-x-auto">
-              {LIST_DEFS.map((l) => {
-                const Icon = l.icon;
-                const active = l.key === activeList;
-                return (
-                  <button
-                    key={l.key}
-                    onClick={() => setActiveList(l.key)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-t border-b-2 transition-colors whitespace-nowrap ${
-                      active
-                        ? 'border-primary text-primary bg-orange-50'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon size={13} />
-                    {l.label}
-                  </button>
-                );
-              })}
-
-              {/* User Logs — navigates to /user-logs */}
-              <button
-                onClick={() => navigate(USER_LOGS_TAB.href)}
-                className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-t border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap ml-1"
-              >
-                <ScrollText size={13} />
-                {USER_LOGS_TAB.label}
-              </button>
-            </div>
+            {activeLabel && (
+              <>
+                <Crumb size={11} className="text-gray-300" />
+                <span className="text-[11px] font-medium text-primary">{activeLabel}</span>
+              </>
+            )}
           </div>
 
           {/* ── Toolbar ── */}
           <div className="shrink-0 px-4 py-2.5 bg-white border-b border-gray-200 flex items-center gap-2 flex-wrap">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[180px] max-w-[320px]">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input
-                type="text"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={`Search ${listMeta.label.toLowerCase()}…`}
-                className="w-full pl-7 pr-3 py-1.5 text-[12px] border border-gray-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder-gray-400"
-              />
-              {q && (
-                <button onClick={() => setQ('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X size={12} />
-                </button>
-              )}
-            </div>
 
-            {/* Filter toggle */}
+            {/* Generate List — primary action */}
             <button
-              onClick={() => setShowFilters((v) => !v)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] rounded border transition-colors ${
-                showFilters || hasFilters
-                  ? 'border-primary text-primary bg-orange-50'
-                  : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-              }`}
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
             >
-              <Filter size={12} />
-              Filters
-              {hasFilters && (
-                <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold">
-                  {[status, severity, dateFrom, dateTo, userId, jobId].filter(Boolean).length}
-                </span>
-              )}
+              <ListFilter size={13} />
+              Generate List
             </button>
 
-            {hasFilters && (
-              <button onClick={clearFilters} className="text-[11px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                <X size={11} /> Clear
-              </button>
+            {/* Divider — only show table controls when a list is active */}
+            {activeList && (
+              <>
+                <div className="w-px h-5 bg-gray-200 mx-0.5" />
+
+                {/* Search */}
+                <div className="relative min-w-[180px] max-w-[280px]">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={`Search ${activeLabel.toLowerCase()}…`}
+                    className="w-full pl-7 pr-7 py-1.5 text-[12px] border border-gray-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-primary placeholder-gray-400"
+                  />
+                  {q && (
+                    <button onClick={() => setQ('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter toggle */}
+                <button
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] rounded border transition-colors ${
+                    showFilters || hasFilters
+                      ? 'border-primary text-primary bg-orange-50'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <Filter size={12} />
+                  Filters
+                  {hasFilters && (
+                    <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold">
+                      {[status, severity, dateFrom, dateTo, userId, jobId].filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+
+                {hasFilters && (
+                  <button onClick={clearFilters} className="text-[11px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    <X size={11} /> Clear
+                  </button>
+                )}
+              </>
             )}
 
             <div className="flex-1" />
 
             {/* Record count */}
-            {!loading && (
+            {activeList && !loading && (
               <span className="text-[11px] text-gray-400 tabular-nums">
                 {data.total.toLocaleString()} record{data.total !== 1 ? 's' : ''}
               </span>
             )}
 
-            {/* CSV export */}
-            <button
-              onClick={handleCsvExport}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-gray-600 border border-gray-200 rounded hover:bg-gray-50 hover:border-gray-300 transition-colors"
-            >
-              <Download size={13} />
-              Export CSV
-            </button>
-
-            {/* Generate Report */}
-            <button
-              onClick={() => setShowReportPanel(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
-            >
-              <FileBarChart2 size={13} />
-              Generate Report
-            </button>
+            {/* Export CSV — only when a list is active */}
+            {activeList && (
+              <button
+                onClick={handleCsvExport}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-gray-600 border border-gray-200 rounded hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <Download size={13} />
+                Export CSV
+              </button>
+            )}
           </div>
 
-          {/* ── Filter panel ── */}
-          {showFilters && (
+          {/* ── Filter bar (inline, below toolbar) ── */}
+          {activeList && showFilters && (
             <div className="shrink-0 px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-3 flex-wrap">
-              {/* Status filter */}
               {statusOpts.length > 0 && (
                 <div className="flex items-center gap-1.5">
                   <label className="text-[11px] text-gray-500 font-medium">Status</label>
@@ -813,8 +975,6 @@ export default function ListsPage() {
                   </select>
                 </div>
               )}
-
-              {/* Severity filter (incidents only) */}
               {activeList === 'incidents' && (
                 <div className="flex items-center gap-1.5">
                   <label className="text-[11px] text-gray-500 font-medium">Severity</label>
@@ -824,36 +984,46 @@ export default function ListsPage() {
                     className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="">All</option>
-                    {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {['Critical', 'High', 'Medium', 'Low'].map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               )}
-
-              {/* Date range */}
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] text-gray-500 font-medium">From</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                  className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] text-gray-500 font-medium">To</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                  className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
             </div>
           )}
 
           {/* ── Table area ── */}
           <div className="flex-1 overflow-auto min-h-0">
-            {error ? (
+            {!activeList ? (
+              /* Empty state — no list generated yet */
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                  <ListFilter size={22} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-[14px] font-semibold text-gray-700 mb-1">No list generated yet</p>
+                  <p className="text-[12px] text-gray-400 max-w-xs">
+                    Click <strong className="text-gray-600">Generate List</strong> to choose a list type and apply filters.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
+                >
+                  <ListFilter size={14} />
+                  Generate List
+                </button>
+              </div>
+            ) : error ? (
               <div className="flex items-center gap-2 p-6 text-red-600 text-[13px]">
                 <AlertCircle size={16} /> {error}
               </div>
@@ -882,17 +1052,14 @@ export default function ListsPage() {
                         No records found
                         {(debouncedQ || hasFilters) && (
                           <button onClick={() => { setQ(''); clearFilters(); }} className="ml-2 text-primary hover:underline">
-                            Clear search
+                            Clear filters
                           </button>
                         )}
                       </td>
                     </tr>
                   ) : (
                     data.rows.map((row, i) => (
-                      <tr
-                        key={String(row.id ?? i)}
-                        className="border-b border-gray-100 hover:bg-orange-50/40 transition-colors"
-                      >
+                      <tr key={String(row.id ?? i)} className="border-b border-gray-100 hover:bg-orange-50/40 transition-colors">
                         {cols.map((col) => {
                           const val = row[col.key];
                           return (
@@ -919,50 +1086,32 @@ export default function ListsPage() {
           </div>
 
           {/* ── Pagination ── */}
-          {!loading && data.total > PAGE_SIZE && (
+          {activeList && !loading && data.total > PAGE_SIZE && (
             <div className="shrink-0 px-4 py-2.5 border-t border-gray-200 bg-white flex items-center justify-between gap-3">
               <span className="text-[11px] text-gray-400">
                 Page {page} of {totalPages} · {data.total.toLocaleString()} total
               </span>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="p-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+                  className="p-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
                   <ChevronLeft size={14} />
                 </button>
-                {/* Page number pills */}
                 {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
                   let p: number;
-                  if (totalPages <= 7) {
-                    p = i + 1;
-                  } else if (page <= 4) {
-                    p = i + 1;
-                  } else if (page >= totalPages - 3) {
-                    p = totalPages - 6 + i;
-                  } else {
-                    p = page - 3 + i;
-                  }
+                  if (totalPages <= 7)        p = i + 1;
+                  else if (page <= 4)         p = i + 1;
+                  else if (page >= totalPages - 3) p = totalPages - 6 + i;
+                  else                        p = page - 3 + i;
                   return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
+                    <button key={p} onClick={() => setPage(p)}
                       className={`w-7 h-7 text-[11px] rounded border transition-colors ${
-                        p === page
-                          ? 'border-primary bg-primary text-white font-semibold'
-                          : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                        p === page ? 'border-primary bg-primary text-white font-semibold' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                       }`}
-                    >
-                      {p}
-                    </button>
+                    >{p}</button>
                   );
                 })}
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="p-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                  className="p-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -972,12 +1121,12 @@ export default function ListsPage() {
         </main>
       </div>
 
-      {/* ── Report Generator slide-over ── */}
-      <ReportPanel
-        open={showReportPanel}
-        onClose={() => setShowReportPanel(false)}
+      {/* ── Generate List modal ── */}
+      <GenerateModal
+        open={modalOpen}
+        initial={activeList}
+        onClose={() => setModalOpen(false)}
         onGenerate={handleGenerate}
-        generating={reportGenerating}
       />
     </>
   );
