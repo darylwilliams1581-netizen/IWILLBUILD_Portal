@@ -129,7 +129,7 @@ const CONTENT_OPTIONS: {
   icon: React.ElementType;
   folder: string;
 }[] = [
-  { key: 'dataJobs',            label: 'Jobs',                  desc: 'Job records, notes, to-dos, progress updates',    icon: ClipboardList, folder: 'Jobs' },
+  { key: 'dataJobs',            label: 'Jobs',                  desc: 'Job records, notes, tasks, progress updates',     icon: ClipboardList, folder: 'Jobs' },
   { key: 'dataEstimates',       label: 'Estimates',             desc: 'Estimate records and line items',                 icon: FileText,      folder: 'Reports' },
   { key: 'dataForms',           label: 'Forms',                 desc: 'Completed form responses and signatures',         icon: Database,      folder: 'Form Packs' },
   { key: 'dataCompletedPdfs',   label: 'Completed PDFs',        desc: 'Generated PDF documents from forms and reports',  icon: FileText,      folder: 'Reports' },

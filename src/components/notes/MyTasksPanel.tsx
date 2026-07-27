@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CheckSquare, Loader2, AlertCircle, Search, X, ExternalLink, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TagTaskCard from './TagTaskCard';
-import { type TagTask, getTaskUrgency, URGENCY_META } from '@/lib/notes-types';
+import { type TagTask, getTaskUrgency } from '@/lib/notes-types';
 import { useSession } from '@/lib/auth/auth-client';
 
 interface Props {
@@ -18,8 +18,8 @@ interface Props {
 type StatusFilter = 'open' | 'completed';
 
 export default function MyTasksPanel({ userRole = '' }: Props) {
-  const { data: sessionData } = useSession();
-  const currentUserId = sessionData?.user?.id ?? '';
+  const { user } = useSession();
+  const currentUserId = user?.id ?? '';
 
   const [tasks, setTasks] = useState<TagTask[]>([]);
   const [total, setTotal] = useState(0);
@@ -152,7 +152,7 @@ export default function MyTasksPanel({ userRole = '' }: Props) {
               {statusFilter === 'open' ? 'No open tasks' : 'No completed tasks'}
             </p>
             <p className="text-xs text-slate-300">
-              Tasks appear here when someone @mentions you in a to-do or action note.
+              Tasks appear here when someone @mentions you in a task or action note.
             </p>
           </div>
         )}

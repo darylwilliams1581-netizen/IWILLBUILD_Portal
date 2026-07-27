@@ -33,7 +33,6 @@ import { useTerminology } from '@/lib/useTerminology';
 import { usePermissions } from '@/lib/usePermissions';
 import { AnimatePresence } from 'motion/react';
 import StartDrivingModal, { type ActiveSession } from '@/components/fleet/StartDrivingModal';
-import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
 import { useDriverSession } from '@/lib/useDriverSession';
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
@@ -45,11 +44,6 @@ const quickActions = [
 ];
 
 // ─── Animation variants ───────────────────────────────────────────────────────
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
-} as const;
-
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
@@ -68,8 +62,8 @@ interface DashTodo {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
-  const { workSingular, workPlural, addWorkLabel } = useTerminology();
-  const { can, isAdmin, isOwner, role, loading: permLoading } = usePermissions();
+  const { workSingular, addWorkLabel } = useTerminology();
+  const { role } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
   const [fleetFlags, setFleetFlags] = useState<FleetFlags | null>(null);
@@ -77,9 +71,8 @@ export default function DashboardPage() {
   const [overdueTodos, setOverdueTodos] = useState<DashTodo[]>([]);
 
   // Driver session
-  const { session: driverSession, refresh: refreshDriverSession } = useDriverSession();
+  const { refresh: refreshDriverSession } = useDriverSession();
   const [showStartDriving, setShowStartDriving] = useState(false);
-  const canFleet = isAdmin || isOwner || can('fleet');
 
   function handleSessionStarted(s: ActiveSession) {
     setShowStartDriving(false);
@@ -417,7 +410,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={13} className="text-red-600 shrink-0" />
                     <h2 className="font-heading font-bold text-xs text-red-800">
-                      {overdueTodos.length} Overdue To-do{overdueTodos.length !== 1 ? 's' : ''}
+                      {overdueTodos.length} Overdue Task{overdueTodos.length !== 1 ? 's' : ''}
                     </h2>
                   </div>
                   {overdueTodos.map((t) => (
@@ -441,7 +434,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <Clock size={13} className="text-amber-600 shrink-0" />
                     <h2 className="font-heading font-bold text-xs text-amber-800">
-                      {dueTodayTodos.length} To-do{dueTodayTodos.length !== 1 ? 's' : ''} Due Today
+                      {dueTodayTodos.length} Task{dueTodayTodos.length !== 1 ? 's' : ''} Due Today
                     </h2>
                   </div>
                   {dueTodayTodos.map((t) => (

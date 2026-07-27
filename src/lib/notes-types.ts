@@ -10,7 +10,7 @@ export type NoteEntityType = 'job' | 'fleet';
 
 export const NOTE_TYPE_META: Record<NoteType, { label: string; color: string; bg: string; border: string }> = {
   note:   { label: 'Note',   color: 'text-slate-600',  bg: 'bg-slate-50',   border: 'border-slate-200' },
-  todo:   { label: 'To-do',  color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200'  },
+  todo:   { label: 'Task',    color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200'  },
   action: { label: 'Action', color: 'text-orange-700', bg: 'bg-orange-50',  border: 'border-orange-200'},
 };
 

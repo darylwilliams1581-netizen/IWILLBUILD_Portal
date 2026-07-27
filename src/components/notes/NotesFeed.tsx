@@ -71,7 +71,6 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const meta = NOTE_TYPE_META[note.noteType] ?? NOTE_TYPE_META.note;
-  const isNote = note.noteType === 'note';
   // Show delete button to the note author or admins/managers
   const canDelete = onDelete && (
     note.authorUserId === currentUserId ||
@@ -171,7 +170,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
       {note.tasks.length > 0 && (
         <div className="px-3 pb-3 flex flex-col gap-2">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Tagged actions ({note.tasks.length})
+            Tagged tasks ({note.tasks.length})
           </p>
           {note.tasks.map((task) => (
             <TagTaskCard

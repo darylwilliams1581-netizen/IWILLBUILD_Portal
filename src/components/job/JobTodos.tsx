@@ -56,7 +56,7 @@ export default function JobTodos({ jobId }: Props) {
       const data = await res.json();
       setTodos(data.todos ?? []);
     } catch {
-      setError('Failed to load to-dos.');
+      setError('Failed to load tasks.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export default function JobTodos({ jobId }: Props) {
       setTodos((prev) => [...prev, data.todo]);
       setNewTitle(''); setNewDue(''); setNewNotes(''); setAdding(false);
     } catch {
-      setError('Failed to add to-do.');
+      setError('Failed to add task.');
     } finally {
       setSaving(false);
     }
@@ -97,7 +97,7 @@ export default function JobTodos({ jobId }: Props) {
       const data = await res.json();
       setTodos((prev) => prev.map((t) => (t.id === todo.id ? data.todo : t)));
     } catch {
-      setError('Failed to update to-do.');
+      setError('Failed to update task.');
     }
   }
 
@@ -119,13 +119,13 @@ export default function JobTodos({ jobId }: Props) {
   }
 
   async function deleteTodo(id: number) {
-    if (!confirm('Delete this to-do?')) return;
+    if (!confirm('Delete this task?')) return;
     try {
       const res = await fetch(`/api/jobs/${jobId}/todos/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
       setTodos((prev) => prev.filter((t) => t.id !== id));
     } catch {
-      setError('Failed to delete to-do.');
+      setError('Failed to delete task.');
     }
   }
 
@@ -150,7 +150,7 @@ export default function JobTodos({ jobId }: Props) {
   return (
     <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">To-do</h2>
+        <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Tasks</h2>
         <button
           onClick={() => { setAdding(true); setError(''); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 transition-colors"
@@ -171,7 +171,7 @@ export default function JobTodos({ jobId }: Props) {
           <input
             autoFocus
             type="text"
-            placeholder="To-do title *"
+            placeholder="Task title *"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); if (e.key === 'Escape') setAdding(false); }}
@@ -219,7 +219,7 @@ export default function JobTodos({ jobId }: Props) {
           <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
             <Check size={18} className="text-muted-foreground" />
           </div>
-          <p className="text-sm font-semibold text-foreground mb-1">No open to-dos</p>
+          <p className="text-sm font-semibold text-foreground mb-1">No open tasks</p>
           <p className="text-xs text-muted-foreground">Click Add Item to create one.</p>
         </div>
       ) : (

@@ -6,17 +6,12 @@ import {
   ShieldCheck, Users, CheckCircle, ArrowRight,
   Star, ChevronRight, Calendar, FolderOpen, Siren,
 } from 'lucide-react';
-import ContactForm from '@/components/ContactForm';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
 
 // ── Content fallbacks ─────────────────────────────────────────────────────────
 // Guard every field consumed from virtual:content so a missing or malformed
 // JSON file never causes a runtime crash during publish or SSR rendering.
-const homeTabs: string[] = Array.isArray(home?.tabs) && home.tabs.length > 0
-  ? home.tabs
-  : ['Overview', 'Jobs', 'Forms', 'Fleet', 'Safety'];
-
 const homeRows: { label: string; status: string; color: string; id?: string }[] =
   Array.isArray(home?.rows) && home.rows.length > 0
     ? home.rows
@@ -31,7 +26,7 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const features = [
-  { icon: Briefcase,   title: 'Jobs and job files',       desc: 'Create jobs, track status, add notes, to-do items, costs and close them out cleanly.' },
+  { icon: Briefcase,   title: 'Jobs and job files',       desc: 'Create jobs, track status, add notes, tasks, costs and close them out cleanly.' },
   { icon: FileText,    title: 'Estimates and recipes',    desc: 'Build cost guides, scope lines, approve estimates and print PDF quotes for clients.' },
   { icon: FileText,    title: 'Forms and signatures',     desc: 'Reusable templates, conditional logic, photo capture, multi-signer and completed PDFs.' },
   { icon: Camera,      title: 'Photos and files',         desc: 'Upload site photos, label them, view in lightbox and attach files to the job record.' },
