@@ -158,11 +158,13 @@ export function isTextEditable(element: HTMLElement, cmsInlineEditEnabled: boole
     if (!cmsInlineEditEnabled && !element.closest("[data-dev-content-file]")) return false;
     if (element.querySelector("[data-dev-dynamic]")) return false;
   } else if (cmsInlineEditEnabled) {
-    // Permissive mode: allow elements with data-dev-dynamic on themselves (these
-    // are content-bound fields like {bean.name} that the content-edit path or
-    // source-mapper content-key handles). Block only if a DESCENDANT is dynamic
-    // (mixed structural content that can't be edited as a flat string).
-    if (element.querySelector("[data-dev-dynamic]")) return false;
+    // Permissive mode. A content-bound field ({bean.name}, mapped items) already
+    // returned editable at the content-key early-return above, so any element
+    // reaching here with data-dev-dynamic on ITSELF has no content key — it is
+    // genuinely non-attributable (e.g. `body.split('\n\n').map(p => <p>{p}</p>)`)
+    // and would 400 on the /text/edit AST path (AIROBUILD-4362). Block self-
+    // dynamic as well as dynamic descendants, matching conservative mode.
+    if (element.hasAttribute("data-dev-dynamic") || element.querySelector("[data-dev-dynamic]")) return false;
   } else {
     if (element.closest("[data-dev-dynamic]") || element.querySelector("[data-dev-dynamic]")) return false;
   }

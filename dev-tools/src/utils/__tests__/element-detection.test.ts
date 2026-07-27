@@ -295,6 +295,23 @@ describe('element-detection', () => {
       const element = buildElement('<h1 data-dev-content-key="home.hero.title">Welcome</h1>');
       expect(isTextEditable(element, true)).toBe(true);
     });
+
+    it('rejects a self-dynamic .map()-derived paragraph (no content key, no bound-text) in permissive mode', () => {
+      // Repro of AIROBUILD-4362: `field.split('\n\n').map((para) => <p>{para}</p>)`
+      // produces a <p> the source-mapper marks data-dev-dynamic with a data-dev-file
+      // but NO content key and NO bound-text. It must not be offered for inline edit.
+      const element = buildElement(
+        '<p data-dev-dynamic="true" data-dev-file="src/pages/about-us.tsx">Tom has served as an expert witness for over twenty-four years.</p>',
+      );
+      expect(isTextEditable(element, true)).toBe(false);
+    });
+
+    it('still allows a content-keyed element in permissive mode (regression: fix must not over-block)', () => {
+      const element = buildElement(
+        '<span data-dev-content-key="about_us.hero.headline" data-dev-file="src/pages/about-us.tsx">About Us</span>',
+      );
+      expect(isTextEditable(element, true)).toBe(true);
+    });
   });
 
   // ─── isTextEditable — data-dev-bound-text requires a content-file ancestor ────
