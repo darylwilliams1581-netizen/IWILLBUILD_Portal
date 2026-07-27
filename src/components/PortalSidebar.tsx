@@ -24,6 +24,8 @@ import {
   Calculator,
   UserCircle,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -34,6 +36,20 @@ import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
 import { useSessionTimeout } from '@/lib/auth/useSessionTimeout';
 import SessionExpiredBanner from '@/components/auth/SessionExpiredBanner';
+
+// ── Sidebar collapse persistence ──────────────────────────────────────────────
+const LS_KEY = 'iwb_desktop_sidebar_collapsed';
+
+function readCollapsed(): boolean {
+  try { return localStorage.getItem(LS_KEY) === '1'; } catch { return false; }
+}
+function writeCollapsed(v: boolean) {
+  try { localStorage.setItem(LS_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}
+
+// ── Sidebar widths ────────────────────────────────────────────────────────────
+const SIDEBAR_EXPANDED  = 240;
+const SIDEBAR_COLLAPSED =  64;
 
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
@@ -54,9 +70,6 @@ function useSubscriptionStatus() {
 }
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
-// Top-level items render as plain links.
-// Items inside a group render under a collapsible dropdown.
-
 interface NavItem {
   label: string;
   icon: React.ElementType;
@@ -92,9 +105,11 @@ const adminItems = [
 function SidebarUserStrip({
   sessionUser,
   me,
+  collapsed,
 }: {
   sessionUser: { name?: string; email?: string } | null;
   me: import('@/lib/usePermissions').MeData | null;
+  collapsed: boolean;
 }) {
   const displayName  = me?.user?.name  ?? sessionUser?.name  ?? '';
   const displayEmail = me?.user?.email ?? sessionUser?.email ?? '';
@@ -104,7 +119,20 @@ function SidebarUserStrip({
     return (
       <div className="mt-1 px-2 py-2 rounded bg-gray-50 flex items-center gap-2 opacity-40">
         <div className="w-6 h-6 rounded bg-gray-200 shrink-0" />
-        <div className="min-w-0 flex-1"><div className="h-2 w-16 bg-gray-200 rounded" /></div>
+        {!collapsed && <div className="min-w-0 flex-1"><div className="h-2 w-16 bg-gray-200 rounded" /></div>}
+      </div>
+    );
+  }
+
+  if (collapsed) {
+    return (
+      <div
+        className="mt-1 flex items-center justify-center py-2"
+        title={displayName || displayEmail || 'User'}
+      >
+        <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white font-black text-[11px] shrink-0">
+          {initial}
+        </div>
       </div>
     );
   }
@@ -126,8 +154,12 @@ function SidebarUserStrip({
 // ─── Shared nav content ───────────────────────────────────────────────────────
 function SidebarContent({
   onClose,
+  collapsed,
+  onToggleCollapse,
 }: {
   onClose?: () => void;
+  collapsed: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const location  = useLocation();
   const { isAdmin, loading: permsLoading, can, isOwner, isPlatformOwner, me } = usePermissions();
@@ -166,32 +198,76 @@ function SidebarContent({
     }
   }
 
-  // Nav link classes — office portal style
-  const linkClass = (active: boolean) =>
-    `flex items-center gap-2.5 px-3 py-1.5 rounded transition-colors duration-100 group relative text-[13px] ${
-      active
-        ? 'bg-orange-50 text-primary font-semibold border-r-2 border-primary'
-        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
+  // Nav link — adapts to collapsed/expanded
+  const navLinkClass = (active: boolean, isDazza = false) => {
+    const base = `flex items-center rounded transition-colors duration-100 group relative text-[13px] ${
+      collapsed ? 'justify-center px-0 py-2 mx-1' : 'gap-2.5 px-3 py-1.5'
     }`;
+    if (isDazza) {
+      return `${base} ${active ? 'bg-orange-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`;
+    }
+    return `${base} ${active ? 'bg-orange-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}`;
+  };
 
   return (
     <>
       {/* ── Logo / header ── */}
-      <div className="flex items-center h-11 px-3 border-b border-gray-100 shrink-0 gap-2">
-        <img
-          src="/assets/logo.png"
-          alt="IWILLBUILD"
-          className="h-7 w-auto object-contain shrink-0 flex-1 min-w-0"
-        />
-        {onClose && (
-          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <X size={16} />
-          </button>
+      <div
+        className={`flex items-center h-11 border-b border-gray-100 shrink-0 ${
+          collapsed ? 'justify-center px-2' : 'px-3 gap-2'
+        }`}
+      >
+        {collapsed ? (
+          /* Collapsed: show favicon/icon only */
+          <img
+            src="/assets/logo.png"
+            alt="IWILLBUILD"
+            className="h-6 w-6 object-contain shrink-0"
+            style={{ objectPosition: 'left center' }}
+          />
+        ) : (
+          <>
+            <img
+              src="/assets/logo.png"
+              alt="IWILLBUILD"
+              className="h-7 w-auto object-contain shrink-0 flex-1 min-w-0"
+            />
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                aria-label="Close menu"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </>
         )}
       </div>
 
+      {/* ── Collapse toggle — desktop only (not shown in mobile drawer) ── */}
+      {!onClose && onToggleCollapse && (
+        <div className={`flex shrink-0 border-b border-gray-100 ${collapsed ? 'justify-center py-1.5' : 'justify-end px-2 py-1.5'}`}>
+          <button
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+          >
+            {collapsed
+              ? <PanelLeftOpen  size={15} aria-hidden="true" />
+              : <PanelLeftClose size={15} aria-hidden="true" />
+            }
+          </button>
+        </div>
+      )}
+
       {/* ── Main nav ── */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 flex flex-col gap-0" aria-label="Main navigation">
+      <nav
+        className={`flex-1 overflow-y-auto py-2 flex flex-col gap-0 ${collapsed ? 'px-0' : 'px-2'}`}
+        aria-label="Main navigation"
+      >
         {navEntries.map((item) => {
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey as any)) return null;
           if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
@@ -205,23 +281,26 @@ function SidebarContent({
               to={item.href}
               onClick={onClose}
               aria-current={active ? 'page' : undefined}
-              className={
-                isDazza
-                  ? `flex items-center gap-2.5 px-3 py-1.5 rounded transition-colors duration-100 group relative text-[13px] ${active ? 'bg-orange-50 text-primary font-semibold border-r-2 border-primary' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`
-                  : linkClass(active)
-              }
+              aria-label={collapsed ? item.label : undefined}
+              title={collapsed ? item.label : undefined}
+              className={navLinkClass(active, isDazza)}
             >
               <Icon size={15} className="shrink-0" aria-hidden="true" />
-              <span className="truncate flex-1">{item.label}</span>
+              {!collapsed && <span className="truncate flex-1">{item.label}</span>}
             </Link>
           );
         })}
 
         {/* ── Manage group ── */}
         <div className="mt-2">
-          <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 select-none">
-            Manage
-          </p>
+          {/* Section heading — hidden when collapsed, sr-only for a11y */}
+          {collapsed ? (
+            <div className="mx-1 my-1 border-t border-gray-100" aria-hidden="true" />
+          ) : (
+            <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-300 select-none">
+              Manage
+            </p>
+          )}
 
           {adminItems.map((item) => {
             if (!permsLoading && item.adminOnly && !isAdmin) return null;
@@ -235,14 +314,12 @@ function SidebarContent({
                 to={item.href}
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
-                className={
-                  isDazza
-                    ? `flex items-center gap-2.5 px-3 py-1.5 rounded transition-colors duration-100 group relative text-[13px] ${active ? 'bg-orange-50 text-primary font-semibold border-r-2 border-primary' : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`
-                    : linkClass(active)
-                }
+                aria-label={collapsed ? item.label : undefined}
+                title={collapsed ? item.label : undefined}
+                className={navLinkClass(active, isDazza)}
               >
                 <Icon size={15} className="shrink-0" aria-hidden="true" />
-                <span className="truncate flex-1">{item.label}</span>
+                {!collapsed && <span className="truncate flex-1">{item.label}</span>}
               </Link>
             );
           })}
@@ -256,10 +333,12 @@ function SidebarContent({
                 to="/owner-console"
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
-                className={`${linkClass(active)} border border-orange-200`}
+                aria-label={collapsed ? 'Developer Console' : undefined}
+                title={collapsed ? 'Developer Console' : undefined}
+                className={`${navLinkClass(active)} border border-orange-200`}
               >
                 <ShieldCheck size={15} className="shrink-0 text-orange-500" aria-hidden="true" />
-                <span className="truncate flex-1 text-orange-600">Developer Console</span>
+                {!collapsed && <span className="truncate flex-1 text-orange-600">Developer Console</span>}
               </Link>
             );
           })()}
@@ -270,18 +349,21 @@ function SidebarContent({
       <div className="mx-2 border-t border-gray-100" />
 
       {/* ── Bottom strip ── */}
-      <div className="py-2 px-2 flex flex-col gap-0">
+      <div className={`py-2 flex flex-col gap-0 ${collapsed ? 'px-0' : 'px-2'}`}>
         <button
           onClick={handleLogout}
           aria-label="Log out"
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-100 w-full text-[13px] font-medium"
+          title={collapsed ? 'Log out' : undefined}
+          className={`flex items-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-100 w-full text-[13px] font-medium ${
+            collapsed ? 'justify-center px-0 py-2 mx-1' : 'gap-2.5 px-3 py-1.5'
+          }`}
         >
           <LogOut size={15} className="shrink-0" aria-hidden="true" />
-          <span>Log out</span>
+          {!collapsed && <span>Log out</span>}
         </button>
 
-        {/* Trial / subscription banner */}
-        {subInfo && !isOwner && subInfo.status !== 'active' && (
+        {/* Trial / subscription banner — only in expanded mode */}
+        {!collapsed && subInfo && !isOwner && subInfo.status !== 'active' && (
           <Link
             to="/billing"
             className={`mx-2 mb-2 flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors ${
@@ -315,8 +397,28 @@ function SidebarContent({
           </Link>
         )}
 
+        {/* Collapsed: subscription warning dot */}
+        {collapsed && subInfo && !isOwner && subInfo.status !== 'active' && (
+          <Link
+            to="/billing"
+            title={
+              subInfo.status === 'trial_expired' ? 'Trial expired — upgrade'
+              : subInfo.status === 'cancelled'   ? 'Subscription cancelled'
+              : subInfo.status === 'past_due'    ? 'Payment past due'
+              : `Free trial — ${subInfo.daysLeft ?? 0}d left`
+            }
+            className="flex justify-center py-1"
+          >
+            <span className={`w-2 h-2 rounded-full ${
+              subInfo.status === 'trial_expired' || subInfo.status === 'cancelled' || subInfo.status === 'past_due'
+                ? 'bg-red-500'
+                : 'bg-amber-400'
+            }`} />
+          </Link>
+        )}
+
         {/* User strip */}
-        <SidebarUserStrip sessionUser={me?.user ?? null} me={me} />
+        <SidebarUserStrip sessionUser={me?.user ?? null} me={me} collapsed={collapsed} />
       </div>
     </>
   );
@@ -338,8 +440,8 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
 // ─── Main export ─────────────────────────────────────────────────────────────
 export default function PortalSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsed());
   const location = useLocation();
-  // unused ref kept for future pin-open feature
   const _sidebarRef = useRef<HTMLElement>(null);
 
   // ── Session timeout enforcement ───────────────────────────────────────────
@@ -355,19 +457,37 @@ export default function PortalSidebar() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  function handleToggleCollapse() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      writeCollapsed(next);
+      return next;
+    });
+  }
+
+  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
+
   return (
     <>
       {/* ── Session expired banner ── */}
       {isExpired && <SessionExpiredBanner />}
 
-      {/* ── Desktop sidebar — always expanded ── */}
+      {/* ── Desktop sidebar — collapsible ── */}
       <aside
         ref={_sidebarRef}
-        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-100 shrink-0 overflow-hidden"
-        style={{ width: 220, minWidth: 220 }}
         aria-label="Portal navigation"
+        aria-expanded={!collapsed}
+        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-100 shrink-0 overflow-hidden"
+        style={{
+          width: sidebarWidth,
+          minWidth: sidebarWidth,
+          transition: 'width 200ms ease, min-width 200ms ease',
+        }}
       >
-        <SidebarContent />
+        <SidebarContent
+          collapsed={collapsed}
+          onToggleCollapse={handleToggleCollapse}
+        />
       </aside>
 
       {/* ── Mobile overlay drawer ── */}
@@ -392,7 +512,11 @@ export default function PortalSidebar() {
               className="fixed top-0 left-0 h-[100dvh] w-72 max-w-[85vw] bg-white flex flex-col z-50 md:hidden shadow-2xl border-r border-gray-200"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              <SidebarContent onClose={() => setMobileOpen(false)} />
+              {/* Mobile drawer always renders expanded — pass collapsed=false */}
+              <SidebarContent
+                onClose={() => setMobileOpen(false)}
+                collapsed={false}
+              />
             </motion.aside>
           </>
         )}
