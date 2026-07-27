@@ -519,7 +519,7 @@ export default function ListsPage() {
                     className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="">All</option>
-                    {lists.SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               )}
