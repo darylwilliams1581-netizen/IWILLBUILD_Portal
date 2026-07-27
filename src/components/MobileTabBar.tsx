@@ -172,10 +172,22 @@ interface MobileTabBarProps {
   onSignInPress?: () => void;
 }
 
+/**
+ * Pages that manage their own navigation chrome and must not show the
+ * bottom tab bar. Add a pathname (exact or prefix) to suppress the bar.
+ */
+const HIDE_ON_PATHS = ['/scheduler'];
+
 export default function MobileTabBar({ onCameraPress, onSignInPress }: MobileTabBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Suppress the tab bar on pages that provide their own navigation
+  const hidden = HIDE_ON_PATHS.some(
+    (p) => location.pathname === p || location.pathname.startsWith(p + '/')
+  );
+  if (hidden) return null;
 
   const tabs: TabItem[] = [
     {

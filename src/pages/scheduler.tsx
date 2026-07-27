@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate as useRRNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   CalendarDays,
@@ -21,8 +21,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   Truck,
+  ArrowLeft,
+  Home,
 } from 'lucide-react';
-import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
+import PortalSidebar from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
 import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
 import TasksSchedulerView from '@/components/scheduler/TasksSchedulerView';
@@ -1170,6 +1172,7 @@ function QuickScheduleModal({ job, onClose, onSave }: {
 export default function SchedulerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') === 'tasks' ? 'tasks' : searchParams.get('tab') === 'team-shifts' ? 'team-shifts' : 'jobs') as 'jobs' | 'tasks' | 'team-shifts';
+  const rrNavigate = useRRNavigate();
 
   const [jobs,            setJobs]            = useState<SchedulerJob[]>([]);
   const [crewMembers,     setCrewMembers]      = useState<CrewMember[]>([]);
@@ -1337,12 +1340,27 @@ export default function SchedulerPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* ── Top bar ── */}
-        <div className="h-14 bg-white border-b border-slate-200 flex items-center gap-3 px-4 shrink-0">
-          <div className="md:hidden">
-            <MobileMenuButton onClick={() => window.dispatchEvent(new CustomEvent('portal:open-menu'))} />
-          </div>
+        <div className="h-14 bg-white border-b border-slate-200 flex items-center gap-2 px-3 shrink-0 min-w-0">
+
+          {/* Back + Home — compact icon buttons, always visible */}
+          <button
+            type="button"
+            onClick={() => rrNavigate(-1)}
+            title="Back"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <Link
+            to="/home"
+            title="Home"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <Home size={16} />
+          </Link>
+
           <CalendarDays size={18} className="text-orange-500 shrink-0" />
-          <h1 className="text-base font-bold text-slate-800">Scheduler</h1>
+          <h1 className="text-base font-bold text-slate-800 shrink-0">Scheduler</h1>
 
           {/* ── Top-level page tabs ── */}
           <div className="ml-4 flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
