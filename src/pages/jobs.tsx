@@ -13,7 +13,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
+
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
@@ -131,7 +131,6 @@ export default function JobsPage() {
             {!loading && <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded-full">{jobs.length}</span>}
           </div>
           <div className="flex items-center gap-2">
-            <FleetHeaderIcon />
             <button onClick={() => !isViewOnly && setShowNewJob(true)} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined}
               className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               <Plus size={13} />{addWorkLabel}
@@ -148,7 +147,6 @@ export default function JobsPage() {
           <span className="op-page-title flex-1 min-w-0">{workPlural}</span>
           {!loading && <span className="text-[11px] bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded">{jobs.length}</span>}
           <div className="ml-auto flex items-center gap-2">
-            <FleetHeaderIcon />
             <button onClick={() => !isViewOnly && setShowNewJob(true)} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined}
               className="op-btn op-btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
               <Plus size={12} />{addWorkLabel}
