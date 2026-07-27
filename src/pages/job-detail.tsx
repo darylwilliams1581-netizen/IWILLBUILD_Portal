@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
@@ -38,12 +38,12 @@ import {
   Calendar,
   Loader2,
   AlertCircle,
+  CheckSquare,
 } from 'lucide-react';
 import OutlookEmailButton from '@/components/OutlookEmailButton';
 import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import JobEstimates from '@/components/JobEstimates';
 import FilePanel from '@/components/FilePanel';
-import JobNotes from '@/components/job/JobNotes';
 import NotesPanel from '@/components/notes/NotesPanel';
 import JobProgress from '@/components/job/JobProgress';
 import JobForms from '@/components/job/JobForms';
@@ -55,51 +55,55 @@ import CustomerSelector from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
 import JobLaunchTab from '@/components/job/JobLaunchTab';
 import JobAttendanceTab from '@/components/job/JobAttendanceTab';
+import JobTodos from '@/components/job/JobTodos';
 import AssetSelector from '@/components/AssetManager/AssetSelector';
 import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance' | 'tasks';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
-const NAV_GROUPS = [
+type NavItem = { readonly key: Tab; readonly label: string; readonly icon: typeof FileText };
+
+const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Site / Daily',
     items: [
-      { key: 'details'   as Tab, label: 'Details',   icon: FileText },
-      { key: 'photos'    as Tab, label: 'Photos',     icon: Image },
-      { key: 'drawings'  as Tab, label: 'Drawings',   icon: Layers },
-      { key: 'delays'    as Tab, label: 'Delays',     icon: Clock },
-      { key: 'notes'     as Tab, label: 'Notes',      icon: StickyNote },
+      { key: 'details' as const, label: 'Details',   icon: FileText },
+      { key: 'photos' as const, label: 'Photos',     icon: Image },
+      { key: 'drawings' as const, label: 'Drawings',   icon: Layers },
+      { key: 'delays' as const, label: 'Delays',     icon: Clock },
+      { key: 'notes' as const, label: 'Notes',      icon: StickyNote },
     ],
   },
   {
     label: 'Work / Compliance',
     items: [
-      { key: 'estimates'  as Tab, label: 'Estimates',  icon: Calculator },
-      { key: 'progress'   as Tab, label: 'Progress',   icon: TrendingUp },
-      { key: 'forms'      as Tab, label: 'Forms',      icon: ClipboardList },
-      { key: 'safety'     as Tab, label: 'Safety',     icon: ShieldAlert },
-      { key: 'attendance' as Tab, label: 'Attendance', icon: LogIn },
+      { key: 'estimates' as const, label: 'Estimates',  icon: Calculator },
+      { key: 'tasks' as const, label: 'Tasks',      icon: CheckSquare },
+      { key: 'progress' as const, label: 'Progress',   icon: TrendingUp },
+      { key: 'forms' as const, label: 'Forms',      icon: ClipboardList },
+      { key: 'safety' as const, label: 'Safety',     icon: ShieldAlert },
+      { key: 'attendance' as const, label: 'Attendance', icon: LogIn },
     ],
   },
   {
     label: 'Money / Records',
     items: [
-      { key: 'costs'     as Tab, label: 'Costs',      icon: Receipt },
-      { key: 'invoices'  as Tab, label: 'Invoices',   icon: DollarSign },
-      { key: 'files'     as Tab, label: 'Files',      icon: FolderOpen },
+      { key: 'costs' as const, label: 'Costs',      icon: Receipt },
+      { key: 'invoices' as const, label: 'Invoices',   icon: DollarSign },
+      { key: 'files' as const, label: 'Files',      icon: FolderOpen },
     ],
   },
   {
     label: 'Open',
     items: [
-      { key: 'launch' as Tab, label: 'Launch', icon: Rocket },
+      { key: 'launch' as const, label: 'Launch', icon: Rocket },
     ],
   },
-] as const;
+];
 
 const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
@@ -120,7 +124,6 @@ export default function JobDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
-  const [formRunnerActive, setFormRunnerActive] = useState(false);
   const [costSummary, setCostSummary] = useState<{ actual: number; approved: number } | null>(null);
   const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -132,7 +135,7 @@ export default function JobDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (formInstanceId) return 'forms';
     const t = searchParams.get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
     return 'details';
   });
 
@@ -190,16 +193,16 @@ export default function JobDetailPage() {
         status: data.status,
         notes: data.notes ?? '',
         scheduledStartDate: data.scheduledStartDate ?? '',
-        scheduledStartTime: (data as Record<string, unknown>).scheduledStartTime as string ?? '',
+        scheduledStartTime: (data as unknown as Record<string, unknown>).scheduledStartTime as string ?? '',
         expectedCompletionDate: data.expectedCompletionDate ?? '',
-        scheduledEndTime: (data as Record<string, unknown>).scheduledEndTime as string ?? '',
+        scheduledEndTime: (data as unknown as Record<string, unknown>).scheduledEndTime as string ?? '',
         actualStartDate: data.actualStartDate ?? '',
         actualCompletionDate: data.actualCompletionDate ?? '',
         assignedSupervisorUserId: data.assignedSupervisorUserId ?? '',
         assignedTeamLabel: data.assignedTeamLabel ?? '',
       });
       // Load asset link (asset_id returned via raw SQL in GET handler)
-      const assetId = (data as Record<string, unknown>).assetId as number | null ?? null;
+      const assetId = (data as unknown as Record<string, unknown>).assetId as number | null ?? null;
       setLinkedAssetId(assetId);
       setEditingAssetId(assetId);
       if (assetId) {
@@ -268,7 +271,9 @@ export default function JobDetailPage() {
       status: job.status,
       notes: job.notes ?? '',
       scheduledStartDate: job.scheduledStartDate ?? '',
+      scheduledStartTime: (job as unknown as Record<string, unknown>).scheduledStartTime as string ?? '',
       expectedCompletionDate: job.expectedCompletionDate ?? '',
+      scheduledEndTime: (job as unknown as Record<string, unknown>).scheduledEndTime as string ?? '',
       actualStartDate: job.actualStartDate ?? '',
       actualCompletionDate: job.actualCompletionDate ?? '',
       assignedSupervisorUserId: job.assignedSupervisorUserId ?? '',
@@ -296,11 +301,10 @@ export default function JobDetailPage() {
     setActiveTab(tab);
     setStatusOpen(false);
     setMobileNavOpen(false);
-    if (tab !== 'forms') setFormRunnerActive(false);
   }
 
   const statusStyle = job ? getStatusStyle(job.status) : null;
-  const activeNavItem = ALL_NAV_ITEMS.find((i) => i.key === activeTab);
+  const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
 
   return (
     <div className="min-h-dvh bg-gray-50 flex flex-col">
@@ -337,8 +341,8 @@ export default function JobDetailPage() {
                   jobNumber: job.jobNumber ?? `#${job.id}`,
                   jobName: job.name,
                   status: job.status,
-                  customerName: job.customerName ?? undefined,
-                  siteAddress: job.siteAddress ?? undefined,
+                  customerName: (job as unknown as Record<string, unknown>).customerName as string | undefined,
+                  siteAddress: (job as unknown as Record<string, unknown>).siteAddress as string | undefined,
                   link: `${window.location.origin}/jobs/${job.id}`,
                 }}
                 size="sm"
@@ -536,7 +540,7 @@ export default function JobDetailPage() {
                   className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-semibold text-foreground bg-white hover:bg-muted transition-colors"
                 >
                   <span className="flex items-center gap-2">
-                    {activeNavItem && <activeNavItem.icon size={15} className="text-primary" />}
+                    {activeNavItem && activeNavItem.icon && <activeNavItem.icon size={15} className="text-primary" />}
                     {activeNavItem?.label ?? 'Select section'}
                   </span>
                   <ChevronDown size={15} className={`text-muted-foreground transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
@@ -924,6 +928,9 @@ export default function JobDetailPage() {
 
                   {/* ── To-do removed — use Notes tab (Tagged Actions) instead ── */}
 
+                  {/* ── Tasks ── */}
+                  {activeTab === 'tasks' && <JobTodos jobId={job.id} />}
+
                   {/* ── Delays ── */}
                   {activeTab === 'delays' && <JobDelays jobId={job.id} />}
 
@@ -949,7 +956,6 @@ export default function JobDetailPage() {
                       jobId={job.id}
                       userRole={userRole}
                       job={job}
-                      onRunnerActive={setFormRunnerActive}
                       initialFormInstanceId={formInstanceId ? parseInt(formInstanceId, 10) : undefined}
                     />
                   )}
