@@ -4,7 +4,7 @@
  * Unified Lists API — returns paginated, filterable, sortable records for
  * the office Lists view. Supports CSV export via ?format=csv.
  *
- * listType values: jobs | tasks | notes | incidents | attendance | costs
+ * listType values: jobs | tasks | notes | incidents | attendance | costs | driver-logs
  *
  * Common query params:
  *   q          — full-text search string
@@ -354,6 +354,64 @@ async function listCosts(companyId: number, params: Record<string, string>) {
   return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
 }
 
+async function listDriverLogs(companyId: number, params: Record<string, string>) {
+  const { q, dateFrom, dateTo, fleetId, page, pageSize, sortBy, sortDir } = params;
+  const ps = clamp(safeInt(pageSize, 50), 1, 200);
+  const pg = clamp(safeInt(page, 1), 1, 9999);
+  const offset = (pg - 1) * ps;
+
+  const allowed = new Set(['user_name', 'fleet_name', 'job_name', 'started_at', 'ended_at', 'duration_minutes', 'meter_start', 'meter_end']);
+  const col = allowed.has(sortBy) ? sortBy : 'started_at';
+  const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+
+  const wheres: string[] = [`ful.company_id = ${companyId}`];
+  if (fleetId) wheres.push(`ful.fleet_id = ${safeInt(fleetId, 0)}`);
+  if (dateFrom) wheres.push(`DATE(ful.started_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(ful.started_at) <= '${esc(dateTo)}'`);
+  if (q) {
+    const s = esc(q);
+    wheres.push(`(u.name LIKE '%${s}%' OR u.email LIKE '%${s}%' OR fa.name LIKE '%${s}%' OR j.name LIKE '%${s}%' OR ful.note LIKE '%${s}%')`);
+  }
+  const where = wheres.join(' AND ');
+
+  const [rows] = await db.execute(sql.raw(`
+    SELECT
+      ful.id,
+      u.name                AS user_name,
+      u.email               AS user_email,
+      ful.actor_type,
+      fa.name               AS fleet_name,
+      fa.registration       AS fleet_registration,
+      j.name                AS job_name,
+      j.job_number,
+      ful.started_at,
+      ful.ended_at,
+      ful.duration_minutes,
+      ful.meter_start,
+      ful.meter_end,
+      ful.note,
+      ful.source
+    FROM fleet_usage_logs ful
+    LEFT JOIN users u         ON u.id  = ful.user_id
+    LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
+    LEFT JOIN jobs j          ON j.id  = ful.job_id
+    WHERE ${where}
+    ORDER BY ful.${col} ${dir}
+    LIMIT ${ps} OFFSET ${offset}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  const [countRows] = await db.execute(sql.raw(`
+    SELECT COUNT(*) AS total
+    FROM fleet_usage_logs ful
+    LEFT JOIN users u         ON u.id  = ful.user_id
+    LEFT JOIN fleet_assets fa ON fa.id = ful.fleet_id
+    LEFT JOIN jobs j          ON j.id  = ful.job_id
+    WHERE ${where}
+  `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+  return { rows: rows ?? [], total: safeInt(countRows?.[0]?.total, 0) };
+}
+
 // ── CSV builders ──────────────────────────────────────────────────────────────
 
 function jobsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
@@ -403,6 +461,15 @@ function costsToCsv(rows: Record<string, unknown>[], res: Response, date: string
   ] as (string | number | null | undefined)[]));
 }
 
+function driverLogsToCsv(rows: Record<string, unknown>[], res: Response, date: string) {
+  const headers = ['Driver', 'Email', 'Vehicle', 'Job', 'Started', 'Ended', 'Duration (min)', 'Meter Start', 'Meter End', 'Note', 'Source'];
+  sendCsv(res, `iwillbuild-driver-logs-${date}.csv`, headers, rows.map((r) => [
+    r.user_name, r.user_email, r.fleet_name, r.job_name,
+    r.started_at, r.ended_at, r.duration_minutes,
+    r.meter_start, r.meter_end, r.note, r.source,
+  ] as (string | number | null | undefined)[]));
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export default async function handler(req: Request, res: Response) {
@@ -449,6 +516,11 @@ export default async function handler(req: Request, res: Response) {
       case 'costs': {
         const data = await listCosts(companyId, csvParams);
         if (isCsv) return costsToCsv(data.rows as Record<string, unknown>[], res, today);
+        return res.json(data);
+      }
+      case 'driver-logs': {
+        const data = await listDriverLogs(companyId, csvParams);
+        if (isCsv) return driverLogsToCsv(data.rows as Record<string, unknown>[], res, today);
         return res.json(data);
       }
       default:

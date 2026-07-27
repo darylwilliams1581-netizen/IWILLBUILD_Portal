@@ -21,12 +21,12 @@ import {
   Search, Download, ChevronUp, ChevronDown, ChevronsUpDown,
   Loader2, AlertCircle, ChevronLeft, ChevronRight,
   HardHat, CheckSquare, StickyNote, ShieldAlert,
-  LogIn, DollarSign, Filter, X,
+  LogIn, DollarSign, Filter, X, Truck,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ListType = 'jobs' | 'tasks' | 'notes' | 'incidents' | 'attendance' | 'costs';
+type ListType = 'jobs' | 'tasks' | 'notes' | 'incidents' | 'attendance' | 'costs' | 'driver-logs';
 
 interface ListMeta {
   key: ListType;
@@ -36,12 +36,13 @@ interface ListMeta {
 }
 
 const LIST_DEFS: ListMeta[] = [
-  { key: 'jobs',       label: 'Jobs',       icon: HardHat,     description: 'All jobs with status, customer, and progress' },
-  { key: 'tasks',      label: 'Tasks',      icon: CheckSquare, description: 'Job tasks and to-dos across all jobs' },
-  { key: 'notes',      label: 'Notes',      icon: StickyNote,  description: 'Notes and comments attached to jobs' },
-  { key: 'incidents',  label: 'Incidents',  icon: ShieldAlert, description: 'Safety incidents and corrective actions' },
-  { key: 'attendance', label: 'Attendance', icon: LogIn,       description: 'Sign-in / sign-out records across all jobs' },
-  { key: 'costs',      label: 'Costs',      icon: DollarSign,  description: 'Job costs, purchases, and expenses' },
+  { key: 'jobs',        label: 'Jobs',        icon: HardHat,     description: 'All jobs with status, customer, and progress' },
+  { key: 'tasks',       label: 'Tasks',       icon: CheckSquare, description: 'Job tasks and to-dos across all jobs' },
+  { key: 'notes',       label: 'Notes',       icon: StickyNote,  description: 'Notes and comments attached to jobs' },
+  { key: 'incidents',   label: 'Incidents',   icon: ShieldAlert, description: 'Safety incidents and corrective actions' },
+  { key: 'attendance',  label: 'Attendance',  icon: LogIn,       description: 'Sign-in / sign-out records across all jobs' },
+  { key: 'costs',       label: 'Costs',       icon: DollarSign,  description: 'Job costs, purchases, and expenses' },
+  { key: 'driver-logs', label: 'Driver Logs', icon: Truck,       description: 'Fleet vehicle usage and driver sign-in/out logs' },
 ];
 
 interface ColDef {
@@ -113,8 +114,7 @@ function severityBadge(sev: unknown): React.ReactNode {
   );
 }
 
-const COLS: Record<ListType, ColDef[]> = {
-  jobs: [
+const COLS: Record<ListType, ColDef[]> = {  jobs: [
     { key: 'job_number',          label: 'Job #',       sortable: true, width: '90px' },
     { key: 'name',                label: 'Job Name',    sortable: true },
     { key: 'customer_name',       label: 'Customer',    sortable: false },
@@ -198,17 +198,50 @@ const COLS: Record<ListType, ColDef[]> = {
       render: (v) => <span className="text-[11px] text-gray-500 capitalize">{String(v ?? '')}</span>
     },
   ],
+  'driver-logs': [
+    { key: 'user_name',          label: 'Driver',       sortable: true },
+    { key: 'fleet_name',         label: 'Vehicle',      sortable: true },
+    { key: 'fleet_registration', label: 'Rego',         sortable: false, width: '90px' },
+    { key: 'job_name',           label: 'Job',          sortable: false },
+    { key: 'job_number',         label: 'Job #',        sortable: false, width: '80px' },
+    { key: 'started_at',         label: 'Started',      sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+    { key: 'ended_at',           label: 'Ended',        sortable: true,  width: '140px',
+      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">In use</span>
+    },
+    { key: 'duration_minutes',   label: 'Duration',     sortable: true,  width: '85px',
+      render: (v) => v != null ? (
+        <span className="tabular-nums text-[12px]">
+          {Number(v) >= 60
+            ? `${Math.floor(Number(v) / 60)}h ${Number(v) % 60}m`
+            : `${Number(v)}m`}
+        </span>
+      ) : '—'
+    },
+    { key: 'meter_start',        label: 'Meter Start',  sortable: true,  width: '95px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—'
+    },
+    { key: 'meter_end',          label: 'Meter End',    sortable: true,  width: '95px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—'
+    },
+    { key: 'note',               label: 'Note',         sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—'
+    },
+    { key: 'source',             label: 'Source',       sortable: false, width: '75px',
+      render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>
+    },
+  ],
 };
 
 // ── Filter options per list ───────────────────────────────────────────────────
 
 const STATUS_OPTIONS: Record<ListType, string[]> = {
-  jobs:       ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft'],
-  tasks:      ['Not Started', 'In Progress', 'Complete', 'Cancelled'],
-  notes:      [],
-  incidents:  ['Open', 'Investigating', 'Closed'],
-  attendance: [],
-  costs:      [],
+  jobs:           ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft'],
+  tasks:          ['Not Started', 'In Progress', 'Complete', 'Cancelled'],
+  notes:          [],
+  incidents:      ['Open', 'Investigating', 'Closed'],
+  attendance:     [],
+  costs:          [],
+  'driver-logs':  [],
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
