@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   TableProperties,
+  ScrollText,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -91,6 +92,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
     { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
     { label: 'Lists',        icon: TableProperties, href: '/lists',                permKey: null },
+    { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',            permKey: null },
     { label: 'Customers',    icon: Users,           href: '/customers',            permKey: 'jobs' },
     { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
   ];

@@ -92,4 +92,5 @@ export const seoRoutes: SeoRoute[] = [
   { path: "/roadmap", changefreq: "monthly", priority: 0.8 },
   { path: "/billing", changefreq: "monthly", priority: 0.8 },
   { path: "/lists", changefreq: "monthly", priority: 0.8 },
+  { path: "/user-logs", changefreq: "monthly", priority: 0.8 },
 ];
