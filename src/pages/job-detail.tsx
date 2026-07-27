@@ -27,7 +27,6 @@ import {
   CalendarClock,
   Layers,
   Image,
-  Rocket,
   LogIn,
   Building2,
   FileText,
@@ -53,7 +52,6 @@ import JobDelays from '@/components/job/JobDelays';
 import JobInvoices from '@/components/job/JobInvoices';
 import CustomerSelector from '@/components/CustomerSelector';
 import JobPlanManagerTab from '@/components/PlanManager/JobPlanManagerTab';
-import JobLaunchTab from '@/components/job/JobLaunchTab';
 import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import JobTodos from '@/components/job/JobTodos';
 import AssetSelector from '@/components/AssetManager/AssetSelector';
@@ -61,7 +59,7 @@ import { fetchJob, updateJob, getStatusStyle, JOB_STATUSES, type Job } from '@/l
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
 
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'launch' | 'attendance' | 'tasks';
+type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
 // ── Nav definition ────────────────────────────────────────────────────────────
 
@@ -95,12 +93,6 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { key: 'costs' as const, label: 'Costs',      icon: Receipt },
       { key: 'invoices' as const, label: 'Invoices',   icon: DollarSign },
       { key: 'files' as const, label: 'Files',      icon: FolderOpen },
-    ],
-  },
-  {
-    label: 'Open',
-    items: [
-      { key: 'launch' as const, label: 'Launch', icon: Rocket },
     ],
   },
 ];
@@ -990,11 +982,6 @@ export default function JobDetailPage() {
                     <div className="bg-white rounded-xl border border-border">
                       <FilePanel jobId={job.id} />
                     </div>
-                  )}
-
-                  {/* ── Launch ── */}
-                  {activeTab === 'launch' && (
-                    <JobLaunchTab job={job} />
                   )}
 
                   {/* ── Attendance ── */}
