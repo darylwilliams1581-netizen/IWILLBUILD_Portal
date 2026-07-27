@@ -48,7 +48,7 @@ interface DashTodo {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useSession();
-  const { workSingular, addWorkLabel } = useTerminology();
+  const { addWorkLabel } = useTerminology();
   const { role } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
@@ -140,13 +140,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <Link
-              to="/jobs"
-              className="hidden sm:inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors duration-150 shrink-0"
-            >
-              <Plus size={12} />
-              New {workSingular}
-            </Link>
             <button className="relative p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
               <Bell size={15} />
             </button>
