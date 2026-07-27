@@ -23,6 +23,7 @@ import {
   HardHat, CheckSquare, StickyNote, ShieldAlert,
   LogIn, DollarSign, Filter, X, Truck, ScrollText,
   LayoutDashboard, ChevronRight as Crumb,
+  FileBarChart2, User, Briefcase, Calendar, Play,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -265,6 +266,8 @@ function useListData(
     severity: string;
     dateFrom: string;
     dateTo: string;
+    userId: string;
+    jobId: string;
     page: number;
     pageSize: number;
     sortBy: string;
@@ -290,6 +293,8 @@ function useListData(
     if (params.severity) qs.set('severity', params.severity);
     if (params.dateFrom) qs.set('dateFrom', params.dateFrom);
     if (params.dateTo)   qs.set('dateTo', params.dateTo);
+    if (params.userId)   qs.set('userId', params.userId);
+    if (params.jobId)    qs.set('jobId', params.jobId);
     qs.set('page', String(params.page));
     qs.set('pageSize', String(params.pageSize));
     if (params.sortBy)  qs.set('sortBy', params.sortBy);
@@ -303,11 +308,213 @@ function useListData(
         setError('Failed to load data');
         setLoading(false);
       });
-  }, [listType, params.q, params.status, params.severity, params.dateFrom, params.dateTo, params.page, params.pageSize, params.sortBy, params.sortDir]);
+  }, [listType, params.q, params.status, params.severity, params.dateFrom, params.dateTo, params.userId, params.jobId, params.page, params.pageSize, params.sortBy, params.sortDir]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
   return { data, loading, error, refresh: fetch_ };
+}
+
+// ── Report Generator types & hook ────────────────────────────────────────────
+
+interface ReportUser { id: string; name: string; email: string; }
+interface ReportJob  { id: number; name: string; job_number: string; }
+
+function useReportOptions() {
+  const [users, setUsers] = useState<ReportUser[]>([]);
+  const [jobs,  setJobs]  = useState<ReportJob[]>([]);
+
+  useEffect(() => {
+    fetch('/api/user-logs/users', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setUsers(Array.isArray(d) ? d : []))
+      .catch(() => {});
+
+    fetch('/api/lists/jobs?pageSize=200&sortBy=name&sortDir=asc', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : { rows: [] })
+      .then((d) => setJobs(Array.isArray(d?.rows) ? d.rows : []))
+      .catch(() => {});
+  }, []);
+
+  return { users, jobs };
+}
+
+// ── Report Generator panel ────────────────────────────────────────────────────
+
+const ALL_LIST_TYPES: { key: ListType; label: string; icon: React.ElementType }[] = [
+  { key: 'jobs',        label: 'Jobs',        icon: HardHat     },
+  { key: 'tasks',       label: 'Tasks',       icon: CheckSquare },
+  { key: 'notes',       label: 'Notes',       icon: StickyNote  },
+  { key: 'incidents',   label: 'Incidents',   icon: ShieldAlert },
+  { key: 'attendance',  label: 'Attendance',  icon: LogIn       },
+  { key: 'costs',       label: 'Costs',       icon: DollarSign  },
+  { key: 'driver-logs', label: 'Driver Logs', icon: Truck       },
+];
+
+interface ReportPanelProps {
+  open: boolean;
+  onClose: () => void;
+  onGenerate: (params: ReportGenParams) => void;
+  generating: boolean;
+}
+
+export interface ReportGenParams {
+  listType: ListType;
+  userId: string;
+  jobId: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+function ReportPanel({ open, onClose, onGenerate, generating }: ReportPanelProps) {
+  const { users, jobs } = useReportOptions();
+  const [listType, setListType] = useState<ListType>('attendance');
+  const [userId,   setUserId]   = useState('');
+  const [jobId,    setJobId]    = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
+
+  function handleGenerate() {
+    onGenerate({ listType, userId, jobId, dateFrom, dateTo });
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/20 z-[60]"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed right-0 top-0 h-full w-[340px] bg-white shadow-2xl z-[70] flex flex-col border-l border-gray-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <FileBarChart2 size={16} className="text-primary" />
+            <span className="text-[14px] font-semibold text-gray-800">Generate Report</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+
+          {/* List type */}
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              List Type
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {ALL_LIST_TYPES.map((lt) => {
+                const Icon = lt.icon;
+                const active = listType === lt.key;
+                return (
+                  <button
+                    key={lt.key}
+                    onClick={() => setListType(lt.key)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
+                      active
+                        ? 'border-primary bg-orange-50 text-primary'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={13} />
+                    {lt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* User filter */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <User size={11} /> User
+            </label>
+            <select
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              className="w-full text-[12px] border border-gray-200 rounded px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All users</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name || u.email}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Job filter */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <Briefcase size={11} /> Job
+            </label>
+            <select
+              value={jobId}
+              onChange={(e) => setJobId(e.target.value)}
+              className="w-full text-[12px] border border-gray-200 rounded px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All jobs</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={String(j.id)}>
+                  {j.job_number ? `${j.job_number} — ` : ''}{j.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date range */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <Calendar size={11} /> Date Range
+            </label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-400 w-8">From</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="flex-1 text-[12px] border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-400 w-8">To</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="flex-1 text-[12px] border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer — Generate button */}
+        <div className="shrink-0 px-5 py-4 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-[13px] font-semibold rounded hover:bg-orange-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {generating ? (
+              <><Loader2 size={14} className="animate-spin" /> Generating…</>
+            ) : (
+              <><Play size={13} /> Generate Report</>
+            )}
+          </button>
+          <p className="text-[10px] text-gray-400 text-center mt-2">
+            Results will appear in the table below
+          </p>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // ── Sort header cell ──────────────────────────────────────────────────────────
@@ -356,6 +563,8 @@ export default function ListsPage() {
     setSeverity('');
     setDateFrom('');
     setDateTo('');
+    setUserId('');
+    setJobId('');
     setSortBy('');
     setSortDir('desc');
   };
@@ -366,10 +575,14 @@ export default function ListsPage() {
   const [severity, setSeverity] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]   = useState('');
+  const [userId, setUserId]   = useState('');
+  const [jobId, setJobId]     = useState('');
   const [page, setPage]       = useState(1);
   const [sortBy, setSortBy]   = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
+  const [showReportPanel, setShowReportPanel] = useState(false);
+  const [reportGenerating, setReportGenerating] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -383,6 +596,8 @@ export default function ListsPage() {
     severity,
     dateFrom,
     dateTo,
+    userId,
+    jobId,
     page,
     pageSize: PAGE_SIZE,
     sortBy,
@@ -406,6 +621,8 @@ export default function ListsPage() {
     if (severity)   qs.set('severity', severity);
     if (dateFrom)   qs.set('dateFrom', dateFrom);
     if (dateTo)     qs.set('dateTo', dateTo);
+    if (userId)     qs.set('userId', userId);
+    if (jobId)      qs.set('jobId', jobId);
     if (sortBy)     qs.set('sortBy', sortBy);
     qs.set('sortDir', sortDir);
     qs.set('format', 'csv');
@@ -417,13 +634,36 @@ export default function ListsPage() {
     setSeverity('');
     setDateFrom('');
     setDateTo('');
+    setUserId('');
+    setJobId('');
     setPage(1);
+  }
+
+  function handleGenerate(params: ReportGenParams) {
+    // Switch to the chosen list type and apply all filters, then close panel
+    setSearchParams({ list: params.listType });
+    setQ('');
+    setDebouncedQ('');
+    setStatus('');
+    setSeverity('');
+    setDateFrom(params.dateFrom);
+    setDateTo(params.dateTo);
+    setUserId(params.userId);
+    setJobId(params.jobId);
+    setSortBy('');
+    setSortDir('desc');
+    setPage(1);
+    setReportGenerating(true);
+    setTimeout(() => {
+      setReportGenerating(false);
+      setShowReportPanel(false);
+    }, 300);
   }
 
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const cols = COLS[activeList];
   const listMeta = LIST_DEFS.find((l) => l.key === activeList)!;
-  const hasFilters = !!(status || severity || dateFrom || dateTo);
+  const hasFilters = !!(status || severity || dateFrom || dateTo || userId || jobId);
   const statusOpts = STATUS_OPTIONS[activeList];
 
   return (
@@ -435,6 +675,8 @@ export default function ListsPage() {
       </Helmet>
 
       <div className="portal-page">
+        {/* Visually-hidden h1 for SEO / accessibility */}
+        <h1 className="sr-only">Lists — IWILLBUILD</h1>
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
           {/* ── Breadcrumb ── */}
@@ -515,7 +757,7 @@ export default function ListsPage() {
               Filters
               {hasFilters && (
                 <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold">
-                  {[status, severity, dateFrom, dateTo].filter(Boolean).length}
+                  {[status, severity, dateFrom, dateTo, userId, jobId].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -542,6 +784,15 @@ export default function ListsPage() {
             >
               <Download size={13} />
               Export CSV
+            </button>
+
+            {/* Generate Report */}
+            <button
+              onClick={() => setShowReportPanel(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
+            >
+              <FileBarChart2 size={13} />
+              Generate Report
             </button>
           </div>
 
@@ -720,6 +971,14 @@ export default function ListsPage() {
 
         </main>
       </div>
+
+      {/* ── Report Generator slide-over ── */}
+      <ReportPanel
+        open={showReportPanel}
+        onClose={() => setShowReportPanel(false)}
+        onGenerate={handleGenerate}
+        generating={reportGenerating}
+      />
     </>
   );
 }

@@ -252,52 +252,69 @@ async function listIncidents(companyId: number, params: Record<string, string>) 
 }
 
 async function listAttendance(companyId: number, params: Record<string, string>) {
-  const { q, dateFrom, dateTo, jobId, page, pageSize, sortBy, sortDir } = params;
+  const { q, dateFrom, dateTo, jobId, userId, page, pageSize, sortBy, sortDir } = params;
   const ps = clamp(safeInt(pageSize, 50), 1, 200);
   const pg = clamp(safeInt(page, 1), 1, 9999);
   const offset = (pg - 1) * ps;
 
-  const allowed = new Set(['user_name', 'job_name', 'created_at', 'signed_out_at']);
-  const col = allowed.has(sortBy) ? sortBy : 'created_at';
+  // Sort on the sign-in CTE columns
+  const allowed = new Set(['user_name', 'job_name', 'signed_in_at', 'signed_out_at', 'duration_hours']);
+  const col = allowed.has(sortBy) ? sortBy : 'signed_in_at';
   const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
-  const wheres: string[] = [`ja.company_id = ${companyId}`];
-  if (jobId) wheres.push(`ja.job_id = ${safeInt(jobId, 0)}`);
-  if (dateFrom) wheres.push(`DATE(ja.created_at) >= '${esc(dateFrom)}'`);
-  if (dateTo) wheres.push(`DATE(ja.created_at) <= '${esc(dateTo)}'`);
+  // Build WHERE on the sign-in rows (action = 'sign_in')
+  const wheres: string[] = [`si.company_id = ${companyId}`, `si.action = 'sign_in'`];
+  if (jobId) wheres.push(`si.job_id = ${safeInt(jobId, 0)}`);
+  if (userId) wheres.push(`si.user_id = '${esc(userId)}'`);  if (dateFrom) wheres.push(`DATE(si.created_at) >= '${esc(dateFrom)}'`);
+  if (dateTo)   wheres.push(`DATE(si.created_at) <= '${esc(dateTo)}'`);
   if (q) {
     const s = esc(q);
-    wheres.push(`(ja.user_name LIKE '%${s}%' OR j.name LIKE '%${s}%' OR j.job_number LIKE '%${s}%')`);
+    wheres.push(`(u.name LIKE '%${s}%' OR u.email LIKE '%${s}%' OR j.name LIKE '%${s}%' OR j.job_number LIKE '%${s}%')`);
   }
   const where = wheres.join(' AND ');
 
+  // Each sign-in row is paired with the next sign-out for same user+job
   const [rows] = await db.execute(sql.raw(`
     SELECT
-      ja.id,
-      ja.user_name,
-      ja.user_email,
-      j.name AS job_name,
+      si.id,
+      u.name                                                        AS user_name,
+      u.email                                                       AS user_email,
+      j.name                                                        AS job_name,
       j.job_number,
-      ja.created_at AS signed_in_at,
-      ja.signed_out_at,
+      si.created_at                                                 AS signed_in_at,
+      so.created_at                                                 AS signed_out_at,
       CASE
-        WHEN ja.signed_out_at IS NOT NULL
-        THEN ROUND(TIMESTAMPDIFF(MINUTE, ja.created_at, ja.signed_out_at) / 60.0, 2)
+        WHEN so.created_at IS NOT NULL
+        THEN ROUND(TIMESTAMPDIFF(MINUTE, si.created_at, so.created_at) / 60.0, 2)
         ELSE NULL
-      END AS duration_hours,
-      ja.source,
-      ja.actor_type
-    FROM job_attendance ja
-    LEFT JOIN jobs j ON j.id = ja.job_id
+      END                                                           AS duration_hours,
+      si.source,
+      si.actor_type
+    FROM job_attendance si
+    LEFT JOIN users u ON u.id = si.user_id
+    LEFT JOIN jobs  j ON j.id = si.job_id
+    LEFT JOIN job_attendance so
+      ON  so.job_id    = si.job_id
+      AND so.user_id   = si.user_id
+      AND so.action    = 'sign_out'
+      AND so.created_at = (
+        SELECT MIN(x.created_at)
+        FROM job_attendance x
+        WHERE x.job_id   = si.job_id
+          AND x.user_id  = si.user_id
+          AND x.action   = 'sign_out'
+          AND x.created_at > si.created_at
+      )
     WHERE ${where}
-    ORDER BY ja.${col} ${dir}
+    ORDER BY ${col} ${dir}
     LIMIT ${ps} OFFSET ${offset}
   `)) as unknown as [Array<Record<string, unknown>>, unknown];
 
   const [countRows] = await db.execute(sql.raw(`
     SELECT COUNT(*) AS total
-    FROM job_attendance ja
-    LEFT JOIN jobs j ON j.id = ja.job_id
+    FROM job_attendance si
+    LEFT JOIN users u ON u.id = si.user_id
+    LEFT JOIN jobs  j ON j.id = si.job_id
     WHERE ${where}
   `)) as unknown as [Array<Record<string, unknown>>, unknown];
 
