@@ -24,6 +24,8 @@ import {
   Calculator,
   UserCircle,
   MoreHorizontal,
+  Plus,
+  Smartphone,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -188,6 +190,26 @@ function SidebarContent({
             <X size={16} />
           </button>
         )}
+      </div>
+
+      {/* ── Sidebar action strip — desktop only ── */}
+      <div className="hidden md:flex items-center gap-1.5 px-2 py-2 border-b border-gray-100 shrink-0">
+        <Link
+          to="/jobs"
+          className="flex-1 flex items-center justify-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-[11px] font-semibold px-2 py-1.5 rounded transition-colors duration-150"
+          title="New Job"
+        >
+          <Plus size={12} />
+          New Job
+        </Link>
+        <Link
+          to="/home"
+          className="flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 text-[11px] font-medium px-2 py-1.5 rounded transition-colors duration-150 shrink-0"
+          title="Switch to App view"
+        >
+          <Smartphone size={12} />
+          App
+        </Link>
       </div>
 
       {/* ── Main nav ── */}
