@@ -128,7 +128,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
   const signedIn = status?.signedIn ?? false;
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="space-y-4">
 
       {/* ── Status card ──────────────────────────────────────────────────── */}
       <div className={`rounded-xl border p-5 flex items-center gap-4 ${
