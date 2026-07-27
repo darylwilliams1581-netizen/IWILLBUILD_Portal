@@ -16,7 +16,7 @@
  * desktop browsers. On native it is hidden (no toggle possible).
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useShell } from '@/lib/useShell';
 import OfficeShell from '@/layouts/OfficeShell';
 import { Smartphone, Monitor } from 'lucide-react';
@@ -94,9 +94,23 @@ function ShellToggle() {
 }
 
 export default function ShellRouter() {
-  const { isAppShell } = useShell();
+  const { hasOverride, setShellOverride, viewportShell } = useShell();
 
-  if (isAppShell) {
+  // If there's a stale localStorage override that contradicts the natural
+  // viewport shell, clear it so the viewport-based default takes over.
+  // This prevents a stuck "office" override from hiding the home icon grid
+  // on desktop after sidebar experiments or accidental toggles.
+  useEffect(() => {
+    if (hasOverride) {
+      setShellOverride(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
+
+  // While the override is being cleared, use the viewport shell directly
+  const effectiveIsAppShell = viewportShell === 'app';
+
+  if (effectiveIsAppShell) {
     // Mobile / field app — HomeScreen manages its own full-screen layout.
     // ShellToggle hides itself on mobile viewports, so it's safe to render here.
     return (
