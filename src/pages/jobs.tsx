@@ -152,20 +152,20 @@ export default function JobsPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-4 md:p-4 flex flex-col gap-3">
 
-          {/* Summary cards */}
+          {/* Summary cards — compact on desktop */}
           {!loading && jobs.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
                 { label: 'In Progress', count: counts.active,    color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 { label: 'Quoting',     count: counts.quoting,   color: 'text-amber-600',   bg: 'bg-amber-50' },
                 { label: 'On Hold',     count: counts.onHold,    color: 'text-orange-600',  bg: 'bg-orange-50' },
                 { label: 'Completed',   count: counts.completed, color: 'text-blue-600',    bg: 'bg-blue-50' },
               ].map((s) => (
-                <div key={s.label} className={`${s.bg} rounded-lg p-4 border border-white`}>
-                  <div className={`text-2xl font-black ${s.color}`}>{s.count}</div>
-                  <div className="text-xs font-semibold text-muted-foreground mt-0.5">{s.label}</div>
+                <div key={s.label} className={`${s.bg} rounded-lg px-3 py-2 md:py-1.5 border border-white flex items-center gap-2 md:gap-3`}>
+                  <div className={`text-xl md:text-lg font-black ${s.color}`}>{s.count}</div>
+                  <div className="text-xs font-semibold text-muted-foreground">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -262,8 +262,13 @@ export default function JobsPage() {
 
           {/* Job list */}
           {!loading && filtered.length > 0 && (
-            <motion.div variants={stagger} initial="hidden" animate="visible" className="flex flex-col gap-2">
-              {filtered.map((job) => {
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              animate="visible"
+              className="bg-white border border-border rounded-xl overflow-hidden compact-list"
+            >
+              {filtered.map((job, idx) => {
                 const s = getStatusStyle(job.status);
                 return (
                   <motion.div key={job.id} variants={fadeUp}>
@@ -272,51 +277,60 @@ export default function JobsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => handleJobClick(`/jobs/${job.id}`, e)}
-                      className="block bg-white border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all duration-150 group"
+                      className={`block hover:bg-muted/40 transition-colors duration-100 group ${
+                        idx > 0 ? 'border-t border-border' : ''
+                      }`}
                       style={{ WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
                     >
-                      {/* Main row — min 64px touch target on mobile */}
-                      <div className="flex items-center gap-3 px-4 py-4 min-h-[64px]">
+                      {/* Row — 44px min touch target on mobile, compact on desktop */}
+                      <div className="flex items-center gap-3 px-4 py-3 md:py-2 min-h-[44px] md:min-h-0">
                         {/* Status dot */}
-                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.dot}`} aria-hidden="true" />
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} aria-hidden="true" />
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                            <h2 className="font-bold text-sm text-foreground truncate">{job.name}</h2>
-                            {job.jobNumber && (
-                              <span className="text-xs font-mono text-muted-foreground shrink-0">{job.jobNumber}</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                            <span className={`inline-flex items-center gap-1 font-semibold ${s.color}`}>
-                              {job.status}
-                            </span>
-                            {job.client && (
-                              <>
-                                <span className="text-border">·</span>
-                                <span className="truncate max-w-[120px]">{job.client}</span>
-                              </>
-                            )}
-                            {job.address && (
-                              <>
-                                <span className="text-border hidden sm:inline">·</span>
-                                <span className="hidden sm:flex items-center gap-1 truncate max-w-[160px]">
-                                  <MapPin size={10} />{job.address}
-                                </span>
-                              </>
-                            )}
+                        {/* Job name + number */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1 md:flex-none md:w-56 lg:w-72">
+                          <h2 className="font-semibold text-sm text-foreground truncate leading-snug">{job.name}</h2>
+                          {job.jobNumber && (
+                            <span className="text-[11px] font-mono text-muted-foreground shrink-0 hidden sm:inline">{job.jobNumber}</span>
+                          )}
+                        </div>
+
+                        {/* Status badge — desktop inline */}
+                        <span className={`hidden md:inline-flex items-center text-[11px] font-semibold shrink-0 ${s.color}`}>
+                          {job.status}
+                        </span>
+
+                        {/* Client */}
+                        {job.client && (
+                          <span className="hidden md:block compact-meta flex-1 min-w-0 max-w-[140px]">
+                            {job.client}
+                          </span>
+                        )}
+
+                        {/* Address */}
+                        {job.address && (
+                          <span className="hidden lg:flex items-center gap-1 compact-meta flex-1 min-w-0 max-w-[180px]">
+                            <MapPin size={9} className="shrink-0" />{job.address}
+                          </span>
+                        )}
+
+                        {/* Notes preview — desktop inline, truncated */}
+                        {job.notes && (
+                          <span className="hidden xl:block compact-meta flex-1 min-w-0 italic">
+                            {job.notes}
+                          </span>
+                        )}
+
+                        {/* Mobile: status + client stacked below name */}
+                        <div className="flex-1 min-w-0 md:hidden">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap mt-0.5">
+                            <span className={`font-semibold ${s.color}`}>{job.status}</span>
+                            {job.client && <><span className="text-border">·</span><span className="truncate max-w-[100px]">{job.client}</span></>}
                           </div>
                         </div>
 
-                        <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                        <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-auto" />
                       </div>
-
-                      {/* Notes preview — only if present */}
-                      {job.notes && (
-                        <p className="px-4 pb-3 text-xs text-muted-foreground line-clamp-1 border-t border-border pt-2 -mt-1">
-                          {job.notes}
-                        </p>
-                      )}
                     </a>
                   </motion.div>
                 );

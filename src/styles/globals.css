@@ -424,6 +424,58 @@ input, select, textarea {
   }
 }
 
+/* ── Compact desktop density utilities ──────────────────────────────────────
+   These classes tighten spacing on desktop list/table views only.
+   They have NO effect on mobile (< 768 px) — tap targets and readability
+   are preserved on small screens.
+
+   .compact-list    — wrapper for a dense list; tighter line-height, no extra gaps
+   .compact-row     — single-row item; flex, min-width:0, reduced vertical padding
+   .compact-meta    — muted inline metadata; small, truncating, no wrapping
+   .compact-toolbar — action bar that stays on one row, wraps only when forced
+   .compact-section — section wrapper with reduced padding on desktop
+*/
+@media (min-width: 768px) {
+  .compact-list {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.35;
+    gap: 0;
+  }
+
+  .compact-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-top: 0.375rem;    /* 6px */
+    padding-bottom: 0.375rem;
+    gap: 0.5rem;
+  }
+
+  .compact-meta {
+    font-size: 0.7rem;         /* ~11px */
+    color: var(--muted-foreground, #6b7280);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .compact-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .compact-section {
+    padding: 0.75rem 1rem;
+  }
+}
+
 /* ── Home icon grid ──────────────────────────────────────────────────────────
    Single grid — no duplicate mobile/desktop DOM trees.
    Mobile  (< 640 px): 4 fixed columns, 10 px col gap, 14 px row gap.

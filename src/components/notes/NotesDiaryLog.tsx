@@ -87,9 +87,9 @@ function DiaryEntry({ note, isLast, currentUserId, currentUserRole, onDelete }: 
   return (
     <div className="group relative">
       {/* Entry row */}
-      <div className="flex items-start gap-2 py-2.5 pr-1">
+      <div className="flex items-start gap-2 py-2 pr-1">
         {/* Text block */}
-        <p className="flex-1 min-w-0 text-sm text-slate-700 leading-relaxed break-words">
+        <p className="flex-1 min-w-0 text-sm text-slate-700 leading-snug break-words">
           {note.body}
           {' '}
           <span className="text-[11px] text-slate-400 font-normal whitespace-nowrap">

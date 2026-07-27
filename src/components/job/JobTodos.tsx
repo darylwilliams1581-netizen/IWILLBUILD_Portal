@@ -369,7 +369,7 @@ function TaskRow({ task, onEdit, onDelete, onStatusChange }: TaskRowProps) {
   }
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-xl border transition-colors group ${
+    <div className={`flex items-start gap-3 px-3 py-2.5 md:py-1.5 rounded-lg border transition-colors group ${
       isTerminal ? 'bg-muted/20 border-border opacity-60' :
       overdue    ? 'bg-red-50 border-red-200' :
       dueToday   ? 'bg-amber-50 border-amber-200' :
@@ -406,46 +406,42 @@ function TaskRow({ task, onEdit, onDelete, onStatusChange }: TaskRowProps) {
 
         {/* Description */}
         {task.description && (
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-1 md:line-clamp-none">{task.description}</p>
         )}
 
-        {/* Dates row */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+        {/* Dates + assignee — all inline on desktop */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0 mt-0.5">
           {task.startDate && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar size={10} />
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Calendar size={9} />
               Start: {formatDate(task.startDate)}
             </span>
           )}
           {task.dueDate ? (
-            <span className={`flex items-center gap-1 text-xs font-medium ${
+            <span className={`flex items-center gap-1 text-[11px] font-medium ${
               overdue ? 'text-red-600' : dueToday ? 'text-amber-700' : 'text-muted-foreground'
             }`}>
-              <Calendar size={10} />
+              <Calendar size={9} />
               {overdue ? 'Overdue — ' : dueToday ? 'Due today — ' : 'Due: '}
               {formatDate(task.dueDate)}
             </span>
           ) : (
             !isTerminal && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground/50 italic">
-                <Calendar size={10} /> Unscheduled
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground/50 italic">
+                <Calendar size={9} /> Unscheduled
               </span>
             )
           )}
+          {task.assignedName && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <User size={9} />
+              {task.assignedName}
+            </span>
+          )}
+          {task.notes && (
+            <span className="text-[11px] text-muted-foreground italic truncate max-w-[200px]">{task.notes}</span>
+          )}
         </div>
-
-        {/* Assignee */}
-        {task.assignedName && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-            <User size={10} />
-            {task.assignedName}
-          </div>
-        )}
-
-        {/* Notes */}
-        {task.notes && (
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed italic">{task.notes}</p>
-        )}
       </div>
 
       {/* Row actions */}
@@ -614,13 +610,13 @@ export default function JobTodos({ jobId }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-4">
+    <div className="bg-white rounded-xl border border-border p-4 md:p-3 flex flex-col gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="font-heading font-bold text-sm text-muted-foreground uppercase tracking-wider">Tasks</h2>
           {active.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
               {active.length}
             </span>
           )}
@@ -629,9 +625,9 @@ export default function JobTodos({ jobId }: Props) {
           <button
             type="button"
             onClick={() => { setAdding(true); setEditingId(null); setError(''); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 transition-colors"
           >
-            <Plus size={12} /> Add Task
+            <Plus size={11} /> Add Task
           </button>
         )}
       </div>
@@ -664,7 +660,7 @@ export default function JobTodos({ jobId }: Props) {
           <p className="text-xs text-muted-foreground">Click Add Task to create one.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5 md:gap-1">
           {active.map((task) =>
             editingId === task.id ? (
               <TaskForm
@@ -701,7 +697,7 @@ export default function JobTodos({ jobId }: Props) {
             {showTerminal ? 'Hide' : 'Show'} completed / cancelled ({terminal.length})
           </button>
           {showTerminal && (
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-1.5 md:gap-1 mt-2">
               {terminal.map((task) =>
                 editingId === task.id ? (
                   <TaskForm

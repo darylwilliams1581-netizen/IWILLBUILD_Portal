@@ -247,7 +247,7 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               {['Job', 'Client', 'Location', 'Status', 'Sched. Start', 'Exp. Completion', 'Duration', 'Supervisor / Team', 'Progress', ''].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -260,12 +260,12 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
               const supervisor = job.supervisorName ?? job.teamLabel ?? '—';
               return (
                 <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-slate-800 truncate max-w-[160px]">{job.name}</div>
-                    {job.jobNumber && <div className="text-xs text-slate-400">#{job.jobNumber}</div>}
+                  <td className="px-3 py-1.5">
+                    <div className="font-semibold text-slate-800 truncate max-w-[160px] leading-snug">{job.name}</div>
+                    {job.jobNumber && <div className="text-[11px] text-slate-400">#{job.jobNumber}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{job.client ?? '—'}</td>
-                  <td className="px-4 py-3 max-w-[140px]">
+                  <td className="px-3 py-1.5 text-slate-600 truncate max-w-[120px] text-xs">{job.client ?? '—'}</td>
+                  <td className="px-3 py-1.5 max-w-[140px]">
                     {job.address ? (
                       <a
                         href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
@@ -273,36 +273,36 @@ function TableView({ jobs }: { jobs: SchedulerJob[] }) {
                         className="flex items-center gap-1 text-orange-600 hover:text-orange-700 text-xs truncate"
                         title={job.address}
                       >
-                        <MapPin size={11} className="shrink-0" />
+                        <MapPin size={10} className="shrink-0" />
                         <span className="truncate">{job.address}</span>
                       </a>
                     ) : <span className="text-slate-400 text-xs">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.color}`}>
+                  <td className="px-3 py-1.5">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${style.bg} ${style.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap text-xs">
                     <div>{fmt(job.scheduledStartDate)}</div>
-                    {job.scheduledStartTime && <div className="text-xs text-orange-600 font-medium">{fmtTime(job.scheduledStartTime)}</div>}
+                    {job.scheduledStartTime && <div className="text-[11px] text-orange-600 font-medium">{fmtTime(job.scheduledStartTime)}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap text-xs">
                     <div>{fmt(job.expectedCompletionDate)}</div>
-                    {job.scheduledEndTime && <div className="text-xs text-slate-400">{fmtTime(job.scheduledEndTime)}</div>}
+                    {job.scheduledEndTime && <div className="text-[11px] text-slate-400">{fmtTime(job.scheduledEndTime)}</div>}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{duration}</td>
-                  <td className="px-4 py-3 text-slate-600 truncate max-w-[140px]">{supervisor}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5 text-slate-500 whitespace-nowrap text-xs">{duration}</td>
+                  <td className="px-3 py-1.5 text-slate-600 truncate max-w-[140px] text-xs">{supervisor}</td>
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden w-16">
+                      <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden w-14">
                         <div className="h-full bg-orange-500 rounded-full" style={{ width: `${job.progress}%` }} />
                       </div>
-                      <span className="text-xs text-slate-500 w-8 text-right">{job.progress}%</span>
+                      <span className="text-[11px] text-slate-500 w-7 text-right">{job.progress}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5">
                     <Link to={`/jobs/${job.id}`} className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 whitespace-nowrap">
                       Open <ExternalLink size={11} />
                     </Link>
