@@ -28,53 +28,48 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ListType =
-  // Existing (live)
-  | 'jobs' | 'tasks' | 'notes' | 'incidents' | 'attendance' | 'costs' | 'driver-logs'
-  // Group 1 — new live
-  | 'invoices' | 'estimates' | 'purchase-orders' | 'customers'
-  | 'time-entries' | 'fleet-assets' | 'swms' | 'form-submissions' | 'files' | 'team-shifts'
-  // Group 2 — coming soon
-  | 'fleet-prestarts' | 'fleet-service-logs' | 'milestones' | 'site-prestarts'
-  | 'swms-signoffs' | 'drawings' | 'job-delays' | 'guest-checkins' | 'asset-bookings';
+  | 'asset-bookings' | 'attendance' | 'costs' | 'customers' | 'drawings'
+  | 'driver-logs' | 'estimates' | 'files' | 'fleet-assets' | 'fleet-prestarts'
+  | 'fleet-service-logs' | 'form-submissions' | 'guest-checkins' | 'incidents'
+  | 'invoices' | 'jobs' | 'job-delays' | 'milestones' | 'notes'
+  | 'purchase-orders' | 'site-prestarts' | 'swms' | 'swms-signoffs'
+  | 'tasks' | 'team-shifts' | 'time-entries';
 
 interface ListCatalogEntry {
   key: ListType;
   label: string;
   icon: React.ElementType;
-  group: 1 | 2;
-  live: boolean;
   description: string;
 }
 
+// Single flat catalog — alphabetic order, all live
 const CATALOG: ListCatalogEntry[] = [
-  // ── Group 1 — Core Lists ──────────────────────────────────────────────────
-  { key: 'jobs',            label: 'Jobs',             icon: HardHat,       group: 1, live: true,  description: 'All jobs with status, customer, and progress' },
-  { key: 'invoices',        label: 'Invoices',         icon: Receipt,       group: 1, live: true,  description: 'Invoice register across all jobs and customers' },
-  { key: 'estimates',       label: 'Estimates',        icon: Calculator,    group: 1, live: true,  description: 'Estimates and quotes across all jobs' },
-  { key: 'purchase-orders', label: 'Purchase Orders',  icon: ShoppingCart,  group: 1, live: true,  description: 'Purchase orders and contractor spend' },
-  { key: 'customers',       label: 'Customers',        icon: Users,         group: 1, live: true,  description: 'Customer and client register' },
-  { key: 'time-entries',    label: 'Time Entries',     icon: Clock,         group: 1, live: true,  description: 'Timesheet entries across all workers and jobs' },
-  { key: 'fleet-assets',    label: 'Fleet Assets',     icon: Car,           group: 1, live: true,  description: 'Equipment and vehicle register' },
-  { key: 'swms',            label: 'SWMS',             icon: ClipboardList, group: 1, live: true,  description: 'Safe Work Method Statements register' },
-  { key: 'form-submissions',label: 'Form Submissions', icon: FileText,      group: 1, live: true,  description: 'All submitted forms across all jobs' },
-  { key: 'files',           label: 'Files',            icon: FolderOpen,    group: 1, live: true,  description: 'Document and file register across all jobs' },
-  { key: 'team-shifts',     label: 'Team Shifts',      icon: CalendarDays,  group: 1, live: true,  description: 'Roster and shift records across all workers' },
-  { key: 'tasks',           label: 'Tasks',            icon: CheckSquare,   group: 1, live: true,  description: 'Job tasks and to-dos across all jobs' },
-  { key: 'incidents',       label: 'Incidents',        icon: ShieldAlert,   group: 1, live: true,  description: 'Safety incidents and corrective actions' },
-  { key: 'attendance',      label: 'Attendance',       icon: LogIn,         group: 1, live: true,  description: 'Site sign-in / sign-out records' },
-  { key: 'costs',           label: 'Costs',            icon: DollarSign,    group: 1, live: true,  description: 'Job costs, purchases, and expenses' },
-  { key: 'notes',           label: 'Notes',            icon: StickyNote,    group: 1, live: true,  description: 'Notes and comments attached to jobs' },
-  { key: 'driver-logs',     label: 'Driver Logs',      icon: Truck,         group: 1, live: true,  description: 'Fleet vehicle usage and driver logs' },
-  // ── Group 2 — Second Wave ─────────────────────────────────────────────────
-  { key: 'fleet-prestarts',  label: 'Fleet Prestarts',  icon: Gauge,        group: 2, live: false, description: 'Daily vehicle prestart check records' },
-  { key: 'fleet-service-logs',label:'Fleet Service Logs',icon: Wrench,      group: 2, live: false, description: 'Vehicle and equipment service history' },
-  { key: 'milestones',       label: 'Milestones',       icon: Milestone,    group: 2, live: false, description: 'Project milestones across all jobs' },
-  { key: 'site-prestarts',   label: 'Site Prestarts',   icon: MapPin,       group: 2, live: false, description: 'Daily site prestart check submissions' },
-  { key: 'swms-signoffs',    label: 'SWMS Sign-offs',   icon: UserCheck,    group: 2, live: false, description: 'Worker SWMS sign-off records' },
-  { key: 'drawings',         label: 'Drawings',         icon: FolderOpen,   group: 2, live: false, description: 'Drawing register with revision history' },
-  { key: 'job-delays',       label: 'Job Delays',       icon: Clock,        group: 2, live: false, description: 'Delay events and reasons across all jobs' },
-  { key: 'guest-checkins',   label: 'Guest Check-ins',  icon: UserCheck,    group: 2, live: false, description: 'Visitor and guest site check-in register' },
-  { key: 'asset-bookings',   label: 'Asset Bookings',   icon: Package,      group: 2, live: false, description: 'Fleet and equipment booking register' },
+  { key: 'asset-bookings',   label: 'Asset Bookings',    icon: Package,      description: 'Fleet and equipment booking register' },
+  { key: 'attendance',       label: 'Attendance',        icon: LogIn,        description: 'Site sign-in / sign-out records' },
+  { key: 'costs',            label: 'Costs',             icon: DollarSign,   description: 'Job costs, purchases, and expenses' },
+  { key: 'customers',        label: 'Customers',         icon: Users,        description: 'Customer and client register' },
+  { key: 'drawings',         label: 'Drawings',          icon: FolderOpen,   description: 'Drawing register with revision history' },
+  { key: 'driver-logs',      label: 'Driver Logs',       icon: Truck,        description: 'Fleet vehicle usage and driver logs' },
+  { key: 'estimates',        label: 'Estimates',         icon: Calculator,   description: 'Estimates and quotes across all jobs' },
+  { key: 'files',            label: 'Files',             icon: FolderOpen,   description: 'Document and file register across all jobs' },
+  { key: 'fleet-assets',     label: 'Fleet Assets',      icon: Car,          description: 'Equipment and vehicle register' },
+  { key: 'fleet-prestarts',  label: 'Fleet Prestarts',   icon: Gauge,        description: 'Daily vehicle prestart check records' },
+  { key: 'fleet-service-logs',label:'Fleet Service Logs',icon: Wrench,       description: 'Vehicle and equipment service history' },
+  { key: 'form-submissions', label: 'Form Submissions',  icon: FileText,     description: 'All submitted forms across all jobs' },
+  { key: 'guest-checkins',   label: 'Guest Check-ins',   icon: UserCheck,    description: 'Visitor and guest site check-in register' },
+  { key: 'incidents',        label: 'Incidents',         icon: ShieldAlert,  description: 'Safety incidents and corrective actions' },
+  { key: 'invoices',         label: 'Invoices',          icon: Receipt,      description: 'Invoice register across all jobs and customers' },
+  { key: 'job-delays',       label: 'Job Delays',        icon: Clock,        description: 'Delay events and reasons across all jobs' },
+  { key: 'jobs',             label: 'Jobs',              icon: HardHat,      description: 'All jobs with status, customer, and progress' },
+  { key: 'milestones',       label: 'Milestones',        icon: Milestone,    description: 'Project milestones across all jobs' },
+  { key: 'notes',            label: 'Notes',             icon: StickyNote,   description: 'Notes and comments attached to jobs' },
+  { key: 'purchase-orders',  label: 'Purchase Orders',   icon: ShoppingCart, description: 'Purchase orders and contractor spend' },
+  { key: 'site-prestarts',   label: 'Site Prestarts',    icon: MapPin,       description: 'Daily site prestart check submissions' },
+  { key: 'swms',             label: 'SWMS',              icon: ClipboardList,description: 'Safe Work Method Statements register' },
+  { key: 'swms-signoffs',    label: 'SWMS Sign-offs',    icon: UserCheck,    description: 'Worker SWMS sign-off records' },
+  { key: 'tasks',            label: 'Tasks',             icon: CheckSquare,  description: 'Job tasks and to-dos across all jobs' },
+  { key: 'team-shifts',      label: 'Team Shifts',       icon: CalendarDays, description: 'Roster and shift records across all workers' },
+  { key: 'time-entries',     label: 'Time Entries',      icon: Clock,        description: 'Timesheet entries across all workers and jobs' },
 ];
 
 interface ColDef {
@@ -396,6 +391,144 @@ const COLS: Partial<Record<ListType, ColDef[]>> = {
       render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
     },
   ],
+
+  // ── Wave-2 columns ──────────────────────────────────────────────────────────
+
+  drawings: [
+    { key: 'drawing_number',   label: 'Drawing #',   sortable: true,  width: '110px' },
+    { key: 'title',            label: 'Title',       sortable: true },
+    { key: 'revision',         label: 'Rev',         sortable: false, width: '55px' },
+    { key: 'discipline',       label: 'Discipline',  sortable: true,  width: '110px' },
+    { key: 'status',           label: 'Status',      sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'job_name',         label: 'Job',         sortable: false, width: '140px' },
+    { key: 'job_number',       label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'uploaded_by_name', label: 'Uploaded By', sortable: false, width: '130px' },
+    { key: 'created_at',       label: 'Date',        sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  'job-delays': [
+    { key: 'job_name',        label: 'Job',         sortable: false },
+    { key: 'job_number',      label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'reason',          label: 'Reason',      sortable: true },
+    { key: 'days',            label: 'Days',        sortable: true,  width: '65px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px] font-medium">{String(v)}</span> : '—',
+    },
+    { key: 'delay_date',      label: 'Delay Date',  sortable: true,  width: '100px', render: (v) => fmtDate(v) },
+    { key: 'notes',           label: 'Notes',       sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
+    },
+    { key: 'created_by_name', label: 'Created By',  sortable: false, width: '130px' },
+    { key: 'created_at',      label: 'Created',     sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  'guest-checkins': [
+    { key: 'full_name',        label: 'Visitor',      sortable: true },
+    { key: 'phone_number',     label: 'Phone',        sortable: false, width: '120px' },
+    { key: 'email',            label: 'Email',        sortable: false, width: '170px' },
+    { key: 'reason_for_visit', label: 'Reason',       sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-600 line-clamp-1">{String(v)}</span> : '—',
+    },
+    { key: 'job_name',         label: 'Job',          sortable: false, width: '140px' },
+    { key: 'job_number',       label: 'Job #',        sortable: false, width: '80px' },
+    { key: 'signed_in_at',     label: 'Signed In',    sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+    { key: 'signed_out_at',    label: 'Signed Out',   sortable: true,  width: '140px',
+      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">Still on site</span>,
+    },
+    { key: 'source',           label: 'Source',       sortable: false, width: '70px',
+      render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>,
+    },
+  ],
+
+  'fleet-prestarts': [
+    { key: 'asset_name',           label: 'Asset',         sortable: true },
+    { key: 'asset_rego',           label: 'Rego',          sortable: false, width: '90px' },
+    { key: 'asset_type',           label: 'Type',          sortable: false, width: '100px' },
+    { key: 'operator_name',        label: 'Operator',      sortable: true,  width: '130px' },
+    { key: 'km_hours',             label: 'KM / Hours',    sortable: false, width: '90px' },
+    { key: 'safe_to_operate',      label: 'Safe',          sortable: true,  width: '70px',
+      render: (v) => v
+        ? <span className="text-[11px] font-medium text-green-600">Yes</span>
+        : <span className="text-[11px] font-medium text-red-600">No</span>,
+    },
+    { key: 'issue_needs_attention',label: 'Issue',         sortable: false, width: '65px',
+      render: (v) => v
+        ? <span className="text-[11px] font-medium text-orange-600">Yes</span>
+        : <span className="text-[11px] text-gray-300">—</span>,
+    },
+    { key: 'issue_comment',        label: 'Issue Detail',  sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-600 line-clamp-1">{String(v)}</span> : '—',
+    },
+    { key: 'created_at',           label: 'Date',          sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  'fleet-service-logs': [
+    { key: 'asset_name',       label: 'Asset',            sortable: true },
+    { key: 'asset_rego',       label: 'Rego',             sortable: false, width: '90px' },
+    { key: 'asset_type',       label: 'Type',             sortable: false, width: '100px' },
+    { key: 'service_type',     label: 'Service Type',     sortable: true,  width: '130px' },
+    { key: 'service_date',     label: 'Service Date',     sortable: true,  width: '105px', render: (v) => fmtDate(v) },
+    { key: 'odometer',         label: 'Odometer',         sortable: true,  width: '90px',
+      render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toLocaleString()}</span> : '—',
+    },
+    { key: 'provider',         label: 'Provider',         sortable: false, width: '130px' },
+    { key: 'cost',             label: 'Cost',             sortable: true,  width: '90px',  render: (v) => fmtCurrency(v) },
+    { key: 'next_service_date',label: 'Next Service',     sortable: true,  width: '105px', render: (v) => fmtDate(v) },
+    { key: 'notes',            label: 'Notes',            sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
+    },
+  ],
+
+  'site-prestarts': [
+    { key: 'job_name',     label: 'Job',          sortable: false },
+    { key: 'job_number',   label: 'Job #',        sortable: false, width: '80px' },
+    { key: 'submitted_by', label: 'Submitted By', sortable: true,  width: '140px' },
+    { key: 'status',       label: 'Status',       sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'worker_count', label: 'Workers',      sortable: false, width: '75px',
+      render: (v) => <span className="tabular-nums text-[12px]">{String(v ?? 0)}</span>,
+    },
+    { key: 'created_at',   label: 'Date',         sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  'swms-signoffs': [
+    { key: 'worker_name',      label: 'Worker',      sortable: true },
+    { key: 'white_card_number',label: 'White Card',  sortable: false, width: '110px' },
+    { key: 'company_name',     label: 'Company',     sortable: false, width: '130px' },
+    { key: 'role',             label: 'Role',        sortable: false, width: '110px' },
+    { key: 'swms_title',       label: 'SWMS',        sortable: false },
+    { key: 'job_name',         label: 'Job',         sortable: false, width: '140px' },
+    { key: 'job_number',       label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'signed_at',        label: 'Signed',      sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
+  ],
+
+  milestones: [
+    { key: 'title',       label: 'Milestone',   sortable: true },
+    { key: 'job_name',    label: 'Job',         sortable: false, width: '150px' },
+    { key: 'job_number',  label: 'Job #',       sortable: false, width: '80px' },
+    { key: 'due_date',    label: 'Due Date',    sortable: true,  width: '100px', render: (v) => fmtDate(v) },
+    { key: 'start_date',  label: 'Start Date',  sortable: true,  width: '100px', render: (v) => fmtDate(v) },
+    { key: 'assigned_to', label: 'Assigned To', sortable: false, width: '130px' },
+    { key: 'status',      label: 'Status',      sortable: true,  width: '110px', render: (v) => statusBadge(v) },
+    { key: 'description', label: 'Description', sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
+    },
+  ],
+
+  'asset-bookings': [
+    { key: 'asset_name', label: 'Asset',      sortable: true },
+    { key: 'asset_type', label: 'Type',       sortable: false, width: '100px' },
+    { key: 'asset_rego', label: 'Rego',       sortable: false, width: '90px' },
+    { key: 'job_name',   label: 'Job',        sortable: false, width: '140px' },
+    { key: 'job_number', label: 'Job #',      sortable: false, width: '80px' },
+    { key: 'title',      label: 'Title',      sortable: false },
+    { key: 'start_date', label: 'Start',      sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'end_date',   label: 'End',        sortable: true,  width: '95px',  render: (v) => fmtDate(v) },
+    { key: 'start_time', label: 'Start Time', sortable: false, width: '80px' },
+    { key: 'end_time',   label: 'End Time',   sortable: false, width: '80px' },
+    { key: 'status',     label: 'Status',     sortable: true,  width: '100px', render: (v) => statusBadge(v) },
+    { key: 'notes',      label: 'Notes',      sortable: false,
+      render: (v) => v ? <span className="text-[12px] text-gray-500 line-clamp-1">{String(v)}</span> : '—',
+    },
+  ],
 };
 
 // Fallback columns for any list type without a definition yet
@@ -543,9 +676,6 @@ function GenerateModal({ open, initial, onClose, onGenerate }: GenerateModalProp
 
   if (!open) return null;
 
-  const group1 = CATALOG.filter((c) => c.group === 1);
-  const group2 = CATALOG.filter((c) => c.group === 2);
-
   function submit() {
     onGenerate({ listType, q, userId, jobId, dateFrom, dateTo });
   }
@@ -579,49 +709,23 @@ function GenerateModal({ open, initial, onClose, onGenerate }: GenerateModalProp
 
             {/* List Type */}
             <div>
-              <p className="text-[11px] font-semibold text-gray-500 mb-2">List Type</p>
-
-              {/* Group 1 */}
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Core Lists</p>
-              <div className="grid grid-cols-3 gap-1.5 mb-3">
-                {group1.map((entry) => {
-                  const Icon = entry.icon;
-                  const active = listType === entry.key;
-                  return (
-                    <button
-                      key={entry.key}
-                      onClick={() => setListType(entry.key)}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded border text-[12px] font-medium transition-colors text-left ${
-                        active
-                          ? 'border-primary bg-orange-50 text-primary'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <Icon size={13} className="shrink-0" />
-                      <span className="truncate">{entry.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Group 2 */}
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Second Wave</p>
-              <div className="grid grid-cols-3 gap-1.5">
-                {group2.map((entry) => {
-                  const Icon = entry.icon;
-                  return (
-                    <div
-                      key={entry.key}
-                      title="Coming soon"
-                      className="flex items-center gap-2 px-2.5 py-2 rounded border border-dashed border-gray-200 text-[12px] text-gray-300 cursor-not-allowed select-none"
-                    >
-                      <Icon size={13} className="shrink-0" />
-                      <span className="truncate">{entry.label}</span>
-                      <span className="ml-auto text-[9px] font-semibold text-gray-300 shrink-0">SOON</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">List Type</label>
+              <select
+                value={listType}
+                onChange={(e) => setListType(e.target.value as ListType)}
+                className="w-full text-[13px] border border-gray-200 rounded px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {CATALOG.map((entry) => (
+                  <option key={entry.key} value={entry.key}>{entry.label}</option>
+                ))}
+              </select>
+              {/* Description hint */}
+              {(() => {
+                const entry = CATALOG.find((c) => c.key === listType);
+                return entry ? (
+                  <p className="mt-1 text-[11px] text-gray-400">{entry.description}</p>
+                ) : null;
+              })()}
             </div>
 
             {/* Filters row */}
@@ -835,16 +939,20 @@ export default function ListsPage() {
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const cols = activeList ? (COLS[activeList] ?? FALLBACK_COLS) : FALLBACK_COLS;
   const hasFilters = !!(status || severity || dateFrom || dateTo || userId || jobId);
-  const statusOpts: string[] = activeList === 'jobs'      ? ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft']
-                             : activeList === 'tasks'     ? ['Not Started', 'In Progress', 'Complete', 'Cancelled']
-                             : activeList === 'incidents' ? ['Open', 'Investigating', 'Closed']
-                             : activeList === 'invoices'  ? ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
-                             : activeList === 'estimates' ? ['Draft', 'Sent', 'Accepted', 'Declined', 'Cancelled']
+  const statusOpts: string[] = activeList === 'jobs'          ? ['Active', 'In Progress', 'Complete', 'Cancelled', 'Draft']
+                             : activeList === 'tasks'         ? ['Not Started', 'In Progress', 'Complete', 'Cancelled']
+                             : activeList === 'incidents'     ? ['Open', 'Investigating', 'Closed']
+                             : activeList === 'invoices'      ? ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']
+                             : activeList === 'estimates'     ? ['Draft', 'Sent', 'Accepted', 'Declined', 'Cancelled']
                              : activeList === 'purchase-orders' ? ['Draft', 'Sent', 'Approved', 'Complete', 'Cancelled']
-                             : activeList === 'customers' ? ['Active', 'Inactive']
-                             : activeList === 'swms'      ? ['Draft', 'Active', 'Archived']
+                             : activeList === 'customers'     ? ['Active', 'Inactive']
+                             : activeList === 'swms'          ? ['Draft', 'Active', 'Archived']
                              : activeList === 'form-submissions' ? ['Draft', 'Submitted', 'Approved']
-                             : activeList === 'fleet-assets' ? ['Active', 'Inactive', 'Archived']
+                             : activeList === 'fleet-assets'  ? ['Active', 'Inactive', 'Archived']
+                             : activeList === 'drawings'      ? ['Current', 'Superseded', 'For Review', 'Archived']
+                             : activeList === 'milestones'    ? ['Pending', 'In Progress', 'Complete', 'Overdue']
+                             : activeList === 'asset-bookings'? ['Confirmed', 'Pending', 'Cancelled', 'Complete']
+                             : activeList === 'site-prestarts'? ['Draft', 'Submitted', 'Approved']
                              : [];
 
   return (
