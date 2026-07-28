@@ -99,8 +99,8 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        flex: '1 1 0',
-        minWidth: 36,
+        width: 44,
+        flexShrink: 0,
         gap: 2,
         textDecoration: 'none',
         outline: 'none',
@@ -110,7 +110,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: '100%',
+          width: 36,
           height: 30,
           borderRadius: 7,
           backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
@@ -119,6 +119,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
             : '1px solid rgba(255,255,255,0.55)',
           display: 'grid',
           placeItems: 'center',
+          flexShrink: 0,
           transition: 'transform 110ms ease, box-shadow 110ms ease, background-color 110ms ease',
           boxShadow: active
             ? `0 0 0 1.5px ${item.color}40, 0 1px 4px ${item.color}30`
@@ -126,9 +127,10 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         }}
       >
         <Icon
-          size={15}
+          size={14}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
+          style={{ display: 'block', flexShrink: 0 }}
           aria-hidden="true"
         />
       </div>
