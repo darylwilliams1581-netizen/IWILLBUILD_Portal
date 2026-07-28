@@ -156,7 +156,7 @@ export default function SignInHistoryPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="w-full px-4 py-6 space-y-5">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -318,13 +318,12 @@ export default function SignInHistoryPage() {
           {loading && (
             <div className="divide-y divide-slate-100">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="h-3 w-40 bg-slate-100 rounded" />
-                    <div className="h-2.5 w-64 bg-slate-100 rounded" />
-                  </div>
-                  <div className="h-2.5 w-24 bg-slate-100 rounded" />
+                <div key={i} className="flex items-center gap-2.5 px-4 py-2 animate-pulse">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 shrink-0" />
+                  <div className="h-3 w-28 bg-slate-100 rounded shrink-0" />
+                  <div className="h-3 w-16 bg-slate-100 rounded shrink-0" />
+                  <div className="h-3 flex-1 bg-slate-100 rounded" />
+                  <div className="h-3 w-24 bg-slate-100 rounded shrink-0" />
                 </div>
               ))}
             </div>
@@ -341,85 +340,90 @@ export default function SignInHistoryPage() {
             </div>
           )}
 
-          {/* Rows */}
+          {/* Rows — single-line compact layout */}
           {!loading && (data?.rows ?? []).length > 0 && (
             <div className="divide-y divide-slate-100">
               {data!.rows.map(row => {
-                const isFleet = row.record_type === 'fleet_usage';
+                const isFleet  = row.record_type === 'fleet_usage';
                 const isSignIn = row.action === 'signin';
 
+                const actionLabel = isFleet
+                  ? (row.signed_out_at ? 'Fleet sign-off' : 'Fleet sign-on')
+                  : isSignIn ? 'Signed in' : 'Signed out';
+
+                const actionColor = isFleet
+                  ? 'text-blue-600'
+                  : isSignIn ? 'text-green-600' : 'text-slate-500';
+
+                const iconBg = isFleet ? 'bg-blue-100' : isSignIn ? 'bg-green-100' : 'bg-slate-100';
+
                 return (
-                  <div key={row.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                    {/* Icon */}
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                      isFleet
-                        ? 'bg-blue-100'
-                        : isSignIn ? 'bg-green-100' : 'bg-slate-100'
-                    }`}>
+                  <div
+                    key={row.id}
+                    className="flex items-center gap-2.5 px-4 py-2 hover:bg-slate-50 transition-colors min-w-0"
+                  >
+                    {/* Icon dot */}
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
                       {isFleet
-                        ? <Truck size={13} className="text-blue-600" />
+                        ? <Truck size={11} className="text-blue-600" />
                         : isSignIn
-                          ? <LogIn size={13} className="text-green-600" />
-                          : <LogOut size={13} className="text-slate-500" />
+                          ? <LogIn size={11} className="text-green-600" />
+                          : <LogOut size={11} className="text-slate-500" />
                       }
                     </div>
 
-                    {/* Main content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">
-                        {row.user_name ?? row.user_email ?? 'Unknown user'}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                        <span className={`text-xs font-semibold ${
-                          isFleet ? 'text-blue-600' : isSignIn ? 'text-green-600' : 'text-slate-500'
-                        }`}>
-                          {isFleet
-                            ? (row.signed_out_at ? 'Fleet sign-off' : 'Fleet sign-on')
-                            : isSignIn ? 'Signed in' : 'Signed out'
-                          }
+                    {/* Name */}
+                    <span className="text-sm font-semibold text-slate-800 shrink-0 max-w-[140px] truncate">
+                      {row.user_name ?? row.user_email ?? 'Unknown'}
+                    </span>
+
+                    {/* Action badge */}
+                    <span className={`text-xs font-bold shrink-0 ${actionColor}`}>
+                      {actionLabel}
+                    </span>
+
+                    {/* Separator */}
+                    <span className="text-slate-200 text-xs shrink-0">|</span>
+
+                    {/* Context chips — scrollable overflow on small screens */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
+                      {row.job_name && (
+                        <span className="flex items-center gap-0.5 text-[11px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0 max-w-[120px] truncate">
+                          <HardHat size={9} className="shrink-0" />
+                          {row.job_name}
                         </span>
-                        <span className="text-slate-300 text-xs">·</span>
-                        {row.job_name && (
-                          <>
-                            <span className="text-xs text-slate-500 flex items-center gap-0.5">
-                              <HardHat size={10} />
-                              {row.job_name}
-                            </span>
-                            <span className="text-slate-300 text-xs">·</span>
-                          </>
-                        )}
-                        {row.fleet_name && (
-                          <>
-                            <span className="text-xs text-slate-500 flex items-center gap-0.5">
-                              <Truck size={10} />
-                              {row.fleet_name}
-                            </span>
-                            <span className="text-slate-300 text-xs">·</span>
-                          </>
-                        )}
-                        <span className="text-xs text-slate-400">
-                          {ACTOR_LABELS[row.actor_type] ?? row.actor_type}
+                      )}
+                      {row.fleet_name && (
+                        <span className="flex items-center gap-0.5 text-[11px] text-slate-500 bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0 max-w-[120px] truncate">
+                          <Truck size={9} className="shrink-0" />
+                          {row.fleet_name}
                         </span>
-                        <span className="text-slate-300 text-xs">·</span>
-                        <span className="text-xs text-slate-400">
-                          {SOURCE_LABELS[row.source] ?? row.source}
-                        </span>
-                        {row.duration_minutes !== null && (
-                          <>
-                            <span className="text-slate-300 text-xs">·</span>
-                            <span className="text-xs text-slate-400">
-                              {fmtDuration(row.duration_minutes)}
-                            </span>
-                          </>
-                        )}
-                      </div>
+                      )}
+                      <span className="text-[11px] text-slate-400 shrink-0">
+                        {ACTOR_LABELS[row.actor_type] ?? row.actor_type}
+                      </span>
+                      <span className="text-slate-200 text-[11px] shrink-0">·</span>
+                      <span className="text-[11px] text-slate-400 shrink-0">
+                        {SOURCE_LABELS[row.source] ?? row.source}
+                      </span>
+                      {row.duration_minutes !== null && (
+                        <>
+                          <span className="text-slate-200 text-[11px] shrink-0">·</span>
+                          <span className="text-[11px] text-slate-400 shrink-0 flex items-center gap-0.5">
+                            <Clock size={9} />
+                            {fmtDuration(row.duration_minutes)}
+                          </span>
+                        </>
+                      )}
                       {row.notes && (
-                        <p className="text-xs text-slate-400 mt-0.5 italic truncate">{row.notes}</p>
+                        <span className="text-[11px] text-slate-400 italic truncate min-w-0">
+                          — {row.notes}
+                        </span>
                       )}
                     </div>
 
-                    {/* Timestamp */}
-                    <span className="text-xs text-slate-400 shrink-0 text-right">
+                    {/* Timestamp — pinned right */}
+                    <span className="text-[11px] text-slate-400 shrink-0 whitespace-nowrap ml-auto pl-2">
                       {fmtDate(row.created_at)}
                     </span>
                   </div>
