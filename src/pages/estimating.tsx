@@ -7,7 +7,6 @@ import {
   Upload, Download, FileText,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
-import FleetHeaderIcon from '@/components/FleetHeaderIcon';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 import CsvImportModal from '@/components/CsvImportModal';
@@ -834,7 +833,6 @@ export default function EstimatingPage() {
           </button>
           <Calculator size={18} className="text-primary shrink-0" />
           <h1 className="font-heading font-bold text-lg flex-1">Tools</h1>
-          <FleetHeaderIcon />
         </header>
 
         {/* Tabs */}
@@ -861,7 +859,7 @@ export default function EstimatingPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className={tab === 'takeoff-pad' ? 'max-w-3xl' : 'max-w-4xl'}>
+          <div className="w-full">
             {tab === 'cost-guide'    && <CostGuideTab />}
             {tab === 'recipes'       && <RecipesTab />}
             {tab === 'builders-calc' && <BuildersCalc />}
