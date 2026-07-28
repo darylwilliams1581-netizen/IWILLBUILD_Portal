@@ -190,7 +190,7 @@ export default function DesktopTopBar() {
         {divider}
 
         {/* Notification bell */}
-        <NotificationBell collapsed={false} />
+        <NotificationBell collapsed={false} onTopBar />
 
         {/* Help */}
         <Link

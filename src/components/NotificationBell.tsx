@@ -66,7 +66,7 @@ function formatRelative(dateStr: string): string {
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
-export default function NotificationBell({ collapsed }: { collapsed?: boolean }) {
+export default function NotificationBell({ collapsed, onTopBar }: { collapsed?: boolean; onTopBar?: boolean }) {
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -147,7 +147,13 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
         className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 ${
-          open ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+          onTopBar
+            ? open
+              ? 'bg-slate-100 text-slate-800'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+            : open
+              ? 'bg-white/15 text-white'
+              : 'text-white/60 hover:bg-white/10 hover:text-white'
         }`}
       >
         <Bell size={16} />
