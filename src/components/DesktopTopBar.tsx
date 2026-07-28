@@ -4,9 +4,9 @@
  * Fixed at the top on desktop (md+). Hidden on mobile.
  * Height: 56px. z-index: 1100.
  *
- * Layout:
- *   Left  — Logo + IWILLBUILD wordmark
- *   Right — [Dazza AI] [Dev Console] (owner only) | avatar+name | Sign out | Team | Billing | 🔔 | Help
+ * Layout (inspired by reference screenshot):
+ *   Left  — Date line + "Good [time], [Name]" greeting
+ *   Right — [Dazza AI] [Dev Console] [Team] [Billing] (owner/admin) | 🔔 | Avatar | Sign out | Help
  */
 
 import React from 'react';
@@ -20,9 +20,30 @@ export const DESKTOP_TOPBAR_HEIGHT = 56;
 
 const OWNER_EMAIL = 'darylwilliams1581@gmail.com';
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+function getGreeting(name: string): { eyebrow: string; headline: string } {
+  const now = new Date();
+  const hour = now.getHours();
+  const day = DAYS[now.getDay()];
+  const date = now.getDate();
+  const month = MONTHS[now.getMonth()];
+  const eyebrow = `${day} ${date} ${month}`.toUpperCase();
+  const period = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const headline = name ? `${period}, ${name}` : period;
+  return { eyebrow, headline };
+}
+
 export default function DesktopTopBar() {
   const { me, isAdmin, isOwner, isPlatformOwner, loading: permsLoading } = usePermissions();
   const navigate = useNavigate();
+
+  const firstName =
+    me?.user?.name?.trim().split(' ')[0] ||
+    me?.user?.email?.split('@')[0] ||
+    '';
 
   const displayName =
     me?.user?.name?.trim() ||
@@ -32,34 +53,50 @@ export default function DesktopTopBar() {
   const isOwnerEmail = me?.user?.email?.toLowerCase() === OWNER_EMAIL;
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
 
+  const { eyebrow, headline } = getGreeting(firstName);
+
   async function handleSignOut() {
-    try {
-      await signOut();
-    } catch {
-      // best-effort
-    }
+    try { await signOut(); } catch { /* best-effort */ }
     navigate('/login');
   }
 
-  const linkStyle: React.CSSProperties = {
+  // Icon button style — sits on dark background
+  const iconBtn: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    border: 'none',
+    background: 'rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.75)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    transition: 'background 0.15s, color 0.15s',
+    textDecoration: 'none',
+  };
+
+  // Pill text link style — for owner tools
+  const pillLink: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 5,
-    padding: '5px 9px',
-    borderRadius: 7,
+    padding: '4px 10px',
+    borderRadius: 8,
     textDecoration: 'none',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 600,
-    color: '#64748b',
+    color: 'rgba(255,255,255,0.6)',
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.1)',
     transition: 'background 0.15s, color 0.15s',
     flexShrink: 0,
-    border: 'none',
-    background: 'transparent',
     cursor: 'pointer',
   };
 
   const divider = (
-    <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px', flexShrink: 0 }} />
+    <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.12)', margin: '0 6px', flexShrink: 0 }} />
   );
 
   return (
@@ -74,139 +111,144 @@ export default function DesktopTopBar() {
         zIndex: 1100,
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingLeft: 16,
-        paddingRight: 12,
-        background: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
+        paddingLeft: 20,
+        paddingRight: 14,
+        background: 'linear-gradient(90deg, #0f172a 0%, #1e1b4b 100%)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
       }}
     >
-      {/* ── Left: logo + wordmark ── */}
-      <Link
-        to="/home"
-        style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', flexShrink: 0 }}
-      >
-        <img
-          src="/assets/logo.png"
-          alt="IWILLBUILD"
-          style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'block' }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-        />
-        <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1 }}>
-          IWILLBUILD
+      {/* ── Left: date + greeting ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+        <span style={{
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: 'rgba(255,255,255,0.45)',
+          lineHeight: 1,
+          fontFamily: 'var(--font-heading, inherit)',
+        }}>
+          {eyebrow}
         </span>
-      </Link>
+        <span style={{
+          fontSize: 17,
+          fontWeight: 800,
+          color: '#ffffff',
+          letterSpacing: '-0.03em',
+          lineHeight: 1.1,
+          fontFamily: 'var(--font-heading, inherit)',
+        }}>
+          {headline}
+        </span>
+      </div>
 
       {/* ── Right ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 
-        {/* Dazza AI — owner only */}
+        {/* Owner-only tools */}
         {isOwnerEmail && (
-          <Link
-            to="/dazza-ai"
-            title="Dazza AI"
-            style={linkStyle}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f5f3ff'; (e.currentTarget as HTMLElement).style.color = '#7c3aed'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
-          >
-            <Bot size={15} /><span>Dazza AI</span>
-          </Link>
+          <>
+            <Link
+              to="/dazza-ai"
+              title="Dazza AI"
+              style={pillLink}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.35)'; (e.currentTarget as HTMLElement).style.color = '#c4b5fd'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+            >
+              <Bot size={13} /><span>Dazza AI</span>
+            </Link>
+            <Link
+              to="/owner-console"
+              title="Dev Console"
+              style={pillLink}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(22,163,74,0.25)'; (e.currentTarget as HTMLElement).style.color = '#86efac'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+            >
+              <Terminal size={13} /><span>Dev Console</span>
+            </Link>
+            {divider}
+          </>
         )}
 
-        {/* Dev Console — owner only */}
-        {isOwnerEmail && (
-          <Link
-            to="/owner-console"
-            title="Developer Console"
-            style={linkStyle}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f0fdf4'; (e.currentTarget as HTMLElement).style.color = '#16a34a'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
-          >
-            <Terminal size={15} /><span>Dev Console</span>
-          </Link>
+        {/* Admin tools */}
+        {canSeeAdmin && (
+          <>
+            <Link
+              to="/team"
+              title="Team"
+              style={pillLink}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.14)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+            >
+              <UserCircle size={13} /><span>Team</span>
+            </Link>
+            <Link
+              to="/billing"
+              title="Billing"
+              style={pillLink}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.14)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+            >
+              <CreditCard size={13} /><span>Billing</span>
+            </Link>
+            {divider}
+          </>
         )}
 
-        {isOwnerEmail && divider}
+        {/* Notification bell */}
+        <NotificationBell collapsed={false} onTopBar={false} />
 
-        {/* Avatar + name → settings */}
-        {displayName && (
-          <Link
-            to="/settings"
-            title="Account settings"
-            style={{ ...linkStyle, color: '#0f172a', maxWidth: 160, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-          >
+        {/* Avatar → settings */}
+        <Link
+          to="/settings"
+          title={displayName || 'Account settings'}
+          style={iconBtn}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.15)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
+        >
+          {displayName ? (
             <span style={{
-              width: 24, height: 24, borderRadius: '50%',
+              width: 22, height: 22, borderRadius: '50%',
               background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-              color: '#fff', fontSize: 10, fontWeight: 800,
+              color: '#fff', fontSize: 9, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, letterSpacing: '-0.02em',
+              letterSpacing: '-0.02em', flexShrink: 0,
             }}>
               {displayName.slice(0, 2).toUpperCase()}
             </span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
-          </Link>
-        )}
+          ) : (
+            <UserCircle size={16} />
+          )}
+        </Link>
 
         {/* Sign out */}
         <button
           onClick={() => void handleSignOut()}
           title="Sign out"
-          style={linkStyle}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
+          style={iconBtn}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.25)'; (e.currentTarget as HTMLElement).style.color = '#fca5a5'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
         >
-          <LogOut size={14} /><span>Sign out</span>
+          <LogOut size={15} />
         </button>
 
-        {divider}
-
-        {/* Team — admin/owner only */}
-        {canSeeAdmin && (
-          <Link
-            to="/team"
-            title="Team"
-            style={linkStyle}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; (e.currentTarget as HTMLElement).style.color = '#0f172a'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
-          >
-            <UserCircle size={14} /><span>Team</span>
-          </Link>
-        )}
-
-        {/* Billing */}
-        <Link
-          to="/billing"
-          title="Billing"
-          style={linkStyle}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#eff6ff'; (e.currentTarget as HTMLElement).style.color = '#0284c7'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
-        >
-          <CreditCard size={14} /><span>Billing</span>
-        </Link>
-
-        {divider}
-
-        {/* Notification bell */}
-        <NotificationBell collapsed={false} onTopBar />
-
-        {/* Help */}
+        {/* Help — accent pill */}
         <Link
           to="/help"
           title="Help & Support"
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 11px', borderRadius: 8, textDecoration: 'none',
+            padding: '6px 13px', borderRadius: 9, textDecoration: 'none',
             fontSize: 12, fontWeight: 800, color: '#ffffff',
-            background: '#0f172a', marginLeft: 6,
+            background: '#7c3aed',
+            border: '1px solid rgba(167,139,250,0.4)',
             transition: 'background 0.15s', flexShrink: 0,
+            letterSpacing: '-0.01em',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1e293b'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#0f172a'; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#6d28d9'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#7c3aed'; }}
         >
-          <HelpCircle size={14} /><span>Help</span>
+          <HelpCircle size={13} /><span>Help</span>
         </Link>
       </div>
     </div>
