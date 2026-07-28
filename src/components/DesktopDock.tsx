@@ -63,9 +63,8 @@ const ROW1: DockItem[] = [
 ];
 
 // ── Row 2: Tools, Safety, Management, Admin ───────────────────────────────────
-const ROW2: DockItem[] = [
+const ROW2_LEFT: DockItem[] = [
   { label: 'Estimating',       icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
-  { label: 'Billing',          icon: CreditCard,      href: '/billing',              color: '#0284c7' },
   { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
   { label: 'Safety Posters',   icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
   { label: 'Incidents',        icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },
@@ -75,9 +74,14 @@ const ROW2: DockItem[] = [
   { label: 'Equipment',        icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
   { label: 'Quick Links',      icon: Link2,           href: '/quick-links',          color: '#6366f1' },
   { label: 'Lists',            icon: TableProperties, href: '/lists',                color: '#0891b2' },
-  { label: 'Team',             icon: UserCircle,      href: '/team',                 color: '#0f172a', adminOnly: true },
   { label: 'User Logs',        icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
   { label: 'Sign-in History',  icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
+];
+
+// Far-right pinned items in Row 2
+const ROW2_RIGHT: DockItem[] = [
+  { label: 'Team',             icon: UserCircle,      href: '/team',                 color: '#0f172a', adminOnly: true },
+  { label: 'Billing',          icon: CreditCard,      href: '/billing',              color: '#0284c7' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -186,7 +190,8 @@ export default function DesktopDock() {
   }
 
   const row1 = filterItems(ROW1);
-  const row2 = filterItems(ROW2);
+  const row2Left = filterItems(ROW2_LEFT);
+  const row2Right = filterItems(ROW2_RIGHT);
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
@@ -255,11 +260,22 @@ export default function DesktopDock() {
         }} />
 
         {/* Row 2 — Tools & Management */}
-        <div className="dock-row" style={rowStyle}>
-          <RowLabel>Tools</RowLabel>
-          {row2.map((item) => (
-            <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
-          ))}
+        <div className="dock-row" style={{ ...rowStyle, justifyContent: 'space-between' }}>
+          {/* Left group */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, flex: '1 1 0', minWidth: 0 }}>
+            <RowLabel>Tools</RowLabel>
+            {row2Left.map((item) => (
+              <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+            ))}
+          </div>
+          {/* Right-pinned: Team + Billing */}
+          {row2Right.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, flexShrink: 0, paddingLeft: 6, borderLeft: '1px solid rgba(255,255,255,0.18)', marginLeft: 4 }}>
+              {row2Right.map((item) => (
+                <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+              ))}
+            </div>
+          )}
         </div>
       </nav>
     </>
