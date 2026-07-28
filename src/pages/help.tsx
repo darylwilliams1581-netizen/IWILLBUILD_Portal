@@ -5,6 +5,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
 import {
   Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote,
   DollarSign, Clock, TrendingUp, Layers, Ruler, ClipboardList,
@@ -14,7 +15,7 @@ import {
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
-  Gamepad2, ChevronDown, ChevronRight, Search, BookMarked,
+  Gamepad2, ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -600,14 +601,23 @@ export default function HelpPage() {
         {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shrink-0">
-                <BookMarked size={18} className="text-white" />
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shrink-0">
+                  <BookMarked size={18} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-slate-900 leading-tight">User Manual</h1>
+                  <p className="text-xs text-slate-500">Every icon explained — what it does and how to use it</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">User Manual</h1>
-                <p className="text-xs text-slate-500">Every icon explained — what it does and how to use it</p>
-              </div>
+              <Link
+                to="/home"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors shrink-0"
+              >
+                <ArrowLeft size={13} />
+                Dashboard
+              </Link>
             </div>
             {/* Search */}
             <div className="relative">
