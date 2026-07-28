@@ -113,9 +113,9 @@ export default function DesktopTopBar() {
         justifyContent: 'space-between',
         paddingLeft: 20,
         paddingRight: 14,
-        background: 'linear-gradient(90deg, #0f172a 0%, #1e1b4b 100%)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+        background: 'linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%)',
+        borderBottom: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 2px 8px rgba(109,40,217,0.20)',
       }}
     >
       {/* ── Left: date + greeting ── */}
