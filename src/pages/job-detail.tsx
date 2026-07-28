@@ -325,7 +325,7 @@ export default function JobDetailPage() {
   const activeNavItem = ALL_NAV_ITEMS.find((i: NavItem) => i.key === activeTab);
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8] flex flex-col md:pt-[112px]">
+    <div className="min-h-dvh bg-[#f5f6f8] flex flex-col md:pt-[152px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

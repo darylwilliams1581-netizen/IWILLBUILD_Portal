@@ -187,7 +187,7 @@ export default function ProfilePage() {
   const isOwner = me?.profile?.role === 'owner';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[152px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -1,11 +1,12 @@
 /**
- * DesktopDock — Bottom-centre floating navigation dock.
+ * DesktopDock — Two-row desktop navigation dock.
  *
- * Desktop-only (md+). Single row of 22 coloured icon tiles, fixed bottom-centre.
- * Icons + colours match the AppLauncher exactly.
+ * Desktop-only (md+). Fixed below DesktopTopBar (top: 56px).
+ * Row 1 — Field & Job tools (worker-facing)
+ * Row 2 — Tools, Safety, Management, Admin
  *
- * Sizing: 34×34 tile, 15px icon, 1px gap → ~790px total width.
- * Fits comfortably on 1280px+ viewports. Scrollable on narrower screens.
+ * Total height: ~90px (two 36px rows + gap + padding).
+ * Portal pages must use padding-top: 146px on desktop.
  */
 
 import React from 'react';
@@ -33,6 +34,14 @@ import {
   Link2,
   FileStack,
   History,
+  Truck,
+  ShieldAlert,
+  ClipboardCheck,
+  Ruler,
+  Car,
+  FileSpreadsheet,
+  StickyNote,
+  Camera,
 } from 'lucide-react';
 
 interface DockItem {
@@ -43,54 +52,48 @@ interface DockItem {
   bg: string;
   adminOnly?: boolean;
   ownerOnly?: boolean;
-  dividerBefore?: boolean; // render a thin separator before this item
 }
 
-const ALL_ITEMS: DockItem[] = [
-  { label: 'Dashboard',       icon: LayoutDashboard, href: '/home',               color: '#1263d8', bg: '#eff6ff' },
-  { label: 'Jobs',            icon: HardHat,         href: '/jobs',               color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',          color: '#ca8a04', bg: '#fefce8' },
-  { label: 'Estimating',      icon: Calculator,      href: '/estimating',         color: '#7c3aed', bg: '#f5f3ff' },
-  { label: 'Invoices',        icon: Receipt,         href: '/invoices',           color: '#0284c7', bg: '#f0f9ff' },
-  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',          color: '#059669', bg: '#ecfdf5' },
-  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',   color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',       color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Library',         icon: BookOpen,        href: '/studio/library',     color: '#b45309', bg: '#fffbeb' },
-  { label: 'Files',           icon: FolderOpen,      href: '/files',              color: '#7c3aed', bg: '#fff7ed' },
-  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',       color: '#16a34a', bg: '#f0fdf4' },
-  { label: 'Safety',          icon: ShieldCheck,     href: '/safety',             color: '#dc2626', bg: '#fef2f2' },
-  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',          color: '#b91c1c', bg: '#fff1f2' },
-  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
-  { label: 'Contacts',        icon: Users,           href: '/customers',          color: '#7c3aed', bg: '#f5f3ff' },
-  { label: 'Team',            icon: UserCircle,      href: '/team',               color: '#0f172a', bg: '#f1f5f9', adminOnly: true },
-  { label: 'Lists',           icon: TableProperties, href: '/lists',              color: '#0891b2', bg: '#ecfeff' },
-  { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',          color: '#64748b', bg: '#f8fafc', adminOnly: true },
-  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',        color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Job Field Docs',  icon: FileStack,       href: '/job-docs',           color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Sign-in History', icon: History,         href: '/signin-history',     color: '#64748b', bg: '#f8fafc', adminOnly: true },
+// ── Row 1: Field & Job tools ──────────────────────────────────────────────────
+const ROW1: DockItem[] = [
+  { label: 'Dashboard',       icon: LayoutDashboard, href: '/home',                 color: '#1263d8', bg: '#eff6ff' },
+  { label: 'Jobs',            icon: HardHat,         href: '/jobs',                 color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#ca8a04', bg: '#fefce8' },
+  { label: 'Job Field Docs',  icon: FileStack,       href: '/job-docs',             color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',            color: '#059669', bg: '#ecfdf5' },
+  { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#7c3aed', bg: '#fff7ed' },
+  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
+  { label: 'Photos',          icon: Camera,          href: '/jobs',                 color: '#db2777', bg: '#fdf2f8' },
+  { label: 'Notes',           icon: StickyNote,      href: '/jobs',                 color: '#d97706', bg: '#fffbeb' },
+  { label: 'Drive',           icon: Car,             href: '/driver',               color: '#0284c7', bg: '#f0f9ff' },
+  { label: 'Vehicle Prestart',icon: Truck,           href: '/prestart',             color: '#16a34a', bg: '#f0fdf4' },
+  { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#7c3aed', bg: '#f5f3ff' },
 ];
 
-// ── Vertical divider between icon groups ─────────────────────────────────────
-function DockDivider() {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        width: 1,
-        height: 20,
-        background: 'rgba(255,255,255,0.3)',
-        flexShrink: 0,
-        margin: '0 3px',
-        borderRadius: 1,
-      }}
-    />
-  );
-}
+// ── Row 2: Tools, Safety, Management ─────────────────────────────────────────
+const ROW2: DockItem[] = [
+  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Takeoff Pad',     icon: Ruler,           href: '/takeoff-pad',          color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Builders Calc',   icon: FileSpreadsheet, href: '/builders-calc',        color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0284c7', bg: '#f0f9ff' },
+  { label: 'Safety',          icon: ShieldCheck,     href: '/safety',               color: '#dc2626', bg: '#fef2f2' },
+  { label: 'Safety Posters',  icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c', bg: '#fff1f2' },
+  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#b91c1c', bg: '#fff1f2' },
+  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Library',         icon: BookOpen,        href: '/studio/library',       color: '#b45309', bg: '#fffbeb' },
+  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
+  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',          color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Lists',           icon: TableProperties, href: '/lists',                color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Team',            icon: UserCircle,      href: '/team',                 color: '#0f172a', bg: '#f1f5f9', adminOnly: true },
+  { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',            color: '#64748b', bg: '#f8fafc', adminOnly: true },
+  { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#64748b', bg: '#f8fafc', adminOnly: true },
+];
 
-// ── Single icon ───────────────────────────────────────────────────────────────
+// ── Single icon tile ──────────────────────────────────────────────────────────
 function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
   const Icon = item.icon;
-
   return (
     <Link
       to={item.href}
@@ -104,7 +107,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         justifyContent: 'center',
         flex: '1 1 0',
         minWidth: 0,
-        height: 36,
+        height: 34,
         borderRadius: 9,
         textDecoration: 'none',
         outline: 'none',
@@ -115,12 +118,11 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       }}
       className="dock-icon-btn"
     >
-      {/* Coloured tile */}
       <div
         className="dock-tile"
         style={{
           width: '100%',
-          height: 32,
+          height: 30,
           borderRadius: 7,
           backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
           border: active
@@ -135,7 +137,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         }}
       >
         <Icon
-          size={18}
+          size={16}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
           aria-hidden="true"
@@ -152,14 +154,27 @@ export default function DesktopDock() {
 
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
 
-  const items = ALL_ITEMS.filter((item) => {
-    if (item.ownerOnly && !isPlatformOwner) return false;
-    if (item.adminOnly && !canSeeAdmin) return false;
-    return true;
-  });
+  function filterItems(items: DockItem[]) {
+    return items.filter((item) => {
+      if (item.ownerOnly && !isPlatformOwner) return false;
+      if (item.adminOnly && !canSeeAdmin) return false;
+      return true;
+    });
+  }
+
+  const row1 = filterItems(ROW1);
+  const row2 = filterItems(ROW2);
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    width: '100%',
+    overflowX: 'auto',
+  };
 
   return (
     <>
@@ -169,6 +184,8 @@ export default function DesktopDock() {
           box-shadow: 0 2px 8px rgba(15,23,42,0.15);
           background-color: #ffffff !important;
         }
+        .dock-row::-webkit-scrollbar { display: none; }
+        .dock-row { scrollbar-width: none; }
       `}</style>
 
       <nav
@@ -189,17 +206,32 @@ export default function DesktopDock() {
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
           padding: '5px 6px',
-          alignItems: 'center',
-          gap: 3,
-          overflowX: 'auto',
+          flexDirection: 'column',
+          gap: 4,
         }}
       >
-        {items.map((item) => (
-          <React.Fragment key={item.href + item.label}>
-            {item.dividerBefore && <DockDivider />}
-            <DockIcon item={item} active={isActive(item.href)} />
-          </React.Fragment>
-        ))}
+        {/* Row 1 — Field & Job tools */}
+        <div className="dock-row" style={rowStyle}>
+          {row1.map((item) => (
+            <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
+
+        {/* Thin separator */}
+        <div style={{
+          width: '100%',
+          height: 1,
+          background: 'rgba(255,255,255,0.18)',
+          borderRadius: 1,
+          flexShrink: 0,
+        }} />
+
+        {/* Row 2 — Tools, Safety, Management */}
+        <div className="dock-row" style={rowStyle}>
+          {row2.map((item) => (
+            <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
       </nav>
     </>
   );

@@ -742,7 +742,7 @@ export default function UserLogsPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px]">
+    <div className="min-h-screen bg-[#f5f6f8] md:pt-[152px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

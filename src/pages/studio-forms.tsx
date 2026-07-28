@@ -13,7 +13,7 @@ export default function StudioFormsPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[152px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

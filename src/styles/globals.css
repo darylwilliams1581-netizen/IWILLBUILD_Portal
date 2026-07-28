@@ -409,10 +409,10 @@ input, select, textarea {
   }
 }
 
-/* Desktop: reserve space at the top for the fixed TopBar (56px) + dock (48px). */
+/* Desktop: reserve space at the top for the fixed TopBar (56px) + two-row dock (~90px). */
 @media (min-width: 768px) {
   .portal-main {
-    padding-top: 112px;
+    padding-top: 152px;
   }
 }
 
@@ -426,14 +426,14 @@ input, select, textarea {
 
 @media (min-width: 768px) {
   .portal-content {
-    padding-top: 112px;
+    padding-top: 152px;
   }
 }
 
 @media (min-width: 1024px) {
   .portal-content {
     padding: 1.5rem;
-    padding-top: 112px;
+    padding-top: 152px;
   }
 }
 
