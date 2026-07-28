@@ -7,6 +7,8 @@ WHEN TO USE THIS
   - eslint dependency conflict
   - capacitor.config.json missing
   - scripts/publish-build.mjs missing
+  - dev-tools/src/AiroErrorBoundary.tsx missing
+  - ios/App/App.xcodeproj missing
 
 SOURCE OF TRUTH
 - Work from the clean GitHub clone folder:
@@ -26,6 +28,8 @@ NEXT-TIME PROCESS
    - package-lock.json
    - capacitor.config.json
    - scripts
+   - dev-tools
+   - ios
    - src
    - public
 
@@ -48,18 +52,46 @@ NEXT-TIME PROCESS
 7. Check package.json and confirm:
    "eslint": "^9.39.5"
 
-8. In GitHub Desktop:
+8. If Appflow fails on:
+   Could not resolve "../dev-tools/src/AiroErrorBoundary" from "src/main.tsx"
+   restore this file:
+   dev-tools/src/AiroErrorBoundary.tsx
+
+   Use this content:
+   import React from 'react';
+
+   function AiroErrorBoundary({ children }: { children?: React.ReactNode; captureGlobalErrors?: boolean }) {
+     return <>{children}</>;
+   }
+
+   export default AiroErrorBoundary;
+
+9. If Appflow fails on:
+   No .xcodeproj file found
+   restore the native iOS project.
+
+   Required path:
+   ios/App/App.xcodeproj
+
+   Best recovery:
+   - run npx cap add ios in the clean clone
+   - confirm ios/App/App.xcodeproj exists
+   - commit the full ios folder
+
+10. In GitHub Desktop:
    - review changed files
    - commit to main
    - push origin
 
-9. In Appflow:
+11. In Appflow:
    - start a new iOS build from the latest main commit
    - if it fails, save the log and review the exact blocker
 
 BEFORE PUSHING
 - Confirm capacitor.config.json is physically visible in the root folder.
 - Confirm scripts/publish-build.mjs is physically visible in the scripts folder.
+- Confirm dev-tools/src/AiroErrorBoundary.tsx is present if main.tsx imports it.
+- Confirm ios/App/App.xcodeproj exists for iOS builds.
 - Do not assume a file exists only because Airo says it exists in editor state.
 
 COMMIT MESSAGE SUGGESTIONS
