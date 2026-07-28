@@ -1,0 +1,72 @@
+IWILLBUILD APPFLOW NEXT-TIME INSTRUCTIONS
+Saved: Tuesday, July 28, 2026
+
+WHEN TO USE THIS
+- Use this when Appflow fails because the Airo export is incomplete or missing build files.
+- Common failures already seen:
+  - eslint dependency conflict
+  - capacitor.config.json missing
+  - scripts/publish-build.mjs missing
+
+SOURCE OF TRUTH
+- Work from the clean GitHub clone folder:
+  C:\Users\willi\OneDrive\Github\IWILLBUILD_clone
+- Do not work from random Downloads folders or duplicate IWILLBUILD_Portal folders.
+
+NEXT-TIME PROCESS
+1. Clone or open the real GitHub repo in GitHub Desktop:
+   darylwilliams1581-netizen/IWILLBUILD_Portal
+
+2. Download the latest Airo package.
+
+3. Copy the downloaded files into the clean clone folder and replace existing files.
+
+4. Check these required root items exist:
+   - package.json
+   - package-lock.json
+   - capacitor.config.json
+   - scripts
+   - src
+   - public
+
+5. If capacitor.config.json is missing, restore it with this exact content:
+   {
+     "appId": "com.iwillbuild.app",
+     "appName": "IWILLBUILD",
+     "webDir": "dist/client",
+     "bundledWebRuntime": false
+   }
+
+6. If scripts/publish-build.mjs is missing, restore it with this exact content:
+   import { execSync } from "node:child_process";
+
+   execSync("npx vite build --outDir dist/client", {
+     stdio: "inherit",
+     shell: true
+   });
+
+7. Check package.json and confirm:
+   "eslint": "^9.39.5"
+
+8. In GitHub Desktop:
+   - review changed files
+   - commit to main
+   - push origin
+
+9. In Appflow:
+   - start a new iOS build from the latest main commit
+   - if it fails, save the log and review the exact blocker
+
+BEFORE PUSHING
+- Confirm capacitor.config.json is physically visible in the root folder.
+- Confirm scripts/publish-build.mjs is physically visible in the scripts folder.
+- Do not assume a file exists only because Airo says it exists in editor state.
+
+COMMIT MESSAGE SUGGESTIONS
+- Restore Appflow build files
+- Sync latest Airo export and Appflow patches
+- Fix Appflow capacitor config and build script
+
+PATCH REFERENCE
+- Full patch reference is stored in:
+  APPFLOW_PATCHES.md
