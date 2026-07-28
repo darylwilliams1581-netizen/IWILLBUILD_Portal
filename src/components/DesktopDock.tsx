@@ -1,15 +1,16 @@
 /**
  * DesktopDock — Bottom-centre floating navigation dock.
  *
- * Desktop-only (md+). Replaces the left sidebar rail for primary navigation.
- * Renders as a white pill fixed at the bottom-centre of the viewport.
+ * Desktop-only (md+). Fixed bottom-centre pill with two rows of icons.
+ * 22 nav items from the screenshot, split into two rows of 11.
  *
- * Design intent:
- *   - Clean, icon-only pill with tooltip labels on hover
- *   - Soft shadow + thin border — elevation without gimmick
- *   - Active icon: orange fill background, primary colour icon
+ * Design:
+ *   - White pill, thin border, soft layered shadow
+ *   - 36×36 icon buttons, 10px border-radius
+ *   - Active: faint orange fill + orange icon + 4px dot indicator
  *   - Hover: very light grey tint
- *   - Divider separates core nav from utility items
+ *   - Native title tooltip (no custom tooltip needed — clean)
+ *   - Divider between the two rows
  */
 
 import { useLocation, Link } from 'react-router-dom';
@@ -18,112 +19,120 @@ import {
   LayoutDashboard,
   HardHat,
   Zap,
-  CalendarDays,
-  Truck,
+  Calculator,
   Receipt,
+  CalendarDays,
+  FileText,
+  ClipboardList,
+  BookOpen,
   FolderOpen,
+  Truck,
+  Map,
   ShieldCheck,
   AlertCircle,
+  Wrench,
   Users,
-  Settings,
-  CreditCard,
-  Bot,
-  ShieldAlert,
+  UserCircle,
+  List,
+  ScrollText,
+  Link2,
+  BookMarked,
+  History,
 } from 'lucide-react';
-import { useTerminology } from '@/lib/useTerminology';
 
-// ── Dock item definition ──────────────────────────────────────────────────────
+// ── Item definition ───────────────────────────────────────────────────────────
 interface DockItem {
   label: string;
   icon: React.ElementType;
   href: string;
-  permKey?: string | null;
+  adminOnly?: boolean;
   ownerOnly?: boolean;
-  color?: string; // optional accent override
 }
 
-const CORE_ITEMS: DockItem[] = [
-  { label: 'Dashboard',  icon: LayoutDashboard, href: '/home',       permKey: null },
-  { label: 'Jobs',       icon: HardHat,         href: '/jobs',       permKey: 'jobs' },
-  { label: 'Job Cards',  icon: Zap,             href: '/job-cards',  permKey: 'jobs' },
-  { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',  permKey: 'jobs' },
-  { label: 'Fleet',      icon: Truck,           href: '/fleet',      permKey: 'fleet' },
-  { label: 'Invoices',   icon: Receipt,         href: '/invoices',   permKey: 'invoices' },
-  { label: 'Files',      icon: FolderOpen,      href: '/files',      permKey: 'files' },
-  { label: 'Safety',     icon: ShieldCheck,     href: '/safety',     permKey: null },
-  { label: 'Incidents',  icon: AlertCircle,     href: '/incidents',  permKey: null },
-  { label: 'Contacts',   icon: Users,           href: '/customers',  permKey: 'jobs' },
+// Row 1 — 11 items
+const ROW_1: DockItem[] = [
+  { label: 'Dashboard',    icon: LayoutDashboard, href: '/home' },
+  { label: 'Jobs',         icon: HardHat,         href: '/jobs' },
+  { label: 'Job Cards',    icon: Zap,             href: '/job-cards' },
+  { label: 'Estimating',   icon: Calculator,      href: '/estimating' },
+  { label: 'Invoices',     icon: Receipt,         href: '/invoices' },
+  { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler' },
+  { label: 'App Docs',     icon: FileText,        href: '/job-docs' },
+  { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms' },
+  { label: 'Library',      icon: BookOpen,        href: '/studio/library' },
+  { label: 'Files',        icon: FolderOpen,      href: '/files' },
+  { label: 'Fleet',        icon: Truck,           href: '/fleet' },
 ];
 
-const UTILITY_ITEMS: DockItem[] = [
-  { label: 'Settings',     icon: Settings,    href: '/settings',  permKey: null },
-  { label: 'Subscription', icon: CreditCard,  href: '/billing',   permKey: null },
-  { label: 'Dazza AI',     icon: Bot,         href: '/dazza-ai',  permKey: null, ownerOnly: true, color: '#7c3aed' },
-  { label: 'Dev Console',  icon: ShieldAlert, href: '/owner-console', permKey: null, ownerOnly: true, color: '#f97316' },
+// Row 2 — 11 items
+const ROW_2: DockItem[] = [
+  { label: 'Plan Manager', icon: Map,             href: '/plan-manager' },
+  { label: 'Safety',       icon: ShieldCheck,     href: '/safety' },
+  { label: 'Incidents',    icon: AlertCircle,     href: '/incidents' },
+  { label: 'Equipment',    icon: Wrench,          href: '/studio/asset-manager' },
+  { label: 'Contacts',     icon: Users,           href: '/customers' },
+  { label: 'Team',         icon: UserCircle,      href: '/team',         adminOnly: true },
+  { label: 'Lists',        icon: List,            href: '/lists' },
+  { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',    adminOnly: true },
+  { label: 'Quick Links',  icon: Link2,           href: '/quick-links' },
+  { label: 'Job Field Docs', icon: BookMarked,    href: '/job-docs' },
+  { label: 'Sign-in History', icon: History,      href: '/signin-history', adminOnly: true },
 ];
 
-// ── Single dock icon button ───────────────────────────────────────────────────
-function DockIcon({
-  item,
-  active,
-}: {
-  item: DockItem;
-  active: boolean;
-}) {
+// ── Single icon button ────────────────────────────────────────────────────────
+function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
   const Icon = item.icon;
-  const accentColor = item.color ?? '#f97316';
+  const ORANGE = '#f97316';
 
   return (
     <Link
       to={item.href}
+      title={item.label}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
-      title={item.label}
       style={{
         position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 40,
-        height: 40,
-        borderRadius: 10,
+        width: 36,
+        height: 36,
+        borderRadius: 9,
         flexShrink: 0,
-        transition: 'background 120ms ease, color 120ms ease',
-        background: active ? `${accentColor}18` : 'transparent',
-        color: active ? accentColor : 'rgba(71,85,105,0.75)',
+        transition: 'background 110ms ease, color 110ms ease',
+        background: active ? `${ORANGE}1a` : 'transparent',
+        color: active ? ORANGE : 'rgba(71,85,105,0.72)',
         textDecoration: 'none',
+        outline: 'none',
       }}
       onMouseEnter={(e) => {
         if (!active) {
           (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.05)';
-          (e.currentTarget as HTMLElement).style.color = 'rgba(15,23,42,0.85)';
+          (e.currentTarget as HTMLElement).style.color = 'rgba(15,23,42,0.82)';
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.color = 'rgba(71,85,105,0.75)';
+          (e.currentTarget as HTMLElement).style.color = 'rgba(71,85,105,0.72)';
         }
       }}
     >
-      <Icon
-        size={18}
-        strokeWidth={active ? 2.2 : 1.8}
-        aria-hidden="true"
-      />
-      {/* Active dot indicator */}
+      <Icon size={17} strokeWidth={active ? 2.2 : 1.75} aria-hidden="true" />
+
+      {/* Active dot */}
       {active && (
         <span
           aria-hidden="true"
           style={{
             position: 'absolute',
-            bottom: 3,
+            bottom: 2,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 4,
-            height: 4,
+            width: 3,
+            height: 3,
             borderRadius: '50%',
-            background: accentColor,
+            background: ORANGE,
           }}
         />
       )}
@@ -131,17 +140,29 @@ function DockIcon({
   );
 }
 
-// ── Divider ───────────────────────────────────────────────────────────────────
-function DockDivider() {
+// ── Row of icons ──────────────────────────────────────────────────────────────
+function DockRow({ items, pathname }: { items: DockItem[]; pathname: string }) {
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + '/');
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      {items.map((item) => (
+        <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
+      ))}
+    </div>
+  );
+}
+
+// ── Horizontal rule between rows ──────────────────────────────────────────────
+function DockRowDivider() {
   return (
     <div
       aria-hidden="true"
       style={{
-        width: 1,
-        height: 24,
-        background: 'rgba(226,232,240,0.9)',
-        flexShrink: 0,
-        margin: '0 2px',
+        height: 1,
+        background: 'rgba(226,232,240,0.8)',
+        margin: '2px 0',
       }}
     />
   );
@@ -150,66 +171,50 @@ function DockDivider() {
 // ── Main dock ─────────────────────────────────────────────────────────────────
 export default function DesktopDock() {
   const location = useLocation();
-  const { can, isAdmin, isOwner, isPlatformOwner, loading: permsLoading, me } = usePermissions();
-  const { workPlural: _workPlural } = useTerminology();
+  const { isAdmin, isOwner, isPlatformOwner, loading: permsLoading } = usePermissions();
 
-  const isActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
+  const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
 
-  // Filter items by permission
-  const visibleCore = CORE_ITEMS.filter((item) => {
-    if (permsLoading) return true;
-    if (item.permKey !== null && item.permKey !== undefined && me?.profile && !can(item.permKey as any)) return false;
-    return true;
-  });
+  const filterRow = (items: DockItem[]) =>
+    items.filter((item) => {
+      if (item.ownerOnly && !isPlatformOwner) return false;
+      if (item.adminOnly && !canSeeAdmin) return false;
+      return true;
+    });
 
-  const visibleUtility = UTILITY_ITEMS.filter((item) => {
-    if (item.ownerOnly && (permsLoading || !isPlatformOwner)) return false;
-    if (!permsLoading && item.permKey !== null && item.permKey !== undefined && me?.profile && !can(item.permKey as any)) return false;
-    // Show Settings/Billing to admins/owners
-    if (item.href === '/settings' && !permsLoading && !isAdmin && !isOwner) return false;
-    if (item.href === '/billing' && !permsLoading && !isAdmin && !isOwner) return false;
-    return true;
-  });
+  const row1 = filterRow(ROW_1);
+  const row2 = filterRow(ROW_2);
 
   return (
     <nav
-      aria-label="Desktop dock navigation"
-      className="hidden md:flex"
+      aria-label="Desktop navigation dock"
+      className="hidden md:block"
       style={{
         position: 'fixed',
-        bottom: 20,
+        bottom: 18,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1050,
-        // Dock pill surface
-        background: 'rgba(255,255,255,0.97)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(226,232,240,0.85)',
+        // Pill surface
+        background: 'rgba(255,255,255,0.98)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(226,232,240,0.9)',
         borderRadius: 16,
-        boxShadow:
-          '0 2px 8px rgba(15,23,42,0.07), 0 8px 24px rgba(15,23,42,0.06), 0 0 0 0.5px rgba(15,23,42,0.04)',
+        boxShadow: [
+          '0 1px 2px rgba(15,23,42,0.04)',
+          '0 4px 12px rgba(15,23,42,0.07)',
+          '0 12px 32px rgba(15,23,42,0.06)',
+          '0 0 0 0.5px rgba(15,23,42,0.03)',
+        ].join(', '),
         padding: '6px 8px',
-        alignItems: 'center',
-        gap: 2,
-        // Prevent dock from being wider than viewport
-        maxWidth: 'calc(100vw - 32px)',
-        flexWrap: 'nowrap',
+        // Prevent overflow on narrow viewports
+        maxWidth: 'calc(100vw - 24px)',
       }}
     >
-      {visibleCore.map((item) => (
-        <DockIcon key={item.href} item={item} active={isActive(item.href)} />
-      ))}
-
-      {visibleUtility.length > 0 && (
-        <>
-          <DockDivider />
-          {visibleUtility.map((item) => (
-            <DockIcon key={item.href} item={item} active={isActive(item.href)} />
-          ))}
-        </>
-      )}
+      <DockRow items={row1} pathname={location.pathname} />
+      <DockRowDivider />
+      <DockRow items={row2} pathname={location.pathname} />
     </nav>
   );
 }
