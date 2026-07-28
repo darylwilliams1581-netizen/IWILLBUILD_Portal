@@ -101,7 +101,7 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[112px]">
+    <div className="min-h-screen bg-[#f5f6f8] flex flex-col lg:pt-[96px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

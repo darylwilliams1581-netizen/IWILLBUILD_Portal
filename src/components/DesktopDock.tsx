@@ -80,12 +80,9 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       style={{
         position: 'relative',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        flex: '1 1 0',
-        minWidth: 44,
-        gap: 2,
+        flexShrink: 0,
         textDecoration: 'none',
         outline: 'none',
       }}
@@ -94,10 +91,9 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: '100%',
-          maxWidth: 48,
-          height: 28,
-          borderRadius: 7,
+          width: 32,
+          height: 32,
+          borderRadius: 8,
           backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
           border: active
             ? `1.5px solid ${item.color}`
@@ -111,15 +107,41 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         }}
       >
         <Icon
-          size={13}
+          size={15}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
           style={{ display: 'block', flexShrink: 0 }}
           aria-hidden="true"
         />
       </div>
+      {/* tooltip — shown via CSS on hover, no JS needed */}
+      <span
+        className="dock-tooltip"
+        style={{
+          position: 'absolute',
+          bottom: -28,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(15,23,42,0.88)',
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 600,
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
+          padding: '4px 8px',
+          borderRadius: 5,
+          pointerEvents: 'none',
+          opacity: 0,
+          transition: 'opacity 120ms ease',
+          zIndex: 9999,
+        }}
+      >
+        {item.label}
+      </span>
+      {/* invisible spacer — keeps old span structure intact */}
       <span
         style={{
+          display: 'none',
           fontSize: 8.5,
           fontWeight: active ? 700 : 500,
           color: active ? '#ffffff' : 'rgba(255,255,255,0.85)',
@@ -160,12 +182,12 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.1);
+          transform: scale(1.12);
           box-shadow: 0 2px 8px rgba(15,23,42,0.18) !important;
           background-color: #ffffff !important;
         }
-        .dock-icon-btn:hover span {
-          color: rgba(255,255,255,1) !important;
+        .dock-icon-btn:hover .dock-tooltip {
+          opacity: 1 !important;
         }
         .dock-row::-webkit-scrollbar { display: none; }
         .dock-row { scrollbar-width: none; }
@@ -187,20 +209,20 @@ export default function DesktopDock() {
             '0 6px 16px rgba(109,40,217,0.25)',
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
-          padding: '4px 0 3px',
-          alignItems: 'flex-end',
+          padding: '4px 0 4px',
+          alignItems: 'center',
         }}
       >
         <div
           className="dock-row"
           style={{
             display: 'flex',
-            alignItems: 'flex-end',
-            gap: 2,
+            alignItems: 'center',
+            gap: 4,
             width: '100%',
-            paddingBottom: 1,
-            paddingLeft: 6,
-            paddingRight: 6,
+            paddingLeft: 8,
+            paddingRight: 8,
+            overflowX: 'auto',
           }}
         >
           {items.map((item) => (
