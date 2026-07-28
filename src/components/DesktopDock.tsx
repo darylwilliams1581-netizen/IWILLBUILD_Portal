@@ -5,8 +5,8 @@
  * Row 1 — Field & Job tools (worker-facing)
  * Row 2 — Tools, Safety, Management, Admin
  *
- * Total height: ~90px (two 36px rows + gap + padding).
- * Portal pages must use padding-top: 146px on desktop.
+ * Total height: ~96px (two rows + labels + gap + padding).
+ * Portal pages use padding-top: 152px on desktop.
  */
 
 import React from 'react';
@@ -36,12 +36,10 @@ import {
   History,
   Truck,
   ShieldAlert,
-  ClipboardCheck,
   Ruler,
   Car,
   FileSpreadsheet,
-  StickyNote,
-  Camera,
+  Wrench,
 } from 'lucide-react';
 
 interface DockItem {
@@ -49,46 +47,43 @@ interface DockItem {
   icon: React.ElementType;
   href: string;
   color: string;
-  bg: string;
   adminOnly?: boolean;
   ownerOnly?: boolean;
 }
 
-// ── Row 1: Field & Job tools ──────────────────────────────────────────────────
+// ── Row 1: Field & Job tools (worker-facing) ──────────────────────────────────
 const ROW1: DockItem[] = [
-  { label: 'Dashboard',       icon: LayoutDashboard, href: '/home',                 color: '#1263d8', bg: '#eff6ff' },
-  { label: 'Jobs',            icon: HardHat,         href: '/jobs',                 color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#ca8a04', bg: '#fefce8' },
-  { label: 'Job Field Docs',  icon: FileStack,       href: '/job-docs',             color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',            color: '#059669', bg: '#ecfdf5' },
-  { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#7c3aed', bg: '#fff7ed' },
-  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
-  { label: 'Photos',          icon: Camera,          href: '/jobs',                 color: '#db2777', bg: '#fdf2f8' },
-  { label: 'Notes',           icon: StickyNote,      href: '/jobs',                 color: '#d97706', bg: '#fffbeb' },
-  { label: 'Drive',           icon: Car,             href: '/driver',               color: '#0284c7', bg: '#f0f9ff' },
-  { label: 'Vehicle Prestart',icon: Truck,           href: '/prestart',             color: '#16a34a', bg: '#f0fdf4' },
-  { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Dashboard',        icon: LayoutDashboard, href: '/dashboard',            color: '#1263d8' },
+  { label: 'Jobs',             icon: HardHat,         href: '/jobs',                 color: '#0891b2' },
+  { label: 'Job Cards',        icon: Zap,             href: '/job-cards',            color: '#ca8a04' },
+  { label: 'Field Docs',       icon: FileStack,       href: '/job-docs',             color: '#7c3aed' },
+  { label: 'Scheduler',        icon: CalendarDays,    href: '/scheduler',            color: '#059669' },
+  { label: 'Plan Manager',     icon: Map,             href: '/plan-manager',         color: '#16a34a' },
+  { label: 'Files',            icon: FolderOpen,      href: '/files',                color: '#d97706' },
+  { label: 'Contacts',         icon: Users,           href: '/customers',            color: '#7c3aed' },
+  { label: 'Invoices',         icon: Receipt,         href: '/invoices',             color: '#0284c7' },
+  { label: 'Drive',            icon: Car,             href: '/driver',               color: '#0284c7' },
+  { label: 'Fleet',            icon: Truck,           href: '/fleet',                color: '#0891b2' },
+  { label: 'Prestart',         icon: Wrench,          href: '/prestart',             color: '#16a34a' },
 ];
 
-// ── Row 2: Tools, Safety, Management ─────────────────────────────────────────
+// ── Row 2: Tools, Safety, Management, Admin ───────────────────────────────────
 const ROW2: DockItem[] = [
-  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#7c3aed', bg: '#f5f3ff' },
-  { label: 'Takeoff Pad',     icon: Ruler,           href: '/takeoff-pad',          color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Builders Calc',   icon: FileSpreadsheet, href: '/builders-calc',        color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0284c7', bg: '#f0f9ff' },
-  { label: 'Safety',          icon: ShieldCheck,     href: '/safety',               color: '#dc2626', bg: '#fef2f2' },
-  { label: 'Safety Posters',  icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c', bg: '#fff1f2' },
-  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#b91c1c', bg: '#fff1f2' },
-  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Library',         icon: BookOpen,        href: '/studio/library',       color: '#b45309', bg: '#fffbeb' },
-  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
-  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',          color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Lists',           icon: TableProperties, href: '/lists',                color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Team',            icon: UserCircle,      href: '/team',                 color: '#0f172a', bg: '#f1f5f9', adminOnly: true },
-  { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',            color: '#64748b', bg: '#f8fafc', adminOnly: true },
-  { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#64748b', bg: '#f8fafc', adminOnly: true },
+  { label: 'Estimating',       icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
+  { label: 'Takeoff Pad',      icon: Ruler,           href: '/takeoff-pad',          color: '#6366f1' },
+  { label: 'Builders Calc',    icon: FileSpreadsheet, href: '/builders-calc',        color: '#0891b2' },
+  { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
+  { label: 'Safety Posters',   icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
+  { label: 'Incidents',        icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },
+  { label: 'App Docs',         icon: FileText,        href: '/studio/documents',     color: '#0891b2' },
+  { label: 'Forms',            icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1' },
+  { label: 'Library',          icon: BookOpen,        href: '/studio/library',       color: '#b45309' },
+  { label: 'Equipment',        icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
+  { label: 'Quick Links',      icon: Link2,           href: '/quick-links',          color: '#6366f1' },
+  { label: 'Lists',            icon: TableProperties, href: '/lists',                color: '#0891b2' },
+  { label: 'Team',             icon: UserCircle,      href: '/team',                 color: '#0f172a', adminOnly: true },
+  { label: 'User Logs',        icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
+  { label: 'Sign-in History',  icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -103,21 +98,18 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       style={{
         position: 'relative',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flex: '1 1 0',
-        minWidth: 0,
-        height: 34,
-        borderRadius: 9,
+        minWidth: 36,
+        gap: 2,
         textDecoration: 'none',
         outline: 'none',
-        transition: 'box-shadow 120ms ease',
-        boxShadow: active
-          ? `0 0 0 2px rgba(255,255,255,0.9), 0 0 0 3.5px ${item.color}`
-          : 'none',
       }}
       className="dock-icon-btn"
     >
+      {/* Icon tile */}
       <div
         className="dock-tile"
         style={{
@@ -132,18 +124,55 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
           placeItems: 'center',
           transition: 'transform 110ms ease, box-shadow 110ms ease, background-color 110ms ease',
           boxShadow: active
-            ? `0 1px 4px ${item.color}30`
+            ? `0 0 0 1.5px ${item.color}40, 0 1px 4px ${item.color}30`
             : '0 1px 2px rgba(15,23,42,0.08)',
         }}
       >
         <Icon
-          size={16}
+          size={15}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
           aria-hidden="true"
         />
       </div>
+      {/* Label */}
+      <span
+        style={{
+          fontSize: 8.5,
+          fontWeight: active ? 700 : 500,
+          color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%',
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {item.label}
+      </span>
     </Link>
+  );
+}
+
+// ── Row heading ───────────────────────────────────────────────────────────────
+function RowLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontSize: 8,
+        fontWeight: 700,
+        color: 'rgba(255,255,255,0.45)',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        alignSelf: 'center',
+        paddingRight: 4,
+      }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -170,19 +199,23 @@ export default function DesktopDock() {
 
   const rowStyle: React.CSSProperties = {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 3,
     width: '100%',
     overflowX: 'auto',
+    paddingBottom: 1,
   };
 
   return (
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.08);
-          box-shadow: 0 2px 8px rgba(15,23,42,0.15);
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(15,23,42,0.18) !important;
           background-color: #ffffff !important;
+        }
+        .dock-icon-btn:hover span {
+          color: rgba(255,255,255,1) !important;
         }
         .dock-row::-webkit-scrollbar { display: none; }
         .dock-row { scrollbar-width: none; }
@@ -205,13 +238,14 @@ export default function DesktopDock() {
             '0 6px 16px rgba(109,40,217,0.25)',
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
-          padding: '5px 6px',
+          padding: '5px 8px 4px',
           flexDirection: 'column',
-          gap: 4,
+          gap: 3,
         }}
       >
-        {/* Row 1 — Field & Job tools */}
+        {/* Row 1 — Field & Jobs */}
         <div className="dock-row" style={rowStyle}>
+          <RowLabel>Field</RowLabel>
           {row1.map((item) => (
             <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
           ))}
@@ -221,13 +255,14 @@ export default function DesktopDock() {
         <div style={{
           width: '100%',
           height: 1,
-          background: 'rgba(255,255,255,0.18)',
+          background: 'rgba(255,255,255,0.15)',
           borderRadius: 1,
           flexShrink: 0,
         }} />
 
-        {/* Row 2 — Tools, Safety, Management */}
+        {/* Row 2 — Tools & Management */}
         <div className="dock-row" style={rowStyle}>
+          <RowLabel>Tools</RowLabel>
           {row2.map((item) => (
             <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
           ))}
