@@ -142,7 +142,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         }}
       >
         <Icon
-          size={15}
+          size={18}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
           aria-hidden="true"
