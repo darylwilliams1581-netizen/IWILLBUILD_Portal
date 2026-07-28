@@ -137,7 +137,7 @@ export default function SignInHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px]">
+    <div className="min-h-screen bg-[#f5f6f8] lg:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

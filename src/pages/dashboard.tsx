@@ -124,7 +124,7 @@ export default function DashboardPage() {
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main md:pt-[112px]">
+      <div className="portal-main lg:pt-[112px]">
 
         {/* Desktop banner strip — sits just below the dock */}
         <div className="hidden md:flex items-center px-3 py-1.5 border-b border-border bg-white shrink-0 print:hidden">

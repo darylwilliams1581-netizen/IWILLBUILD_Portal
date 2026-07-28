@@ -84,7 +84,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         alignItems: 'center',
         justifyContent: 'center',
         flex: '1 1 0',
-        minWidth: 48,
+        minWidth: 44,
         gap: 2,
         textDecoration: 'none',
         outline: 'none',
@@ -95,8 +95,8 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         className="dock-tile"
         style={{
           width: '100%',
-          maxWidth: 52,
-          height: 30,
+          maxWidth: 48,
+          height: 28,
           borderRadius: 7,
           backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
           border: active
@@ -111,7 +111,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         }}
       >
         <Icon
-          size={14}
+          size={13}
           color={item.color}
           strokeWidth={active ? 2.4 : 1.9}
           style={{ display: 'block', flexShrink: 0 }}
@@ -173,7 +173,7 @@ export default function DesktopDock() {
 
       <nav
         aria-label="Desktop navigation dock"
-        className="hidden md:flex"
+        className="hidden lg:flex"
         style={{
           position: 'fixed',
           top: 56,
@@ -187,7 +187,7 @@ export default function DesktopDock() {
             '0 6px 16px rgba(109,40,217,0.25)',
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
-          padding: '5px 0 4px',
+          padding: '4px 0 3px',
           alignItems: 'flex-end',
         }}
       >
@@ -196,10 +196,11 @@ export default function DesktopDock() {
           style={{
             display: 'flex',
             alignItems: 'flex-end',
+            gap: 2,
             width: '100%',
             paddingBottom: 1,
-            paddingLeft: 8,
-            paddingRight: 8,
+            paddingLeft: 6,
+            paddingRight: 6,
           }}
         >
           {items.map((item) => (

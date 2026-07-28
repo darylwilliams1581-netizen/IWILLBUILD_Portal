@@ -101,7 +101,7 @@ export default function DesktopTopBar() {
 
   return (
     <div
-      className="hidden md:flex"
+      className="hidden lg:flex"
       style={{
         position: 'fixed',
         top: 0,

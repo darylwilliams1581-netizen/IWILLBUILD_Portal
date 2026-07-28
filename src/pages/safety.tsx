@@ -928,7 +928,7 @@ import DesktopDock from '@/components/DesktopDock';
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return (
-    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
+    <div className="flex flex-col flex-1 min-h-0 lg:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

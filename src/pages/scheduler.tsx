@@ -1337,7 +1337,7 @@ export default function SchedulerPage() {
 
       <PortalSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:pt-[112px]">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pt-[112px]">
 
         {/* ── Top bar ── */}
         <div className="op-page-header flex items-center gap-2 shrink-0 min-w-0">

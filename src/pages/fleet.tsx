@@ -323,7 +323,7 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
