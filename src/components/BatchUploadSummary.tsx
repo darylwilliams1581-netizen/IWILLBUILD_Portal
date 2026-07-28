@@ -2,11 +2,16 @@
  * BatchUploadSummary
  *
  * Sticky banner shown during and after a batch upload.
- * Shows "Uploading 3 of 10 photos…" while active,
- * "8 uploaded, 2 failed" when done.
+ * Uses field-friendly language — no technical jargon.
+ *
+ * States:
+ *   - Offline with saved photos → "X photos saved on device — will sync when back online"
+ *   - Uploading                 → "Syncing 3 of 10 photos…"
+ *   - All synced                → "X photos synced"
+ *   - Some failed               → "X synced, Y couldn't upload"
  */
 
-import { Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, X, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BatchUploadSummaryProps {
@@ -14,7 +19,9 @@ interface BatchUploadSummaryProps {
   pendingCount: number;
   uploadedCount: number;
   failedCount: number;
+  savedCount: number;
   isUploading: boolean;
+  isOnline: boolean;
   onDismiss?: () => void;
 }
 
@@ -23,12 +30,15 @@ export default function BatchUploadSummary({
   pendingCount,
   uploadedCount,
   failedCount,
+  savedCount,
   isUploading,
+  isOnline,
   onDismiss,
 }: BatchUploadSummaryProps) {
-  const doneCount = uploadedCount + failedCount;
-  const allDone   = !isUploading && doneCount > 0 && pendingCount === 0;
-  const visible   = isUploading || allDone;
+  const doneCount    = uploadedCount + failedCount;
+  const allDone      = !isUploading && doneCount > 0 && pendingCount === 0;
+  const offlineHold  = !isOnline && savedCount > 0 && !isUploading;
+  const visible      = isUploading || allDone || offlineHold;
 
   return (
     <AnimatePresence>
@@ -40,14 +50,19 @@ export default function BatchUploadSummary({
           transition={{ duration: 0.18 }}
           className={[
             'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-semibold',
-            failedCount > 0 && !isUploading
+            offlineHold
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : failedCount > 0 && !isUploading
               ? 'bg-red-50 border-red-200 text-red-700'
               : allDone
               ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
               : 'bg-violet-50 border-violet-200 text-violet-800',
           ].join(' ')}
         >
-          {isUploading ? (
+          {/* Icon */}
+          {offlineHold ? (
+            <WifiOff size={15} className="shrink-0" />
+          ) : isUploading ? (
             <Loader2 size={15} className="animate-spin shrink-0" />
           ) : failedCount > 0 ? (
             <AlertCircle size={15} className="shrink-0" />
@@ -55,19 +70,25 @@ export default function BatchUploadSummary({
             <CheckCircle2 size={15} className="shrink-0" />
           )}
 
+          {/* Message */}
           <span className="flex-1">
-            {isUploading ? (
-              <>Uploading {uploadedCount + 1} of {totalCount} photo{totalCount !== 1 ? 's' : ''}…</>
+            {offlineHold ? (
+              <>
+                {savedCount} photo{savedCount !== 1 ? 's' : ''} saved on device
+                {' '}— will sync when back online
+              </>
+            ) : isUploading ? (
+              <>Syncing {uploadedCount + 1} of {totalCount} photo{totalCount !== 1 ? 's' : ''}…</>
             ) : failedCount > 0 && uploadedCount > 0 ? (
-              <>{uploadedCount} uploaded, {failedCount} failed</>
+              <>{uploadedCount} synced, {failedCount} couldn't upload</>
             ) : failedCount > 0 ? (
-              <>{failedCount} photo{failedCount !== 1 ? 's' : ''} failed to upload</>
+              <>{failedCount} photo{failedCount !== 1 ? 's' : ''} couldn't upload</>
             ) : (
-              <>{uploadedCount} photo{uploadedCount !== 1 ? 's' : ''} uploaded</>
+              <>{uploadedCount} photo{uploadedCount !== 1 ? 's' : ''} synced</>
             )}
           </span>
 
-          {allDone && onDismiss && (
+          {(allDone || offlineHold) && onDismiss && (
             <button
               onClick={onDismiss}
               className="p-0.5 rounded-md hover:bg-black/10 transition-colors touch-manipulation"

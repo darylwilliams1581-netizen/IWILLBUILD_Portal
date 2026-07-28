@@ -112,10 +112,6 @@ const CACHE_TTL_MS = 30_000; // 30 s stale window
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function photoUrl(photo: JobPhoto) {
-  return photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
-}
-
 function thumbnailSrc(photo: JobPhoto, bust?: number): string {
   const isHeic = photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif';
   const base = photo.thumbnailUrl ?? photo.url ?? `/airo-assets/uploads/job-photos/${photo.filename}`;
@@ -551,8 +547,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   const {
     queue,
     isUploading,
+    isOnline,
     uploadedCount,
     failedCount,
+    savedCount,
     pendingCount,
     totalCount: queueTotal,
     enqueueFiles,
@@ -853,7 +851,9 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
           pendingCount={pendingCount}
           uploadedCount={uploadedCount}
           failedCount={failedCount}
+          savedCount={savedCount}
           isUploading={isUploading}
+          isOnline={isOnline}
           onDismiss={() => { setSummaryDismissed(true); clearUploaded(); }}
         />
       )}
@@ -863,7 +863,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between mb-0.5">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-              {isUploading ? 'Uploading…' : 'Upload queue'}
+              {isUploading ? 'Syncing…' : !isOnline ? 'Saved on device' : 'Ready to sync'}
             </p>
             {!isUploading && (
               <button
@@ -878,6 +878,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             <PendingPhotoCard
               key={item.clientId}
               item={item}
+              isOnline={isOnline}
               onRetry={retryItem}
               onRemove={removeItem}
             />
