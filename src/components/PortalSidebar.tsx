@@ -237,46 +237,59 @@ function SidebarContent({
     <>
       {/* ── Logo / header ── */}
       <div
-        className={`flex items-center h-11 border-b border-gray-100 shrink-0 ${
-          collapsed ? 'justify-center px-2' : 'px-3 gap-2'
+        className={`flex items-center h-14 border-b border-gray-100 shrink-0 ${
+          collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'
         }`}
       >
         {collapsed ? (
-          /* Collapsed: square icon — company logo if available, else initials */
+          /* Collapsed: icon only, larger */
           companyLogoUrl ? (
             <img
               src={companyLogoUrl}
               alt={companyName}
-              className="h-7 w-7 object-contain rounded shrink-0"
+              className="h-9 w-9 object-contain rounded-lg shrink-0"
             />
           ) : (
             <div
-              className="h-7 w-7 rounded bg-primary flex items-center justify-center shrink-0 select-none"
+              className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm"
               title={companyName}
             >
-              <span className="text-white text-xs font-black leading-none">
+              <span className="text-white text-base font-black leading-none">
                 {companyName.trim()[0]?.toUpperCase() ?? 'P'}
               </span>
             </div>
           )
         ) : (
           <>
-            {/* Expanded: full logo or company name */}
+            {/* Icon/logo mark */}
             {companyLogoUrl ? (
               <img
                 src={companyLogoUrl}
                 alt={companyName}
-                className="h-8 max-w-[160px] w-auto object-contain object-left shrink-0"
+                className="h-9 w-9 object-contain rounded-lg shrink-0"
               />
             ) : (
-              <span className="text-sm font-bold text-gray-800 truncate flex-1 min-w-0 leading-tight">
+              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm">
+                <span className="text-white text-base font-black leading-none">
+                  {companyName.trim()[0]?.toUpperCase() ?? 'P'}
+                </span>
+              </div>
+            )}
+
+            {/* Company name — always shown in expanded mode */}
+            <div className="flex-1 min-w-0">
+              <span className="block text-[13px] font-bold text-gray-800 truncate leading-tight">
                 {companyName}
               </span>
-            )}
+              <span className="block text-[10px] text-gray-400 font-medium leading-tight mt-0.5">
+                Portal
+              </span>
+            </div>
+
             {onClose && (
               <button
                 onClick={onClose}
-                className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
                 aria-label="Close menu"
               >
                 <X size={16} />
