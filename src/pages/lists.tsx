@@ -958,9 +958,28 @@ export default function ListsPage() {
   return (
     <>
       <Helmet>
-        <title>Lists — IWILLBUILD</title>
-        <meta name="description" content="Generate, filter, and export office records as tables." />
+        <title>Office Lists — Reports &amp; Registers | IWILLBUILD</title>
+        <meta name="description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more. Part of the IWILLBUILD job management portal." />
         <link rel="canonical" href="https://iwillbuild.com/lists" />
+        <meta property="og:title" content="Office Lists — Reports &amp; Registers | IWILLBUILD" />
+        <meta property="og:description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/lists" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Office Lists — Reports &amp; Registers | IWILLBUILD" />
+        <meta name="twitter:description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "@id": "https://iwillbuild.com/lists#webpage",
+          "name": "Office Lists — Reports & Registers",
+          "url": "https://iwillbuild.com/lists",
+          "description": "Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more.",
+          "isPartOf": { "@id": "https://iwillbuild.com/#website" },
+          "about": { "@id": "https://iwillbuild.com/#organization" }
+        })}</script>
       </Helmet>
 
       <div className="portal-page">
