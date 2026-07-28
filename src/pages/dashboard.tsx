@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   HardHat,
-  Bell,
   ChevronRight,
   Plus,
   AlertTriangle,
@@ -16,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { useSession } from '@/lib/auth/auth-client';
 import { fetchJobs, type Job } from '@/lib/jobs-api';
 import { fetchFleetFlags, type FleetFlags } from '@/lib/fleet-api';
@@ -97,13 +98,6 @@ export default function DashboardPage() {
 
   const recentJobs = jobs.slice(0, 8);
 
-  const today = new Date().toLocaleDateString('en-AU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
   return (
     <div className="portal-page">
       <Helmet>
@@ -122,29 +116,20 @@ export default function DashboardPage() {
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
+      {/* Desktop nav bars */}
+      <DesktopTopBar />
+      <DesktopDock />
+
+      {/* Mobile sidebar */}
       <PortalSidebar />
 
       {/* ── Main content ── */}
-      <div className="portal-main">
+      <div className="portal-main md:pt-[112px]">
 
-        {/* Top bar — desktop only */}
-        <header className="hidden md:flex op-page-header shrink-0 print:hidden">
-          <div className="flex items-center gap-2 shrink-0">
-            <h1 className="op-page-title">Dashboard</h1>
-            <span className="op-page-subtitle hidden sm:block text-gray-400 text-xs">— {today}</span>
-          </div>
-
-          {/* Banner strip */}
-          <div className="hidden md:flex flex-1 min-w-0 items-center px-4">
-            <DashboardBanner userId={user?.id ?? 'anon'} />
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <button className="relative p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-150">
-              <Bell size={15} />
-            </button>
-          </div>
-        </header>
+        {/* Desktop banner strip — sits just below the dock */}
+        <div className="hidden md:flex items-center px-3 py-1.5 border-b border-border bg-white shrink-0 print:hidden">
+          <DashboardBanner userId={user?.id ?? 'anon'} />
+        </div>
 
         {/* Mobile top strip */}
         <div
