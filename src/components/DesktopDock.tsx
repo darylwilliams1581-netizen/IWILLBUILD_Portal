@@ -32,6 +32,7 @@ import {
   History,
   Truck,
   ShieldAlert,
+  TriangleAlert,
   UserCircle,
   CreditCard,
   HelpCircle,
@@ -68,6 +69,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Safety',          icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
   { label: 'Safety Posters',  icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
   { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#ef4444' },
+  { label: 'Risk Register',   icon: TriangleAlert,   href: '/risk-register',        color: '#ea580c' },
   // ── Studio / Tools ────────────────────────────────────────────────────────
   { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#6366f1' },
   { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#7c3aed' },

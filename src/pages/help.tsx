@@ -278,6 +278,23 @@ const GROUPS: GroupDoc[] = [
         ],
         tip: 'Report incidents as soon as possible after they occur. Near misses are just as important to record as injuries.',
       },
+      {
+        key: 'risk-register',
+        label: 'Risk Register',
+        icon: ShieldAlert,
+        bg: 'bg-orange-600',
+        purpose: 'Identify, assess, and control workplace hazards and risks across the company. Each entry captures the hazard, likelihood × consequence risk matrix, existing controls, additional controls required, responsible person, and due date.',
+        howTo: [
+          'Tap Risk Register on the dock.',
+          'Tap New risk to add a new entry.',
+          'Enter the hazard title, category, and description.',
+          'Set likelihood and consequence — the risk level is calculated automatically.',
+          'Document existing controls and any additional controls required.',
+          'Assign a responsible person and due date.',
+          'Update the status as controls are implemented.',
+        ],
+        tip: 'Extreme and high risks are highlighted at the top of the register. Review and update risk entries regularly — at least before each new project phase.',
+      },
     ],
   },
   {

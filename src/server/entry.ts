@@ -705,6 +705,11 @@ import team_id_put_672 from "./api/team/[id]/PUT";
 import usage_get_673 from "./api/usage/GET";
 import user_logs_get_674 from "./api/user-logs/GET";
 import user_logs_users_get_675 from "./api/user-logs/users/GET";
+// ── Risk Register ─────────────────────────────────────────────────────────────
+import risk_register_get from "./api/risk-register/GET.js";
+import risk_register_post from "./api/risk-register/POST.js";
+import risk_register_id_get from "./api/risk-register/[id]/GET.js";
+import risk_register_id_put from "./api/risk-register/[id]/PUT.js";
 // </api-imports>
 // ── Job Cards ─────────────────────────────────────────────────────────────────
 import job_cards_get from "./api/job-cards/GET.js";
@@ -985,6 +990,47 @@ async function runStartupMigrations() {
     // Table already exists is fine
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] company_settings CREATE failed:', msg);
+    }
+  }
+
+  // 1a-rr. Ensure risk_register table exists
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS risk_register (
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        company_id          INT NOT NULL,
+        job_id              INT NULL,
+        title               VARCHAR(500) NOT NULL,
+        description         TEXT NULL,
+        category            VARCHAR(100) NULL,
+        hazard_source       TEXT NULL,
+        who_is_at_risk      TEXT NULL,
+        existing_controls   TEXT NULL,
+        likelihood          VARCHAR(20) NOT NULL DEFAULT 'possible',
+        consequence         VARCHAR(20) NOT NULL DEFAULT 'moderate',
+        risk_level          VARCHAR(20) NOT NULL DEFAULT 'medium',
+        additional_controls TEXT NULL,
+        responsible_person  VARCHAR(255) NULL,
+        due_date            DATE NULL,
+        identified_date     DATE NOT NULL DEFAULT (CURDATE()),
+        status              VARCHAR(30) NOT NULL DEFAULT 'open',
+        review_date         DATE NULL,
+        notes               TEXT NULL,
+        closed_at           DATETIME NULL,
+        closed_by           VARCHAR(255) NULL,
+        created_by          VARCHAR(36) NULL,
+        created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_rr_company (company_id),
+        INDEX idx_rr_company_status (company_id, status),
+        INDEX idx_rr_job (job_id)
+      )
+    `);
+    console.log('[startup-migration] risk_register table ready');
+  } catch (e: unknown) {
+    const msg = String((e as Error)?.message ?? e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] risk_register CREATE failed:', msg);
     }
   }
 
@@ -3288,6 +3334,12 @@ app.get("/sitemap.xml", (req, res) => {
 });
 
 app.get("/llms.txt", llmsTxtHandler);
+
+// ── Risk Register ─────────────────────────────────────────────────────────────
+app.get("/api/risk-register",     risk_register_get);
+app.post("/api/risk-register",    risk_register_post);
+app.get("/api/risk-register/:id", risk_register_id_get);
+app.put("/api/risk-register/:id", risk_register_id_put);
 
 if (import.meta.env.PROD && !process.env.VITEST) {
 	const __dirname = dirname(fileURLToPath(import.meta.url));

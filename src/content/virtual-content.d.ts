@@ -12,6 +12,7 @@ declare module 'virtual:content' {
   export const job_site_prestart: { "SITUATION_CHECKS": Array<string>; "EXECUTION_CHECKS": Array<string>; "ADMIN_CHECKS": Array<string> };
   export const lists: { "SEVERITY_OPTIONS": Array<string> };
   export const login: { "page": { "title": string; "metaDescription": string; "ogTitle": string; "ogDescription": string }; "heading": string; "subheading": string; "tabs": { "password": string; "pin": string }; "twoFactor": { "heading": string }; "banners": { "emailVerified": string }; "errors": { "missingCredentials": string; "pinLength": string; "pinVerifiedFallback": string }; "submitLabel": string };
+  export const risk_register: { "LIKELIHOOD_OPTIONS": Array<{ "value": string; "label": string; "desc": string; "id": string }>; "CONSEQUENCE_OPTIONS": Array<{ "value": string; "label": string; "desc": string; "id": string }> };
   export const roadmap: { "phases": Array<string>; "GATES": Array<{ "id": string; "label": string; "status": string; "criteria": Array<string>; "unblock": string }> };
   export const studio: { "ALL_TYPES": Array<string>; "CATEGORIES": Array<string> };
 }
