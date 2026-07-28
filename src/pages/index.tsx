@@ -5,6 +5,8 @@ import {
   Briefcase, FileText, Camera, Truck, LayoutDashboard,
   ShieldCheck, Users, CheckCircle, ArrowRight,
   Star, ChevronRight, Calendar, FolderOpen, Siren,
+  Receipt, Map, Link2, ClipboardList, HardHat,
+  Zap, BarChart3, Bell, Lock, Smartphone,
 } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
@@ -24,17 +26,113 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
 
 // ── Animation variants removed — landing page is static for SSR performance ──
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-const features = [
-  { icon: Briefcase,   title: 'Jobs and job files',       desc: 'Create jobs, track status, add notes, tasks, costs and close them out cleanly.' },
-  { icon: FileText,    title: 'Estimates and recipes',    desc: 'Build cost guides, scope lines, approve estimates and print PDF quotes for clients.' },
-  { icon: FileText,    title: 'Forms and signatures',     desc: 'Reusable templates, conditional logic, photo capture, multi-signer and completed PDFs.' },
-  { icon: Camera,      title: 'Photos and files',         desc: 'Upload site photos, label them, view in lightbox and attach files to the job record.' },
-  { icon: Truck,       title: 'Fleet prestarts',          desc: 'Daily prestart checks, service dates, rego reminders and dashboard flags for attention.' },
-  { icon: Calendar,    title: 'Scheduler',                desc: 'Gantt and table views, job timelines, crew scheduling and progress tracking.' },
-  { icon: ShieldCheck, title: 'Safety and compliance',    desc: 'SWMS library, site safety plans, policies, posters and safety pack export.' },
-  { icon: Siren,       title: 'Emergency Beacon',         desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.' },
-  { icon: Users,       title: 'Team permissions',         desc: 'Role-based access, invite users, control what each person can see and do.' },
+// ── Feature groups — each with icon, colour, title, desc, bullets ────────────
+const featureGroups = [
+  {
+    icon: Briefcase,
+    color: '#1263d8', bg: '#eff6ff',
+    title: 'Jobs & project management',
+    desc: 'Create jobs, assign crews, track status and close out cleanly — from first contact to final invoice.',
+    bullets: ['Job register with status filters', 'Notes, tasks and cost tracking', 'Convert job cards to full jobs', 'Job history and audit trail'],
+  },
+  {
+    icon: FileText,
+    color: '#7c3aed', bg: '#f5f3ff',
+    title: 'Estimates & cost guides',
+    desc: 'Build detailed cost guides, scope lines and PDF quotes. Approve estimates and track actuals against budget.',
+    bullets: ['Line-item cost builder', 'Recipe / template library', 'PDF quote generation', 'Approved vs actual tracking'],
+  },
+  {
+    icon: ClipboardList,
+    color: '#0891b2', bg: '#ecfeff',
+    title: 'Forms & digital signatures',
+    desc: 'Reusable form templates with conditional logic, photo capture, multi-signer support and completed PDF export.',
+    bullets: ['Drag-and-drop form builder', 'Conditional field logic', 'Photo capture in the field', 'Multi-signer & PDF export'],
+  },
+  {
+    icon: Camera,
+    color: '#f97316', bg: '#fff7ed',
+    title: 'Photos & file storage',
+    desc: 'Upload site photos, label them by job and view in a full lightbox. Attach any file type to the job record.',
+    bullets: ['Bulk photo upload', 'Job-linked photo gallery', 'Lightbox viewer', 'Secure file attachments'],
+  },
+  {
+    icon: Truck,
+    color: '#059669', bg: '#ecfdf5',
+    title: 'Fleet & prestart checks',
+    desc: 'Daily prestart checks, service schedules, rego reminders and live GPS map — all in one fleet dashboard.',
+    bullets: ['Daily prestart checklists', 'Service & rego reminders', 'Live GPS map view', 'Fleet status dashboard'],
+  },
+  {
+    icon: Calendar,
+    color: '#ca8a04', bg: '#fefce8',
+    title: 'Scheduler',
+    desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
+    bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones'],
+  },
+  {
+    icon: ShieldCheck,
+    color: '#dc2626', bg: '#fef2f2',
+    title: 'Safety & compliance',
+    desc: 'SWMS library, site safety plans, policies, posters and safety pack export — everything the regulator expects.',
+    bullets: ['SWMS library & builder', 'Site safety plans', 'Safety policies & posters', 'Safety pack PDF export'],
+  },
+  {
+    icon: HardHat,
+    color: '#b45309', bg: '#fffbeb',
+    title: 'Site prestart register',
+    desc: 'Daily site prestart sign-ons, hazard acknowledgements and attendance records — digital and timestamped.',
+    bullets: ['Daily sign-on register', 'Hazard acknowledgement', 'Attendance records', 'Timestamped & GPS-tagged'],
+  },
+  {
+    icon: Siren,
+    color: '#e11d48', bg: '#fff1f2',
+    title: 'Emergency beacon',
+    desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.',
+    bullets: ['One-tap SOS trigger', 'GPS location capture', 'Works offline (queued)', 'Instant team alert'],
+  },
+  {
+    icon: Receipt,
+    color: '#0284c7', bg: '#f0f9ff',
+    title: 'Invoicing',
+    desc: 'Create and send invoices linked to jobs. Sync approved invoices to Xero or QuickBooks with one click.',
+    bullets: ['Job-linked invoices', 'PDF invoice generation', 'Xero & QuickBooks sync', 'Invoice status tracking'],
+  },
+  {
+    icon: Map,
+    color: '#16a34a', bg: '#f0fdf4',
+    title: 'Live fleet map',
+    desc: 'See every vehicle and plant item on a live Google Maps view. Last-known positions shown for offline assets.',
+    bullets: ['Live GPS tracking', 'Last-known positions', 'Google Maps integration', 'Auto-refresh every 5s'],
+  },
+  {
+    icon: Link2,
+    color: '#6366f1', bg: '#eef2ff',
+    title: 'Quick links',
+    desc: 'Pin your external portals — BYDA, Outlook, Teletrac, Xero, supplier portals — as one-click tiles for the whole team.',
+    bullets: ['Custom tile launcher', 'Auto-fetches site icons', 'Admin-managed links', 'Opens in new tab'],
+  },
+  {
+    icon: BarChart3,
+    color: '#0f172a', bg: '#f1f5f9',
+    title: 'Reports & user logs',
+    desc: 'User activity logs, job cost reports, driver logs and CSV export — full visibility across your team and jobs.',
+    bullets: ['User activity logs', 'Job cost reporting', 'Driver log dataset', 'CSV export'],
+  },
+  {
+    icon: Users,
+    color: '#7c3aed', bg: '#f5f3ff',
+    title: 'Team & permissions',
+    desc: 'Role-based access, invite users, control what each person can see and do — from field crew to admin.',
+    bullets: ['Role-based access control', 'Invite users by email', 'Per-module permissions', 'Admin & owner roles'],
+  },
+  {
+    icon: Smartphone,
+    color: '#f97316', bg: '#fff7ed',
+    title: 'Mobile field app',
+    desc: 'Native iOS and Android app — works offline, syncs when back online. Built for site, not the office.',
+    bullets: ['iOS & Android native', 'Offline-first sync', 'Camera & GPS access', 'Push notifications'],
+  },
 ];
 
 const howItWorks = [
@@ -328,9 +426,9 @@ export default function HomePage() {
   const site = 'https://iwillbuild.com';
   const title = 'IWILLBUILD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
   const description =
-    'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. As the platform grows, accounting integrations help approved invoices flow into Xero, QuickBooks and MYOB. 30-day free trial.';
+    'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 30-day free trial.';
   const ogDescription =
-    'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero, QuickBooks and MYOB.';
+    'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero and QuickBooks.';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -595,7 +693,6 @@ export default function HomePage() {
           {[
             { name: 'Xero', color: '#13B5EA', bg: '#e8f8fd' },
             { name: 'QuickBooks', color: '#2CA01C', bg: '#edf7ec' },
-            { name: 'MYOB', color: '#6B21A8', bg: '#f3e8ff' },
           ].map((p) => (
             <span key={p.name} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -613,38 +710,99 @@ export default function HomePage() {
       </div>
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section id="features" style={{ maxWidth: 1180, margin: '0 auto', padding: '72px 22px' }}>
-        <div>
-          <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0f172a' }}>
-            Construction job management software built for the field
-          </h2>
-          <p style={{ color: '#64748b', fontSize: 17, margin: '0 0 40px', maxWidth: 680 }}>
-            Projects, estimates, forms, photos, safety, fleet, files and scheduling — in one clean portal built around the way construction work actually moves.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
-            {features.map((f) => {
+      <section id="features" style={{ backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '80px 22px' }}>
+
+          {/* Section header */}
+          <div style={{ marginBottom: 52 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)',
+              borderRadius: 20, padding: '5px 14px', marginBottom: 18,
+            }}>
+              <Zap size={13} color="#f97316" fill="#f97316" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Everything in one portal</span>
+            </div>
+            <h2 style={{ fontSize: 'clamp(26px,3.5vw,42px)', letterSpacing: '-0.03em', margin: '0 0 14px', color: '#0f172a', fontWeight: 900 }}>
+              Built for construction.<br />
+              <span style={{ color: '#f97316' }}>Every module your business needs.</span>
+            </h2>
+            <p style={{ color: '#64748b', fontSize: 17, margin: 0, maxWidth: 640, lineHeight: 1.65 }}>
+              Jobs, estimates, forms, photos, safety, fleet, invoicing, scheduling and more — in one clean portal. Your crew works from site, your office stays across everything.
+            </p>
+          </div>
+
+          {/* Feature grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 18 }}>
+            {featureGroups.map((f) => {
               const Icon = f.icon;
               return (
                 <div
                   key={f.title}
                   style={{
-                    backgroundColor: '#fff', border: '1px solid #e2e8f0',
-                    borderRadius: 10, padding: '22px 20px',
-                    boxShadow: '0 2px 8px rgba(15,23,42,.05)',
+                    backgroundColor: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 14,
+                    padding: '24px 22px',
+                    boxShadow: '0 2px 10px rgba(15,23,42,.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 14,
                   }}
                 >
+                  {/* Icon */}
                   <div style={{
-                    width: 42, height: 42, borderRadius: 10,
-                    backgroundColor: '#eff6ff', color: '#1263d8',
-                    display: 'grid', placeItems: 'center', marginBottom: 14,
+                    width: 48, height: 48, borderRadius: 13,
+                    backgroundColor: f.bg,
+                    display: 'grid', placeItems: 'center',
+                    flexShrink: 0,
                   }}>
-                    <Icon size={20} />
+                    <Icon size={22} color={f.color} />
                   </div>
-                  <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{f.title}</h3>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.5 }}>{f.desc}</p>
+
+                  {/* Title + desc */}
+                  <div>
+                    <h3 style={{ margin: '0 0 7px', fontSize: 16, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                      {f.title}
+                    </h3>
+                    <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.55 }}>
+                      {f.desc}
+                    </p>
+                  </div>
+
+                  {/* Bullet list */}
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {f.bullets.map((b) => (
+                      <li key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: '50%',
+                          backgroundColor: f.bg,
+                          display: 'grid', placeItems: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <CheckCircle size={11} color={f.color} />
+                        </span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               );
             })}
+          </div>
+
+          {/* Bottom CTA */}
+          <div style={{ marginTop: 52, textAlign: 'center' }}>
+            <Link to="/signup" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              backgroundColor: '#f97316', borderRadius: 10, color: '#fff',
+              padding: '14px 28px', fontWeight: 800, fontSize: 15,
+              textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.35)',
+            }}>
+              Start your free 30-day trial
+              <ArrowRight size={16} />
+            </Link>
+            <p style={{ color: '#94a3b8', fontSize: 13, marginTop: 12 }}>No credit card. No setup fee. Cancel anytime.</p>
           </div>
         </div>
       </section>
