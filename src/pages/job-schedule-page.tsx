@@ -324,7 +324,7 @@ export default function JobSchedulePage() {
   const progress = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[152px]">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -758,7 +758,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] md:pt-[152px] flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px] flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

@@ -1,12 +1,9 @@
 /**
- * DesktopDock — Two-row desktop navigation dock.
+ * DesktopDock — Single-row desktop navigation dock.
  *
  * Desktop-only (md+). Fixed below DesktopTopBar (top: 56px).
- * Row 1 — Field & Job tools (worker-facing)
- * Row 2 — Tools, Safety, Management, Admin
- *
- * Total height: ~96px (two rows + labels + gap + padding).
- * Portal pages use padding-top: 152px on desktop.
+ * All nav items in one scrollable row.
+ * Team + Billing live in DesktopTopBar.
  */
 
 import React from 'react';
@@ -28,7 +25,6 @@ import {
   AlertCircle,
   Building2,
   Users,
-  UserCircle,
   TableProperties,
   ScrollText,
   Link2,
@@ -36,7 +32,6 @@ import {
   History,
   Truck,
   ShieldAlert,
-  CreditCard,
 } from 'lucide-react';
 
 interface DockItem {
@@ -48,40 +43,29 @@ interface DockItem {
   ownerOnly?: boolean;
 }
 
-// ── Row 1: Field & Job tools (worker-facing) ──────────────────────────────────
-const ROW1: DockItem[] = [
-  { label: 'Dashboard',        icon: LayoutDashboard, href: '/dashboard',            color: '#1263d8' },
-  { label: 'Jobs',             icon: HardHat,         href: '/jobs',                 color: '#0891b2' },
-  { label: 'Job Cards',        icon: Zap,             href: '/job-cards',            color: '#ca8a04' },
-  { label: 'Field Docs',       icon: FileStack,       href: '/job-docs',             color: '#7c3aed' },
-  { label: 'Scheduler',        icon: CalendarDays,    href: '/scheduler',            color: '#059669' },
-  { label: 'Plan Manager',     icon: Map,             href: '/plan-manager',         color: '#16a34a' },
-  { label: 'Files',            icon: FolderOpen,      href: '/files',                color: '#d97706' },
-  { label: 'Contacts',         icon: Users,           href: '/customers',            color: '#7c3aed' },
-  { label: 'Invoices',         icon: Receipt,         href: '/invoices',             color: '#0284c7' },
-  { label: 'Fleet',            icon: Truck,           href: '/fleet',                color: '#0891b2' },
-];
-
-// ── Row 2: Tools, Safety, Management, Admin ───────────────────────────────────
-const ROW2_LEFT: DockItem[] = [
-  { label: 'Estimating',       icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
-  { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
-  { label: 'Safety Posters',   icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
-  { label: 'Incidents',        icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },
-  { label: 'App Docs',         icon: FileText,        href: '/studio/documents',     color: '#0891b2' },
-  { label: 'Forms',            icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1' },
-  { label: 'Library',          icon: BookOpen,        href: '/studio/library',       color: '#b45309' },
-  { label: 'Equipment',        icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
-  { label: 'Quick Links',      icon: Link2,           href: '/quick-links',          color: '#6366f1' },
-  { label: 'Lists',            icon: TableProperties, href: '/lists',                color: '#0891b2' },
-  { label: 'User Logs',        icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
-  { label: 'Sign-in History',  icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
-];
-
-// Far-right pinned items in Row 2
-const ROW2_RIGHT: DockItem[] = [
-  { label: 'Team',             icon: UserCircle,      href: '/team',                 color: '#0f172a', adminOnly: true },
-  { label: 'Billing',          icon: CreditCard,      href: '/billing',              color: '#0284c7' },
+const ALL_ITEMS: DockItem[] = [
+  { label: 'Dashboard',       icon: LayoutDashboard, href: '/dashboard',            color: '#1263d8' },
+  { label: 'Jobs',            icon: HardHat,         href: '/jobs',                 color: '#0891b2' },
+  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#ca8a04' },
+  { label: 'Field Docs',      icon: FileStack,       href: '/job-docs',             color: '#7c3aed' },
+  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',            color: '#059669' },
+  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#16a34a' },
+  { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#d97706' },
+  { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#7c3aed' },
+  { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0284c7' },
+  { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#0891b2' },
+  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
+  { label: 'Safety',          icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
+  { label: 'Safety Posters',  icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
+  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },
+  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#0891b2' },
+  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1' },
+  { label: 'Library',         icon: BookOpen,        href: '/studio/library',       color: '#b45309' },
+  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
+  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',          color: '#6366f1' },
+  { label: 'Lists',           icon: TableProperties, href: '/lists',                color: '#0891b2' },
+  { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
+  { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -160,29 +144,14 @@ export default function DesktopDock() {
 
   const canSeeAdmin = !permsLoading && (isAdmin || isOwner || isPlatformOwner);
 
-  function filterItems(items: DockItem[]) {
-    return items.filter((item) => {
-      if (item.ownerOnly && !isPlatformOwner) return false;
-      if (item.adminOnly && !canSeeAdmin) return false;
-      return true;
-    });
-  }
-
-  const row1 = filterItems(ROW1);
-  const row2Left = filterItems(ROW2_LEFT);
-  const row2Right = filterItems(ROW2_RIGHT);
+  const items = ALL_ITEMS.filter((item) => {
+    if (item.ownerOnly && !isPlatformOwner) return false;
+    if (item.adminOnly && !canSeeAdmin) return false;
+    return true;
+  });
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
-
-  const rowStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'flex-end',
-    gap: 3,
-    width: '100%',
-    overflowX: 'auto',
-    paddingBottom: 1,
-  };
 
   return (
     <>
@@ -217,42 +186,23 @@ export default function DesktopDock() {
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
           padding: '5px 8px 4px',
-          flexDirection: 'column',
-          gap: 3,
+          alignItems: 'flex-end',
         }}
       >
-        {/* Row 1 — Field & Jobs */}
-        <div className="dock-row" style={rowStyle}>
-          {row1.map((item) => (
+        <div
+          className="dock-row"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 3,
+            width: '100%',
+            overflowX: 'auto',
+            paddingBottom: 1,
+          }}
+        >
+          {items.map((item) => (
             <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
           ))}
-        </div>
-
-        {/* Thin separator */}
-        <div style={{
-          width: '100%',
-          height: 1,
-          background: 'rgba(255,255,255,0.15)',
-          borderRadius: 1,
-          flexShrink: 0,
-        }} />
-
-        {/* Row 2 — Tools & Management */}
-        <div className="dock-row" style={{ ...rowStyle, justifyContent: 'space-between' }}>
-          {/* Left group */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, flex: '1 1 0', minWidth: 0 }}>
-            {row2Left.map((item) => (
-              <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
-            ))}
-          </div>
-          {/* Right-pinned: Team + Billing */}
-          {row2Right.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, flexShrink: 0, paddingLeft: 6, borderLeft: '1px solid rgba(255,255,255,0.18)', marginLeft: 4 }}>
-              {row2Right.map((item) => (
-                <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
-              ))}
-            </div>
-          )}
         </div>
       </nav>
     </>

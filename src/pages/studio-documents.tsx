@@ -528,7 +528,7 @@ export default function StudioDocumentsPage() {
   const activeCount = templates.filter(t => Boolean(t.is_active)).length;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 md:pt-[152px]">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>

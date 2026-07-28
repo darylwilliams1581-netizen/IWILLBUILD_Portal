@@ -173,7 +173,7 @@ export default function StudioPage() {
   }, [navigate]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 md:pt-[152px]">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
