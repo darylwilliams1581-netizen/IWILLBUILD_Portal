@@ -8,7 +8,8 @@ import {
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { usePermissions } from '@/lib/usePermissions';
 import {
   calcPier, calcSlab, calcPit, calcTrench, calcGstAdd, calcGstRemove,
@@ -757,7 +758,9 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
   const supportMode = dazzaCtx?.supportMode ?? false;
 
   return (
-    <div className="portal-page">
+    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px] flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Dazza AI — IWILLBUILD Portal</title>
         <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWILLBUILD portal." />
@@ -774,65 +777,48 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
-      <PortalSidebar />
-
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ── Top bar ── */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+        {/* ── Sub-header: Dazza status + chat controls ── */}
+        <header className="h-11 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
-              <Bot size={16} className="text-white" />
+            <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
+              <Bot size={13} className="text-white" />
             </div>
-            <div>
-              <h1 className="font-heading font-bold text-sm leading-none">Dazza AI</h1>
-              <p className="text-[10px] text-slate-500 leading-none mt-0.5">
-                {ctxLoading ? 'Loading context…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
-              </p>
-            </div>
+            <span className="font-heading font-bold text-sm leading-none text-slate-800">Dazza AI</span>
+            <span className="text-[10px] text-slate-400">
+              {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWILLBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
+            </span>
             <span className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
               Online
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {isAdmin && (
               <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
                 <button
                   onClick={() => setActiveTab('chat')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
-                    activeTab === 'chat'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                    activeTab === 'chat' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  <Bot size={12} /> Chat
+                  <Bot size={11} /> Chat
                 </button>
                 <button
                   onClick={() => setActiveTab('brain')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all ${
-                    activeTab === 'brain'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
+                    activeTab === 'brain' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  <Brain size={12} /> Brain
+                  <Brain size={11} /> Brain
                 </button>
               </div>
             )}
-            <button
-              onClick={exportChat}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
-              title="Export chat"
-            >
-              <Download size={13} />
-              <span className="hidden sm:inline">Export</span>
+            <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
+              <Download size={12} /><span className="hidden sm:inline">Export</span>
             </button>
-            <button
-              onClick={clearChat}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-slate-50"
-            >
-              <RefreshCw size={13} />
-              <span className="hidden sm:inline">New chat</span>
+            <button onClick={clearChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+              <RefreshCw size={12} /><span className="hidden sm:inline">New chat</span>
             </button>
           </div>
         </header>
