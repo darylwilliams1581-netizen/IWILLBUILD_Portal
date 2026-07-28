@@ -1,48 +1,6 @@
 {
-  "appId": "com.iwillbuild.portal",
+  "appId": "com.iwillbuild.app",
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
-  "server": {
-    "url": "https://iwillbuild.com",
-    "cleartext": false,
-    "allowNavigation": ["iwillbuild.com", "*.iwillbuild.com"]
-  },
-  "ios": {
-    "contentInset": "automatic",
-    "backgroundColor": "#111827",
-    "infoPlist": {
-      "NSCameraUsageDescription": "IWILLBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.",
-      "NSPhotoLibraryUsageDescription": "IWILLBUILD uses your photo library so you can upload job photos, receipts, and site evidence.",
-      "NSPhotoLibraryAddUsageDescription": "IWILLBUILD saves captured photos to your photo library.",
-      "NSLocationWhenInUseUsageDescription": "IWILLBUILD uses your location for job travel, fleet tracking, and site attendance records.",
-      "NSLocationAlwaysAndWhenInUseUsageDescription": "IWILLBUILD uses your location in the background to track active drive sessions for fleet management.",
-      "NSLocationAlwaysUsageDescription": "IWILLBUILD uses your location in the background to track active drive sessions for fleet management.",
-      "NSMicrophoneUsageDescription": "IWILLBUILD uses the microphone for voice notes and dictation where enabled.",
-      "UIBackgroundModes": ["location", "fetch", "remote-notification"]
-    }
-  },
-  "android": {
-    "backgroundColor": "#111827"
-  },
-  "plugins": {
-    "Geolocation": {},
-    "StatusBar": {
-      "style": "dark",
-      "backgroundColor": "#111827",
-      "overlaysWebView": false
-    },
-    "SplashScreen": {
-      "launchShowDuration": 1500,
-      "launchAutoHide": true,
-      "backgroundColor": "#111827",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": false,
-      "iosSpinnerStyle": "small",
-      "spinnerColor": "#ff6b00"
-    },
-    "PushNotifications": {
-      "presentationOptions": ["badge", "sound", "alert"]
-    }
-  }
+  "bundledWebRuntime": false
 }
