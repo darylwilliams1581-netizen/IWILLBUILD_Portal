@@ -157,7 +157,7 @@ export default function SignInHistoryPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <Users size={20} className="text-orange-500" />
+              <Users size={20} className="text-violet-600" />
               Sign-In History
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
@@ -170,14 +170,14 @@ export default function SignInHistoryPage() {
               onClick={() => setShowFilters(v => !v)}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border transition-colors ${
                 hasFilters
-                  ? 'bg-orange-50 border-orange-300 text-orange-700'
+                  ? 'bg-violet-50 border-violet-300 text-violet-800'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               <Filter size={14} />
               Filters
               {hasFilters && (
-                <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center">
+                <span className="w-4 h-4 rounded-full bg-violet-500 text-white text-[10px] font-black flex items-center justify-center">
                   !
                 </span>
               )}
@@ -220,7 +220,7 @@ export default function SignInHistoryPage() {
                   type="date"
                   value={dateFrom}
                   onChange={e => setDateFrom(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 />
               </div>
               <div>
@@ -229,7 +229,7 @@ export default function SignInHistoryPage() {
                   type="date"
                   value={dateTo}
                   onChange={e => setDateTo(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 />
               </div>
               <div>
@@ -237,7 +237,7 @@ export default function SignInHistoryPage() {
                 <select
                   value={actorType}
                   onChange={e => setActorType(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 >
                   <option value="">All types</option>
                   {Object.entries(ACTOR_LABELS).map(([k, v]) => (
@@ -250,7 +250,7 @@ export default function SignInHistoryPage() {
                 <select
                   value={source}
                   onChange={e => setSource(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 >
                   <option value="">All sources</option>
                   {Object.entries(SOURCE_LABELS).map(([k, v]) => (
@@ -263,7 +263,7 @@ export default function SignInHistoryPage() {
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={applyFilters}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors"
+                className="px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors"
               >
                 Apply filters
               </button>

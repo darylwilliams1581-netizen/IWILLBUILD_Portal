@@ -81,8 +81,8 @@ const CONTENT: Record<PermissionType, PermissionContent> = {
   },
   microphone: {
     icon: <Mic size={28} />,
-    iconBg: 'bg-orange-50',
-    iconColor: 'text-orange-500',
+    iconBg: 'bg-violet-50',
+    iconColor: 'text-violet-600',
     title: 'Enable Microphone',
     body: 'IWILLBUILD uses your microphone for voice notes and dictation where enabled.',
     enableLabel: 'Enable Microphone',
@@ -235,7 +235,7 @@ export default function PermissionExplainerModal({
             <>
               <button
                 onClick={onEnable}
-                className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3.5 rounded-2xl text-sm active:opacity-80 transition-opacity shadow-md shadow-orange-200"
+                className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3.5 rounded-2xl text-sm active:opacity-80 transition-opacity shadow-md shadow-violet-200"
               >
                 <ShieldCheck size={16} />
                 {c.enableLabel}

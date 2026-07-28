@@ -87,7 +87,7 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
       <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
         <!-- Header -->
         <tr>
-          <td style="background:#F97316;padding:24px 32px;">
+          <td style="background:#7C3AED;padding:24px 32px;">
             <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWILLBUILD Portal</p>
           </td>
         </tr>
@@ -98,7 +98,7 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
             <p style="margin:0 0 24px;font-size:15px;color:rgba(255,255,255,0.6);line-height:1.6;">
               Hi ${firstName}, thanks for signing up. Click the button below to verify your email address and activate your account.
             </p>
-            <a href="${verifyUrl}" style="display:inline-block;background:#F97316;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;letter-spacing:0.2px;">
+            <a href="${verifyUrl}" style="display:inline-block;background:#7C3AED;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;letter-spacing:0.2px;">
               Verify Email Address
             </a>
             <p style="margin:24px 0 0;font-size:13px;color:rgba(255,255,255,0.35);line-height:1.6;">

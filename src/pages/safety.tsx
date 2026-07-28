@@ -177,7 +177,7 @@ export function SwmsLibraryTab() {
             {importing ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
             <span className="hidden sm:inline">Import DOCX</span>
           </button>
-          <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+          <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
             <Plus size={15} /><span className="hidden sm:inline">New SWMS</span>
           </button>
         </div>
@@ -209,7 +209,7 @@ export function SwmsLibraryTab() {
 
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldAlert size={24} className="text-primary" /></div>
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><ShieldAlert size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No SWMS templates yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Import your existing SWMS from a Word document, or create one from scratch.</p>
           <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ export function SwmsLibraryTab() {
               {importing ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
               Import DOCX
             </button>
-            <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+            <button onClick={() => { setEditing(null); setShowModal(true); }} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
               <Plus size={15} />Create SWMS
             </button>
           </div>
@@ -246,7 +246,7 @@ export function SwmsLibraryTab() {
                 <button onClick={() => handleDuplicate(s.id)} disabled={duplicating === s.id} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Duplicate">
                   {duplicating === s.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                 </button>
-                <button onClick={() => setShareTarget({ id: s.id, title: s.title })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Share link">
+                <button onClick={() => setShareTarget({ id: s.id, title: s.title })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Share link">
                   <Share2 size={14} />
                 </button>
                 {isPlatformOwner && (
@@ -267,7 +267,7 @@ export function SwmsLibraryTab() {
                 <a href={`/api/safety/swms/${s.id}/export?format=docx`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Export DOCX">
                   <FileText size={14} />
                 </a>
-                <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                <button onClick={() => { setEditing(s); setShowModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit">
                   <Wand2 size={14} />
                 </button>
                 <button onClick={() => handleArchive(s.id, s.status)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors" title={s.status === 'archived' ? 'Unarchive' : 'Archive'}>
@@ -422,7 +422,7 @@ export function SafetyPlansTab() {
           </button>
           <button
             onClick={openNewBuilder}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={15} /><span className="hidden sm:inline">New WHS Plan</span>
           </button>
@@ -447,11 +447,11 @@ export function SafetyPlansTab() {
 
       {!loading && plans.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><ShieldCheck size={24} className="text-primary" /></div>
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><ShieldCheck size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No safety plans yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the builder.</p>
           <div className="flex items-center gap-3 flex-wrap justify-center">
-            <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+            <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
               <Plus size={15} />New WHS Plan
             </button>
           </div>
@@ -482,7 +482,7 @@ export function SafetyPlansTab() {
                 {/* Edit */}
                 <button
                   onClick={() => openExistingPlan(p)}
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-primary hover:bg-orange-50 border border-slate-200 hover:border-primary/30 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-primary hover:bg-violet-50 border border-slate-200 hover:border-primary/30 transition-colors"
                   title="Edit in WHS Builder"
                 >
                   <Pencil size={12} /><span className="hidden sm:inline">Edit</span>
@@ -593,7 +593,7 @@ export function PoliciesTab() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{docs.length} document{docs.length !== 1 ? 's' : ''}</p>
-        <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+        <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
           <Plus size={15} /><span className="hidden sm:inline">Upload Document</span>
         </button>
       </div>
@@ -602,10 +602,10 @@ export function PoliciesTab() {
 
       {!loading && docs.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><BookOpen size={24} className="text-primary" /></div>
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><BookOpen size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No policies uploaded yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Upload your WHS policies, procedures, and safety management documents.</p>
-          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+          <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
             <Plus size={15} />Upload First Document
           </button>
         </div>
@@ -627,7 +627,7 @@ export function PoliciesTab() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <a href={`/api/safety/documents/${d.id}/download`} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Download">
+                <a href={`/api/safety/documents/${d.id}/download`} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Download">
                   <Download size={14} />
                 </a>
                 {isPolicyOwner && (
@@ -725,7 +725,7 @@ export function PostersTab() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowGenerator(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors"
           >
             <Wand2 size={14} /><span className="hidden sm:inline">Generate Poster</span>
           </button>
@@ -739,11 +739,11 @@ export function PostersTab() {
 
       {!loading && totalCount === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><Image size={24} className="text-primary" /></div>
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><Image size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No site posters yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Generate professional safety posters — risk matrix, emergency contacts, PPE, life saving rules, and more.</p>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowGenerator(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+            <button onClick={() => setShowGenerator(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
               <Wand2 size={14} />Generate Poster
             </button>
             <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 border border-slate-200 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
@@ -760,7 +760,7 @@ export function PostersTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {generated.map((p) => (
               <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 transition-colors">
-                <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
                   <Wand2 size={16} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -783,7 +783,7 @@ export function PostersTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {posters.map((p) => (
               <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 transition-colors">
-                <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
                   <Image size={18} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -855,7 +855,7 @@ export function SafetyDashboardTab() {
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>;
 
   const cards = [
-    { label: 'SWMS Templates', value: stats?.swmsTotal ?? 0, sub: `${stats?.swmsActive ?? 0} active`, icon: ShieldAlert, color: 'text-primary', bg: 'bg-orange-50' },
+    { label: 'SWMS Templates', value: stats?.swmsTotal ?? 0, sub: `${stats?.swmsActive ?? 0} active`, icon: ShieldAlert, color: 'text-primary', bg: 'bg-violet-50' },
     { label: 'Safety Plans', value: stats?.plansTotal ?? 0, sub: `${stats?.plansActive ?? 0} active`, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Policies & Docs', value: stats?.docsTotal ?? 0, sub: 'uploaded', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Site Posters', value: stats?.postersTotal ?? 0, sub: 'uploaded', icon: Image, color: 'text-purple-600', bg: 'bg-purple-50' },
@@ -900,8 +900,8 @@ export function SafetyDashboardTab() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-primary/30 hover:bg-orange-50/30 transition-colors">
-                <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+              <div key={item.label} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-primary/30 hover:bg-violet-50/30 transition-colors">
+                <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
                   <Icon size={15} className="text-primary" />
                 </div>
                 <div>

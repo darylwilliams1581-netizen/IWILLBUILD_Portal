@@ -187,7 +187,7 @@ export default function ForgotPasswordPage() {
                       </p>
                       <button
                         onClick={() => { setEmailSent(false); setEmail(''); }}
-                        className="text-primary hover:text-orange-400 text-sm font-medium transition-colors"
+                        className="text-primary hover:text-violet-400 text-sm font-medium transition-colors"
                       >
                         Try a different email
                       </button>
@@ -220,7 +220,7 @@ export default function ForgotPasswordPage() {
                       <button
                         type="submit"
                         disabled={emailLoading}
-                        className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
+                        className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
                       >
                         {emailLoading ? (
                           <span className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function ForgotPasswordPage() {
                       </p>
                       <button
                         onClick={() => { setSmsSent(false); setPhone(''); }}
-                        className="text-primary hover:text-orange-400 text-sm font-medium transition-colors"
+                        className="text-primary hover:text-violet-400 text-sm font-medium transition-colors"
                       >
                         Try a different number
                       </button>
@@ -292,7 +292,7 @@ export default function ForgotPasswordPage() {
                       <button
                         type="submit"
                         disabled={smsLoading}
-                        className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
+                        className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
                       >
                         {smsLoading ? (
                           <span className="flex items-center gap-2">

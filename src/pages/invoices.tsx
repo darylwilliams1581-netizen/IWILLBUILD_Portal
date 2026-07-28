@@ -171,7 +171,7 @@ export default function InvoicesPage() {
           </div>
           <button
             onClick={() => navigate('/invoices/new')}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors"
           >
             <Plus size={15} />
             <span className="hidden sm:inline">New Invoice</span>
@@ -238,7 +238,7 @@ export default function InvoicesPage() {
 
         {!loading && !error && invoices.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
               <Receipt size={26} className="text-primary" />
             </div>
             <p className="font-heading font-bold text-base text-foreground mb-1">No invoices yet</p>
@@ -247,7 +247,7 @@ export default function InvoicesPage() {
             </p>
             <button
               onClick={() => navigate('/invoices/new')}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
             >
               <Plus size={15} />New Invoice
             </button>

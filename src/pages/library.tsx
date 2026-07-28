@@ -86,7 +86,7 @@ const TYPE_COLORS: Record<string, string> = {
   swms:            'bg-red-500/10 text-red-600',
   form:            'bg-emerald-500/10 text-emerald-600',
   recipe:          'bg-amber-500/10 text-amber-600',
-  estimate_recipe: 'bg-orange-500/10 text-orange-600',
+  estimate_recipe: 'bg-violet-500/10 text-violet-700',
   scope_line:      'bg-teal-500/10 text-teal-600',
 };
 
@@ -286,8 +286,8 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0">
-                  <BookOpen size={20} className="text-orange-500" />
+                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={20} className="text-violet-600" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-slate-900">Content Library</h1>
@@ -309,7 +309,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     tab === t
-                      ? 'bg-orange-500 text-white shadow-sm'
+                      ? 'bg-violet-500 text-white shadow-sm'
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
@@ -320,7 +320,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                       <BookMarked size={14} />
                       Installed
                       {installedIds.size > 0 && (
-                        <span className="bg-orange-100 text-orange-600 text-xs px-1.5 py-0.5 rounded-full">
+                        <span className="bg-violet-100 text-violet-700 text-xs px-1.5 py-0.5 rounded-full">
                           {installedIds.size}
                         </span>
                       )}
@@ -343,7 +343,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                       placeholder="Search title, summary, tags…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
                     />
                   </div>
 
@@ -353,7 +353,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
-                      className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                      className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
                     >
                       {ITEM_TYPES.map((t) => (
                         <option key={t.value} value={t.value}>{t.label}</option>
@@ -463,7 +463,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                               <button
                                 onClick={() => void handleInstall(item)}
                                 disabled={isInstalling}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
                               >
                                 {isInstalling ? (
                                   <Loader2 size={12} className="animate-spin" />
@@ -506,7 +506,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                     {(search || typeFilter) && (
                       <button
                         onClick={() => { setSearch(''); setTypeFilter(''); }}
-                        className="text-xs text-orange-500 hover:text-orange-600 underline"
+                        className="text-xs text-violet-600 hover:text-violet-700 underline"
                       >
                         Clear filters
                       </button>
@@ -555,7 +555,7 @@ export function LibraryPage({ initialTypeFilter }: { initialTypeFilter?: string 
                     <p className="text-slate-500 text-sm">No items installed yet.</p>
                     <button
                       onClick={() => setTab('browse')}
-                      className="text-xs text-orange-500 hover:text-orange-600 underline"
+                      className="text-xs text-violet-600 hover:text-violet-700 underline"
                     >
                       Browse the library
                     </button>

@@ -110,7 +110,7 @@ function CostItemModal({
           )}
           <div className="flex gap-2 justify-end pt-1">
             <button type="button" onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               {initial ? 'Save Changes' : 'Add Item'}
             </button>
@@ -181,7 +181,7 @@ function CostGuidePickerModal({
             <button
               key={item.id}
               onClick={() => { onInsert(item); onClose(); }}
-              className="w-full flex items-center justify-between px-5 py-3 hover:bg-orange-50 border-b border-slate-50 transition-colors text-left"
+              className="w-full flex items-center justify-between px-5 py-3 hover:bg-violet-50 border-b border-slate-50 transition-colors text-left"
             >
               <div>
                 <div className="text-sm font-medium text-slate-800">{item.description}</div>
@@ -317,7 +317,7 @@ function RecipeModal({
                   <button
                     type="button"
                     onClick={() => setShowCostPicker(true)}
-                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-primary hover:bg-orange-50 px-2 py-1 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
+                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-primary hover:bg-violet-50 px-2 py-1 rounded-lg transition-colors border border-slate-200 hover:border-primary/30"
                   >
                     <Calculator size={11} />Cost Guide
                   </button>
@@ -326,7 +326,7 @@ function RecipeModal({
                     onClick={addLine}
                     disabled={lines.length >= LIMITS.RECIPE_LINES}
                     title={lines.length >= LIMITS.RECIPE_LINES ? `Recipe limit reached (${LIMITS.RECIPE_LINES} lines)` : undefined}
-                    className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 rounded-lg transition-colors"
+                    className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 rounded-lg transition-colors"
                   >
                     <Plus size={12} />Add Line
                   </button>
@@ -354,16 +354,16 @@ function RecipeModal({
                     {lines.map((line, idx) => (
                       <tr key={line._key} className="border-t border-slate-100">
                         <td className="px-2 py-1.5">
-                          <input value={line.description} onChange={(e) => updateLine(line._key, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors" />
+                          <input value={line.description} onChange={(e) => updateLine(line._key, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <input type="number" min="0" step="any" value={line.quantity} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors" />
+                          <input type="number" min="0" step="any" value={line.quantity} onChange={(e) => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <input value={line.unit ?? ''} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors" />
+                          <input value={line.unit ?? ''} onChange={(e) => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
                         </td>
                         <td className="px-2 py-1.5">
-                          <input type="number" min="0" step="any" value={line.rate} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-orange-50/30 transition-colors" />
+                          <input type="number" min="0" step="any" value={line.rate} onChange={(e) => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
                         </td>
                         <td className="px-2 py-1.5 text-right font-mono text-xs text-slate-600">
                           ${lineCalc(line).toFixed(2)}
@@ -392,7 +392,7 @@ function RecipeModal({
 
           <div className="px-6 py-4 border-t border-slate-100 flex gap-2 justify-end shrink-0">
             <button type="button" onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               {initial ? 'Save Changes' : 'Create Recipe'}
             </button>
@@ -538,7 +538,7 @@ export function CostGuideTab() {
             onClick={() => { setEditing(undefined); setShowModal(true); }}
             disabled={items.length >= 200}
             title={items.length >= 200 ? 'Cost Guide limit reached (200 items). Delete unused items to add more.' : undefined}
-            className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={14} />Cost Item
           </button>
@@ -581,7 +581,7 @@ export function CostGuideTab() {
                     <td className="px-3 py-3 text-right font-mono text-slate-700">${parseFloat(item.rate).toFixed(2)}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => { setEditing(item); setShowModal(true); }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"><Pencil size={13} /></button>
+                        <button onClick={() => { setEditing(item); setShowModal(true); }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"><Pencil size={13} /></button>
                         <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
                       </div>
                     </td>
@@ -698,7 +698,7 @@ export function RecipesTab() {
       <div className="flex justify-end">
         <button
           onClick={() => { setEditing(undefined); setShowModal(true); }}
-          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors"
         >
           <Plus size={14} />Recipe
         </button>
@@ -734,7 +734,7 @@ export function RecipesTab() {
                   <div className="text-xs text-slate-400 shrink-0">{recipe.lines.length} line{recipe.lines.length !== 1 ? 's' : ''}</div>
                   <div className="text-sm font-mono font-semibold text-slate-700 shrink-0 ml-2">${total.toFixed(2)}</div>
                   <div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => { setEditing(recipe); setShowModal(true); }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"><Pencil size={13} /></button>
+                    <button onClick={() => { setEditing(recipe); setShowModal(true); }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"><Pencil size={13} /></button>
                     <button onClick={() => handleDuplicate(recipe)} className="p-1.5 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Copy size={13} /></button>
                     <button onClick={() => handleDelete(recipe.id)} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
                   </div>

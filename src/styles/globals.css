@@ -9,40 +9,40 @@
     /* Core Colors */
     --background: 0 0% 100%;
     --foreground: 0 0% 4%;
-    --card: 210 17% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 4%;
-    --primary: 25 95% 53%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 19% 27%;
+    --secondary: 292 83% 58%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 17% 95%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    --muted: 264 45% 98%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 82 83% 58%;
+    --accent-foreground: 0 0% 34%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 25 95% 53%;
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 262 83% 58%;
 
     /* Extended Colors */
-    --chart-1: 25 95% 83%;
-    --chart-2: 25 95% 68%;
-    --chart-3: 25 95% 53%;
-    --chart-4: 25 95% 38%;
-    --chart-5: 25 95% 23%;
+    --chart-1: 262 84% 88%;
+    --chart-2: 262 83% 73%;
+    --chart-3: 262 83% 58%;
+    --chart-4: 262 83% 43%;
+    --chart-5: 262 83% 28%;
 
     /* Sidebar Colors */
-    --sidebar: 210 17% 95%;
+    --sidebar: 264 45% 98%;
     --sidebar-foreground: 0 0% 4%;
-    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 95% 53%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 25 95% 53%;
+    --sidebar-accent: 82 83% 58%;
+    --sidebar-accent-foreground: 0 0% 34%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 262 83% 58%;
 
     /* Typography */
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -817,8 +817,8 @@ input, select, textarea {
   --op-text-2:      #374151;   /* secondary text */
   --op-text-muted:  #6b7280;   /* muted / metadata */
   --op-text-faint:  #9ca3af;   /* placeholder / disabled */
-  --op-orange:      #f97316;   /* primary action */
-  --op-orange-hover:#ea6c0a;   /* primary action hover */
+  --op-orange:      #7c3aed;   /* primary action */
+  --op-orange-hover:#6d28d9;   /* primary action hover */
   --op-header-h:    44px;      /* desktop page-header height */
   --op-row-py:      6px;       /* table/list row vertical padding */
 }

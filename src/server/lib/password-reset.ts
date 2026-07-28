@@ -121,7 +121,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     <tr><td align="center">
       <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
         <tr>
-          <td style="background:#F97316;padding:24px 32px;">
+          <td style="background:#7C3AED;padding:24px 32px;">
             <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWILLBUILD Portal</p>
           </td>
         </tr>
@@ -131,7 +131,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
             <p style="margin:0 0 24px;font-size:15px;color:rgba(255,255,255,0.6);line-height:1.6;">
               Hi ${firstName}, click the button below to set a new password. This link expires in <strong style="color:#fff;">30 minutes</strong>.
             </p>
-            <a href="${resetUrl}" style="display:inline-block;background:#F97316;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;letter-spacing:0.2px;">
+            <a href="${resetUrl}" style="display:inline-block;background:#7C3AED;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;letter-spacing:0.2px;">
               Reset Password
             </a>
             <p style="margin:24px 0 0;font-size:13px;color:rgba(255,255,255,0.35);line-height:1.6;">
@@ -159,7 +159,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0F1117;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
-        <tr><td style="background:#F97316;padding:24px 32px;">
+        <tr><td style="background:#7C3AED;padding:24px 32px;">
           <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">IWILLBUILD Portal</p>
         </td></tr>
         <tr><td style="padding:32px;">

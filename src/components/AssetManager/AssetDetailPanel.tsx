@@ -66,7 +66,7 @@ function TypeBadge({ type }: { type: string }) {
     substation: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     building: 'bg-blue-100 text-blue-700 border-blue-200',
     facility: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-    vehicle: 'bg-orange-100 text-orange-700 border-orange-200',
+    vehicle: 'bg-violet-100 text-violet-800 border-violet-200',
     equipment: 'bg-purple-100 text-purple-700 border-purple-200',
     infrastructure: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   };
@@ -99,7 +99,7 @@ function StatusBadge({ status }: { status: string }) {
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
     critical: 'bg-red-100 text-red-700 border-red-200',
-    high: 'bg-orange-100 text-orange-700 border-orange-200',
+    high: 'bg-violet-100 text-violet-800 border-violet-200',
     medium: 'bg-amber-100 text-amber-700 border-amber-200',
     low: 'bg-slate-100 text-slate-500 border-slate-200',
   };
@@ -216,29 +216,29 @@ function EditForm({ asset, onSave, onCancel }: {
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Name *</label>
             <input value={form.name} onChange={set('name')}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Acronym</label>
             <input value={form.acronym} onChange={set('acronym')}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 mb-1">Address / Location</label>
             <input value={form.address} onChange={set('address')}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Asset Type</label>
             <select value={form.asset_type} onChange={set('asset_type')}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30">
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30">
               {ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
             <select value={form.status} onChange={set('status')}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30">
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30">
               {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -246,7 +246,7 @@ function EditForm({ asset, onSave, onCancel }: {
         <div className="flex items-center gap-2 justify-end pt-1">
           <button onClick={onCancel} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
           <button onClick={() => void submit()} disabled={saving || !form.name.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
             Save Changes
           </button>
@@ -291,7 +291,7 @@ function InspectionsTab({ assetId }: { assetId: number }) {
       ) : (
         <div className="flex flex-col gap-2">
           {items.map(insp => (
-            <div key={insp.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-orange-200 hover:shadow-sm transition-all">
+            <div key={insp.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-violet-200 hover:shadow-sm transition-all">
               <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                 <ClipboardCheck size={14} className="text-blue-500" />
               </div>
@@ -351,7 +351,7 @@ function DefectsTab({ assetId }: { assetId: number }) {
       ) : (
         <div className="flex flex-col gap-2">
           {items.map(defect => (
-            <div key={defect.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-orange-200 hover:shadow-sm transition-all">
+            <div key={defect.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-violet-200 hover:shadow-sm transition-all">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                 defect.status === 'open' ? 'bg-red-50 border border-red-100' :
                 defect.status === 'in_progress' ? 'bg-amber-50 border border-amber-100' :
@@ -426,7 +426,7 @@ function AttachmentMiniList({ tenderId }: { tenderId: number }) {
             download={att.original_name}
             target="_blank"
             rel="noreferrer"
-            className="text-slate-400 hover:text-orange-500 transition-colors"
+            className="text-slate-400 hover:text-violet-600 transition-colors"
             title="Download"
           >
             <Download size={12} />
@@ -488,7 +488,7 @@ function TendersTab({ assetId }: { assetId: number }) {
       ) : (
         <div className="flex flex-col gap-2">
           {items.map(tender => (
-            <div key={tender.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-orange-200 hover:shadow-sm transition-all">
+            <div key={tender.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-violet-200 hover:shadow-sm transition-all">
               <div className="px-4 py-3 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
                   <FileText size={14} className="text-purple-500" />
@@ -519,7 +519,7 @@ function TendersTab({ assetId }: { assetId: number }) {
                     {(attachCounts[tender.id] ?? 0) > 0 && (
                       <button
                         onClick={() => setExpandedId(prev => prev === tender.id ? null : tender.id)}
-                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-orange-500 transition-colors"
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-600 transition-colors"
                       >
                         <Paperclip size={11} />
                         {attachCounts[tender.id]} file{attachCounts[tender.id] !== 1 ? 's' : ''}
@@ -623,7 +623,7 @@ export default function AssetDetailPanel({ assetId, onBack, onAssetUpdated }: Pr
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-orange-500" />
+        <Loader2 size={24} className="animate-spin text-violet-600" />
       </div>
     );
   }
@@ -633,7 +633,7 @@ export default function AssetDetailPanel({ assetId, onBack, onAssetUpdated }: Pr
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6">
         <AlertCircle size={32} className="text-red-400" />
         <p className="text-sm font-semibold text-slate-600">{error || 'Asset not found'}</p>
-        <button onClick={onBack} className="text-xs text-orange-500 hover:underline">Go back</button>
+        <button onClick={onBack} className="text-xs text-violet-600 hover:underline">Go back</button>
       </div>
     );
   }
@@ -679,7 +679,7 @@ export default function AssetDetailPanel({ assetId, onBack, onAssetUpdated }: Pr
             className={[
               'flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap',
               tab === t.id
-                ? 'border-orange-500 text-orange-600'
+                ? 'border-violet-600 text-violet-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700',
             ].join(' ')}
           >

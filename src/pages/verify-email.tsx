@@ -134,7 +134,7 @@ export default function VerifyEmailPage() {
                 </p>
                 <Link
                   to="/login?verified=1"
-                  className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
                 >
                   Sign in now
                   <ArrowRight size={16} />
@@ -154,7 +154,7 @@ export default function VerifyEmailPage() {
                 </p>
                 <Link
                   to="/check-email"
-                  className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
                 >
                   Resend verification email
                 </Link>
@@ -177,7 +177,7 @@ export default function VerifyEmailPage() {
                 <div className="flex flex-col gap-3">
                   <Link
                     to="/check-email"
-                    className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                    className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
                   >
                     Request a new link
                   </Link>

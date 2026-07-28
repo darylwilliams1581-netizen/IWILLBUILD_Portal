@@ -95,7 +95,7 @@ function Chip({ icon: Icon, label, warn }: { icon: React.ElementType; label: str
 const ASSIGN_TYPES = [
   { id: 'container', label: 'Container', icon: Package,  color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200' },
   { id: 'car',       label: 'Car',       icon: Car,      color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' },
-  { id: 'truck',     label: 'Truck',     icon: Truck,    color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200' },
+  { id: 'truck',     label: 'Truck',     icon: Truck,    color: 'bg-violet-50 text-violet-800 hover:bg-violet-100 border-violet-200' },
   { id: 'person',    label: 'Person',    icon: User,     color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200' },
   { id: 'job',       label: 'Job',       icon: Briefcase,color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200' },
 ];
@@ -135,7 +135,7 @@ function AssignModal({ assetId, onClose, onSaved }: {
         <div className="grid grid-cols-5 gap-2">
           {ASSIGN_TYPES.map(({ id, label, icon: Icon, color }) => (
             <button key={id} onClick={() => { setType(id); setValue(''); }}
-              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${type === id ? 'ring-2 ring-orange-500 ring-offset-1 ' + color : color}`}>
+              className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all ${type === id ? 'ring-2 ring-violet-600 ring-offset-1 ' + color : color}`}>
               <Icon size={18} /><span>{label}</span>
             </button>
           ))}
@@ -148,13 +148,13 @@ function AssignModal({ assetId, onClose, onSaved }: {
             <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && save()}
               placeholder={type === 'person' ? 'e.g. John Smith' : type === 'job' ? 'e.g. 1042' : type === 'car' ? 'e.g. ABC-123' : type === 'truck' ? 'e.g. Truck 4' : 'e.g. Container C3'}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
           </div>
         )}
         <div className="flex gap-2 justify-end pt-1">
           <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
           <button onClick={save} disabled={!type || !value.trim() || saving}
-            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg disabled:opacity-40">
+            className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg disabled:opacity-40">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Assign
           </button>
         </div>
@@ -224,7 +224,7 @@ function EditModal({ eq, onClose, onSaved }: {
     onClose();
   }
 
-  const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 bg-white';
+  const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400 bg-white';
   const lbl = 'block text-xs font-medium text-slate-500 mb-1';
 
   return (
@@ -393,7 +393,7 @@ function EditModal({ eq, onClose, onSaved }: {
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
           <button onClick={save} disabled={!form.name.trim() || saving}
-            className="flex items-center gap-1.5 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg disabled:opacity-40">
+            className="flex items-center gap-1.5 px-5 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg disabled:opacity-40">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save changes
           </button>
         </div>
@@ -436,7 +436,7 @@ export default function EquipmentDetailPanel({
     <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
       <AlertCircle size={28} />
       <p className="text-sm">{error || 'Equipment not found'}</p>
-      <button onClick={onBack} className="text-xs text-orange-500 hover:underline">Go back</button>
+      <button onClick={onBack} className="text-xs text-violet-600 hover:underline">Go back</button>
     </div>
   );
 
@@ -461,8 +461,8 @@ export default function EquipmentDetailPanel({
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="flex items-start gap-4">
             {/* Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-              <TypeIcon size={26} className="text-orange-500" />
+            <div className="w-14 h-14 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+              <TypeIcon size={26} className="text-violet-600" />
             </div>
 
             {/* Info */}
@@ -579,7 +579,7 @@ export default function EquipmentDetailPanel({
       {/* ── Floating action bar ── */}
       <div className="shrink-0 px-4 py-3 bg-white border-t border-slate-200 flex items-center gap-3">
         <button onClick={() => setShowAssign(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors">
           <User size={14} /> Assign
         </button>
         <button onClick={() => setShowEdit(true)}

@@ -112,8 +112,8 @@ export default function PlanManagerPage() {
             >
               <Menu size={20} />
             </button>
-            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-              <Map size={18} className="text-orange-500" />
+            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
+              <Map size={18} className="text-violet-600" />
             </div>
             <div>
               <h1 className="text-base md:text-lg font-bold text-slate-900">Plan Manager</h1>
@@ -128,7 +128,7 @@ export default function PlanManagerPage() {
                 onClick={() => setTab('active')}
                 className={[
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  tab === 'active' ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-slate-700',
+                  tab === 'active' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700',
                 ].join(' ')}
               >
                 <Layers size={12} /> Active
@@ -137,7 +137,7 @@ export default function PlanManagerPage() {
                 onClick={() => setTab('archived')}
                 className={[
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                  tab === 'archived' ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-slate-700',
+                  tab === 'archived' ? 'bg-violet-500 text-white' : 'text-slate-500 hover:text-slate-700',
                 ].join(' ')}
               >
                 <Archive size={12} /> Archived

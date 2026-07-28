@@ -223,7 +223,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
         <p className="text-white/50 text-sm">Session check timed out. Please try again.</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-orange-600 text-sm font-medium"
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-violet-700 text-sm font-medium"
         >
           Retry
         </button>

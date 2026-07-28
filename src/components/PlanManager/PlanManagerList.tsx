@@ -76,7 +76,7 @@ function DrawingRow({
       {/* PDF icon — tiny */}
       <div className={[
         'w-5 h-5 rounded flex items-center justify-center shrink-0',
-        hasPdf ? 'text-orange-500' : 'text-slate-400',
+        hasPdf ? 'text-violet-600' : 'text-slate-400',
       ].join(' ')}>
         <FileText size={12} />
       </div>
@@ -118,7 +118,7 @@ function DrawingRow({
               <button
                 onClick={() => onOpen(drawing.id)}
                 title="Open viewer"
-                className="p-1 rounded text-slate-400 hover:bg-orange-50 hover:text-orange-500 transition-colors"
+                className="p-1 rounded text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
               >
                 <Eye size={12} />
               </button>
@@ -195,8 +195,8 @@ function JobGroupSection({
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left"
       >
-        <div className="w-5 h-5 rounded bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
-          <Briefcase size={10} className="text-orange-500" />
+        <div className="w-5 h-5 rounded bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+          <Briefcase size={10} className="text-violet-600" />
         </div>
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="text-xs font-bold text-slate-800 truncate">
@@ -280,7 +280,7 @@ export default function PlanManagerList({
             placeholder="Search drawings or jobs…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-colors"
           />
         </div>
         <div className="text-[11px] text-slate-400 whitespace-nowrap">

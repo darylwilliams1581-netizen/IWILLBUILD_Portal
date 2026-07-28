@@ -36,7 +36,7 @@ const TOOLS: { tool: ToolType; icon: React.ElementType; label: string; group: 'n
   { tool: 'stamp',     icon: Stamp,         label: 'Stamp',      group: 'draw' },
 ];
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#000000', '#ffffff'];
+const COLORS = ['#ef4444', '#7c3aed', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#000000', '#ffffff'];
 
 const STAMP_TEMPLATES: { value: StampTemplate; label: string }[] = [
   { value: 'AS_CONSTRUCTED', label: 'As Constructed' },
@@ -74,7 +74,7 @@ export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, c
             className={[
               'w-9 h-9 rounded-lg flex items-center justify-center transition-colors',
               activeTool === tool
-                ? 'bg-orange-500 text-white'
+                ? 'bg-violet-500 text-white'
                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700',
               isLocked && tool !== 'select' && tool !== 'pan' ? 'opacity-30 cursor-not-allowed' : '',
             ].join(' ')}
@@ -101,7 +101,7 @@ export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, c
               className={[
                 'w-9 h-9 rounded-lg flex items-center justify-center transition-colors',
                 activeTool === tool
-                  ? 'bg-orange-500 text-white'
+                  ? 'bg-violet-500 text-white'
                   : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700',
                 isLocked ? 'opacity-30 cursor-not-allowed' : '',
               ].join(' ')}
@@ -120,7 +120,7 @@ export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, c
                     }}
                     className={[
                       'w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition-colors first:rounded-t-lg last:rounded-b-lg',
-                      activeStyle.stampTemplate === st.value ? 'text-orange-400 font-semibold' : '',
+                      activeStyle.stampTemplate === st.value ? 'text-violet-400 font-semibold' : '',
                     ].join(' ')}
                   >
                     {st.label}
@@ -144,7 +144,7 @@ export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, c
             className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 mx-auto"
             style={{
               backgroundColor: c,
-              borderColor: activeStyle.color === c ? '#f97316' : 'transparent',
+              borderColor: activeStyle.color === c ? '#7c3aed' : 'transparent',
               boxShadow: c === '#ffffff' ? 'inset 0 0 0 1px #475569' : undefined,
             }}
           />
@@ -162,7 +162,7 @@ export default function AnnotationToolbar({ activeTool, activeStyle, isLocked, c
             onClick={() => onStyleChange({ strokeWidth: w })}
             className={[
               'w-7 h-7 rounded flex items-center justify-center mx-auto transition-colors',
-              activeStyle.strokeWidth === w ? 'bg-orange-500/20' : 'hover:bg-slate-700',
+              activeStyle.strokeWidth === w ? 'bg-violet-500/20' : 'hover:bg-slate-700',
             ].join(' ')}
           >
             <div

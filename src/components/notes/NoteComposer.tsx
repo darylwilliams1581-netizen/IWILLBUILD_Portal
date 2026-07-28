@@ -71,7 +71,7 @@ export default function NoteComposer({ onSubmit, disabled }: Props) {
         <button
           type="submit"
           disabled={!canSubmit}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
           Post Note

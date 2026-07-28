@@ -258,7 +258,7 @@ function SharePanel({ documentId, shares, onRefresh }: {
         <button
           onClick={() => void handleCreate()}
           disabled={creating}
-          className="flex items-center justify-center gap-1.5 text-xs bg-primary hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 text-xs bg-primary hover:bg-violet-700 text-white px-3 py-2 rounded-lg font-semibold disabled:opacity-50"
         >
           {creating ? <Loader2 size={11} className="animate-spin" /> : <Share2 size={11} />}
           {activeShares.length > 0 ? 'Regenerate Link' : 'Create Share Link'}
@@ -534,7 +534,7 @@ export default function DocumentViewerPage() {
                     linkType: 'document_view',
                     defaultPermissions: ['view'],
                   })}
-                  className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
                 >
                   <Link2 size={13} />
                   Create Secure Link

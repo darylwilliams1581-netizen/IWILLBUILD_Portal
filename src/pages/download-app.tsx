@@ -57,7 +57,7 @@ export default function DownloadAppPage() {
 
         {/* Header */}
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shrink-0">
             <span className="text-white font-black text-sm">IW</span>
           </div>
           <div>
@@ -70,7 +70,7 @@ export default function DownloadAppPage() {
 
           {/* Hero */}
           <div className="text-center space-y-4">
-            <div className="w-20 h-20 rounded-3xl bg-orange-500 flex items-center justify-center mx-auto shadow-2xl shadow-orange-500/30">
+            <div className="w-20 h-20 rounded-3xl bg-violet-500 flex items-center justify-center mx-auto shadow-2xl shadow-violet-200/30">
               <Smartphone size={36} className="text-white" />
             </div>
             <div>
@@ -98,7 +98,7 @@ export default function DownloadAppPage() {
               href={GITHUB_RELEASES_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-4 px-6 rounded-2xl transition-colors shadow-lg shadow-orange-500/20 text-base"
+              className="flex items-center justify-center gap-3 w-full bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white font-bold py-4 px-6 rounded-2xl transition-colors shadow-lg shadow-violet-200/20 text-base"
             >
               <Download size={20} />
               Download Android APK
@@ -122,8 +122,8 @@ export default function DownloadAppPage() {
             <div className="space-y-3">
               {steps.map((step) => (
                 <div key={step.n} className="flex gap-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
-                  <div className="w-7 h-7 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-orange-400 font-black text-xs">{step.n}</span>
+                  <div className="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-600/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-violet-400 font-black text-xs">{step.n}</span>
                   </div>
                   <div>
                     <p className="text-white font-semibold text-sm">{step.title}</p>
@@ -140,8 +140,8 @@ export default function DownloadAppPage() {
             <div className="grid grid-cols-1 gap-3">
               {features.map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
-                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                    <Icon size={16} className="text-orange-400" />
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                    <Icon size={16} className="text-violet-400" />
                   </div>
                   <div>
                     <p className="text-white font-semibold text-sm">{label}</p>

@@ -1122,7 +1122,7 @@ export default function JobCardDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Labour', value: fmtCurrency(labour), icon: DollarSign, cls: 'text-emerald-600' },
-                  { label: 'Materials', value: fmtCurrency(mats), icon: Wrench, cls: 'text-orange-500' },
+                  { label: 'Materials', value: fmtCurrency(mats), icon: Wrench, cls: 'text-violet-600' },
                   { label: 'Subtotal', value: fmtCurrency(subtotal), icon: FileText, cls: 'text-gray-500' },
                   { label: 'Total (inc. GST)', value: fmtCurrency(total), icon: Receipt, cls: 'text-blue-600' },
                 ].map(({ label, value, icon: Icon, cls }) => (

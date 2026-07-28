@@ -415,8 +415,8 @@ function AttendanceSheet({ onClose }: { onClose: () => void }) {
             ) : (
               <div className="space-y-2">
                 {jobs.map(job => (
-                  <button key={job.id} onClick={() => setSelectedJob(job)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${selectedJob?.id === job.id ? 'bg-orange-50 border-orange-300 text-gray-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-orange-500' : 'bg-gray-300'}`} />
+                  <button key={job.id} onClick={() => setSelectedJob(job)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${selectedJob?.id === job.id ? 'bg-violet-50 border-violet-300 text-gray-900' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${selectedJob?.id === job.id ? 'bg-violet-500' : 'bg-gray-300'}`} />
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">{job.name}</p>
                       {job.jobNumber && <p className="text-xs text-gray-400 font-mono">{job.jobNumber}</p>}
@@ -835,7 +835,7 @@ export default function DriverPage() {
               {/* Prestart link */}
               <button
                 onClick={() => navigate('/prestart')}
-                className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 w-full hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 transition-colors text-left"
+                className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 w-full hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 transition-colors text-left"
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
                 <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-md shadow-amber-200">
@@ -854,7 +854,7 @@ export default function DriverPage() {
                 className="flex items-center gap-4 bg-white border border-gray-200 rounded-2xl px-5 py-4 mb-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shrink-0 shadow-md shadow-orange-200">
+                <div className="w-12 h-12 rounded-2xl bg-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-violet-200">
                   <LayoutDashboard size={22} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -885,7 +885,7 @@ export default function DriverPage() {
                   <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Attendance</span>
                 </button>
                 <Link to="/safety" className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                  <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center"><HardHat size={16} className="text-white" /></div>
+                  <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center"><HardHat size={16} className="text-white" /></div>
                   <span className="text-gray-600 text-xs font-semibold text-center leading-tight">Safety</span>
                 </Link>
                 <Link to="/fleet" className="flex flex-col items-center gap-2 bg-white border border-gray-200 rounded-xl py-3.5 px-2 hover:bg-gray-50 active:bg-gray-100 transition-colors">
@@ -896,7 +896,7 @@ export default function DriverPage() {
             </div>
 
             {/* ── Launch ── */}
-            <Link to="/jobs" className="flex items-center justify-center gap-3 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-orange-500/25">
+            <Link to="/jobs" className="flex items-center justify-center gap-3 w-full bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white font-black py-5 rounded-2xl transition-colors shadow-lg shadow-violet-200/25">
               <Rocket size={20} />
               <span className="text-base">Launch</span>
             </Link>

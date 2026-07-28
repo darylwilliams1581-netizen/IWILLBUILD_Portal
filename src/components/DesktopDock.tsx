@@ -59,7 +59,7 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'App Docs',        icon: FileText,        href: '/studio/documents',   color: '#0891b2', bg: '#ecfeff' },
   { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',       color: '#6366f1', bg: '#eef2ff' },
   { label: 'Library',         icon: BookOpen,        href: '/studio/library',     color: '#b45309', bg: '#fffbeb' },
-  { label: 'Files',           icon: FolderOpen,      href: '/files',              color: '#f97316', bg: '#fff7ed' },
+  { label: 'Files',           icon: FolderOpen,      href: '/files',              color: '#7c3aed', bg: '#fff7ed' },
   { label: 'Fleet',           icon: Truck,           href: '/fleet',              color: '#059669', bg: '#ecfdf5' },
   { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',       color: '#16a34a', bg: '#f0fdf4' },
   { label: 'Safety',          icon: ShieldCheck,     href: '/safety',             color: '#dc2626', bg: '#fef2f2' },

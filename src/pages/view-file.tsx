@@ -84,7 +84,7 @@ export default function ViewFilePage() {
               )}
               <button
                 onClick={() => downloadFile(file.id, file.originalName)}
-                className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                className="flex items-center gap-1.5 text-xs bg-violet-500 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
               >
                 <Download size={13} />
                 Download
@@ -104,7 +104,7 @@ export default function ViewFilePage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {loading && (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 size={28} className="animate-spin text-orange-500" />
+              <Loader2 size={28} className="animate-spin text-violet-600" />
             </div>
           )}
 
@@ -152,7 +152,7 @@ export default function ViewFilePage() {
               </div>
               <button
                 onClick={() => downloadFile(file.id, file.originalName)}
-                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors"
+                className="flex items-center gap-2 bg-violet-500 hover:bg-violet-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors"
               >
                 <Download size={16} />
                 Download File

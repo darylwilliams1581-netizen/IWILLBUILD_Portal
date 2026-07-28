@@ -153,7 +153,7 @@ export default function CompanyTab() {
           {errorMsg && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2"><AlertCircle size={13} />{errorMsg}</div>}
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
             <span className={`flex items-center gap-1.5 text-xs font-semibold transition-all duration-300 ${saveState === 'saved' ? 'text-emerald-600' : 'text-transparent'}`}><CheckCircle2 size={13} />Saved</span>
-            <button type="submit" disabled={saving} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60">
+            <button type="submit" disabled={saving} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-60">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save Changes
             </button>
           </div>

@@ -249,7 +249,7 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
           <Button
             onClick={() => void handleSave()}
             disabled={saving}
-            className="flex-1 sm:flex-none bg-primary hover:bg-orange-600 text-white font-bold"
+            className="flex-1 sm:flex-none bg-primary hover:bg-violet-700 text-white font-bold"
           >
             {saving ? (
               <><Loader2 size={14} className="animate-spin mr-2" />Saving…</>
@@ -351,7 +351,7 @@ export default function JobDelays({ jobId, readOnly = false }: Props) {
           <Button
             onClick={openAdd}
             size="sm"
-            className="bg-primary hover:bg-orange-600 text-white font-bold text-xs"
+            className="bg-primary hover:bg-violet-700 text-white font-bold text-xs"
           >
             <Plus size={14} className="mr-1.5" />
             Add Delay
@@ -484,7 +484,7 @@ export default function JobDelays({ jobId, readOnly = false }: Props) {
                 <div className="flex items-center gap-1.5 sm:justify-end">
                   <button
                     onClick={() => openEdit(delay)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors"
                     title="Edit"
                   >
                     <Edit2 size={13} />

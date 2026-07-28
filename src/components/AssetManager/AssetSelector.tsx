@@ -133,7 +133,7 @@ export default function AssetSelector({ value, onChange }: Props) {
                   key={asset.id}
                   type="button"
                   onClick={() => select(asset)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-orange-50 transition-colors text-left ${asset.id === value ? 'bg-orange-50 font-semibold' : ''}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-violet-50 transition-colors text-left ${asset.id === value ? 'bg-violet-50 font-semibold' : ''}`}
                 >
                   <Building2 size={13} className="text-slate-400 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -143,7 +143,7 @@ export default function AssetSelector({ value, onChange }: Props) {
                     )}
                   </div>
                   {asset.id === value && (
-                    <span className="text-[10px] font-bold text-orange-500 shrink-0">Linked</span>
+                    <span className="text-[10px] font-bold text-violet-600 shrink-0">Linked</span>
                   )}
                 </button>
               ))

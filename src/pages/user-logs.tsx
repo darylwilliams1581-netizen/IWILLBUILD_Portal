@@ -204,13 +204,13 @@ function SigninSection({ rows }: { rows: SigninRow[] }) {
 function FleetSection({ rows }: { rows: FleetRow[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
-      <SectionHeader icon={Truck} label="Vehicle Usage" count={rows.length} color="bg-orange-500" />
+      <SectionHeader icon={Truck} label="Vehicle Usage" count={rows.length} color="bg-violet-500" />
       {rows.length === 0 ? <EmptySection label="vehicle usage" /> : (
         <div className="divide-y divide-gray-50">
           {rows.map((r) => (
             <div key={r.id} className="py-2.5 flex items-start gap-3">
-              <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center shrink-0 mt-0.5">
-                <Truck size={12} className="text-orange-500" />
+              <div className="w-7 h-7 rounded-full bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
+                <Truck size={12} className="text-violet-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -448,7 +448,7 @@ function UserPicker({
                 className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
               >
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                  selected.includes(u.user_id) ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'
+                  selected.includes(u.user_id) ? 'bg-violet-500 text-white' : 'bg-gray-100 text-gray-600'
                 }`}>
                   {u.name[0]?.toUpperCase() || '?'}
                 </div>
@@ -457,7 +457,7 @@ function UserPicker({
                   <div className="text-[10px] text-gray-400 truncate">{u.email}</div>
                 </div>
                 {selected.includes(u.user_id) && (
-                  <CheckCircle2 size={14} className="text-orange-500 shrink-0" />
+                  <CheckCircle2 size={14} className="text-violet-600 shrink-0" />
                 )}
               </button>
             ))}
@@ -544,7 +544,7 @@ function JobPicker({
               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
             >
               <span className="text-sm text-gray-500">All jobs</span>
-              {!selected && <CheckCircle2 size={14} className="text-orange-500 ml-auto" />}
+              {!selected && <CheckCircle2 size={14} className="text-violet-600 ml-auto" />}
             </button>
             {filtered.map(j => (
               <button
@@ -557,7 +557,7 @@ function JobPicker({
                   <div className="text-sm font-medium text-gray-800 truncate">{j.title}</div>
                   <div className="text-[10px] text-gray-400">#{j.job_number} · {j.status}</div>
                 </div>
-                {selected === j.id && <CheckCircle2 size={14} className="text-orange-500 shrink-0" />}
+                {selected === j.id && <CheckCircle2 size={14} className="text-violet-600 shrink-0" />}
               </button>
             ))}
           </div>
@@ -570,7 +570,7 @@ function JobPicker({
 // ── Log type toggle ───────────────────────────────────────────────────────────
 const LOG_TYPE_OPTIONS: { key: LogType; label: string; icon: React.ElementType; color: string }[] = [
   { key: 'signin',      label: 'Site Sign-ins',      icon: UserCheck, color: 'bg-blue-500' },
-  { key: 'fleet',       label: 'Vehicle Usage',      icon: Truck,     color: 'bg-orange-500' },
+  { key: 'fleet',       label: 'Vehicle Usage',      icon: Truck,     color: 'bg-violet-500' },
   { key: 'timeentries', label: 'Time Entries',        icon: Clock,     color: 'bg-violet-500' },
   { key: 'activity',    label: 'Platform Activity',  icon: Activity,  color: 'bg-gray-600' },
 ];
@@ -837,7 +837,7 @@ export default function UserLogsPage() {
             type="button"
             onClick={generate}
             disabled={loading}
-            className="flex items-center gap-2 h-9 px-5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-60 transition-colors shadow-sm ml-auto"
+            className="flex items-center gap-2 h-9 px-5 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-60 transition-colors shadow-sm ml-auto"
           >
             {loading
               ? <RefreshCw size={14} className="animate-spin" />
@@ -904,7 +904,7 @@ export default function UserLogsPage() {
               </span>
               <div className="flex items-center gap-3 ml-auto text-xs text-gray-400">
                 {logTypes.has('signin')      && <span className="flex items-center gap-1"><UserCheck size={11} className="text-blue-500" />{result.signin.length} sign-ins</span>}
-                {logTypes.has('fleet')       && <span className="flex items-center gap-1"><Truck     size={11} className="text-orange-500" />{result.fleet.length} vehicle</span>}
+                {logTypes.has('fleet')       && <span className="flex items-center gap-1"><Truck     size={11} className="text-violet-600" />{result.fleet.length} vehicle</span>}
                 {logTypes.has('timeentries') && <span className="flex items-center gap-1"><Clock     size={11} className="text-violet-500" />{result.timeentries.length} time</span>}
                 {logTypes.has('activity')    && <span className="flex items-center gap-1"><Activity  size={11} className="text-gray-500" />{result.activity.length} activity</span>}
               </div>

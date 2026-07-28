@@ -1008,7 +1008,7 @@ const NEXT_TWO_DAYS = [
 
 const STATUS_CONFIG: Record<Status, { label: string; color: string; icon: React.ElementType }> = {
   done:        { label: 'Done',        color: 'text-emerald-700 bg-emerald-50 border-emerald-200',  icon: CheckCircle2 },
-  'in-progress': { label: 'In Progress', color: 'text-orange-700 bg-orange-50 border-orange-200',    icon: Clock },
+  'in-progress': { label: 'In Progress', color: 'text-violet-800 bg-violet-50 border-violet-200',    icon: Clock },
   pending:     { label: 'Pending',     color: 'text-slate-600 bg-slate-50 border-slate-200',        icon: Circle },
   blocked:     { label: 'Blocked',     color: 'text-red-700 bg-red-50 border-red-200',              icon: AlertTriangle },
   parallel:    { label: 'Parallel',    color: 'text-violet-700 bg-violet-50 border-violet-200',     icon: GitBranch },
@@ -1016,14 +1016,14 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; icon: React.
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }> = {
   P0: { label: 'P0 Blocker', color: 'text-red-700 bg-red-100 border-red-300' },
-  P1: { label: 'P1 High',    color: 'text-orange-700 bg-orange-100 border-orange-300' },
+  P1: { label: 'P1 High',    color: 'text-violet-800 bg-violet-100 border-violet-300' },
   P2: { label: 'P2 Medium',  color: 'text-blue-700 bg-blue-100 border-blue-300' },
   P3: { label: 'P3 Low',     color: 'text-slate-600 bg-slate-100 border-slate-300' },
 };
 
 const COLOR_MAP: Record<string, string> = {
   red:    'border-red-400 bg-red-50',
-  orange: 'border-orange-400 bg-orange-50',
+  orange: 'border-violet-400 bg-violet-50',
   blue:   'border-blue-400 bg-blue-50',
   cyan:   'border-cyan-400 bg-cyan-50',
   violet: 'border-violet-400 bg-violet-50',
@@ -1038,7 +1038,7 @@ const COLOR_MAP: Record<string, string> = {
 
 const ICON_COLOR_MAP: Record<string, string> = {
   red:    'text-red-600 bg-red-100',
-  orange: 'text-orange-600 bg-orange-100',
+  orange: 'text-violet-700 bg-violet-100',
   blue:   'text-blue-600 bg-blue-100',
   cyan:   'text-cyan-600 bg-cyan-100',
   violet: 'text-violet-600 bg-violet-100',
@@ -1094,7 +1094,7 @@ function StoryCard({ story }: { story: Story }) {
           {story.status === 'done'
             ? <CheckCircle2 size={16} className="text-emerald-500" />
             : story.status === 'in-progress'
-              ? <Clock size={16} className="text-orange-500" />
+              ? <Clock size={16} className="text-violet-600" />
               : <Circle size={16} className="text-slate-300" />
           }
         </div>
@@ -1232,7 +1232,7 @@ function EpicCard({ epic }: { epic: Epic }) {
             <div className="flex-1 h-1.5 bg-white/60 rounded-full overflow-hidden">
               <div
                 className="h-full bg-current rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, color: pct === 100 ? '#10b981' : '#f97316' }}
+                style={{ width: `${pct}%`, color: pct === 100 ? '#10b981' : '#7c3aed' }}
               />
             </div>
             <span className="text-[10px] font-bold text-muted-foreground shrink-0">{doneCount}/{epic.stories.length}</span>
@@ -1299,7 +1299,7 @@ export default function RoadmapPage() {
       <div className="bg-white border-b border-border sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-orange-100">
+            <div className="p-2 rounded-xl bg-violet-100">
               <Rocket size={18} className="text-primary" />
             </div>
             <div>
@@ -1355,12 +1355,12 @@ export default function RoadmapPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {roadmapGates.map((gate) => (
-              <div key={gate.id} className={`rounded-xl border p-4 ${gate.status === 'passed' ? 'border-emerald-300 bg-emerald-50' : gate.status === 'in-progress' ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-white'}`}>
+              <div key={gate.id} className={`rounded-xl border p-4 ${gate.status === 'passed' ? 'border-emerald-300 bg-emerald-50' : gate.status === 'in-progress' ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   {gate.status === 'passed'
                     ? <CheckCircle2 size={14} className="text-emerald-600" />
                     : gate.status === 'in-progress'
-                      ? <Clock size={14} className="text-orange-600" />
+                      ? <Clock size={14} className="text-violet-700" />
                       : <Circle size={14} className="text-slate-400" />
                   }
                   <span className="text-xs font-bold text-foreground">{gate.label}</span>

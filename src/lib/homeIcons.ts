@@ -50,14 +50,14 @@ export interface HomeIconDef {
 // Palette: orange (primary actions), blue (navigation/drive), green (money/progress)
 // Rule: each tile has a unique hue so icons are instantly distinguishable at a glance.
 export const FIELD_ICON_DEFS: HomeIconDef[] = [
-  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '?panel=camera',               bg: 'bg-orange-500',  fg: 'text-white', group: 'field' },
+  { key: 'camera',        label: 'Camera',          icon: Camera,           href: '?panel=camera',               bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'sign_in',       label: 'Sign In',          icon: LogIn,            href: '?panel=signin',               bg: 'bg-blue-600',    fg: 'text-white', group: 'field' },
   { key: 'drive',         label: 'Drive',            icon: Car,              href: '?panel=drive-picker',         bg: 'bg-sky-500',     fg: 'text-white', group: 'field' },
   { key: 'log_cost',      label: 'Log Cost',         icon: DollarSign,       href: '?panel=log-cost',             bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
   { key: 'delays',        label: 'Delays',           icon: Clock,            href: '?panel=delays-picker',        bg: 'bg-amber-500',   fg: 'text-white', group: 'field' },
   { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-green-600',   fg: 'text-white', group: 'field' },
   { key: 'drawings',      label: 'Drawings',         icon: Layers,           href: '?panel=drawings-picker',      bg: 'bg-blue-500',    fg: 'text-white', group: 'field' },
-  { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-orange-400',  fg: 'text-white', group: 'field' },
+  { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-violet-500',  fg: 'text-white', group: 'field' },
   { key: 'job_card',      label: 'Job Card',         icon: Zap,              href: '?panel=job-card',             bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
 ];
 
@@ -93,13 +93,13 @@ export const TOOLS_ICON_DEFS: HomeIconDef[] = [
 // Palette: orange (primary business), teal (finance), slate (admin/settings).
 // Avoid repeating the same shade — use the 400/500/600/700 steps to differentiate.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
-  { key: 'jobs',          label: 'Jobs',           icon: HardHat,          href: '/jobs',                   bg: 'bg-orange-500',  fg: 'text-white', group: 'management' },
-  { key: 'quotes',        label: 'Quotes',         icon: FileText,         href: '?panel=quotes-picker',    bg: 'bg-orange-400',  fg: 'text-white', group: 'management' },
+  { key: 'jobs',          label: 'Jobs',           icon: HardHat,          href: '/jobs',                   bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
+  { key: 'quotes',        label: 'Quotes',         icon: FileText,         href: '?panel=quotes-picker',    bg: 'bg-violet-500',  fg: 'text-white', group: 'management' },
   { key: 'invoices_mgmt', label: 'Invoices',       icon: Receipt,          href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'management' },
   { key: 'stakeholders',  label: 'Stakeholders',   icon: Users,            href: '/customers',              bg: 'bg-teal-600',    fg: 'text-white', group: 'management' },
   { key: 'ledger',        label: 'Ledger',         icon: BookOpen,         href: '?panel=costs-picker',     bg: 'bg-emerald-600', fg: 'text-white', group: 'management' },
   { key: 'fleet',         label: 'Fleet',          icon: Truck,            href: '/fleet',                  bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
-  { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-orange-600',  fg: 'text-white', group: 'management' },
+  { key: 'files',         label: 'Files',          icon: FolderOpen,       href: '/files',                  bg: 'bg-violet-700',  fg: 'text-white', group: 'management' },
   { key: 'team',          label: 'Team',           icon: UserCircle,       href: '/team',                   bg: 'bg-slate-600',   fg: 'text-white', group: 'management' },
   { key: 'billing',       label: 'Billing',        icon: CreditCard,       href: '/billing',                bg: 'bg-teal-700',    fg: 'text-white', group: 'management' },
   { key: 'settings',      label: 'Settings',       icon: Settings,         href: '/settings',               bg: 'bg-slate-400',   fg: 'text-white', group: 'management' },
@@ -115,7 +115,7 @@ export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
   { key: 'checklist',     label: 'Checklist',      icon: Clipboard,        href: '/checklist',              bg: 'bg-lime-600',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'messages',      label: 'Messages',       icon: MessageSquare,    href: '/messages',               bg: 'bg-green-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'invoices_field',label: 'Invoices',       icon: Wallet,           href: '/invoices',               bg: 'bg-teal-500',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'daily_log',     label: 'Daily Log',      icon: ClipboardList,    href: '/daily-log',              bg: 'bg-orange-400',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
+  { key: 'daily_log',     label: 'Daily Log',      icon: ClipboardList,    href: '/daily-log',              bg: 'bg-violet-500',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
   { key: 'weather',       label: 'Weather',        icon: CloudRain,        href: '/weather',                bg: 'bg-cyan-400',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
 ];
 

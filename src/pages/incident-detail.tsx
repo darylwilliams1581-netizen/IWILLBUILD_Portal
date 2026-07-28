@@ -670,7 +670,7 @@ export default function IncidentDetailPage() {
           {/* Impacts */}
           <section className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-orange-500" /> Impacts
+              <ShieldAlert size={13} className="text-violet-600" /> Impacts
             </h2>
             <YesNo label="Was anyone injured?" value={form.injuryOccurred} onChange={v => updateForm({ injuryOccurred: v })} disabled={isClosed} />
             {form.injuryOccurred && (

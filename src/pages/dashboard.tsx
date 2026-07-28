@@ -347,7 +347,7 @@ export default function DashboardPage() {
               </div>
             ) : recentJobs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center mb-3">
                   <HardHat size={18} className="text-primary" />
                 </div>
                 <p className="text-xs font-semibold text-foreground mb-1">No jobs yet</p>
@@ -356,7 +356,7 @@ export default function DashboardPage() {
                 </p>
                 <Link
                   to="/jobs"
-                  className="inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
+                  className="inline-flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150"
                 >
                   <Plus size={12} />
                   {addWorkLabel}

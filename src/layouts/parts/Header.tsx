@@ -209,7 +209,7 @@ export default function Header() {
             to="/signup"
             style={{
               padding: '8px 18px', borderRadius: 8,
-              background: '#f97316', color: '#fff',
+              background: '#7c3aed', color: '#fff',
               fontWeight: 700, fontSize: 14, textDecoration: 'none',
               boxShadow: '0 2px 10px rgba(249,115,22,.35)',
               transition: 'opacity 0.15s',
@@ -302,7 +302,7 @@ export default function Header() {
                 marginTop: 8,
                 display: 'block', textAlign: 'center',
                 padding: '12px', borderRadius: 9,
-                background: '#f97316', color: '#fff',
+                background: '#7c3aed', color: '#fff',
                 fontWeight: 700, fontSize: 14, textDecoration: 'none',
               }}
             >

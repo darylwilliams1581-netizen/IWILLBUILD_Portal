@@ -211,7 +211,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${settings.enabled ? 'bg-orange-50' : 'bg-slate-100'}`}>
+                <div className={`p-2 rounded-xl ${settings.enabled ? 'bg-violet-50' : 'bg-slate-100'}`}>
                   <Bot size={16} className={settings.enabled ? 'text-primary' : 'text-slate-400'} />
                 </div>
                 <div>
@@ -264,11 +264,11 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
           </div>
 
           {/* Disclaimer preview */}
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex gap-3">
+          <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 flex gap-3">
             <Info size={15} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-orange-800 mb-1">Disclaimer preview (shown to users)</p>
-              <p className="text-xs text-orange-700 leading-relaxed">{settings.disclaimer || DAZZA_DEFAULT_DISCLAIMER}</p>
+              <p className="text-xs font-semibold text-violet-800 mb-1">Disclaimer preview (shown to users)</p>
+              <p className="text-xs text-violet-800 leading-relaxed">{settings.disclaimer || DAZZA_DEFAULT_DISCLAIMER}</p>
             </div>
           </div>
 
@@ -357,7 +357,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
                   onClick={() => {
                     void navigator.clipboard.writeText(chip);
                   }}
-                  className="text-xs bg-slate-100 hover:bg-orange-50 hover:text-primary hover:border-primary/30 border border-slate-200 text-slate-600 rounded-full px-3 py-1.5 transition-colors font-medium"
+                  className="text-xs bg-slate-100 hover:bg-violet-50 hover:text-primary hover:border-primary/30 border border-slate-200 text-slate-600 rounded-full px-3 py-1.5 transition-colors font-medium"
                   title={`Copy: "${chip}"`}
                 >
                   {chip}
@@ -370,15 +370,15 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
           </div>
 
           {/* Full Brain Check shortcut */}
-          <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5 flex items-start gap-4">
-            <div className="p-2 rounded-xl bg-orange-100 shrink-0">
+          <div className="bg-gradient-to-r from-violet-50 to-amber-50 border border-violet-200 rounded-xl p-5 flex items-start gap-4">
+            <div className="p-2 rounded-xl bg-violet-100 shrink-0">
               <Activity size={16} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-orange-900 mb-1">
                 Annette Full Brain Check
               </p>
-              <p className="text-xs text-orange-700 leading-relaxed mb-3">
+              <p className="text-xs text-violet-800 leading-relaxed mb-3">
                 Run a full health check across all your portal data — jobs, fleet, forms, estimates, and to-dos.
                 Annette will surface urgent issues, things needing attention, and missing information.
               </p>
@@ -387,7 +387,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
                 onClick={() => {
                   void navigator.clipboard.writeText('Run Annette health check');
                 }}
-                className="text-xs bg-primary hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+                className="text-xs bg-primary hover:bg-violet-700 text-white font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Activity size={12} />
                 Copy "Run Annette health check" prompt
@@ -437,7 +437,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Dazza Settings

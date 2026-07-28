@@ -266,7 +266,7 @@ export default function DocumentPdfTab({ settings, onChange, templateName }: Pro
                     onClick={() => set('coverDate', opt.value as 'auto' | 'none')}
                     className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
                       s.coverDate === opt.value
-                        ? 'border-primary bg-orange-50 text-primary'
+                        ? 'border-primary bg-violet-50 text-primary'
                         : 'border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >
@@ -287,7 +287,7 @@ export default function DocumentPdfTab({ settings, onChange, templateName }: Pro
                     onClick={() => set('coverLogoPosition', value)}
                     className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
                       s.coverLogoPosition === value
-                        ? 'border-primary bg-orange-50 text-primary'
+                        ? 'border-primary bg-violet-50 text-primary'
                         : 'border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >

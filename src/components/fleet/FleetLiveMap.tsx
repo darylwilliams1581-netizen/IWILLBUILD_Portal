@@ -131,7 +131,7 @@ function getInitials(name: string): string {
 
 /** Live driver pin — orange with initials */
 function buildLiveMarkerIcon(driverName: string, selected: boolean): string {
-  const bg   = selected ? '#ea580c' : '#f97316';
+  const bg   = selected ? '#ea580c' : '#7c3aed';
   const ring = selected ? '#fff7ed' : '#ffffff';
   const initials = getInitials(driverName);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48">
@@ -170,7 +170,7 @@ function buildLiveInfoContent(session: LiveSession): string {
   return `
     <div style="font-family:system-ui,sans-serif;min-width:190px;padding:2px 0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:#f97316;
+        <div style="width:32px;height:32px;border-radius:50%;background:#7c3aed;
           display:flex;align-items:center;justify-content:center;
           color:#fff;font-size:12px;font-weight:800;flex-shrink:0;">${initials}</div>
         <div>
@@ -181,7 +181,7 @@ function buildLiveInfoContent(session: LiveSession): string {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:6px;border-top:1px solid #f1f5f9;">
         ${session.speed_kmh != null ? `
           <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
-            <div style="font-size:16px;font-weight:800;color:#f97316;">${Math.round(Number(session.speed_kmh))}</div>
+            <div style="font-size:16px;font-weight:800;color:#7c3aed;">${Math.round(Number(session.speed_kmh))}</div>
             <div style="font-size:10px;color:#94a3b8;font-weight:600;">km/h</div>
           </div>` : ''}
         <div style="background:#f8fafc;border-radius:8px;padding:5px 8px;text-align:center;">
@@ -230,8 +230,8 @@ function DriverCard({
       className={[
         'w-full text-left px-3 py-2.5 rounded-xl border transition-all',
         selected
-          ? 'bg-orange-50 border-orange-300 shadow-sm'
-          : 'bg-white border-slate-200 hover:border-orange-200 hover:bg-orange-50/40',
+          ? 'bg-violet-50 border-violet-300 shadow-sm'
+          : 'bg-white border-slate-200 hover:border-violet-200 hover:bg-violet-50/40',
       ].join(' ')}
     >
       <div className="flex items-start gap-2.5">
@@ -635,8 +635,8 @@ export default function FleetLiveMap() {
       {/* ── Header bar ── */}
       <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
-            <Navigation size={13} className="text-orange-500" />
+          <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+            <Navigation size={13} className="text-violet-600" />
           </div>
           <div>
             <p className="text-sm font-bold text-slate-800">Fleet Map</p>
@@ -787,7 +787,7 @@ export default function FleetLiveMap() {
           {!mapReady && !mapError && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 size={28} className="animate-spin text-orange-400" />
+                <Loader2 size={28} className="animate-spin text-violet-400" />
                 <p className="text-xs text-slate-400">Loading map…</p>
               </div>
             </div>
@@ -806,7 +806,7 @@ export default function FleetLiveMap() {
             {(withGps.length > 0 || lastKnown.length > 0 || officePos) && (
               <button onClick={handleFitAll} title="Fit all"
                 className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors mt-1">
-                <Crosshair size={14} className="text-orange-500" />
+                <Crosshair size={14} className="text-violet-600" />
               </button>
             )}
           </div>

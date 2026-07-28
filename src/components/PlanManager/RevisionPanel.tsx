@@ -59,7 +59,7 @@ export default function RevisionPanel({
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700">
         <div className="flex items-center gap-2">
-          <GitBranch size={14} className="text-orange-400" />
+          <GitBranch size={14} className="text-violet-400" />
           <span className="text-sm font-semibold text-slate-200">Revisions</span>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function RevisionPanel({
           <button
             onClick={onSave}
             disabled={!isDirty || saving || isLocked}
-            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Save size={13} />
             {saving ? 'Saving…' : 'Save Annotations'}
@@ -118,7 +118,7 @@ export default function RevisionPanel({
               className={[
                 'rounded-lg px-3 py-2 border transition-colors',
                 rev.id === currentRevisionId
-                  ? 'border-orange-500/40 bg-orange-500/5'
+                  ? 'border-violet-600/40 bg-violet-500/5'
                   : 'border-slate-700/50 bg-slate-800/50',
               ].join(' ')}
             >
@@ -174,7 +174,7 @@ export default function RevisionPanel({
               placeholder="Revision name (e.g. Rev 2 — Client Changes)"
               value={newRevName}
               onChange={e => setNewRevName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500 mb-3"
+              className="w-full px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-600 mb-3"
             />
             <div className="flex gap-2">
               <button
@@ -189,7 +189,7 @@ export default function RevisionPanel({
                   setShowNewRevModal(false);
                   setNewRevName('');
                 }}
-                className="flex-1 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
               >
                 Create
               </button>

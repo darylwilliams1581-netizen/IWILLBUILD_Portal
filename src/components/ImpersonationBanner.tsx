@@ -71,7 +71,7 @@ export default function ImpersonationBanner() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] bg-orange-500 text-white shadow-lg"
+      className="fixed top-0 left-0 right-0 z-[9999] bg-violet-500 text-white shadow-lg"
       role="alert"
       aria-live="assertive"
     >
@@ -83,7 +83,7 @@ export default function ImpersonationBanner() {
         </div>
 
         {/* Divider */}
-        <div className="w-px h-4 bg-orange-300 shrink-0" />
+        <div className="w-px h-4 bg-violet-300 shrink-0" />
 
         {/* Target info */}
         <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
@@ -93,19 +93,19 @@ export default function ImpersonationBanner() {
               <span className="opacity-75 ml-1">({payload.targetEmail})</span>
             )}
           </span>
-          <span className="bg-orange-600 text-orange-100 text-xs px-2 py-0.5 rounded-full font-medium shrink-0">
+          <span className="bg-violet-700 text-violet-100 text-xs px-2 py-0.5 rounded-full font-medium shrink-0">
             {payload.targetRole}
           </span>
         </div>
 
         {/* Read-only badge */}
-        <div className="flex items-center gap-1.5 bg-orange-600 text-orange-100 text-xs px-2.5 py-1 rounded-full shrink-0">
+        <div className="flex items-center gap-1.5 bg-violet-700 text-violet-100 text-xs px-2.5 py-1 rounded-full shrink-0">
           <ShieldAlert size={11} />
           <span className="font-semibold">READ ONLY</span>
         </div>
 
         {/* Started at */}
-        <span className="text-orange-200 text-xs shrink-0 hidden sm:block">
+        <span className="text-violet-200 text-xs shrink-0 hidden sm:block">
           Started {timeStr}
         </span>
 
@@ -113,7 +113,7 @@ export default function ImpersonationBanner() {
         <button
           onClick={endSession}
           disabled={ending}
-          className="flex items-center gap-1.5 bg-white text-orange-600 hover:bg-orange-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0 disabled:opacity-60"
+          className="flex items-center gap-1.5 bg-white text-violet-700 hover:bg-violet-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0 disabled:opacity-60"
         >
           <X size={12} />
           {ending ? 'Ending…' : 'End session'}

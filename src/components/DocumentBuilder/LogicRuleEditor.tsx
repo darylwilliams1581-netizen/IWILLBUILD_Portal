@@ -285,7 +285,7 @@ export default function LogicRuleEditor({ rule, validationErrors = [] }: Props) 
 
             <button
               onClick={addCondition}
-              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
             >
               <Plus size={10} /> Add condition
             </button>
@@ -310,7 +310,7 @@ export default function LogicRuleEditor({ rule, validationErrors = [] }: Props) 
 
             <button
               onClick={addAction}
-              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
             >
               <Plus size={10} /> Add action
             </button>
@@ -453,7 +453,7 @@ function ActionRow({ action, allBlocks, onChange, onRemove, canRemove }: ActionR
   const isPrevent   = action.action === 'prevent_submission';
 
   return (
-    <div className="flex flex-col gap-1.5 p-2 bg-orange-50/40 rounded-lg border border-orange-100">
+    <div className="flex flex-col gap-1.5 p-2 bg-violet-50/40 rounded-lg border border-violet-100">
       <div className="flex items-center gap-1.5">
         <select
           value={action.action}

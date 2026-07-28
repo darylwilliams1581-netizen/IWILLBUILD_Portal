@@ -223,7 +223,7 @@ export default function JobPhotosPage() {
             onClick={() => photosRef.current?.openFilePicker()}
             disabled={uploading || atLimit}
             title="Upload up to 10 photos at a time"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors"
           >
             {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
             Upload
@@ -336,7 +336,7 @@ export default function JobPhotosPage() {
               onClick={() => photosRef.current?.openFilePicker()}
               disabled={uploading || atLimit}
               title="Upload photos"
-              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg transition-colors touch-manipulation font-semibold text-sm"
+              className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors touch-manipulation font-semibold text-sm"
               aria-label="Upload photos from library"
             >
               {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}

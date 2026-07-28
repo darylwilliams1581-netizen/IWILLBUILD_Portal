@@ -120,7 +120,7 @@ export default function SkipLogicEditor({ field, allFields, onChange }: SkipLogi
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center justify-between w-full px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary/40 hover:bg-orange-50/30 transition-colors"
+        className="flex items-center justify-between w-full px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-primary/40 hover:bg-violet-50/30 transition-colors"
       >
         <div className="flex items-center gap-2">
           <SkipForward size={13} className="text-primary" />
@@ -181,7 +181,7 @@ export default function SkipLogicEditor({ field, allFields, onChange }: SkipLogi
               <button
                 type="button"
                 onClick={addRule}
-                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-orange-600 transition-colors py-1"
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-violet-700 transition-colors py-1"
               >
                 <Plus size={12} /> Add skip rule
               </button>
@@ -368,7 +368,7 @@ function SkipRuleCard({
             <button
               type="button"
               onClick={addCondition}
-              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+              className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
             >
               <Plus size={10} /> Add condition
             </button>
@@ -524,7 +524,7 @@ function SkipActionRow({ action, targetFields, onChange }: SkipActionRowProps) {
   );
 
   return (
-    <div className="flex flex-col gap-1.5 p-2 bg-orange-50/40 rounded-lg border border-orange-100">
+    <div className="flex flex-col gap-1.5 p-2 bg-violet-50/40 rounded-lg border border-violet-100">
       {/* Target type */}
       <div className="flex gap-1.5">
         {([

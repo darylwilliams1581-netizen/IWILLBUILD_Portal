@@ -299,7 +299,7 @@ export function AddSwmsModal({ jobId, onClose, onAdded }: {
         className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><ShieldAlert size={15} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><ShieldAlert size={15} className="text-primary" /></div>
             <div><h2 className="font-heading font-bold text-sm">Add SWMS from Library</h2><p className="text-xs text-slate-400">Select one or more templates to copy into this job</p></div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={15} /></button>
@@ -318,7 +318,7 @@ export function AddSwmsModal({ jobId, onClose, onAdded }: {
           )}
           {!loading && filtered.map((t) => (
             <button key={t.id} onClick={() => toggle(t.id)}
-              className={`w-full text-left p-3 rounded-xl border transition-colors ${selected.has(t.id) ? 'border-primary bg-orange-50' : 'border-slate-200 hover:border-primary/40 hover:bg-orange-50/30'}`}>
+              className={`w-full text-left p-3 rounded-xl border transition-colors ${selected.has(t.id) ? 'border-primary bg-violet-50' : 'border-slate-200 hover:border-primary/40 hover:bg-violet-50/30'}`}>
               <div className="flex items-center gap-3">
                 {selected.has(t.id) ? <CheckSquare size={15} className="text-primary shrink-0" /> : <Square size={15} className="text-slate-300 shrink-0" />}
                 <div className="flex-1 min-w-0">
@@ -333,7 +333,7 @@ export function AddSwmsModal({ jobId, onClose, onAdded }: {
         </div>
         <div className="px-5 pb-5 flex gap-3 border-t border-slate-100 pt-4 shrink-0">
           <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-          <button onClick={() => void handleAdd()} disabled={saving || selected.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+          <button onClick={() => void handleAdd()} disabled={saving || selected.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Add {selected.size > 0 ? `${selected.size} SWMS` : 'SWMS'}
           </button>
         </div>
@@ -392,7 +392,7 @@ export function SwmsEditModal({ initial, onClose, onSaved }: {
         className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[95vh] sm:max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><Wand2 size={15} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><Wand2 size={15} className="text-primary" /></div>
             <div><h2 className="font-heading font-bold text-base">Edit Job SWMS</h2><p className="text-xs text-slate-400">Changes apply to this job copy only — master template is unchanged</p></div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
@@ -432,7 +432,7 @@ export function SwmsEditModal({ initial, onClose, onSaved }: {
           </div>
           <div className="px-6 pb-6 flex gap-3 border-t border-slate-100 pt-4 shrink-0">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}Save Changes
             </button>
           </div>
@@ -462,7 +462,7 @@ export function SwmsPrintModal({ swms, signoffs, job, onClose }: {
       .print-root { max-width: 100%; }
       .header-bar { background: #0f172a; color: #fff; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
       .header-bar h1 { font-size: 16px; font-weight: 800; } .header-bar .sub { font-size: 10px; opacity: 0.7; margin-top: 2px; }
-      .header-bar .badge { background: #f97316; color: #fff; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+      .header-bar .badge { background: #7c3aed; color: #fff; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
       .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
       .meta-cell { border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px; }
       .meta-cell .label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 2px; }
@@ -513,7 +513,7 @@ export function SwmsPrintModal({ swms, signoffs, job, onClose }: {
             <div><h2 className="font-heading font-bold text-sm">Print Preview</h2><p className="text-xs text-slate-400">{swms.title}</p></div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handlePrint} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"><Printer size={14} />Print / Save PDF</button>
+            <button onClick={handlePrint} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"><Printer size={14} />Print / Save PDF</button>
             <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
           </div>
         </div>
@@ -666,14 +666,14 @@ export function AddSafetyPlanModal({ jobId, onClose, onAdded }: {
           {loading && <div className="flex items-center justify-center py-8"><Loader2 size={18} className="animate-spin text-primary" /></div>}
           {!loading && (
             <>
-              <button onClick={() => setSelected(null)} className={`w-full text-left p-3 rounded-xl border transition-colors ${selected === null ? 'border-primary bg-orange-50' : 'border-slate-200 hover:border-primary/40'}`}>
+              <button onClick={() => setSelected(null)} className={`w-full text-left p-3 rounded-xl border transition-colors ${selected === null ? 'border-primary bg-violet-50' : 'border-slate-200 hover:border-primary/40'}`}>
                 <div className="flex items-center gap-3">
                   {selected === null ? <CheckSquare size={15} className="text-primary shrink-0" /> : <Square size={15} className="text-slate-300 shrink-0" />}
                   <div><p className="text-sm font-bold text-slate-800">Start blank</p><p className="text-xs text-slate-500">Create a new safety plan pre-filled with job details</p></div>
                 </div>
               </button>
               {templates.map((t) => (
-                <button key={t.id} onClick={() => setSelected(t.id)} className={`w-full text-left p-3 rounded-xl border transition-colors ${selected === t.id ? 'border-primary bg-orange-50' : 'border-slate-200 hover:border-primary/40'}`}>
+                <button key={t.id} onClick={() => setSelected(t.id)} className={`w-full text-left p-3 rounded-xl border transition-colors ${selected === t.id ? 'border-primary bg-violet-50' : 'border-slate-200 hover:border-primary/40'}`}>
                   <div className="flex items-center gap-3">
                     {selected === t.id ? <CheckSquare size={15} className="text-primary shrink-0" /> : <Square size={15} className="text-slate-300 shrink-0" />}
                     <div className="flex-1 min-w-0"><p className="text-sm font-bold text-slate-800 truncate">{t.title}</p>{t.site_address && <p className="text-xs text-slate-500 truncate">{t.site_address}</p>}</div>
@@ -687,7 +687,7 @@ export function AddSafetyPlanModal({ jobId, onClose, onAdded }: {
         </div>
         <div className="px-5 pb-5 flex gap-3 border-t border-slate-100 pt-4 shrink-0">
           <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-          <button onClick={() => void handleAdd()} disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+          <button onClick={() => void handleAdd()} disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
             {selected ? 'Copy to Job' : 'Create Blank'}
           </button>

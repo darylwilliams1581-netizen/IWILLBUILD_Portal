@@ -74,7 +74,7 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><ShieldAlert size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><ShieldAlert size={16} className="text-primary" /></div>
             <div>
               <h2 className="font-heading font-bold text-base leading-tight">{isEdit ? 'Edit SWMS' : 'New SWMS Template'}</h2>
               <p className="text-xs text-slate-400 mt-0.5">Safe Work Method Statement</p>
@@ -184,7 +184,7 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
             )}
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 {isEdit ? 'Save Changes' : 'Create SWMS'}
               </button>

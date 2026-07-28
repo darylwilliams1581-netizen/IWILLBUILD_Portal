@@ -160,7 +160,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Roof Tiling"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
           <div>
@@ -169,7 +169,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Roofing / Cladding"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -178,7 +178,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               <select
                 value={buildMode}
                 onChange={(e) => setBuildMode(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               >
                 <option value="quick">Quick (9 sections)</option>
                 <option value="advanced">Advanced (14 sections)</option>
@@ -189,7 +189,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
@@ -203,7 +203,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               <input
                 value={revision}
                 onChange={(e) => setRevision(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
           </div>
@@ -213,7 +213,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="e.g. Platform Safety Team"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
           <div>
@@ -222,7 +222,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
               value={approved}
               onChange={(e) => setApproved(e.target.value)}
               placeholder="e.g. Principal Contractor"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
         </div>
@@ -235,7 +235,7 @@ function EditModal({ template, onClose, onSaved }: EditModalProps) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
+            className="flex items-center gap-2 px-5 py-2 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
             {isNew ? 'Create' : 'Save changes'}
@@ -524,7 +524,7 @@ export default function SwmsMasterLibraryTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={24} className="animate-spin text-orange-500" />
+        <Loader2 size={24} className="animate-spin text-violet-600" />
       </div>
     );
   }
@@ -535,8 +535,8 @@ export default function SwmsMasterLibraryTab() {
     return (
       <div className="max-w-xl space-y-6">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <Database size={18} className="text-orange-600" />
+          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <Database size={18} className="text-violet-700" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">One-time setup required</h2>
@@ -554,7 +554,7 @@ export default function SwmsMasterLibraryTab() {
         <button
           onClick={runMigration}
           disabled={migrating}
-          className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold rounded-lg"
+          className="flex items-center gap-2 px-6 py-3 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white font-bold rounded-lg"
         >
           {migrating ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
           {migrating ? 'Running migration…' : 'Run migration'}
@@ -569,8 +569,8 @@ export default function SwmsMasterLibraryTab() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <BookOpen size={18} className="text-orange-600" />
+          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <BookOpen size={18} className="text-violet-700" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">SWMS Master Library</h2>
@@ -589,7 +589,7 @@ export default function SwmsMasterLibraryTab() {
           </button>
           <button
             onClick={() => { setEditTarget(null); setShowEdit(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold rounded-lg"
           >
             <Plus size={14} />
             New master
@@ -745,7 +745,7 @@ export default function SwmsMasterLibraryTab() {
                 type="checkbox"
                 checked={seedReplace}
                 onChange={(e) => setSeedReplace(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-orange-500"
+                className="w-4 h-4 rounded border-slate-300 text-violet-600"
               />
               <span className="text-sm text-slate-700">Replace existing (overwrite already-seeded templates)</span>
             </label>
@@ -754,7 +754,7 @@ export default function SwmsMasterLibraryTab() {
               <button
                 onClick={runSeedAll}
                 disabled={seeding}
-                className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
+                className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
               >
                 {seeding ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {seeding ? `Seeding… (${seedResults.length}/${SEEDS.length})` : 'Seed all 24 SWMS'}

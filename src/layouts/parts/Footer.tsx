@@ -124,7 +124,7 @@ export default function Footer() {
                 style={{
                   display: 'inline-block',
                   padding: '9px 18px', borderRadius: 8,
-                  backgroundColor: '#f97316', color: '#fff',
+                  backgroundColor: '#7c3aed', color: '#fff',
                   fontWeight: 700, fontSize: 13, textDecoration: 'none',
                 }}
                 className="hover:opacity-90"

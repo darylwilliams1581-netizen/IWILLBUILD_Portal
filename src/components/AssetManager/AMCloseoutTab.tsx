@@ -12,7 +12,7 @@ interface Closeout {
   completed_at: string | null; created_at: string;
 }
 
-const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30';
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30';
 const LABEL = 'block text-xs font-semibold text-slate-500 mb-1';
 
 export default function AMCloseoutTab() {
@@ -85,7 +85,7 @@ export default function AMCloseoutTab() {
       {/* Upload panel */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <BookOpen size={15} className="text-orange-500" />
+          <BookOpen size={15} className="text-violet-600" />
           Upload Induction or Completion Document
         </h3>
         <p className="text-xs text-slate-500">Accepted formats: PDF, DOCX. Max 30 MB. The document will be attached to the selected inspection.</p>
@@ -110,7 +110,7 @@ export default function AMCloseoutTab() {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading || !selectedInspection}
-          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-slate-200 hover:border-orange-400/50 rounded-xl text-sm text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-slate-200 hover:border-violet-400/50 rounded-xl text-sm text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
           {uploading ? 'Uploading…' : 'Click to upload PDF or DOCX'}
         </button>

@@ -57,7 +57,7 @@ const DAY_WIDTH: Record<TimeWindow, number> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  booked:     'bg-orange-500',
+  booked:     'bg-violet-500',
   confirmed:  'bg-emerald-500',
   in_use:     'bg-blue-500',
   completed:  'bg-slate-400',
@@ -232,8 +232,8 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
-              <Truck size={15} className="text-orange-500" />
+            <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
+              <Truck size={15} className="text-violet-600" />
             </div>
             <h2 className="font-bold text-sm text-slate-800">{isEdit ? 'Edit Booking' : 'New Asset Booking'}</h2>
           </div>
@@ -257,7 +257,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
               value={fleetAssetId}
               onChange={e => setFleetAssetId(Number(e.target.value))}
               disabled={isEdit}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white disabled:bg-slate-50"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white disabled:bg-slate-50"
             >
               {assets.map(a => (
                 <option key={a.id} value={a.id}>
@@ -275,7 +275,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Site A — Excavation"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
 
@@ -287,7 +287,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
                 type="date"
                 value={startDate}
                 onChange={e => { setStartDate(e.target.value); if (e.target.value > endDate) setEndDate(e.target.value); }}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
             <div>
@@ -297,7 +297,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
                 value={endDate}
                 min={startDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
           </div>
@@ -312,7 +312,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
             <div>
@@ -323,7 +323,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
                 type="time"
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
           </div>
@@ -334,7 +334,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
             <select
               value={status}
               onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
             >
               {Object.entries(STATUS_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -352,7 +352,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
               onChange={e => setNotes(e.target.value)}
               rows={2}
               placeholder="Any additional details..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
             />
           </div>
         </div>
@@ -378,7 +378,7 @@ function BookingFormModal({ assets, initial, onClose, onSaved, onDeleted }: Book
             <button
               onClick={handleSave}
               disabled={saving || deleting}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
               {isEdit ? 'Save Changes' : 'Create Booking'}
@@ -449,7 +449,7 @@ function BookingPopover({ booking, onEdit, onClose, anchorRef }: BookingPopoverP
             <Briefcase size={11} className="text-slate-400 shrink-0" />
             <Link
               to={`/job-detail?id=${booking.job_id}`}
-              className="text-orange-600 hover:underline truncate"
+              className="text-violet-700 hover:underline truncate"
               onClick={onClose}
             >
               {booking.job_number ? `#${booking.job_number} ` : ''}{booking.job_name}
@@ -599,7 +599,7 @@ export default function AssetSchedulerView({
           <button onClick={() => onNavigate(1)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors">
             <ChevronRight size={14} />
           </button>
-          <button onClick={onGoToday} className="px-2.5 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-orange-200 ml-1">
+          <button onClick={onGoToday} className="px-2.5 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-50 rounded-md transition-colors border border-violet-200 ml-1">
             Today
           </button>
         </div>
@@ -616,7 +616,7 @@ export default function AssetSchedulerView({
           </div>
           <button
             onClick={() => { setEditBooking(null); setNewDefaults(null); setFormOpen(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors"
           >
             <Plus size={12} />New Booking
           </button>
@@ -626,7 +626,7 @@ export default function AssetSchedulerView({
       {/* Loading / error */}
       {loading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={22} className="animate-spin text-orange-500" />
+          <Loader2 size={22} className="animate-spin text-violet-600" />
         </div>
       )}
       {!loading && error && (
@@ -639,12 +639,12 @@ export default function AssetSchedulerView({
       {/* Empty state */}
       {!loading && !error && assets.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-4">
-            <Truck size={24} className="text-orange-400" />
+          <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
+            <Truck size={24} className="text-violet-400" />
           </div>
           <p className="font-bold text-slate-700 mb-1">No fleet assets yet</p>
           <p className="text-sm text-slate-400 mb-4">Add assets in the Fleet module first.</p>
-          <Link to="/fleet" className="text-xs font-bold text-orange-600 hover:underline">Go to Fleet</Link>
+          <Link to="/fleet" className="text-xs font-bold text-violet-700 hover:underline">Go to Fleet</Link>
         </div>
       )}
 
@@ -659,7 +659,7 @@ export default function AssetSchedulerView({
               </div>
               {assets.map(a => (
                 <div key={a.id} className="h-11 border-b border-slate-100 last:border-0 flex flex-col justify-center px-3 hover:bg-slate-50/50 transition-colors">
-                  <Link to={`/fleet/${a.id}`} className="text-xs font-bold text-slate-800 hover:text-orange-600 transition-colors truncate leading-tight">
+                  <Link to={`/fleet/${a.id}`} className="text-xs font-bold text-slate-800 hover:text-violet-700 transition-colors truncate leading-tight">
                     {a.name}
                   </Link>
                   <p className="text-[10px] text-slate-500 truncate mt-0.5">
@@ -680,10 +680,10 @@ export default function AssetSchedulerView({
                       <div
                         key={i}
                         style={{ width: dayWidth }}
-                        className={`shrink-0 flex items-center justify-center border-r border-slate-100 ${isToday(d) ? 'bg-orange-50' : ''}`}
+                        className={`shrink-0 flex items-center justify-center border-r border-slate-100 ${isToday(d) ? 'bg-violet-50' : ''}`}
                       >
                         {show && (
-                          <span className={`text-[10px] font-semibold ${isToday(d) ? 'text-orange-600' : 'text-slate-500'}`}>
+                          <span className={`text-[10px] font-semibold ${isToday(d) ? 'text-violet-700' : 'text-slate-500'}`}>
                             {dayWidth >= 36
                               ? d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
                               : d.getDate()}
@@ -707,7 +707,7 @@ export default function AssetSchedulerView({
                         <div
                           key={i}
                           style={{ width: dayWidth }}
-                          className={`h-full border-r border-slate-100 shrink-0 ${isToday(d) ? 'bg-orange-50/40' : ''}`}
+                          className={`h-full border-r border-slate-100 shrink-0 ${isToday(d) ? 'bg-violet-50/40' : ''}`}
                         />
                       ))}
                     </div>
@@ -718,7 +718,7 @@ export default function AssetSchedulerView({
                         <div
                           key={i}
                           style={{ width: dayWidth }}
-                          className="h-full shrink-0 cursor-pointer hover:bg-orange-50/30 transition-colors"
+                          className="h-full shrink-0 cursor-pointer hover:bg-violet-50/30 transition-colors"
                           onClick={() => handleCellClick(asset.id, toDateStr(d))}
                           title={`Book ${asset.name} on ${fmtFull(d)}`}
                         />
@@ -750,7 +750,7 @@ export default function AssetSchedulerView({
                       if (todayIdx < 0) return null;
                       return (
                         <div
-                          className="absolute top-0 bottom-0 w-0.5 bg-orange-400 z-20 pointer-events-none"
+                          className="absolute top-0 bottom-0 w-0.5 bg-violet-500 z-20 pointer-events-none"
                           style={{ left: todayIdx * dayWidth + dayWidth / 2 }}
                         />
                       );

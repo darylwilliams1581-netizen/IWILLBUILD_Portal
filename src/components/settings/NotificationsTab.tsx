@@ -55,7 +55,7 @@ const PREF_GROUPS: PrefGroup[] = [
   {
     label: 'Fleet',
     icon: Truck,
-    iconColor: 'text-orange-500',
+    iconColor: 'text-violet-600',
     items: [
       { key: 'fleetServiceDue',  label: 'Service due',          description: 'Alert when service is due within 14 days' },
       { key: 'fleetRegoDue',     label: 'Rego expiring',        description: 'Alert when rego expires within 14 days' },

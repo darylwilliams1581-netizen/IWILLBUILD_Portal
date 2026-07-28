@@ -59,7 +59,7 @@ function IconTile({ item, onNavigate }: { item: HomeIconDef; onNavigate: (href: 
       whileHover={{ scale: 1.06, y: -2 }}
       transition={{ type: 'spring', stiffness: 440, damping: 20 }}
       onClick={() => onNavigate(item.href)}
-      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+      className="w-full flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
       style={{ gap: '5px' }}
     >
       {/* Icon tile — slightly smaller on mobile (54 px) vs desktop (66 px) */}
@@ -234,8 +234,8 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <Camera size={15} className="text-orange-500" />
+                <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                  <Camera size={15} className="text-violet-600" />
                 </div>
                 <div>
                   <h2 className="text-gray-900 font-bold text-base">Select Job</h2>
@@ -254,7 +254,7 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
             <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
                 </div>
               ) : jobs.length === 0 ? (
                 <div className="text-center py-10">
@@ -266,10 +266,10 @@ function CameraJobPickerSheet({ open, onClose }: { open: boolean; onClose: () =>
                   <button
                     key={job.id}
                     onClick={() => handleSelect(job)}
-                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
+                    className="w-full flex items-center gap-3 bg-gray-50 border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-3.5 text-left transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                      <Camera size={16} className="text-orange-500" />
+                    <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                      <Camera size={16} className="text-violet-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 font-semibold text-sm truncate">{job.name}</p>
@@ -1564,8 +1564,8 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <ClipboardCheck size={15} className="text-orange-600" />
+                <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                  <ClipboardCheck size={15} className="text-violet-700" />
                 </div>
                 <div>
                   <h2 className="text-gray-900 font-bold text-base">Prestart Check</h2>
@@ -1587,10 +1587,10 @@ function PrestartFleetPickerSheet({ open, onClose }: { open: boolean; onClose: (
                 <button
                   key={asset.id}
                   onClick={() => { onClose(); navigate(`/prestart?vehicleId=${asset.id}`); }}
-                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl px-3 py-3 text-left transition-colors"
+                  className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-200 rounded-xl px-3 py-3 text-left transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                    <ClipboardCheck size={16} className="text-orange-500" />
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <ClipboardCheck size={16} className="text-violet-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-gray-900 font-semibold text-sm truncate">{asset.name}</p>
@@ -1873,10 +1873,10 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                       {result && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-orange-50 border border-orange-200'}`}
+                          className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${result.type === 'signin' ? 'bg-indigo-50 border border-indigo-200' : 'bg-violet-50 border border-violet-200'}`}
                         >
-                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-orange-500'} />
-                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-orange-700'}`}>
+                          <CheckCircle2 size={16} className={result.type === 'signin' ? 'text-indigo-500' : 'text-violet-600'} />
+                          <p className={`text-sm font-semibold ${result.type === 'signin' ? 'text-indigo-700' : 'text-violet-800'}`}>
                             {result.type === 'signin'
                               ? `Signed in to ${result.name}`
                               : `Signed out${result.name ? ` — ${result.name}` : ''}`
@@ -1903,7 +1903,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                         <button
                           onClick={() => void handleSignOut()}
                           disabled={acting || !isSignedIn}
-                          className="h-12 rounded-2xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                          className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                         >
                           {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
                           Sign Out
@@ -1937,7 +1937,7 @@ function SignInOutSheet({ open, onClose }: { open: boolean; onClose: () => void 
                                 <button
                                   onClick={() => void handleForceSignOut(u.user_id, u.user_name ?? u.user_email ?? 'User')}
                                   disabled={forcingOut === u.user_id}
-                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-orange-100 hover:bg-orange-200 active:bg-orange-300 disabled:opacity-40 text-orange-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                                  className="shrink-0 h-7 px-2.5 rounded-lg bg-violet-100 hover:bg-violet-200 active:bg-violet-300 disabled:opacity-40 text-violet-800 text-xs font-bold flex items-center gap-1 transition-colors"
                                 >
                                   {forcingOut === u.user_id
                                     ? <Loader2 size={11} className="animate-spin" />
@@ -2114,8 +2114,8 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
             <div className="px-5 py-4 pb-8">
               {/* Avatar + name */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center">
-                  <User size={24} className="text-orange-500" />
+                <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center">
+                  <User size={24} className="text-violet-600" />
                 </div>
                 <div>
                   <p className="text-gray-900 font-bold text-base">{name}</p>
@@ -2291,7 +2291,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#edf0f5' }}>
-        <div className="w-8 h-8 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>
     );
   }
@@ -2361,12 +2361,12 @@ export default function HomeScreen() {
         <div className="flex items-center justify-between gap-3">
           {/* Left: greeting */}
           <div className="min-w-0">
-            <p className="text-orange-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
+            <p className="text-violet-400/50 text-[10.5px] font-semibold tracking-[0.06em] uppercase truncate">{dateStr}</p>
             <p className="text-white font-extrabold text-[21px] leading-tight mt-0.5 tracking-[-0.02em] truncate">
               {greeting},{' '}
               <span
                 className="text-transparent bg-clip-text"
-                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #f97316)' }}
+                style={{ backgroundImage: 'linear-gradient(90deg, #fb923c, #7c3aed)' }}
               >
                 {firstName}
               </span>
@@ -2379,9 +2379,9 @@ export default function HomeScreen() {
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-400/20 flex items-center justify-center hover:bg-orange-500/25 transition-colors"
+              className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-400/20 flex items-center justify-center hover:bg-violet-500/25 transition-colors"
             >
-              <User size={15} className="text-orange-300" />
+              <User size={15} className="text-violet-300" />
             </button>
             <button
               onClick={async () => {
@@ -2437,7 +2437,7 @@ export default function HomeScreen() {
         onClose={() => setDashOpen(false)}
         title="Home"
         titleIcon={LayoutDashboard}
-        titleIconClass="text-orange-500"
+        titleIconClass="text-violet-600"
       >
         <DashboardBanner userId={session?.user?.id ?? 'anon'} />
         <div className="mt-4">
@@ -2474,8 +2474,8 @@ export default function HomeScreen() {
         onClose={() => setQuotesPickerOpen(false)}
         title="Quotes"
         subtitle="Select a job to view its quotes"
-        iconBg="bg-orange-100"
-        iconFg="text-orange-600"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-700"
         Icon={FileText}
         onSelect={(job) => { setQuotesPickerOpen(false); navigate(`/jobs/${job.id}/quotes`); }}
       />

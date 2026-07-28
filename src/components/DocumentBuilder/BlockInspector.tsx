@@ -88,7 +88,7 @@ export default function BlockInspector({ collapsed = false, onToggleCollapse }: 
           <button
             onClick={onToggleCollapse}
             title="Expand inspector"
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
           >
             <PanelRightOpen size={14} />
           </button>
@@ -508,7 +508,7 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
       ))}
       <button
         onClick={() => onChange([...options, `Option ${options.length + 1}`])}
-        className="flex items-center gap-1 text-xs text-primary hover:text-orange-600 transition-colors mt-1"
+        className="flex items-center gap-1 text-xs text-primary hover:text-violet-700 transition-colors mt-1"
       >
         <Plus size={11} /> Add option
       </button>
@@ -591,7 +591,7 @@ function BannerInspector({ block, upd }: { block: BannerBlock; upd: (p: Partial<
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 disabled:opacity-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-50 border border-violet-200 text-primary text-xs font-semibold hover:bg-violet-100 disabled:opacity-50 transition-colors"
           >
             {uploading ? 'Uploading…' : block.customImageUrl ? 'Replace image' : 'Upload image'}
           </button>
@@ -723,7 +723,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
                   <button
                     onClick={() => fileRefs.current[badge.id]?.click()}
                     disabled={uploadingId === badge.id}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-orange-50 border border-orange-200 text-primary text-[10px] font-semibold hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-primary text-[10px] font-semibold hover:bg-violet-100 disabled:opacity-50 transition-colors"
                   >
                     {uploadingId === badge.id
                       ? <><Loader2 size={10} className="animate-spin" /> Uploading...</>
@@ -789,7 +789,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
                   type="checkbox"
                   checked={badge.required}
                   onChange={(e) => updateBadge(badge.id, { required: e.target.checked })}
-                  className="w-3.5 h-3.5 rounded accent-orange-500"
+                  className="w-3.5 h-3.5 rounded accent-violet-600"
                 />
                 <span className="text-[10px] text-slate-600 font-medium">Mark as required</span>
               </label>
@@ -800,7 +800,7 @@ function SafetyBadgeInspector({ block, upd }: { block: SafetyBadgeRowBlock; upd:
             onClick={() => upd({
               badges: [...block.badges, { id: newId(), badgeType: 'ppe' as SafetyBadgeType, label: 'New Badge', required: false }]
             })}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 hover:border-primary hover:text-primary hover:bg-orange-50 transition-colors"
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 hover:border-primary hover:text-primary hover:bg-violet-50 transition-colors"
           >
             <Plus size={11} /> Add badge
           </button>
@@ -843,7 +843,7 @@ function ImageInspector({ block, upd }: { block: ImageBlock; upd: (p: Partial<Im
       <button
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-50 border border-orange-200 text-primary text-xs font-semibold hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-violet-50 border border-violet-200 text-primary text-xs font-semibold hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
       >
         {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading...</> : <><Upload size={12} /> Upload Image</>}
       </button>

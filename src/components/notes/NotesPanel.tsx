@@ -175,7 +175,7 @@ export default function NotesPanel({ entityType, entityId, entityLabel, userRole
           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-all ${
             composerOpen
               ? 'bg-slate-200 text-slate-600 rotate-45'
-              : 'bg-primary text-white hover:bg-orange-600'
+              : 'bg-primary text-white hover:bg-violet-700'
           }`}
           style={{ transition: 'transform 0.18s ease, background 0.15s' }}
         >

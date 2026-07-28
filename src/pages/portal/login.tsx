@@ -67,7 +67,7 @@ export default function PortalLoginPage() {
         <div className="w-full max-w-sm">
           {/* Logo / brand */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500 mb-4 shadow-lg shadow-orange-500/30">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500 mb-4 shadow-lg shadow-violet-200/30">
               <Building2 size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-black text-white">Client Portal</h1>
@@ -77,7 +77,7 @@ export default function PortalLoginPage() {
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 text-center">
             {status === 'validating' && (
               <div className="flex flex-col items-center gap-3">
-                <Loader2 size={32} className="text-orange-400 animate-spin" />
+                <Loader2 size={32} className="text-violet-400 animate-spin" />
                 <p className="text-slate-300 text-sm">Verifying your access link…</p>
               </div>
             )}

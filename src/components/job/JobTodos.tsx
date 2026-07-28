@@ -331,7 +331,7 @@ function TaskForm({ initial, members, onSave, onCancel, saving, submitLabel = 'A
           type="button"
           onClick={() => void handleSubmit()}
           disabled={saving || !title.trim()}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 disabled:opacity-40 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-violet-700 disabled:opacity-40 transition-colors"
         >
           {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
           {saving ? 'Saving…' : submitLabel}
@@ -625,7 +625,7 @@ export default function JobTodos({ jobId }: Props) {
           <button
             type="button"
             onClick={() => { setAdding(true); setEditingId(null); setError(''); }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-violet-700 transition-colors"
           >
             <Plus size={11} /> Add Task
           </button>

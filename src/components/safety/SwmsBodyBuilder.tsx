@@ -25,7 +25,7 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 
 const RISK_COLORS: Record<RiskLevel, string> = {
   extreme: 'bg-red-600 text-white',
-  high: 'bg-orange-500 text-white',
+  high: 'bg-violet-500 text-white',
   medium: 'bg-yellow-400 text-slate-900',
   low: 'bg-green-500 text-white',
   '': 'bg-slate-100 text-slate-500',
@@ -538,7 +538,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
           {PPE_ITEMS.map((item) => {
             const selected = data.ppeRows.some((p) => p.item === item);
             return (
-              <label key={item} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-colors ${selected ? 'border-primary bg-orange-50 font-semibold text-primary' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
+              <label key={item} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-colors ${selected ? 'border-primary bg-violet-50 font-semibold text-primary' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
                 <input type="checkbox" checked={selected} onChange={() => togglePpe(item)} className="rounded shrink-0" />
                 {item}
               </label>
@@ -934,7 +934,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
           {COMPETENCY_OPTIONS.map((opt) => {
             const selected = data.competencyRows.some((c) => c.requirement === opt);
             return (
-              <label key={opt} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-colors ${selected ? 'border-primary bg-orange-50 font-semibold text-primary' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
+              <label key={opt} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-colors ${selected ? 'border-primary bg-violet-50 font-semibold text-primary' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
                 <input type="checkbox" checked={selected} onChange={() => toggleComp(opt)} className="rounded shrink-0" />
                 {opt}
               </label>
@@ -1107,7 +1107,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><ShieldAlert size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><ShieldAlert size={16} className="text-primary" /></div>
             <div>
               <h2 className="font-heading font-bold text-base leading-tight">{isEdit ? 'Edit SWMS' : 'New SWMS'}</h2>
               <p className="text-xs text-slate-400 mt-0.5">{data.title || 'Safe Work Method Statement'}</p>
@@ -1119,12 +1119,12 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
               <button
                 type="button"
                 onClick={() => { set('buildMode', 'quick'); setStep(0); }}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'quick' ? 'bg-white text-orange-600 shadow-sm border border-orange-200' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${data.buildMode === 'quick' ? 'bg-white text-violet-700 shadow-sm border border-violet-200' : 'text-slate-500 hover:text-slate-700'}`}
                 title="9 sections — Identity, HRCW, Controls, PPE, Sequence, Emergency, Sign-On"
               >
                 <Zap size={12} />
                 Quick
-                <span className={`text-[10px] font-normal ${data.buildMode === 'quick' ? 'text-orange-400' : 'text-slate-400'}`}>9 sections</span>
+                <span className={`text-[10px] font-normal ${data.buildMode === 'quick' ? 'text-violet-400' : 'text-slate-400'}`}>9 sections</span>
               </button>
               <button
                 type="button"
@@ -1208,13 +1208,13 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved }: Props) {
             </button>
             {isLast ? (
               <button type="button" onClick={() => handleSave(true)} disabled={saving}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60">
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60">
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                 Save & Close
               </button>
             ) : (
               <button type="button" onClick={() => setStep((s) => Math.min(allSections.length - 1, s + 1))}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors">
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors">
                 Next <ChevronRight size={14} />
               </button>
             )}

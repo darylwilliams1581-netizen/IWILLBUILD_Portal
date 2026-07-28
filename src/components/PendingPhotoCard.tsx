@@ -39,7 +39,7 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
         'flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm',
         isUploaded ? 'bg-emerald-50 border-emerald-200'
           : isFailed  ? 'bg-red-50 border-red-200'
-          : isActive  ? 'bg-orange-50 border-orange-200'
+          : isActive  ? 'bg-violet-50 border-violet-200'
           : 'bg-slate-50 border-slate-200',
       ].join(' ')}
     >
@@ -60,7 +60,7 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
       {/* Status icon */}
       <div className="shrink-0">
         {isActive ? (
-          <Loader2 size={14} className="animate-spin text-orange-500" />
+          <Loader2 size={14} className="animate-spin text-violet-600" />
         ) : isUploaded ? (
           <CheckCircle2 size={14} className="text-emerald-500" />
         ) : isFailed ? (
@@ -80,7 +80,7 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
             'text-[10px] font-semibold leading-none',
             isUploaded ? 'text-emerald-600'
               : isFailed ? 'text-red-600'
-              : isActive  ? 'text-orange-500'
+              : isActive  ? 'text-violet-600'
               : 'text-slate-400',
           ].join(' ')}>
             {STATUS_LABEL[item.status]}
@@ -92,9 +92,9 @@ export default function PendingPhotoCard({ item, onRetry, onRemove }: PendingPho
         </div>
         {/* Inline progress bar */}
         {item.status === 'uploading' && (
-          <div className="w-full h-1 bg-orange-100 rounded-full overflow-hidden mt-1">
+          <div className="w-full h-1 bg-violet-100 rounded-full overflow-hidden mt-1">
             <div
-              className="h-full bg-orange-400 rounded-full transition-all duration-200"
+              className="h-full bg-violet-500 rounded-full transition-all duration-200"
               style={{ width: `${item.progress}%` }}
             />
           </div>

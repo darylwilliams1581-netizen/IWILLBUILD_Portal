@@ -88,14 +88,14 @@ function EventIcon({ type, success }: { type: string; success: boolean }) {
     case 'pin_login_failed':       return <ShieldX size={sz} className={`${cls} text-red-500`} />;
     case 'login_blocked_unverified':
     case 'login_blocked_inactive': return <AlertTriangle size={sz} className={`${cls} text-amber-500`} />;
-    case 'rate_limited_login':     return <AlertTriangle size={sz} className={`${cls} text-orange-500`} />;
+    case 'rate_limited_login':     return <AlertTriangle size={sz} className={`${cls} text-violet-600`} />;
     case 'logout':                 return <LogOut size={sz} className={`${cls} text-slate-400`} />;
     case 'password_reset_requested': return <KeyRound size={sz} className={`${cls} text-amber-500`} />;
     case 'password_changed':       return <KeyRound size={sz} className={`${cls} text-blue-600`} />;
     case 'email_verification_sent': return <Mail size={sz} className={`${cls} text-sky-500`} />;
     case 'email_verified':         return <MailCheck size={sz} className={`${cls} text-emerald-600`} />;
-    case 'impersonation_started':  return <Eye size={sz} className={`${cls} text-orange-500`} />;
-    case 'temporary_password_set': return <KeyRound size={sz} className={`${cls} text-orange-500`} />;
+    case 'impersonation_started':  return <Eye size={sz} className={`${cls} text-violet-600`} />;
+    case 'temporary_password_set': return <KeyRound size={sz} className={`${cls} text-violet-600`} />;
     case 'account_unlocked':       return <Unlock size={sz} className={`${cls} text-emerald-600`} />;
     case 'forced_password_change_completed': return <KeyRound size={sz} className={`${cls} text-emerald-600`} />;
     default:                       return <Activity size={sz} className={`${cls} text-slate-400`} />;
@@ -111,7 +111,7 @@ function eventBadgeClass(type: string, success: boolean): string {
     case 'pin_login_failed':       return 'bg-red-50 text-red-700 border-red-200';
     case 'login_blocked_unverified':
     case 'login_blocked_inactive': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'rate_limited_login':     return 'bg-orange-50 text-orange-700 border-orange-200';
+    case 'rate_limited_login':     return 'bg-violet-50 text-violet-800 border-violet-200';
     case 'logout':                 return 'bg-slate-50 text-slate-500 border-slate-200';
     case 'password_reset_requested': return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'password_changed':       return 'bg-blue-50 text-blue-700 border-blue-200';

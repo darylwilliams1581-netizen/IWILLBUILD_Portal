@@ -132,7 +132,7 @@ export default function CsvImportModal({
               )}
               <button
                 onClick={onClose}
-                className="mt-1 w-full bg-primary hover:bg-orange-600 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+                className="mt-1 w-full bg-primary hover:bg-violet-700 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
               >
                 Done
               </button>
@@ -147,7 +147,7 @@ export default function CsvImportModal({
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) pickFile(f); }}
                 onClick={() => fileRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
-                  dragOver ? 'border-primary bg-orange-50' : file ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+                  dragOver ? 'border-primary bg-violet-50' : file ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
                 }`}
               >
                 {file ? (
@@ -199,7 +199,7 @@ export default function CsvImportModal({
                 <button
                   onClick={doImport}
                   disabled={!file || uploading}
-                  className="flex-1 bg-primary hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-primary hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   {uploading ? <><Loader2 size={14} className="animate-spin" />Importing…</> : 'Import CSV'}
                 </button>

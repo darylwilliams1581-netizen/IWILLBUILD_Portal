@@ -11,7 +11,7 @@ export type NoteEntityType = 'job' | 'fleet';
 export const NOTE_TYPE_META: Record<NoteType, { label: string; color: string; bg: string; border: string }> = {
   note:   { label: 'Note',   color: 'text-slate-600',  bg: 'bg-slate-50',   border: 'border-slate-200' },
   todo:   { label: 'Task',    color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200'  },
-  action: { label: 'Action', color: 'text-orange-700', bg: 'bg-orange-50',  border: 'border-orange-200'},
+  action: { label: 'Action', color: 'text-violet-800', bg: 'bg-violet-50',  border: 'border-violet-200'},
 };
 
 // ── Task urgency ──────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ export function getTaskUrgency(dueDateIso: string | null | undefined): TaskUrgen
 export const URGENCY_META: Record<TaskUrgency, { label: string; dot: string; badge: string }> = {
   normal:  { label: '',        dot: 'bg-slate-300',   badge: '' },
   soon:    { label: 'Due soon',  dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-  today:   { label: 'Due today', dot: 'bg-orange-500',  badge: 'bg-orange-50 text-orange-700 border-orange-200' },
+  today:   { label: 'Due today', dot: 'bg-violet-500',  badge: 'bg-violet-50 text-violet-800 border-violet-200' },
   overdue: { label: 'Overdue',   dot: 'bg-red-500',     badge: 'bg-red-50 text-red-700 border-red-200' },
 };
 

@@ -131,16 +131,16 @@ export default function JobFormsPage() {
           <ArrowLeft size={18} />
         </button>
           <div className="hidden md:flex items-center gap-1.5 shrink-0">
-            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : (
               <>
                 <h1 className="text-gray-900 font-bold text-sm leading-tight truncate text-center w-full">{job?.name ?? 'Job Forms'}</h1>
                 <div className="hidden md:flex items-center gap-1 text-xs text-gray-400 leading-tight">
-                  <button onClick={() => navigate('/jobs')} className="hover:text-orange-500 transition-colors">Jobs</button>
+                  <button onClick={() => navigate('/jobs')} className="hover:text-violet-600 transition-colors">Jobs</button>
                   <span>/</span>
-                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-orange-500 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
+                  <button onClick={() => navigate(`/jobs/${id}`)} className="hover:text-violet-600 transition-colors truncate max-w-[80px]">{job?.name ?? '...'}</button>
                   <span>/</span>
                   <span className="text-gray-500 font-medium">Forms</span>
                 </div>
@@ -158,7 +158,7 @@ export default function JobFormsPage() {
         {/* New Form */}
         <button
           onClick={() => setShowTemplates(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors"
         >
           <Plus size={13} /> New Form
         </button>
@@ -174,13 +174,13 @@ export default function JobFormsPage() {
           <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
           </button>
-          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-500 active:bg-orange-100 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
             <Home size={16} />
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-gray-900 font-bold text-sm leading-tight truncate">{job?.name ?? 'Job Forms'}</p>
           </div>
-          <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
+          <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
             <Plus size={13} /> New Form
           </button>
         </div>
@@ -213,7 +213,7 @@ export default function JobFormsPage() {
 
             {/* Creating spinner */}
             {creatingForm && (
-              <div className="flex items-center gap-2 text-orange-500 py-2">
+              <div className="flex items-center gap-2 text-violet-600 py-2">
                 <Loader2 size={16} className="animate-spin" />
                 <span className="text-sm font-medium">Starting form…</span>
               </div>
@@ -294,7 +294,7 @@ export default function JobFormsPage() {
                         {/* Primary: View or Continue */}
                         <button
                           onClick={() => navigate(`/jobs/${id}/forms/${s.id}`)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isCompleted ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isCompleted ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-violet-500 hover:bg-violet-700 text-white'}`}
                         >
                           {isCompleted ? <Eye size={12} /> : <ChevronRight size={12} />}
                           {isCompleted ? 'View' : 'Continue'}
@@ -400,10 +400,10 @@ export default function JobFormsPage() {
                   <button
                     key={t.id}
                     onClick={() => { void startForm(t.id); }}
-                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl px-3 py-3 text-left transition-colors"
+                    className="w-full flex items-center gap-3 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-200 rounded-xl px-3 py-3 text-left transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                      <FileText size={14} className="text-orange-600" />
+                    <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                      <FileText size={14} className="text-violet-700" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 font-semibold text-sm truncate">{t.name}</p>

@@ -49,7 +49,7 @@ interface Props {
 }
 
 const TOOL_COLORS: Record<ToolType, string> = {
-  none: '#f97316', text: '#1e40af', arrow: '#dc2626',
+  none: '#7c3aed', text: '#1e40af', arrow: '#dc2626',
   rect: '#16a34a', highlight: '#fbbf24', pen: '#7c3aed',
 };
 const TOOL_LABELS: Record<ToolType, string> = {
@@ -377,7 +377,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
             <Trash2 size={12} /> Clear
           </button>
           <button onClick={() => void saveMarkup()} disabled={saving || !markupItems.length}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-xs font-bold disabled:opacity-40">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-xs font-bold disabled:opacity-40">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
             Save Markup
           </button>
@@ -406,7 +406,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
           {/* Fit to screen */}
           <button
             onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-semibold border border-orange-500/30"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold border border-violet-600/30"
           >
             <Shrink size={13} /> Fit to screen
           </button>
@@ -461,7 +461,7 @@ export default function DrawingPdfViewer({ drawingId, fileUrl, title, onClose, o
       )}
 
       {activeTool !== 'none' && (
-        <div className="px-4 py-1.5 bg-primary/20 border-b border-primary/30 text-xs text-orange-200 text-center shrink-0">
+        <div className="px-4 py-1.5 bg-primary/20 border-b border-primary/30 text-xs text-violet-200 text-center shrink-0">
           <span className="font-bold">{TOOL_LABELS[activeTool]}</span> active — draw on the PDF. Press Esc to deselect.
         </div>
       )}

@@ -112,7 +112,7 @@ const STATUS_TIME: Record<string, { label: string; color: string; icon: React.El
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: 'from-amber-500 to-orange-600',
+  owner: 'from-amber-500 to-violet-700',
   admin: 'from-blue-500 to-blue-700',
   manager: 'from-violet-500 to-violet-700',
   supervisor: 'from-indigo-500 to-indigo-700',
@@ -171,41 +171,41 @@ function ShiftModal({
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Team Member</label>
             <select value={profileId} onChange={e => setProfileId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400">
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400">
               {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Title</label>
             <input value={title} onChange={e => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Date</label>
             <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Start</label>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">End</label>
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Break (min)</label>
               <input type="number" min={0} max={120} value={breakMins} onChange={e => setBreakMins(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Status</label>
             <select value={status} onChange={e => setStatus(e.target.value as Shift['status'])}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400">
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400">
               <option value="scheduled">Scheduled</option>
               <option value="confirmed">Confirmed</option>
               <option value="completed">Completed</option>
@@ -215,13 +215,13 @@ function ShiftModal({
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400 resize-none" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400 resize-none" />
           </div>
         </div>
         <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition-colors">Cancel</button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
             {saving && <Loader2 size={13} className="animate-spin" />}
             {initial?.id ? 'Save Changes' : 'Create Shift'}
           </button>
@@ -279,47 +279,47 @@ function TimeEntryModal({
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Team Member</label>
             <select value={profileId} onChange={e => setProfileId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400">
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400">
               {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Date</label>
             <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Clock In</label>
               <input type="time" value={clockIn} onChange={e => setClockIn(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Clock Out</label>
               <input type="time" value={clockOut} onChange={e => setClockOut(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Break (min)</label>
               <input type="number" min={0} max={120} value={breakMins} onChange={e => setBreakMins(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Hourly Rate ($)</label>
             <input type="number" min={0} step={0.01} placeholder="e.g. 35.00" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400 resize-none" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400 resize-none" />
           </div>
         </div>
         <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition-colors">Cancel</button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
             {saving && <Loader2 size={13} className="animate-spin" />}
             {initial?.id ? 'Save Changes' : 'Add Entry'}
           </button>
@@ -553,8 +553,8 @@ export default function TeamSchedulePage() {
             >
               <Menu size={20} />
             </button>
-            <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
-              <CalendarDays size={18} className="text-orange-500" />
+            <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+              <CalendarDays size={18} className="text-violet-600" />
             </div>
             <div>
               <h1 className="text-base md:text-lg font-bold text-slate-800">Scheduler</h1>
@@ -588,7 +588,7 @@ export default function TeamSchedulePage() {
                   onClick={() => setTab(id)}
                   className={[
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                    tab === id ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                    tab === id ? 'bg-violet-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
                   ].join(' ')}
                 >
                   <Icon size={12} /> {label}
@@ -634,13 +634,13 @@ export default function TeamSchedulePage() {
 
                 {/* Member filter */}
                 <select value={filterMember} onChange={e => setFilterMember(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-orange-400 bg-white">
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-violet-400 bg-white">
                   <option value="">All members</option>
                   {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
                 </select>
 
                 <button onClick={() => { setEditShift(null); setShowShiftModal(true); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-700 transition-colors">
                   <Plus size={13} /> Add Shift
                 </button>
               </div>
@@ -664,7 +664,7 @@ export default function TeamSchedulePage() {
                           <div className={[
                             'text-center py-2 rounded-xl text-xs font-bold border',
                             isToday
-                              ? 'bg-orange-500 text-white border-orange-500'
+                              ? 'bg-violet-500 text-white border-violet-600'
                               : 'bg-white text-slate-500 border-slate-200',
                           ].join(' ')}>
                             <div>{DAY_LABELS[i]}</div>
@@ -714,7 +714,7 @@ export default function TeamSchedulePage() {
                               setEditShift({ shift_date: key } as Shift);
                               setShowShiftModal(true);
                             }}
-                            className="w-full py-1.5 rounded-xl border border-dashed border-slate-200 text-[10px] text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
+                            className="w-full py-1.5 rounded-xl border border-dashed border-slate-200 text-[10px] text-slate-400 hover:border-violet-300 hover:text-violet-400 transition-colors"
                           >
                             + Add
                           </button>
@@ -733,14 +733,14 @@ export default function TeamSchedulePage() {
               {/* Controls */}
               <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-100 flex-shrink-0 flex-wrap">
                 <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-orange-400 bg-white" />
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-violet-400 bg-white" />
                 <select value={filterMember} onChange={e => setFilterMember(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-orange-400 bg-white">
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-violet-400 bg-white">
                   <option value="">All members</option>
                   {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
                 </select>
                 <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-orange-400 bg-white">
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-violet-400 bg-white">
                   <option value="">All statuses</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
@@ -751,7 +751,7 @@ export default function TeamSchedulePage() {
                 </button>
                 <div className="flex-1" />
                 <button onClick={() => { setEditEntry(null); setShowTimeModal(true); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-700 transition-colors">
                   <Plus size={13} /> Add Entry
                 </button>
               </div>
@@ -787,7 +787,7 @@ export default function TeamSchedulePage() {
                     <Clock size={36} className="text-slate-200" />
                     <p className="text-sm font-semibold">No time entries for this period</p>
                     <button onClick={() => { setEditEntry(null); setShowTimeModal(true); }}
-                      className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">
+                      className="px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors">
                       Add first entry
                     </button>
                   </div>
@@ -929,12 +929,12 @@ export default function TeamSchedulePage() {
                     <div className="flex-1">
                       <label className="text-xs font-semibold text-slate-500 mb-1 block">Month</label>
                       <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-orange-400" />
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-violet-400" />
                     </div>
                     <div className="flex-1">
                       <label className="text-xs font-semibold text-slate-500 mb-1 block">Member (optional)</label>
                       <select value={filterMember} onChange={e => setFilterMember(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-orange-400 bg-white">
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-violet-400 bg-white">
                         <option value="">All members</option>
                         {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
                       </select>
@@ -942,7 +942,7 @@ export default function TeamSchedulePage() {
                     <button
                       onClick={handleExport}
                       disabled={exporting}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors"
                     >
                       {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                       {exporting ? 'Exporting…' : 'Download CSV'}

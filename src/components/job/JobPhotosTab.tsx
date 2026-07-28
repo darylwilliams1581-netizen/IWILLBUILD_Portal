@@ -119,7 +119,7 @@ export default function JobPhotosTab({ jobId, jobName }: Props) {
         <button
           onClick={() => photosRef.current?.openFilePicker()}
           disabled={uploading || atLimit}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
         >
           {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
           Upload

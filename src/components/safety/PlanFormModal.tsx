@@ -72,7 +72,7 @@ export default function PlanFormModal({ initial, jobs, onClose, onSaved }: Props
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-orange-50 rounded-md"><ShieldCheck size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><ShieldCheck size={16} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-base">{isEdit ? 'Edit Safety Plan' : 'New Site Safety Plan'}</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
@@ -176,7 +176,7 @@ export default function PlanFormModal({ initial, jobs, onClose, onSaved }: Props
 
           <div className="flex gap-3 pt-2 border-t border-slate-100">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {isEdit ? 'Save Changes' : 'Create Plan'}
             </button>

@@ -143,7 +143,7 @@ export default function PdfViewer({
                 onClick={() => onPageChange(pg)}
                 className={[
                   'w-full rounded border-2 overflow-hidden transition-colors',
-                  pg === currentPage ? 'border-orange-500' : 'border-transparent hover:border-slate-600',
+                  pg === currentPage ? 'border-violet-600' : 'border-transparent hover:border-slate-600',
                 ].join(' ')}
               >
                 <Page
@@ -209,7 +209,7 @@ export default function PdfViewer({
             onClick={() => onFitWidth(!fitWidth)}
             className={[
               'px-2 h-8 rounded-lg text-xs font-mono transition-colors min-w-[46px] text-center',
-              fitWidth ? 'bg-orange-500/20 text-orange-400' : 'text-slate-300 hover:bg-slate-700',
+              fitWidth ? 'bg-violet-500/20 text-violet-400' : 'text-slate-300 hover:bg-slate-700',
             ].join(' ')}
             title="Toggle fit-width"
           >
@@ -261,7 +261,7 @@ export default function PdfViewer({
             {/* Fit to screen */}
             <button
               onClick={() => { mobileViewer.fitToScreen(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-semibold border border-orange-500/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs font-semibold border border-violet-600/30"
             >
               <Shrink size={13} /> Fit to screen
             </button>

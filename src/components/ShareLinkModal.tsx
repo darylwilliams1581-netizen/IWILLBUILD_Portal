@@ -175,7 +175,7 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
                   <Link2 size={16} className="text-primary" />
                 </div>
                 <div>
@@ -223,7 +223,7 @@ export default function ShareLinkModal({ open, onClose, target, targetType: lega
                   <button
                     onClick={() => void handleGenerate()}
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
                   >
                     {loading ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />}
                     {loading ? 'Generating…' : 'Generate share link'}

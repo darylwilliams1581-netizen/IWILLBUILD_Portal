@@ -128,7 +128,7 @@ export default function PlatformEmailTab() {
   const inputClass = [
     'w-full px-3 py-2 rounded-md border text-sm',
     'bg-slate-900 border-slate-700 text-white placeholder-slate-500',
-    'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent',
+    'focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent',
     'transition-colors',
   ].join(' ');
 
@@ -138,7 +138,7 @@ export default function PlatformEmailTab() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Mail size={18} className="text-orange-400" />
+            <Mail size={18} className="text-violet-400" />
             Platform Email Settings
           </h2>
           <p className="text-sm text-slate-400 mt-1">
@@ -216,7 +216,7 @@ export default function PlatformEmailTab() {
           className={[
             'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
             isDirty && !saving
-              ? 'bg-orange-500 hover:bg-orange-600 text-white'
+              ? 'bg-violet-500 hover:bg-violet-700 text-white'
               : 'bg-slate-700 text-slate-500 cursor-not-allowed',
           ].join(' ')}
         >

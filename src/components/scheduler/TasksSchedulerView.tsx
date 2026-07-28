@@ -159,8 +159,8 @@ function DateField({ label, value, onChange }: {
             onClick={() => onChange(q.value)}
             className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
               value === q.value
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white text-slate-500 border-slate-200 hover:border-orange-300 hover:text-orange-600'
+                ? 'bg-violet-500 text-white border-violet-600'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-700'
             }`}
           >
             {q.label}
@@ -180,7 +180,7 @@ function DateField({ label, value, onChange }: {
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
       />
       {warn && (
         <p className="text-[11px] text-amber-600 flex items-center gap-1">
@@ -358,9 +358,9 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
 
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 shrink-0">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isEdit ? 'bg-orange-50' : 'bg-emerald-50'}`}>
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isEdit ? 'bg-violet-50' : 'bg-emerald-50'}`}>
             {isEdit
-              ? <CheckSquare size={14} className="text-orange-500" />
+              ? <CheckSquare size={14} className="text-violet-600" />
               : <Plus size={14} className="text-emerald-600" />
             }
           </div>
@@ -399,7 +399,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); }}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white placeholder:text-slate-300"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white placeholder:text-slate-300"
               placeholder="e.g. Pick up ute from hire shop"
             />
           </div>
@@ -413,7 +413,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none bg-white"
               placeholder="Add more detail…"
             />
           </div>
@@ -439,7 +439,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               <select
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as TaskStatus }))}
-                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
               >
                 {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -451,7 +451,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               <select
                 value={form.assignedUserId}
                 onChange={(e) => handleAssignee(e.target.value)}
-                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
               >
                 <option value="">Unassigned</option>
                 {members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
@@ -468,7 +468,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none bg-white"
               placeholder="Internal notes…"
             />
           </div>
@@ -484,7 +484,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
                 ...f,
                 jobId: e.target.value === '' ? null : parseInt(e.target.value, 10),
               }))}
-              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
             >
               <option value="">No linked job — general task</option>
               {jobs.map((j) => (
@@ -502,11 +502,11 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
               </p>
             ) : linkedJobLabel && (
               <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-                <Briefcase size={10} className="shrink-0 text-orange-400" />
+                <Briefcase size={10} className="shrink-0 text-violet-400" />
                 <span>Linked to</span>
                 <Link
                   to={`/jobs/${form.jobId}?tab=tasks`}
-                  className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-0.5"
+                  className="text-violet-700 hover:text-violet-800 font-medium flex items-center gap-0.5"
                   onClick={onClose}
                 >
                   {linkedJobLabel} <ExternalLink size={9} />
@@ -555,7 +555,7 @@ function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskMod
             type="button"
             onClick={() => void handleSave()}
             disabled={saving || completing || !form.title.trim()}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-violet-500 text-white hover:bg-violet-700 disabled:opacity-40 transition-colors shadow-sm"
           >
             {saving
               ? <Loader2 size={11} className="animate-spin" />
@@ -667,11 +667,11 @@ function DateGroupHeader({ dateStr, count }: { dateStr: string; count: number })
   return (
     <div className={`flex items-center gap-2 px-4 py-2 border-b border-slate-100 ${
       overdue  ? 'bg-red-50'    :
-      isToday  ? 'bg-orange-50' :
+      isToday  ? 'bg-violet-50' :
       'bg-slate-50'
     }`}>
-      <Calendar size={12} className={overdue ? 'text-red-500' : isToday ? 'text-orange-500' : 'text-slate-400'} />
-      <span className={`text-xs font-bold ${overdue ? 'text-red-700' : isToday ? 'text-orange-700' : 'text-slate-600'}`}>
+      <Calendar size={12} className={overdue ? 'text-red-500' : isToday ? 'text-violet-600' : 'text-slate-400'} />
+      <span className={`text-xs font-bold ${overdue ? 'text-red-700' : isToday ? 'text-violet-800' : 'text-slate-600'}`}>
         {label}
       </span>
       <span className="ml-auto text-[10px] text-slate-400">{count} task{count !== 1 ? 's' : ''}</span>
@@ -761,7 +761,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-orange-500" size={24} />
+        <Loader2 className="animate-spin text-violet-600" size={24} />
       </div>
     );
   }
@@ -806,7 +806,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
             <button
               type="button"
               onClick={() => setModalTask(null)}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-500 text-white hover:bg-violet-700 transition-colors shadow-sm"
             >
               <Plus size={12} /> Add Task
             </button>
@@ -833,7 +833,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
               <button
                 type="button"
                 onClick={() => setModalTask(null)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-violet-500 text-white hover:bg-violet-700 transition-colors"
               >
                 <Plus size={12} /> Add Task
               </button>

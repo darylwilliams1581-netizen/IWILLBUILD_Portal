@@ -50,7 +50,7 @@ export default function NativeStartupGate({ children }: NativeStartupGateProps) 
             width: 32,
             height: 32,
             border: '3px solid rgba(249,115,22,0.2)',
-            borderTopColor: '#F97316',
+            borderTopColor: '#7C3AED',
             borderRadius: '50%',
             animation: 'spin 0.7s linear infinite',
           }}

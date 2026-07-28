@@ -239,7 +239,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onTaskUpdate, onCommen
                   <button
                     type="submit"
                     disabled={!commentBody.trim() || submitting}
-                    className="flex-shrink-0 p-2 rounded-lg bg-primary text-white disabled:opacity-40 hover:bg-orange-600 transition-colors"
+                    className="flex-shrink-0 p-2 rounded-lg bg-primary text-white disabled:opacity-40 hover:bg-violet-700 transition-colors"
                   >
                     {submitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                   </button>

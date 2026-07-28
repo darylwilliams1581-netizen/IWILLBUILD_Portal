@@ -84,7 +84,7 @@ export default function LogicPanel({ blockId }: Props) {
         </div>
         <button
           onClick={handleAddRule}
-          className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+          className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
         >
           <Plus size={11} /> Add rule
         </button>
@@ -93,7 +93,7 @@ export default function LogicPanel({ blockId }: Props) {
       {/* Empty state */}
       {rules.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center">
             <Zap size={16} className="text-primary" />
           </div>
           <p className="text-xs font-semibold text-slate-600">No logic rules yet</p>
@@ -102,7 +102,7 @@ export default function LogicPanel({ blockId }: Props) {
           </p>
           <button
             onClick={handleAddRule}
-            className="mt-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-orange-600 transition-colors"
+            className="mt-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
           >
             <Plus size={11} /> Add first rule
           </button>

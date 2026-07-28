@@ -888,7 +888,7 @@ export default function BillingPage() {
                       transition={{ duration: 0.3 }}
                       className={`relative flex flex-col bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-150 ${
                         plan.highlight && !isCurrent
-                          ? 'border-primary shadow-orange-100'
+                          ? 'border-primary shadow-violet-200'
                           : isCurrent
                           ? 'border-emerald-400'
                           : 'border-slate-200 hover:border-slate-300'
@@ -958,7 +958,7 @@ export default function BillingPage() {
                               : isDowngradeAction
                               ? 'bg-amber-500 hover:bg-amber-600 text-white'
                               : plan.highlight
-                              ? 'bg-primary hover:bg-orange-600 text-white'
+                              ? 'bg-primary hover:bg-violet-700 text-white'
                               : 'bg-slate-900 hover:bg-slate-700 text-white'
                           }`}
                         >

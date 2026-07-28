@@ -202,7 +202,7 @@ export default function PushNotificationSettings() {
             className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors disabled:opacity-50 ${
               subscribed
                 ? 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                : 'bg-primary text-white border-primary hover:bg-orange-600'
+                : 'bg-primary text-white border-primary hover:bg-violet-700'
             }`}
           >
             {working

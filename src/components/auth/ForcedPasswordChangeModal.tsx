@@ -87,12 +87,12 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
         ) : (
           <>
             {/* Header */}
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-6 py-6 text-white">
+            <div className="bg-gradient-to-br from-violet-500 to-violet-700 px-6 py-6 text-white">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3">
                 <Lock size={22} />
               </div>
               <h2 className="text-xl font-black leading-tight">Set a new password</h2>
-              <p className="text-orange-100 text-sm mt-1">
+              <p className="text-violet-100 text-sm mt-1">
                 Your account has a temporary password. You need to set a permanent one before continuing.
               </p>
             </div>
@@ -107,7 +107,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="Enter your temporary password"
-                    className="w-full px-4 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                    className="w-full px-4 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                     autoFocus
                   />
                   <button
@@ -129,7 +129,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="At least 8 chars, 1 number, 1 symbol"
-                    className="w-full px-4 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                    className="w-full px-4 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                   />
                   <button
                     type="button"
@@ -173,7 +173,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
                     className={`w-full px-4 py-2.5 pr-10 text-sm border rounded-xl focus:outline-none focus:ring-2 transition-colors ${
                       confirmPassword && !passwordsMatch
                         ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                        : 'border-slate-200 focus:border-orange-400 focus:ring-orange-100'
+                        : 'border-slate-200 focus:border-violet-400 focus:ring-violet-100'
                     }`}
                   />
                   <button
@@ -199,7 +199,7 @@ export default function ForcedPasswordChangeModal({ onSuccess }: Props) {
               <button
                 type="submit"
                 disabled={loading || !meetsRequirements || !passwordsMatch || !currentPassword}
-                className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-700 text-white font-bold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 size={15} className="animate-spin" />}
                 Set new password

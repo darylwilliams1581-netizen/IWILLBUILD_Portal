@@ -32,8 +32,8 @@ const STATUS_COLORS: Record<string, string> = {
   withdrawn: 'bg-slate-100 text-slate-500',
 };
 
-const INPUT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400';
-const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30';
+const INPUT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400';
+const SELECT = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30';
 const LABEL = 'block text-xs font-semibold text-slate-500 mb-1';
 
 // ── File icon helper ──────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ function AttachmentPanel({ tenderId }: { tenderId: number }) {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 hover:border-orange-300 hover:bg-orange-50 text-slate-600 hover:text-orange-600 text-[11px] font-semibold rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-[11px] font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             {uploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
             {uploading ? 'Uploading…' : 'Upload file'}
@@ -148,7 +148,7 @@ function AttachmentPanel({ tenderId }: { tenderId: number }) {
       ) : (
         <div className="flex flex-col gap-1">
           {attachments.map((att) => (
-            <div key={att.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 group hover:border-orange-200 transition-colors">
+            <div key={att.id} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 group hover:border-violet-200 transition-colors">
               <FileIcon mime={att.mime_type} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-700 truncate">{att.original_name}</p>
@@ -271,18 +271,18 @@ export default function AMTendersTab() {
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tenders…"
-            className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+            className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
         </div>
         <div className="relative">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30 appearance-none">
+            className="bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30 appearance-none">
             <option value="">All statuses</option>
             {AWARD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
         <button onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors">
           <Plus size={13} />
           New tender
         </button>
@@ -330,13 +330,13 @@ export default function AMTendersTab() {
             <div className="sm:col-span-2">
               <label className={LABEL}>Notes</label>
               <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} rows={2}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none" />
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 resize-none" />
             </div>
           </div>
           <div className="flex items-center gap-2 justify-end">
             <button onClick={() => setCreating(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
             <button onClick={() => void handleCreate()} disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
               Create
             </button>
@@ -382,7 +382,7 @@ export default function AMTendersTab() {
                   <div className="flex items-center gap-2 justify-end">
                     <button onClick={() => setEditId(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
                     <button onClick={() => void handlePatch(tender.id)} disabled={saving}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+                      className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
                       {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                       Save
                     </button>

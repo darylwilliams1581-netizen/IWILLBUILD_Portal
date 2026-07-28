@@ -241,7 +241,7 @@ function NewAssetModal({ onClose, onCreated }: NewAssetModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               {saving ? 'Creating…' : 'Create Asset'}
@@ -406,7 +406,7 @@ export default function FleetPage() {
                     onClick={() => !isViewOnly && setShowModal(true)}
                     disabled={isViewOnly}
                     title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={13} />
                     <span>Add Asset</span>
@@ -536,7 +536,7 @@ export default function FleetPage() {
                     onClick={() => !isViewOnly && setShowModal(true)}
                     disabled={isViewOnly}
                     title={isViewOnly ? 'Subscribe to continue' : undefined}
-                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={15} />
                     Add First Asset

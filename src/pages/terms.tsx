@@ -74,12 +74,12 @@ export default function TermsPage() {
 
             <Section title="1. About IWILLBUILD">
               <p>IWILLBUILD is a construction and job management software platform. It provides tools for managing jobs, estimates, forms, safety documents, fleet, files, invoices, and team coordination. By creating an account or using the platform, you agree to these terms.</p>
-              <p>For questions, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>.</p>
+              <p>For questions, contact us at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.</p>
             </Section>
 
             <Section title="2. Account security">
               <p>You are responsible for keeping your login credentials — including your password and PIN — secure and confidential. Do not share your account with others. You are responsible for all activity that occurs under your account.</p>
-              <p>If you believe your account has been compromised, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>.</p>
+              <p>If you believe your account has been compromised, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>.</p>
             </Section>
 
             <Section title="3. Your data and content">
@@ -152,7 +152,7 @@ export default function TermsPage() {
                 <strong style={{ color: '#f1f5f9' }}>IWILLBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
-                <a href="mailto:support@iwillbuild.com" style={{ color: '#f97316' }}>support@iwillbuild.com</a>
+                <a href="mailto:support@iwillbuild.com" style={{ color: '#7c3aed' }}>support@iwillbuild.com</a>
               </p>
             </Section>
 
@@ -164,7 +164,7 @@ export default function TermsPage() {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
             <Link to="/" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Home</Link>
             <Link to="/privacy" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms" style={{ color: '#f97316', textDecoration: 'none', fontSize: 13 }}>Terms of Use</Link>
+            <Link to="/terms" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 13 }}>Terms of Use</Link>
             <Link to="/login" style={{ color: '#64748b', textDecoration: 'none', fontSize: 13 }} className="hover:text-white transition-colors">Sign In</Link>
           </div>
           <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>

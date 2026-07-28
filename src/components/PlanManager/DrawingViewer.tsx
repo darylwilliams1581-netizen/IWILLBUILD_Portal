@@ -159,7 +159,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             className={[
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors',
               revPanelOpen
-                ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
+                ? 'border-violet-600/50 bg-violet-500/10 text-violet-400'
                 : 'border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-slate-200',
             ].join(' ')}
           >
@@ -201,7 +201,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             className={[
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold',
               revPanelOpen
-                ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
+                ? 'border-violet-600/50 bg-violet-500/10 text-violet-400'
                 : 'border-slate-600 text-slate-300 bg-slate-700',
             ].join(' ')}
           >
@@ -271,7 +271,7 @@ export default function DrawingViewer({ detail, hook, onClose }: Props) {
             <p className="text-xs text-slate-600 text-center">Tap "…" then "Upload PDF" to add a drawing file</p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
             >
               Upload PDF
             </button>

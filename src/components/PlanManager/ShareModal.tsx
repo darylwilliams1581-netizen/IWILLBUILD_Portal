@@ -73,7 +73,7 @@ export default function ShareModal({ drawingId, drawingTitle, revisionId, onClos
                       className={[
                         'flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors',
                         expiryDays === d
-                          ? 'bg-orange-500 border-orange-500 text-white'
+                          ? 'bg-violet-500 border-violet-600 text-white'
                           : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-200',
                       ].join(' ')}
                     >
@@ -86,7 +86,7 @@ export default function ShareModal({ drawingId, drawingTitle, revisionId, onClos
               <button
                 onClick={handleGenerate}
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <Link size={14} />
                 {loading ? 'Generating…' : 'Generate Share Link'}

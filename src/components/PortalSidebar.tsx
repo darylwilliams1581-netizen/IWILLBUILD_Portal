@@ -217,9 +217,9 @@ function SidebarContent({
       collapsed ? 'justify-center px-0 py-2 mx-1' : 'gap-2.5 px-3 py-1.5'
     }`;
     if (isDazza) {
-      return `${base} ${active ? 'bg-orange-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`;
+      return `${base} ${active ? 'bg-violet-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 font-medium'}`;
     }
-    return `${base} ${active ? 'bg-orange-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}`;
+    return `${base} ${active ? 'bg-violet-50 text-primary font-semibold' + (!collapsed ? ' border-r-2 border-primary' : '') : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}`;
   };
 
   return (
@@ -371,10 +371,10 @@ function SidebarContent({
                 aria-current={active ? 'page' : undefined}
                 aria-label={collapsed ? 'Developer Console' : undefined}
                 title={collapsed ? 'Developer Console' : undefined}
-                className={`${navLinkClass(active)} border border-orange-200`}
+                className={`${navLinkClass(active)} border border-violet-200`}
               >
-                <ShieldCheck size={15} className="shrink-0 text-orange-500" aria-hidden="true" />
-                {!collapsed && <span className="truncate flex-1 text-orange-600">Developer Console</span>}
+                <ShieldCheck size={15} className="shrink-0 text-violet-600" aria-hidden="true" />
+                {!collapsed && <span className="truncate flex-1 text-violet-700">Developer Console</span>}
               </Link>
             );
           })()}
@@ -610,7 +610,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
               to={item.href}
               className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
               style={{
-                color: active ? '#f97316' : 'rgba(0,0,0,0.4)',
+                color: active ? '#7c3aed' : 'rgba(0,0,0,0.4)',
                 WebkitTapHighlightColor: 'transparent',
               }}
               aria-current={active ? 'page' : undefined}
@@ -620,7 +620,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
                 {item.label}
               </span>
               {active && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-500" aria-hidden="true" />
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-violet-500" aria-hidden="true" />
               )}
             </Link>
           );
@@ -633,10 +633,10 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           style={{ WebkitTapHighlightColor: 'transparent', background: 'none', border: 'none', cursor: 'pointer' }}
           aria-label="Camera"
         >
-          <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg -mt-5 border-4 border-white">
+          <div className="w-12 h-12 rounded-full bg-violet-500 flex items-center justify-center shadow-lg -mt-5 border-4 border-white">
             <Camera size={22} className="text-white" strokeWidth={2} />
           </div>
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1, color: '#f97316', marginTop: 2 }}>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.01em', lineHeight: 1, color: '#7c3aed', marginTop: 2 }}>
             Camera
           </span>
         </button>
@@ -646,7 +646,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
           to="/safety"
           className="relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors duration-150"
           style={{
-            color: isActive('/safety') ? '#f97316' : 'rgba(0,0,0,0.4)',
+            color: isActive('/safety') ? '#7c3aed' : 'rgba(0,0,0,0.4)',
             WebkitTapHighlightColor: 'transparent',
           }}
           aria-current={isActive('/safety') ? 'page' : undefined}
@@ -656,7 +656,7 @@ function MobileBottomNav({ onMoreClick }: { onMoreClick: () => void }) {
             Safety
           </span>
           {isActive('/safety') && (
-            <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-500" aria-hidden="true" />
+            <span className="absolute bottom-1 w-1 h-1 rounded-full bg-violet-500" aria-hidden="true" />
           )}
         </Link>
 

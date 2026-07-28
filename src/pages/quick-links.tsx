@@ -369,7 +369,7 @@ function LinkModal({ initial, saving, onSave, onClose }: LinkModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2 rounded-lg transition-colors"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
               {saving ? 'Saving…' : initial ? 'Save changes' : 'Add link'}
@@ -626,7 +626,7 @@ export default function QuickLinksPage() {
                 {isAdmin && (
                   <button
                     onClick={() => { setEditTarget(null); setShowModal(true); }}
-                    className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                   >
                     <Plus size={13} />
                     Add Link
@@ -660,7 +660,7 @@ export default function QuickLinksPage() {
                 {isAdmin ? (
                   <button
                     onClick={() => { setEditTarget(null); setShowModal(true); }}
-                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-colors shadow-sm"
+                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-colors shadow-sm"
                   >
                     <Plus size={15} />
                     Add first link

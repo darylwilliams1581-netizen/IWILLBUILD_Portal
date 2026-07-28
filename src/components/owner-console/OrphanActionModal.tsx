@@ -63,7 +63,7 @@ export default function OrphanActionModal({ action, user, onClose, onSuccess }: 
       icon: Mail,
       iconColor: 'text-slate-600',
       iconBg: 'bg-slate-50 border-slate-200',
-      confirmClass: 'bg-primary hover:bg-orange-600 text-white',
+      confirmClass: 'bg-primary hover:bg-violet-700 text-white',
     },
     'verify-orphan': {
       title: 'Verify email manually',

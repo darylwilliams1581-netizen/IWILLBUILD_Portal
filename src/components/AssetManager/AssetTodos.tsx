@@ -127,7 +127,7 @@ export default function AssetTodos({ assetId }: { assetId: number }) {
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-bold text-slate-700">Tasks</h3>
           {open.length > 0 && (
-            <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full border border-orange-200">
+            <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-bold rounded-full border border-violet-200">
               {open.length} open
             </span>
           )}
@@ -145,26 +145,26 @@ export default function AssetTodos({ assetId }: { assetId: number }) {
 
       {/* Add form */}
       {adding && (
-        <div className="bg-white border border-orange-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+        <div className="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
           <input
             autoFocus
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void handleAdd(); if (e.key === 'Escape') setAdding(false); }}
             placeholder="Task title…"
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="block text-[10px] font-semibold text-slate-400 mb-1">Due date</label>
               <input type="date" value={newDue} onChange={e => setNewDue(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30" />
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-400 mb-1">Notes</label>
               <input value={newNotes} onChange={e => setNewNotes(e.target.value)}
                 placeholder="Optional note…"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30" />
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30" />
             </div>
           </div>
           <div className="flex items-center gap-2 justify-end">
@@ -173,7 +173,7 @@ export default function AssetTodos({ assetId }: { assetId: number }) {
               Cancel
             </button>
             <button onClick={() => void handleAdd()} disabled={saving || !newTitle.trim()}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
               Add Task
             </button>
@@ -267,19 +267,19 @@ function TodoRow({
 
   if (editing) {
     return (
-      <div className="bg-white border border-orange-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+      <div className="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
         <input autoFocus value={editTitle} onChange={e => setEditTitle(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <input type="date" value={editDue} onChange={e => setEditDue(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30" />
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30" />
           <input value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes…"
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/30" />
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30" />
         </div>
         <div className="flex items-center gap-2 justify-end">
           <button onClick={onCancelEdit} className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
           <button onClick={onSaveEdit} disabled={saving || !editTitle.trim()}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
             {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
             Save
           </button>
@@ -289,10 +289,10 @@ function TodoRow({
   }
 
   return (
-    <div className={`bg-white border rounded-xl px-4 py-3 flex items-start gap-3 group hover:shadow-sm transition-all ${done ? 'border-slate-100 opacity-60' : overdue ? 'border-red-200 hover:border-red-300' : 'border-slate-200 hover:border-orange-200'}`}>
+    <div className={`bg-white border rounded-xl px-4 py-3 flex items-start gap-3 group hover:shadow-sm transition-all ${done ? 'border-slate-100 opacity-60' : overdue ? 'border-red-200 hover:border-red-300' : 'border-slate-200 hover:border-violet-200'}`}>
       <button
         onClick={onToggle}
-        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-orange-400'}`}
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-violet-400'}`}
       >
         {done && <Check size={11} className="text-white" />}
       </button>
@@ -309,7 +309,7 @@ function TodoRow({
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-colors" title="Edit">
+        <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Edit">
           <X size={12} className="rotate-45" />
         </button>
         <button onClick={onDelete} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">

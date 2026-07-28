@@ -60,7 +60,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
   { label: 'Forms',          icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1', bg: '#eef2ff' },
   { label: 'Library',        icon: BookOpen,        href: '/studio/library',       color: '#b45309', bg: '#fffbeb' },
   // Row 4 — Assets & field
-  { label: 'Files',          icon: FolderOpen,      href: '/files',                color: '#f97316', bg: '#fff7ed' },
+  { label: 'Files',          icon: FolderOpen,      href: '/files',                color: '#7c3aed', bg: '#fff7ed' },
   { label: 'Fleet',          icon: Truck,           href: '/fleet',                color: '#059669', bg: '#ecfdf5' },
   { label: 'Plan Manager',   icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
   // Row 5 — Safety & compliance
@@ -340,9 +340,9 @@ export default function AppLauncher() {
           transition: 'background 0.12s',
           flexShrink: 0,
         }}
-        className="hover:bg-orange-50"
+        className="hover:bg-violet-50"
       >
-        <NineDotIcon size={16} color={open ? '#ea580c' : '#f97316'} />
+        <NineDotIcon size={16} color={open ? '#ea580c' : '#7c3aed'} />
       </button>
 
       {panel}

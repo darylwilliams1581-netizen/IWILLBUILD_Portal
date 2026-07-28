@@ -40,7 +40,7 @@ export default function SessionExpiredBanner({ countdownSecs = 4 }: Props) {
         right: 0,
         zIndex: 9999,
         background: '#1e293b',
-        borderBottom: '2px solid #f97316',
+        borderBottom: '2px solid #7c3aed',
         padding: '12px 20px',
         display: 'flex',
         alignItems: 'center',
@@ -48,7 +48,7 @@ export default function SessionExpiredBanner({ countdownSecs = 4 }: Props) {
         boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
       }}
     >
-      <ShieldAlert size={20} color="#f97316" style={{ flexShrink: 0 }} />
+      <ShieldAlert size={20} color="#7c3aed" style={{ flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
           Session expired — please sign in again
@@ -63,7 +63,7 @@ export default function SessionExpiredBanner({ countdownSecs = 4 }: Props) {
           flexShrink: 0,
           padding: '6px 14px',
           borderRadius: 6,
-          background: '#f97316',
+          background: '#7c3aed',
           color: '#fff',
           fontWeight: 700,
           fontSize: 13,

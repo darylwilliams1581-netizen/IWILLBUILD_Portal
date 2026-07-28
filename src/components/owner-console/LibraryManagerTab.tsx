@@ -69,7 +69,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 const TYPE_COLORS: Record<string, string> = {
   policy: 'bg-blue-100 text-blue-700', procedure: 'bg-purple-100 text-purple-700',
   swms: 'bg-red-100 text-red-700', form: 'bg-green-100 text-green-700',
-  recipe: 'bg-amber-100 text-amber-700', estimate_recipe: 'bg-orange-100 text-orange-700',
+  recipe: 'bg-amber-100 text-amber-700', estimate_recipe: 'bg-violet-100 text-violet-800',
   scope_line: 'bg-slate-100 text-slate-700', checklist: 'bg-teal-100 text-teal-700',
   induction: 'bg-indigo-100 text-indigo-700', toolbox_talk: 'bg-pink-100 text-pink-700',
   prestart: 'bg-cyan-100 text-cyan-700', report: 'bg-violet-100 text-violet-700',
@@ -129,7 +129,7 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
 
-  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-colors placeholder-slate-400';
+  const inp = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-violet-400 transition-colors placeholder-slate-400';
   const sel = `${inp} appearance-none cursor-pointer`;
 
   async function handleSave() {
@@ -190,8 +190,8 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center">
-              <BookOpen size={15} className="text-orange-500" />
+            <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
+              <BookOpen size={15} className="text-violet-600" />
             </div>
             <p className="text-sm font-bold text-slate-800">
               {isNew ? 'Add to Global Library' : 'Edit Library Item'}
@@ -224,12 +224,12 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
                 Upload existing file <span className="font-normal text-slate-400">(DOCX or PDF — optional)</span>
               </label>
               <div
-                className="border-2 border-dashed border-orange-200 rounded-xl p-5 text-center cursor-pointer hover:border-orange-400 hover:bg-orange-50/40 transition-colors"
+                className="border-2 border-dashed border-violet-200 rounded-xl p-5 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50/40 transition-colors"
                 onClick={() => fileRef.current?.click()}
               >
                 {file ? (
                   <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-                    <FileText size={14} className="text-orange-500" />
+                    <FileText size={14} className="text-violet-600" />
                     <span className="font-medium">{file.name}</span>
                     <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-slate-400 hover:text-red-500">
                       <X size={13} />
@@ -237,7 +237,7 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-slate-400">
-                    <Upload size={22} className="text-orange-300" />
+                    <Upload size={22} className="text-violet-300" />
                     <span className="text-sm font-medium text-slate-500">Click to upload DOCX or PDF</span>
                     <span className="text-xs">Content will be extracted and stored in the library</span>
                   </div>
@@ -347,7 +347,7 @@ function EditModal({ item, onClose, onSaved }: EditModalProps) {
           <button
             onClick={() => void handleSave()}
             disabled={!title.trim() || saving}
-            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {saving ? <><Loader2 size={13} className="animate-spin" />Saving…</> : isNew ? 'Add to Library' : 'Save changes'}
           </button>
@@ -408,7 +408,7 @@ function PushUpdateModal({ item, onClose }: { item: LibItem; onClose: () => void
                   {result.skipped} customised {result.skipped === 1 ? 'copy was' : 'copies were'} skipped. Use "Force overwrite" to update those too.
                 </p>
               )}
-              <button onClick={onClose} className="mt-2 px-6 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">
+              <button onClick={onClose} className="mt-2 px-6 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors">
                 Done
               </button>
             </div>
@@ -428,7 +428,7 @@ function PushUpdateModal({ item, onClose }: { item: LibItem; onClose: () => void
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="w-4 h-4 rounded accent-orange-500" />
+                <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="w-4 h-4 rounded accent-violet-600" />
                 <span className="text-sm text-slate-700 font-medium">Force overwrite — update customised company copies too</span>
               </label>
 
@@ -566,7 +566,7 @@ export default function LibraryManagerTab() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-            <BookOpen size={16} className="text-orange-500" />
+            <BookOpen size={16} className="text-violet-600" />
             Global Library
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -579,7 +579,7 @@ export default function LibraryManagerTab() {
           </button>
           <button
             onClick={() => { setEditItem(null); setShowEdit(true); }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
           >
             <Plus size={14} />
             Add item
@@ -595,7 +595,7 @@ export default function LibraryManagerTab() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search title, summary, tags…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 bg-white"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-violet-400 bg-white"
           />
         </div>
         <div className="relative">

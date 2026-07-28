@@ -26,7 +26,7 @@ function planColor(plan: string): string {
     solo: 'bg-slate-100 text-slate-600',
     team: 'bg-blue-100 text-blue-700',
     business: 'bg-purple-100 text-purple-700',
-    enterprise: 'bg-orange-100 text-orange-700',
+    enterprise: 'bg-violet-100 text-violet-800',
   };
   return map[plan?.toLowerCase()] ?? 'bg-slate-100 text-slate-500';
 }

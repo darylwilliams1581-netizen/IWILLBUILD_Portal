@@ -65,8 +65,8 @@ export default function SendInvoiceEmailModal({ invoiceId, invoiceNumber, defaul
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                <Mail size={16} className="text-orange-600" />
+              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+                <Mail size={16} className="text-violet-700" />
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900">Send Invoice</p>
@@ -108,7 +108,7 @@ export default function SendInvoiceEmailModal({ invoiceId, invoiceNumber, defaul
                 onChange={(e) => { setEmail(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && !sending && handleSend()}
                 placeholder="customer@example.com"
-                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 mb-4"
+                className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 mb-4"
                 autoFocus
                 disabled={sending}
               />
@@ -131,7 +131,7 @@ export default function SendInvoiceEmailModal({ invoiceId, invoiceNumber, defaul
                 <button
                   onClick={handleSend}
                   disabled={sending || !email.trim()}
-                  className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                 >
                   {sending ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
                   {sending ? 'Sending…' : 'Send Invoice'}

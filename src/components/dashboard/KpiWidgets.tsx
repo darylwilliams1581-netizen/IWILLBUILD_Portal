@@ -43,7 +43,7 @@ interface KpiData {
 
 // ── Sparkline SVG ─────────────────────────────────────────────────────────────
 
-function Sparkline({ data, color = '#F97316' }: { data: number[]; color?: string }) {
+function Sparkline({ data, color = '#7C3AED' }: { data: number[]; color?: string }) {
   const w = 80;
   const h = 28;
   const max = Math.max(...data, 1);
@@ -94,7 +94,7 @@ function TrendBadge({ trend }: { trend: number | null }) {
 // ── Fleet utilisation bar ─────────────────────────────────────────────────────
 
 function UtilBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f97316' : '#ef4444';
+  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#7c3aed' : '#ef4444';
   return (
     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
       <motion.div
@@ -189,7 +189,7 @@ export default function KpiWidgets() {
     {
       key: 'jobs',
       icon: HardHat,
-      iconBg: 'bg-orange-50',
+      iconBg: 'bg-violet-50',
       iconColor: 'text-primary',
       label: 'Open Jobs',
       value: String(kpi.openJobs),

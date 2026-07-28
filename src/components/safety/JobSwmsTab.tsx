@@ -77,7 +77,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
             <div>
               <h2 className="font-heading font-bold text-base leading-tight">Edit Job SWMS</h2>
               <p className="text-xs text-slate-400 mt-0.5">{initial.job_name ?? `Job #${initial.job_id}`}</p>
@@ -164,7 +164,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
             )}
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 Save Changes
               </button>
@@ -252,7 +252,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
             <div>
               <h2 className="font-heading font-bold text-base">Add SWMS to Job</h2>
               <p className="text-xs text-slate-400">Select a job and one or more templates</p>
@@ -275,7 +275,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
                   {filteredJobs.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No jobs found</p>}
                   {filteredJobs.map((j) => (
                     <button key={j.id} onClick={() => setSelectedJob(j.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedJob === j.id ? 'bg-orange-50 text-primary font-semibold' : 'hover:bg-slate-50 text-slate-700'}`}>
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedJob === j.id ? 'bg-violet-50 text-primary font-semibold' : 'hover:bg-slate-50 text-slate-700'}`}>
                       {selectedJob === j.id ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
                       <span className="flex-1 truncate">{j.name}</span>
                       {j.job_number && <span className="text-xs text-slate-400 shrink-0">{j.job_number}</span>}
@@ -297,7 +297,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
                   {filteredTpls.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No templates found &mdash; create some in the SWMS Library first</p>}
                   {filteredTpls.map((t) => (
                     <button key={t.id} onClick={() => toggleTpl(t.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedTpls.has(t.id) ? 'bg-orange-50' : 'hover:bg-slate-50'}`}>
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedTpls.has(t.id) ? 'bg-violet-50' : 'hover:bg-slate-50'}`}>
                       {selectedTpls.has(t.id) ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
                       <span className="flex-1 truncate font-medium text-slate-800">{t.title}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
@@ -316,7 +316,7 @@ function AddJobSwmsModal({ onClose, onAdded }: {
 
         <div className="px-6 pb-6 flex gap-3 border-t border-slate-100 pt-4">
           <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-          <button onClick={() => void handleAdd()} disabled={saving || !selectedJob || selectedTpls.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+          <button onClick={() => void handleAdd()} disabled={saving || !selectedJob || selectedTpls.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             Add {selectedTpls.size > 0 ? `${selectedTpls.size} SWMS` : 'SWMS'}
           </button>
@@ -402,7 +402,7 @@ function SignoffPanel({ swmsId, onClose }: { swmsId: number; onClose: () => void
               </button>
             </div>
           ) : (
-            <button onClick={regenerate} disabled={generating} className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors">
+            <button onClick={regenerate} disabled={generating} className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 transition-colors">
               {generating ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
               Generate link
             </button>
@@ -514,7 +514,7 @@ export default function JobSwmsTab() {
           <option value="all">All statuses</option>
           {JOB_SWMS_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)} {statusCounts[s] ? `(${statusCounts[s]})` : ''}</option>)}
         </select>
-        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors shrink-0">
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors shrink-0">
           <Plus size={15} />Add SWMS to Job
         </button>
       </div>
@@ -534,10 +534,10 @@ export default function JobSwmsTab() {
 
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4"><HardHat size={24} className="text-primary" /></div>
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><HardHat size={24} className="text-primary" /></div>
           <p className="font-heading font-bold text-slate-700 mb-1">No job SWMS yet</p>
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Assign SWMS templates to specific jobs. Workers sign on before starting work.</p>
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
             <Plus size={15} />Add SWMS to Job
           </button>
         </div>
@@ -594,7 +594,7 @@ export default function JobSwmsTab() {
                       {signoffsOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                     </button>
                     <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
-                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
                     <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                       {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>

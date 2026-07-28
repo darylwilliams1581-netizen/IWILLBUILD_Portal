@@ -68,7 +68,7 @@ const TYPE_COLORS: Record<string, string> = {
   form: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   contract: 'bg-amber-100 text-amber-700 border-amber-200',
   quote: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  report: 'bg-orange-100 text-orange-700 border-orange-200',
+  report: 'bg-violet-100 text-violet-800 border-violet-200',
   induction: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   custom: 'bg-slate-100 text-slate-600 border-slate-200',
 };
@@ -85,7 +85,7 @@ function ToolBtn({ icon: Icon, label, onClick, danger = false, variant }: {
 }) {
   const cls = danger
     ? 'text-slate-400 hover:bg-red-50 hover:text-red-500'
-    : variant === 'orange' ? 'text-orange-500 hover:bg-orange-50 hover:text-orange-600'
+    : variant === 'orange' ? 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'
     : variant === 'green'  ? 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
     : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700';
   return (
@@ -303,7 +303,7 @@ function SubmissionsTab({ templates }: { templates: DocTemplate[] }) {
         <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-primary" /></div>
       ) : submissions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center mb-4">
+          <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4">
             <Inbox size={24} className="text-primary" />
           </div>
           <p className="font-heading font-bold text-slate-700 mb-1">No submissions yet</p>
@@ -319,8 +319,8 @@ function SubmissionsTab({ templates }: { templates: DocTemplate[] }) {
             return (
               <div key={s.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors">
                 <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => toggleExpand(s.id)}>
-                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                    <User size={14} className="text-orange-600" />
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                    <User size={14} className="text-violet-700" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">
@@ -380,9 +380,9 @@ function JobReportsTab({ onGenerate, templates }: { onGenerate: () => void; temp
   return (
     <div className="p-6 pb-16 flex flex-col gap-6">
       {/* Intro card */}
-      <div className="flex items-start gap-4 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4">
-        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
-          <FileText size={18} className="text-orange-600" />
+      <div className="flex items-start gap-4 bg-violet-50 border border-violet-200 rounded-2xl px-5 py-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+          <FileText size={18} className="text-violet-700" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-800 leading-tight">Job Reports</p>
@@ -392,7 +392,7 @@ function JobReportsTab({ onGenerate, templates }: { onGenerate: () => void; temp
           </p>
           <button
             onClick={onGenerate}
-            className="mt-3 flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors"
+            className="mt-3 flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors"
           >
             <FileText size={13} />Generate Job Report
           </button>
@@ -409,8 +409,8 @@ function JobReportsTab({ onGenerate, templates }: { onGenerate: () => void; temp
               className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 hover:border-slate-300 transition-colors cursor-pointer group"
               onClick={() => navigate(`/studio/builder/${r.id}`)}
             >
-              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                <FileText size={14} className="text-orange-600" />
+              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                <FileText size={14} className="text-violet-700" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{r.name}</p>
@@ -418,7 +418,7 @@ function JobReportsTab({ onGenerate, templates }: { onGenerate: () => void; temp
                   {new Date(r.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               </div>
-              <Pencil size={13} className="text-slate-300 group-hover:text-orange-500 transition-colors shrink-0" />
+              <Pencil size={13} className="text-slate-300 group-hover:text-violet-600 transition-colors shrink-0" />
             </div>
           ))}
         </div>
@@ -549,14 +549,14 @@ export default function StudioDocumentsPage() {
               <FileUp size={14} /><span className="hidden sm:inline">Import</span>
             </button>
             <button onClick={() => navigate('/studio/builder/new')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors">
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors">
               <Plus size={15} /><span className="hidden sm:inline">New document</span>
             </button>
           </div>
         )}
         {pageTab === 'reports' && (
           <button onClick={() => setShowReportModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors shrink-0">
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
             <FileText size={14} /><span className="hidden sm:inline">Generate Job Report</span>
           </button>
         )}
@@ -588,13 +588,13 @@ export default function StudioDocumentsPage() {
               <div className="relative flex-shrink-0 w-56">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents…"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400" />
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600/30 focus:border-violet-400" />
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 {studio.ALL_TYPES.map(t => (
                   <button key={t} onClick={() => setTypeFilter(t)}
                     className={['flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
-                      typeFilter === t ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'].join(' ')}>
+                      typeFilter === t ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'].join(' ')}>
                     {t === 'All' ? 'All' : TYPE_LABELS[t] ?? t}
                   </button>
                 ))}
@@ -633,7 +633,7 @@ export default function StudioDocumentsPage() {
                   </p>
                   {templates.length === 0 && (
                     <button onClick={() => navigate('/studio/builder/new')}
-                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg transition-colors">
                       <Plus size={14} />New document
                     </button>
                   )}

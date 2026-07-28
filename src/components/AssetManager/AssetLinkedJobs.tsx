@@ -89,7 +89,7 @@ export default function AssetLinkedJobs({ assetId }: { assetId: number }) {
             href="/jobs"
             target="_blank"
             rel="noreferrer"
-            className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-colors"
+            className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg transition-colors"
           >
             <ExternalLink size={12} />
             Go to Jobs
@@ -105,17 +105,17 @@ export default function AssetLinkedJobs({ assetId }: { assetId: number }) {
                 href={`/job-detail/${job.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-orange-200 hover:shadow-sm transition-all group"
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-start gap-3 hover:border-violet-200 hover:shadow-sm transition-all group"
               >
-                <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-                  <Briefcase size={14} className="text-orange-500" />
+                <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                  <Briefcase size={14} className="text-violet-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     {job.job_number && (
                       <span className="text-xs font-mono text-slate-400">{job.job_number}</span>
                     )}
-                    <span className="text-sm font-semibold text-slate-800 group-hover:text-orange-600 transition-colors">
+                    <span className="text-sm font-semibold text-slate-800 group-hover:text-violet-700 transition-colors">
                       {job.name}
                     </span>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${style.bg} ${style.color}`}>
@@ -129,7 +129,7 @@ export default function AssetLinkedJobs({ assetId }: { assetId: number }) {
                     <span className="text-xs text-slate-400">Created {fmt(job.created_at)}</span>
                   </div>
                 </div>
-                <ExternalLink size={13} className="text-slate-300 group-hover:text-orange-400 transition-colors shrink-0 mt-0.5" />
+                <ExternalLink size={13} className="text-slate-300 group-hover:text-violet-400 transition-colors shrink-0 mt-0.5" />
               </a>
             );
           })}

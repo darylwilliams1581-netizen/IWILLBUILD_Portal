@@ -13,10 +13,10 @@ export default function SystemFieldBlockView({ block }: Props) {
 
   if (mode === 'edit') {
     return (
-      <div className="my-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-xs font-medium text-primary">
+      <div className="my-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-50 border border-violet-200 text-xs font-medium text-primary">
         <Zap size={10} />
         <span>{block.showLabel ? `${block.label}: ` : ''}</span>
-        <span className="font-mono text-[10px] text-orange-600">{'{{ '}{block.fieldKey}{' }}'}</span>
+        <span className="font-mono text-[10px] text-violet-700">{'{{ '}{block.fieldKey}{' }}'}</span>
       </div>
     );
   }

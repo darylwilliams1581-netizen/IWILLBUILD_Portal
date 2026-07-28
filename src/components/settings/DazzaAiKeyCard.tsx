@@ -98,8 +98,8 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-          <Brain size={20} className="text-orange-500" />
+        <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+          <Brain size={20} className="text-violet-600" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm text-slate-900">Dazza AI — Company OpenAI Key</p>
@@ -144,7 +144,7 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
               /* Key is saved */
               <div className="space-y-3">
                 <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                  <Brain size={14} className="text-orange-400 shrink-0" />
+                  <Brain size={14} className="text-violet-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-slate-500 font-medium">Active key</p>
                     <p className="text-sm font-mono text-slate-800">{status.maskedKey ?? 'sk-•••••••••••••••••'}</p>
@@ -158,7 +158,7 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => { setShowInput(true); setKeyInput(''); setError(''); }}
-                    className="text-sm text-orange-600 hover:text-orange-800 font-medium transition-colors"
+                    className="text-sm text-violet-700 hover:text-violet-800 font-medium transition-colors"
                   >
                     Replace key
                   </button>
@@ -181,7 +181,7 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
                         value={keyInput}
                         onChange={(e) => setKeyInput(e.target.value)}
                         placeholder="sk-proj-..."
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                       />
                       <button
                         type="button"
@@ -195,7 +195,7 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
                       <button
                         onClick={() => void handleSave()}
                         disabled={saving}
-                        className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
+                        className="flex items-center gap-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
                       >
                         {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                         Save new key
@@ -246,13 +246,13 @@ export default function DazzaAiKeyCard({ isOwner }: DazzaAiKeyCardProps) {
                       value={keyInput}
                       onChange={(e) => setKeyInput(e.target.value)}
                       placeholder="sk-proj-..."
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                     />
                   </div>
                   <button
                     onClick={() => void handleSave()}
                     disabled={saving || !keyInput.trim()}
-                    className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-60"
+                    className="flex items-center gap-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-60"
                   >
                     {saving ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
                     Save company key

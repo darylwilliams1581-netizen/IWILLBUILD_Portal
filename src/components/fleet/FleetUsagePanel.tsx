@@ -426,7 +426,7 @@ export default function FleetUsagePanel({ fleetId, assetName }: Props) {
                   value={meterEnd}
                   onChange={e => setMeterEnd(e.target.value)}
                   placeholder="e.g. 1256.0"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 />
               </div>
               <div>
@@ -436,7 +436,7 @@ export default function FleetUsagePanel({ fleetId, assetName }: Props) {
                   value={signOffNote}
                   onChange={e => setSignOffNote(e.target.value)}
                   placeholder="Any notes…"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30"
                 />
               </div>
             </div>

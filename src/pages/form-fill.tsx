@@ -43,7 +43,7 @@ function FieldInput({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
-  const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white';
+  const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white';
   const options: string[] = field.options_json ? (JSON.parse(field.options_json) as string[]) : [];
 
   switch (field.field_type) {
@@ -105,7 +105,7 @@ function FieldInput({
                 checked={value === o}
                 onChange={() => onChange(o)}
                 required={field.required}
-                className="accent-orange-500"
+                className="accent-violet-600"
               />
               <span className="text-sm text-slate-700">{o}</span>
             </label>
@@ -126,7 +126,7 @@ function FieldInput({
                     const arr = Array.isArray(value) ? [...(value as string[])] : [];
                     onChange(checked ? arr.filter(v => v !== o) : [...arr, o]);
                   }}
-                  className="accent-orange-500"
+                  className="accent-violet-600"
                 />
                 <span className="text-sm text-slate-700">{o}</span>
               </label>
@@ -146,7 +146,7 @@ function FieldInput({
                 value={opt}
                 checked={value === opt}
                 onChange={() => onChange(opt)}
-                className="accent-orange-500"
+                className="accent-violet-600"
               />
               <span className="text-sm text-slate-700">{opt}</span>
             </label>
@@ -227,7 +227,7 @@ export default function FormFillPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-orange-500" />
+        <Loader2 size={28} className="animate-spin text-violet-600" />
       </div>
     );
   }
@@ -260,11 +260,11 @@ export default function FormFillPage() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-violet-500 flex items-center justify-center shrink-0">
             <FileText size={16} className="text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-orange-700 uppercase tracking-wide">{template.company_name}</p>
+            <p className="text-xs font-bold text-violet-800 uppercase tracking-wide">{template.company_name}</p>
             <p className="text-sm font-bold text-slate-800 truncate">{template.name}</p>
           </div>
         </div>
@@ -307,7 +307,7 @@ export default function FormFillPage() {
                       value={submitterName}
                       onChange={e => setSubmitterName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                     />
                   </div>
                 </div>
@@ -320,7 +320,7 @@ export default function FormFillPage() {
                       value={submitterEmail}
                       onChange={e => setSubmitterEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                     />
                   </div>
                 </div>
@@ -358,7 +358,7 @@ export default function FormFillPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 text-sm font-bold text-white bg-violet-500 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : <ChevronRight size={16} />}
               {submitting ? 'Submitting…' : 'Submit Form'}

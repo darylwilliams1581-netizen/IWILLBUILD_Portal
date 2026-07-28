@@ -21,7 +21,7 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
     : [
         { label: 'Riverside Apartments — Stage 2', status: 'In Progress', color: '#1263d8' },
         { label: 'Warehouse Fitout — Lot 14',       status: 'On Site',     color: '#22c55e' },
-        { label: 'Office Reno — Level 3',            status: 'Quoting',     color: '#f97316' },
+        { label: 'Office Reno — Level 3',            status: 'Quoting',     color: '#7c3aed' },
         { label: 'Carpark Drainage — CBD',           status: 'Closed',      color: '#64748b' },
       ];
 
@@ -102,7 +102,7 @@ const featureGroups: FeatureGroup[] = [
   {
     category: 'Documents & forms',
     icon: Camera,
-    color: '#f97316', bg: '#fff7ed',
+    color: '#7c3aed', bg: '#fff7ed',
     title: 'Photos & files',
     desc: 'Upload site photos, label them by job and view in a full lightbox. Attach any file type to the job record.',
     bullets: ['Bulk photo upload', 'Job-linked photo gallery', 'Lightbox viewer', 'Secure file attachments'],
@@ -178,7 +178,7 @@ const featureGroups: FeatureGroup[] = [
   {
     category: 'Fleet & field',
     icon: Smartphone,
-    color: '#f97316', bg: '#fff7ed',
+    color: '#7c3aed', bg: '#fff7ed',
     title: 'Mobile field app',
     desc: 'Native iOS and Android app — works offline, syncs when back online. Built for site, not the office.',
     bullets: ['iOS & Android native', 'Offline-first sync', 'Camera & GPS access', 'Push notifications'],
@@ -339,7 +339,7 @@ function PortalMockup() {
           {[LayoutDashboard, Briefcase, Truck, FileText, ShieldCheck].map((Icon, i) => (
             <div key={i} style={{
               width: 32, height: 32, borderRadius: 8,
-              backgroundColor: i === 0 ? '#f97316' : 'transparent',
+              backgroundColor: i === 0 ? '#7c3aed' : 'transparent',
               display: 'grid', placeItems: 'center',
               color: i === 0 ? '#fff' : '#475569',
             }}>
@@ -359,7 +359,7 @@ function PortalMockup() {
           {/* Stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7, marginBottom: 14 }}>
             {[
-              { label: 'Active Jobs', val: '12', color: '#f97316' },
+              { label: 'Active Jobs', val: '12', color: '#7c3aed' },
               { label: 'Forms Due',   val: '4',  color: '#3b82f6' },
               { label: 'Fleet OK',    val: '8',  color: '#22c55e' },
             ].map((s) => (
@@ -422,7 +422,7 @@ function PhoneMockup() {
 
       {/* App header */}
       <div style={{
-        backgroundColor: '#f97316', padding: '10px 14px 8px',
+        backgroundColor: '#7c3aed', padding: '10px 14px 8px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>IWILLBUILD</span>
@@ -437,7 +437,7 @@ function PhoneMockup() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
           {[
             { Icon: Briefcase,   label: 'Jobs',    bg: '#eff6ff', fg: '#1263d8' },
-            { Icon: Camera,      label: 'Photos',  bg: '#fff7ed', fg: '#f97316' },
+            { Icon: Camera,      label: 'Photos',  bg: '#fff7ed', fg: '#7c3aed' },
             { Icon: FileText,    label: 'Forms',   bg: '#f0fdf4', fg: '#16a34a' },
             { Icon: ShieldCheck, label: 'Safety',  bg: '#fef2f2', fg: '#dc2626' },
             { Icon: Truck,       label: 'Fleet',   bg: '#f5f3ff', fg: '#7c3aed' },
@@ -489,16 +489,16 @@ function PhoneMockup() {
             {fab ? (
               <div style={{
                 width: 34, height: 34, borderRadius: '50%',
-                backgroundColor: '#f97316', display: 'grid', placeItems: 'center',
+                backgroundColor: '#7c3aed', display: 'grid', placeItems: 'center',
                 marginTop: -14, boxShadow: '0 4px 12px rgba(249,115,22,.4)',
                 border: '3px solid #fff',
               }}>
                 <Icon size={15} color="#fff" />
               </div>
             ) : (
-              <Icon size={16} color={active ? '#f97316' : '#94a3b8'} />
+              <Icon size={16} color={active ? '#7c3aed' : '#94a3b8'} />
             )}
-            {!fab && <span style={{ fontSize: 7, fontWeight: 700, color: active ? '#f97316' : '#94a3b8' }}>{label}</span>}
+            {!fab && <span style={{ fontSize: 7, fontWeight: 700, color: active ? '#7c3aed' : '#94a3b8' }}>{label}</span>}
           </div>
         ))}
       </div>
@@ -644,8 +644,8 @@ export default function HomePage() {
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.35)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 24,
             }}>
-              <Star size={13} color="#f97316" fill="#f97316" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>30-day free trial — no credit card needed</span>
+              <Star size={13} color="#7c3aed" fill="#7c3aed" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>30-day free trial — no credit card needed</span>
             </div>
 
             {/* Headline — dual interface concept */}
@@ -656,7 +656,7 @@ export default function HomePage() {
               fontWeight: 900,
             }}>
               One system.{' '}
-              <span style={{ color: '#f97316' }}>Two interfaces.</span>
+              <span style={{ color: '#7c3aed' }}>Two interfaces.</span>
             </h1>
 
             {/* Sub-headline — the split */}
@@ -691,7 +691,7 @@ export default function HomePage() {
             <div className="hero-cta-block" style={{ marginBottom: 28 }}>
               <Link to="/signup" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                backgroundColor: '#f97316', borderRadius: 9, color: '#fff',
+                backgroundColor: '#7c3aed', borderRadius: 9, color: '#fff',
                 padding: '15px 26px', fontWeight: 800, fontSize: 16,
                 textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.4)',
                 marginBottom: 10,
@@ -724,7 +724,7 @@ export default function HomePage() {
               {/* Label */}
               <div style={{
                 textAlign: 'center', marginBottom: 10,
-                fontSize: 11, fontWeight: 700, color: '#f97316',
+                fontSize: 11, fontWeight: 700, color: '#7c3aed',
                 textTransform: 'uppercase', letterSpacing: '0.1em',
               }}>
                 📱 Field app
@@ -805,12 +805,12 @@ export default function HomePage() {
               background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 18,
             }}>
-              <Zap size={13} color="#f97316" fill="#f97316" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Everything in one portal</span>
+              <Zap size={13} color="#7c3aed" fill="#7c3aed" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>Everything in one portal</span>
             </div>
             <h2 style={{ fontSize: 'clamp(26px,3.5vw,42px)', letterSpacing: '-0.03em', margin: '0 0 14px', color: '#0f172a', fontWeight: 900 }}>
               Built for construction.<br />
-              <span style={{ color: '#f97316' }}>Every module your business needs.</span>
+              <span style={{ color: '#7c3aed' }}>Every module your business needs.</span>
             </h2>
             <p style={{ color: '#64748b', fontSize: 17, margin: 0, maxWidth: 640, lineHeight: 1.65 }}>
               Jobs, estimates, forms, photos, safety, fleet, invoicing, scheduling and more — in one clean portal. Your crew works from site, your office stays across everything.
@@ -901,7 +901,7 @@ export default function HomePage() {
           <div style={{ marginTop: 52, textAlign: 'center' }}>
             <Link to="/signup" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              backgroundColor: '#f97316', borderRadius: 10, color: '#fff',
+              backgroundColor: '#7c3aed', borderRadius: 10, color: '#fff',
               padding: '14px 28px', fontWeight: 800, fontSize: 15,
               textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.35)',
             }}>
@@ -935,7 +935,7 @@ export default function HomePage() {
                 >
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    backgroundColor: '#f97316', color: '#fff',
+                    backgroundColor: '#7c3aed', color: '#fff',
                     display: 'grid', placeItems: 'center',
                     fontWeight: 900, fontSize: 16, marginBottom: 14,
                   }}>{w.n}</div>
@@ -968,7 +968,7 @@ export default function HomePage() {
                   key={plan.id}
                   style={{
                     background: isPrimary ? '#0f172a' : '#fff',
-                    border: isPrimary ? '2px solid #f97316' : '1.5px solid #e2e8f0',
+                    border: isPrimary ? '2px solid #7c3aed' : '1.5px solid #e2e8f0',
                     borderRadius: 12, padding: '28px 24px',
                     boxShadow: isPrimary ? '0 20px 50px rgba(15,23,42,.25)' : '0 2px 8px rgba(15,23,42,.05)',
                     position: 'relative',
@@ -977,7 +977,7 @@ export default function HomePage() {
                   {plan.popular && (
                     <div style={{
                       position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)',
-                      backgroundColor: '#f97316', color: '#fff',
+                      backgroundColor: '#7c3aed', color: '#fff',
                       fontSize: 11, fontWeight: 800, padding: '4px 14px',
                       borderRadius: 20, whiteSpace: 'nowrap',
                     }}>Most popular</div>
@@ -995,7 +995,7 @@ export default function HomePage() {
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {plan.features.map((f) => (
                       <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 14, color: isPrimary ? '#cbd5e1' : '#374151' }}>
-                        <CheckCircle size={15} color={isPrimary ? '#f97316' : '#16a34a'} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <CheckCircle size={15} color={isPrimary ? '#7c3aed' : '#16a34a'} style={{ flexShrink: 0, marginTop: 1 }} />
                         {f}
                       </li>
                     ))}
@@ -1016,7 +1016,7 @@ export default function HomePage() {
                     <Link to={href} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '13px 16px', borderRadius: 8,
-                      backgroundColor: '#f97316', color: '#fff',
+                      backgroundColor: '#7c3aed', color: '#fff',
                       fontWeight: 800, fontSize: 14, textDecoration: 'none',
                       boxShadow: '0 4px 14px rgba(249,115,22,.4)',
                     }}>
@@ -1054,8 +1054,8 @@ export default function HomePage() {
               background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)',
               borderRadius: 20, padding: '5px 14px', marginBottom: 20,
             }}>
-              <FolderOpen size={13} color="#f97316" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Built for construction</span>
+              <FolderOpen size={13} color="#7c3aed" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>Built for construction</span>
             </div>
 
             <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#fff' }}>
@@ -1067,7 +1067,7 @@ export default function HomePage() {
             <div>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                backgroundColor: '#f97316', borderRadius: 8, color: '#fff',
+                backgroundColor: '#7c3aed', borderRadius: 8, color: '#fff',
                 padding: '13px 22px', fontWeight: 800, fontSize: 14,
                 textDecoration: 'none',
               }}>
@@ -1193,7 +1193,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/signup" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                backgroundColor: '#f97316', borderRadius: 9, color: '#fff',
+                backgroundColor: '#7c3aed', borderRadius: 9, color: '#fff',
                 padding: '14px 28px', fontWeight: 800, fontSize: 15,
                 textDecoration: 'none', boxShadow: '0 4px 18px rgba(249,115,22,.35)',
               }}>

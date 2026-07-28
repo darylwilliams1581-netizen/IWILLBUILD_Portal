@@ -115,7 +115,7 @@ function planLabel(p: string): string {
 const STATUS_CONFIG = {
   ok:      { label: 'OK',       color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-200', icon: CheckCircle2, bar: 'bg-emerald-500' },
   warning: { label: 'Warning',  color: 'text-amber-700',   bg: 'bg-amber-50',    border: 'border-amber-200',   icon: AlertTriangle, bar: 'bg-amber-500' },
-  over:    { label: 'Over 90%', color: 'text-orange-700',  bg: 'bg-orange-50',   border: 'border-orange-200',  icon: AlertTriangle, bar: 'bg-orange-500' },
+  over:    { label: 'Over 90%', color: 'text-violet-800',  bg: 'bg-violet-50',   border: 'border-violet-200',  icon: AlertTriangle, bar: 'bg-violet-500' },
   blocked: { label: 'Blocked',  color: 'text-red-700',     bg: 'bg-red-50',      border: 'border-red-200',     icon: XCircle,       bar: 'bg-red-500' },
 };
 
@@ -171,7 +171,7 @@ function SummaryCard({
 function SectionHeading({ icon: Icon, title, count }: { icon: React.ElementType; title: string; count?: number }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <Icon size={15} className="text-orange-500 shrink-0" />
+      <Icon size={15} className="text-violet-600 shrink-0" />
       <h3 className="font-heading font-black text-sm text-slate-800">{title}</h3>
       {count !== undefined && (
         <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{count}</span>
@@ -186,7 +186,7 @@ function BreakdownBar({ platform }: { platform: Platform }) {
   const total = platform.totalBytes || 1;
   const segments = [
     { label: 'Job Files',      bytes: platform.breakdown.fileBytes,        color: 'bg-blue-500' },
-    { label: 'Job Photos',     bytes: platform.breakdown.photoBytes,       color: 'bg-orange-500' },
+    { label: 'Job Photos',     bytes: platform.breakdown.photoBytes,       color: 'bg-violet-500' },
     { label: 'Safety Docs',    bytes: platform.breakdown.safetyDocBytes,   color: 'bg-purple-500' },
     { label: 'Safety Posters', bytes: platform.breakdown.safetyPosterBytes, color: 'bg-teal-500' },
   ].filter(s => s.bytes > 0);
@@ -251,7 +251,7 @@ export default function SystemStorageTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={24} className="animate-spin text-orange-500" />
+        <Loader2 size={24} className="animate-spin text-violet-600" />
       </div>
     );
   }
@@ -337,7 +337,7 @@ export default function SystemStorageTab() {
           label="Total Storage Used"
           value={fmtBytes(platform.totalBytes)}
           sub={`Across ${platform.companiesWithStorage} companies`}
-          accent="bg-orange-500"
+          accent="bg-violet-500"
         />
         <SummaryCard
           icon={Database}
@@ -356,7 +356,7 @@ export default function SystemStorageTab() {
           label="Alerts"
           value={String(platform.blockedCount + platform.overCount + platform.warningCount)}
           sub={`${platform.blockedCount} blocked · ${platform.overCount} over 90% · ${platform.warningCount} warning`}
-          accent={platform.blockedCount > 0 ? 'bg-red-500' : platform.overCount > 0 ? 'bg-orange-500' : 'bg-amber-500'}
+          accent={platform.blockedCount > 0 ? 'bg-red-500' : platform.overCount > 0 ? 'bg-violet-500' : 'bg-amber-500'}
         />
       </div>
 
@@ -413,7 +413,7 @@ export default function SystemStorageTab() {
                     <td className="py-2.5 max-w-[200px]">
                       <div className="flex items-center gap-2">
                         {f.source === 'photo'
-                          ? <Camera size={12} className="text-orange-400 shrink-0" />
+                          ? <Camera size={12} className="text-violet-400 shrink-0" />
                           : <FileText size={12} className="text-blue-400 shrink-0" />
                         }
                         <span className="text-xs text-slate-700 truncate">{f.original_name}</span>
@@ -462,7 +462,7 @@ export default function SystemStorageTab() {
                     <td className="py-2.5 text-xs text-slate-500">{j.company_name}</td>
                     <td className="py-2.5 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Image size={11} className="text-orange-400" />
+                        <Image size={11} className="text-violet-400" />
                         <span className="text-xs font-semibold text-slate-700">{j.photo_count}</span>
                         <span className="text-[11px] text-slate-400">({fmtBytes(j.photo_bytes)})</span>
                       </div>
@@ -534,7 +534,7 @@ export default function SystemStorageTab() {
                       key={c.id}
                       className={`hover:bg-slate-50 transition-colors ${
                         c.status === 'blocked' ? 'bg-red-50/30' :
-                        c.status === 'over'    ? 'bg-orange-50/20' :
+                        c.status === 'over'    ? 'bg-violet-50/20' :
                         c.status === 'warning' ? 'bg-amber-50/20' : ''
                       }`}
                     >

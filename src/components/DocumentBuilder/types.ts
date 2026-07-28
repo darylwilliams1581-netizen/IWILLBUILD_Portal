@@ -210,7 +210,7 @@ export interface DocumentTheme {
 
 export const DEFAULT_THEME: DocumentTheme = {
   backgroundColor: '#ffffff',
-  accentColor: '#f97316',
+  accentColor: '#7c3aed',
   textColor: '#1e293b',
   tableHeaderColor: '#1e293b',
   tableHeaderTextColor: '#ffffff',

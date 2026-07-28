@@ -177,7 +177,7 @@ function StringListEditor({
           type="button"
           onClick={add}
           disabled={!newItem.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
         >
           <Plus size={13} /> Add
         </button>
@@ -319,7 +319,7 @@ function NamedListEditor({
           type="button"
           onClick={add}
           disabled={!newName.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shrink-0"
         >
           <Plus size={13} /> Add
         </button>
@@ -549,7 +549,7 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
             <button
               onClick={handleTermSave}
               disabled={termSaving || !termSingular.trim() || !termPlural.trim()}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {termSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               Save Label
@@ -630,7 +630,7 @@ export default function CompanyStructureTab({ isAdmin }: { isAdmin: boolean }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Save Structure

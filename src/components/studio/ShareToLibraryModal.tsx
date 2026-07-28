@@ -134,7 +134,7 @@ export default function ShareToLibraryModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
               <Library size={16} className="text-primary" />
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function ShareToLibraryModal({
                 View in library →
               </a>
             )}
-            <button onClick={onClose} className="mt-1 px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors">
+            <button onClick={onClose} className="mt-1 px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors">
               Done
             </button>
           </div>
@@ -255,7 +255,7 @@ export default function ShareToLibraryModal({
               <button
                 onClick={() => void handleSubmit()}
                 disabled={!title.trim() || status === 'loading'}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {status === 'loading' ? (
                   <><Loader2 size={13} className="animate-spin" />Publishing…</>

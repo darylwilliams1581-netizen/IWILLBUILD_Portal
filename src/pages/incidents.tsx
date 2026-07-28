@@ -56,14 +56,14 @@ export const INCIDENT_TYPES = [
 export const SEVERITY_OPTIONS: { value: string; label: string; color: string }[] = [
   { value: 'low',      label: 'Low',      color: 'bg-emerald-100 text-emerald-700' },
   { value: 'medium',   label: 'Medium',   color: 'bg-amber-100 text-amber-700' },
-  { value: 'high',     label: 'High',     color: 'bg-orange-100 text-orange-700' },
+  { value: 'high',     label: 'High',     color: 'bg-violet-100 text-violet-800' },
   { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-700' },
 ];
 
 export const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
   { value: 'open',             label: 'Open',             color: 'bg-blue-100 text-blue-700' },
   { value: 'investigating',    label: 'Investigating',    color: 'bg-amber-100 text-amber-700' },
-  { value: 'action required',  label: 'Action Required',  color: 'bg-orange-100 text-orange-700' },
+  { value: 'action required',  label: 'Action Required',  color: 'bg-violet-100 text-violet-800' },
   { value: 'closed',           label: 'Closed',           color: 'bg-slate-100 text-slate-500' },
 ];
 
@@ -357,7 +357,7 @@ export default function IncidentsPage() {
                           <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">Injury</span>
                         )}
                         {Boolean(incident.property_damage) && (
-                          <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">Property damage</span>
+                          <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">Property damage</span>
                         )}
                         {Boolean(incident.environmental_impact) && (
                           <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">Environmental</span>

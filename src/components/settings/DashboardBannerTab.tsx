@@ -134,7 +134,7 @@ export default function DashboardBannerTab({ isAdmin }: DashboardBannerTabProps)
 
       {/* ── Section header ── */}
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-orange-50">
+        <div className="p-2 rounded-xl bg-violet-50">
           <Megaphone size={18} className="text-primary" />
         </div>
         <div>
@@ -370,7 +370,7 @@ export default function DashboardBannerTab({ isAdmin }: DashboardBannerTabProps)
         <button
           onClick={save}
           disabled={saving}
-          className="flex items-center gap-2 bg-primary hover:bg-orange-600 disabled:opacity-60 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+          className="flex items-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
           Save Banner Settings

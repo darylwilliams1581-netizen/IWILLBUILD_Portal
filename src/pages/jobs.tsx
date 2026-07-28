@@ -132,7 +132,7 @@ export default function JobsPage() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => !isViewOnly && setShowNewJob(true)} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined}
-              className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               <Plus size={13} />{addWorkLabel}
             </button>
           </div>
@@ -160,7 +160,7 @@ export default function JobsPage() {
             {[
               { label: 'In Progress', count: counts.active,    color: 'text-emerald-700' },
               { label: 'Quoting',     count: counts.quoting,   color: 'text-amber-700' },
-              { label: 'On Hold',     count: counts.onHold,    color: 'text-orange-700' },
+              { label: 'On Hold',     count: counts.onHold,    color: 'text-violet-800' },
               { label: 'Completed',   count: counts.completed, color: 'text-blue-700' },
             ].map((s) => (
               <span key={s.label} className="flex items-center gap-1 text-[12px] text-gray-500 pr-3 border-r border-gray-200 last:border-0">
@@ -197,7 +197,7 @@ export default function JobsPage() {
               {[
                 { label: 'In Progress', count: counts.active,    color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 { label: 'Quoting',     count: counts.quoting,   color: 'text-amber-600',   bg: 'bg-amber-50' },
-                { label: 'On Hold',     count: counts.onHold,    color: 'text-orange-600',  bg: 'bg-orange-50' },
+                { label: 'On Hold',     count: counts.onHold,    color: 'text-violet-700',  bg: 'bg-violet-50' },
                 { label: 'Completed',   count: counts.completed, color: 'text-blue-600',    bg: 'bg-blue-50' },
               ].map((s) => (
                 <div key={s.label} className={`${s.bg} rounded-lg px-3 py-2 border border-white flex items-center gap-2`}>
@@ -254,7 +254,7 @@ export default function JobsPage() {
           {/* Empty state */}
           {!loading && !error && jobs.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+              <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
                 <HardHat size={26} className="text-primary" />
               </div>
               <p className="font-heading font-bold text-base text-foreground mb-1">No {workPlural.toLowerCase()} yet</p>
@@ -262,7 +262,7 @@ export default function JobsPage() {
                 Create your first {workSingular.toLowerCase()} to start tracking work, crew, and progress.
               </p>
               <button onClick={() => !isViewOnly && setShowNewJob(true)} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus size={15} />{addWorkLabel}
               </button>
             </div>

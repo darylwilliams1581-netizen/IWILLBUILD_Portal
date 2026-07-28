@@ -261,8 +261,8 @@ export default function GenerateJobReportModal({ onClose }: Props) {
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-              <FileText size={17} className="text-orange-600" />
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <FileText size={17} className="text-violet-700" />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="font-heading font-bold text-base text-slate-900 leading-tight">Generate Job Report</h2>
@@ -327,7 +327,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                               key={j.id}
                               type="button"
                               onClick={() => { setSelectedJob(j); setShowJobDropdown(false); setJobSearch(''); setError(''); }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-orange-50 text-left transition-colors"
+                              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-violet-50 text-left transition-colors"
                             >
                               <Briefcase size={13} className="text-slate-400 shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -354,7 +354,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                 <button
                   type="button"
                   onClick={toggleAll}
-                  className="text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+                  className="text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
                 >
                   {allOn ? 'Deselect all' : 'Select all'}
                 </button>
@@ -367,12 +367,12 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                     onClick={() => toggleSection(key)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
                       sections[key]
-                        ? 'border-orange-200 bg-orange-50'
+                        ? 'border-violet-200 bg-violet-50'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     {sections[key]
-                      ? <CheckSquare size={15} className="text-orange-500 shrink-0" />
+                      ? <CheckSquare size={15} className="text-violet-600 shrink-0" />
                       : <Square size={15} className="text-slate-300 shrink-0" />
                     }
                     <div className="flex-1 min-w-0">
@@ -405,7 +405,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                             setSelectedPhotoIds(new Set(jobPhotos.map(p => p.id)));
                           }
                         }}
-                        className="text-[10px] font-semibold text-primary hover:text-orange-600 transition-colors"
+                        className="text-[10px] font-semibold text-primary hover:text-violet-700 transition-colors"
                       >
                         {selectedPhotoIds.size === jobPhotos.length ? 'Deselect all' : 'Select all'}
                       </button>
@@ -464,7 +464,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                               <p className="text-[11px] font-semibold text-slate-700 truncate">{photo.label}</p>
                               {(captions[photo.id] || categories[photo.id]) && (
                                 <p className="text-[9px] text-slate-400 truncate">
-                                  {categories[photo.id] && <span className="text-orange-500 font-semibold">{categories[photo.id]} · </span>}
+                                  {categories[photo.id] && <span className="text-violet-600 font-semibold">{categories[photo.id]} · </span>}
                                   {captions[photo.id]}
                                 </p>
                               )}
@@ -569,7 +569,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                 type="button"
                 onClick={() => void handleGeneratePdf()}
                 disabled={pdfGenerating}
-                className="w-full py-2 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {pdfGenerating ? (
                   <><Loader2 size={13} className="animate-spin" />Building PDF…</>
@@ -591,7 +591,7 @@ export default function GenerateJobReportModal({ onClose }: Props) {
                 type="button"
                 onClick={() => void handleGenerate()}
                 disabled={generating || !selectedJob}
-                className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" />Generating…</>

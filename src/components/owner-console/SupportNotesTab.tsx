@@ -238,7 +238,7 @@ export default function SupportNotesTab() {
           <button
             onClick={saveNote}
             disabled={saving || !noteText.trim()}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-50 transition-colors"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             Save note

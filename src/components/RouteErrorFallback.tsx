@@ -107,7 +107,7 @@ export default function RouteErrorFallback() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-violet-700 transition-colors shadow-sm"
         >
           <RefreshCw size={14} />
           Refresh

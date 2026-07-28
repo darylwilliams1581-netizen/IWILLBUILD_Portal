@@ -72,8 +72,8 @@ export default function AssetManagerPage() {
                   <ChevronLeft size={14} />
                   <span className="hidden sm:inline">Studio</span>
                 </button>
-                <div className="w-9 h-9 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-                  <Wrench size={18} className="text-orange-500" />
+                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
+                  <Wrench size={18} className="text-violet-600" />
                 </div>
                 <div>
                   <h1 className="text-base md:text-lg font-bold text-slate-900 leading-tight">Equipment Manager</h1>

@@ -91,7 +91,7 @@ export default function DashboardInstallCallout() {
   if (!visible) return null;
 
   return (
-    <div className="mb-5 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3.5 flex items-center gap-3">
+    <div className="mb-5 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-amber-50 px-4 py-3.5 flex items-center gap-3">
       {/* Icon */}
       <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
         <Smartphone size={17} className="text-white" />
@@ -104,7 +104,7 @@ export default function DashboardInstallCallout() {
         </p>
         {isIosSafari ? (
           <p className="text-xs text-slate-500 mt-0.5">
-            Tap <Share size={10} className="inline mx-0.5 text-orange-500" /> Share → <span className="font-medium text-orange-600">Add to Home Screen</span> for instant access.
+            Tap <Share size={10} className="inline mx-0.5 text-violet-600" /> Share → <span className="font-medium text-violet-700">Add to Home Screen</span> for instant access.
           </p>
         ) : (
           <p className="text-xs text-slate-500 mt-0.5">
@@ -118,7 +118,7 @@ export default function DashboardInstallCallout() {
         {deferredPrompt && !isIosSafari && (
           <button
             onClick={handleInstall}
-            className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download size={12} />
             Install
@@ -127,7 +127,7 @@ export default function DashboardInstallCallout() {
         {isIosSafari && (
           <Link
             to="/settings?tab=install"
-            className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
           >
             How to install
           </Link>
@@ -135,7 +135,7 @@ export default function DashboardInstallCallout() {
         {!deferredPrompt && !isIosSafari && (
           <Link
             to="/settings?tab=install"
-            className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download size={12} />
             Install

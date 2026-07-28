@@ -63,7 +63,7 @@ export default function JobContextTab() {
         {/* Vertical pill tab */}
         <button
           onClick={() => setOpen((v) => !v)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-1.5 bg-primary text-white px-2 py-4 rounded-l-xl shadow-lg hover:bg-orange-600 transition-colors"
+          className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-1.5 bg-primary text-white px-2 py-4 rounded-l-xl shadow-lg hover:bg-violet-700 transition-colors"
           title={open ? 'Close job panel' : `Job: ${displayName}`}
           style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
         >
@@ -138,7 +138,7 @@ export default function JobContextTab() {
                     to={`/jobs/${job.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-orange-600 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-violet-700 transition-colors"
                   >
                     <ExternalLink size={13} />
                     Open Job
@@ -193,7 +193,7 @@ export default function JobContextTab() {
                     to={`/jobs/${job.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-orange-600 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-violet-700 transition-colors"
                   >
                     <ExternalLink size={13} />
                     Open Job

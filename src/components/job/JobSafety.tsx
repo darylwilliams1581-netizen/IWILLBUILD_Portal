@@ -38,7 +38,7 @@ function AddSwmsDropdown({ onFromLibrary, onCreateNew }: {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors"
+        className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors"
       >
         <Plus size={14} />
         <span className="hidden sm:inline">Add SWMS</span>
@@ -56,9 +56,9 @@ function AddSwmsDropdown({ onFromLibrary, onCreateNew }: {
           >
             <button
               onClick={() => { setOpen(false); onFromLibrary(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-violet-50 transition-colors"
             >
-              <div className="p-1.5 rounded-lg bg-orange-50 shrink-0">
+              <div className="p-1.5 rounded-lg bg-violet-50 shrink-0">
                 <Library size={13} className="text-primary" />
               </div>
               <div>
@@ -69,7 +69,7 @@ function AddSwmsDropdown({ onFromLibrary, onCreateNew }: {
             <div className="mx-3 border-t border-slate-100" />
             <button
               onClick={() => { setOpen(false); onCreateNew(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-violet-50 transition-colors"
             >
               <div className="p-1.5 rounded-lg bg-slate-50 shrink-0">
                 <FileText size={13} className="text-slate-600" />
@@ -170,11 +170,11 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
 
       {list.length === 0 && (
         <div className="flex flex-col items-center justify-center py-14 text-center bg-white rounded-xl border border-slate-200">
-          <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-3"><ShieldAlert size={22} className="text-primary" /></div>
+          <div className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center mb-3"><ShieldAlert size={22} className="text-primary" /></div>
           <p className="font-bold text-sm text-slate-700 mb-1">No SWMS on this job</p>
           <p className="text-xs text-slate-400 mb-4 max-w-xs">Add SWMS from the library or create a new one. Workers sign on before starting work.</p>
           <div className="flex gap-2">
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
               <Library size={14} />From Library
             </button>
             <button onClick={() => setShowBuilder(true)} className="flex items-center gap-2 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-700 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
@@ -246,13 +246,13 @@ function SwmsSubTab({ jobId, job }: { jobId: number; job: JobInfo | null }) {
                         linkType: 'swms_signon',
                         defaultPermissions: ['view', 'sign'],
                       })}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
                       title="Share / QR"
                     >
                       <Link2 size={14} />
                     </button>
                     {/* Edit */}
-                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors" title="Edit">
+                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit">
                       <Wand2 size={14} />
                     </button>
                     {/* Delete */}
@@ -379,7 +379,7 @@ function SafetyPlansSubTab({ jobId }: { jobId: number }) {
           <h3 className="font-heading font-bold text-sm text-slate-700">Job Safety Plans</h3>
           <p className="text-xs text-slate-400 mt-0.5">{plans.length} attached · <Link to="/safety?tab=plans" className="text-primary hover:underline">Safety Plan Library →</Link></p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors">
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors">
           <Plus size={14} /><span className="hidden sm:inline">Add Plan</span>
         </button>
       </div>
@@ -389,7 +389,7 @@ function SafetyPlansSubTab({ jobId }: { jobId: number }) {
           <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-3"><ClipboardList size={22} className="text-blue-600" /></div>
           <p className="font-bold text-sm text-slate-700 mb-1">No safety plan on this job</p>
           <p className="text-xs text-slate-400 mb-4 max-w-xs">Copy from the Safety Plan Library or start a blank plan for this job.</p>
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
             <Plus size={14} />Add Safety Plan
           </button>
         </div>
@@ -550,7 +550,7 @@ export default function JobSafety({ jobId }: { jobId: number }) {
             onClick={() => setSubTab(id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-xs font-semibold transition-colors whitespace-nowrap border-b-2 -mb-px ${
               subTab === id
-                ? 'border-primary text-primary bg-orange-50/50'
+                ? 'border-primary text-primary bg-violet-50/50'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}
           >

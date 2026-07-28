@@ -33,7 +33,7 @@ export function CostGuidePicker({ onInsert, onClose }: { onInsert: (item: CostIt
           {loading && <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-primary" /></div>}
           {!loading && filtered.length === 0 && <div className="text-center py-10 text-slate-400 text-sm">{search ? 'No items match your search' : 'No cost items in your guide yet'}</div>}
           {!loading && filtered.map((item) => (
-            <button key={item.id} onClick={() => { onInsert(item); onClose(); }} className="w-full flex items-center justify-between px-5 py-3 hover:bg-orange-50 border-b border-slate-50 transition-colors text-left">
+            <button key={item.id} onClick={() => { onInsert(item); onClose(); }} className="w-full flex items-center justify-between px-5 py-3 hover:bg-violet-50 border-b border-slate-50 transition-colors text-left">
               <div>
                 <div className="text-sm font-medium text-slate-800">{item.description}</div>
                 {item.unit && <div className="text-xs text-slate-400">{item.unit}</div>}
@@ -74,7 +74,7 @@ export function RecipePicker({ onInsert, onClose }: { onInsert: (recipe: Recipe)
           {!loading && recipes.map((recipe) => {
             const total = recipe.lines.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.rate) || 0), 0);
             return (
-              <button key={recipe.id} onClick={() => { onInsert(recipe); onClose(); }} className="w-full flex items-center justify-between px-5 py-3 hover:bg-orange-50 border-b border-slate-50 transition-colors text-left">
+              <button key={recipe.id} onClick={() => { onInsert(recipe); onClose(); }} className="w-full flex items-center justify-between px-5 py-3 hover:bg-violet-50 border-b border-slate-50 transition-colors text-left">
                 <div>
                   <div className="text-sm font-medium text-slate-800">{recipe.title}</div>
                   <div className="text-xs text-slate-400">{recipe.lines.length} line{recipe.lines.length !== 1 ? 's' : ''}{recipe.notes ? ` · ${recipe.notes}` : ''}</div>

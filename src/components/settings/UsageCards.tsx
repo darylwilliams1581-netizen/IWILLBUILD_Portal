@@ -112,7 +112,7 @@ export default function UsageCards({ compact = false }: { compact?: boolean }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 size={22} className="animate-spin text-orange-500" />
+        <Loader2 size={22} className="animate-spin text-violet-600" />
       </div>
     );
   }

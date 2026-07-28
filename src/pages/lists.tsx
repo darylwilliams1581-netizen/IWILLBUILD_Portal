@@ -119,7 +119,7 @@ function statusBadge(status: unknown): React.ReactNode {
     complete:      'bg-gray-100 text-gray-600',
     completed:     'bg-gray-100 text-gray-600',
     cancelled:     'bg-red-100 text-red-600',
-    open:          'bg-orange-100 text-orange-700',
+    open:          'bg-violet-100 text-violet-800',
     closed:        'bg-gray-100 text-gray-600',
     pending:       'bg-yellow-100 text-yellow-700',
     'not started': 'bg-gray-100 text-gray-500',
@@ -145,7 +145,7 @@ function severityBadge(sev: unknown): React.ReactNode {
   const s = String(sev ?? '').toLowerCase();
   const map: Record<string, string> = {
     critical: 'bg-red-100 text-red-700',
-    high:     'bg-orange-100 text-orange-700',
+    high:     'bg-violet-100 text-violet-800',
     medium:   'bg-yellow-100 text-yellow-700',
     low:      'bg-green-100 text-green-700',
   };
@@ -341,7 +341,7 @@ const COLS: Partial<Record<ListType, ColDef[]>> = {
     { key: 'job_number',     label: 'Job #',      sortable: false, width: '80px' },
     { key: 'signed_in_at',   label: 'Signed In',  sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
     { key: 'signed_out_at',  label: 'Signed Out', sortable: true,  width: '140px',
-      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">Still on site</span>,
+      render: (v) => v ? fmtDateTime(v) : <span className="text-violet-600 text-[11px]">Still on site</span>,
     },
     { key: 'duration_hours', label: 'Duration',   sortable: false, width: '80px',
       render: (v) => v != null ? <span className="tabular-nums text-[12px]">{Number(v).toFixed(1)}h</span> : '—',
@@ -372,7 +372,7 @@ const COLS: Partial<Record<ListType, ColDef[]>> = {
     { key: 'job_number',         label: 'Job #',       sortable: false, width: '80px' },
     { key: 'started_at',         label: 'Started',     sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
     { key: 'ended_at',           label: 'Ended',       sortable: true,  width: '140px',
-      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">In use</span>,
+      render: (v) => v ? fmtDateTime(v) : <span className="text-violet-600 text-[11px]">In use</span>,
     },
     { key: 'duration_minutes',   label: 'Duration',    sortable: true,  width: '85px',
       render: (v) => v != null ? (
@@ -432,7 +432,7 @@ const COLS: Partial<Record<ListType, ColDef[]>> = {
     { key: 'job_number',       label: 'Job #',        sortable: false, width: '80px' },
     { key: 'signed_in_at',     label: 'Signed In',    sortable: true,  width: '140px', render: (v) => fmtDateTime(v) },
     { key: 'signed_out_at',    label: 'Signed Out',   sortable: true,  width: '140px',
-      render: (v) => v ? fmtDateTime(v) : <span className="text-orange-500 text-[11px]">Still on site</span>,
+      render: (v) => v ? fmtDateTime(v) : <span className="text-violet-600 text-[11px]">Still on site</span>,
     },
     { key: 'source',           label: 'Source',       sortable: false, width: '70px',
       render: (v) => <span className="text-[11px] text-gray-400 capitalize">{String(v ?? '')}</span>,
@@ -452,7 +452,7 @@ const COLS: Partial<Record<ListType, ColDef[]>> = {
     },
     { key: 'issue_needs_attention',label: 'Issue',         sortable: false, width: '65px',
       render: (v) => v
-        ? <span className="text-[11px] font-medium text-orange-600">Yes</span>
+        ? <span className="text-[11px] font-medium text-violet-700">Yes</span>
         : <span className="text-[11px] text-gray-300">—</span>,
     },
     { key: 'issue_comment',        label: 'Issue Detail',  sortable: false,
@@ -811,7 +811,7 @@ function GenerateModal({ open, initial, onClose, onGenerate }: GenerateModalProp
             </button>
             <button
               onClick={submit}
-              className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white text-[13px] font-semibold rounded hover:bg-orange-600 transition-colors"
+              className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white text-[13px] font-semibold rounded hover:bg-violet-700 transition-colors"
             >
               <Play size={12} />
               Generate
@@ -990,9 +990,9 @@ export default function ListsPage() {
           <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5 border-b border-gray-100">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-orange-500 transition-colors group"
+              className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group"
             >
-              <LayoutDashboard size={12} className="group-hover:text-orange-500 transition-colors" />
+              <LayoutDashboard size={12} className="group-hover:text-violet-600 transition-colors" />
               <span>Dashboard</span>
             </button>
             <Crumb size={11} className="text-gray-300" />
@@ -1011,7 +1011,7 @@ export default function ListsPage() {
             {/* Generate List — primary action */}
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold text-white bg-primary rounded hover:bg-violet-700 transition-colors"
             >
               <ListFilter size={13} />
               Generate List
@@ -1044,7 +1044,7 @@ export default function ListsPage() {
                   onClick={() => setShowFilters((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] rounded border transition-colors ${
                     showFilters || hasFilters
-                      ? 'border-primary text-primary bg-orange-50'
+                      ? 'border-primary text-primary bg-violet-50'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   }`}
                 >
@@ -1144,7 +1144,7 @@ export default function ListsPage() {
                 </div>
                 <button
                   onClick={() => setModalOpen(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-primary rounded hover:bg-orange-600 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-primary rounded hover:bg-violet-700 transition-colors"
                 >
                   <ListFilter size={14} />
                   Generate List
@@ -1186,7 +1186,7 @@ export default function ListsPage() {
                     </tr>
                   ) : (
                     data.rows.map((row, i) => (
-                      <tr key={String(row.id ?? i)} className="border-b border-gray-100 hover:bg-orange-50/40 transition-colors">
+                      <tr key={String(row.id ?? i)} className="border-b border-gray-100 hover:bg-violet-50/40 transition-colors">
                         {cols.map((col) => {
                           const val = row[col.key];
                           return (

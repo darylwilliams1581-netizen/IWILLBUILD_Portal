@@ -73,7 +73,7 @@ export default function JobInvoices({ jobId, job }: Props) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate(`/invoices/new?jobId=${jobId}`)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-xs font-bold transition-colors"
             >
               <Plus size={12} />New Invoice
             </button>
@@ -144,7 +144,7 @@ export default function JobInvoices({ jobId, job }: Props) {
           <p className="text-xs text-muted-foreground mb-4">Create an invoice from scratch or from an approved estimate.</p>
           <button
             onClick={() => navigate(`/invoices/new?jobId=${jobId}`)}
-            className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
           >
             <Plus size={13} />New Invoice
           </button>
@@ -196,7 +196,7 @@ export default function JobInvoices({ jobId, job }: Props) {
                 )}
                 <button
                   onClick={(e) => { e.preventDefault(); window.open(`/view/invoice/${inv.id}`, '_blank', 'noopener,noreferrer'); }}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-orange-50 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-violet-50 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
                   title="Open in new tab"
                 >
                   <ExternalLink size={13} />

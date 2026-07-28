@@ -374,11 +374,11 @@ export default function LoginPage() {
 
           {/* ── Session expired notice ─────────────────────────────────── */}
           {sessionExpiredNotice && (
-            <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/25 rounded-xl px-4 py-3 mx-0">
-              <ShieldCheck size={16} className="text-orange-400 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-3 bg-violet-500/10 border border-violet-600/25 rounded-xl px-4 py-3 mx-0">
+              <ShieldCheck size={16} className="text-violet-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-orange-300 text-sm font-semibold">Session expired — please sign in again</p>
-                <p className="text-orange-400/70 text-xs mt-0.5">Your session reached its daily security limit.</p>
+                <p className="text-violet-300 text-sm font-semibold">Session expired — please sign in again</p>
+                <p className="text-violet-400/70 text-xs mt-0.5">Your session reached its daily security limit.</p>
               </div>
             </div>
           )}
@@ -426,7 +426,7 @@ export default function LoginPage() {
           {needs2FA && (
             <div className="px-8 py-8">
               <div className="flex flex-col items-center mb-6">
-                <div className="w-12 h-12 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-center justify-center mb-3">
+                <div className="w-12 h-12 bg-violet-500/10 border border-violet-600/30 rounded-xl flex items-center justify-center mb-3">
                   <ShieldCheck size={22} className="text-primary" />
                 </div>
                 <h2 className="text-white font-bold text-base">Two-Factor Authentication</h2>
@@ -461,7 +461,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={tfaLoading || tfaToken.length !== 6}
-                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {tfaLoading
                     ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</>
@@ -620,7 +620,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
+                    className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">
@@ -638,14 +638,14 @@ export default function LoginPage() {
                   {/* Resend verification link */}
                   <p className="text-center text-xs text-white/30">
                     Didn't receive a verification email?{' '}
-                    <Link to="/verify-required" className="text-primary hover:text-orange-400 font-medium transition-colors">
+                    <Link to="/verify-required" className="text-primary hover:text-violet-400 font-medium transition-colors">
                       Resend it
                     </Link>
                   </p>
 
                   <p className="text-center text-xs text-white/35 mt-1">
                     Don&apos;t have an account?{' '}
-                    <Link to="/signup" className="text-primary hover:text-orange-400 font-medium transition-colors">
+                    <Link to="/signup" className="text-primary hover:text-violet-400 font-medium transition-colors">
                       Create one
                     </Link>
                   </p>
@@ -721,7 +721,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
+                    className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-violet-700 disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-md transition-colors mt-1"
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">

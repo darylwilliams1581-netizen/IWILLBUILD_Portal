@@ -63,7 +63,7 @@ const MORE_ITEMS: MoreItem[] = [
   { label: 'Dashboard',     icon: LayoutDashboard, href: '/dashboard',          iconBg: 'bg-slate-100',   iconFg: 'text-slate-600' },
   { label: 'Fleet',         icon: Truck,           href: '/fleet',              iconBg: 'bg-blue-100',    iconFg: 'text-blue-600' },
   { label: 'Risk & Permits',icon: ShieldAlert,     href: '/jobs',               iconBg: 'bg-rose-100',    iconFg: 'text-rose-600' },
-  { label: 'Prestart',      icon: ClipboardCheck,  href: '/prestart',           iconBg: 'bg-orange-100',  iconFg: 'text-orange-600' },
+  { label: 'Prestart',      icon: ClipboardCheck,  href: '/prestart',           iconBg: 'bg-violet-100',  iconFg: 'text-violet-700' },
   { label: 'Drawings',      icon: Map,             href: '/plan-manager',       iconBg: 'bg-lime-100',    iconFg: 'text-lime-600' },
   { label: 'Forms',         icon: FileText,        href: '/studio/forms',       iconBg: 'bg-violet-100',  iconFg: 'text-violet-600' },
   { label: 'Files',         icon: FolderOpen,      href: '/files',              iconBg: 'bg-amber-100',   iconFg: 'text-amber-600' },
@@ -265,7 +265,7 @@ export default function MobileTabBar({ onCameraPress, onSignInPress }: MobileTab
                   ${isCamera
                     ? 'relative'
                     : active
-                      ? 'text-orange-500'
+                      ? 'text-violet-600'
                       : 'text-gray-400 hover:text-gray-600 active:text-gray-700'
                   }
                 `}
@@ -275,26 +275,26 @@ export default function MobileTabBar({ onCameraPress, onSignInPress }: MobileTab
               >
                 {isCamera ? (
                   /* Camera FAB — raised pill, no ring/border colour */
-                  <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-200 -mt-5 ring-4 ring-white">
+                  <div className="w-12 h-12 rounded-full bg-violet-500 flex items-center justify-center shadow-lg shadow-violet-200 -mt-5 ring-4 ring-white">
                     <Icon size={22} className="text-white" strokeWidth={2} />
                   </div>
                 ) : (
                   <Icon
                     size={22}
                     strokeWidth={active ? 2.2 : 1.8}
-                    className={active ? 'text-orange-500' : 'text-gray-400'}
+                    className={active ? 'text-violet-600' : 'text-gray-400'}
                   />
                 )}
                 <span
                   className={`text-[10px] font-semibold leading-none ${
-                    isCamera ? 'mt-1 text-orange-500' : active ? 'text-orange-500' : 'text-gray-400'
+                    isCamera ? 'mt-1 text-violet-600' : active ? 'text-violet-600' : 'text-gray-400'
                   }`}
                 >
                   {tab.label}
                 </span>
                 {/* Active indicator dot */}
                 {active && !isCamera && (
-                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-500" />
+                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-violet-500" />
                 )}
               </button>
             );

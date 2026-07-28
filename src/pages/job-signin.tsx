@@ -177,7 +177,7 @@ export default function JobSignInPage() {
             if (fieldErrors[name]) setFieldErrors((fe) => ({ ...fe, [name]: undefined }));
           }}
           placeholder={placeholder}
-          className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/40 transition-colors ${
+          className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-colors ${
             fieldErrors[name]
               ? 'border-red-400 bg-red-50'
               : 'border-slate-200 bg-white'
@@ -223,7 +223,7 @@ export default function JobSignInPage() {
             {/* ── Loading ─────────────────────────────────────────────── */}
             {stage === 'loading' && (
               <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center gap-3 text-center">
-                <Loader2 size={32} className="animate-spin text-orange-500" />
+                <Loader2 size={32} className="animate-spin text-violet-600" />
                 <p className="text-slate-600 font-medium">Verifying QR code…</p>
               </div>
             )}
@@ -244,7 +244,7 @@ export default function JobSignInPage() {
                 {/* Give authenticated users a way back — QR pages have no nav bar */}
                 <a
                   href="/home"
-                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-700 hover:text-violet-800 underline underline-offset-2"
                 >
                   Go to portal home
                 </a>
@@ -276,7 +276,7 @@ export default function JobSignInPage() {
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
                   <div className="flex items-center gap-2">
-                    <HardHat size={18} className="text-orange-500" />
+                    <HardHat size={18} className="text-violet-600" />
                     <h2 className="font-bold text-slate-800">
                       {isSignIn ? 'Guest Check-In' : 'Guest Sign-Out'}
                     </h2>
@@ -337,7 +337,7 @@ export default function JobSignInPage() {
                       }}
                       rows={3}
                       placeholder="Briefly describe why you are visiting this site…"
-                      className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none transition-colors ${
+                      className={`w-full px-3 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 resize-none transition-colors ${
                         fieldErrors.reason_for_visit ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'
                       }`}
                     />

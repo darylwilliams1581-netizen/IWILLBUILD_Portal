@@ -120,7 +120,7 @@ function LineRow({
 
       {/* Actions */}
       <div className="flex flex-col gap-0.5 pt-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button type="button" onClick={() => onCopy(line._key)} title="Copy line" className="p-1 rounded text-slate-400 hover:text-primary hover:bg-orange-50 transition-colors"><Copy size={12} /></button>
+        <button type="button" onClick={() => onCopy(line._key)} title="Copy line" className="p-1 rounded text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"><Copy size={12} /></button>
         <button type="button" onClick={() => onDelete(line._key)} title="Delete line" className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={12} /></button>
       </div>
     </div>
@@ -703,7 +703,7 @@ export default function InvoiceBuilderPage() {
             <div className="bg-white border border-border rounded-xl p-5">
               <div className="flex items-start justify-between gap-3 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-50 rounded-lg"><Receipt size={18} className="text-primary" /></div>
+                  <div className="p-2 bg-violet-50 rounded-lg"><Receipt size={18} className="text-primary" /></div>
                   <div>
                     <h1 className="font-heading font-black text-lg text-foreground">
                       {isNew ? 'New Invoice' : invoiceNumber}
@@ -803,7 +803,7 @@ export default function InvoiceBuilderPage() {
                     <button
                       onClick={() => handleSave(false)}
                       disabled={saving || !dirty}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-violet-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
                     >
                       {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                       {isNew ? 'Create' : 'Save'}
@@ -926,7 +926,7 @@ export default function InvoiceBuilderPage() {
                 <button
                   type="button"
                   onClick={addLine}
-                  className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary hover:text-orange-600 transition-colors"
+                  className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary hover:text-violet-700 transition-colors"
                 >
                   <Plus size={14} />Add Line
                 </button>
@@ -1143,7 +1143,7 @@ export default function InvoiceBuilderPage() {
                   className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm text-white transition-colors ${
                     confirmDialog.danger
                       ? 'bg-red-600 hover:bg-red-700'
-                      : 'bg-orange-500 hover:bg-orange-600'
+                      : 'bg-violet-500 hover:bg-violet-700'
                   }`}
                 >
                   Confirm

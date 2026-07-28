@@ -57,7 +57,7 @@ export default function JobNotes({ jobId, initialNotes }: Props) {
           <button
             onClick={save}
             disabled={!dirty || saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Save size={12} />
             {saving ? 'Saving…' : 'Save Notes'}

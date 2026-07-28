@@ -340,7 +340,7 @@ export default function DocumentBuilder({ template, onClose, onSaved, initialMod
                   onClick={() => void handleSave()}
                   disabled={isSaving || (!isDirty && !!templateId)}
                   title={saveStatus === 'error' ? saveErrorMsg : 'Save document'}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${saveStatus === 'saved' ? 'bg-green-500 text-white' : saveStatus === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'}`}
                 >
                   {isSaving ? <Loader2 size={13} className="animate-spin" /> : saveStatus === 'saved' ? <CheckCircle size={13} /> : saveStatus === 'error' ? <AlertCircle size={13} /> : <Save size={13} />}
                   {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
@@ -822,7 +822,7 @@ function RibbonInsertBtn({ icon, label, onClick, primary = false, accent }: {
   const accentMap: Record<string, string> = {
     blue: 'text-blue-600 hover:bg-blue-50', amber: 'text-amber-600 hover:bg-amber-50',
     red: 'text-red-600 hover:bg-red-50', green: 'text-green-600 hover:bg-green-50',
-    orange: 'text-orange-600 hover:bg-orange-50', yellow: 'text-yellow-700 hover:bg-yellow-50',
+    orange: 'text-violet-700 hover:bg-violet-50', yellow: 'text-yellow-700 hover:bg-yellow-50',
   };
   const accentCls = accent ? accentMap[accent] ?? '' : '';
   return (
@@ -999,7 +999,7 @@ function PublishToLibraryModal({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center">
               <Library size={15} className="text-primary" />
             </div>
             <div>
@@ -1023,7 +1023,7 @@ function PublishToLibraryModal({
             </p>
             <button
               onClick={onClose}
-              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
             >
               Done
             </button>
@@ -1110,7 +1110,7 @@ function PublishToLibraryModal({
               <button
                 onClick={() => void handlePublish()}
                 disabled={!title.trim() || status === 'loading'}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {status === 'loading' ? (
                   <><Loader2 size={13} className="animate-spin" />Publishing…</>

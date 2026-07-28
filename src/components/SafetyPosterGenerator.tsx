@@ -276,7 +276,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                     <button
                       key={def.type}
                       onClick={() => handlePick(def)}
-                      className="text-left p-4 border border-slate-200 rounded-xl hover:border-primary hover:bg-orange-50 transition-all group"
+                      className="text-left p-4 border border-slate-200 rounded-xl hover:border-primary hover:bg-violet-50 transition-all group"
                     >
                       <div className="text-2xl mb-2">{def.icon}</div>
                       <div className="font-bold text-sm text-slate-800 group-hover:text-primary mb-1">{def.label}</div>
@@ -320,7 +320,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                 <div className="flex justify-end">
                   <button
                     onClick={handlePreview}
-                    className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold px-6 py-2.5 rounded-xl transition-colors"
+                    className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold px-6 py-2.5 rounded-xl transition-colors"
                   >
                     Preview Poster →
                   </button>
@@ -344,7 +344,7 @@ export default function SafetyPosterGenerator({ onClose, onSaved }: Props) {
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors disabled:opacity-50"
                     >
                       {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                       Save to Library

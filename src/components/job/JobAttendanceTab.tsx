@@ -216,7 +216,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
       {/* ── QR codes ─────────────────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <QrCode size={16} className="text-orange-500" />
+          <QrCode size={16} className="text-violet-600" />
           <h3 className="text-sm font-semibold text-slate-700">QR Code Access</h3>
         </div>
         <p className="text-xs text-slate-500 mb-3">
@@ -226,7 +226,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => openQr('signin')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-800 text-xs font-semibold rounded-lg transition-colors"
           >
             <QrCode size={13} />
             QR Sign In

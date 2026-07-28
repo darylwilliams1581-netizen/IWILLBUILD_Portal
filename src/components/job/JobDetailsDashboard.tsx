@@ -266,7 +266,7 @@ export default function JobDetailsDashboard({
           label="Photos"
           value={summary ? summary.photosCount : '—'}
           sub="tap to view"
-          color="bg-orange-50 text-orange-500"
+          color="bg-violet-50 text-violet-600"
           onClick={() => onTabSwitch('photos')}
         />
       </div>
@@ -320,7 +320,7 @@ export default function JobDetailsDashboard({
               {!editing ? (
                 <button
                   onClick={onEdit}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-orange-600 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-violet-700 transition-colors"
                 >
                   <Edit2 size={12} /> Edit
                 </button>
@@ -335,7 +335,7 @@ export default function JobDetailsDashboard({
                   <button
                     onClick={onSave}
                     disabled={saving}
-                    className="flex items-center gap-1.5 text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
                   >
                     {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
                     Save

@@ -58,7 +58,7 @@ export default async function handler(req: Request, res: Response) {
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;">
-            <span style="color:#f97316;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
             <span style="color:#64748b;font-size:13px;margin-left:12px;">Developer Console — Email Test</span>
           </div>
           <div style="background:#ffffff;padding:28px 24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">

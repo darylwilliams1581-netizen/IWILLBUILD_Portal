@@ -41,7 +41,7 @@ function typeColor(type: string): string {
     verification: 'bg-purple-100 text-purple-700',
     billing: 'bg-green-100 text-green-700',
     welcome: 'bg-emerald-100 text-emerald-700',
-    temp_password: 'bg-orange-100 text-orange-700',
+    temp_password: 'bg-violet-100 text-violet-800',
   };
   return map[type] ?? 'bg-slate-100 text-slate-600';
 }

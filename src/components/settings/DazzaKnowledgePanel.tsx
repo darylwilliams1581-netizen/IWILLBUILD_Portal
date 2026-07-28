@@ -49,7 +49,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Forms':             'bg-purple-50 text-purple-700 border-purple-200',
   'Fleet':             'bg-amber-50 text-amber-700 border-amber-200',
   'Building standards':'bg-slate-100 text-slate-700 border-slate-300',
-  'Custom':            'bg-orange-50 text-orange-700 border-orange-200',
+  'Custom':            'bg-violet-50 text-violet-800 border-violet-200',
 };
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
@@ -260,7 +260,7 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
         {isAdmin && (
           <button
             onClick={openAdd}
-            className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
+            className="flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
           >
             <Plus size={13} />
             Add entry
@@ -360,7 +360,7 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               {editingId ? 'Save changes' : 'Add entry'}
@@ -378,7 +378,7 @@ export default function DazzaKnowledgePanel({ isAdmin }: Props) {
           {isAdmin && (
             <button
               onClick={openAdd}
-              className="inline-flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 bg-primary hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
             >
               <Plus size={13} />
               Add first entry

@@ -45,8 +45,8 @@ const TYPE_ICON: Record<string, React.ElementType> = {
 const TYPE_COLOR: Record<string, string> = {
   todo_overdue:      'text-red-500 bg-red-50',
   todo_due_today:    'text-amber-500 bg-amber-50',
-  fleet_service_due: 'text-orange-500 bg-orange-50',
-  fleet_rego_due:    'text-orange-500 bg-orange-50',
+  fleet_service_due: 'text-violet-600 bg-violet-50',
+  fleet_rego_due:    'text-violet-600 bg-violet-50',
   fleet_flag:        'text-red-500 bg-red-50',
   form_completed:    'text-blue-500 bg-blue-50',
   estimate_approved: 'text-emerald-500 bg-emerald-50',

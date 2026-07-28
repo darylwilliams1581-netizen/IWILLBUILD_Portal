@@ -58,7 +58,7 @@ function EquipmentPicker({
     <div className="space-y-2">
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={28} className="animate-spin text-orange-400" />
+          <Loader2 size={28} className="animate-spin text-violet-400" />
         </div>
       ) : vehicles.length === 0 ? (
         <div className="text-center py-16">
@@ -74,7 +74,7 @@ function EquipmentPicker({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
             onClick={() => onSelect(v)}
-            className="w-full flex items-center gap-3 bg-white border border-gray-200 hover:bg-orange-50 hover:border-orange-200 active:bg-orange-100 rounded-2xl px-4 py-4 text-left transition-colors"
+            className="w-full flex items-center gap-3 bg-white border border-gray-200 hover:bg-violet-50 hover:border-violet-200 active:bg-violet-100 rounded-2xl px-4 py-4 text-left transition-colors"
             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
           >
             <span className="text-2xl shrink-0">{vehicleTypeIcon(v.type)}</span>
@@ -163,7 +163,7 @@ function PrestartForm({
   return (
     <div className="space-y-5">
       {/* Vehicle badge */}
-      <div className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3">
+      <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3">
         <span className="text-2xl">{vehicleTypeIcon(vehicle.type)}</span>
         <div className="flex-1 min-w-0">
           <p className="text-gray-900 font-bold text-sm truncate">{vehicle.name}</p>
@@ -171,7 +171,7 @@ function PrestartForm({
             <p className="text-gray-500 text-xs font-mono">{vehicle.rego}</p>
           )}
         </div>
-        <span className="text-orange-500 text-xs font-bold">Prestart</span>
+        <span className="text-violet-600 text-xs font-bold">Prestart</span>
       </div>
 
       {/* KM / Hours */}
@@ -185,7 +185,7 @@ function PrestartForm({
           value={form.kmHours}
           onChange={e => setForm(f => ({ ...f, kmHours: e.target.value }))}
           placeholder="e.g. 45230"
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400 transition-colors"
+          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-violet-400 transition-colors"
         />
       </div>
 
@@ -253,7 +253,7 @@ function PrestartForm({
               onChange={e => setForm(f => ({ ...f, issueComment: e.target.value }))}
               placeholder="What's the issue?"
               rows={3}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400 resize-none transition-colors"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-violet-400 resize-none transition-colors"
             />
           </motion.div>
         )}
@@ -269,7 +269,7 @@ function PrestartForm({
           onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
           placeholder="Any other notes…"
           rows={2}
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-400 resize-none transition-colors"
+          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-violet-400 resize-none transition-colors"
         />
       </div>
 
@@ -288,7 +288,7 @@ function PrestartForm({
       <button
         onClick={() => void handleSubmit()}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-orange-200 disabled:opacity-60"
+        className="w-full flex items-center justify-center gap-2.5 bg-violet-500 hover:bg-violet-700 active:bg-violet-800 text-white font-bold py-4 rounded-2xl transition-colors shadow-md shadow-violet-200 disabled:opacity-60"
       >
         {saving ? <Loader2 size={18} className="animate-spin" /> : <ClipboardCheck size={18} />}
         {saving ? 'Saving…' : 'Submit Prestart'}
@@ -327,7 +327,7 @@ function DoneState({ vehicle, onAnother }: { vehicle: Vehicle; onAnother: () => 
         onClick={onAnother}
         className="w-full flex items-center justify-center gap-2 py-3.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 font-semibold rounded-2xl transition-colors text-sm"
       >
-        <ClipboardCheck size={15} className="text-orange-500" /> Do another prestart
+        <ClipboardCheck size={15} className="text-violet-600" /> Do another prestart
       </button>
 
       <Link to="/home" className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
@@ -405,8 +405,8 @@ export default function PrestartPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <ClipboardCheck size={15} className="text-orange-600" />
+          <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+            <ClipboardCheck size={15} className="text-violet-700" />
           </div>
           <div>
             <h1 className="text-gray-900 font-bold text-sm leading-tight">{stepTitle}</h1>
@@ -418,7 +418,7 @@ export default function PrestartPage() {
         {step !== 'done' && (
           <div className="flex items-center gap-1.5 shrink-0">
             {(['pick', 'form'] as Step[]).map((s, i) => (
-              <div key={s} className={`h-1.5 rounded-full transition-all ${step === s ? 'w-6 bg-orange-500' : i < (['pick', 'form'] as Step[]).indexOf(step) ? 'w-3 bg-orange-300' : 'w-3 bg-gray-200'}`} />
+              <div key={s} className={`h-1.5 rounded-full transition-all ${step === s ? 'w-6 bg-violet-500' : i < (['pick', 'form'] as Step[]).indexOf(step) ? 'w-3 bg-violet-300' : 'w-3 bg-gray-200'}`} />
             ))}
           </div>
         )}

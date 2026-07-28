@@ -178,7 +178,7 @@ function SectionCard({ icon: Icon, title, children }: {
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-100 bg-slate-50">
-        <Icon size={15} className="text-orange-500 shrink-0" />
+        <Icon size={15} className="text-violet-600 shrink-0" />
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       </div>
       <div className="p-5">{children}</div>
@@ -197,7 +197,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 const inputCls = (disabled: boolean) =>
-  `w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 ${
+  `w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 ${
     disabled ? 'opacity-50 bg-slate-50 cursor-not-allowed' : 'bg-white'
   }`;
 
@@ -385,7 +385,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-orange-500" size={28} />
+        <Loader2 className="animate-spin text-violet-600" size={28} />
       </div>
     );
   }
@@ -487,7 +487,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                 <label
                   key={opt.value}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none ${
-                    destination.mode === opt.value ? 'border-orange-300 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                    destination.mode === opt.value ? 'border-violet-300 bg-violet-50' : 'border-slate-200 hover:border-slate-300 bg-white'
                   } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <input
@@ -496,7 +496,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                     disabled={!isAdmin}
                     checked={destination.mode === opt.value}
                     onChange={() => setDestination(d => ({ ...d, mode: opt.value }))}
-                    className="mt-0.5 accent-orange-500 shrink-0"
+                    className="mt-0.5 accent-violet-600 shrink-0"
                   />
                   <div>
                     <p className="text-sm font-medium text-slate-800">{opt.label}</p>
@@ -541,7 +541,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
               <button
                 onClick={() => void handleSaveDestination()}
                 disabled={destSaving}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
               >
                 {destSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Destination
@@ -622,7 +622,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
               <label
                 key={key}
                 className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none ${
-                  retention[key] ? 'border-orange-300 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                  retention[key] ? 'border-violet-300 bg-violet-50' : 'border-slate-200 hover:border-slate-300 bg-white'
                 } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <input
@@ -630,7 +630,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                   disabled={!isAdmin}
                   checked={retention[key]}
                   onChange={e => setRetention(r => ({ ...r, [key]: e.target.checked }))}
-                  className="mt-0.5 accent-orange-500 shrink-0"
+                  className="mt-0.5 accent-violet-600 shrink-0"
                 />
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -655,7 +655,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
               <button
                 onClick={handleSaveRetention}
                 disabled={retentionSaving}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
               >
                 {retentionSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Retention Settings
@@ -701,12 +701,12 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                 disabled={!isAdmin}
                 onClick={() => set('destinationType', opt.id)}
                 className={`flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
-                  active ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                  active ? 'border-violet-600 bg-violet-50' : 'border-slate-200 hover:border-slate-300 bg-white'
                 } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Icon size={18} className={active ? 'text-orange-500 mt-0.5 shrink-0' : 'text-slate-400 mt-0.5 shrink-0'} />
+                <Icon size={18} className={active ? 'text-violet-600 mt-0.5 shrink-0' : 'text-slate-400 mt-0.5 shrink-0'} />
                 <div>
-                  <p className={`text-sm font-semibold ${active ? 'text-orange-700' : 'text-slate-800'}`}>{opt.label}</p>
+                  <p className={`text-sm font-semibold ${active ? 'text-violet-800' : 'text-slate-800'}`}>{opt.label}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{opt.sub}</p>
                 </div>
               </button>
@@ -827,9 +827,9 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                 )}
                 <FolderOpen
                   size={12}
-                  className={item.isRoot ? 'text-orange-400 shrink-0' : 'text-slate-400 shrink-0'}
+                  className={item.isRoot ? 'text-violet-400 shrink-0' : 'text-slate-400 shrink-0'}
                 />
-                <span className={item.isRoot ? 'font-semibold text-orange-700' : ''}>
+                <span className={item.isRoot ? 'font-semibold text-violet-800' : ''}>
                   {item.depth === 0 ? (config.rootFolder || item.name) : item.name}
                 </span>
               </div>
@@ -848,7 +848,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
               <label
                 key={key}
                 className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none ${
-                  checked ? 'border-orange-300 bg-orange-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+                  checked ? 'border-violet-300 bg-violet-50' : 'border-slate-200 hover:border-slate-300 bg-white'
                 } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <input
@@ -856,7 +856,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                   disabled={!isAdmin}
                   checked={checked}
                   onChange={e => set(key, e.target.checked as BackupConfig[typeof key])}
-                  className="mt-0.5 accent-orange-500 shrink-0"
+                  className="mt-0.5 accent-violet-600 shrink-0"
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -888,7 +888,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
                   onClick={() => set('schedule', s)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
                     config.schedule === s
-                      ? 'bg-orange-500 text-white border-orange-500'
+                      ? 'bg-violet-500 text-white border-violet-600'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                   } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
@@ -1008,7 +1008,7 @@ export default function DataBackupTab({ isAdmin }: { isAdmin: boolean }) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Backup Settings

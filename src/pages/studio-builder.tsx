@@ -108,7 +108,7 @@ export default function StudioBuilderPage() {
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="text-orange-500 animate-spin" />
+          <Loader2 size={28} className="text-violet-600 animate-spin" />
           <p className="text-sm text-slate-500">Loading document…</p>
         </div>
       </div>
@@ -152,7 +152,7 @@ export default function StudioBuilderPage() {
         pageLayout: { paperSize: 'A4', orientation: 'portrait', margins: 'standard' },
         theme: {
           backgroundColor: '#ffffff',
-          accentColor: '#f97316',
+          accentColor: '#7c3aed',
           textColor: '#1e293b',
           tableHeaderColor: '#1e293b',
           tableHeaderTextColor: '#ffffff',

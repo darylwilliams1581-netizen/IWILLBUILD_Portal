@@ -112,7 +112,7 @@ export default function FormTemplatesTab({ companies }: Props) {
       {/* Company selector */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center">
             <FileText size={16} className="text-primary" />
           </div>
           <div>
@@ -140,7 +140,7 @@ export default function FormTemplatesTab({ companies }: Props) {
                     <button
                       key={c.id}
                       onClick={() => { setSelectedId(c.id); setShowDropdown(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${selectedId === c.id ? 'bg-orange-50 text-primary font-semibold' : 'text-slate-700'}`}
+                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${selectedId === c.id ? 'bg-violet-50 text-primary font-semibold' : 'text-slate-700'}`}
                     >
                       <span>{c.name}</span>
                       <span className="text-xs text-slate-400">{c.totalUsers} user{c.totalUsers !== 1 ? 's' : ''}</span>
@@ -168,7 +168,7 @@ export default function FormTemplatesTab({ companies }: Props) {
               <button
                 onClick={handleInstall}
                 disabled={installing}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors"
               >
                 {installing ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 {installing ? 'Installing…' : 'Install Templates'}

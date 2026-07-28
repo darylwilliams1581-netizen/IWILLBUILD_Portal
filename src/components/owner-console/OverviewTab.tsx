@@ -144,7 +144,7 @@ export default function OverviewTab({ stats, companies, activity, enteringSuppor
         rel="noopener noreferrer"
         className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:border-primary hover:shadow-md transition-all group"
       >
-        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
           <Mail size={18} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">

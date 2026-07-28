@@ -359,7 +359,7 @@ export default function JobDetailPage() {
                 }}
                 size="sm"
               />
-            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-orange-50 px-2.5 py-1.5 rounded transition-colors shrink-0">
+            <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-violet-50 px-2.5 py-1.5 rounded transition-colors shrink-0">
               <Edit2 size={13} /><span className="hidden sm:inline">Edit</span>
             </button>
             </>
@@ -369,7 +369,7 @@ export default function JobDetailPage() {
               <button onClick={handleCancel} disabled={saving} className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded hover:bg-muted transition-colors">
                 <X size={13} /><span className="hidden sm:inline">Cancel</span>
               </button>
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-orange-600 text-white px-2.5 py-1.5 rounded transition-colors disabled:opacity-60">
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-violet-700 text-white px-2.5 py-1.5 rounded transition-colors disabled:opacity-60">
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                 <span className="hidden sm:inline">Save</span>
               </button>
@@ -523,7 +523,7 @@ export default function JobDetailPage() {
                         <span className="text-slate-400">Sched. Start:</span>
                         <span className="font-medium text-slate-700">
                           {(() => { const [y,m,d] = job.scheduledStartDate!.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); })()}
-                          {job.scheduledStartTime && <span className="ml-1 text-orange-600">{fmtJobTime(job.scheduledStartTime)}</span>}
+                          {job.scheduledStartTime && <span className="ml-1 text-violet-700">{fmtJobTime(job.scheduledStartTime)}</span>}
                         </span>
                       </span>
                     )}
@@ -600,7 +600,7 @@ export default function JobDetailPage() {
                               onClick={() => switchTab(key)}
                               className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${
                                 activeTab === key
-                                  ? 'text-primary font-bold bg-orange-50'
+                                  ? 'text-primary font-bold bg-violet-50'
                                   : 'text-foreground hover:bg-muted'
                               }`}
                             >

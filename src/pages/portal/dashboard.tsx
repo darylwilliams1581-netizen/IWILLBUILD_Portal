@@ -33,7 +33,7 @@ const JOB_STATUS: Record<string, { label: string; color: string; bg: string }> =
   active:     { label: 'Active',     color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
   pending:    { label: 'Pending',    color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200' },
   completed:  { label: 'Completed',  color: 'text-slate-600',   bg: 'bg-slate-100 border-slate-200' },
-  on_hold:    { label: 'On Hold',    color: 'text-orange-700',  bg: 'bg-orange-50 border-orange-200' },
+  on_hold:    { label: 'On Hold',    color: 'text-violet-800',  bg: 'bg-violet-50 border-violet-200' },
   cancelled:  { label: 'Cancelled',  color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },
 };
 
@@ -99,7 +99,7 @@ export default function PortalDashboardPage() {
         {/* Header */}
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shadow-sm">
               <Building2 size={18} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -130,7 +130,7 @@ export default function PortalDashboardPage() {
               {[
                 { label: 'Active jobs', value: String(activeJobs), icon: HardHat, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 { label: 'Estimates to review', value: String(pendingEstimates), icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' },
-                { label: 'Outstanding', value: totalOutstanding > 0 ? (fmtMoney(totalOutstanding) ?? '$0') : '$0', icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
+                { label: 'Outstanding', value: totalOutstanding > 0 ? (fmtMoney(totalOutstanding) ?? '$0') : '$0', icon: DollarSign, color: 'text-violet-700', bg: 'bg-violet-50' },
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <motion.div
                   key={label}
@@ -188,11 +188,11 @@ export default function PortalDashboardPage() {
                   >
                     <Link
                       to={`/portal/jobs/${job.id}?token=${token}`}
-                      className="block bg-white rounded-2xl border border-slate-200 p-5 hover:border-orange-300 hover:shadow-sm transition-all group"
+                      className="block bg-white rounded-2xl border border-slate-200 p-5 hover:border-violet-300 hover:shadow-sm transition-all group"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-orange-50 transition-colors">
-                          <HardHat size={18} className="text-slate-400 group-hover:text-orange-500 transition-colors" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-violet-50 transition-colors">
+                          <HardHat size={18} className="text-slate-400 group-hover:text-violet-600 transition-colors" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -212,7 +212,7 @@ export default function PortalDashboardPage() {
                               </span>
                             )}
                             {job.outstanding_amount != null && job.outstanding_amount > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">
                                 <Receipt size={9} /> {fmtMoney(job.outstanding_amount)} outstanding
                               </span>
                             )}
@@ -223,7 +223,7 @@ export default function PortalDashboardPage() {
                             )}
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-300 group-hover:text-orange-400 transition-colors shrink-0 mt-1" />
+                        <ChevronRight size={16} className="text-slate-300 group-hover:text-violet-400 transition-colors shrink-0 mt-1" />
                       </div>
                     </Link>
                   </motion.div>

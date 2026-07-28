@@ -43,13 +43,13 @@ const GROUPS: GroupDoc[] = [
     id: 'field',
     label: 'Field',
     description: 'Day-to-day tools for workers on site. Quick access to the most common field tasks.',
-    color: 'bg-orange-100 text-orange-700 border-orange-200',
+    color: 'bg-violet-100 text-violet-800 border-violet-200',
     icons: [
       {
         key: 'camera',
         label: 'Camera',
         icon: Camera,
-        bg: 'bg-orange-500',
+        bg: 'bg-violet-500',
         purpose: 'Take and upload photos directly to a job. Photos are stored against the selected job and can be used in reports, progress updates, and documentation.',
         howTo: [
           'Tap Camera on the home screen.',
@@ -281,7 +281,7 @@ const GROUPS: GroupDoc[] = [
         key: 'dashboard',
         label: 'Dashboard',
         icon: LayoutDashboard,
-        bg: 'bg-orange-500',
+        bg: 'bg-violet-500',
         purpose: 'A summary overview of your active jobs, recent activity, outstanding tasks, and key metrics at a glance.',
         howTo: [
           'Tap Dashboard on the home screen.',
@@ -364,7 +364,7 @@ const GROUPS: GroupDoc[] = [
         key: 'studio_docs',
         label: 'Doc Studio',
         icon: FileText,
-        bg: 'bg-orange-500',
+        bg: 'bg-violet-500',
         purpose: 'Create and manage document templates — safety plans, SWMS, induction packs, job reports, and any custom documents. Uses a drag-and-drop block editor.',
         howTo: [
           'Tap Doc Studio on the home screen.',
@@ -401,7 +401,7 @@ const GROUPS: GroupDoc[] = [
         key: 'jobs',
         label: 'Jobs',
         icon: HardHat,
-        bg: 'bg-orange-500',
+        bg: 'bg-violet-500',
         purpose: 'The central hub for all jobs. Create, manage, and monitor every project — costs, photos, forms, documents, schedule, and team.',
         howTo: [
           'Tap Jobs on the home screen.',
@@ -415,7 +415,7 @@ const GROUPS: GroupDoc[] = [
         key: 'quotes',
         label: 'Quotes',
         icon: FileText,
-        bg: 'bg-orange-500',
+        bg: 'bg-violet-500',
         purpose: 'View and manage quotes linked to jobs. Track quote status — draft, sent, accepted, or declined.',
         howTo: [
           'Tap Quotes on the home screen.',
@@ -553,7 +553,7 @@ const GROUPS: GroupDoc[] = [
       { key: 'checklist',      label: 'Checklist',    icon: Clipboard,           bg: 'bg-lime-600',    purpose: 'Simple task checklists for jobs and daily work.', howTo: ['Coming soon.'] },
       { key: 'messages',       label: 'Messages',     icon: MessageSquare,       bg: 'bg-green-500',   purpose: 'In-app messaging between team members.', howTo: ['Coming soon.'] },
       { key: 'invoices_field', label: 'Invoices',     icon: Wallet,              bg: 'bg-teal-500',    purpose: 'Field-accessible invoice view for workers.', howTo: ['Coming soon.'] },
-      { key: 'daily_log',      label: 'Daily Log',    icon: ClipboardList,       bg: 'bg-orange-400',  purpose: 'Daily work log for recording activities and hours.', howTo: ['Coming soon.'] },
+      { key: 'daily_log',      label: 'Daily Log',    icon: ClipboardList,       bg: 'bg-violet-500',  purpose: 'Daily work log for recording activities and hours.', howTo: ['Coming soon.'] },
       { key: 'weather',        label: 'Weather',      icon: CloudRain,           bg: 'bg-cyan-400',    purpose: 'Live weather for job sites — useful for planning and delay records.', howTo: ['Coming soon.'] },
     ],
   },
@@ -601,7 +601,7 @@ export default function HelpPage() {
         <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shrink-0">
                 <BookMarked size={18} className="text-white" />
               </div>
               <div>
@@ -617,7 +617,7 @@ export default function HelpPage() {
                 placeholder="Search icons or features…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-slate-100 rounded-lg border border-transparent focus:border-orange-400 focus:bg-white outline-none transition-colors"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-slate-100 rounded-lg border border-transparent focus:border-violet-400 focus:bg-white outline-none transition-colors"
               />
             </div>
           </div>
@@ -706,7 +706,7 @@ export default function HelpPage() {
                                       <ol className="space-y-1.5">
                                         {ic.howTo.map((step, i) => (
                                           <li key={i} className="flex gap-2.5 text-sm text-slate-700">
-                                            <span className="shrink-0 w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                                            <span className="shrink-0 w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[11px] font-bold flex items-center justify-center mt-0.5">
                                               {i + 1}
                                             </span>
                                             <span className="leading-snug">{step}</span>

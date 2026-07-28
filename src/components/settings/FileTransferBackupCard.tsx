@@ -52,7 +52,7 @@ function isUrl(p: string) {
 }
 
 const inputCls = (disabled: boolean) =>
-  `w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 ${
+  `w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 ${
     disabled ? 'opacity-50 bg-slate-50 cursor-not-allowed' : 'bg-white'
   }`;
 
@@ -140,11 +140,11 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
     return (
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-100 bg-slate-50">
-          <FolderOpen size={15} className="text-orange-500 shrink-0" />
+          <FolderOpen size={15} className="text-violet-600 shrink-0" />
           <h3 className="text-sm font-semibold text-slate-800">File Transfer &amp; Backup</h3>
         </div>
         <div className="p-5 flex justify-center">
-          <Loader2 size={20} className="animate-spin text-orange-400" />
+          <Loader2 size={20} className="animate-spin text-violet-400" />
         </div>
       </div>
     );
@@ -159,7 +159,7 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
 
       {/* ── Header ── */}
       <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-100 bg-slate-50">
-        <FolderOpen size={15} className="text-orange-500 shrink-0" />
+        <FolderOpen size={15} className="text-violet-600 shrink-0" />
         <h3 className="text-sm font-semibold text-slate-800">File Transfer &amp; Backup</h3>
       </div>
 
@@ -251,7 +251,7 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
                   onClick={() => set('frequency', o.value)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
                     settings.frequency === o.value
-                      ? 'bg-orange-500 text-white border-orange-500'
+                      ? 'bg-violet-500 text-white border-violet-600'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                   } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
@@ -283,7 +283,7 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
               type="button"
               onClick={() => void handleSave()}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save backup settings

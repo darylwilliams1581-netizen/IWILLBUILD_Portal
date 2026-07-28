@@ -181,7 +181,7 @@ function CustomerFormModal({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-orange-50 rounded-md"><Users size={16} className="text-primary" /></div>
+            <div className="p-1.5 bg-violet-50 rounded-md"><Users size={16} className="text-primary" /></div>
             <h2 className="font-heading font-bold text-base">{initial ? 'Edit Contact' : 'New Contact'}</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
@@ -272,7 +272,7 @@ function CustomerFormModal({
 
           <div className="flex gap-3 pt-2 border-t border-slate-100">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {initial ? 'Save Changes' : 'Create Stakeholder'}
             </button>
@@ -551,7 +551,7 @@ export default function CustomersPage() {
             onClick={() => { setEditing(null); setShowModal(true); }}
             disabled={isViewOnly}
             title={isViewOnly ? 'Subscribe to continue' : undefined}
-            className="flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} />
             <span className="hidden sm:inline">+ New Contact</span>
@@ -607,7 +607,7 @@ export default function CustomersPage() {
         {/* Empty state */}
         {!loading && !error && customers.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
               <Users size={26} className="text-primary" />
             </div>
             <p className="font-heading font-bold text-base text-foreground mb-1">No contacts yet</p>
@@ -617,7 +617,7 @@ export default function CustomersPage() {
             <button
               onClick={() => !isViewOnly && setShowModal(true)}
               disabled={isViewOnly}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-orange-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
             >
               <Plus size={15} />+ New Stakeholder
             </button>
