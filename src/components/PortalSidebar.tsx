@@ -18,6 +18,7 @@ import {
   Users,
   Receipt,
   Bot,
+  Layers,
   Map,
   Building2,
   Calculator,
@@ -95,6 +96,7 @@ interface NavItem {
   icon: React.ElementType;
   href: string;
   permKey: string | null;
+  ownerOnly?: boolean;
 }
 
 function buildNavEntries(_workPlural: string): NavItem[] {
@@ -109,6 +111,8 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'App Docs',     icon: FileText,        href: '/studio/documents',     permKey: null },
     { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms',         permKey: null },
     { label: 'Library',      icon: BookOpen,        href: '/studio/library',       permKey: null },
+    // Studio (legacy tab hub) — owner-only until templates are migrated to Library
+    { label: 'Studio (legacy)', icon: Layers,       href: '/studio',               permKey: null, ownerOnly: true },
     { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
     { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
     { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
@@ -325,7 +329,7 @@ function SidebarContent({
       >
         {navEntries.map((item) => {
           if (!permsLoading && item.permKey !== null && me?.profile && !can(item.permKey as any)) return null;
-          if ((item as { ownerOnly?: boolean }).ownerOnly && (permsLoading || !isPlatformOwner)) return null;
+          if (item.ownerOnly && (permsLoading || !isPlatformOwner)) return null;
           const Icon  = item.icon;
           const active = isActive(item.href);
           const isDazza = item.href === '/dazza-ai';
