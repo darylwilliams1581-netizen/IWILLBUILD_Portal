@@ -68,6 +68,8 @@ const OwnerConsolePage   = lazy(() => import('./pages/owner-console'));
 const BillingPage        = lazy(() => import('./pages/billing'));
 const ListsPage          = lazy(() => import('./pages/lists'));
 const UserLogsPage       = lazy(() => import('./pages/user-logs'));
+const JobCardsPage       = lazy(() => import('./pages/job-cards'));
+const JobCardDetailPage  = lazy(() => import('./pages/job-card-detail'));
 
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage    = lazy(() => import('./pages/swms-signoff'));
@@ -249,6 +251,8 @@ export const routes: RouteObject[] = [
   { path: '/billing',       element: protect(<BillingPage />),         errorElement: routeError },
   { path: '/lists',         element: protect(<ListsPage />),           errorElement: routeError },
   { path: '/user-logs',     element: protect(<UserLogsPage />),        errorElement: routeError },
+  { path: '/job-cards',     element: protect(<JobCardsPage />),        errorElement: routeError },
+  { path: '/job-cards/:id', element: protect(<JobCardDetailPage />),   errorElement: routeError },
   { path: '/documents/:id', element: protect(<DocumentViewerPage />),  errorElement: routeError },
   // New-tab viewer routes (authenticated, no sidebar)
   { path: '/view/file/:id',     element: protect(<ViewFilePage />),     errorElement: routeError },

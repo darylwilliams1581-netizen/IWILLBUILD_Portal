@@ -13,6 +13,7 @@ import {
   Clock, TrendingUp, User, DollarSign, Loader2, Plus, ImageIcon, LogIn, CheckCircle2, UserCheck,
   Navigation, ClipboardCheck, History, ShieldAlert, ShieldCheck, X, HardHat, ChevronRight,
   LayoutDashboard, Layers, CalendarDays, LogOut, Settings, HardHat as HardHatIcon,
+  Zap, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { useSession, signOut } from '@/lib/auth/auth-client';
@@ -1146,6 +1147,261 @@ function RiskyJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
+// ── Phone Job Card creation sheet ─────────────────────────────────────────────
+// Field-first: customer → site → work → hours → materials → done.
+// Tapping "View all Job Cards" navigates to the desktop register.
+function PhoneJobCardSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  const [step, setStep] = useState<'form' | 'done'>('form');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [createdId, setCreatedId] = useState<number | null>(null);
+  const [createdNum, setCreatedNum] = useState('');
+  const [customers, setCustomers] = useState<{ id: number; name: string }[]>([]);
+  const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
+
+  const [form, setForm] = useState({
+    customerId: '',
+    customerNameOverride: '',
+    siteAddress: '',
+    contactPerson: '',
+    serviceDate: new Date().toISOString().slice(0, 10),
+    assignedUserId: '',
+    workDescription: '',
+    labourHours: '',
+    labourRate: '',
+    notes: '',
+  });
+  const [materials, setMaterials] = useState<{ description: string; cost: string }[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setStep('form');
+    setError('');
+    setCreatedId(null);
+    setCreatedNum('');
+    setForm({
+      customerId: '', customerNameOverride: '', siteAddress: '', contactPerson: '',
+      serviceDate: new Date().toISOString().slice(0, 10),
+      assignedUserId: '', workDescription: '', labourHours: '', labourRate: '', notes: '',
+    });
+    setMaterials([]);
+    fetch('/api/customers?status=active', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { customers?: { id: number; name: string }[] } | null) => setCustomers(d?.customers ?? []))
+      .catch(() => {});
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { members?: { id: string; name: string }[] } | null) => setTeam(d?.members ?? []))
+      .catch(() => {});
+  }, [open]);
+
+  function setF(k: keyof typeof form, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function handleCreate() {
+    if (!form.workDescription.trim()) { setError('Work description is required'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const body: Record<string, unknown> = {
+        workDescription: form.workDescription,
+        siteAddress: form.siteAddress || undefined,
+        contactPerson: form.contactPerson || undefined,
+        serviceDate: form.serviceDate || undefined,
+        notes: form.notes || undefined,
+        status: 'draft',
+        materials: materials.filter(m => m.description.trim()).map(m => ({
+          description: m.description,
+          cost: Number(m.cost) || 0,
+        })),
+      };
+      if (form.customerId) body.customerId = Number(form.customerId);
+      else if (form.customerNameOverride) body.customerNameOverride = form.customerNameOverride;
+      if (form.assignedUserId) {
+        body.assignedUserId = form.assignedUserId;
+        const m = team.find(t => t.id === form.assignedUserId);
+        if (m) body.assignedName = m.name;
+      }
+      if (form.labourHours) body.labourHours = Number(form.labourHours);
+      if (form.labourRate) body.labourRate = Number(form.labourRate);
+
+      const res = await fetch('/api/job-cards', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json() as { jobCard?: { id: number; card_number: string }; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setCreatedId(data.jobCard!.id);
+      setCreatedNum(data.jobCard!.card_number);
+      setStep('done');
+    } catch (err) {
+      setError(String((err as Error).message));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-white';
+  const labelCls = 'block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1';
+
+  return (
+    <Sheet open={open} onClose={onClose} title="New Job Card" titleIcon={Zap} titleIconClass="text-yellow-500">
+      {step === 'done' ? (
+        <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 size={28} className="text-green-600" />
+          </div>
+          <div>
+            <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
+            <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button
+              onClick={() => { onClose(); navigate(`/job-cards/${createdId}`); }}
+              className="w-full py-3 rounded-xl bg-yellow-500 text-white font-bold text-[15px] hover:bg-yellow-600 transition-colors"
+            >
+              Open Job Card
+            </button>
+            <button
+              onClick={() => { onClose(); navigate('/job-cards'); }}
+              className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-[14px] hover:bg-gray-200 transition-colors"
+            >
+              View all Job Cards
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 pb-6">
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              <AlertTriangle size={14} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Customer */}
+          <div>
+            <label className={labelCls}>Customer</label>
+            <select value={form.customerId} onChange={e => setF('customerId', e.target.value)} className={inputCls}>
+              <option value="">— Select or type below —</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {!form.customerId && (
+              <input type="text" value={form.customerNameOverride} onChange={e => setF('customerNameOverride', e.target.value)}
+                placeholder="Or type customer name…" className={`${inputCls} mt-2`} />
+            )}
+          </div>
+
+          {/* Site */}
+          <div>
+            <label className={labelCls}>Site address</label>
+            <input type="text" value={form.siteAddress} onChange={e => setF('siteAddress', e.target.value)}
+              placeholder="123 Main St" className={inputCls} />
+          </div>
+
+          {/* Contact */}
+          <div>
+            <label className={labelCls}>Contact person</label>
+            <input type="text" value={form.contactPerson} onChange={e => setF('contactPerson', e.target.value)}
+              placeholder="John Smith" className={inputCls} />
+          </div>
+
+          {/* Service date */}
+          <div>
+            <label className={labelCls}>Service date</label>
+            <input type="date" value={form.serviceDate} onChange={e => setF('serviceDate', e.target.value)} className={inputCls} />
+          </div>
+
+          {/* Work description */}
+          <div>
+            <label className={labelCls}>Work description <span className="text-red-500">*</span></label>
+            <textarea value={form.workDescription} onChange={e => setF('workDescription', e.target.value)}
+              rows={3} placeholder="Describe the work…"
+              className={`${inputCls} resize-none`} />
+          </div>
+
+          {/* Labour */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Labour hours</label>
+              <input type="number" min="0" step="0.25" value={form.labourHours} onChange={e => setF('labourHours', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Rate ($/hr)</label>
+              <input type="number" min="0" step="0.01" value={form.labourRate} onChange={e => setF('labourRate', e.target.value)}
+                placeholder="0.00" className={inputCls} />
+            </div>
+          </div>
+
+          {/* Materials */}
+          <div>
+            <label className={labelCls}>Materials</label>
+            <div className="flex flex-col gap-2">
+              {materials.map((m, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="text" value={m.description}
+                    onChange={e => setMaterials(ms => ms.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))}
+                    placeholder="Description" className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-[15px] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" />
+                  <div className="relative w-24 shrink-0">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                    <input type="number" min="0" step="0.01" value={m.cost}
+                      onChange={e => setMaterials(ms => ms.map((x, idx) => idx === i ? { ...x, cost: e.target.value } : x))}
+                      className="w-full pl-6 pr-2 py-3 border border-gray-200 rounded-xl text-[15px] focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" />
+                  </div>
+                  <button onClick={() => setMaterials(ms => ms.filter((_, idx) => idx !== i))}
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => setMaterials(ms => [...ms, { description: '', cost: '' }])}
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-yellow-600 hover:text-yellow-700 transition-colors py-1">
+                <Plus size={14} />
+                Add material
+              </button>
+            </div>
+          </div>
+
+          {/* Assigned worker */}
+          <div>
+            <label className={labelCls}>Assigned worker</label>
+            <select value={form.assignedUserId} onChange={e => setF('assignedUserId', e.target.value)} className={inputCls}>
+              <option value="">— Unassigned —</option>
+              {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className={labelCls}>Notes</label>
+            <textarea value={form.notes} onChange={e => setF('notes', e.target.value)}
+              rows={2} placeholder="Internal notes…"
+              className={`${inputCls} resize-none`} />
+          </div>
+
+          {/* Create button */}
+          <button
+            onClick={() => void handleCreate()}
+            disabled={saving}
+            className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+          >
+            {saving ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
+            Create Job Card
+          </button>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 function ScheduleJobPickerSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   return (
@@ -1894,6 +2150,7 @@ export default function HomeScreen() {
   const [prestartPickerOpen, setPrestartPickerOpen] = useState(false);
   const [sitePrestartPickerOpen, setSitePrestartPickerOpen] = useState(false);
   const [riskyPickerOpen, setRiskyPickerOpen] = useState(false);
+  const [jobCardOpen, setJobCardOpen] = useState(false);
   const [activeStatusKey, setActiveStatusKey] = useState(0);
   const activeStatus = useActiveStatus(activeStatusKey);
 
@@ -1924,6 +2181,7 @@ export default function HomeScreen() {
     if (href === '?panel=prestart-picker') { setPrestartPickerOpen(true); return; }
     if (href === '?panel=site-prestart-picker') { setSitePrestartPickerOpen(true); return; }
     if (href === '?panel=risky-picker') { setRiskyPickerOpen(true); return; }
+    if (href === '?panel=job-card') { setJobCardOpen(true); return; }
     if (href === '?panel=camera') { setCameraPickerOpen(true); return; }
     if (href === '?panel=dashboard') { setDashOpen(true); return; }
     navigate(href);
@@ -2132,6 +2390,7 @@ export default function HomeScreen() {
       <PrestartFleetPickerSheet open={prestartPickerOpen} onClose={() => setPrestartPickerOpen(false)} />
       <SitePrestartJobPickerSheet open={sitePrestartPickerOpen} onClose={() => setSitePrestartPickerOpen(false)} />
       <RiskyJobPickerSheet open={riskyPickerOpen} onClose={() => setRiskyPickerOpen(false)} />
+      <PhoneJobCardSheet open={jobCardOpen} onClose={() => setJobCardOpen(false)} />
       </div>{/* end z-10 content wrapper */}
 
     </div>

@@ -23,7 +23,7 @@ import {
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
-  Gamepad2, BookMarked,
+  Gamepad2, BookMarked, Zap,
 } from 'lucide-react';
 
 export type IconGroup = 'field' | 'safety' | 'tools' | 'management' | 'comingSoon';
@@ -58,6 +58,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'progress',      label: 'Progress',         icon: TrendingUp,       href: '?panel=progress-picker',      bg: 'bg-green-600',   fg: 'text-white', group: 'field' },
   { key: 'drawings',      label: 'Drawings',         icon: Layers,           href: '?panel=drawings-picker',      bg: 'bg-blue-500',    fg: 'text-white', group: 'field' },
   { key: 'equipment',     label: 'Equipment',        icon: Wrench,           href: '/studio/asset-manager',       bg: 'bg-orange-400',  fg: 'text-white', group: 'field' },
+  { key: 'job_card',      label: 'Job Card',         icon: Zap,              href: '?panel=job-card',             bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
 ];
 
 // ── SAFETY ────────────────────────────────────────────────────────────────────

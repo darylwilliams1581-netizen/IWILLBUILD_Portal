@@ -28,6 +28,7 @@ import {
   PanelLeftOpen,
   TableProperties,
   ScrollText,
+  Zap,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -86,6 +87,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
     { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', permKey: null },
     { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
+    { label: 'Job Cards',    icon: Zap,             href: '/job-cards',            permKey: 'jobs' },
     { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
     { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
     { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
