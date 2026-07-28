@@ -103,11 +103,7 @@ function NineDotIcon({ size = 16, color = 'currentColor' }: { size?: number; col
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-interface AppLauncherProps {
-  collapsed?: boolean;
-}
-
-export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
+export default function AppLauncher() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [panelPos, setPanelPos] = useState({ top: 60, left: 248 });
@@ -121,8 +117,9 @@ export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     setPanelPos({
-      top:  rect.bottom + 8,
-      left: rect.left,
+      top:  rect.bottom + 6,
+      // Anchor panel right-edge to button right-edge so it doesn't overflow viewport
+      left: Math.min(rect.left, window.innerWidth - 348),
     });
   }, []);
 
@@ -321,7 +318,7 @@ export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
   ) : null;
 
   return (
-    // Desktop-only wrapper
+    // Desktop-only wrapper — mobile uses the home grid
     <div className="hidden md:block relative" style={{ flexShrink: 0 }}>
       {/* ── 9-dot trigger button ── */}
       <button
@@ -330,11 +327,11 @@ export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
         aria-label="Open app launcher"
         aria-expanded={open}
         aria-haspopup="dialog"
-        title="App launcher"
+        title="All apps"
         style={{
-          width: 28,
-          height: 28,
-          borderRadius: 7,
+          width: 32,
+          height: 32,
+          borderRadius: 8,
           border: 'none',
           background: open ? '#fff7ed' : 'transparent',
           display: 'grid',
@@ -345,7 +342,7 @@ export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
         }}
         className="hover:bg-orange-50"
       >
-        <NineDotIcon size={15} color={open ? '#ea580c' : '#f97316'} />
+        <NineDotIcon size={16} color={open ? '#ea580c' : '#f97316'} />
       </button>
 
       {panel}
