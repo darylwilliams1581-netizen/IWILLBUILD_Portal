@@ -8,15 +8,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import {
   Camera, LogIn, Car, ClipboardCheck, FileText, StickyNote,
-  DollarSign, Clock, TrendingUp, Layers, Ruler, ClipboardList,
+  DollarSign, Clock, TrendingUp, Layers, ClipboardList,
   Wrench, Image, FileCheck, BookOpen, LayoutDashboard,
   Calculator, Receipt, Users,
   HardHat, CalendarDays, Truck, FolderOpen, UserCircle,
   CreditCard, Settings,
   BarChart2, FileSpreadsheet, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet, ShieldAlert, AlertTriangle,
-  Gamepad2, ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
+  ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft,
+  Zap, FileStack, Map, ShieldCheck, AlertCircle, Building2,
+  TableProperties, ScrollText, Link2, History, Bot, Terminal,
 } from 'lucide-react';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import type { ComponentType } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
