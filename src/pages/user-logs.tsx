@@ -10,7 +10,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Search, ChevronDown, X, Calendar, RefreshCw, Download,
   UserCheck, Truck, Clock, Activity, Users, Briefcase,
-  CheckCircle2, AlertCircle, ChevronRight,
+  CheckCircle2, AlertCircle, ChevronRight, LayoutDashboard,
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 
@@ -748,6 +748,26 @@ export default function UserLogsPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       {/* ── Page header ── */}
+      {/* ── Breadcrumb ── */}
+      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-1.5 text-[12px] text-gray-400">
+        <a
+          href="/home"
+          className="flex items-center gap-1 text-gray-400 hover:text-primary transition-colors"
+        >
+          <LayoutDashboard size={12} />
+          Dashboard
+        </a>
+        <ChevronRight size={11} className="text-gray-300" />
+        <a
+          href="/lists"
+          className="text-gray-400 hover:text-primary transition-colors"
+        >
+          Lists
+        </a>
+        <ChevronRight size={11} className="text-gray-300" />
+        <span className="text-gray-600 font-medium">User Logs</span>
+      </div>
+
       <div className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
