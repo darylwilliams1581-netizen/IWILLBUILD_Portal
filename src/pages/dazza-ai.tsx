@@ -777,6 +777,9 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
+      {/* Visually-hidden h1 for accessibility / SEO — page is a full-screen app shell */}
+      <h1 className="sr-only">Dazza AI — IWILLBUILD Portal</h1>
+
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── Sub-header: Dazza status + chat controls ── */}
         <header className="h-11 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
