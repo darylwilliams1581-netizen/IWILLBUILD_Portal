@@ -33,8 +33,6 @@ import {
   Link2,
   FileStack,
   History,
-  Settings,
-  CreditCard,
 } from 'lucide-react';
 
 interface DockItem {
@@ -70,9 +68,6 @@ const ALL_ITEMS: DockItem[] = [
   { label: 'Quick Links',     icon: Link2,           href: '/quick-links',        color: '#6366f1', bg: '#eef2ff' },
   { label: 'Job Field Docs',  icon: FileStack,       href: '/job-docs',           color: '#0891b2', bg: '#ecfeff' },
   { label: 'Sign-in History', icon: History,         href: '/signin-history',     color: '#64748b', bg: '#f8fafc', adminOnly: true },
-  // ── Utility ──
-  { label: 'Settings',        icon: Settings,        href: '/settings',           color: '#475569', bg: '#f8fafc', adminOnly: true, dividerBefore: true },
-  { label: 'Billing',         icon: CreditCard,      href: '/billing',            color: '#475569', bg: '#f8fafc', adminOnly: true },
 ];
 
 // ── Vertical divider between icon groups ─────────────────────────────────────
