@@ -85,7 +85,7 @@ function DockDivider() {
       style={{
         width: 1,
         height: 22,
-        background: 'rgba(226,232,240,0.9)',
+        background: 'rgba(255,255,255,0.25)',
         flexShrink: 0,
         margin: '0 4px',
       }}
@@ -196,10 +196,10 @@ export default function DesktopDock() {
           right: 12,
           transform: 'translateY(-50%)',
           zIndex: 1050,
-          background: 'rgba(255,255,255,0.98)',
+          background: 'rgba(124,58,237,0.97)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(226,232,240,0.9)',
+          border: '1px solid rgba(139,92,246,0.6)',
           borderRadius: 16,
           boxShadow: [
             '0 1px 2px rgba(15,23,42,0.04)',
