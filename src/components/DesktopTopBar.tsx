@@ -9,6 +9,7 @@
  *   Right — [Dazza AI] [Dev Console] (owner only) | avatar+name → /settings | Sign out | Team | Billing | 🔔 | Help
  */
 
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, Terminal, Bot, HelpCircle, UserCircle, CreditCard } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
