@@ -238,10 +238,10 @@ export default function DesktopDock() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 4,
+            gap: 6,
             width: '100%',
-            paddingLeft: 8,
-            paddingRight: 8,
+            paddingLeft: 12,
+            paddingRight: 12,
             overflowX: 'auto',
           }}
         >
