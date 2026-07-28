@@ -19,20 +19,11 @@ import {
   Receipt,
   Bot,
   Layers,
-  Map,
-  Building2,
-  Calculator,
-  UserCircle,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
-  TableProperties,
-  ScrollText,
   Zap,
-  Link2,
-  FileText,
-  ClipboardList,
-  BookOpen,
+  AlertCircle,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -102,26 +93,19 @@ interface NavItem {
 
 function buildNavEntries(_workPlural: string): NavItem[] {
   return [
-    { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 permKey: null },
-    { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            permKey: 'jobs' },
-    { label: 'Fleet Manager',icon: Truck,           href: '/fleet',                permKey: 'fleet' },
-    { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', permKey: null },
-    { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
-    { label: 'Job Cards',    icon: Zap,             href: '/job-cards',            permKey: 'jobs' },
-    { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
-    { label: 'App Docs',     icon: FileText,        href: '/studio/documents',     permKey: null },
-    { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms',         permKey: null },
-    { label: 'Library',      icon: BookOpen,        href: '/studio/library',       permKey: null },
+    // ── Daily-use rail (10 items) ─────────────────────────────────────────────
+    { label: 'Dashboard',  icon: LayoutDashboard, href: '/home',        permKey: null },
+    { label: 'Jobs',       icon: HardHat,         href: '/jobs',        permKey: 'jobs' },
+    { label: 'Job Cards',  icon: Zap,             href: '/job-cards',   permKey: 'jobs' },
+    { label: 'Scheduler',  icon: CalendarDays,    href: '/scheduler',   permKey: 'jobs' },
+    { label: 'Fleet',      icon: Truck,           href: '/fleet',       permKey: 'fleet' },
+    { label: 'Invoices',   icon: Receipt,         href: '/invoices',    permKey: 'invoices' },
+    { label: 'Files',      icon: FolderOpen,      href: '/files',       permKey: 'files' },
+    { label: 'Safety',     icon: ShieldCheck,     href: '/safety',      permKey: null },
+    { label: 'Incidents',  icon: AlertCircle,     href: '/incidents',   permKey: null },
+    { label: 'Contacts',   icon: Users,           href: '/customers',   permKey: 'jobs' },
     // Studio (legacy tab hub) — owner-only until templates are migrated to Library
-    { label: 'Studio (legacy)', icon: Layers,       href: '/studio',               permKey: null, ownerOnly: true },
-    { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
-    { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
-    { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
-    { label: 'Lists',        icon: TableProperties, href: '/lists',                permKey: null },
-    { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',            permKey: null },
-    { label: 'Contacts',     icon: Users,           href: '/customers',            permKey: 'jobs' },
-    { label: 'Team',         icon: UserCircle,      href: '/team',                 permKey: null },
-    { label: 'Quick Links',  icon: Link2,           href: '/quick-links',          permKey: null },
+    { label: 'Studio (legacy)', icon: Layers,     href: '/studio',      permKey: null, ownerOnly: true },
   ];
 }
 

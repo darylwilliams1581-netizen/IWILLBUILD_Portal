@@ -21,7 +21,6 @@ import {
   FileText,
   ClipboardList,
   BookOpen,
-  Camera,
   Truck,
   Map,
   ShieldCheck,
@@ -33,6 +32,9 @@ import {
   Building2,
   FolderOpen,
   LayoutDashboard,
+  AlertCircle,
+  FileStack,
+  History,
 } from 'lucide-react';
 
 // ── Module definitions ────────────────────────────────────────────────────────
@@ -45,33 +47,35 @@ interface LauncherModule {
 }
 
 const LAUNCHER_MODULES: LauncherModule[] = [
-  // Row 1
-  { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',                 color: '#1263d8', bg: '#eff6ff' },
-  { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Job Cards',    icon: Zap,             href: '/job-cards',            color: '#ca8a04', bg: '#fefce8' },
+  // Row 1 — Core ops
+  { label: 'Dashboard',      icon: LayoutDashboard, href: '/home',                 color: '#1263d8', bg: '#eff6ff' },
+  { label: 'Jobs',           icon: HardHat,         href: '/jobs',                 color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Job Cards',      icon: Zap,             href: '/job-cards',            color: '#ca8a04', bg: '#fefce8' },
   // Row 2
-  { label: 'Estimating',   icon: Calculator,      href: '/estimating',           color: '#7c3aed', bg: '#f5f3ff' },
-  { label: 'Invoices',     icon: Receipt,         href: '/invoices',             color: '#0284c7', bg: '#f0f9ff' },
-  { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',            color: '#059669', bg: '#ecfdf5' },
-  // Row 3
-  { label: 'App Docs',     icon: FileText,        href: '/studio/documents',     color: '#0891b2', bg: '#ecfeff' },
-  { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1', bg: '#eef2ff' },
-  { label: 'Library',      icon: BookOpen,        href: '/studio/library',       color: '#b45309', bg: '#fffbeb' },
-  // Row 4
-  { label: 'Files',        icon: FolderOpen,      href: '/files',                color: '#f97316', bg: '#fff7ed' },
-  { label: 'Fleet',        icon: Truck,           href: '/fleet',                color: '#059669', bg: '#ecfdf5' },
-  { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
-  // Row 5
-  { label: 'Safety',       icon: ShieldCheck,     href: '/safety',               color: '#dc2626', bg: '#fef2f2' },
-  { label: 'Equipment',    icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
-  { label: 'Photos',       icon: Camera,          href: '/files',                color: '#ea580c', bg: '#fff7ed' },
-  // Row 6
-  { label: 'Contacts',     icon: Users,           href: '/customers',            color: '#7c3aed', bg: '#f5f3ff' },
-  { label: 'Team',         icon: UserCircle,      href: '/team',                 color: '#0f172a', bg: '#f1f5f9' },
-  { label: 'Lists',        icon: TableProperties, href: '/lists',                color: '#0891b2', bg: '#ecfeff' },
-  // Row 7
-  { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',            color: '#64748b', bg: '#f8fafc' },
-  { label: 'Quick Links',  icon: Link2,           href: '/quick-links',          color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Estimating',     icon: Calculator,      href: '/estimating',           color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Invoices',       icon: Receipt,         href: '/invoices',             color: '#0284c7', bg: '#f0f9ff' },
+  { label: 'Scheduler',      icon: CalendarDays,    href: '/scheduler',            color: '#059669', bg: '#ecfdf5' },
+  // Row 3 — Docs & content
+  { label: 'App Docs',       icon: FileText,        href: '/studio/documents',     color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Forms',          icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Library',        icon: BookOpen,        href: '/studio/library',       color: '#b45309', bg: '#fffbeb' },
+  // Row 4 — Assets & field
+  { label: 'Files',          icon: FolderOpen,      href: '/files',                color: '#f97316', bg: '#fff7ed' },
+  { label: 'Fleet',          icon: Truck,           href: '/fleet',                color: '#059669', bg: '#ecfdf5' },
+  { label: 'Plan Manager',   icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
+  // Row 5 — Safety & compliance
+  { label: 'Safety',         icon: ShieldCheck,     href: '/safety',               color: '#dc2626', bg: '#fef2f2' },
+  { label: 'Incidents',      icon: AlertCircle,     href: '/incidents',            color: '#b91c1c', bg: '#fff1f2' },
+  { label: 'Equipment',      icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
+  // Row 6 — People
+  { label: 'Contacts',       icon: Users,           href: '/customers',            color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Team',           icon: UserCircle,      href: '/team',                 color: '#0f172a', bg: '#f1f5f9' },
+  { label: 'Lists',          icon: TableProperties, href: '/lists',                color: '#0891b2', bg: '#ecfeff' },
+  // Row 7 — Admin & tools
+  { label: 'User Logs',      icon: ScrollText,      href: '/user-logs',            color: '#64748b', bg: '#f8fafc' },
+  { label: 'Quick Links',    icon: Link2,           href: '/quick-links',          color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Job Field Docs', icon: FileStack,       href: '/job-docs',             color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Sign-in History',icon: History,         href: '/signin-history',       color: '#64748b', bg: '#f8fafc' },
 ];
 
 // ── 9-dot icon ────────────────────────────────────────────────────────────────
