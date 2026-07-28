@@ -1,17 +1,19 @@
 /**
  * FleetLiveMap — Live GPS tracking map using Google Maps JS API.
- * Uses VITE_GOOGLE_MAPS_API_KEY. No Leaflet dependency.
- * Auto-refreshes every 5 seconds.
  *
- * GPS status visibility (Sprint 5):
- * - Each driver card shows a colour-coded GpsStatusBadge
- * - Map overlay shows a banner when ALL active drivers have no usable GPS
- * - Status is driven by location_permission_status + gps_status from the
- *   driver heartbeat, not just the presence/absence of a lat/lng fix
+ * Fallback hierarchy (vehicle map, not staff surveillance):
+ *   1. Active driver sessions with GPS → live markers
+ *   2. No active sessions → last-known vehicle positions (labelled "Last known")
+ *   3. No vehicle history → company office/base pin (labelled "Office" / "Base")
+ *   4. Nothing at all → clean empty-state message over a valid map
+ *
+ * GPS status visibility:
+ *   - Each driver card shows a colour-coded GpsStatusBadge
+ *   - Map overlay banner when ALL active drivers have no usable GPS
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AlertCircle, Clock, Crosshair, Gauge, Loader2,
+  AlertCircle, Building2, Clock, Crosshair, Gauge, Loader2,
   MapPin, Navigation, RefreshCw, Truck, Users, ZoomIn, ZoomOut,
 } from 'lucide-react';
 import GpsStatusBadge from './GpsStatusBadge';
@@ -33,10 +35,22 @@ interface LiveSession {
   speed_kmh: number | null;
   heading: number | null;
   last_seen_at: string | null;
-  // GPS / permission status from driver heartbeat
   location_permission_status: LocationPermissionStatus;
   gps_status: GpsStatusValue;
   last_heartbeat_at: string | null;
+}
+
+interface LastKnownPosition {
+  asset_id: number;
+  asset_name: string;
+  asset_type: string;
+  rego: string | null;
+  lat: number;
+  lng: number;
+  speed_kmh: number | null;
+  last_seen_at: string;
+  last_driver_name: string | null;
+  last_session_start: string | null;
 }
 
 // ── Google Maps window types ──────────────────────────────────────────────────
@@ -54,10 +68,10 @@ type GoogleWindow = Window & typeof globalThis & {
 
 declare const window: GoogleWindow;
 
-const DEFAULT_CENTER  = { lat: -27.4698, lng: 153.0251 };
-const DEFAULT_ZOOM    = 11;
+const DEFAULT_CENTER = { lat: -27.4698, lng: 153.0251 }; // Brisbane fallback
+const DEFAULT_ZOOM   = 11;
 
-// ── Google Maps key — fetched from backend (never from import.meta.env) ────────
+// ── Google Maps key — fetched from backend ────────────────────────────────────
 
 let _cachedKey: string | null = null;
 
@@ -77,18 +91,12 @@ function loadGoogleMaps(): Promise<void> {
   if (window.__gmapsLoader) return window.__gmapsLoader;
 
   window.__gmapsLoader = fetchMapsKey().then(key => new Promise<void>((resolve, reject) => {
-    if (!key) {
-      reject(new Error('VITE_GOOGLE_MAPS_API_KEY is not configured'));
-      return;
-    }
+    if (!key) { reject(new Error('GOOGLE_MAPS_API_KEY is not configured')); return; }
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      window.__gmapsLoaded = true;
-      resolve();
-    };
+    script.onload = () => { window.__gmapsLoaded = true; resolve(); };
     script.onerror = () => reject(new Error('Failed to load Google Maps script'));
     document.head.appendChild(script);
   }));
@@ -112,15 +120,17 @@ function formatLastSeen(iso: string | null): string {
   if (ms < 60_000) return 'Just now';
   const m = Math.floor(ms / 60_000);
   if (m < 60) return `${m}m ago`;
-  return `${Math.floor(m / 60)}h ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase();
 }
 
-/** Build SVG data-URL icon for a driver pin */
-function buildMarkerIcon(driverName: string, selected: boolean): string {
+/** Live driver pin — orange with initials */
+function buildLiveMarkerIcon(driverName: string, selected: boolean): string {
   const bg   = selected ? '#ea580c' : '#f97316';
   const ring = selected ? '#fff7ed' : '#ffffff';
   const initials = getInitials(driverName);
@@ -133,7 +143,29 @@ function buildMarkerIcon(driverName: string, selected: boolean): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function buildInfoWindowContent(session: LiveSession): string {
+/** Last-known vehicle pin — slate/grey truck icon */
+function buildLastKnownMarkerIcon(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <circle cx="18" cy="16" r="16" fill="#64748b" stroke="#e2e8f0" stroke-width="2.5"/>
+    <polygon points="10,27 26,27 18,42" fill="#64748b"/>
+    <text x="18" y="21" text-anchor="middle" dominant-baseline="middle"
+      font-family="system-ui,sans-serif" font-size="14" fill="#fff">🚛</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+/** Office/base pin — blue building icon */
+function buildOfficeMarkerIcon(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <circle cx="18" cy="16" r="16" fill="#3b82f6" stroke="#dbeafe" stroke-width="2.5"/>
+    <polygon points="10,27 26,27 18,42" fill="#3b82f6"/>
+    <text x="18" y="21" text-anchor="middle" dominant-baseline="middle"
+      font-family="system-ui,sans-serif" font-size="14" fill="#fff">🏢</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function buildLiveInfoContent(session: LiveSession): string {
   const initials = getInitials(session.driver_name);
   return `
     <div style="font-family:system-ui,sans-serif;min-width:190px;padding:2px 0;">
@@ -159,6 +191,25 @@ function buildInfoWindowContent(session: LiveSession): string {
       </div>
       <div style="margin-top:6px;font-size:10px;color:#94a3b8;text-align:center;">
         GPS updated ${formatLastSeen(session.last_seen_at)}
+      </div>
+    </div>`;
+}
+
+function buildLastKnownInfoContent(pos: LastKnownPosition): string {
+  return `
+    <div style="font-family:system-ui,sans-serif;min-width:180px;padding:2px 0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#64748b;
+          display:flex;align-items:center;justify-content:center;
+          color:#fff;font-size:16px;flex-shrink:0;">🚛</div>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:#1e293b;line-height:1.2;">${pos.asset_name}${pos.rego ? ` · ${pos.rego}` : ''}</div>
+          <div style="font-size:11px;color:#64748b;">Last known position</div>
+        </div>
+      </div>
+      <div style="padding-top:6px;border-top:1px solid #f1f5f9;">
+        ${pos.last_driver_name ? `<div style="font-size:11px;color:#64748b;margin-bottom:3px;">Last driver: <strong>${pos.last_driver_name}</strong></div>` : ''}
+        <div style="font-size:11px;color:#94a3b8;">Seen ${formatLastSeen(pos.last_seen_at)}</div>
       </div>
     </div>`;
 }
@@ -195,7 +246,6 @@ function DriverCard({
           <p className="text-[11px] text-slate-500 truncate">
             {session.asset_name}{session.rego ? ` · ${session.rego}` : ''}
           </p>
-          {/* Duration + speed row */}
           <div className="flex items-center gap-2 mt-1">
             <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
               <Clock size={9} />{formatDuration(session.start_at)}
@@ -206,23 +256,13 @@ function DriverCard({
               </span>
             )}
           </div>
-          {/* GPS status badge */}
           <div className="mt-1.5">
-            {hasGps ? (
-              <GpsStatusBadge
-                locationPermissionStatus={session.location_permission_status ?? 'granted'}
-                gpsStatus={session.gps_status ?? 'live'}
-                lastSeenAt={session.last_seen_at}
-                size="sm"
-              />
-            ) : (
-              <GpsStatusBadge
-                locationPermissionStatus={session.location_permission_status}
-                gpsStatus={session.gps_status}
-                lastSeenAt={session.last_seen_at}
-                size="sm"
-              />
-            )}
+            <GpsStatusBadge
+              locationPermissionStatus={session.location_permission_status ?? (hasGps ? 'granted' : 'unknown')}
+              gpsStatus={session.gps_status ?? (hasGps ? 'live' : 'waiting_fix')}
+              lastSeenAt={session.last_seen_at}
+              size="sm"
+            />
           </div>
         </div>
       </div>
@@ -230,22 +270,84 @@ function DriverCard({
   );
 }
 
+// ── Last-known vehicle card ───────────────────────────────────────────────────
+
+function LastKnownCard({
+  pos, selected, onClick,
+}: {
+  pos: LastKnownPosition;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        'w-full text-left px-3 py-2.5 rounded-xl border transition-all',
+        selected
+          ? 'bg-slate-100 border-slate-400 shadow-sm'
+          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+      ].join(' ')}
+    >
+      <div className="flex items-start gap-2.5">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-slate-100 border border-slate-200">
+          <Truck size={13} className="text-slate-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-slate-700 truncate">{pos.asset_name}</p>
+          {pos.rego && <p className="text-[11px] text-slate-400">{pos.rego}</p>}
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-500">
+              Last known
+            </span>
+            <span className="text-[10px] text-slate-400">{formatLastSeen(pos.last_seen_at)}</span>
+          </div>
+          {pos.last_driver_name && (
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+              Last: {pos.last_driver_name}
+            </p>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ── Map mode type ─────────────────────────────────────────────────────────────
+
+type MapMode = 'live' | 'last-known' | 'office' | 'empty';
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function FleetLiveMap() {
-  const mapRef     = useRef<HTMLDivElement>(null);
-  const gMapRef    = useRef<GMap | null>(null);
-  const markersRef = useRef<Map<number, GMarker>>(new Map());
-  const infoWinRef = useRef<GInfoWindow | null>(null);
-  const hasFitRef  = useRef(false);
+  const mapRef          = useRef<HTMLDivElement>(null);
+  const gMapRef         = useRef<GMap | null>(null);
+  const liveMarkersRef  = useRef<Map<number, GMarker>>(new Map());
+  const staticMarkersRef = useRef<GMarker[]>([]);
+  const infoWinRef      = useRef<GInfoWindow | null>(null);
+  const hasFitRef       = useRef(false);
 
-  const [sessions,     setSessions]     = useState<LiveSession[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
-  const [selectedId,   setSelectedId]   = useState<number | null>(null);
-  const [lastRefresh,  setLastRefresh]  = useState<Date>(new Date());
-  const [mapReady,     setMapReady]     = useState(false);
-  const [mapError,     setMapError]     = useState<string | null>(null);
+  const [sessions,       setSessions]       = useState<LiveSession[]>([]);
+  const [lastKnown,      setLastKnown]      = useState<LastKnownPosition[]>([]);
+  const [officePos,      setOfficePos]      = useState<{ lat: number; lng: number; label: string } | null>(null);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
+  const [selectedLiveId, setSelectedLiveId] = useState<number | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
+  const [lastRefresh,    setLastRefresh]    = useState<Date>(new Date());
+  const [mapReady,       setMapReady]       = useState(false);
+  const [mapError,       setMapError]       = useState<string | null>(null);
+
+  // ── Derive map mode ─────────────────────────────────────────────────────────
+  const withGps = sessions.filter(s => s.lat != null && s.lng != null);
+  const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
+
+  const mapMode: MapMode = (() => {
+    if (sessions.length > 0) return 'live';
+    if (lastKnown.length > 0) return 'last-known';
+    if (officePos) return 'office';
+    return 'empty';
+  })();
 
   // ── Fetch live sessions ─────────────────────────────────────────────────────
   const fetchSessions = useCallback(async (silent = false) => {
@@ -265,6 +367,32 @@ export default function FleetLiveMap() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // ── Fetch last-known positions (once on mount) ──────────────────────────────
+  useEffect(() => {
+    fetch('/api/fleet/last-known-positions', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.resolve({ positions: [] }))
+      .then((data: { positions: LastKnownPosition[] }) => setLastKnown(data.positions ?? []))
+      .catch(() => { /* non-critical */ });
+  }, []);
+
+  // ── Fetch office/base location from company settings (once on mount) ────────
+  useEffect(() => {
+    fetch('/api/company-settings', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.resolve({}))
+      .then((data: { structure?: { office_lat?: number; office_lng?: number; office_label?: string } }) => {
+        const lat = data.structure?.office_lat;
+        const lng = data.structure?.office_lng;
+        if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+          setOfficePos({
+            lat: Number(lat),
+            lng: Number(lng),
+            label: data.structure?.office_label ?? 'Office',
+          });
+        }
+      })
+      .catch(() => { /* non-critical */ });
   }, []);
 
   // ── Init Google Map ─────────────────────────────────────────────────────────
@@ -294,15 +422,16 @@ export default function FleetLiveMap() {
 
     return () => {
       disposed = true;
-      // Clean up markers
-      markersRef.current.forEach(m => m.setMap(null));
-      markersRef.current.clear();
+      liveMarkersRef.current.forEach(m => m.setMap(null));
+      liveMarkersRef.current.clear();
+      staticMarkersRef.current.forEach(m => m.setMap(null));
+      staticMarkersRef.current = [];
       infoWinRef.current?.close();
       gMapRef.current = null;
     };
   }, []);
 
-  // ── Update markers when sessions change ─────────────────────────────────────
+  // ── Update LIVE markers ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapReady || !gMapRef.current || !window.google?.maps) return;
     const map = gMapRef.current;
@@ -310,30 +439,26 @@ export default function FleetLiveMap() {
 
     const activeIds = new Set(sessions.map(s => s.session_id));
 
-    // Remove stale markers
-    markersRef.current.forEach((marker, id) => {
-      if (!activeIds.has(id)) {
-        marker.setMap(null);
-        markersRef.current.delete(id);
-      }
+    // Remove stale live markers
+    liveMarkersRef.current.forEach((marker, id) => {
+      if (!activeIds.has(id)) { marker.setMap(null); liveMarkersRef.current.delete(id); }
     });
 
-    // Add / update markers
+    // Add / update live markers
     sessions.forEach(session => {
       if (session.lat == null || session.lng == null) return;
       const lat = Number(session.lat);
       const lng = Number(session.lng);
       if (isNaN(lat) || isNaN(lng)) return;
 
-      const isSelected = selectedId === session.session_id;
-      const iconUrl    = buildMarkerIcon(session.driver_name, isSelected);
-      const content    = buildInfoWindowContent(session);
+      const isSelected = selectedLiveId === session.session_id;
+      const iconUrl    = buildLiveMarkerIcon(session.driver_name, isSelected);
+      const content    = buildLiveInfoContent(session);
 
-      const existing = markersRef.current.get(session.session_id);
+      const existing = liveMarkersRef.current.get(session.session_id);
       if (existing) {
         existing.setPosition({ lat, lng });
         existing.setIcon({ url: iconUrl, scaledSize: new G.Size(40, 48), anchor: new G.Point(20, 48) });
-        existing.setTitle(session.driver_name);
         existing.setZIndex(isSelected ? 999 : 1);
       } else {
         const marker = new G.Marker({
@@ -346,37 +471,115 @@ export default function FleetLiveMap() {
         marker.addListener('click', () => {
           infoWinRef.current?.setContent(content);
           infoWinRef.current?.open(map, marker);
-          setSelectedId(session.session_id);
+          setSelectedLiveId(session.session_id);
         });
-        markersRef.current.set(session.session_id, marker);
+        liveMarkersRef.current.set(session.session_id, marker);
       }
     });
 
-    // Auto-fit bounds on first load with GPS data
-    if (!hasFitRef.current) {
-      const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
-      if (gpsPoints.length > 0) {
-        const bounds = new G.LatLngBounds();
-        gpsPoints.forEach(s => bounds.extend({ lat: Number(s.lat), lng: Number(s.lng) }));
+    // Auto-fit on first load with GPS data
+    if (!hasFitRef.current && withGps.length > 0) {
+      const bounds = new G.LatLngBounds();
+      withGps.forEach(s => bounds.extend({ lat: Number(s.lat), lng: Number(s.lng) }));
+      map.fitBounds(bounds);
+      hasFitRef.current = true;
+    }
+  }, [sessions, mapReady, selectedLiveId, withGps]);
+
+  // ── Update STATIC markers (last-known + office) ─────────────────────────────
+  useEffect(() => {
+    if (!mapReady || !gMapRef.current || !window.google?.maps) return;
+    if (sessions.length > 0) {
+      // Live mode — clear static markers
+      staticMarkersRef.current.forEach(m => m.setMap(null));
+      staticMarkersRef.current = [];
+      return;
+    }
+
+    const map = gMapRef.current;
+    const G   = window.google.maps;
+
+    // Clear previous static markers
+    staticMarkersRef.current.forEach(m => m.setMap(null));
+    staticMarkersRef.current = [];
+
+    if (lastKnown.length > 0) {
+      // Last-known vehicle positions
+      const bounds = new G.LatLngBounds();
+      lastKnown.forEach(pos => {
+        const lat = Number(pos.lat);
+        const lng = Number(pos.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const isSelected = selectedAssetId === pos.asset_id;
+        const marker = new G.Marker({
+          position: { lat, lng },
+          map,
+          title: `${pos.asset_name} — Last known`,
+          icon: {
+            url: buildLastKnownMarkerIcon(),
+            scaledSize: new G.Size(36, 44),
+            anchor: new G.Point(18, 44),
+          },
+          zIndex: isSelected ? 999 : 1,
+        });
+        marker.addListener('click', () => {
+          infoWinRef.current?.setContent(buildLastKnownInfoContent(pos));
+          infoWinRef.current?.open(map, marker);
+          setSelectedAssetId(pos.asset_id);
+        });
+        staticMarkersRef.current.push(marker);
+        bounds.extend({ lat, lng });
+      });
+
+      if (!hasFitRef.current) {
         map.fitBounds(bounds);
         hasFitRef.current = true;
       }
-    }
-  }, [sessions, mapReady, selectedId]);
+    } else if (officePos) {
+      // Office/base pin
+      const marker = new G.Marker({
+        position: { lat: officePos.lat, lng: officePos.lng },
+        map,
+        title: officePos.label,
+        icon: {
+          url: buildOfficeMarkerIcon(),
+          scaledSize: new G.Size(36, 44),
+          anchor: new G.Point(18, 44),
+        },
+        zIndex: 1,
+      });
+      marker.addListener('click', () => {
+        infoWinRef.current?.setContent(`
+          <div style="font-family:system-ui,sans-serif;padding:4px 0;">
+            <div style="font-weight:700;font-size:13px;color:#1e293b;">${officePos.label}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Company base location</div>
+          </div>`);
+        infoWinRef.current?.open(map, marker);
+      });
+      staticMarkersRef.current.push(marker);
 
-  // ── Pan to selected driver ──────────────────────────────────────────────────
+      if (!hasFitRef.current) {
+        map.setCenter({ lat: officePos.lat, lng: officePos.lng });
+        map.setZoom(14);
+        hasFitRef.current = true;
+      }
+    }
+  }, [sessions, lastKnown, officePos, mapReady, selectedAssetId]);
+
+  // ── Pan to selected live driver ─────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedId || !gMapRef.current) return;
-    const session = sessions.find(s => s.session_id === selectedId);
+    if (!selectedLiveId || !gMapRef.current) return;
+    const session = sessions.find(s => s.session_id === selectedLiveId);
     if (!session || session.lat == null || session.lng == null) return;
     gMapRef.current.panTo({ lat: Number(session.lat), lng: Number(session.lng) });
     gMapRef.current.setZoom(16);
-    const marker = markersRef.current.get(selectedId);
+    const marker = liveMarkersRef.current.get(selectedLiveId);
     if (marker && infoWinRef.current) {
-      infoWinRef.current.setContent(buildInfoWindowContent(session));
+      infoWinRef.current.setContent(buildLiveInfoContent(session));
       infoWinRef.current.open(gMapRef.current, marker);
     }
-  }, [selectedId, sessions]);
+  }, [selectedLiveId, sessions]);
 
   // ── Initial load + auto-refresh every 5s ───────────────────────────────────
   useEffect(() => {
@@ -385,64 +588,99 @@ export default function FleetLiveMap() {
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // ── Zoom controls ───────────────────────────────────────────────────────────
+  // ── Zoom / fit controls ─────────────────────────────────────────────────────
   function handleZoomIn()  { if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) + 1); }
   function handleZoomOut() { if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) - 1); }
   function handleFitAll() {
     if (!gMapRef.current || !window.google?.maps) return;
-    const gpsPoints = sessions.filter(s => s.lat != null && s.lng != null);
-    if (gpsPoints.length === 0) return;
-    const bounds = new window.google.maps.LatLngBounds();
-    gpsPoints.forEach(s => bounds.extend({ lat: Number(s.lat), lng: Number(s.lng) }));
-    gMapRef.current.fitBounds(bounds);
+    const G = window.google.maps;
+    if (mapMode === 'live' && withGps.length > 0) {
+      const bounds = new G.LatLngBounds();
+      withGps.forEach(s => bounds.extend({ lat: Number(s.lat), lng: Number(s.lng) }));
+      gMapRef.current.fitBounds(bounds);
+    } else if (mapMode === 'last-known' && lastKnown.length > 0) {
+      const bounds = new G.LatLngBounds();
+      lastKnown.forEach(p => bounds.extend({ lat: Number(p.lat), lng: Number(p.lng) }));
+      gMapRef.current.fitBounds(bounds);
+    } else if (mapMode === 'office' && officePos) {
+      gMapRef.current.setCenter({ lat: officePos.lat, lng: officePos.lng });
+      gMapRef.current.setZoom(14);
+    }
   }
 
-  const withGps = sessions.filter(s => s.lat != null && s.lng != null);
-  const noGps   = sessions.filter(s => s.lat == null || s.lng == null);
-
-  // Derive a summary of why drivers have no GPS — used for the map overlay banner
+  // ── GPS no-signal summary (for live mode overlay) ──────────────────────────
   const noGpsSummary = (() => {
     if (noGps.length === 0) return null;
-    const denied    = noGps.filter(s => s.gps_status === 'denied' || s.location_permission_status === 'denied');
-    const waiting   = noGps.filter(s => s.gps_status === 'waiting_permission' || s.location_permission_status === 'prompt');
-    const noFix     = noGps.filter(s => s.gps_status === 'waiting_fix' || (!s.gps_status && !s.last_heartbeat_at));
+    const denied  = noGps.filter(s => s.gps_status === 'denied' || s.location_permission_status === 'denied');
+    const waiting = noGps.filter(s => s.gps_status === 'waiting_permission' || s.location_permission_status === 'prompt');
+    const noFix   = noGps.filter(s => s.gps_status === 'waiting_fix' || (!s.gps_status && !s.last_heartbeat_at));
     if (denied.length > 0)  return 'denied';
     if (waiting.length > 0) return 'waiting_permission';
     if (noFix.length > 0)   return 'waiting_fix';
     return 'unknown';
   })();
 
+  // ── Sidebar content ─────────────────────────────────────────────────────────
+  const sidebarTitle = mapMode === 'live'
+    ? 'Active Drivers'
+    : mapMode === 'last-known'
+      ? 'Fleet Vehicles'
+      : 'Fleet';
+
+  const sidebarIcon = mapMode === 'live' ? <Users size={10} /> : <Truck size={10} />;
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
-      {/* Header bar */}
+
+      {/* ── Header bar ── */}
       <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-200 bg-white shrink-0 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
             <Navigation size={13} className="text-orange-500" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800">Live GPS Tracking</p>
+            <p className="text-sm font-bold text-slate-800">Fleet Map</p>
             <p className="text-[11px] text-slate-400 hidden sm:block">
-              {sessions.length} active driver{sessions.length !== 1 ? 's' : ''} · refreshes every 5s
+              {mapMode === 'live'
+                ? `${sessions.length} active driver${sessions.length !== 1 ? 's' : ''} · refreshes every 5s`
+                : mapMode === 'last-known'
+                  ? `${lastKnown.length} vehicle${lastKnown.length !== 1 ? 's' : ''} · last known positions`
+                  : mapMode === 'office'
+                    ? 'No active drivers · showing base location'
+                    : 'No active drivers'}
             </p>
           </div>
         </div>
 
         <div className="flex-1" />
 
-        {/* Stats pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
-            <MapPin size={10} />
-            {withGps.length} on map
-          </span>
-          {noGps.length > 0 && (
-            <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
-              <AlertCircle size={10} />
-              {noGps.length} no GPS
+        {/* Mode badge */}
+        {mapMode === 'live' && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
+              <MapPin size={10} />
+              {withGps.length} on map
             </span>
-          )}
-        </div>
+            {noGps.length > 0 && (
+              <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
+                <AlertCircle size={10} />
+                {noGps.length} no GPS
+              </span>
+            )}
+          </div>
+        )}
+        {mapMode === 'last-known' && (
+          <span className="flex items-center gap-1 px-2 py-1 bg-slate-100 border border-slate-200 rounded-full text-[11px] font-semibold text-slate-500">
+            <Clock size={10} />
+            Last known
+          </span>
+        )}
+        {mapMode === 'office' && (
+          <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-semibold text-blue-600">
+            <Building2 size={10} />
+            Base location
+          </span>
+        )}
 
         <button
           onClick={() => void fetchSessions()}
@@ -455,19 +693,20 @@ export default function FleetLiveMap() {
         </button>
       </div>
 
-      {/* Body: sidebar + map */}
+      {/* ── Body: sidebar + map ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Driver sidebar — desktop only */}
+
+        {/* Sidebar — desktop only */}
         <div className="hidden sm:flex w-56 md:w-64 shrink-0 border-r border-slate-200 bg-[#F4F5F7] flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-200 bg-white">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Users size={10} />
-              Active Drivers
+              {sidebarIcon}
+              {sidebarTitle}
             </p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
-            {loading && sessions.length === 0 ? (
+            {loading && sessions.length === 0 && lastKnown.length === 0 ? (
               <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
                 <Loader2 size={16} className="animate-spin" />
                 <span className="text-xs">Loading…</span>
@@ -477,39 +716,60 @@ export default function FleetLiveMap() {
                 <AlertCircle size={20} className="text-red-400" />
                 <p className="text-xs text-red-500">{error}</p>
               </div>
-            ) : sessions.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 px-2 text-center">
-                <Truck size={24} className="text-slate-300" />
-                <p className="text-xs font-semibold text-slate-400">No active drivers</p>
-                <p className="text-[11px] text-slate-400">Drivers will appear here when they start a session</p>
-              </div>
-            ) : (
+            ) : mapMode === 'live' ? (
               sessions.map(session => (
                 <DriverCard
                   key={session.session_id}
                   session={session}
-                  selected={selectedId === session.session_id}
-                  onClick={() => setSelectedId(
-                    selectedId === session.session_id ? null : session.session_id
+                  selected={selectedLiveId === session.session_id}
+                  onClick={() => setSelectedLiveId(
+                    selectedLiveId === session.session_id ? null : session.session_id
                   )}
                 />
               ))
+            ) : mapMode === 'last-known' ? (
+              <>
+                <p className="text-[10px] text-slate-400 px-1 pb-1">No drivers active. Showing last known vehicle positions.</p>
+                {lastKnown.map(pos => (
+                  <LastKnownCard
+                    key={pos.asset_id}
+                    pos={pos}
+                    selected={selectedAssetId === pos.asset_id}
+                    onClick={() => setSelectedAssetId(
+                      selectedAssetId === pos.asset_id ? null : pos.asset_id
+                    )}
+                  />
+                ))}
+              </>
+            ) : mapMode === 'office' ? (
+              <div className="flex flex-col items-center gap-2 py-6 px-2 text-center">
+                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
+                  <Building2 size={18} className="text-blue-400" />
+                </div>
+                <p className="text-xs font-semibold text-slate-500">No active drivers</p>
+                <p className="text-[11px] text-slate-400 leading-snug">Showing base location. Drivers will appear here when they start a session.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-8 px-2 text-center">
+                <Truck size={24} className="text-slate-300" />
+                <p className="text-xs font-semibold text-slate-400">No active drivers</p>
+                <p className="text-[11px] text-slate-400">Drivers will appear here when they start a session.</p>
+              </div>
             )}
           </div>
 
           <div className="px-3 py-2 border-t border-slate-200 bg-white">
             <p className="text-[10px] text-slate-500">
-              Last updated: {lastRefresh.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              Updated: {lastRefresh.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
           </div>
         </div>
 
-        {/* Map area — explicit min-height so it doesn't collapse on mobile */}
+        {/* ── Map area ── */}
         <div
           className="flex-1 relative min-w-0 overflow-hidden"
           style={{ minHeight: 'min(60vh, 400px)' }}
         >
-          {/* Google Maps container */}
           <div ref={mapRef} className="absolute inset-0" />
 
           {/* Map load error */}
@@ -519,11 +779,6 @@ export default function FleetLiveMap() {
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700 mb-1">Map unavailable</p>
                 <p className="text-xs text-slate-500 break-words">{mapError}</p>
-                {mapError && mapError.includes('not configured') && (
-                  <p className="text-xs text-amber-600 mt-2 font-medium">
-                    Add VITE_GOOGLE_MAPS_API_KEY to your environment secrets.
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -540,83 +795,76 @@ export default function FleetLiveMap() {
 
           {/* Custom zoom controls */}
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
-            <button
-              onClick={handleZoomIn}
-              title="Zoom in"
-              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors"
-            >
+            <button onClick={handleZoomIn} title="Zoom in"
+              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors">
               <ZoomIn size={15} className="text-slate-600" />
             </button>
-            <button
-              onClick={handleZoomOut}
-              title="Zoom out"
-              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors"
-            >
+            <button onClick={handleZoomOut} title="Zoom out"
+              className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors">
               <ZoomOut size={15} className="text-slate-600" />
             </button>
-            {withGps.length > 0 && (
-              <button
-                onClick={handleFitAll}
-                title="Fit all drivers"
-                className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors mt-1"
-              >
+            {(withGps.length > 0 || lastKnown.length > 0 || officePos) && (
+              <button onClick={handleFitAll} title="Fit all"
+                className="w-8 h-8 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors mt-1">
                 <Crosshair size={14} className="text-orange-500" />
               </button>
             )}
           </div>
 
-          {/* ── GPS status overlays ── */}
+          {/* ── Map overlay: mode indicator chip ── */}
+          {mapReady && !mapError && mapMode !== 'live' && (
+            <div className="absolute top-3 left-3 z-10 pointer-events-none">
+              {mapMode === 'last-known' && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-600">
+                  <Clock size={11} className="text-slate-400" />
+                  Last known positions
+                </div>
+              )}
+              {mapMode === 'office' && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-sm text-[11px] font-semibold text-blue-600">
+                  <Building2 size={11} />
+                  Base location
+                </div>
+              )}
+              {mapMode === 'empty' && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-sm text-[11px] font-semibold text-slate-500">
+                  <Truck size={11} className="text-slate-400" />
+                  No active drivers
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* All active drivers have no usable GPS — show a contextual banner */}
-          {!loading && sessions.length > 0 && withGps.length === 0 && (
+          {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
+          {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
               <div className="bg-white/95 backdrop-blur-sm border rounded-2xl px-5 py-5 shadow-lg text-center max-w-sm w-full"
                 style={{ borderColor: noGpsSummary === 'denied' ? '#fca5a5' : '#fcd34d' }}>
                 <div className={[
                   'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 border',
-                  noGpsSummary === 'denied'
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-amber-50 border-amber-200',
+                  noGpsSummary === 'denied' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200',
                 ].join(' ')}>
                   {noGpsSummary === 'denied'
                     ? <AlertCircle size={22} className="text-red-500" />
-                    : <Crosshair size={22} className="text-amber-500 animate-pulse" />
-                  }
+                    : <Crosshair size={22} className="text-amber-500 animate-pulse" />}
                 </div>
-
                 {noGpsSummary === 'denied' && (
                   <>
                     <p className="text-sm font-bold text-slate-700 mb-1">Location access denied</p>
-                    <p className="text-xs text-slate-500 leading-snug">
-                      No live GPS yet. One or more drivers may need to enable location access on their phone.
-                    </p>
-                    <p className="text-[11px] text-red-600 mt-2 font-medium">
-                      Ask the driver to open Settings and enable location for IWILLBUILD.
-                    </p>
+                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to open Settings and enable location for IWILLBUILD.</p>
                   </>
                 )}
-
                 {noGpsSummary === 'waiting_permission' && (
                   <>
                     <p className="text-sm font-bold text-slate-700 mb-1">Waiting for location permission</p>
-                    <p className="text-xs text-slate-500 leading-snug">
-                      No live GPS yet. One or more drivers may need to enable location access on their phone.
-                    </p>
-                    <p className="text-[11px] text-amber-600 mt-2 font-medium">
-                      Ask the driver to tap "Enable Location" on their Drive screen.
-                    </p>
+                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to tap "Enable Location" on their Drive screen.</p>
                   </>
                 )}
-
                 {(noGpsSummary === 'waiting_fix' || noGpsSummary === 'unknown') && (
                   <>
                     <p className="text-sm font-bold text-slate-700 mb-1">Waiting for GPS fix</p>
                     <p className="text-xs text-slate-500 leading-snug">
-                      {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active.
-                      {' '}GPS location will appear once their device gets a signal.
-                    </p>
-                    <p className="text-[11px] text-amber-600 mt-2 font-medium">
-                      Make sure location permission is enabled on the driver's device.
+                      {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active. GPS will appear once their device gets a signal.
                     </p>
                   </>
                 )}
@@ -624,41 +872,51 @@ export default function FleetLiveMap() {
             </div>
           )}
 
-          {/* No active sessions at all */}
-          {!loading && sessions.length === 0 && (
+          {/* ── Empty state: no data at all ── */}
+          {!loading && mapMode === 'empty' && mapReady && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
-              <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl px-5 py-5 shadow-lg text-center max-w-xs w-full">
+              <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl px-5 py-6 shadow-lg text-center max-w-xs w-full">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                  <Truck size={24} className="text-slate-300" />
+                  <Truck size={22} className="text-slate-300" />
                 </div>
-                <p className="text-sm font-semibold text-slate-500 mb-1">No active drivers</p>
+                <p className="text-sm font-semibold text-slate-600 mb-1">Fleet map ready</p>
                 <p className="text-xs text-slate-400 leading-snug">
-                  Drivers will appear on the map when they start a session from the Driver screen.
+                  No active drivers and no vehicle history yet. Vehicles will appear here once drivers start sessions.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Mobile driver list — shown below map on small screens */}
-          {sessions.length > 0 && (
+          {/* ── Mobile driver list ── */}
+          {(sessions.length > 0 || lastKnown.length > 0) && (
             <div className="sm:hidden absolute bottom-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm border-t border-slate-200 max-h-36 overflow-y-auto">
               <div className="px-3 py-2 border-b border-slate-100">
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Users size={10} />
-                  {sessions.length} Active Driver{sessions.length !== 1 ? 's' : ''}
+                  {sidebarIcon}
+                  {mapMode === 'live'
+                    ? `${sessions.length} Active Driver${sessions.length !== 1 ? 's' : ''}`
+                    : `${lastKnown.length} Vehicle${lastKnown.length !== 1 ? 's' : ''} — Last Known`}
                 </p>
               </div>
               <div className="p-2 flex flex-col gap-1.5">
-                {sessions.map(session => (
-                  <DriverCard
-                    key={session.session_id}
-                    session={session}
-                    selected={selectedId === session.session_id}
-                    onClick={() => setSelectedId(
-                      selectedId === session.session_id ? null : session.session_id
-                    )}
-                  />
-                ))}
+                {mapMode === 'live'
+                  ? sessions.map(session => (
+                    <DriverCard
+                      key={session.session_id}
+                      session={session}
+                      selected={selectedLiveId === session.session_id}
+                      onClick={() => setSelectedLiveId(selectedLiveId === session.session_id ? null : session.session_id)}
+                    />
+                  ))
+                  : lastKnown.map(pos => (
+                    <LastKnownCard
+                      key={pos.asset_id}
+                      pos={pos}
+                      selected={selectedAssetId === pos.asset_id}
+                      onClick={() => setSelectedAssetId(selectedAssetId === pos.asset_id ? null : pos.asset_id)}
+                    />
+                  ))
+                }
               </div>
             </div>
           )}

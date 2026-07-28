@@ -222,6 +222,7 @@ import fleet_asset_bookings_id_patch_188 from "./api/fleet/asset-bookings/[id]/P
 import fleet_driver_sessions_post_189 from "./api/fleet/driver-sessions/POST";
 import fleet_driver_sessions_active_get_190 from "./api/fleet/driver-sessions/active/GET";
 import fleet_driver_sessions_live_get_191 from "./api/fleet/driver-sessions/live/GET";
+import fleet_last_known_positions_get from "./api/fleet/last-known-positions/GET";
 import fleet_driver_sessions_migrate_gps_status_post_192 from "./api/fleet/driver-sessions/migrate-gps-status/POST";
 import fleet_driver_sessions_id_heartbeat_post_193 from "./api/fleet/driver-sessions/[id]/heartbeat/POST";
 import fleet_driver_sessions_id_stop_post_194 from "./api/fleet/driver-sessions/[id]/stop/POST";
@@ -1301,6 +1302,9 @@ async function runStartupMigrations() {
     { table: 'fleet_driver_sessions', column: 'location_permission_status', definition: "VARCHAR(20) NULL DEFAULT 'unknown'" },
     { table: 'fleet_driver_sessions', column: 'gps_status',                 definition: "VARCHAR(30) NULL DEFAULT 'waiting_fix'" },
     { table: 'fleet_driver_sessions', column: 'last_heartbeat_at',          definition: 'DATETIME NULL' },
+    // ── company_settings: office/base GPS coordinates for Fleet Live Map fallback ─
+    { table: 'company_settings', column: 'office_lat', definition: 'DECIMAL(10,7) NULL' },
+    { table: 'company_settings', column: 'office_lng', definition: 'DECIMAL(10,7) NULL' },
     // ── profiles: extended personal fields ───────────────────────────────────
     { table: 'profiles', column: 'licenses',               definition: 'TEXT NULL' },
     { table: 'profiles', column: 'profile_notes',          definition: 'TEXT NULL' },
@@ -2686,6 +2690,7 @@ app.patch("/api/fleet/asset-bookings/:id", fleet_asset_bookings_id_patch_188);
 app.post("/api/fleet/driver-sessions", fleet_driver_sessions_post_189);
 app.get("/api/fleet/driver-sessions/active", fleet_driver_sessions_active_get_190);
 app.get("/api/fleet/driver-sessions/live", fleet_driver_sessions_live_get_191);
+app.get("/api/fleet/last-known-positions", fleet_last_known_positions_get);
 app.post("/api/fleet/driver-sessions/migrate-gps-status", fleet_driver_sessions_migrate_gps_status_post_192);
 app.post("/api/fleet/driver-sessions/:id/heartbeat", fleet_driver_sessions_id_heartbeat_post_193);
 app.post("/api/fleet/driver-sessions/:id/stop", fleet_driver_sessions_id_stop_post_194);
