@@ -7,6 +7,7 @@ import {
   Star, ChevronRight, Calendar, FolderOpen, Siren,
   Receipt, Map, Link2, ClipboardList, HardHat,
   Zap, BarChart3, Bell, Lock, Smartphone,
+  AlertTriangle,
 } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
@@ -26,72 +27,46 @@ const homeRows: { label: string; status: string; color: string; id?: string }[] 
 
 // ── Animation variants removed — landing page is static for SSR performance ──
 
-// ── Feature groups — each with icon, colour, title, desc, bullets ────────────
-const featureGroups = [
+// ── Feature groups ─────────────────────────────────────────────────────────────
+// Grouped by category so the grid renders with visual section breaks
+interface FeatureGroup {
+  icon: React.ElementType;
+  color: string;
+  bg: string;
+  title: string;
+  desc: string;
+  bullets: string[];
+  category: string;
+}
+
+const featureGroups: FeatureGroup[] = [
+  // ── Jobs & Operations ──────────────────────────────────────────────────────
   {
+    category: 'Jobs & operations',
     icon: Briefcase,
     color: '#1263d8', bg: '#eff6ff',
-    title: 'Jobs & project management',
+    title: 'Jobs',
     desc: 'Create jobs, assign crews, track status and close out cleanly — from first contact to final invoice.',
     bullets: ['Job register with status filters', 'Notes, tasks and cost tracking', 'Convert job cards to full jobs', 'Job history and audit trail'],
   },
   {
+    category: 'Jobs & operations',
+    icon: Zap,
+    color: '#ca8a04', bg: '#fefce8',
+    title: 'Job cards',
+    desc: 'Field-first job cards for day work and small jobs. Auto-numbered, photo-ready and signature-captured on site.',
+    bullets: ['Auto-numbered JC-XXXX', '3-step mobile flow', 'Photo capture & signature', 'Convert to invoice'],
+  },
+  {
+    category: 'Jobs & operations',
     icon: FileText,
     color: '#7c3aed', bg: '#f5f3ff',
-    title: 'Estimates & cost guides',
+    title: 'Estimating',
     desc: 'Build detailed cost guides, scope lines and PDF quotes. Approve estimates and track actuals against budget.',
     bullets: ['Line-item cost builder', 'Recipe / template library', 'PDF quote generation', 'Approved vs actual tracking'],
   },
   {
-    icon: ClipboardList,
-    color: '#0891b2', bg: '#ecfeff',
-    title: 'Forms & digital signatures',
-    desc: 'Reusable form templates with conditional logic, photo capture, multi-signer support and completed PDF export.',
-    bullets: ['Drag-and-drop form builder', 'Conditional field logic', 'Photo capture in the field', 'Multi-signer & PDF export'],
-  },
-  {
-    icon: Camera,
-    color: '#f97316', bg: '#fff7ed',
-    title: 'Photos & file storage',
-    desc: 'Upload site photos, label them by job and view in a full lightbox. Attach any file type to the job record.',
-    bullets: ['Bulk photo upload', 'Job-linked photo gallery', 'Lightbox viewer', 'Secure file attachments'],
-  },
-  {
-    icon: Truck,
-    color: '#059669', bg: '#ecfdf5',
-    title: 'Fleet & prestart checks',
-    desc: 'Daily prestart checks, service schedules, rego reminders and live GPS map — all in one fleet dashboard.',
-    bullets: ['Daily prestart checklists', 'Service & rego reminders', 'Live GPS map view', 'Fleet status dashboard'],
-  },
-  {
-    icon: Calendar,
-    color: '#ca8a04', bg: '#fefce8',
-    title: 'Scheduler',
-    desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
-    bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones'],
-  },
-  {
-    icon: ShieldCheck,
-    color: '#dc2626', bg: '#fef2f2',
-    title: 'Safety & compliance',
-    desc: 'SWMS library, site safety plans, policies, posters and safety pack export — everything the regulator expects.',
-    bullets: ['SWMS library & builder', 'Site safety plans', 'Safety policies & posters', 'Safety pack PDF export'],
-  },
-  {
-    icon: HardHat,
-    color: '#b45309', bg: '#fffbeb',
-    title: 'Site prestart register',
-    desc: 'Daily site prestart sign-ons, hazard acknowledgements and attendance records — digital and timestamped.',
-    bullets: ['Daily sign-on register', 'Hazard acknowledgement', 'Attendance records', 'Timestamped & GPS-tagged'],
-  },
-  {
-    icon: Siren,
-    color: '#e11d48', bg: '#fff1f2',
-    title: 'Emergency beacon',
-    desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.',
-    bullets: ['One-tap SOS trigger', 'GPS location capture', 'Works offline (queued)', 'Instant team alert'],
-  },
-  {
+    category: 'Jobs & operations',
     icon: Receipt,
     color: '#0284c7', bg: '#f0f9ff',
     title: 'Invoicing',
@@ -99,6 +74,101 @@ const featureGroups = [
     bullets: ['Job-linked invoices', 'PDF invoice generation', 'Xero & QuickBooks sync', 'Invoice status tracking'],
   },
   {
+    category: 'Jobs & operations',
+    icon: Calendar,
+    color: '#059669', bg: '#ecfdf5',
+    title: 'Scheduler',
+    desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
+    bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones'],
+  },
+
+  // ── Documents & Forms ──────────────────────────────────────────────────────
+  {
+    category: 'Documents & forms',
+    icon: FolderOpen,
+    color: '#0891b2', bg: '#ecfeff',
+    title: 'App docs',
+    desc: 'Central document library for your business — policies, procedures, certificates and reference docs, all version-controlled.',
+    bullets: ['Centralised doc library', 'Version control', 'Category & tag filtering', 'Share links to field crew'],
+  },
+  {
+    category: 'Documents & forms',
+    icon: ClipboardList,
+    color: '#6366f1', bg: '#eef2ff',
+    title: 'Forms',
+    desc: 'Reusable digital form templates with conditional logic, photo capture, multi-signer support and completed PDF export.',
+    bullets: ['Drag-and-drop form builder', 'Conditional field logic', 'Photo capture in the field', 'Multi-signer & PDF export'],
+  },
+  {
+    category: 'Documents & forms',
+    icon: Camera,
+    color: '#f97316', bg: '#fff7ed',
+    title: 'Photos & files',
+    desc: 'Upload site photos, label them by job and view in a full lightbox. Attach any file type to the job record.',
+    bullets: ['Bulk photo upload', 'Job-linked photo gallery', 'Lightbox viewer', 'Secure file attachments'],
+  },
+
+  // ── Safety & Compliance ────────────────────────────────────────────────────
+  {
+    category: 'Safety & compliance',
+    icon: ShieldCheck,
+    color: '#dc2626', bg: '#fef2f2',
+    title: 'SWMS',
+    desc: 'Build, manage and share Safe Work Method Statements. Import from .docx, activate and send to the field.',
+    bullets: ['SWMS library & builder', 'Import from .docx', 'Activate & share to field', 'Safety pack PDF export'],
+  },
+  {
+    category: 'Safety & compliance',
+    icon: Bell,
+    color: '#b45309', bg: '#fffbeb',
+    title: 'Safety posters',
+    desc: 'Printable and digital safety posters for site display — PPE requirements, emergency contacts, site rules and more.',
+    bullets: ['Ready-made poster library', 'Site-specific customisation', 'Print-ready PDF output', 'Display on site screens'],
+  },
+  {
+    category: 'Safety & compliance',
+    icon: HardHat,
+    color: '#7c3aed', bg: '#f5f3ff',
+    title: 'Site prestart register',
+    desc: 'Daily site prestart sign-ons, hazard acknowledgements and attendance records — digital and timestamped.',
+    bullets: ['Daily sign-on register', 'Hazard acknowledgement', 'Attendance records', 'Timestamped & GPS-tagged'],
+  },
+  {
+    category: 'Safety & compliance',
+    icon: AlertTriangle,
+    color: '#ea580c', bg: '#fff7ed',
+    title: 'Risky & permits',
+    desc: 'Per-job risk assessments and permit checks for changed site conditions. Activity → Hazards → Controls → Sign-off.',
+    bullets: ['Activity-based risk flow', 'Hazard & control capture', 'Permit-required flag', 'Supervisor sign-off'],
+  },
+  {
+    category: 'Safety & compliance',
+    icon: Lock,
+    color: '#0f172a', bg: '#f1f5f9',
+    title: 'Incidents',
+    desc: 'Log, investigate and close out workplace incidents. Attach photos, assign actions and track resolution.',
+    bullets: ['Incident register', 'Photo & evidence attach', 'Action assignment', 'Resolution tracking'],
+  },
+  {
+    category: 'Safety & compliance',
+    icon: Siren,
+    color: '#e11d48', bg: '#fff1f2',
+    title: 'Emergency beacon',
+    desc: 'One-tap SOS from any job site — captures GPS location, reason and note, queues offline and alerts the team instantly.',
+    bullets: ['One-tap SOS trigger', 'GPS location capture', 'Works offline (queued)', 'Instant team alert'],
+  },
+
+  // ── Fleet & Field ──────────────────────────────────────────────────────────
+  {
+    category: 'Fleet & field',
+    icon: Truck,
+    color: '#059669', bg: '#ecfdf5',
+    title: 'Fleet manager',
+    desc: 'Daily prestart checks, service schedules, rego reminders and live GPS map — all in one fleet dashboard.',
+    bullets: ['Daily prestart checklists', 'Service & rego reminders', 'Live GPS map view', 'Fleet status dashboard'],
+  },
+  {
+    category: 'Fleet & field',
     icon: Map,
     color: '#16a34a', bg: '#f0fdf4',
     title: 'Live fleet map',
@@ -106,20 +176,17 @@ const featureGroups = [
     bullets: ['Live GPS tracking', 'Last-known positions', 'Google Maps integration', 'Auto-refresh every 5s'],
   },
   {
-    icon: Link2,
-    color: '#6366f1', bg: '#eef2ff',
-    title: 'Quick links',
-    desc: 'Pin your external portals — BYDA, Outlook, Teletrac, Xero, supplier portals — as one-click tiles for the whole team.',
-    bullets: ['Custom tile launcher', 'Auto-fetches site icons', 'Admin-managed links', 'Opens in new tab'],
+    category: 'Fleet & field',
+    icon: Smartphone,
+    color: '#f97316', bg: '#fff7ed',
+    title: 'Mobile field app',
+    desc: 'Native iOS and Android app — works offline, syncs when back online. Built for site, not the office.',
+    bullets: ['iOS & Android native', 'Offline-first sync', 'Camera & GPS access', 'Push notifications'],
   },
+
+  // ── Team & Admin ───────────────────────────────────────────────────────────
   {
-    icon: BarChart3,
-    color: '#0f172a', bg: '#f1f5f9',
-    title: 'Reports & user logs',
-    desc: 'User activity logs, job cost reports, driver logs and CSV export — full visibility across your team and jobs.',
-    bullets: ['User activity logs', 'Job cost reporting', 'Driver log dataset', 'CSV export'],
-  },
-  {
+    category: 'Team & admin',
     icon: Users,
     color: '#7c3aed', bg: '#f5f3ff',
     title: 'Team & permissions',
@@ -127,13 +194,31 @@ const featureGroups = [
     bullets: ['Role-based access control', 'Invite users by email', 'Per-module permissions', 'Admin & owner roles'],
   },
   {
-    icon: Smartphone,
-    color: '#f97316', bg: '#fff7ed',
-    title: 'Mobile field app',
-    desc: 'Native iOS and Android app — works offline, syncs when back online. Built for site, not the office.',
-    bullets: ['iOS & Android native', 'Offline-first sync', 'Camera & GPS access', 'Push notifications'],
+    category: 'Team & admin',
+    icon: BarChart3,
+    color: '#0f172a', bg: '#f1f5f9',
+    title: 'Reports & user logs',
+    desc: 'User activity logs, job cost reports, driver logs and CSV export — full visibility across your team and jobs.',
+    bullets: ['User activity logs', 'Job cost reporting', 'Driver log dataset', 'CSV export'],
+  },
+  {
+    category: 'Team & admin',
+    icon: Link2,
+    color: '#6366f1', bg: '#eef2ff',
+    title: 'Quick links',
+    desc: 'Pin your external portals — BYDA, Outlook, Teletrac, Xero, supplier portals — as one-click tiles for the whole team.',
+    bullets: ['Custom tile launcher', 'Auto-fetches site icons', 'Admin-managed links', 'Opens in new tab'],
   },
 ];
+
+// Group labels in display order
+const CATEGORY_ORDER = [
+  'Jobs & operations',
+  'Documents & forms',
+  'Safety & compliance',
+  'Fleet & field',
+  'Team & admin',
+] as const;
 
 const howItWorks = [
   { n: '1', title: 'Create your company account',       desc: 'Sign up, choose a plan and set up your company profile in a few minutes.' },
@@ -732,60 +817,81 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Feature grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 18 }}>
-            {featureGroups.map((f) => {
-              const Icon = f.icon;
+          {/* Feature groups — one section per category */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
+            {CATEGORY_ORDER.map((cat) => {
+              const items = featureGroups.filter((f) => f.category === cat);
               return (
-                <div
-                  key={f.title}
-                  style={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 14,
-                    padding: '24px 22px',
-                    boxShadow: '0 2px 10px rgba(15,23,42,.05)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 14,
-                  }}
-                >
-                  {/* Icon */}
-                  <div style={{
-                    width: 48, height: 48, borderRadius: 13,
-                    backgroundColor: f.bg,
-                    display: 'grid', placeItems: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <Icon size={22} color={f.color} />
+                <div key={cat}>
+                  {/* Category label */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      color: '#94a3b8',
+                    }}>
+                      {cat}
+                    </span>
+                    <div style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
                   </div>
 
-                  {/* Title + desc */}
-                  <div>
-                    <h3 style={{ margin: '0 0 7px', fontSize: 16, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                      {f.title}
-                    </h3>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: 14, lineHeight: 1.55 }}>
-                      {f.desc}
-                    </p>
-                  </div>
+                  {/* Cards for this category */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
+                    {items.map((f) => {
+                      const Icon = f.icon;
+                      return (
+                        <div
+                          key={f.title}
+                          style={{
+                            backgroundColor: '#fff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 14,
+                            padding: '22px 20px',
+                            boxShadow: '0 2px 10px rgba(15,23,42,.05)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 12,
+                          }}
+                        >
+                          {/* Icon */}
+                          <div style={{
+                            width: 44, height: 44, borderRadius: 12,
+                            backgroundColor: f.bg,
+                            display: 'grid', placeItems: 'center',
+                            flexShrink: 0,
+                          }}>
+                            <Icon size={20} color={f.color} />
+                          </div>
 
-                  {/* Bullet list */}
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {f.bullets.map((b) => (
-                      <li key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
-                        <span style={{
-                          width: 18, height: 18, borderRadius: '50%',
-                          backgroundColor: f.bg,
-                          display: 'grid', placeItems: 'center',
-                          flexShrink: 0,
-                        }}>
-                          <CheckCircle size={11} color={f.color} />
-                        </span>
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
+                          {/* Title + desc */}
+                          <div>
+                            <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                              {f.title}
+                            </h3>
+                            <p style={{ margin: 0, color: '#64748b', fontSize: 13.5, lineHeight: 1.55 }}>
+                              {f.desc}
+                            </p>
+                          </div>
+
+                          {/* Bullet list */}
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {f.bullets.map((b) => (
+                              <li key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+                                <span style={{
+                                  width: 17, height: 17, borderRadius: '50%',
+                                  backgroundColor: f.bg,
+                                  display: 'grid', placeItems: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <CheckCircle size={10} color={f.color} />
+                                </span>
+                                {b}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
