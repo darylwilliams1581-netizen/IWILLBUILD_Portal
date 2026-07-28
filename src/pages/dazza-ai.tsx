@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Bot, Send, User, HardHat, Truck, BarChart2,
-  RefreshCw, Calculator, Wrench, AlertTriangle,
+  RefreshCw, Calculator, AlertTriangle,
   CheckSquare, DollarSign, MessageSquare, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X,
@@ -1229,29 +1229,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
               </AnimatePresence>
             </div>
 
-            {/* About Dazza */}
-            <div className="mt-auto p-3">
-              <div className="bg-slate-900 rounded-xl p-3 text-white">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Bot size={13} className="text-white/60" />
-                  <span className="text-xs font-bold">About Dazza</span>
-                </div>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Dazza reads your live portal data. AI calls are server-side — your API keys are never exposed to the browser.
-                </p>
-                <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">
-                  Always verify building, safety, legal and compliance decisions with a competent person.
-                </p>
-                {isAdmin && (
-                  <a
-                    href="/settings"
-                    className="mt-2 flex items-center gap-1 text-[10px] text-primary font-semibold hover:text-violet-400 transition-colors"
-                  >
-                    <Wrench size={9} /> Configure in Settings
-                  </a>
-                )}
-              </div>
-            </div>
+
           </div>
           </> /* end activeTab === 'chat' Fragment */
           )}
