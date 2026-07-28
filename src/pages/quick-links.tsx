@@ -5,14 +5,16 @@
  * opens the destination in a new tab. No iframe embedding.
  *
  * Storage: company_settings.structure_json → { quickLinks: QuickLink[] }
- * Each link: { id, label, url, createdAt }
+ * Each link: { id, label, url, favicon, ogImage, createdAt }
  *
- * Favicon strategy:
- *   1. Google Favicon API  https://www.google.com/s2/favicons?domain=…&sz=64
- *   2. If that 404s or errors → letter-avatar fallback (first char of label)
+ * Icon resolution (3-tier):
+ *   1. Cached favicon/ogImage stored on the link object (fetched at save time
+ *      via GET /api/quick-links/site-meta — server-side, no CORS issues)
+ *   2. Google Favicon API as live fallback (catches most cases instantly)
+ *   3. Letter-avatar with deterministic pastel colour (always works)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -21,6 +23,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Globe,
+  ImageOff,
   Link2,
   Loader2,
   Pencil,
@@ -37,7 +40,19 @@ interface QuickLink {
   id: string;
   label: string;
   url: string;
+  /** Best icon URL found at save time (favicon or og:image) */
+  favicon?: string | null;
+  /** og:image URL found at save time */
+  ogImage?: string | null;
+  /** Auto-detected page title (used to pre-fill label) */
+  detectedTitle?: string | null;
   createdAt: string;
+}
+
+interface SiteMeta {
+  favicon: string | null;
+  ogImage: string | null;
+  title: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -61,7 +76,7 @@ function displayHost(url: string): string {
   catch { return url; }
 }
 
-function faviconUrl(url: string): string {
+function googleFaviconUrl(url: string): string {
   try {
     const host = new URL(url).hostname;
     return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
@@ -86,18 +101,55 @@ function avatarPalette(label: string) {
   return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
 }
 
-// ── Favicon tile icon ─────────────────────────────────────────────────────────
+// ── Fetch site meta via backend proxy ────────────────────────────────────────
 
-function TileIcon({ link }: { link: QuickLink }) {
-  const [failed, setFailed] = useState(false);
-  const fav = faviconUrl(link.url);
+async function fetchSiteMeta(url: string): Promise<SiteMeta> {
+  try {
+    const res = await fetch(
+      `/api/quick-links/site-meta?url=${encodeURIComponent(url)}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) return { favicon: null, ogImage: null, title: null };
+    return await res.json() as SiteMeta;
+  } catch {
+    return { favicon: null, ogImage: null, title: null };
+  }
+}
+
+// ── Tile icon component ───────────────────────────────────────────────────────
+// Resolution order:
+//   1. link.favicon  (stored at save time from server-side scrape)
+//   2. Google Favicon API  (live, works for most sites)
+//   3. Letter avatar  (always works)
+
+function TileIcon({ link, size = 'md' }: { link: QuickLink; size?: 'sm' | 'md' | 'lg' }) {
+  const dim = size === 'lg' ? 'w-14 h-14' : size === 'sm' ? 'w-8 h-8' : 'w-11 h-11';
+  const textSize = size === 'lg' ? 'text-xl' : size === 'sm' ? 'text-xs' : 'text-base';
+  const radius = size === 'lg' ? 'rounded-2xl' : 'rounded-xl';
+
   const pal = avatarPalette(link.label);
   const initial = (link.label.trim()[0] ?? '?').toUpperCase();
 
-  if (!fav || failed) {
+  // Try stored favicon first, then Google Favicon API
+  const candidates = [
+    link.favicon,
+    googleFaviconUrl(link.url),
+  ].filter(Boolean) as string[];
+
+  const [idx, setIdx] = useState(0);
+  const [allFailed, setAllFailed] = useState(candidates.length === 0);
+
+  // Reset when link changes
+  useEffect(() => {
+    setIdx(0);
+    setAllFailed(candidates.length === 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link.id, link.favicon, link.url]);
+
+  if (allFailed || candidates.length === 0) {
     return (
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black shrink-0 select-none"
+        className={`${dim} ${radius} flex items-center justify-center ${textSize} font-black shrink-0 select-none`}
         style={{ background: pal.bg, color: pal.text }}
       >
         {initial}
@@ -107,13 +159,68 @@ function TileIcon({ link }: { link: QuickLink }) {
 
   return (
     <img
-      src={fav}
+      src={candidates[idx]}
       alt=""
-      width={40}
-      height={40}
-      onError={() => setFailed(true)}
-      className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-100 shrink-0"
+      width={size === 'lg' ? 56 : size === 'sm' ? 32 : 44}
+      height={size === 'lg' ? 56 : size === 'sm' ? 32 : 44}
+      onError={() => {
+        if (idx + 1 < candidates.length) {
+          setIdx(i => i + 1);
+        } else {
+          setAllFailed(true);
+        }
+      }}
+      className={`${dim} ${radius} object-contain bg-white border border-slate-100 shrink-0`}
     />
+  );
+}
+
+// ── URL preview strip (shown inside modal after URL is entered) ───────────────
+
+function UrlPreviewStrip({
+  url,
+  meta,
+  loading,
+}: {
+  url: string;
+  meta: SiteMeta | null;
+  loading: boolean;
+}) {
+  if (!url || !isValidUrl(normaliseUrl(url))) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+      {loading ? (
+        <Loader2 size={18} className="animate-spin text-slate-400 shrink-0" />
+      ) : meta?.favicon ? (
+        <img
+          src={meta.favicon}
+          alt=""
+          width={28}
+          height={28}
+          className="w-7 h-7 rounded-lg object-contain bg-white border border-slate-100 shrink-0"
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : (
+        <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+          <ImageOff size={13} className="text-slate-400" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        {meta?.title && (
+          <p className="text-xs font-semibold text-slate-700 truncate">{meta.title}</p>
+        )}
+        <p className="text-[11px] text-slate-400 truncate">{displayHost(normaliseUrl(url))}</p>
+      </div>
+      {meta?.ogImage && (
+        <img
+          src={meta.ogImage}
+          alt=""
+          className="w-12 h-8 rounded-lg object-cover border border-slate-100 shrink-0"
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -122,21 +229,47 @@ function TileIcon({ link }: { link: QuickLink }) {
 interface LinkModalProps {
   initial: QuickLink | null;
   saving: boolean;
-  onSave: (label: string, url: string) => void;
+  onSave: (label: string, url: string, meta: SiteMeta | null) => void;
   onClose: () => void;
 }
 
 function LinkModal({ initial, saving, onSave, onClose }: LinkModalProps) {
-  const [label, setLabel] = useState(initial?.label ?? '');
-  const [url,   setUrl]   = useState(initial?.url   ?? '');
-  const [err,   setErr]   = useState('');
+  const [label,       setLabel]       = useState(initial?.label ?? '');
+  const [url,         setUrl]         = useState(initial?.url   ?? '');
+  const [err,         setErr]         = useState('');
+  const [meta,        setMeta]        = useState<SiteMeta | null>(null);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-fetch meta when URL changes (debounced 800ms)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const norm = normaliseUrl(url);
+    if (!norm || !isValidUrl(norm)) { setMeta(null); return; }
+
+    debounceRef.current = setTimeout(async () => {
+      setMetaLoading(true);
+      const m = await fetchSiteMeta(norm);
+      setMeta(m);
+      // Auto-fill label from page title if label is still empty
+      if (!label.trim() && m.title) {
+        // Trim common suffixes like " | Company Name" or " - Company Name"
+        const cleaned = m.title.replace(/\s*[|\-–—]\s*.{1,40}$/, '').trim();
+        if (cleaned) setLabel(cleaned);
+      }
+      setMetaLoading(false);
+    }, 800);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!label.trim()) { setErr('Please enter a label for this link.'); return; }
     const norm = normaliseUrl(url);
     if (!norm || !isValidUrl(norm)) { setErr('Please enter a valid URL (e.g. https://example.com).'); return; }
-    onSave(label.trim(), norm);
+    onSave(label.trim(), norm, meta);
   }
 
   return (
@@ -179,10 +312,38 @@ function LinkModal({ initial, saving, onSave, onClose }: LinkModalProps) {
             </div>
           )}
 
+          {/* URL — first so we can auto-fill label */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              URL <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Globe size={14} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
+              {/* textarea so long URLs wrap instead of scrolling */}
+              <textarea
+                value={url}
+                onChange={e => { setUrl(e.target.value); setErr(''); }}
+                placeholder="https://portal.example.com"
+                rows={2}
+                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none leading-relaxed"
+                autoFocus
+              />
+            </div>
+            {/* Live site preview strip */}
+            <div className="mt-2">
+              <UrlPreviewStrip url={url} meta={meta} loading={metaLoading} />
+            </div>
+          </div>
+
           {/* Label */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Label <span className="text-red-500">*</span>
+              {metaLoading && (
+                <span className="ml-2 text-[10px] font-normal text-slate-400 inline-flex items-center gap-1">
+                  <Loader2 size={9} className="animate-spin" /> detecting…
+                </span>
+              )}
             </label>
             <input
               type="text"
@@ -190,25 +351,10 @@ function LinkModal({ initial, saving, onSave, onClose }: LinkModalProps) {
               onChange={e => { setLabel(e.target.value); setErr(''); }}
               placeholder="e.g. BYDA, Outlook, Teletrac, Xero…"
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              autoFocus
             />
-          </div>
-
-          {/* URL */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              URL <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="url"
-                value={url}
-                onChange={e => { setUrl(e.target.value); setErr(''); }}
-                placeholder="https://portal.example.com"
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors font-mono"
-              />
-            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Label auto-fills from the page title — edit it to anything you like.
+            </p>
           </div>
 
           {/* Actions */}
@@ -329,12 +475,23 @@ function LinkTile({
 
       {/* Icon + label */}
       <div className="flex items-center gap-3">
-        <TileIcon link={link} />
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-slate-800 truncate">{link.label}</p>
-          <p className="text-[11px] text-slate-400 truncate font-mono">{displayHost(link.url)}</p>
+        <TileIcon link={link} size="md" />
+        <div className="flex-1 min-w-0 pr-8">
+          <p className="font-bold text-sm text-slate-800 truncate leading-snug">{link.label}</p>
+          <p className="text-[11px] text-slate-400 truncate mt-0.5">{displayHost(link.url)}</p>
         </div>
       </div>
+
+      {/* og:image preview strip — shown if available */}
+      {link.ogImage && (
+        <img
+          src={link.ogImage}
+          alt=""
+          className="w-full h-20 object-cover rounded-xl border border-slate-100"
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          loading="lazy"
+        />
+      )}
 
       {/* Open button */}
       <a
@@ -405,22 +562,22 @@ export default function QuickLinksPage() {
   }, []);
 
   // ── Add / Edit ──────────────────────────────────────────────────────────────
-  function handleSave(label: string, url: string) {
+  function handleSave(label: string, url: string, meta: SiteMeta | null) {
     if (editTarget) {
-      // Edit existing
       const next = links.map(l =>
-        l.id === editTarget.id ? { ...l, label, url } : l
+        l.id === editTarget.id
+          ? { ...l, label, url, favicon: meta?.favicon ?? l.favicon, ogImage: meta?.ogImage ?? l.ogImage }
+          : l
       );
-      void persist(next).then(() => {
-        setEditTarget(null);
-        setShowModal(false);
-      });
+      void persist(next).then(() => { setEditTarget(null); setShowModal(false); });
     } else {
-      // Add new
       const newLink: QuickLink = {
         id: `ql-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         label,
         url,
+        favicon: meta?.favicon ?? null,
+        ogImage: meta?.ogImage ?? null,
+        detectedTitle: meta?.title ?? null,
         createdAt: new Date().toISOString(),
       };
       void persist([...links, newLink]).then(() => setShowModal(false));
@@ -430,8 +587,7 @@ export default function QuickLinksPage() {
   // ── Delete ──────────────────────────────────────────────────────────────────
   function handleDelete() {
     if (!delTarget) return;
-    const next = links.filter(l => l.id !== delTarget.id);
-    void persist(next).then(() => setDelTarget(null));
+    void persist(links.filter(l => l.id !== delTarget.id)).then(() => setDelTarget(null));
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -450,7 +606,6 @@ export default function QuickLinksPage() {
           {/* ── Header ── */}
           <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
             <div className="flex items-center gap-2 px-4 h-12">
-              {/* Back */}
               <button
                 onClick={() => navigate('/home')}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -467,7 +622,6 @@ export default function QuickLinksPage() {
                   {links.length}
                 </span>
               )}
-
               <div className="ml-auto flex items-center gap-2">
                 {isAdmin && (
                   <button
@@ -485,14 +639,12 @@ export default function QuickLinksPage() {
           {/* ── Body ── */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
 
-            {/* Loading */}
             {loadingCfg && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 size={22} className="animate-spin text-slate-300" />
               </div>
             )}
 
-            {/* Empty state */}
             {!loadingCfg && links.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mb-6">
@@ -519,7 +671,6 @@ export default function QuickLinksPage() {
               </div>
             )}
 
-            {/* Tile grid */}
             {!loadingCfg && links.length > 0 && (
               <motion.div
                 layout
