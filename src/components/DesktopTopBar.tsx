@@ -68,9 +68,9 @@ export default function DesktopTopBar() {
     width: 36,
     height: 36,
     borderRadius: 10,
-    border: 'none',
-    background: 'rgba(255,255,255,0.08)',
-    color: 'rgba(255,255,255,0.75)',
+    border: '1px solid rgba(255,255,255,0.18)',
+    background: 'rgba(255,255,255,0.10)',
+    color: 'rgba(255,255,255,0.95)',
     cursor: 'pointer',
     flexShrink: 0,
     transition: 'background 0.15s, color 0.15s',
@@ -87,9 +87,9 @@ export default function DesktopTopBar() {
     textDecoration: 'none',
     fontSize: 11,
     fontWeight: 600,
-    color: 'rgba(255,255,255,0.6)',
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    color: 'rgba(255,255,255,0.95)',
+    background: 'rgba(255,255,255,0.10)',
+    border: '1px solid rgba(255,255,255,0.18)',
     transition: 'background 0.15s, color 0.15s',
     flexShrink: 0,
     cursor: 'pointer',
@@ -153,7 +153,7 @@ export default function DesktopTopBar() {
               title="Dazza AI"
               style={pillLink}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.35)'; (e.currentTarget as HTMLElement).style.color = '#c4b5fd'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
             >
               <Bot size={13} /><span>Dazza AI</span>
             </Link>
@@ -162,7 +162,7 @@ export default function DesktopTopBar() {
               title="Dev Console"
               style={pillLink}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(22,163,74,0.25)'; (e.currentTarget as HTMLElement).style.color = '#86efac'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
             >
               <Terminal size={13} /><span>Dev Console</span>
             </Link>
@@ -177,8 +177,8 @@ export default function DesktopTopBar() {
               to="/team"
               title="Team"
               style={pillLink}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.14)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
             >
               <UserCircle size={13} /><span>Team</span>
             </Link>
@@ -186,8 +186,8 @@ export default function DesktopTopBar() {
               to="/billing"
               title="Billing"
               style={pillLink}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.14)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
             >
               <CreditCard size={13} /><span>Billing</span>
             </Link>
@@ -203,8 +203,8 @@ export default function DesktopTopBar() {
           to="/settings"
           title={displayName || 'Account settings'}
           style={iconBtn}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.15)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
         >
           {displayName ? (
             <span style={{
@@ -226,8 +226,8 @@ export default function DesktopTopBar() {
           onClick={() => void handleSignOut()}
           title="Sign out"
           style={iconBtn}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.25)'; (e.currentTarget as HTMLElement).style.color = '#fca5a5'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.30)'; (e.currentTarget as HTMLElement).style.color = '#fca5a5'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.95)'; }}
         >
           <LogOut size={15} />
         </button>
