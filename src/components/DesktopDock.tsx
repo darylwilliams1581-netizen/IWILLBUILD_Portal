@@ -36,8 +36,6 @@ import {
   History,
   Truck,
   ShieldAlert,
-  Ruler,
-  FileSpreadsheet,
   CreditCard,
 } from 'lucide-react';
 
@@ -67,8 +65,6 @@ const ROW1: DockItem[] = [
 // ── Row 2: Tools, Safety, Management, Admin ───────────────────────────────────
 const ROW2: DockItem[] = [
   { label: 'Estimating',       icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
-  { label: 'Takeoff Pad',      icon: Ruler,           href: '/takeoff-pad',          color: '#6366f1' },
-  { label: 'Builders Calc',    icon: FileSpreadsheet, href: '/builders-calc',        color: '#0891b2' },
   { label: 'Billing',          icon: CreditCard,      href: '/billing',              color: '#0284c7' },
   { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
   { label: 'Safety Posters',   icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
