@@ -96,10 +96,12 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       style={{
         position: 'relative',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flex: '1 1 0',
-        minWidth: 30,
+        minWidth: 36,
+        gap: 2,
         textDecoration: 'none',
         outline: 'none',
       }}
@@ -130,6 +132,21 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
           aria-hidden="true"
         />
       </div>
+      <span
+        style={{
+          fontSize: 8.5,
+          fontWeight: active ? 700 : 500,
+          color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
+          lineHeight: 1,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%',
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {item.label}
+      </span>
     </Link>
   );
 }
