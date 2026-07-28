@@ -48,32 +48,39 @@ interface DockItem {
 }
 
 const ALL_ITEMS: DockItem[] = [
-  { label: 'Dashboard',       icon: LayoutDashboard, href: '/dashboard',            color: '#1263d8' },
+  // ── Field / Jobs ──────────────────────────────────────────────────────────
+  { label: 'Dashboard',       icon: LayoutDashboard, href: '/dashboard',            color: '#1d6fe8' },
   { label: 'Jobs',            icon: HardHat,         href: '/jobs',                 color: '#0891b2' },
-  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#ca8a04' },
-  { label: 'Field Docs',      icon: FileStack,       href: '/job-docs',             color: '#7c3aed' },
-  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',            color: '#059669' },
-  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#16a34a' },
-  { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#d97706' },
-  { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#7c3aed' },
-  { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0284c7' },
-  { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#0891b2' },
-  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
+  { label: 'Job Cards',       icon: Zap,             href: '/job-cards',            color: '#f59e0b' },
+  { label: 'Field Docs',      icon: FileStack,       href: '/job-docs',             color: '#8b5cf6' },
+  { label: 'Scheduler',       icon: CalendarDays,    href: '/scheduler',            color: '#10b981' },
+  { label: 'Plan Manager',    icon: Map,             href: '/plan-manager',         color: '#06b6d4' },
+  // ── Assets / Files ────────────────────────────────────────────────────────
+  { label: 'Files',           icon: FolderOpen,      href: '/files',                color: '#f97316' },
+  { label: 'Fleet',           icon: Truck,           href: '/fleet',                color: '#475569' },
+  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
+  // ── Finance ───────────────────────────────────────────────────────────────
+  { label: 'Invoices',        icon: Receipt,         href: '/invoices',             color: '#0ea5e9' },
+  { label: 'Estimating',      icon: Calculator,      href: '/estimating',           color: '#e11d48' },
+  // ── People ────────────────────────────────────────────────────────────────
+  { label: 'Contacts',        icon: Users,           href: '/customers',            color: '#ec4899' },
+  // ── Safety ────────────────────────────────────────────────────────────────
   { label: 'Safety',          icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
   { label: 'Safety Posters',  icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
-  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },
-  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#0891b2' },
-  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#6366f1' },
+  { label: 'Incidents',       icon: AlertCircle,     href: '/incidents',            color: '#ef4444' },
+  // ── Studio / Tools ────────────────────────────────────────────────────────
+  { label: 'App Docs',        icon: FileText,        href: '/studio/documents',     color: '#6366f1' },
+  { label: 'Forms',           icon: ClipboardList,   href: '/studio/forms',         color: '#7c3aed' },
   { label: 'Library',         icon: BookOpen,        href: '/studio/library',       color: '#b45309' },
-  { label: 'Equipment',       icon: Building2,       href: '/studio/asset-manager', color: '#64748b' },
-  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',          color: '#6366f1' },
+  { label: 'Quick Links',     icon: Link2,           href: '/quick-links',          color: '#0284c7' },
   { label: 'Lists',           icon: TableProperties, href: '/lists',                color: '#0891b2' },
+  // ── Admin ─────────────────────────────────────────────────────────────────
   { label: 'User Logs',       icon: ScrollText,      href: '/user-logs',            color: '#64748b', adminOnly: true },
-  { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#64748b', adminOnly: true },
-  // ── account / help ────────────────────────────────────────────────────────
-  { label: 'Team',    icon: UserCircle,  href: '/team',    color: '#7c3aed', adminOnly: true,  dividerBefore: true },
-  { label: 'Billing', icon: CreditCard,  href: '/billing', color: '#0284c7', adminOnly: true },
-  { label: 'Help',    icon: HelpCircle,  href: '/help',    color: '#059669' },
+  { label: 'Sign-in History', icon: History,         href: '/signin-history',       color: '#475569', adminOnly: true },
+  // ── Account / Help ────────────────────────────────────────────────────────
+  { label: 'Team',    icon: UserCircle, href: '/team',    color: '#8b5cf6', adminOnly: true, dividerBefore: true },
+  { label: 'Billing', icon: CreditCard, href: '/billing', color: '#0ea5e9', adminOnly: true },
+  { label: 'Help',    icon: HelpCircle, href: '/help',    color: '#10b981' },
 ];
 
 // ── Single icon tile ──────────────────────────────────────────────────────────
@@ -99,25 +106,26 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: 32,
-          height: 32,
+          width: 30,
+          height: 30,
           borderRadius: 8,
-          backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
+          backgroundColor: item.color,
           border: active
-            ? `1.5px solid ${item.color}`
-            : '1px solid rgba(255,255,255,0.55)',
+            ? '2px solid #ffffff'
+            : '2px solid transparent',
           display: 'grid',
           placeItems: 'center',
-          transition: 'transform 110ms ease, box-shadow 110ms ease, background-color 110ms ease',
+          transition: 'transform 110ms ease, box-shadow 110ms ease, border-color 110ms ease',
           boxShadow: active
-            ? `0 0 0 1.5px ${item.color}40, 0 1px 4px ${item.color}30`
-            : '0 1px 2px rgba(15,23,42,0.08)',
+            ? `0 0 0 2px ${item.color}, 0 2px 8px ${item.color}60`
+            : '0 1px 3px rgba(15,23,42,0.25)',
+          flexShrink: 0,
         }}
       >
         <Icon
           size={15}
-          color={item.color}
-          strokeWidth={active ? 2.4 : 1.9}
+          color="#ffffff"
+          strokeWidth={active ? 2.4 : 2.0}
           style={{ display: 'block', flexShrink: 0 }}
           aria-hidden="true"
         />
@@ -190,9 +198,9 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.12);
-          box-shadow: 0 2px 8px rgba(15,23,42,0.18) !important;
-          background-color: #ffffff !important;
+          transform: scale(1.15);
+          box-shadow: 0 3px 10px rgba(15,23,42,0.30) !important;
+          filter: brightness(1.12);
         }
         .dock-icon-btn:hover .dock-tooltip {
           opacity: 1 !important;
@@ -210,13 +218,9 @@ export default function DesktopDock() {
           left: 0,
           right: 0,
           zIndex: 1050,
-          background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-          borderBottom: '1px solid rgba(109,40,217,0.8)',
-          boxShadow: [
-            '0 2px 4px rgba(15,23,42,0.08)',
-            '0 6px 16px rgba(109,40,217,0.25)',
-            '0 1px 0 rgba(255,255,255,0.12) inset',
-          ].join(', '),
+          background: '#1e293b',
+          borderBottom: '1px solid #0f172a',
+          boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
           padding: '4px 0 4px',
           alignItems: 'center',
         }}
@@ -239,7 +243,7 @@ export default function DesktopDock() {
                 <div style={{
                   width: 1,
                   height: 22,
-                  background: 'rgba(255,255,255,0.25)',
+                  background: 'rgba(255,255,255,0.15)',
                   flexShrink: 0,
                   marginLeft: 4,
                   marginRight: 4,
