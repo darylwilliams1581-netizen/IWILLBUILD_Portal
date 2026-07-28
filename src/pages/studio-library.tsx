@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, BookOpen, Layers, ClipboardList } from 'lucide-react';
 import { LibraryPage as LibraryContent } from '@/pages/library';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 type LibTab = 'documents' | 'forms';
 
@@ -15,7 +17,9 @@ export default function StudioLibraryPage() {
   const [libTab, setLibTab] = useState<LibTab>('documents');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Library — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD content library — browse and install document and form templates." />

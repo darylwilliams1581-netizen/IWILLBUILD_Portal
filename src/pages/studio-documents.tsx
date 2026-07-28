@@ -19,6 +19,8 @@ import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
 import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { studio } from 'virtual:content';
 import { LibraryPage } from '@/pages/library';
 
@@ -526,7 +528,9 @@ export default function StudioDocumentsPage() {
   const activeCount = templates.filter(t => Boolean(t.is_active)).length;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Documents — IWILLBUILD</title>
         <meta name="description" content="IWILLBUILD document templates — build, use and manage your company documents." />
