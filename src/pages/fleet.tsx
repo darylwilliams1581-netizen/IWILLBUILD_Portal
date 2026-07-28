@@ -365,7 +365,7 @@ export default function FleetPage() {
               </span>
             )}
 
-            {/* Centre: view toggle — absolutely centred in the header */}
+            {/* Centre: view toggle + add asset — absolutely centred */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
               <button
                 onClick={() => setView('assets')}
@@ -389,21 +389,22 @@ export default function FleetPage() {
                 <Navigation size={13} />
                 <span>Live Map</span>
               </button>
-            </div>
-
-            {/* Right: add asset */}
-            <div className="ml-auto shrink-0">
+              {/* Divider */}
+              <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
+              {/* Add Asset — inside the pill group */}
               <button
                 onClick={() => !isViewOnly && setShowModal(true)}
                 disabled={isViewOnly}
-                title={isViewOnly ? 'Subscribe to continue' : undefined}
-                className="flex items-center gap-1.5 bg-primary hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus size={14} />
-                <span className="hidden sm:inline">Add Asset</span>
-                <span className="sm:hidden">Add</span>
+                <Plus size={13} />
+                <span>Add Asset</span>
               </button>
             </div>
+
+            {/* Right spacer — keeps left content from overlapping centre */}
+            <div className="ml-auto" />
           </div>
         </header>
 
