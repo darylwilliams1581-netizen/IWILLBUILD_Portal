@@ -1,5 +1,5 @@
 {
-  "appId": "com.iwillbuild.app",
+  "appId": "com.iwillbuild.portal",
   "appName": "IWILLBUILD",
   "webDir": "dist/client",
   "bundledWebRuntime": false
