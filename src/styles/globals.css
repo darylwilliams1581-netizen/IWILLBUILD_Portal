@@ -409,10 +409,10 @@ input, select, textarea {
   }
 }
 
-/* Desktop: reserve space at the bottom for the floating dock (two-row pill ~100px + 18px gap). */
+/* Desktop: reserve space at the bottom for the floating dock (single-row pill ~46px + 18px gap). */
 @media (min-width: 768px) {
   .portal-main {
-    padding-bottom: 120px;
+    padding-bottom: 80px;
   }
 }
 
