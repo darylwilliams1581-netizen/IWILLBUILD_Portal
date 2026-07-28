@@ -27,12 +27,11 @@ export default function DesktopTopBar() {
         zIndex: 1100,
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingLeft: 20,
-        paddingRight: 14,
-        background: 'rgba(255,255,255,0.97)',
+        paddingLeft: 16,
+        paddingRight: 12,
+        background: '#ffffff',
         borderBottom: '1px solid #e2e8f0',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
       }}
     >
       {/* ── Left: logo + wordmark ── */}
@@ -41,7 +40,7 @@ export default function DesktopTopBar() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 9,
           textDecoration: 'none',
           flexShrink: 0,
         }}
@@ -50,7 +49,7 @@ export default function DesktopTopBar() {
           src="/assets/logo.png"
           alt="IWILLBUILD"
           style={{
-            height: 34,
+            height: 32,
             width: 'auto',
             objectFit: 'contain',
             display: 'block',
@@ -59,11 +58,12 @@ export default function DesktopTopBar() {
         />
         <span
           style={{
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: 800,
             color: '#0f172a',
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.03em',
             lineHeight: 1,
+            fontFamily: 'var(--font-heading, inherit)',
           }}
         >
           IWILLBUILD

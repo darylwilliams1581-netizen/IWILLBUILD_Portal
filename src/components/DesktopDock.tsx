@@ -84,10 +84,11 @@ function DockDivider() {
       aria-hidden="true"
       style={{
         width: 1,
-        height: 22,
-        background: 'rgba(255,255,255,0.25)',
+        height: 20,
+        background: 'rgba(255,255,255,0.3)',
         flexShrink: 0,
-        margin: '0 4px',
+        margin: '0 3px',
+        borderRadius: 1,
       }}
     />
   );
@@ -108,14 +109,16 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        flex: '1 1 0',          // fill available width evenly
+        flex: '1 1 0',
         minWidth: 0,
         height: 36,
-        borderRadius: 10,
+        borderRadius: 9,
         textDecoration: 'none',
         outline: 'none',
-        boxShadow: active ? `0 0 0 2px ${item.color}38` : 'none',
         transition: 'box-shadow 120ms ease',
+        boxShadow: active
+          ? `0 0 0 2px rgba(255,255,255,0.9), 0 0 0 3.5px ${item.color}`
+          : 'none',
       }}
       className="dock-icon-btn"
     >
@@ -125,38 +128,26 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         style={{
           width: '100%',
           height: 32,
-          borderRadius: 8,
-          backgroundColor: item.bg,
-          border: `1px solid ${item.color}22`,
+          borderRadius: 7,
+          backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
+          border: active
+            ? `1.5px solid ${item.color}`
+            : '1px solid rgba(255,255,255,0.55)',
           display: 'grid',
           placeItems: 'center',
-          transition: 'transform 110ms ease, box-shadow 110ms ease',
+          transition: 'transform 110ms ease, box-shadow 110ms ease, background-color 110ms ease',
+          boxShadow: active
+            ? `0 1px 4px ${item.color}30`
+            : '0 1px 2px rgba(15,23,42,0.08)',
         }}
       >
         <Icon
-          size={16}
+          size={15}
           color={item.color}
-          strokeWidth={active ? 2.2 : 1.8}
+          strokeWidth={active ? 2.4 : 1.9}
           aria-hidden="true"
         />
       </div>
-
-      {/* Active dot — sits below the tile */}
-      {active && (
-        <span
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            bottom: 1,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 3,
-            height: 3,
-            borderRadius: '50%',
-            background: item.color,
-          }}
-        />
-      )}
     </Link>
   );
 }
@@ -181,8 +172,9 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(15,23,42,0.12);
+          transform: scale(1.08);
+          box-shadow: 0 2px 8px rgba(15,23,42,0.15);
+          background-color: #ffffff !important;
         }
       `}</style>
 
@@ -192,23 +184,20 @@ export default function DesktopDock() {
         style={{
           position: 'fixed',
           top: 56,
-          left: 12,
-          right: 12,
+          left: 10,
+          right: 10,
           zIndex: 1050,
-          background: 'rgba(124,58,237,0.97)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(139,92,246,0.6)',
-          borderRadius: 16,
+          background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+          border: '1px solid rgba(109,40,217,0.8)',
+          borderRadius: 14,
           boxShadow: [
-            '0 1px 2px rgba(15,23,42,0.04)',
-            '0 4px 12px rgba(15,23,42,0.07)',
-            '0 12px 32px rgba(15,23,42,0.06)',
-            '0 0 0 0.5px rgba(15,23,42,0.03)',
+            '0 2px 4px rgba(15,23,42,0.08)',
+            '0 6px 16px rgba(109,40,217,0.25)',
+            '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
-          padding: '4px 6px',
+          padding: '5px 6px',
           alignItems: 'center',
-          gap: 2,
+          gap: 3,
           overflowX: 'auto',
         }}
       >
