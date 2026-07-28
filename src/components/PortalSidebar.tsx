@@ -18,7 +18,6 @@ import {
   Users,
   Receipt,
   Bot,
-  Layers,
   Map,
   Building2,
   Calculator,
@@ -30,6 +29,9 @@ import {
   ScrollText,
   Zap,
   Link2,
+  FileText,
+  ClipboardList,
+  BookOpen,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
@@ -104,7 +106,9 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     { label: 'Jobs',         icon: HardHat,         href: '/jobs',                 permKey: 'jobs' },
     { label: 'Job Cards',    icon: Zap,             href: '/job-cards',            permKey: 'jobs' },
     { label: 'Plan Manager', icon: Map,             href: '/plan-manager',         permKey: null },
-    { label: 'Studio',       icon: Layers,          href: '/studio',               permKey: null },
+    { label: 'App Docs',     icon: FileText,        href: '/studio/documents',     permKey: null },
+    { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms',         permKey: null },
+    { label: 'Library',      icon: BookOpen,        href: '/studio/library',       permKey: null },
     { label: 'Files',        icon: FolderOpen,      href: '/files',                permKey: 'files' },
     { label: 'Estimating',   icon: Calculator,      href: '/estimating',           permKey: null },
     { label: 'Invoices',     icon: Receipt,         href: '/invoices',             permKey: 'invoices' },
@@ -201,9 +205,6 @@ function SidebarContent({
         if (locParams.get(k) !== v) return false;
       }
       return true;
-    }
-    if (href === '/studio') {
-      return location.pathname === '/studio' && !new URLSearchParams(location.search).get('tab');
     }
     return location.pathname === href || location.pathname.startsWith(href + '/');
   };
