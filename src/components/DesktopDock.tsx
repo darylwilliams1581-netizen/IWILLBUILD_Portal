@@ -96,18 +96,15 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       style={{
         position: 'relative',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         flex: '1 1 0',
-        minWidth: 36,
-        gap: 2,
+        minWidth: 30,
         textDecoration: 'none',
         outline: 'none',
       }}
       className="dock-icon-btn"
     >
-      {/* Icon tile */}
       <div
         className="dock-tile"
         style={{
@@ -133,44 +130,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
           aria-hidden="true"
         />
       </div>
-      {/* Label */}
-      <span
-        style={{
-          fontSize: 8.5,
-          fontWeight: active ? 700 : 500,
-          color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
-          lineHeight: 1,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          maxWidth: '100%',
-          letterSpacing: '-0.01em',
-        }}
-      >
-        {item.label}
-      </span>
     </Link>
-  );
-}
-
-// ── Row heading ───────────────────────────────────────────────────────────────
-function RowLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontSize: 8,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,0.45)',
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        whiteSpace: 'nowrap',
-        flexShrink: 0,
-        alignSelf: 'center',
-        paddingRight: 4,
-      }}
-    >
-      {children}
-    </span>
   );
 }
 
@@ -244,7 +204,6 @@ export default function DesktopDock() {
       >
         {/* Row 1 — Field & Jobs */}
         <div className="dock-row" style={rowStyle}>
-          <RowLabel>Field</RowLabel>
           {row1.map((item) => (
             <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
           ))}
@@ -263,7 +222,6 @@ export default function DesktopDock() {
         <div className="dock-row" style={{ ...rowStyle, justifyContent: 'space-between' }}>
           {/* Left group */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, flex: '1 1 0', minWidth: 0 }}>
-            <RowLabel>Tools</RowLabel>
             {row2Left.map((item) => (
               <DockIcon key={item.href + item.label} item={item} active={isActive(item.href)} />
             ))}
