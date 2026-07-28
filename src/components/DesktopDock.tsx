@@ -106,8 +106,8 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: 34,
-          height: 34,
+          width: 36,
+          height: 36,
           borderRadius: 9,
           backgroundColor: item.color,
           border: active
@@ -200,8 +200,8 @@ export default function DesktopDock() {
     <>
       <style>{`
         .dock-icon-btn:hover .dock-tile {
-          transform: scale(1.35) translateY(-3px);
-          box-shadow: 0 6px 16px rgba(15,23,42,0.40) !important;
+          transform: scale(1.18) translateY(-1px);
+          box-shadow: 0 4px 12px rgba(15,23,42,0.35) !important;
           filter: brightness(1.12);
           z-index: 10;
         }
@@ -227,7 +227,7 @@ export default function DesktopDock() {
           background: '#1e293b',
           borderBottom: '1px solid #0f172a',
           boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
-          padding: '4px 0 4px',
+          padding: '6px 0 6px',
           alignItems: 'center',
           overflow: 'visible',
         }}
