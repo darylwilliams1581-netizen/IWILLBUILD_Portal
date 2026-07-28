@@ -55,6 +55,20 @@ function writeCollapsed(v: boolean) {
 const SIDEBAR_EXPANDED  = 240;
 const SIDEBAR_COLLAPSED =  64;
 
+// ── Company logo hook ─────────────────────────────────────────────────────────
+function useCompanyLogo() {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/company', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { company?: { logo_url?: string | null } } | null) => {
+        setLogoUrl(d?.company?.logo_url ?? null);
+      })
+      .catch(() => {});
+  }, []);
+  return logoUrl;
+}
+
 // ── Trial/subscription status hook ───────────────────────────────────────────
 interface SubInfo {
   status: 'active' | 'trial' | 'trial_expired' | 'cancelled' | 'past_due' | 'no_company';
@@ -174,6 +188,8 @@ function SidebarContent({
   const subInfo   = useSubscriptionStatus();
   const { workPlural } = useTerminology();
   const navEntries = buildNavEntries(workPlural);
+  const companyLogoUrl = useCompanyLogo();
+  const companyName = me?.company?.name ?? 'Portal';
 
   const isActive = (href: string) => {
     if (href.includes('?')) {
@@ -226,20 +242,37 @@ function SidebarContent({
         }`}
       >
         {collapsed ? (
-          /* Collapsed: show favicon/icon only */
-          <img
-            src="/assets/logo.png"
-            alt="IWILLBUILD"
-            className="h-6 w-6 object-contain shrink-0"
-            style={{ objectPosition: 'left center' }}
-          />
+          /* Collapsed: square icon — company logo if available, else initials */
+          companyLogoUrl ? (
+            <img
+              src={companyLogoUrl}
+              alt={companyName}
+              className="h-7 w-7 object-contain rounded shrink-0"
+            />
+          ) : (
+            <div
+              className="h-7 w-7 rounded bg-primary flex items-center justify-center shrink-0 select-none"
+              title={companyName}
+            >
+              <span className="text-white text-xs font-black leading-none">
+                {companyName.trim()[0]?.toUpperCase() ?? 'P'}
+              </span>
+            </div>
+          )
         ) : (
           <>
-            <img
-              src="/assets/logo.png"
-              alt="IWILLBUILD"
-              className="h-7 w-auto object-contain shrink-0 flex-1 min-w-0"
-            />
+            {/* Expanded: full logo or company name */}
+            {companyLogoUrl ? (
+              <img
+                src={companyLogoUrl}
+                alt={companyName}
+                className="h-8 max-w-[160px] w-auto object-contain object-left shrink-0"
+              />
+            ) : (
+              <span className="text-sm font-bold text-gray-800 truncate flex-1 min-w-0 leading-tight">
+                {companyName}
+              </span>
+            )}
             {onClose && (
               <button
                 onClick={onClose}
