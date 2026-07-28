@@ -255,45 +255,56 @@
   },
   "reference/screenshot-6": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-6-0146aff7.jpg",
+    "searchQuery": "business management dashboard interface layout",
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:00.000Z",
-    "lastUpdated": "2026-07-18T04:43:00.000Z",
+    "lastUpdated": "2026-07-28T05:02:56.402Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg": "f38wenbvln_1784348858184_file_gQrVQXlVEY.jpg"
+      "/airo-assets/uploads/reference-screenshot-6-4fd95e43.jpg": "f38wenbvln_1784348858184_file_gQrVQXlVEY.jpg",
+      "/airo-assets/uploads/reference-screenshot-6-0146aff7.jpg": "f38wenbvln_1785213521020_file_hxb8DBsh7x.jpg"
     },
-    "uploadContentHash": "97ac4eb533ac6f816e15e681caf02b6a57e1aa9986522e4a9e87363a8861d7df"
+    "uploadContentHash": "6af0225fa456f8c4f2f4dff51eee8cad8641cad5819d8170e8dc17ff18569f66",
+    "caption": "business management dashboard interface layout"
   },
   "reference/screenshot-7": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-7-ef7fedac.jpg",
+    "searchQuery": "business management dashboard interface layout",
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:00.544Z",
-    "lastUpdated": "2026-07-18T04:43:00.544Z",
+    "lastUpdated": "2026-07-28T05:03:00.284Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg": "f38wenbvln_1784348030849_file_kqzmruj29g.jpg"
+      "/airo-assets/uploads/reference-screenshot-7-b9a41c46.jpg": "f38wenbvln_1784348030849_file_kqzmruj29g.jpg",
+      "/airo-assets/uploads/reference-screenshot-7-ef7fedac.jpg": "f38wenbvln_1785214017200_file_53KzyZ2i62.jpg"
     },
-    "uploadContentHash": "4e7c91328f153cb3e96d162d3c72c76a10ca8f043d0825d4d63be211bc1839d6"
+    "uploadContentHash": "7966153970a690a3a224ae69e3294c95315453d00c4a82b390800c9e0b75d7bb",
+    "caption": "business management dashboard interface layout"
   },
   "reference/screenshot-8": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg",
-    "searchQuery": "",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg",
+    "searchQuery": "livetrack stealth gps tracker device",
     "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg",
       "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg"
     ],
     "userModified": true,
     "createdAt": "2026-07-18T04:43:01.246Z",
-    "lastUpdated": "2026-07-20T03:45:17.176Z",
+    "lastUpdated": "2026-07-28T05:03:07.680Z",
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-8-dc28c5ec.jpg": "f38wenbvln_1784347618216_file_cydKe98BE0.jpg",
-      "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg": "f38wenbvln_1784518145049_file_6NcchjcUGF.jpg"
+      "/airo-assets/uploads/reference-screenshot-8-1576293a.jpg": "f38wenbvln_1784518145049_file_6NcchjcUGF.jpg",
+      "/airo-assets/uploads/reference-screenshot-8-6e997724.jpg": "f38wenbvln_1785211270778_file_GhKCh2FWjk.jpg"
     },
-    "uploadContentHash": "192f1868b19498e33cfedfe17822a2dd52cd6dc6045b5b5488d0220bc72007db"
+    "uploadContentHash": "7d3c8647a786a407c1e02785316c6192547f47ddc01303744fe43986c00acf68",
+    "caption": "livetrack stealth gps tracker device"
   },
   "uploads/background-f38wenbvln-1784434100763-file-ir3u9cpvlv": {
     "mediaType": "image",
@@ -362,15 +373,19 @@
   },
   "reference/screenshot-9": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png",
-    "searchQuery": "",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-9-f796bd73.jpg",
+    "searchQuery": "fleet management dashboard vehicle status overview",
+    "alternatives": [
+      "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png"
+    ],
     "userModified": true,
     "createdAt": "2026-07-22T20:12:01.600Z",
-    "lastUpdated": "2026-07-22T20:12:01.600Z",
+    "lastUpdated": "2026-07-28T05:03:08.945Z",
     "uploadSources": {
-      "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png": "f38wenbvln_1784750804802_file_EN7n3SkvHS.png"
+      "/airo-assets/uploads/reference-screenshot-9-a39ae43a.png": "f38wenbvln_1784750804802_file_EN7n3SkvHS.png",
+      "/airo-assets/uploads/reference-screenshot-9-f796bd73.jpg": "f38wenbvln_1785208425282_file_XF3jIdJV3t.jpg"
     },
-    "uploadContentHash": "0f39837151b378c20b4863e7fe7c8efdba608a188c84d1854ddd237f2498d2e9"
+    "uploadContentHash": "7672f55e7ff91d742620d4ef314258d2e37907ec05d70a247a6234c2944ce933",
+    "caption": "fleet management dashboard vehicle status overview"
   }
 }
