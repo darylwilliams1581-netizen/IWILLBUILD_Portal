@@ -185,21 +185,21 @@ export default function DesktopTopBar() {
           </Link>
         )}
 
-        {/* Billing */}
+        {/* Billing — icon only, compact */}
         <Link
           to="/billing"
           title="Billing"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
+            justifyContent: 'center',
+            width: 30,
+            height: 30,
             borderRadius: 8,
             textDecoration: 'none',
-            fontSize: 12,
-            fontWeight: 600,
             color: '#64748b',
             transition: 'background 0.15s, color 0.15s',
+            flexShrink: 0,
           }}
           onMouseEnter={e => {
             (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
@@ -211,36 +211,6 @@ export default function DesktopTopBar() {
           }}
         >
           <CreditCard size={15} />
-          <span>Billing</span>
-        </Link>
-
-        {/* Help — bold, accent colour to stand out */}
-        <Link
-          to="/help"
-          title="Help & Support"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            borderRadius: 8,
-            textDecoration: 'none',
-            fontSize: 12,
-            fontWeight: 800,
-            color: '#7c3aed',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = '#f5f3ff';
-            (e.currentTarget as HTMLElement).style.color = '#5b21b6';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-            (e.currentTarget as HTMLElement).style.color = '#7c3aed';
-          }}
-        >
-          <HelpCircle size={15} />
-          <span>Help</span>
         </Link>
 
         {/* Divider */}
@@ -335,6 +305,37 @@ export default function DesktopTopBar() {
 
         {/* Notification bell */}
         <NotificationBell collapsed={false} />
+
+        {/* Help — far right, dark pill, bold to stand out */}
+        <Link
+          to="/help"
+          title="Help & Support"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 11px',
+            borderRadius: 8,
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 800,
+            color: '#ffffff',
+            background: '#0f172a',
+            marginLeft: 6,
+            transition: 'background 0.15s',
+            flexShrink: 0,
+            letterSpacing: '-0.01em',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = '#1e293b';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = '#0f172a';
+          }}
+        >
+          <HelpCircle size={14} />
+          <span>Help</span>
+        </Link>
       </div>
     </div>
   );
