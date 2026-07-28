@@ -694,6 +694,14 @@ import team_id_delete_656 from "./api/team/[id]/DELETE";
 import team_id_put_657 from "./api/team/[id]/PUT";
 import usage_get_658 from "./api/usage/GET";
 // </api-imports>
+// ── Job Cards ─────────────────────────────────────────────────────────────────
+import job_cards_get from "./api/job-cards/GET.js";
+import job_cards_post from "./api/job-cards/POST.js";
+import job_cards_id_get from "./api/job-cards/[id]/GET.js";
+import job_cards_id_put from "./api/job-cards/[id]/PUT.js";
+import job_cards_id_delete from "./api/job-cards/[id]/DELETE.js";
+import job_cards_id_invoice_post from "./api/job-cards/[id]/invoice/POST.js";
+import job_cards_id_convert_post from "./api/job-cards/[id]/convert/POST.js";
 // New endpoints — sign-in history, fleet usage export, supervisor force-close
 import signin_history_get from "./api/signin-history/GET.js";
 import fleet_id_usage_export_get from "./api/fleet/[id]/usage-export/GET.js";
@@ -2309,6 +2317,115 @@ async function runStartupMigrations() {
       console.warn('[startup-migration] incident_third_parties CREATE failed:', msg);
     }
   }
+
+  // ── Job Cards ─────────────────────────────────────────────────────────────────
+  // Three tables: job_cards (header), job_card_materials (line items), job_card_photos
+  const jobCardTables = [
+    {
+      name: 'job_cards',
+      ddl: `CREATE TABLE IF NOT EXISTS job_cards (
+        id                    INT AUTO_INCREMENT PRIMARY KEY,
+        company_id            INT NOT NULL,
+        card_number           VARCHAR(20) NOT NULL,
+        status                VARCHAR(20) NOT NULL DEFAULT 'draft',
+        customer_id           INT NULL,
+        customer_name_override VARCHAR(255) NULL,
+        site_address          TEXT NULL,
+        contact_person        VARCHAR(255) NULL,
+        contact_phone         VARCHAR(50) NULL,
+        po_number             VARCHAR(100) NULL,
+        service_date          DATE NULL,
+        assigned_user_id      VARCHAR(36) NULL,
+        assigned_name         VARCHAR(255) NULL,
+        work_description      TEXT NOT NULL,
+        labour_hours          DECIMAL(8,2) NULL,
+        labour_rate           DECIMAL(10,2) NULL,
+        labour_amount         DECIMAL(12,2) NULL,
+        notes                 TEXT NULL,
+        internal_notes        TEXT NULL,
+        completion_summary    TEXT NULL,
+        authorised_by         VARCHAR(255) NULL,
+        signature_data        LONGTEXT NULL,
+        approval_date         DATE NULL,
+        invoice_id            INT NULL,
+        converted_job_id      INT NULL,
+        created_by_user_id    VARCHAR(36) NULL,
+        created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_jc_company  (company_id),
+        INDEX idx_jc_status   (company_id, status),
+        INDEX idx_jc_customer (company_id, customer_id),
+        INDEX idx_jc_date     (company_id, service_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+    {
+      name: 'job_card_materials',
+      ddl: `CREATE TABLE IF NOT EXISTS job_card_materials (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        job_card_id  INT NOT NULL,
+        company_id   INT NOT NULL,
+        description  TEXT NOT NULL,
+        cost         DECIMAL(12,2) NOT NULL DEFAULT 0,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_jcm_card    (job_card_id),
+        INDEX idx_jcm_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+    {
+      name: 'job_card_photos',
+      ddl: `CREATE TABLE IF NOT EXISTS job_card_photos (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        job_card_id     INT NOT NULL,
+        company_id      INT NOT NULL,
+        file_path       VARCHAR(1000) NOT NULL,
+        file_name       VARCHAR(255) NOT NULL,
+        mime_type       VARCHAR(100) NULL,
+        caption         TEXT NULL,
+        uploaded_by     VARCHAR(36) NULL,
+        created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_jcp_card    (job_card_id),
+        INDEX idx_jcp_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
+  ];
+  for (const { name, ddl } of jobCardTables) {
+    try {
+      const [existRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${name}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(existRows?.[0]?.cnt ?? 0) > 0) continue;
+      await db.execute(sql.raw(ddl));
+      console.log(`[startup-migration] ${name} table ready`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+        console.warn(`[startup-migration] ${name} CREATE failed:`, msg);
+      }
+    }
+  }
+
+  // ── Job Cards: back-link columns on invoices and jobs ─────────────────────────
+  // source_job_card_id on invoices — permanent link from invoice back to its source card
+  // source_job_card_id on jobs     — permanent link from a converted job back to its source card
+  const jobCardCols: Array<{ table: string; column: string; definition: string }> = [
+    { table: 'invoices', column: 'source_job_card_id', definition: 'INT NULL' },
+    { table: 'jobs',     column: 'source_job_card_id', definition: 'INT NULL' },
+  ];
+  for (const { table, column, definition } of jobCardCols) {
+    try {
+      const [colRows] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${table} AND COLUMN_NAME = ${column}`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      if (Number(colRows?.[0]?.cnt ?? 0) > 0) continue;
+      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+      console.log(`[startup-migration] Added ${column} to ${table}`);
+    } catch (e: unknown) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!msg.includes('Duplicate column') && !msg.includes('ER_DUP_FIELDNAME')) {
+        console.warn(`[startup-migration] Could not add ${column} to ${table}:`, msg);
+      }
+    }
+  }
 }
 
 // ── Run migrations at module load time (covers dev HMR + production) ─────────
@@ -2965,6 +3082,14 @@ app.get("/api/scheduler/tasks", scheduler_tasks_get_589);
 // General tasks (job-optional)
 app.post("/api/tasks", tasks_post);
 app.put("/api/tasks/:id", tasks_id_put);
+// ── Job Cards ─────────────────────────────────────────────────────────────────
+app.get("/api/job-cards", job_cards_get);
+app.post("/api/job-cards", job_cards_post);
+app.get("/api/job-cards/:id", job_cards_id_get);
+app.put("/api/job-cards/:id", job_cards_id_put);
+app.delete("/api/job-cards/:id", job_cards_id_delete);
+app.post("/api/job-cards/:id/invoice", job_cards_id_invoice_post);
+app.post("/api/job-cards/:id/convert", job_cards_id_convert_post);
 app.get("/api/secure-share", secure_share_get_590);
 app.post("/api/secure-share", secure_share_post_591);
 app.delete("/api/secure-share/:id", secure_share_id_delete_592);
