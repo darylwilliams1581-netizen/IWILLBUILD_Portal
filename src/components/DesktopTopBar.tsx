@@ -6,8 +6,9 @@
  *
  * Layout:
  *   Left  — Logo + IWILLBUILD wordmark
- *   Centre — "Working" status pill (if present)
- *   Right — Teams | User name (→ /settings) | Logout | Notification bell
+ *   Right — [Dazza AI] [Dev Console] (owner only) | avatar+name → /settings | Sign out | 🔔 | Help
+ *
+ * Billing and Teams have been moved to the DesktopDock (Row 2).
  */
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -96,7 +97,7 @@ export default function DesktopTopBar() {
         </span>
       </Link>
 
-      {/* ── Right: nav links + user + logout + bell ── */}
+      {/* ── Right: owner tools + user + logout + bell + help ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
         {/* Dazza AI — specific owner email only */}
@@ -166,66 +167,6 @@ export default function DesktopTopBar() {
           <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
         )}
 
-        {/* Billing — icon only, compact */}
-        <Link
-          to="/billing"
-          title="Billing"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 30,
-            height: 30,
-            borderRadius: 8,
-            textDecoration: 'none',
-            color: '#64748b',
-            transition: 'background 0.15s, color 0.15s',
-            flexShrink: 0,
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
-            (e.currentTarget as HTMLElement).style.color = '#0f172a';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-            (e.currentTarget as HTMLElement).style.color = '#64748b';
-          }}
-        >
-          <CreditCard size={15} />
-        </Link>
-
-        {/* Teams — beside Billing */}
-        <Link
-          to="/team"
-          title="Team"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            borderRadius: 8,
-            textDecoration: 'none',
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#64748b',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
-            (e.currentTarget as HTMLElement).style.color = '#0f172a';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-            (e.currentTarget as HTMLElement).style.color = '#64748b';
-          }}
-        >
-          <Users size={15} />
-          <span>Teams</span>
-        </Link>
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
-
         {/* User name → settings */}
         {displayName && (
           <Link
@@ -279,7 +220,7 @@ export default function DesktopTopBar() {
           </Link>
         )}
 
-        {/* Log out */}
+        {/* Sign out */}
         <button
           onClick={() => void handleSignOut()}
           title="Sign out"
@@ -316,7 +257,7 @@ export default function DesktopTopBar() {
         {/* Notification bell */}
         <NotificationBell collapsed={false} />
 
-        {/* Help — far right, dark pill, bold to stand out */}
+        {/* Help — far right, dark pill */}
         <Link
           to="/help"
           title="Help & Support"
