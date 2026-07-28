@@ -83,8 +83,8 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 44,
-        flexShrink: 0,
+        flex: '1 1 0',
+        minWidth: 48,
         gap: 2,
         textDecoration: 'none',
         outline: 'none',
@@ -94,7 +94,8 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: 36,
+          width: '100%',
+          maxWidth: 52,
           height: 30,
           borderRadius: 7,
           backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.92)',
@@ -103,7 +104,6 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
             : '1px solid rgba(255,255,255,0.55)',
           display: 'grid',
           placeItems: 'center',
-          flexShrink: 0,
           transition: 'transform 110ms ease, box-shadow 110ms ease, background-color 110ms ease',
           boxShadow: active
             ? `0 0 0 1.5px ${item.color}40, 0 1px 4px ${item.color}30`
@@ -122,13 +122,16 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         style={{
           fontSize: 8.5,
           fontWeight: active ? 700 : 500,
-          color: active ? '#ffffff' : 'rgba(255,255,255,0.75)',
+          color: active ? '#ffffff' : 'rgba(255,255,255,0.85)',
           lineHeight: 1,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          maxWidth: '100%',
+          width: '100%',
+          textAlign: 'center',
           letterSpacing: '-0.01em',
+          paddingLeft: 1,
+          paddingRight: 1,
         }}
       >
         {item.label}
@@ -174,18 +177,17 @@ export default function DesktopDock() {
         style={{
           position: 'fixed',
           top: 56,
-          left: 10,
-          right: 10,
+          left: 0,
+          right: 0,
           zIndex: 1050,
           background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-          border: '1px solid rgba(109,40,217,0.8)',
-          borderRadius: 14,
+          borderBottom: '1px solid rgba(109,40,217,0.8)',
           boxShadow: [
             '0 2px 4px rgba(15,23,42,0.08)',
             '0 6px 16px rgba(109,40,217,0.25)',
             '0 1px 0 rgba(255,255,255,0.12) inset',
           ].join(', '),
-          padding: '5px 8px 4px',
+          padding: '5px 0 4px',
           alignItems: 'flex-end',
         }}
       >
@@ -194,10 +196,10 @@ export default function DesktopDock() {
           style={{
             display: 'flex',
             alignItems: 'flex-end',
-            gap: 3,
             width: '100%',
-            overflowX: 'auto',
             paddingBottom: 1,
+            paddingLeft: 8,
+            paddingRight: 8,
           }}
         >
           {items.map((item) => (
