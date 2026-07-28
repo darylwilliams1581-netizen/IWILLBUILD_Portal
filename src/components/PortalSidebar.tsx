@@ -38,6 +38,7 @@ import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 
 import NotificationBell from '@/components/NotificationBell';
+import AppLauncher from '@/components/AppLauncher';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
@@ -247,23 +248,26 @@ function SidebarContent({
         }`}
       >
         {collapsed ? (
-          /* Collapsed: icon only, larger */
-          companyLogoUrl ? (
-            <img
-              src={companyLogoUrl}
-              alt={companyName}
-              className="h-9 w-9 object-contain rounded-lg shrink-0"
-            />
-          ) : (
-            <div
-              className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm"
-              title={companyName}
-            >
-              <span className="text-white text-base font-black leading-none">
-                {companyName.trim()[0]?.toUpperCase() ?? 'P'}
-              </span>
-            </div>
-          )
+          /* Collapsed: logo icon + launcher stacked */
+          <div className="flex flex-col items-center gap-1">
+            {companyLogoUrl ? (
+              <img
+                src={companyLogoUrl}
+                alt={companyName}
+                className="h-9 w-9 object-contain rounded-lg shrink-0"
+              />
+            ) : (
+              <div
+                className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm"
+                title={companyName}
+              >
+                <span className="text-white text-base font-black leading-none">
+                  {companyName.trim()[0]?.toUpperCase() ?? 'P'}
+                </span>
+              </div>
+            )}
+            <AppLauncher collapsed={true} />
+          </div>
         ) : (
           <>
             {/* Icon/logo mark */}
@@ -291,10 +295,13 @@ function SidebarContent({
               </span>
             </div>
 
+            {/* App launcher — desktop only, sits before close/mobile controls */}
+            <AppLauncher collapsed={false} />
+
             {onClose && (
               <button
                 onClick={onClose}
-                className="ml-auto p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                className="ml-1 p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
                 aria-label="Close menu"
               >
                 <X size={16} />
