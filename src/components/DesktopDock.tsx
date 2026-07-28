@@ -37,9 +37,8 @@ import {
   Truck,
   ShieldAlert,
   Ruler,
-  Car,
   FileSpreadsheet,
-  Wrench,
+  CreditCard,
 } from 'lucide-react';
 
 interface DockItem {
@@ -62,9 +61,7 @@ const ROW1: DockItem[] = [
   { label: 'Files',            icon: FolderOpen,      href: '/files',                color: '#d97706' },
   { label: 'Contacts',         icon: Users,           href: '/customers',            color: '#7c3aed' },
   { label: 'Invoices',         icon: Receipt,         href: '/invoices',             color: '#0284c7' },
-  { label: 'Drive',            icon: Car,             href: '/driver',               color: '#0284c7' },
   { label: 'Fleet',            icon: Truck,           href: '/fleet',                color: '#0891b2' },
-  { label: 'Prestart',         icon: Wrench,          href: '/prestart',             color: '#16a34a' },
 ];
 
 // ── Row 2: Tools, Safety, Management, Admin ───────────────────────────────────
@@ -72,6 +69,7 @@ const ROW2: DockItem[] = [
   { label: 'Estimating',       icon: Calculator,      href: '/estimating',           color: '#7c3aed' },
   { label: 'Takeoff Pad',      icon: Ruler,           href: '/takeoff-pad',          color: '#6366f1' },
   { label: 'Builders Calc',    icon: FileSpreadsheet, href: '/builders-calc',        color: '#0891b2' },
+  { label: 'Billing',          icon: CreditCard,      href: '/billing',              color: '#0284c7' },
   { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626' },
   { label: 'Safety Posters',   icon: ShieldAlert,     href: '/safety/posters',       color: '#b91c1c' },
   { label: 'Incidents',        icon: AlertCircle,     href: '/incidents',            color: '#b91c1c' },

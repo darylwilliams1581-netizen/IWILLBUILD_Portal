@@ -11,7 +11,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Users, Terminal, Bot, CreditCard, HelpCircle } from 'lucide-react';
+import { LogOut, Terminal, Bot, HelpCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
