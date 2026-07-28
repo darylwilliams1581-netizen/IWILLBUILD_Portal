@@ -48,14 +48,6 @@ interface QboStatus {
   connectedAt?: string;
 }
 
-interface MyobStatus {
-  connected: boolean;
-  platformReady?: boolean;
-  companyFileId?: string;
-  companyFileName?: string;
-  connectedAt?: string;
-}
-
 interface Props {
   isAdmin: boolean;
   isOwner: boolean;
@@ -223,19 +215,13 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
   const [qboConnecting, setQboConnecting] = useState(false);
   const [qboDisconnecting, setQboDisconnecting] = useState(false);
 
-  // MYOB state
-  const [myob, setMyob] = useState<MyobStatus | null>(null);
-  const [myobConnecting, setMyobConnecting] = useState(false);
-  const [myobDisconnecting, setMyobDisconnecting] = useState(false);
-
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [statusRes, credsRes, qboRes, myobRes] = await Promise.all([
+      const [statusRes, credsRes, qboRes] = await Promise.all([
         fetch('/api/integrations/xero/status', { credentials: 'include' }),
         isOwner ? fetch('/api/settings/xero-credentials', { credentials: 'include' }) : Promise.resolve(null),
         fetch('/api/integrations/qbo/status', { credentials: 'include' }),
-        fetch('/api/integrations/myob/status', { credentials: 'include' }),
       ]);
       if (statusRes.ok) setXero(await statusRes.json() as XeroStatus);
       else setXero({ connected: false });
@@ -243,12 +229,9 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
       else if (isOwner) setCreds({ configured: false, source: 'none', maskedClientId: null, redirectUri: null });
       if (qboRes.ok) setQbo(await qboRes.json() as QboStatus);
       else setQbo({ connected: false });
-      if (myobRes.ok) setMyob(await myobRes.json() as MyobStatus);
-      else setMyob({ connected: false });
     } catch {
       setXero({ connected: false });
       setQbo({ connected: false });
-      setMyob({ connected: false });
     }
     setLoading(false);
   }, [isOwner]);
@@ -280,19 +263,6 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
     if (qboConnected || qboError) {
       const next = new URLSearchParams(searchParams);
       next.delete('qbo_connected'); next.delete('qbo_error');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams]);
-
-  // Handle redirect back from MYOB OAuth
-  useEffect(() => {
-    const myobConnected = searchParams.get('myob_connected');
-    const myobError = searchParams.get('myob_error');
-    if (myobConnected) { setSuccessMsg('MYOB AccountRight connected successfully!'); void loadAll(); }
-    if (myobError) setError(`MYOB connection failed: ${myobError.replace(/_/g, ' ')}`);
-    if (myobConnected || myobError) {
-      const next = new URLSearchParams(searchParams);
-      next.delete('myob_connected'); next.delete('myob_error');
       setSearchParams(next, { replace: true });
     }
   }, [searchParams]);
@@ -367,35 +337,6 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
       setError('Failed to disconnect QuickBooks');
     } finally {
       setQboDisconnecting(false);
-    }
-  }
-
-  async function handleMyobConnect() {
-    setMyobConnecting(true); setError(''); setSuccessMsg('');
-    try {
-      const res = await fetch('/api/integrations/myob/auth-url', { credentials: 'include' });
-      const d = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !d.url) { setError(d.error ?? 'Failed to start MYOB connection.'); return; }
-      window.location.href = d.url;
-    } catch {
-      setError('Failed to start MYOB connection. Please try again.');
-    } finally {
-      setMyobConnecting(false);
-    }
-  }
-
-  async function handleMyobDisconnect() {
-    if (!confirm('Disconnect MYOB AccountRight? Existing synced invoices will keep their MYOB UIDs.')) return;
-    setMyobDisconnecting(true); setError(''); setSuccessMsg('');
-    try {
-      const res = await fetch('/api/integrations/myob/disconnect', { method: 'POST', credentials: 'include' });
-      if (!res.ok) { const d = await res.json() as { error?: string }; setError(d.error ?? 'Failed to disconnect'); return; }
-      setSuccessMsg('MYOB AccountRight disconnected.');
-      setMyob({ connected: false });
-    } catch {
-      setError('Failed to disconnect MYOB');
-    } finally {
-      setMyobDisconnecting(false);
     }
   }
 
@@ -725,113 +666,6 @@ export default function AccountingTab({ isAdmin, isOwner }: Props) {
           )}
         </div>
       </div>
-
-      {/* ── MYOB AccountRight card ── */}
-      <div className="relative rounded-xl overflow-hidden">
-        {/* UNDER DEVELOPMENT overlay */}
-        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center bg-slate-900/40 rounded-xl">
-          <div className="rotate-[-12deg] border-4 border-white/80 px-8 py-2.5 bg-slate-900/60 shadow-xl">
-            <span className="text-white font-black text-2xl tracking-[0.25em] uppercase select-none drop-shadow">
-              Under Development
-            </span>
-          </div>
-        </div>
-      <div className="bg-white border border-border rounded-xl overflow-hidden opacity-60">
-        <div className="flex items-center gap-4 px-5 py-4 border-b border-border">
-          <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0">
-            <span className="text-purple-600 font-black text-xs">MYOB</span>
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-sm text-foreground">MYOB AccountRight</p>
-            <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB AccountRight.</p>
-          </div>
-          {loading ? <Loader2 size={16} className="animate-spin text-muted-foreground" />
-            : myob?.connected ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Connected
-              </span>
-            ) : myob?.platformReady ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Ready to connect
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Not configured
-              </span>
-            )}
-        </div>
-        <div className="px-5 py-5">
-          {myob?.connected ? (
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Building2 size={10} />Company File</p>
-                  <p className="text-sm font-semibold text-foreground">{myob.companyFileName || '—'}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Link2 size={10} />Connected</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {myob.connectedAt ? new Date(myob.connectedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                  </p>
-                </div>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <p className="text-xs font-bold text-emerald-700 mb-2">What syncs to MYOB:</p>
-                <ul className="text-xs text-emerald-700 space-y-1">
-                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Sale Invoices (Service type) — line items, GST</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 size={11} />Customers → MYOB Contacts (name, email, ABN)</li>
-                </ul>
-              </div>
-              {isAdmin && (
-                <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
-                  <button onClick={() => void handleMyobConnect()} disabled={true}
-                    className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-not-allowed">
-                    {myobConnecting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}Reconnect
-                  </button>
-                  <button onClick={() => void handleMyobDisconnect()} disabled={true}
-                    className="flex items-center gap-2 px-3 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 cursor-not-allowed">
-                    {myobDisconnecting ? <Loader2 size={12} className="animate-spin" /> : <Unplug size={12} />}Disconnect
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
-                {myob?.platformReady
-                  ? 'Your MYOB app is configured. Click below to authorise access to your company file.'
-                  : 'To connect MYOB AccountRight, add MYOB_CLIENT_ID, MYOB_CLIENT_SECRET, and MYOB_REDIRECT_URI in Settings → Secrets.'}
-              </p>
-              <ul className="text-xs text-slate-500 space-y-1">
-                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Push invoices to MYOB with one click</li>
-                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />Sync customers as MYOB Contacts automatically</li>
-                <li className="flex items-center gap-2"><ArrowRight size={11} className="text-primary shrink-0" />GST, line items and ABN stay in sync</li>
-              </ul>
-              {isAdmin && myob?.platformReady ? (
-                <div className="flex items-center gap-3">
-                  <button onClick={() => void handleMyobConnect()} disabled={true}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-40 cursor-not-allowed">
-                    {myobConnecting ? <Loader2 size={14} className="animate-spin" /> : <span className="font-black text-white text-xs">M</span>}
-                    Connect MYOB
-                  </button>
-                  <a href="https://developer.myob.com/api/myob-business-api/api-overview/authentication/" target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-                    MYOB OAuth docs <ExternalLink size={11} />
-                  </a>
-                </div>
-              ) : isAdmin ? (
-                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
-                  <AlertCircle size={13} className="shrink-0 mt-0.5 text-amber-600" />
-                  <p>Add <code className="bg-amber-100 px-1 rounded font-mono">MYOB_CLIENT_ID</code>, <code className="bg-amber-100 px-1 rounded font-mono">MYOB_CLIENT_SECRET</code>, and <code className="bg-amber-100 px-1 rounded font-mono">MYOB_REDIRECT_URI</code> in Settings → Secrets to enable MYOB.</p>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">Only admins can connect accounting integrations.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-      </div>{/* end MYOB under-development wrapper */}
 
       {/* ── Immutability notice ── */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex items-start gap-3">

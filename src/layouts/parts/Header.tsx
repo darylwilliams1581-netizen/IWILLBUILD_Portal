@@ -13,7 +13,7 @@ const MODULES = [
   { href: '/studio/jobs',      label: 'Jobs',       desc: 'Create, track and close out jobs' },
   { href: '/studio/estimates', label: 'Estimating', desc: 'Cost guides, quotes and approvals' },
   { href: '/studio/fleet',     label: 'Fleet',      desc: 'Prestarts, service logs and flags' },
-  { href: '/studio/accounts',  label: 'Accounts',   desc: 'Xero, MYOB and QuickBooks sync' },
+  { href: '/studio/accounts',  label: 'Accounts',   desc: 'Xero and QuickBooks sync' },
   { href: '/studio',           label: 'Studio',     desc: 'Documents, forms and safety packs' },
 ];
 
