@@ -11,7 +11,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Users, Terminal, Bot } from 'lucide-react';
+import { LogOut, Users, Terminal, Bot, CreditCard, HelpCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
@@ -184,6 +184,64 @@ export default function DesktopTopBar() {
             <span>Dev Console</span>
           </Link>
         )}
+
+        {/* Billing */}
+        <Link
+          to="/billing"
+          title="Billing"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 10px',
+            borderRadius: 8,
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#64748b',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
+            (e.currentTarget as HTMLElement).style.color = '#0f172a';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = '#64748b';
+          }}
+        >
+          <CreditCard size={15} />
+          <span>Billing</span>
+        </Link>
+
+        {/* Help — bold, accent colour to stand out */}
+        <Link
+          to="/help"
+          title="Help & Support"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 10px',
+            borderRadius: 8,
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 800,
+            color: '#7c3aed',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = '#f5f3ff';
+            (e.currentTarget as HTMLElement).style.color = '#5b21b6';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = '#7c3aed';
+          }}
+        >
+          <HelpCircle size={15} />
+          <span>Help</span>
+        </Link>
 
         {/* Divider */}
         <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
