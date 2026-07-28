@@ -108,10 +108,10 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 38,
-        height: 38,
+        flex: '1 1 0',          // fill available width evenly
+        minWidth: 0,
+        height: 36,
         borderRadius: 10,
-        flexShrink: 0,
         textDecoration: 'none',
         outline: 'none',
         boxShadow: active ? `0 0 0 2px ${item.color}38` : 'none',
@@ -123,19 +123,18 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
       <div
         className="dock-tile"
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: 9,
+          width: '100%',
+          height: 32,
+          borderRadius: 8,
           backgroundColor: item.bg,
-          border: `1px solid ${item.color}20`,
+          border: `1px solid ${item.color}22`,
           display: 'grid',
           placeItems: 'center',
           transition: 'transform 110ms ease, box-shadow 110ms ease',
-          flexShrink: 0,
         }}
       >
         <Icon
-          size={15}
+          size={16}
           color={item.color}
           strokeWidth={active ? 2.2 : 1.8}
           aria-hidden="true"
@@ -192,9 +191,10 @@ export default function DesktopDock() {
         className="hidden md:flex"
         style={{
           position: 'fixed',
-          top: 22,                          // centre of the 44px TopBar strip
-          left: '50%',
-          transform: 'translateX(-50%) translateY(-50%)',
+          top: 22,
+          left: 12,
+          right: 12,
+          transform: 'translateY(-50%)',
           zIndex: 1050,
           background: 'rgba(255,255,255,0.98)',
           backdropFilter: 'blur(16px)',
@@ -207,12 +207,10 @@ export default function DesktopDock() {
             '0 12px 32px rgba(15,23,42,0.06)',
             '0 0 0 0.5px rgba(15,23,42,0.03)',
           ].join(', '),
-          padding: '4px 8px',
+          padding: '4px 6px',
           alignItems: 'center',
-          gap: 1,
-          // Scrollable on narrow viewports — never clips
+          gap: 2,
           overflowX: 'auto',
-          maxWidth: 'calc(100vw - 24px)',
         }}
       >
         {items.map((item) => (
