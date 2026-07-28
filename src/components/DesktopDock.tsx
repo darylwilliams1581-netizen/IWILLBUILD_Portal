@@ -119,7 +119,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         />
       </div>
 
-      {/* Active dot */}
+      {/* Active dot — sits below the tile */}
       {active && (
         <span
           aria-hidden="true"
@@ -169,7 +169,7 @@ export default function DesktopDock() {
         className="hidden md:flex"
         style={{
           position: 'fixed',
-          bottom: 18,
+          top: 10,
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 1050,
