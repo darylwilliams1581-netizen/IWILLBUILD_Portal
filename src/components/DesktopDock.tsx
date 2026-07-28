@@ -1,16 +1,15 @@
 /**
  * DesktopDock — Bottom-centre floating navigation dock.
  *
- * Desktop-only (md+). Fixed bottom-centre pill with two rows of icons.
- * 22 nav items from the screenshot, split into two rows of 11.
+ * Desktop-only (md+). Two-row pill, fixed bottom-centre.
+ * Icons match the AppLauncher exactly — same colour + background tile per module.
  *
  * Design:
  *   - White pill, thin border, soft layered shadow
- *   - 36×36 icon buttons, 10px border-radius
- *   - Active: faint orange fill + orange icon + 4px dot indicator
- *   - Hover: very light grey tint
- *   - Native title tooltip (no custom tooltip needed — clean)
- *   - Divider between the two rows
+ *   - 36×36 coloured icon tiles (same palette as AppLauncher)
+ *   - Active: ring highlight + dot indicator
+ *   - Hover: slight scale + shadow lift on the tile
+ *   - Native title tooltip
  */
 
 import { useLocation, Link } from 'react-router-dom';
@@ -30,59 +29,60 @@ import {
   Map,
   ShieldCheck,
   AlertCircle,
-  Wrench,
+  Building2,
   Users,
   UserCircle,
-  List,
+  TableProperties,
   ScrollText,
   Link2,
-  BookMarked,
+  FileStack,
   History,
 } from 'lucide-react';
 
-// ── Item definition ───────────────────────────────────────────────────────────
+// ── Item definition — mirrors AppLauncher LAUNCHER_MODULES exactly ────────────
 interface DockItem {
   label: string;
   icon: React.ElementType;
   href: string;
+  color: string;   // icon colour
+  bg: string;      // tile background
   adminOnly?: boolean;
   ownerOnly?: boolean;
 }
 
 // Row 1 — 11 items
 const ROW_1: DockItem[] = [
-  { label: 'Dashboard',    icon: LayoutDashboard, href: '/home' },
-  { label: 'Jobs',         icon: HardHat,         href: '/jobs' },
-  { label: 'Job Cards',    icon: Zap,             href: '/job-cards' },
-  { label: 'Estimating',   icon: Calculator,      href: '/estimating' },
-  { label: 'Invoices',     icon: Receipt,         href: '/invoices' },
-  { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler' },
-  { label: 'App Docs',     icon: FileText,        href: '/job-docs' },
-  { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms' },
-  { label: 'Library',      icon: BookOpen,        href: '/studio/library' },
-  { label: 'Files',        icon: FolderOpen,      href: '/files' },
-  { label: 'Fleet',        icon: Truck,           href: '/fleet' },
+  { label: 'Dashboard',    icon: LayoutDashboard, href: '/home',               color: '#1263d8', bg: '#eff6ff' },
+  { label: 'Jobs',         icon: HardHat,         href: '/jobs',               color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Job Cards',    icon: Zap,             href: '/job-cards',          color: '#ca8a04', bg: '#fefce8' },
+  { label: 'Estimating',   icon: Calculator,      href: '/estimating',         color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Invoices',     icon: Receipt,         href: '/invoices',           color: '#0284c7', bg: '#f0f9ff' },
+  { label: 'Scheduler',    icon: CalendarDays,    href: '/scheduler',          color: '#059669', bg: '#ecfdf5' },
+  { label: 'App Docs',     icon: FileText,        href: '/studio/documents',   color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Forms',        icon: ClipboardList,   href: '/studio/forms',       color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Library',      icon: BookOpen,        href: '/studio/library',     color: '#b45309', bg: '#fffbeb' },
+  { label: 'Files',        icon: FolderOpen,      href: '/files',              color: '#f97316', bg: '#fff7ed' },
+  { label: 'Fleet',        icon: Truck,           href: '/fleet',              color: '#059669', bg: '#ecfdf5' },
 ];
 
 // Row 2 — 11 items
 const ROW_2: DockItem[] = [
-  { label: 'Plan Manager', icon: Map,             href: '/plan-manager' },
-  { label: 'Safety',       icon: ShieldCheck,     href: '/safety' },
-  { label: 'Incidents',    icon: AlertCircle,     href: '/incidents' },
-  { label: 'Equipment',    icon: Wrench,          href: '/studio/asset-manager' },
-  { label: 'Contacts',     icon: Users,           href: '/customers' },
-  { label: 'Team',         icon: UserCircle,      href: '/team',         adminOnly: true },
-  { label: 'Lists',        icon: List,            href: '/lists' },
-  { label: 'User Logs',    icon: ScrollText,      href: '/user-logs',    adminOnly: true },
-  { label: 'Quick Links',  icon: Link2,           href: '/quick-links' },
-  { label: 'Job Field Docs', icon: BookMarked,    href: '/job-docs' },
-  { label: 'Sign-in History', icon: History,      href: '/signin-history', adminOnly: true },
+  { label: 'Plan Manager',     icon: Map,             href: '/plan-manager',         color: '#16a34a', bg: '#f0fdf4' },
+  { label: 'Safety',           icon: ShieldCheck,     href: '/safety',               color: '#dc2626', bg: '#fef2f2' },
+  { label: 'Incidents',        icon: AlertCircle,     href: '/incidents',            color: '#b91c1c', bg: '#fff1f2' },
+  { label: 'Equipment',        icon: Building2,       href: '/studio/asset-manager', color: '#64748b', bg: '#f1f5f9' },
+  { label: 'Contacts',         icon: Users,           href: '/customers',            color: '#7c3aed', bg: '#f5f3ff' },
+  { label: 'Team',             icon: UserCircle,      href: '/team',                 color: '#0f172a', bg: '#f1f5f9', adminOnly: true },
+  { label: 'Lists',            icon: TableProperties, href: '/lists',                color: '#0891b2', bg: '#ecfeff' },
+  { label: 'User Logs',        icon: ScrollText,      href: '/user-logs',            color: '#64748b', bg: '#f8fafc', adminOnly: true },
+  { label: 'Quick Links',      icon: Link2,           href: '/quick-links',          color: '#6366f1', bg: '#eef2ff' },
+  { label: 'Job Field Docs',   icon: FileStack,       href: '/job-docs',             color: '#0891b2', bg: '#ecfeff' },
+  { label: 'Sign-in History',  icon: History,         href: '/signin-history',       color: '#64748b', bg: '#f8fafc', adminOnly: true },
 ];
 
-// ── Single icon button ────────────────────────────────────────────────────────
+// ── Single dock icon ──────────────────────────────────────────────────────────
 function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
   const Icon = item.icon;
-  const ORANGE = '#f97316';
 
   return (
     <Link
@@ -95,30 +95,42 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 36,
-        height: 36,
-        borderRadius: 9,
+        width: 38,
+        height: 38,
+        borderRadius: 10,
         flexShrink: 0,
-        transition: 'background 110ms ease, color 110ms ease',
-        background: active ? `${ORANGE}1a` : 'transparent',
-        color: active ? ORANGE : 'rgba(71,85,105,0.72)',
         textDecoration: 'none',
         outline: 'none',
+        // Active: ring around the tile
+        boxShadow: active
+          ? `0 0 0 2px ${item.color}40`
+          : 'none',
+        transition: 'box-shadow 120ms ease',
       }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.05)';
-          (e.currentTarget as HTMLElement).style.color = 'rgba(15,23,42,0.82)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.color = 'rgba(71,85,105,0.72)';
-        }
-      }}
+      className="dock-icon-btn"
     >
-      <Icon size={17} strokeWidth={active ? 2.2 : 1.75} aria-hidden="true" />
+      {/* Coloured tile */}
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: item.bg,
+          border: `1px solid ${item.color}22`,
+          display: 'grid',
+          placeItems: 'center',
+          transition: 'transform 110ms ease, box-shadow 110ms ease',
+          flexShrink: 0,
+        }}
+        className="dock-tile"
+      >
+        <Icon
+          size={16}
+          color={item.color}
+          strokeWidth={active ? 2.2 : 1.8}
+          aria-hidden="true"
+        />
+      </div>
 
       {/* Active dot */}
       {active && (
@@ -126,13 +138,13 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
           aria-hidden="true"
           style={{
             position: 'absolute',
-            bottom: 2,
+            bottom: 1,
             left: '50%',
             transform: 'translateX(-50%)',
             width: 3,
             height: 3,
             borderRadius: '50%',
-            background: ORANGE,
+            background: item.color,
           }}
         />
       )}
@@ -140,7 +152,7 @@ function DockIcon({ item, active }: { item: DockItem; active: boolean }) {
   );
 }
 
-// ── Row of icons ──────────────────────────────────────────────────────────────
+// ── Row ───────────────────────────────────────────────────────────────────────
 function DockRow({ items, pathname }: { items: DockItem[]; pathname: string }) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/');
@@ -154,14 +166,14 @@ function DockRow({ items, pathname }: { items: DockItem[]; pathname: string }) {
   );
 }
 
-// ── Horizontal rule between rows ──────────────────────────────────────────────
+// ── Row divider ───────────────────────────────────────────────────────────────
 function DockRowDivider() {
   return (
     <div
       aria-hidden="true"
       style={{
         height: 1,
-        background: 'rgba(226,232,240,0.8)',
+        background: 'rgba(226,232,240,0.75)',
         margin: '2px 0',
       }}
     />
@@ -186,35 +198,43 @@ export default function DesktopDock() {
   const row2 = filterRow(ROW_2);
 
   return (
-    <nav
-      aria-label="Desktop navigation dock"
-      className="hidden md:block"
-      style={{
-        position: 'fixed',
-        bottom: 18,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1050,
-        // Pill surface
-        background: 'rgba(255,255,255,0.98)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(226,232,240,0.9)',
-        borderRadius: 16,
-        boxShadow: [
-          '0 1px 2px rgba(15,23,42,0.04)',
-          '0 4px 12px rgba(15,23,42,0.07)',
-          '0 12px 32px rgba(15,23,42,0.06)',
-          '0 0 0 0.5px rgba(15,23,42,0.03)',
-        ].join(', '),
-        padding: '6px 8px',
-        // Prevent overflow on narrow viewports
-        maxWidth: 'calc(100vw - 24px)',
-      }}
-    >
-      <DockRow items={row1} pathname={location.pathname} />
-      <DockRowDivider />
-      <DockRow items={row2} pathname={location.pathname} />
-    </nav>
+    <>
+      {/* Hover styles injected once */}
+      <style>{`
+        .dock-icon-btn:hover .dock-tile {
+          transform: scale(1.08);
+          box-shadow: 0 2px 8px rgba(15,23,42,0.10);
+        }
+      `}</style>
+
+      <nav
+        aria-label="Desktop navigation dock"
+        className="hidden md:block"
+        style={{
+          position: 'fixed',
+          bottom: 18,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1050,
+          background: 'rgba(255,255,255,0.98)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(226,232,240,0.9)',
+          borderRadius: 16,
+          boxShadow: [
+            '0 1px 2px rgba(15,23,42,0.04)',
+            '0 4px 12px rgba(15,23,42,0.07)',
+            '0 12px 32px rgba(15,23,42,0.06)',
+            '0 0 0 0.5px rgba(15,23,42,0.03)',
+          ].join(', '),
+          padding: '6px 8px',
+          maxWidth: 'calc(100vw - 24px)',
+        }}
+      >
+        <DockRow items={row1} pathname={location.pathname} />
+        <DockRowDivider />
+        <DockRow items={row2} pathname={location.pathname} />
+      </nav>
+    </>
   );
 }
