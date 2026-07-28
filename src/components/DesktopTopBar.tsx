@@ -18,14 +18,19 @@ import { signOut } from '@/lib/auth/auth-client.tsx';
 
 export const DESKTOP_TOPBAR_HEIGHT = 56;
 
+const OWNER_EMAIL = 'darylwilliams1581@gmail.com';
+
 export default function DesktopTopBar() {
-  const { me, isPlatformOwner } = usePermissions();
+  const { me } = usePermissions();
   const navigate = useNavigate();
 
   const displayName =
     me?.user?.name?.trim() ||
     me?.user?.email?.split('@')[0] ||
     '';
+
+  // Dazza AI + Dev Console visible ONLY to this specific email
+  const isOwnerEmail = me?.user?.email?.toLowerCase() === OWNER_EMAIL;
 
   async function handleSignOut() {
     try {
@@ -94,37 +99,8 @@ export default function DesktopTopBar() {
       {/* ── Right: nav links + user + logout + bell ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
-        {/* Teams */}
-        <Link
-          to="/team"
-          title="Team"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            borderRadius: 8,
-            textDecoration: 'none',
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#64748b',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
-            (e.currentTarget as HTMLElement).style.color = '#0f172a';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-            (e.currentTarget as HTMLElement).style.color = '#64748b';
-          }}
-        >
-          <Users size={15} />
-          <span>Teams</span>
-        </Link>
-
-        {/* Dazza AI — platform owner only */}
-        {isPlatformOwner && (
+        {/* Dazza AI — specific owner email only */}
+        {isOwnerEmail && (
           <Link
             to="/dazza-ai"
             title="Dazza AI"
@@ -154,8 +130,8 @@ export default function DesktopTopBar() {
           </Link>
         )}
 
-        {/* Developer Console — platform owner only */}
-        {isPlatformOwner && (
+        {/* Developer Console — specific owner email only */}
+        {isOwnerEmail && (
           <Link
             to="/owner-console"
             title="Developer Console"
@@ -185,6 +161,11 @@ export default function DesktopTopBar() {
           </Link>
         )}
 
+        {/* Divider — only shown when owner links are visible */}
+        {isOwnerEmail && (
+          <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
+        )}
+
         {/* Billing — icon only, compact */}
         <Link
           to="/billing"
@@ -211,6 +192,35 @@ export default function DesktopTopBar() {
           }}
         >
           <CreditCard size={15} />
+        </Link>
+
+        {/* Teams — beside Billing */}
+        <Link
+          to="/team"
+          title="Team"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 10px',
+            borderRadius: 8,
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#64748b',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
+            (e.currentTarget as HTMLElement).style.color = '#0f172a';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = '#64748b';
+          }}
+        >
+          <Users size={15} />
+          <span>Teams</span>
         </Link>
 
         {/* Divider */}
