@@ -29,6 +29,7 @@ import { signOut } from '@/lib/auth/auth-client';
 import { usePermissions, invalidateMeCache } from '@/lib/usePermissions';
 
 import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { useTerminology, invalidateTerminologyCache } from '@/lib/useTerminology';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { invalidateSupportModeCache } from '@/lib/useSupportMode';
@@ -510,23 +511,8 @@ export default function PortalSidebar() {
       {/* ── Desktop top bar — launcher + notifications, fixed top-right ── */}
       <DesktopTopBar />
 
-      {/* ── Desktop sidebar — collapsible ── */}
-      <aside
-        ref={_sidebarRef}
-        aria-label="Portal navigation"
-        aria-expanded={!collapsed}
-        className="relative hidden md:flex flex-col h-screen bg-white border-r border-gray-100 shrink-0 overflow-hidden"
-        style={{
-          width: sidebarWidth,
-          minWidth: sidebarWidth,
-          transition: 'width 200ms ease, min-width 200ms ease',
-        }}
-      >
-        <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapse={handleToggleCollapse}
-        />
-      </aside>
+      {/* ── Desktop dock — bottom-centre floating pill ── */}
+      <DesktopDock />
 
       {/* ── Mobile overlay drawer ── */}
       <AnimatePresence>

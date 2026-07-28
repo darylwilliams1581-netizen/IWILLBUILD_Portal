@@ -402,11 +402,17 @@ input, select, textarea {
   min-height: 0;           /* allow flex children to shrink below content size */
 }
 
-/* On mobile, reserve space at the bottom for the fixed tab bar (~64px bar + safe area).
-   The top strip is rendered inside portal-main so no top padding needed here. */
+/* Mobile: reserve space at the bottom for the fixed tab bar (~64px bar + safe area). */
 @media (max-width: 767px) {
   .portal-main {
     padding-bottom: calc(64px + var(--safe-bottom));
+  }
+}
+
+/* Desktop: reserve space at the bottom for the floating dock (~72px pill + 20px gap). */
+@media (min-width: 768px) {
+  .portal-main {
+    padding-bottom: 92px;
   }
 }
 
