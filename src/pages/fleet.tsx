@@ -18,6 +18,8 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowLeft,
+  Navigation,
+  Radio,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import {
@@ -30,11 +32,13 @@ import {
   type CreateAssetPayload,
 } from '@/lib/fleet-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
+import { usePermissions } from '@/lib/usePermissions';
 import { lazy, Suspense } from 'react';
-import { Navigation } from 'lucide-react';
 
 // Google Maps-based live map
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
+// Phase-1 tracker portal viewport
+const TrackerPortalTab = lazy(() => import('@/components/fleet/TrackerPortalTab'));
 
 // ── Status icon map (reserved for future use) ─────────────────────────────────
 
@@ -281,8 +285,9 @@ export default function FleetPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [showModal, setShowModal] = useState(false);
   const [successName, setSuccessName] = useState('');
-  const [view, setView] = useState<'assets' | 'live-map'>('assets');
+  const [view, setView] = useState<'assets' | 'live-map' | 'tracker'>('assets');
   const { isViewOnly } = useViewOnly();
+  const { isAdmin } = usePermissions();
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -367,6 +372,7 @@ export default function FleetPage() {
 
             {/* Centre: view toggle + add asset — absolutely centred */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
+              {/* Assets tab */}
               <button
                 onClick={() => setView('assets')}
                 title="Assets list"
@@ -378,6 +384,8 @@ export default function FleetPage() {
                 <Truck size={13} />
                 <span>Assets</span>
               </button>
+
+              {/* Live Map tab */}
               <button
                 onClick={() => setView('live-map')}
                 title="Live GPS map"
@@ -389,18 +397,35 @@ export default function FleetPage() {
                 <Navigation size={13} />
                 <span>Live Map</span>
               </button>
-              {/* Divider */}
-              <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
-              {/* Add Asset — inside the pill group */}
+
+              {/* Tracker Portal tab — desktop only */}
               <button
-                onClick={() => !isViewOnly && setShowModal(true)}
-                disabled={isViewOnly}
-                title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setView('tracker')}
+                title="Your tracker portal"
+                className={[
+                  'hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                  view === 'tracker' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                ].join(' ')}
               >
-                <Plus size={13} />
-                <span>Add Asset</span>
+                <Radio size={13} />
+                <span>Your Tracker Portal</span>
               </button>
+
+              {/* Divider + Add Asset — only shown on assets tab */}
+              {view === 'assets' && (
+                <>
+                  <span className="w-px h-5 bg-slate-300 mx-0.5 shrink-0" />
+                  <button
+                    onClick={() => !isViewOnly && setShowModal(true)}
+                    disabled={isViewOnly}
+                    title={isViewOnly ? 'Subscribe to continue' : 'Add asset'}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-primary text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={13} />
+                    <span>Add Asset</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Right spacer — keeps left content from overlapping centre */}
@@ -422,6 +447,20 @@ export default function FleetPage() {
                   <FleetLiveMap key="fleet-live-map" />
                 </Suspense>
               </PortalErrorBoundary>
+          )}
+
+          {/* ── Tracker Portal view — desktop only ── */}
+          {view === 'tracker' && (
+            <PortalErrorBoundary inline>
+              <Suspense fallback={
+                <div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="text-sm">Loading…</span>
+                </div>
+              }>
+                <TrackerPortalTab isAdmin={isAdmin} />
+              </Suspense>
+            </PortalErrorBoundary>
           )}
 
           {/* ── Assets view ── */}
