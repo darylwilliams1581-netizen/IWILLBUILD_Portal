@@ -10,6 +10,8 @@ import FilePanel from '@/components/FilePanel';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageError from '@/components/ui/PageError';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 export default function FilesPage() {
   const navigate = useNavigate();
@@ -33,7 +35,9 @@ export default function FilesPage() {
   const totalSize = files.reduce((s, f) => s + f.sizeBytes, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Files — IWILLBUILD Portal</title>
         <meta name="description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />

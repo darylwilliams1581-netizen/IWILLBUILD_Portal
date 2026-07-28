@@ -274,7 +274,7 @@ function CustomerFormModal({
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              {initial ? 'Save Changes' : 'Create Stakeholder'}
+              {initial ? 'Save Changes' : 'Create Contact'}
             </button>
           </div>
         </form>
@@ -619,7 +619,7 @@ export default function CustomersPage() {
               disabled={isViewOnly}
               className="inline-flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Plus size={15} />+ New Stakeholder
+              <Plus size={15} />+ New Contact
             </button>
           </div>
         )}

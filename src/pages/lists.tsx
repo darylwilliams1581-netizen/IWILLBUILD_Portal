@@ -22,6 +22,8 @@ import {
   ShoppingCart, Car, Gauge, Milestone, MapPin,
   UserCheck, Package, Play, Filter,
 } from 'lucide-react';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -983,6 +985,8 @@ export default function ListsPage() {
       </Helmet>
 
       <div className="portal-page">
+        <DesktopTopBar />
+        <DesktopDock />
         <h1 className="sr-only">Lists — IWILLBUILD</h1>
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 

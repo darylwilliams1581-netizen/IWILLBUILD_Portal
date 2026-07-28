@@ -14,6 +14,8 @@ import {
   ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, Home,
 } from 'lucide-react';
 import { fmtDate, statusBadge } from '@/components/safety/safety-types';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,8 +82,11 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      <Helmet>
+    <div className="min-h-screen bg-gray-50 md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+        <Helmet>
         <title>Field Docs | IWILLBUILD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
@@ -147,6 +152,7 @@ function JobPicker({ onSelect }: { onSelect: (job: Job) => void }) {
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -993,7 +999,9 @@ export default function JobFieldDocsPage() {
 
   // ── Job selected → docs view ──
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
         <button
