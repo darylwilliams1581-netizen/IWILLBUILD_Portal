@@ -10,8 +10,9 @@ import {
   Play, Info, Clock, Copy, Check, Plus, Database,
   Settings, Users, Building2, LogOut,
 } from 'lucide-react';
-import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { useSupportMode } from '@/lib/useSupportMode';
 import OverviewTab from '@/components/owner-console/OverviewTab';
 import CompaniesTab from '@/components/owner-console/CompaniesTab';
@@ -593,8 +594,9 @@ export default function OwnerConsolePage() {
   // Access guard
   if (!permsLoading && !isPlatformOwner) {
     return (
-      <div className="flex h-full bg-[#F4F5F7]">
-        <PortalSidebar />
+      <div className="min-h-screen bg-[#F4F5F7] md:pt-[112px]">
+        <DesktopTopBar />
+        <DesktopDock />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-sm">
             <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
@@ -623,10 +625,11 @@ export default function OwnerConsolePage() {
     : null;
 
   return (
-    <div className="flex h-full bg-[#F4F5F7] overflow-hidden">
-      <PortalSidebar />
+    <div className="min-h-screen bg-[#F4F5F7] md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden">
         <Helmet>
           <title>Developer Console — IWILLBUILD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
