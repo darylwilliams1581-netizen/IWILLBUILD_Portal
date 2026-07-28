@@ -3,7 +3,7 @@
  * Lists every home screen icon, its purpose, and how to use it.
  */
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import {
@@ -27,8 +27,9 @@ import type { ComponentType } from 'react';
 interface IconDoc {
   key: string;
   label: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  bg: string;
+  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string; color?: string; style?: React.CSSProperties }>;
+  /** Hex colour — matches the dock tile colour for this icon */
+  color: string;
   purpose: string;
   howTo: string[];
   tip?: string;
