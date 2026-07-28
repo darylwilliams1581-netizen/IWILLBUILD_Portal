@@ -1297,6 +1297,10 @@ async function runStartupMigrations() {
     { table: 'fleet_driver_sessions', column: 'max_speed_kmh',        definition: 'DECIMAL(6,2) NULL' },
     { table: 'fleet_driver_sessions', column: 'collision_count',      definition: 'INT NOT NULL DEFAULT 0' },
     { table: 'fleet_driver_sessions', column: 'summary_computed_at',  definition: 'DATETIME NULL' },
+    // ── fleet_driver_sessions: GPS heartbeat columns (required by live map query) ─
+    { table: 'fleet_driver_sessions', column: 'location_permission_status', definition: "VARCHAR(20) NULL DEFAULT 'unknown'" },
+    { table: 'fleet_driver_sessions', column: 'gps_status',                 definition: "VARCHAR(30) NULL DEFAULT 'waiting_fix'" },
+    { table: 'fleet_driver_sessions', column: 'last_heartbeat_at',          definition: 'DATETIME NULL' },
     // ── profiles: extended personal fields ───────────────────────────────────
     { table: 'profiles', column: 'licenses',               definition: 'TEXT NULL' },
     { table: 'profiles', column: 'profile_notes',          definition: 'TEXT NULL' },
