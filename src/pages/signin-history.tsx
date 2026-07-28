@@ -8,10 +8,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  LogIn, LogOut, Loader2, AlertCircle, RefreshCw,
+  LogIn, LogOut, AlertCircle, RefreshCw,
   Download, Filter, X, ChevronLeft, ChevronRight,
-  Truck, HardHat, Clock, Users,
+  Truck, HardHat, Clock, Users, ArrowLeft,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 interface HistoryRow {
   id: string;
@@ -134,7 +137,9 @@ export default function SignInHistoryPage() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Sign-In History — IWILLBUILD Portal</title>
         <meta name="description" content="Unified sign-in and sign-out history across all jobs and fleet assets for your company." />
@@ -156,6 +161,13 @@ export default function SignInHistoryPage() {
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
+            <Link
+              to="/home"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-800 mb-2"
+            >
+              <ArrowLeft size={14} />
+              Home
+            </Link>
             <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
               <Users size={20} className="text-violet-600" />
               Sign-In History
@@ -442,6 +454,6 @@ export default function SignInHistoryPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

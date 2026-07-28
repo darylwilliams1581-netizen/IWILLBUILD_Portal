@@ -4,9 +4,10 @@
  * Inline Share and Email actions open the ShareModal directly.
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Search, FileText, Archive, RotateCcw, Trash2, Loader2,
+  Search, FileText, Archive, RotateCcw, Trash2, Loader2, HardHat,
   GitBranch, ChevronDown, FolderOpen,
   Eye, Briefcase, AlertCircle, ChevronRight, Lock,
   Share2, Mail,
@@ -315,6 +316,12 @@ export default function PlanManagerList({
               <p className="text-xs text-slate-400 text-center max-w-xs">
                 Open a job and go to the Drawings tab to add drawings.
               </p>
+            )}
+            {!search && tab === 'active' && (
+              <Link to="/jobs" className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors">
+                <HardHat size={12} />
+                Go to Jobs
+              </Link>
             )}
           </div>
         ) : (

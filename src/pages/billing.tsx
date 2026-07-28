@@ -15,6 +15,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -563,7 +565,9 @@ export default function BillingPage() {
   const canManage = isAdmin || isOwner;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Subscription — IWILLBUILD Portal</title>
         <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />

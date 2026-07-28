@@ -16,6 +16,8 @@ import { useNavigate } from 'react-router-dom';
 
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import NewJobModal from '@/components/NewJobModal';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
@@ -99,7 +101,9 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8] flex flex-col">
+    <div className="min-h-screen bg-[#f5f6f8] flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Jobs — IWILLBUILD Portal</title>
         <meta name="description" content="Manage and track all construction jobs — schedules, crews, attendance, forms and files in one place." />

@@ -13,6 +13,8 @@ import {
   CheckCircle2, AlertCircle, ChevronRight, LayoutDashboard,
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -740,7 +742,9 @@ export default function UserLogsPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8]">
+    <div className="min-h-screen bg-[#f5f6f8] md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>User Logs — IWILLBUILD</title>
         <meta name="description" content="View site sign-ins, vehicle usage, time entries and platform activity across your team." />

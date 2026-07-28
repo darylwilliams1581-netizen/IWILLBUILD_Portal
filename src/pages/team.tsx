@@ -34,6 +34,8 @@ import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/lib/usePermissions';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Role definitions ──────────────────────────────────────────────────────────
 type Role = 'owner' | 'admin' | 'manager' | 'supervisor' | 'worker' | 'readonly';
@@ -583,7 +585,9 @@ export default function TeamPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Team — IWILLBUILD Portal</title>
         <meta name="description" content="Manage team members, roles and access for the IWILLBUILD portal." />

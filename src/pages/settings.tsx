@@ -28,6 +28,8 @@ import CompanyTab from '@/components/settings/CompanyTab';
 import MyAccountTab from '@/components/settings/MyAccountTab';
 import FleetAnalyticsTab from '@/components/settings/FleetAnalyticsTab';
 import { Skeleton } from '@/components/ui/skeleton';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 const tabs = [
   { id: 'account',      label: 'My Account',        icon: User },
@@ -90,7 +92,9 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Settings — IWILLBUILD Portal</title>
         <meta name="description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />

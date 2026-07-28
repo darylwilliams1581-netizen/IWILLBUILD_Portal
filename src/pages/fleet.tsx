@@ -21,6 +21,8 @@ import {
   Navigation,
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   fetchFleet,
   createAsset,
@@ -321,7 +323,9 @@ export default function FleetPage() {
   const attentionCount = counts.Maintenance + counts['Out of Service'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Fleet — IWILLBUILD Portal</title>
         <meta name="description" content="Track fleet assets, daily prestarts, service dates and rego in the IWILLBUILD portal." />

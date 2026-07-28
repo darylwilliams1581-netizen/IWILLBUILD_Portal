@@ -7,6 +7,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 import {
   AlertTriangle, Plus, Filter, X, ChevronRight,
   Loader2, CheckCircle2, Clock, Search, Home, ChevronLeft,
@@ -137,7 +139,9 @@ export default function IncidentsPage() {
     : incidents;
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f5f6f8] flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Incident Register — IWILLBUILD</title>
         <meta name="description" content="Company incident register — injuries, near misses, property damage, and safety events." />
@@ -371,6 +375,6 @@ export default function IncidentsPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

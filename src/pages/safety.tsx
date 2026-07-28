@@ -922,11 +922,15 @@ export function SafetyDashboardTab() {
 import { useNavigate as _useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import SafetyContent from '@/components/safety/SafetyContent';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Safety — IWILLBUILD</title>
         <meta name="description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />

@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import { usePermissions } from '@/lib/usePermissions';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -592,7 +594,9 @@ export default function QuickLinksPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col md:pt-[112px]">
+      <DesktopTopBar />
+      <DesktopDock />
       <Helmet>
         <title>Quick Links — IWILLBUILD Portal</title>
         <meta name="description" content="Office launcher for external portals, tools, and systems." />
