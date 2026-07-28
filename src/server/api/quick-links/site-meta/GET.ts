@@ -14,7 +14,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { auth } from '../../../../lib/auth/auth.js';
+import { getAuth } from '../../../../lib/auth/auth.js';
 
 // Max bytes to read from the remote page before giving up
 const MAX_BYTES = 80_000;
@@ -75,6 +75,7 @@ function extractMeta(html: string, pageUrl: string): {
 
 export default async function handler(req: Request, res: Response) {
   // ── Auth ───────────────────────────────────────────────────────────────────
+  const auth = getAuth();
   const session = await auth.api.getSession({ headers: req.headers as Headers });
   if (!session?.user) {
     res.status(401).json({ error: 'Unauthorised' });

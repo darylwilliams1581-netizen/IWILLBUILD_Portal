@@ -1,4 +1,3 @@
-import { risk_register } from 'virtual:content';
 /**
  * /risk-register — Company Risk Register
  *

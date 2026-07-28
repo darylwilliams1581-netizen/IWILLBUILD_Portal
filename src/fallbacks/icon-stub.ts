@@ -395,6 +395,13 @@ export const ClipboardCheck = NullIcon;
 
 // ── Additional icons ──────────────────────────────────────────────────────────
 export const AlarmClock = NullIcon;
+export const FileStack = NullIcon;
+export const CircleDashed = NullIcon;
+export const ChevronsUpDown = NullIcon;
+export const ListFilter = NullIcon;
+export const ShoppingCart = NullIcon;
+export const Milestone = NullIcon;
+export const ArrowRightLeft = NullIcon;
 
 export const Gamepad2 = NullIcon;
 
