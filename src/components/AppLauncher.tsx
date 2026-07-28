@@ -332,20 +332,20 @@ export default function AppLauncher({ collapsed = false }: AppLauncherProps) {
         aria-haspopup="dialog"
         title="App launcher"
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
+          width: 28,
+          height: 28,
+          borderRadius: 7,
           border: 'none',
-          background: open ? '#f1f5f9' : 'transparent',
+          background: open ? '#fff7ed' : 'transparent',
           display: 'grid',
           placeItems: 'center',
           cursor: 'pointer',
           transition: 'background 0.12s',
           flexShrink: 0,
         }}
-        className="hover:bg-slate-100"
+        className="hover:bg-orange-50"
       >
-        <NineDotIcon size={16} color={open ? '#1263d8' : '#64748b'} />
+        <NineDotIcon size={15} color={open ? '#ea580c' : '#f97316'} />
       </button>
 
       {panel}

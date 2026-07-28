@@ -227,13 +227,15 @@ function SidebarContent({
     <>
       {/* ── Logo / header ── */}
       <div
-        className={`flex items-center h-14 border-b border-gray-100 shrink-0 ${
-          collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'
+        className={`flex border-b border-gray-100 shrink-0 ${
+          collapsed
+            ? 'flex-col items-center justify-center gap-1 py-2 px-2 min-h-[72px]'
+            : 'flex-col items-start justify-center gap-0 px-3 py-2.5 min-h-[72px]'
         }`}
       >
         {collapsed ? (
-          /* Collapsed: logo icon + launcher stacked */
-          <div className="flex flex-col items-center gap-1">
+          /* Collapsed: logo mark centred, launcher dots below */
+          <>
             {companyLogoUrl ? (
               <img
                 src={companyLogoUrl}
@@ -251,46 +253,61 @@ function SidebarContent({
               </div>
             )}
             <AppLauncher collapsed={true} />
-          </div>
+          </>
         ) : (
           <>
-            {/* Icon/logo mark */}
-            {companyLogoUrl ? (
-              <img
-                src={companyLogoUrl}
-                alt={companyName}
-                className="h-9 w-9 object-contain rounded-lg shrink-0"
-              />
-            ) : (
-              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm">
-                <span className="text-white text-base font-black leading-none">
-                  {companyName.trim()[0]?.toUpperCase() ?? 'P'}
-                </span>
-              </div>
-            )}
+            {/* Row 1: logo mark + company name + close (mobile) */}
+            <div className="flex items-center w-full gap-2.5">
+              {companyLogoUrl ? (
+                <img
+                  src={companyLogoUrl}
+                  alt={companyName}
+                  className="h-8 w-8 object-contain rounded-lg shrink-0"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0 select-none shadow-sm">
+                  <span className="text-white text-sm font-black leading-none">
+                    {companyName.trim()[0]?.toUpperCase() ?? 'P'}
+                  </span>
+                </div>
+              )}
 
-            {/* Company name — always shown in expanded mode */}
-            <div className="flex-1 min-w-0">
-              <span className="block text-[13px] font-bold text-gray-800 truncate leading-tight">
-                {companyName}
-              </span>
-              <span className="block text-[10px] text-gray-400 font-medium leading-tight mt-0.5">
-                Portal
-              </span>
+              {/* Company name — max ~14 chars visible, rest fades behind gradient */}
+              <div className="flex-1 min-w-0 relative overflow-hidden">
+                <span
+                  className="block text-[13px] font-bold text-gray-800 leading-tight whitespace-nowrap"
+                  style={{ maxWidth: '100%' }}
+                >
+                  {companyName}
+                </span>
+                {/* Fade-out mask on the right edge */}
+                <span
+                  className="absolute inset-y-0 right-0 w-8 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(to right, transparent, #ffffff)',
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="ml-1 p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                  aria-label="Close menu"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
-            {/* App launcher — desktop only, sits before close/mobile controls */}
-            <AppLauncher collapsed={false} />
-
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="ml-1 p-1 text-gray-400 hover:text-gray-700 transition-colors shrink-0"
-                aria-label="Close menu"
-              >
-                <X size={16} />
-              </button>
-            )}
+            {/* Row 2: "Portal" label + launcher dots on same line */}
+            <div className="flex items-center justify-between w-full mt-1">
+              <span className="text-[10px] text-gray-400 font-medium leading-tight">
+                Portal
+              </span>
+              <AppLauncher collapsed={false} />
+            </div>
           </>
         )}
       </div>
