@@ -8,7 +8,7 @@
  *  - Toolbar: status filter + "+ Add Task" button
  *  - Scheduled tasks grouped by anchor date (dueDate ?? startDate)
  *  - Unscheduled section at the bottom
- *  - Clicking any task row opens an edit drawer
+ *  - Clicking any task row opens a centered modal form
  *
  * Data:
  *  - Fetches from GET /api/scheduler/tasks (LEFT JOIN — includes jobless tasks)
@@ -136,7 +136,11 @@ const ALL_STATUSES: TaskStatus[] = ['Open', 'In Progress', 'Completed', 'Cancell
 
 // ─── Date quick-button field ──────────────────────────────────────────────────
 
-function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function DateField({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const warn = yearWarning(value);
   const quick = [
     { label: 'Today',     value: todayStr() },
@@ -146,68 +150,48 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   ];
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-500">{label}</label>
+      <label className="text-xs font-medium text-slate-500">{label}</label>
       <div className="flex flex-wrap gap-1 mb-0.5">
         {quick.map((q) => (
-          <button key={q.label} type="button" onClick={() => onChange(q.value)}
+          <button
+            key={q.label}
+            type="button"
+            onClick={() => onChange(q.value)}
             className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-              value === q.value ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300 hover:text-orange-600'
-            }`}>
+              value === q.value
+                ? 'bg-orange-500 text-white border-orange-500'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-orange-300 hover:text-orange-600'
+            }`}
+          >
             {q.label}
           </button>
         ))}
         {value && (
-          <button type="button" onClick={() => onChange('')}
-            className="px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors flex items-center gap-0.5"
+          >
             <X size={9} /> Clear
           </button>
         )}
       </div>
-      <input type="date" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white" />
-      {warn && <p className="text-[11px] text-amber-600 flex items-center gap-1"><AlertCircle size={10} /> {warn}</p>}
-    </div>
-  );
-}
-
-// ─── Job picker field ─────────────────────────────────────────────────────────
-
-function JobPickerField({
-  value,
-  onChange,
-  jobs,
-}: {
-  value: number | null;
-  onChange: (id: number | null) => void;
-  jobs: JobOption[];
-}) {
-  return (
-    <div>
-      <label className="text-xs font-semibold text-slate-500 mb-1 block">
-        Linked job <span className="font-normal text-slate-400">(optional)</span>
-      </label>
-      <select
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : parseInt(e.target.value, 10))}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-      >
-        <option value="">— No linked job (general task) —</option>
-        {jobs.map((j) => (
-          <option key={j.id} value={j.id}>
-            {j.jobNumber ? `#${j.jobNumber} · ` : ''}{j.name}
-          </option>
-        ))}
-      </select>
-      {value === null && (
-        <p className="mt-1 text-[11px] text-slate-400 flex items-center gap-1">
-          <Tag size={9} /> This task will appear as <strong>General</strong> in the task list.
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+      />
+      {warn && (
+        <p className="text-[11px] text-amber-600 flex items-center gap-1">
+          <AlertCircle size={10} /> {warn}
         </p>
       )}
     </div>
   );
 }
 
-// ─── Shared form fields ───────────────────────────────────────────────────────
+// ─── Task form state ──────────────────────────────────────────────────────────
 
 interface TaskFormState {
   title: string;
@@ -221,21 +205,54 @@ interface TaskFormState {
   jobId: number | null;
 }
 
-function TaskFormFields({
-  form,
-  setForm,
-  members,
-  jobs,
-  showJobPicker,
-  titleRef,
-}: {
-  form: TaskFormState;
-  setForm: React.Dispatch<React.SetStateAction<TaskFormState>>;
+// ─── Centered Task Modal ──────────────────────────────────────────────────────
+// Used for both Add (task === null) and Edit (task !== null).
+
+interface TaskModalProps {
+  /** null = Add mode, SchedulerTask = Edit mode */
+  task: SchedulerTask | null;
   members: Member[];
   jobs: JobOption[];
-  showJobPicker: boolean;
-  titleRef?: React.RefObject<HTMLInputElement>;
-}) {
+  onClose: () => void;
+  onSaved: (updated: SchedulerTask) => void;
+  onCreated: (created: SchedulerTask) => void;
+}
+
+function TaskModal({ task, members, jobs, onClose, onSaved, onCreated }: TaskModalProps) {
+  const isEdit = task !== null;
+
+  const [form, setForm] = useState<TaskFormState>({
+    title:          isEdit ? task.title          : '',
+    description:    isEdit ? (task.description ?? '') : '',
+    startDate:      isEdit ? (task.startDate ?? '')   : '',
+    dueDate:        isEdit ? (task.dueDate ?? '')     : '',
+    status:         isEdit ? task.status         : 'Open',
+    assignedUserId: isEdit ? (task.assignedUserId ?? '') : '',
+    assignedName:   isEdit ? (task.assignedName ?? '')   : '',
+    notes:          isEdit ? (task.notes ?? '')          : '',
+    jobId:          isEdit ? (task.jobId ?? null)        : null,
+  });
+
+  const [saving,    setSaving]    = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [error,     setError]     = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  // Focus title on open
+  useEffect(() => {
+    const t = setTimeout(() => titleRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   function handleAssignee(userId: string) {
     setForm((f) => ({
       ...f,
@@ -244,279 +261,50 @@ function TaskFormFields({
     }));
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Title */}
-      <div>
-        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-          Title <span className="text-red-500">*</span>
-        </label>
-        <input
-          ref={titleRef}
-          type="text"
-          value={form.title}
-          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-          placeholder="e.g. Pick up ute from hire shop"
-        />
-      </div>
-
-      {/* Description */}
-      <div>
-        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-          Description <span className="font-normal text-slate-400">(optional)</span>
-        </label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          rows={2}
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
-        />
-      </div>
-
-      {/* Dates */}
-      <div className="grid grid-cols-1 gap-3">
-        <DateField
-          label="Start date (optional)"
-          value={form.startDate}
-          onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
-        />
-        <DateField
-          label="Due date (optional)"
-          value={form.dueDate}
-          onChange={(v) => setForm((f) => ({ ...f, dueDate: v }))}
-        />
-      </div>
-
-      {/* Status + Assignee */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-semibold text-slate-500 mb-1 block">Status</label>
-          <select
-            value={form.status}
-            onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as TaskStatus }))}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-          >
-            {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-500 mb-1 block">
-            Assigned to <span className="font-normal text-slate-400">(optional)</span>
-          </label>
-          <select
-            value={form.assignedUserId}
-            onChange={(e) => handleAssignee(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-          >
-            <option value="">— Unassigned —</option>
-            {members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div>
-        <label className="text-xs font-semibold text-slate-500 mb-1 block">
-          Notes <span className="font-normal text-slate-400">(optional)</span>
-        </label>
-        <textarea
-          value={form.notes}
-          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-          rows={2}
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
-        />
-      </div>
-
-      {/* Job picker */}
-      {showJobPicker && (
-        <JobPickerField
-          value={form.jobId}
-          onChange={(id) => setForm((f) => ({ ...f, jobId: id }))}
-          jobs={jobs}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Add Task Drawer ──────────────────────────────────────────────────────────
-
-interface AddDrawerProps {
-  members: Member[];
-  jobs: JobOption[];
-  onClose: () => void;
-  onCreated: (task: SchedulerTask) => void;
-}
-
-function AddTaskDrawer({ members, jobs, onClose, onCreated }: AddDrawerProps) {
-  const [form, setForm] = useState<TaskFormState>({
-    title: '',
-    description: '',
-    startDate: '',
-    dueDate: '',
-    status: 'Open',
-    assignedUserId: '',
-    assignedName: '',
-    notes: '',
-    jobId: null,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { titleRef.current?.focus(); }, []);
-
   async function handleSave() {
     if (!form.title.trim()) { setError('Title is required.'); return; }
     setError('');
     setSaving(true);
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title:          form.title.trim(),
-          description:    form.description.trim() || null,
-          startDate:      form.startDate || null,
-          dueDate:        form.dueDate || null,
-          status:         form.status,
-          notes:          form.notes.trim() || null,
-          assignedUserId: form.assignedUserId || null,
-          assignedName:   form.assignedName || null,
-          jobId:          form.jobId,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json() as { task: SchedulerTask & { job_name?: string; job_number?: string } };
-      // Enrich with job info from local list if not returned by API
-      const job = form.jobId ? jobs.find((j) => j.id === form.jobId) : null;
-      onCreated({
-        ...data.task,
-        jobId:     form.jobId,
-        jobName:   data.task.jobName ?? job?.name ?? null,
-        jobNumber: data.task.jobNumber ?? job?.jobNumber ?? null,
-      });
-    } catch {
-      setError('Failed to create task. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
+      const payload = {
+        title:          form.title.trim(),
+        description:    form.description.trim() || null,
+        startDate:      form.startDate || null,
+        dueDate:        form.dueDate || null,
+        status:         form.status,
+        notes:          form.notes.trim() || null,
+        assignedUserId: form.assignedUserId || null,
+        assignedName:   form.assignedName || null,
+        jobId:          form.jobId,
+      };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative z-10 bg-white w-full sm:w-[420px] sm:h-full sm:max-h-full overflow-y-auto rounded-t-2xl sm:rounded-none shadow-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
-          <Plus size={16} className="text-orange-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-800">Add Task</p>
-            <p className="text-xs text-slate-400">Job linkage is optional</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <TaskFormFields
-            form={form}
-            setForm={setForm}
-            members={members}
-            jobs={jobs}
-            showJobPicker={true}
-            titleRef={titleRef}
-          />
-          {error && (
-            <p className="mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
-              <AlertCircle size={11} /> {error}
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="shrink-0 px-5 py-4 border-t border-slate-200 flex gap-2">
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || !form.title.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors"
-          >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-            {saving ? 'Saving…' : 'Create Task'}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-50 transition-colors ml-auto"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Edit drawer ──────────────────────────────────────────────────────────────
-
-interface EditDrawerProps {
-  task: SchedulerTask;
-  members: Member[];
-  jobs: JobOption[];
-  onClose: () => void;
-  onSaved: (updated: SchedulerTask) => void;
-}
-
-function EditDrawer({ task, members, jobs, onClose, onSaved }: EditDrawerProps) {
-  const [form, setForm] = useState<TaskFormState>({
-    title:          task.title,
-    description:    task.description ?? '',
-    startDate:      task.startDate ?? '',
-    dueDate:        task.dueDate ?? '',
-    status:         task.status,
-    assignedUserId: task.assignedUserId ?? '',
-    assignedName:   task.assignedName ?? '',
-    notes:          task.notes ?? '',
-    jobId:          task.jobId ?? null,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState('');
-  const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { titleRef.current?.focus(); }, []);
-
-  async function handleSave() {
-    if (!form.title.trim()) { setError('Title is required.'); return; }
-    setError('');
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title:          form.title.trim(),
-          description:    form.description.trim() || null,
-          startDate:      form.startDate || null,
-          dueDate:        form.dueDate || null,
-          status:         form.status,
-          notes:          form.notes.trim() || null,
-          assignedUserId: form.assignedUserId || null,
-          assignedName:   form.assignedName || null,
-          jobId:          form.jobId,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json() as { task: SchedulerTask };
-      onSaved(data.task);
+      if (isEdit) {
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json() as { task: SchedulerTask };
+        onSaved(data.task);
+      } else {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json() as { task: SchedulerTask };
+        const job = form.jobId ? jobs.find((j) => j.id === form.jobId) : null;
+        onCreated({
+          ...data.task,
+          jobId:     form.jobId,
+          jobName:   data.task.jobName ?? job?.name ?? null,
+          jobNumber: data.task.jobNumber ?? job?.jobNumber ?? null,
+        });
+      }
     } catch {
       setError('Failed to save. Please try again.');
     } finally {
@@ -525,7 +313,8 @@ function EditDrawer({ task, members, jobs, onClose, onSaved }: EditDrawerProps) 
   }
 
   async function handleComplete() {
-    setSaving(true);
+    if (!isEdit) return;
+    setCompleting(true);
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
@@ -537,64 +326,196 @@ function EditDrawer({ task, members, jobs, onClose, onSaved }: EditDrawerProps) 
       const data = await res.json() as { task: SchedulerTask };
       onSaved(data.task);
     } catch {
-      setError('Failed to update.');
+      setError('Failed to mark complete.');
     } finally {
-      setSaving(false);
+      setCompleting(false);
     }
   }
 
+  // Linked job display helpers
+  const linkedJob = form.jobId ? jobs.find((j) => j.id === form.jobId) : null;
+  const linkedJobLabel = linkedJob
+    ? (linkedJob.jobNumber ? `#${linkedJob.jobNumber} · ${linkedJob.name}` : linkedJob.name)
+    : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+    /* Full-screen overlay — click outside to close */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      aria-modal="true"
+      role="dialog"
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+
+      {/* Modal panel — max-w-lg keeps it compact on desktop */}
       <div
-        className="relative z-10 bg-white w-full sm:w-[420px] sm:h-full sm:max-h-full overflow-y-auto rounded-t-2xl sm:rounded-none shadow-2xl flex flex-col"
+        className="relative z-10 w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col"
+        style={{ maxHeight: 'min(90vh, 760px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 shrink-0">
-          <CheckSquare size={16} className="text-orange-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-slate-400 truncate">
-              {task.jobId
-                ? (task.jobNumber ? `#${task.jobNumber} · ` : '') + (task.jobName ?? '')
-                : 'General task'}
-            </p>
-            <p className="text-sm font-bold text-slate-800 truncate">Edit Task</p>
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-200 shrink-0">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isEdit ? 'bg-orange-50' : 'bg-emerald-50'}`}>
+            {isEdit
+              ? <CheckSquare size={14} className="text-orange-500" />
+              : <Plus size={14} className="text-emerald-600" />
+            }
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0">
-            <X size={16} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-800 leading-tight">
+              {isEdit ? 'Edit Task' : 'New Task'}
+            </p>
+            {isEdit && (
+              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                {task.jobId
+                  ? (task.jobNumber ? `#${task.jobNumber} · ` : '') + (task.jobName ?? '')
+                  : 'General task — no linked job'}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+            aria-label="Close"
+          >
+            <X size={15} />
           </button>
         </div>
 
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-          <TaskFormFields
-            form={form}
-            setForm={setForm}
-            members={members}
-            jobs={jobs}
-            showJobPicker={true}
-            titleRef={titleRef}
-          />
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4 min-h-0">
 
-          {/* Job link shortcut */}
-          {form.jobId && (
-            <div className="flex items-center gap-2 text-xs text-slate-400 border-t border-slate-100 pt-3">
-              <Briefcase size={11} />
-              <span>Linked job:</span>
-              <Link
-                to={`/jobs/${form.jobId}?tab=tasks`}
-                className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-0.5"
-                onClick={onClose}
+          {/* Title */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">
+              Title <span className="text-red-400">*</span>
+            </label>
+            <input
+              ref={titleRef}
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white placeholder:text-slate-300"
+              placeholder="e.g. Pick up ute from hire shop"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">
+              Description <span className="text-slate-300 font-normal">optional</span>
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+              placeholder="Add more detail…"
+            />
+          </div>
+
+          {/* Dates — side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            <DateField
+              label="Start date"
+              value={form.startDate}
+              onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
+            />
+            <DateField
+              label="Due date"
+              value={form.dueDate}
+              onChange={(v) => setForm((f) => ({ ...f, dueDate: v }))}
+            />
+          </div>
+
+          {/* Status + Assignee — side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as TaskStatus }))}
+                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
               >
-                {form.jobId === task.jobId
-                  ? (task.jobName ?? `Job #${form.jobId}`)
-                  : jobs.find((j) => j.id === form.jobId)?.name ?? `Job #${form.jobId}`}
-                <ExternalLink size={10} />
-              </Link>
+                {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
-          )}
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">
+                Assigned to <span className="text-slate-300 font-normal">optional</span>
+              </label>
+              <select
+                value={form.assignedUserId}
+                onChange={(e) => handleAssignee(e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              >
+                <option value="">Unassigned</option>
+                {members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
+              </select>
+            </div>
+          </div>
 
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">
+              Notes <span className="text-slate-300 font-normal">optional</span>
+            </label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+              placeholder="Internal notes…"
+            />
+          </div>
+
+          {/* Linked job — full-width, clearly optional */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">
+              Linked job <span className="text-slate-300 font-normal">optional</span>
+            </label>
+            <select
+              value={form.jobId ?? ''}
+              onChange={(e) => setForm((f) => ({
+                ...f,
+                jobId: e.target.value === '' ? null : parseInt(e.target.value, 10),
+              }))}
+              className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            >
+              <option value="">No linked job — general task</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.jobNumber ? `#${j.jobNumber} · ` : ''}{j.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Contextual hint row */}
+            {form.jobId === null ? (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                <Tag size={10} className="shrink-0" />
+                This task will be listed under <span className="font-semibold text-violet-500">General</span> — not tied to any job.
+              </p>
+            ) : linkedJobLabel && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                <Briefcase size={10} className="shrink-0 text-orange-400" />
+                <span>Linked to</span>
+                <Link
+                  to={`/jobs/${form.jobId}?tab=tasks`}
+                  className="text-orange-600 hover:text-orange-700 font-medium flex items-center gap-0.5"
+                  onClick={onClose}
+                >
+                  {linkedJobLabel} <ExternalLink size={9} />
+                </Link>
+              </p>
+            )}
+          </div>
+
+          {/* Error */}
           {error && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
               <AlertCircle size={11} /> {error}
@@ -602,33 +523,45 @@ function EditDrawer({ task, members, jobs, onClose, onSaved }: EditDrawerProps) 
           )}
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 px-5 py-4 border-t border-slate-200 flex gap-2">
-          {task.status !== 'Completed' && (
+        {/* ── Footer ── */}
+        <div className="shrink-0 px-5 py-3.5 border-t border-slate-100 bg-slate-50/60 rounded-b-xl flex items-center gap-2">
+          {/* Complete — only in edit mode when not already complete */}
+          {isEdit && task.status !== 'Completed' && (
             <button
               type="button"
               onClick={() => void handleComplete()}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-colors"
+              disabled={completing || saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-colors"
             >
-              <Check size={12} /> Complete
+              {completing
+                ? <Loader2 size={11} className="animate-spin" />
+                : <Check size={11} />
+              }
+              Complete
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || !form.title.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors"
-          >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+
+          {/* Spacer pushes Save + Cancel to the right */}
+          <div className="flex-1" />
+
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-50 transition-colors ml-auto"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || completing || !form.title.trim()}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors shadow-sm"
+          >
+            {saving
+              ? <Loader2 size={11} className="animate-spin" />
+              : <Check size={11} />
+            }
+            {isEdit ? 'Save changes' : 'Create task'}
           </button>
         </div>
       </div>
@@ -639,11 +572,11 @@ function EditDrawer({ task, members, jobs, onClose, onSaved }: EditDrawerProps) 
 // ─── Task row ─────────────────────────────────────────────────────────────────
 
 function TaskRow({ task, onEdit }: { task: SchedulerTask; onEdit: () => void }) {
-  const overdue   = isOverdue(task.dueDate, task.status);
-  const dueToday  = isDueToday(task.dueDate, task.status);
+  const overdue    = isOverdue(task.dueDate, task.status);
+  const dueToday   = isDueToday(task.dueDate, task.status);
   const isTerminal = task.status === 'Completed' || task.status === 'Cancelled';
-  const meta = STATUS_META[task.status] ?? STATUS_META['Open'];
-  const isGeneral = task.jobId === null;
+  const meta       = STATUS_META[task.status] ?? STATUS_META['Open'];
+  const isGeneral  = task.jobId === null;
 
   return (
     <button
@@ -686,7 +619,6 @@ function TaskRow({ task, onEdit }: { task: SchedulerTask; onEdit: () => void }) 
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-          {/* Job or General badge */}
           {isGeneral ? (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-600 border border-violet-200">
               <Tag size={9} /> General
@@ -698,14 +630,12 @@ function TaskRow({ task, onEdit }: { task: SchedulerTask; onEdit: () => void }) 
             </span>
           )}
 
-          {/* Assignee */}
           {task.assignedName && (
             <span className="flex items-center gap-1 text-xs text-slate-400">
               <User size={10} /> {task.assignedName}
             </span>
           )}
 
-          {/* Start date */}
           {task.startDate && (
             <span className="flex items-center gap-1 text-xs text-slate-400">
               <Calendar size={10} /> Start: {formatDateShort(task.startDate)}
@@ -723,10 +653,10 @@ function TaskRow({ task, onEdit }: { task: SchedulerTask; onEdit: () => void }) 
 // ─── Date group header ────────────────────────────────────────────────────────
 
 function DateGroupHeader({ dateStr, count }: { dateStr: string; count: number }) {
-  const today    = todayStr();
-  const tomorrow = addDays(1);
-  const overdue  = dateStr < today;
-  const isToday  = dateStr === today;
+  const today      = todayStr();
+  const tomorrow   = addDays(1);
+  const overdue    = dateStr < today;
+  const isToday    = dateStr === today;
   const isTomorrow = dateStr === tomorrow;
 
   let label = formatDate(dateStr);
@@ -762,8 +692,11 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
   const [jobsList, setJobsList] = useState<JobOption[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
-  const [editing,  setEditing]  = useState<SchedulerTask | null>(null);
-  const [adding,   setAdding]   = useState(false);
+
+  // null = closed, undefined = add mode, SchedulerTask = edit mode
+  const [modalTask, setModalTask] = useState<SchedulerTask | null | undefined>(undefined);
+  const isModalOpen = modalTask !== undefined;
+
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [statusFilter, setStatusFilter]       = useState<'all' | 'active' | 'completed'>('active');
 
@@ -797,28 +730,24 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
 
   function handleSaved(updated: SchedulerTask) {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    setEditing(null);
+    setModalTask(undefined);
   }
 
   function handleCreated(task: SchedulerTask) {
     setTasks((prev) => [task, ...prev]);
-    setAdding(false);
+    setModalTask(undefined);
   }
 
   // Apply job filter if provided (Job Detail tasks tab)
   const allTasks = filterJobId ? tasks.filter((t) => t.jobId === filterJobId) : tasks;
 
-  // Partition
   const activeTasks    = allTasks.filter((t) => t.status !== 'Completed' && t.status !== 'Cancelled');
   const completedTasks = allTasks.filter((t) => t.status === 'Completed');
+  const displayTasks   = statusFilter === 'completed' ? completedTasks : activeTasks;
 
-  const displayTasks = statusFilter === 'completed' ? completedTasks : activeTasks;
-
-  // Split into scheduled (has at least one date) and unscheduled
   const scheduled   = displayTasks.filter((t) => anchorDate(t) !== null);
   const unscheduled = displayTasks.filter((t) => anchorDate(t) === null);
 
-  // Group scheduled by anchor date
   const grouped = new Map<string, SchedulerTask[]>();
   for (const t of scheduled) {
     const key = anchorDate(t)!;
@@ -828,7 +757,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
   }
   const sortedDates = Array.from(grouped.keys()).sort();
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+  // ── Loading / error ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -851,17 +780,19 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
 
         {/* ── Toolbar ── */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 bg-white shrink-0 flex-wrap">
-          {/* Status filter */}
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
             {([
               { key: 'active',    label: 'Active' },
               { key: 'completed', label: 'Completed' },
               { key: 'all',       label: 'All' },
             ] as const).map(({ key, label }) => (
-              <button key={key} onClick={() => setStatusFilter(key)}
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
                 className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
                   statusFilter === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}>
+                }`}
+              >
                 {label}
               </button>
             ))}
@@ -871,11 +802,10 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
             {activeTasks.length} active · {unscheduled.length} unscheduled
           </span>
 
-          {/* Add Task button — only shown in full Scheduler view (not Job Detail) */}
           {!filterJobId && (
             <button
               type="button"
-              onClick={() => setAdding(true)}
+              onClick={() => setModalTask(null)}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm"
             >
               <Plus size={12} /> Add Task
@@ -902,7 +832,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
             {!filterJobId && statusFilter !== 'completed' && (
               <button
                 type="button"
-                onClick={() => setAdding(true)}
+                onClick={() => setModalTask(null)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors"
               >
                 <Plus size={12} /> Add Task
@@ -919,7 +849,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
               <DateGroupHeader dateStr={dateStr} count={group.length} />
               <div className="divide-y divide-slate-100">
                 {group.map((task) => (
-                  <TaskRow key={task.id} task={task} onEdit={() => setEditing(task)} />
+                  <TaskRow key={task.id} task={task} onEdit={() => setModalTask(task)} />
                 ))}
               </div>
             </div>
@@ -936,7 +866,9 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
             >
               <AlertTriangle size={12} className="text-amber-500 shrink-0" />
               <span className="text-xs font-bold text-amber-700">Unscheduled</span>
-              <span className="text-[10px] text-amber-600 ml-1">{unscheduled.length} task{unscheduled.length !== 1 ? 's' : ''}</span>
+              <span className="text-[10px] text-amber-600 ml-1">
+                {unscheduled.length} task{unscheduled.length !== 1 ? 's' : ''}
+              </span>
               <span className="ml-auto text-slate-400">
                 {showUnscheduled ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
               </span>
@@ -944,7 +876,7 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
             {showUnscheduled && (
               <div className="divide-y divide-slate-100">
                 {unscheduled.map((task) => (
-                  <TaskRow key={task.id} task={task} onEdit={() => setEditing(task)} />
+                  <TaskRow key={task.id} task={task} onEdit={() => setModalTask(task)} />
                 ))}
               </div>
             )}
@@ -961,24 +893,15 @@ export default function TasksSchedulerView({ filterJobId }: Props) {
         )}
       </div>
 
-      {/* ── Add drawer ── */}
-      {adding && (
-        <AddTaskDrawer
+      {/* ── Centered task modal (Add + Edit) ── */}
+      {isModalOpen && (
+        <TaskModal
+          task={modalTask ?? null}
           members={members}
           jobs={jobsList}
-          onClose={() => setAdding(false)}
-          onCreated={handleCreated}
-        />
-      )}
-
-      {/* ── Edit drawer ── */}
-      {editing && (
-        <EditDrawer
-          task={editing}
-          members={members}
-          jobs={jobsList}
-          onClose={() => setEditing(null)}
+          onClose={() => setModalTask(undefined)}
           onSaved={handleSaved}
+          onCreated={handleCreated}
         />
       )}
     </>
