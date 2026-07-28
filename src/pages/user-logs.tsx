@@ -758,13 +758,6 @@ export default function UserLogsPage() {
           Dashboard
         </a>
         <ChevronRight size={11} className="text-gray-300" />
-        <a
-          href="/lists"
-          className="text-gray-400 hover:text-primary transition-colors"
-        >
-          Lists
-        </a>
-        <ChevronRight size={11} className="text-gray-300" />
         <span className="text-gray-600 font-medium">User Logs</span>
       </div>
 
