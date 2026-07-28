@@ -1,0 +1,66 @@
+{
+  "LIKELIHOOD_OPTIONS": [
+    {
+      "value": "rare",
+      "label": "Rare",
+      "desc": "May occur only in exceptional circumstances",
+      "id": "J99iFrE3YkVX8cZCSWDsT"
+    },
+    {
+      "value": "unlikely",
+      "label": "Unlikely",
+      "desc": "Could occur at some time",
+      "id": "PNRjtHjUK9rBnhfoDUdUF"
+    },
+    {
+      "value": "possible",
+      "label": "Possible",
+      "desc": "Might occur at some time",
+      "id": "PXh37M6WAX95F-XGHuu4x"
+    },
+    {
+      "value": "likely",
+      "label": "Likely",
+      "desc": "Will probably occur in most circumstances",
+      "id": "BStyiR06K20lfMt9ySCBn"
+    },
+    {
+      "value": "almost_certain",
+      "label": "Almost certain",
+      "desc": "Is expected to occur in most circumstances",
+      "id": "sf-V66Z_6T1syhe-dhVEv"
+    }
+  ],
+  "CONSEQUENCE_OPTIONS": [
+    {
+      "value": "insignificant",
+      "label": "Insignificant",
+      "desc": "No injuries, low financial loss",
+      "id": "0w1L7RerRrtjgrU77ormb"
+    },
+    {
+      "value": "minor",
+      "label": "Minor",
+      "desc": "First aid treatment, medium financial loss",
+      "id": "W0-Myf-S37ppNiOajZcFu"
+    },
+    {
+      "value": "moderate",
+      "label": "Moderate",
+      "desc": "Medical treatment required, high financial loss",
+      "id": "jPNx4GNeOh3PfnJAKmsEq"
+    },
+    {
+      "value": "major",
+      "label": "Major",
+      "desc": "Extensive injuries, major financial loss",
+      "id": "5M1mX5AwoXop-CkaZdcKD"
+    },
+    {
+      "value": "catastrophic",
+      "label": "Catastrophic",
+      "desc": "Death or permanent disability, huge financial loss",
+      "id": "9QVjhel8XyTm5dXaMgptO"
+    }
+  ]
+}
